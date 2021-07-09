@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/clintjedwards/gofer/proto";
+
+// Documentation for these models can be found in the "models" package as these
+// are just protobuf representations of those models.
+//
+// Why represent what amounts to the same model twice in protobuf AND a struct
+// you ask?
+//
+//   Essentially, the separation of the transport layer and the
+//   application layer is a good thing. There are probably many reasons, but
+//   the most straightforward is that we might want to represent something in
+//   the database or within the application that might not be easily
+//   representable in protobuf, a structure mainly made for transport.
+//
+//   There might also be things that we don't want to expose outside and so
+//   the separation gives us a chance to not mess that up by simply forgetting a
+//   json:"-".
+
+message Pipeline {
+  string location = 1;
+  int64 created = 2;
+  string description = 3;
+  string id = 4;
+  string namespace = 5;
+  int64 last_run_time = 6;
+  int64 last_run_id = 7;
+  int64 updated = 8;
+  string name = 9;
+  bool sequential = 10;
+  enum State {
+    UNKNOWN = 0;
+    ACTIVE = 1;
+    DISABLED = 2;
+    ABANDONED = 3;
+  }
+  State state = 11;
+  map<string, Task> tasks = 12;
+  map<string, PipelineTriggerConfig> triggers = 13;
+  repeated string objects = 14;
+}
+
+enum TaskRequiredParentState {
+  UNKNOWN = 0;
+  ANY = 1;
+  SUCCESSFUL = 2;
+  FAILURE = 3;
+}
+
+message Task {
+  string id = 1;
+  string description = 2;
+  string image_name = 3;
+  map<string, TaskRequiredParentState> depends_on = 4;
+  map<string, string> env_vars = 5;
+  map<string, string> secrets = 6;
+}
+
+message Run {
+  int64 ended = 1;
+  RunFailure failure = 2;
+  int64 id = 3;
+  string namespace_id = 4;
+  string pipeline_id = 5;
+  int64 started = 6;
+  enum State {
+    UNKNOWN = 0;
+    PROCESSING = 1;
+    WAITING = 2;
+    RUNNING = 3;
+    FAILED = 4;
+    SUCCESS = 5;
+    CANCELLED = 6;
+  }
+  State state = 7;
+  repeated string task_runs = 8;
+  repeated string only = 9;
+  string trigger_kind = 10;
+  string trigger_name = 11;
+  map<string, string> variables = 12;
+  repeated string objects = 13;
+  bool objects_expired = 14;
+}
+
+message RunFailure {
+  enum Kind {
+    UNKNOWN = 0;
+    ABNORMAL_EXIT = 1;
+    SCHEDULER_ERROR = 2;
+    FAILED_PRECONDITION = 3;
+    CANCELLED = 4;
+  }
+  Kind kind = 1;
+  string description = 2;
+}
+
+message TaskRunFailure {
+  enum Kind {
+    UNKNOWN = 0;
+    ABNORMAL_EXIT = 1;
+    SCHEDULER_ERROR = 2;
+    FAILED_PRECONDITION = 3;
+    CANCELLED = 4;
+    ORPHANED = 5;
+  }
+  Kind kind = 1;
+  string description = 2;
+}
+
+message TaskRun {
+  int64 created = 1;
+  int64 ended = 2;
+  int64 exit_code = 3;
+  TaskRunFailure failure = 4;
+  string id = 5;
+  bool logs_expired = 6;
+  bool logs_removed = 7;
+  string namespace_id = 8;
+  string pipeline_id = 9;
+  int64 run_id = 10;
+  string scheduler_id = 11;
+  int64 started = 12;
+  enum State {
+    UNKNOWN = 0;
+    PROCESSING = 1;
+    WAITING = 2;
+    RUNNING = 3;
+    FAILED = 4;
+    SUCCESS = 5;
+    CANCELLED = 6;
+    SKIPPED = 7;
+  }
+  State state = 13;
+  Task task = 14;
+}
+
+message TriggerResult {
+  enum State {
+    UNKNOWN = 0;
+    FAILURE = 1;
+    SUCCESS = 2;
+    SKIPPED = 3;
+  }
+  State state = 1;
+  string details = 2;
+}
+
+message TriggerEvent {
+  int64 id = 1;
+  int64 received = 2;
+  int64 processed = 3;
+  string pipeline_trigger_label = 4;
+  string pipeline_id = 5;
+  string namespace_id = 6;
+  TriggerResult result = 7;
+  map<string, string> metadata = 8;
+}
+
+message PipelineTriggerConfig {
+  string kind = 1;
+  string label = 2;
+  map<string, string> config = 3;
+}
+
+message Trigger {
+  string kind = 1;
+  string url = 2;
+  string scheduler_id = 3;
+  int64 started = 4;
+  enum State {
+    UNKNOWN = 0;
+    PROCESSING = 1;
+    WAITING = 2;
+    RUNNING = 3;
+    FAILED = 4;
+    SUCCESS = 5;
+  }
+  State state = 5;
+  string documentation = 6;
+}
+
+message Token {
+  int64 created = 1;
+  enum Kind {
+    UNKNOWN = 0;
+    MANAGEMENT = 1;
+    CLIENT = 2;
+  }
+  Kind kind = 2;
+  repeated string namespaces = 3;
+  map<string, string> metadata = 4;
+}
+
+message Namespace {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int64 created = 4;
+  int64 deleted = 5;
+}
+
+message DockerRegistryAuth {
+  string registry = 1;
+  string user = 2;
+  int64 created = 3;
+}

@@ -1,0 +1,271 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/clintjedwards/gofer/proto";
+
+import "gofer_transport.proto";
+
+service Gofer {
+
+  ////////////// Namespace RPCs //////////////
+  //
+  // Namespaces are dividers for logically separating workloads. Every resource
+  // belongs to a particular namespace.
+
+  // ListNamespaces returns all registered namespaces.
+  rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse);
+
+  // CreateNamespace creates a new namespace that separates pipelines.
+  rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse);
+
+  // GetNamespace returns a single namespace by id.
+  rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse);
+
+  // UpdateNamespace updates the details of a particular namespace by id.
+  rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse);
+
+  // DeleteNamespace removes a namespace by id.
+  rpc DeleteNamespace(DeleteNamespaceRequest) returns (DeleteNamespaceResponse);
+
+  ////////////// Pipeline RPCs //////////////
+  //
+  // A Pipeline is a graph of containers that accomplish some goal. Pipelines
+  // are created via a Pipeline configuration file and can be set to be run
+  // automatically via attached triggers.
+
+  // GetPipeline returns a single pipeline by ID.
+  rpc GetPipeline(GetPipelineRequest) returns (GetPipelineResponse);
+
+  // ListPipelines returns all registered pipelines. Can control pagination by
+  // offset && limit request parameters.
+  // By default ListPipelines will return the first 100 pipelines ordered by
+  // creation.
+  rpc ListPipelines(ListPipelinesRequest) returns (ListPipelinesResponse);
+
+  // EnablePipeline allows a pipeline to execute runs by allowing it to receive
+  // trigger events. See DisablePipeline to prevent a pipeline from executing
+  // any more runs.
+  rpc EnablePipeline(EnablePipelineRequest) returns (EnablePipelineResponse);
+
+  // DisablePipeline prevents the pipeline from executing runs. Any trigger
+  // events that would normally cause the pipeline to be run are instead
+  // discarded.
+  rpc DisablePipeline(DisablePipelineRequest) returns (DisablePipelineResponse);
+
+  // CreatePipelineRaw creates a new pipeline from a raw byte string
+  // representation of a pipeline config file. This is useful if you're
+  // attempting to create the pipeline from a source that is not held in source
+  // control or maybe not publicly available.
+  rpc CreatePipelineRaw(CreatePipelineRawRequest)
+      returns (CreatePipelineRawResponse);
+
+  // CreatePipelineByURL creates a new pipeline from a pipeline config stored
+  // remotely. Many forms of a remote URL can be used here. You can view a full
+  // list of accepted protocols and extra options here:
+  // https://github.com/hashicorp/go-getter#general-all-protocols
+  rpc CreatePipelineByURL(CreatePipelineByURLRequest)
+      returns (CreatePipelineByURLResponse);
+
+  // UpdatePipelineRaw updates a pipeline by raw byte string representation of a
+  // pipeline config file. Updating a pipeline requires the pipeline to adhere
+  // to two states:
+  //    1) The pipeline must not have any current runs in progress.
+  //    2) The pipeline must be in a disabled state.
+  rpc UpdatePipelineRaw(UpdatePipelineRawRequest)
+      returns (UpdatePipelineRawResponse);
+
+  // UpdatePipelineByURL updates a pipeline from a pipeline config stored
+  // remotely. Many forms of a remote URL can be used. You can view a full list
+  // of accepted protocols and extra options here:
+  // https://github.com/hashicorp/go-getter#general-all-protocols
+  //
+  // In order to update the pipeline, it must adhere to two states:
+  //    1) The pipeline must not have any current runs in progress.
+  //    2) The pipeline must be in a disabled state.
+  rpc UpdatePipelineByURL(UpdatePipelineByURLRequest)
+      returns (UpdatePipelineByURLResponse);
+
+  // AbandonPipeline disables a pipeline permanently. This removes all triggers
+  // and prevents the pipeline from ever being triggered again.
+  rpc AbandonPipeline(AbandonPipelineRequest) returns (AbandonPipelineResponse);
+
+  ////////////// Trigger RPCs //////////////
+  //
+  // A trigger is an automated way to execute pipeline runs. Pipelines
+  // "subscribe" to one or more triggers (usually with some individual
+  // configuration) and those triggers send "events" back to gofer about when to
+  // trigger a new pipeline run.
+
+  // GetTrigger returns details about a specific trigger.
+  rpc GetTrigger(GetTriggerRequest) returns (GetTriggerResponse);
+
+  // ListTriggers lists all triggers currently registered within gofer.
+  rpc ListTriggers(ListTriggersRequest) returns (ListTriggersResponse);
+
+  // GetTriggerEvent returns a specific trigger event for a pipeline by ID. This
+  // is useful to check out the details of a specific triggered run instance.
+  rpc GetTriggerEvent(GetTriggerEventRequest) returns (GetTriggerEventResponse);
+
+  // BatchGetTriggerEvents returns multiple trigger events by ID.
+  rpc BatchGetTriggerEvents(BatchGetTriggerEventsRequest)
+      returns (BatchGetTriggerEventsResponse);
+
+  // ListTriggerEvents returns a list of all trigger events by pipeline ID.
+  // Pagination can be controlled via the offset and limit parameters of the
+  // request.
+  rpc ListTriggerEvents(ListTriggerEventsRequest)
+      returns (ListTriggerEventsResponse);
+
+  ////////////// Run RPCs //////////////
+  //
+  // A run is a specific execution of a pipeline at a specific point in time.
+  // A run is made up of multiple tasks that all run according to their
+  // dependency on each other. Runs can be started either manually by the API or
+  // automatically by associating the pipeline with a trigger.
+
+  // GetRun returns the details of a single run.
+  rpc GetRun(GetRunRequest) returns (GetRunResponse);
+
+  // BatchGetRuns returns multiple runs by ID.
+  rpc BatchGetRuns(BatchGetRunsRequest) returns (BatchGetRunsResponse);
+
+  // ListRuns returns a list of all runs by Pipeline ID. Pagination can be
+  // controlled via the offset and limit parameters of the request.
+  rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+
+  // StartRun starts a new run for the given pipeline. Pipelines that are
+  // started via API are marked as such. This RPC has the ability to choose to
+  // only run a subset of a pipeline via the "only" flag. Which is not possible
+  // via a trigger.
+  rpc StartRun(StartRunRequest) returns (StartRunResponse);
+
+  // RetryRun simply takes the vars and settings from a previous run and re-uses
+  // those to launch a new run. Useful for if you want the exact settings from a
+  // previous run.
+  rpc RetryRun(RetryRunRequest) returns (RetryRunResponse);
+
+  // CancelRun stops the execution of a run in progress. Any task runs that
+  // might have been running at the time Are ask to stop gracefully(SIGINT)
+  // unless the force parameter is used, in which case the task runs are stopped
+  // instantly(SIGKILL) and the run is cancelled.
+  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
+
+  // CancelAllRuns stops the execution of any in-progress runs for a specific
+  // pipeline by ID.
+  rpc CancelAllRuns(CancelAllRunsRequest) returns (CancelAllRunsResponse);
+
+  ////////////// Task Run RPCs //////////////
+  //
+  // A task run is the lowest unit of execution for a gofer pipeline. A task run
+  // the tracking of a task, which is to say a task run is simply the tracking
+  // of a container that is in the act of being executed.
+
+  // GetTaskRun returns the details of a single task run.
+  rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse);
+
+  // ListTaskRuns returns all task runs for a current run by ID.
+  rpc ListTaskRuns(ListTaskRunsRequest) returns (ListTaskRunsResponse);
+
+  // CancelTaskRun cancels a specific task run, sending the related container a
+  // SIGINT signal. If the force flag is used we instead send the container a
+  // SIGKILL signal.
+  //
+  // Task runs that are cancelled can cause other downstream task runs to be
+  // skipped depending on those downstream task run dependencies.
+  rpc CancelTaskRun(CancelTaskRunRequest) returns (CancelTaskRunResponse);
+
+  // GetTaskRunLogs returns logs for a specific task run line by line in a
+  // stream. The logs are returns with both STDOUT and STDERR of the associated
+  // container combined.
+  rpc GetTaskRunLogs(GetTaskRunLogsRequest)
+      returns (stream GetTaskRunLogsResponse);
+
+  // DeleteTaskRunLogs removes a task run's associated log object. This is
+  // useful for if logs mistakenly contain sensitive data.
+  rpc DeleteTaskRunLogs(DeleteTaskRunLogsRequest)
+      returns (DeleteTaskRunLogsResponse);
+
+  ////////////// Object Store RPCs //////////////
+  //
+  // The object store is a temporary key-value storage mechanism for pipelines
+  // and runs. It allows the user to cache objects for the lifetime of multiple
+  // runs or for the lifetime of a single run.
+  //
+  // There are two separate types of objects, each useful for its own use case.
+  // Visit the documentation for more details on the associated lifetimes of
+  // pipeline specific and run specific objects.
+
+  // GetPipelineObject returns a single pipeline object by pipeline ID and key.
+  rpc GetPipelineObject(GetPipelineObjectRequest)
+      returns (GetPipelineObjectResponse);
+
+  // PutPipelineObject uploads a single pipeline object by pipeline ID and key.
+  // Objects which are put under the same key do not count towards the pipeline
+  // object limit.
+  rpc PutPipelineObject(PutPipelineObjectRequest)
+      returns (PutPipelineObjectResponse);
+
+  // DeletePipelineObject removes a single pipeline object by pipeline ID and
+  // key. Removing a pipeline object decrements the total count of the pipeline
+  // object limit.
+  rpc DeletePipelineObject(DeletePipelineObjectRequest)
+      returns (DeletePipelineObjectResponse);
+
+  // GetRunObject returns the content of a single run object.
+  rpc GetRunObject(GetRunObjectRequest) returns (GetRunObjectResponse);
+
+  // PutRunObject uploads the context of an object by run ID and key.
+  rpc PutRunObject(PutRunObjectRequest) returns (PutRunObjectResponse);
+
+  // DeleteRunObject removes a specific run object by run ID and key.
+  rpc DeleteRunObject(DeleteRunObjectRequest) returns (DeleteRunObjectResponse);
+
+  ////////////// Service RPCs //////////////
+  //
+  // Service RPCs exist to help with management of the Gofer service. They
+  // usually perform admin type interactions with the service as a whole and
+  // provide ways for admins to quickly repair Gofer broken states without
+  // having to stop the entire service.
+
+  // GetSystemInfo returns system information and general health.
+  rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse);
+
+  // RepairOrphan is used when a single run has gotten into a state that does
+  // not reflect what actually happened to the run. This can happen if the Gofer
+  // service crashes for unforeseen reasons. Usually this route is not needed as
+  // Gofer will make an attempt to resolve all orphaned runs upon startup. But
+  // in the rare case that a run gets into a bad state during the service's
+  // normal execution this route can be used to attempt to repair the orphaned
+  // run or at the very least mark it as failed so it isn't stuck in a
+  // unfinished state.
+  rpc RepairOrphan(RepairOrphanRequest) returns (RepairOrphanResponse);
+
+  // ToggleEventIngress allows the admin to start or stop the execution of all
+  // pipelines within Gofer. This can be useful under some security implications
+  // or for the purposes of defining general downtime and service maintenance.
+  rpc ToggleEventIngress(ToggleEventIngressRequest)
+      returns (ToggleEventIngressResponse);
+
+  // CreateToken manifests a new API token; This token can be a management
+  // token(the equivalent of root in Linux) or a client token. Management tokens
+  // are the only tokens that can generate tokens.
+  // Client tokens are used to manage which namespaces users have access to.
+  rpc CreateToken(CreateTokenRequest) returns (CreateTokenResponse);
+
+  // BootstrapToken creates the initial management token used to create all
+  // other tokens.
+  rpc BootstrapToken(BootstrapTokenRequest) returns (BootstrapTokenResponse);
+
+  // GetToken returns information about a particular token;
+  rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
+
+  // DeleteToken removes a token.
+  rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
+
+  rpc AddRegistryAuth(AddRegistryAuthRequest) returns (AddRegistryAuthResponse);
+  rpc RemoveRegistryAuth(RemoveRegistryAuthRequest)
+      returns (RemoveRegistryAuthResponse);
+  rpc ListRegistryAuths(ListRegistryAuthsRequest)
+      returns (ListRegistryAuthsResponse);
+}

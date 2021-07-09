@@ -1,0 +1,19 @@
+#Mac files
+.DS_Store
+
+#Vs Code
+.vscode
+
+#secret files
+.env
+-docker/.env
+
+#frontend
+node_modules/
+dist/*
+-dist/.gitkeep
+main.js
+
+#localhost cert files
+*.crt
+*.key

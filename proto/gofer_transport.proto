@@ -1,0 +1,454 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/clintjedwards/gofer/proto";
+
+import "gofer_message.proto";
+
+////////////// Namespace Transport Models //////////////
+
+message GetNamespaceRequest {
+  string id = 1; // Unique identifier
+}
+message GetNamespaceResponse { Namespace namespace = 1; }
+
+message ListNamespacesRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of objects to return.
+  int64 offset = 1;
+
+  // limit is a pagination parameter that defines how many objects to return
+  // per result.
+  int64 limit = 2;
+}
+
+message ListNamespacesResponse {
+  repeated Namespace namespaces = 1;
+
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of objects to return.
+  int64 offset = 2;
+}
+
+message CreateNamespaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+message CreateNamespaceResponse { Namespace namespace = 1; }
+
+message UpdateNamespaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+message UpdateNamespaceResponse { Namespace namespace = 1; }
+
+message DeleteNamespaceRequest {
+  string id = 1; // Unique identifier
+}
+message DeleteNamespaceResponse {}
+
+////////////// Pipeline Transport Models //////////////
+
+message GetPipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique identifier
+}
+message GetPipelineResponse { Pipeline pipeline = 1; }
+
+message ListPipelinesRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of pipelines to return.
+  int64 offset = 1;
+
+  // limit is a pagination parameter that defines how many pipelines to return
+  // per result.
+  int64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+}
+message ListPipelinesResponse {
+  repeated Pipeline pipelines = 1;
+
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of pipelines to return.
+  int64 offset = 2;
+}
+
+message DisablePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique namespace identifier
+}
+message DisablePipelineResponse {}
+
+message EnablePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique identifier
+}
+message EnablePipelineResponse {}
+
+message CreatePipelineRawRequest {
+  // Gofer pipeline config file byte string.
+  bytes content = 1;
+
+  // path is a metadata parameter to where the pipeline file might be stored.
+  // For example: for a command line application using this endpoint, the path
+  // here might be the path of the pipeline file on the user's machine.
+  // For a foreign API using this endpoint, the path could be something related
+  // to endpoint responsible for creating the pipeline file.
+  // This parameter is not used for anything particularly important and only
+  // used for documentation purposes for the user.
+  string path = 2;
+}
+message CreatePipelineRawResponse { Pipeline pipeline = 1; }
+
+message CreatePipelineByURLRequest {
+  // url represents the remote location where the pipeline configuration file
+  // exists. This parameter takes urls in the form of hashicorp's
+  // go-getter(https://github.com/hashicorp/go-getter#general-all-protocols).
+  // This means that is supports a wide array of possibilities for remote
+  // locations.
+  // The most common use case is simply pointing to a file or folder within
+  // remote source control:
+  //    folder: `"github.com/clintjedwards/gofer.git//gofer"`
+  //    file: `"github.com/clintjedwards/gofer.git//gofer.hcl"`
+  string url = 1;
+}
+message CreatePipelineByURLResponse { Pipeline pipeline = 1; }
+
+message UpdatePipelineRawRequest {
+  string namespace_id = 1; // Unique namespace identifier
+
+  string id = 2; // Unique identifier
+
+  // Gofer pipeline config file byte string.
+  bytes content = 3;
+
+  // path is a metadata parameter to where the pipeline file might be stored.
+  // For example: for a command line application using this endpoint, the path
+  // here might be the path of the pipeline file on the user's machine.
+  // For a foreign API using this endpoint, the path could be something related
+  // to endpoint responsible for creating the pipeline file.
+  // This parameter is not used for anything particularly important and only
+  // used for documentation purposes for the user.
+  string path = 4;
+}
+message UpdatePipelineRawResponse { Pipeline pipeline = 1; }
+
+message UpdatePipelineByURLRequest {
+  string namespace_id = 1; // Unique namespace identifier
+
+  string id = 2; // Unique namespace identifier
+
+  // url represents the remote location where the pipeline configuration file
+  // exists. This parameter takes urls in the form of hashicorp's
+  // go-getter(https://github.com/hashicorp/go-getter#general-all-protocols).
+  // This means that is supports a wide array of possibilities for remote
+  // locations.
+  // The most common use case is simply pointing to a file or folder within
+  // remote source control:
+  //    folder: `"github.com/clintjedwards/gofer.git//gofer"`
+  //    file: `"github.com/clintjedwards/gofer.git//gofer.hcl"`
+  string url = 3;
+}
+message UpdatePipelineByURLResponse { Pipeline pipeline = 1; }
+
+message AbandonPipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Pipeline ID
+}
+message AbandonPipelineResponse {}
+
+////////////// Runs Transport Models //////////////
+
+message GetRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 id = 3; // Run ID
+}
+message GetRunResponse { Run run = 1; }
+
+message BatchGetRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  repeated int64 ids = 3; // Run IDs
+}
+message BatchGetRunsResponse { repeated Run runs = 1; }
+
+message ListRunsRequest {
+  // offset is a pagination parameter that defines where to start when
+  // counting the list of pipelines to return
+  int64 offset = 1;
+
+  // limit is a pagination parameter that defines how many pipelines to return
+  // per result.
+  int64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+  string pipeline_id = 4;
+}
+message ListRunsResponse { repeated Run runs = 1; }
+
+message StartRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+
+  // Only is an array of tasks which will run exclusively for this particular
+  // run. Tasks still carry relevant dependencies. Run will return an error if
+  // the dependencies of a task is also not met in the list of tasks included in
+  // only.
+  repeated string only = 3;
+
+  // variables allows for the replacement of task environment variables, it
+  // overrides all other environment variables if there is a name collision.
+  map<string, string> variables = 4;
+}
+message StartRunResponse { Run run = 1; }
+
+message RetryRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 id = 3; // Run ID
+}
+message RetryRunResponse { Run run = 1; }
+
+message CancelRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 id = 3; // Run ID
+
+  // force will cause Gofer to hard kill any outstanding task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 4;
+}
+message CancelRunResponse {}
+
+message CancelAllRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+
+  // force will cause Gofer to hard kill any outstanding task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 3;
+}
+message CancelAllRunsResponse { repeated int64 runs = 1; }
+
+////////////// Task Run Transport Models //////////////
+
+message ListTaskRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+}
+message ListTaskRunsResponse { repeated TaskRun task_runs = 1; }
+
+message GetTaskRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message GetTaskRunResponse { TaskRun task_run = 1; }
+
+message CancelTaskRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string id = 4; // Task Run ID
+
+  // force will cause Gofer to hard kill this task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 5;
+}
+message CancelTaskRunResponse {}
+
+message GetTaskRunLogsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message GetTaskRunLogsResponse {
+  string log_line = 1; // The string content of the current log line.
+  int64 line_num = 2;  // The current line number.
+}
+
+message DeleteTaskRunLogsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message DeleteTaskRunLogsResponse {}
+
+////////////// Trigger Transport Models //////////////
+
+message GetTriggerEventRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string pipeline_trigger_label = 3;
+  int64 id = 4; // Trigger Event ID
+}
+message GetTriggerEventResponse { TriggerEvent event = 1; }
+
+message BatchGetTriggerEventsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string pipeline_trigger_label = 3;
+  repeated int64 ids = 4; // Trigger Event IDs
+}
+message BatchGetTriggerEventsResponse { repeated TriggerEvent events = 1; }
+
+message ListTriggerEventsRequest {
+  // offset is a pagination parameter that defines where to start when
+  // counting the list of pipelines to return
+  int64 offset = 1;
+
+  // limit is a pagination parameter that defines how many pipelines to return
+  // per result.
+  int64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+  string pipeline_id = 4;
+  string pipeline_trigger_label = 5;
+}
+message ListTriggerEventsResponse { repeated TriggerEvent events = 1; }
+
+message GetTriggerRequest {
+  string name = 1; // The unique name for a particular trigger
+}
+message GetTriggerResponse { Trigger trigger = 1; }
+
+message ListTriggersRequest {}
+message ListTriggersResponse { repeated Trigger triggers = 1; }
+
+////////////// Object store Transport Models //////////////
+
+message GetPipelineObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string key = 3;
+}
+message GetPipelineObjectResponse { bytes content = 1; }
+
+message ListPipelineObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+}
+message ListPipelineObjectResponse { repeated string keys = 1; }
+
+message PutPipelineObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string key = 3;
+  bytes content = 4;
+  bool force = 5; // Overwrites an already existing value.
+}
+message PutPipelineObjectResponse {
+  // The number of bytes uploaded.
+  int64 bytes = 1;
+
+  // The total amount of objects for this particular pipeline.
+  int64 object_limit = 2;
+
+  // The key for the object that was evicted for the latest key.
+  string object_evicted = 3;
+}
+
+message DeletePipelineObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string key = 3;
+}
+message DeletePipelineObjectResponse {}
+
+message GetRunObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string key = 4;
+}
+message GetRunObjectResponse { bytes content = 1; }
+
+message ListRunObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+}
+message ListRunObjectResponse { repeated string keys = 1; }
+
+message PutRunObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string key = 4;
+  bytes content = 5;
+  bool force = 6; // Overwrites an already existing value.
+}
+message PutRunObjectResponse { int64 bytes = 1; }
+
+message DeleteRunObjectRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string key = 4;
+}
+message DeleteRunObjectResponse {}
+
+message GetSystemInfoRequest {}
+message GetSystemInfoResponse {
+  string build_time = 1;
+  string commit = 2;
+  bool devmode_enabled = 3;
+  bool frontend_enabled = 4;
+  string version = 5;
+  bool accept_new_events = 6;
+}
+
+message RepairOrphanRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+}
+message RepairOrphanResponse {}
+
+message ToggleEventIngressRequest {}
+message ToggleEventIngressResponse {
+  // The current value for the boolean that controls event ingress.
+  bool value = 1;
+}
+
+message CreateTokenRequest {
+  enum Kind {
+    UNKNOWN = 0;
+    MANAGEMENT = 1;
+    CLIENT = 2;
+  }
+  Kind kind = 1;
+  repeated string namespaces = 2;
+  map<string, string> metadata = 3;
+}
+message CreateTokenResponse {
+  Token details = 1;
+  string token = 2;
+}
+
+message BootstrapTokenRequest {}
+message BootstrapTokenResponse {
+  Token details = 1;
+  string token = 2;
+}
+message GetTokenRequest { string token = 1; }
+message GetTokenResponse { Token details = 1; }
+message DeleteTokenRequest { string token = 1; }
+message DeleteTokenResponse {}
+
+message AddRegistryAuthRequest {
+  string registry = 1;
+  string user = 2;
+  string pass = 3;
+}
+message AddRegistryAuthResponse {}
+message RemoveRegistryAuthRequest { string registry = 1; }
+message RemoveRegistryAuthResponse {}
+message ListRegistryAuthsRequest {}
+message ListRegistryAuthsResponse { repeated DockerRegistryAuth auths = 1; }
