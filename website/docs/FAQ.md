@@ -65,6 +65,9 @@ gofer pipeline create https://raw.githubusercontent.com/clintjedwards/gofer/exam
 
 ##### Reference an entire folder
 
+Gofer allows you to break up your pipeline configuration into multiple files and store them in a single folder. This
+allows you to break up large pipeline configuration files however makes sense to you!
+
 ```bash
 gofer pipeline create github.com/clintjedwards/gofer.git//myFolderPipeline
 ```
