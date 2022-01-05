@@ -406,7 +406,12 @@ func (api *API) createGRPCServer() (*grpc.Server, error) {
 				grpc_auth.UnaryServerInterceptor(api.authenticate),
 			),
 		),
-		grpc.StreamInterceptor(grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(panicHandler))),
+		grpc.StreamInterceptor(
+			grpc_middleware.ChainStreamServer(
+				grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(panicHandler)),
+				grpc_auth.StreamServerInterceptor(api.authenticate),
+			),
+		),
 
 		// Handle TLS
 		grpc.Creds(credentials.NewTLS(tlsConfig)),
