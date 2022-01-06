@@ -8,11 +8,10 @@ SEMVER = 0.0.1
 VERSION = ${SEMVER}_${GIT_COMMIT}_${EPOCH_TIME}
 
 ## build: run tests and compile application
-build: export CGO_ENABLED=0
 build: check-path-included build-protos
 	go test ./...
 	go mod tidy
-	go build -ldflags $(GO_LDFLAGS) -o $(path)
+	CGO_ENABLED=0 go build -ldflags $(GO_LDFLAGS) -o $(path)
 
 ## build-triggers: build trigger docker containers
 build-triggers:
