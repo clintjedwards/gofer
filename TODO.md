@@ -74,3 +74,6 @@
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
+
+- add validation for encryption key
+- triggers should follow semver
