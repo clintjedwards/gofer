@@ -74,6 +74,3 @@
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
-
-- fix gettaskrun namespace issue
-- Record video
