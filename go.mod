@@ -7,10 +7,11 @@ require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/asdine/storm/v3 v3.2.1
+	github.com/bketelsen/crypt v0.0.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/clintjedwards/polyfmt v0.3.0
-	github.com/containerd/containerd v1.5.8 // indirect
-	github.com/docker/docker v20.10.11+incompatible
+	github.com/containerd/containerd v1.5.9 // indirect
+	github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.13.0
@@ -25,7 +26,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-getter/v2 v2.0.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-version v1.3.0 // indirect
+	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.11.1
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -39,17 +40,20 @@ require (
 	github.com/nxadm/tail v1.4.8
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/opencontainers/image-spec v1.0.2 // indirect
-	github.com/rs/cors v1.8.0 // indirect
-	github.com/rs/zerolog v1.26.0
-	github.com/spf13/cobra v1.2.1
+	github.com/rs/cors v1.8.2 // indirect
+	github.com/rs/zerolog v1.26.1
+	github.com/spf13/cobra v1.3.0
+	github.com/theckman/yacspin v0.13.12 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/zclconf/go-cty v1.10.0 // indirect
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/net v0.0.0-20211201190559-0a0e4e1bb54c // indirect
-	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
+	golang.org/x/net v0.0.0-20220105145211-5b0dc2dfae98 // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
-	google.golang.org/grpc v1.42.0
+	google.golang.org/genproto v0.0.0-20220106181925-4b6d468c965f // indirect
+	google.golang.org/grpc v1.43.0
 	google.golang.org/protobuf v1.27.1
+	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
+	gopkg.in/go-playground/validator.v9 v9.29.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
