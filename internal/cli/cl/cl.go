@@ -28,8 +28,13 @@ var State *Harness
 func (s *Harness) Connect() (*grpc.ClientConn, error) {
 	hostPortTuple := strings.Split(s.Config.Host, ":")
 
-	if len(hostPortTuple) != 2 {
+	if len(hostPortTuple) > 2 {
 		return nil, fmt.Errorf("malformed host string; must be in format: <host>:<port>")
+	}
+
+	// If we are not given a port we assume that port is 443
+	if len(hostPortTuple) == 1 {
+		hostPortTuple = append(hostPortTuple, "443")
 	}
 
 	var opt []grpc.DialOption
