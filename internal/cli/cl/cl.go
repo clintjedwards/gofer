@@ -65,8 +65,17 @@ func InitState(cmd *cobra.Command) {
 	// Now we need to provide the command line with some state which we use to display the spinner
 	// and also make sure the command line inherits the proper variable chain(config file -> envvar -> flags)
 	State = &Harness{}
-	config, _ := cmd.Flags().GetString("config")
-	State.NewConfig(config)
+
+	// This is a hack. Because the start command needs to use the --config global variable for its own purposes
+	// we tell it to skip parsing the as if its a CLI config and supply it with some defaults.
+	if cmd.Name() == "start" && cmd.Parent().Name() == "service" {
+		State.Config = &config.CLI{
+			Format: "silent",
+		}
+	} else {
+		config, _ := cmd.Flags().GetString("config")
+		State.NewConfig(config)
+	}
 
 	// Initiate the formatter(this controls the command line output)
 	format, _ := cmd.Flags().GetString("format")
