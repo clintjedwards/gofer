@@ -13,7 +13,3 @@ node_modules/
 dist/*
 -dist/.gitkeep
 main.js
-
-#localhost cert files
-*.crt
-*.key
