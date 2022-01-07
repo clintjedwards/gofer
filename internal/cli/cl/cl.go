@@ -38,9 +38,9 @@ func (s *Harness) Connect() (*grpc.ClientConn, error) {
 		tlsConf = &tls.Config{
 			InsecureSkipVerify: true,
 		}
-		opt = append(opt, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 	}
 
+	opt = append(opt, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", hostPortTuple[0], hostPortTuple[1]), opt...)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to server: %w", err)
