@@ -15,6 +15,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.13.0
 	github.com/felixge/httpsnoop v1.0.2 // indirect
+	github.com/gin-gonic/gin v1.7.0 // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/google/go-cmp v0.5.6
 	github.com/gorilla/handlers v1.5.1
