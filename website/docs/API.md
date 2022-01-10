@@ -13,3 +13,13 @@ The use of Protobuf gives us two main advantages:
 3. Developing against the API for developers not working within the Go language means simply [importing the proto](https://github.com/clintjedwards/gofer/blob/cf4c5636e3545b41be00be0f4d7001a3852e8535/proto/gofer.proto) files and generating them for the language you need.
 
 You can find more information on protobuf, proto files, and how to autogenerate the code you need to use them to develop against Gofer in the [protobuf documentation.](https://developers.google.com/protocol-buffers/docs/overview)
+
+## Auth
+
+You can authenticate to Gofer using GRPC's metadata pair:
+
+```go
+md := metadata.Pairs("Authorization", "Bearer "+<token>)
+```
+
+More details about auth [can be found here.](server-configuration/auth)
