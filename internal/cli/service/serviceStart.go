@@ -32,7 +32,7 @@ func serverStart(cmd *cobra.Command, _ []string) error {
 	configPath, _ := cmd.Flags().GetString("config")
 	conf, err := config.InitAPIConfig(configPath)
 	if err != nil {
-		log.Fatal().Err(err).Msg("could not get config")
+		log.Fatal().Err(err).Msg("error in config initialization")
 	}
 
 	setupLogging(conf.LogLevel, conf.Server.DevMode)

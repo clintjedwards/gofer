@@ -8,7 +8,7 @@ log_level                = "info"
 run_log_expiry           = 20
 task_run_logs_dir        = "/tmp"
 task_run_stop_timeout    = "5m"
-encryption_key           = "change_me"
+encryption_key           = "changemechangemechangemechangeme"
 
 external_events_api {
   enable = true

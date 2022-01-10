@@ -58,7 +58,7 @@ func DefaultAPIConfig() *API {
 		EventLoopChannelSize:  100,
 		Host:                  "localhost:8080",
 		LogLevel:              "debug",
-		EncryptionKey:         "default",
+		EncryptionKey:         "changemechangemechangemechangeme",
 		RunLogExpiry:          20,
 		TaskRunLogsDir:        "/tmp",
 		TaskRunStopTimeout:    mustParseDuration("5m"),
@@ -305,7 +305,24 @@ func InitAPIConfig(userDefinedPath string) (*API, error) {
 	// Always append default triggers
 	config.Triggers.RegisteredTriggers = append(config.Triggers.RegisteredTriggers, defaultTriggers()...)
 
+	err = config.validate()
+	if err != nil {
+		return nil, err
+	}
+
 	return config, nil
+}
+
+func (c *API) validate() error {
+	if len(c.EncryptionKey) != 32 {
+		return fmt.Errorf("encryption_key must be a 32 character random string")
+	}
+
+	if !c.Server.DevMode && c.EncryptionKey == "changemechangemechangemechangeme" {
+		return fmt.Errorf("encryption_key cannot be left as default; must be changed to a 32 character random string")
+	}
+
+	return nil
 }
 
 func PrintAPIEnvs() error {
