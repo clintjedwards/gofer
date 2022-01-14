@@ -58,7 +58,7 @@ task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
 
     // Gofer handles secrets also! Simply use the command-line to enter secrets and then reference them
     // in your config file by key.
-    "SECRET_LOGS_HEADER" : "{{secret_log_key}}"
+    "SECRET_LOGS_HEADER" : "secret{{secret_log_key}}"
   }
 }
 

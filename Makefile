@@ -17,11 +17,13 @@ build: check-path-included build-protos
 build-triggers:
 	docker build -f triggers/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/trigger_cron:latest .
 	docker build -f triggers/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/trigger_interval:latest .
+	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer/trigger_github:latest .
 
 ## push-triggers: push default trigger docker to github
 push-triggers:
 	docker push ghcr.io/clintjedwards/gofer/trigger_cron:latest
 	docker push ghcr.io/clintjedwards/gofer/trigger_interval:latest
+	docker push ghcr.io/clintjedwards/gofer/trigger_github:latest
 
 ## build-protos: build protobufs
 build-protos:

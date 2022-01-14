@@ -1,10 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
@@ -24,11 +24,13 @@ func (api *API) eventsHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	request, err := ioutil.ReadAll(req.Body)
+	serializedRequest := &bytes.Buffer{}
+	err := req.Write(serializedRequest)
 	if err != nil {
-		sendErrResponse(w, http.StatusBadRequest, err)
+		sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("could not serialize http request"))
 		return
 	}
+
 	defer req.Body.Close()
 
 	conn, err := grpcDial(trigger.URL)
@@ -41,7 +43,7 @@ func (api *API) eventsHandler(w http.ResponseWriter, req *http.Request) {
 
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
 	_, err = client.ExternalEvent(ctx, &sdkProto.ExternalEventRequest{
-		Payload: request,
+		Payload: serializedRequest.Bytes(),
 	})
 	if err != nil {
 		if status.Code(err) == codes.Canceled {

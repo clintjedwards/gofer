@@ -1,5 +1,7 @@
 ### Top remaining features before v1.0.0
 
+#### If you fail a trigger register we should NOT complete with a valid pipeline.
+
 #### Write the github plugin
 
 - It should have both polling and webhook support.
@@ -13,6 +15,11 @@
 #### Generate run level auth keys and allow people to use the binary to do stuff like download their favorite key from the object store.
 
 #### Nomad scheduler integration
+
+#### An "export" function for pipeline configuration
+
+- where Gofer will run a particular export container along with the user's pipeline. This container can ship
+  container focused results back to something like email, slack, github, whatever.
 
 #### Json output
 
@@ -51,6 +58,9 @@
 - For an extension like vault we manage the read and write in the same way we would for bolt. So vault gives us a prefix
   path and we essentially just used that prefix path to store secrets.
 - Document all changes that arise from the new revolution in secrets
+- It might be possible to just insert secrets anywhere you want if you set it correctly. We need to check that
+  the user has permissions before put or getting secrets once more.
+- You should be able to list secret keys for your pipeline.
 
 ### Triggers
 
@@ -82,3 +92,10 @@
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
+- Document the events endpoint
+  - How to send events to triggers
+  - How it works
+  - How the URL is formed
+
+* We need to put a validation check for environment variables that do not have a key since those are illegal
+  - This validation needs to be put both in the pipeline config checks AND before we pass in trigger vars.

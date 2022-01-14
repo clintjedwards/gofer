@@ -26,7 +26,7 @@ func TestFullParse(t *testing.T) {
 		description = "test description"
 		registry_auth {
 			user = "obama"
-			pass = "{{secret}}"
+			pass = "secret{{my_password}}"
 		}
 		depends_on = {
 			"2": "any",
@@ -34,7 +34,7 @@ func TestFullParse(t *testing.T) {
 		}
 		env_vars = {
 			"LOGS_HEADER": "example test string 123",
-			"SECRET_LOGS_HEADER": "{{ secret_logs_header }}"
+			"SECRET_LOGS_HEADER": "secret{{ secret_logs_header }}"
 		}
 	}
 
@@ -53,7 +53,7 @@ func TestFullParse(t *testing.T) {
 				Description: "test description",
 				RegistryAuth: RegistryAuth{
 					User: "obama",
-					Pass: "{{secret}}",
+					Pass: "secret{{my_password}}",
 				},
 				DependsOn: map[string]RequiredParentState{
 					"2": RequiredParentStateAny,
@@ -62,7 +62,7 @@ func TestFullParse(t *testing.T) {
 				Image: "hello_world",
 				EnvVars: map[string]string{
 					"LOGS_HEADER":        "example test string 123",
-					"SECRET_LOGS_HEADER": "{{ secret_logs_header }}",
+					"SECRET_LOGS_HEADER": "secret{{ secret_logs_header }}",
 				},
 			},
 			{ID: "2", Description: "test description 1", Image: "hello_world", DependsOn: map[string]RequiredParentState{}},

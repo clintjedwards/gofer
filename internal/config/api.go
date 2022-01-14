@@ -196,13 +196,20 @@ func DefaultExternalEventsAPIConfig() *ExternalEventsAPI {
 
 func defaultTriggers() []Trigger {
 	return []Trigger{
-		{Kind: "cron", Image: "ghcr.io/clintjedwards/gofer/trigger_cron:latest"},
+		{
+			Kind:  "cron",
+			Image: "ghcr.io/clintjedwards/gofer/trigger_cron:latest",
+		},
 		{
 			Kind:  "interval",
 			Image: "ghcr.io/clintjedwards/gofer/trigger_interval:latest",
 			EnvVars: map[string]string{
 				"GOFER_TRIGGER_INTERVAL_MIN_DURATION": "5m",
 			},
+		},
+		{
+			Kind:  "github",
+			Image: "ghcr.io/clintjedwards/gofer/trigger_github:latest",
 		},
 	}
 }
