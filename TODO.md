@@ -1,5 +1,22 @@
 ### Top remaining features before v1.0.0
 
+#### Secret store
+
+- Lets make sure it is impossible for someone to put in a secret not in their pipeline and retrieve a secret back
+- We also need to make sure it is possible
+- For Vault we will manage the read/writes to vault to keep things in check.
+- This also means that we have to be the auth of whether a user/pipeline should be able to read/write that secret.
+  given that the ability to read a secret means that they can just dump it out in the container.
+- The user is likely to give us a token for a particular path.
+- We need to know what that prefix is for the path and we can automatically retrieve tokens on behalf of the pipeline.
+- When we retrieve the token we'll need to do manual verification that this user actually has access to this token
+  spot.
+- For local we can just store the secrets in a boltdb database like everything else.
+- Document all changes that arise from the new revolution in secrets
+  - image registry is no longer a thing
+- We need to now give the user a way to reference their pipeline secrets
+- We need to make sure to convert envvars for tasks, all thigns for triggers, and registry auth for tasks.
+
 #### Write the github plugin
 
 - It should have both polling and webhook support.
@@ -75,5 +92,4 @@
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
 
-- add validation for encryption key
 - triggers should follow semver

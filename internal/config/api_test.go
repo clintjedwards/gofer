@@ -27,7 +27,6 @@ func TestAPISampleFromFile(t *testing.T) {
 		TaskRunLogsDir:        "/tmp",
 		TaskRunStopTimeout:    time.Minute * 5,
 		TaskRunStopTimeoutHCL: "5m",
-		EncryptionKey:         "change_me",
 
 		ExternalEventsAPI: &ExternalEventsAPI{
 			Enable: true,
@@ -44,11 +43,19 @@ func TestAPISampleFromFile(t *testing.T) {
 
 		ObjectStore: &ObjectStore{
 			Engine: "bolt",
-			BoltDB: &BoltDBStore{
+			BoltDB: &BoltDB{
 				Path: "/tmp/gofer-os.db",
 			},
 			PipelineObjectLimit: 10,
 			RunObjectExpiry:     20,
+		},
+
+		SecretStore: &SecretStore{
+			Engine: "bolt",
+			BoltDB: &BoltDB{
+				Path: "/tmp/gofer-secret.db",
+			},
+			EncryptionKey: "changemechangemechangemechangeme",
 		},
 
 		Scheduler: &Scheduler{
@@ -131,7 +138,6 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		TaskRunLogsDir:        "/tmp",
 		TaskRunStopTimeout:    time.Minute * 5,
 		TaskRunStopTimeoutHCL: "5m",
-		EncryptionKey:         "change_me",
 
 		ExternalEventsAPI: &ExternalEventsAPI{
 			Enable: false,
@@ -148,11 +154,19 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 
 		ObjectStore: &ObjectStore{
 			Engine: "bolt",
-			BoltDB: &BoltDBStore{
+			BoltDB: &BoltDB{
 				Path: "/tmp/gofer-os.db",
 			},
 			PipelineObjectLimit: 10,
 			RunObjectExpiry:     1000,
+		},
+
+		SecretStore: &SecretStore{
+			Engine: "bolt",
+			BoltDB: &BoltDB{
+				Path: "/tmp/gofer-secret.db",
+			},
+			EncryptionKey: "changemechangemechangemechangeme",
 		},
 
 		Scheduler: &Scheduler{
@@ -224,7 +238,10 @@ func TestSetTriggersViaEnv(t *testing.T) {
 			BoltDB: &BoltDB{},
 		},
 		ObjectStore: &ObjectStore{
-			BoltDB: &BoltDBStore{},
+			BoltDB: &BoltDB{},
+		},
+		SecretStore: &SecretStore{
+			BoltDB: &BoltDB{},
 		},
 		Scheduler: &Scheduler{
 			Docker: &Docker{},

@@ -46,8 +46,8 @@ type TaskRun struct {
 	PipelineID  string `json:"pipeline_id"`  // Unique pipeline ID of task run.
 	RunID       int64  `json:"run_id"`       // Unique run ID of task run; sequential.
 
-	// The identifier used be the scheduler to identify this specific task run container. This is provided by the
-	// scheduler
+	// The identifier used by the scheduler to identify this specific task run container. This is provided by the
+	// scheduler.
 	SchedulerID string         `json:"scheduler_id"`
 	Started     int64          `json:"started" storm:"index"` // Time of task run actual start in epoch milliseconds.
 	State       ContainerState `json:"status"`
@@ -152,8 +152,7 @@ func (r *TaskRun) FromProto(proto *proto.TaskRun) {
 	r.State = ContainerState(proto.State.String())
 	r.ID = proto.Task.Id
 	r.Description = proto.Task.Description
-	r.ImageName = proto.Task.ImageName
+	r.Image = proto.Task.Image
 	r.DependsOn = dependsOn
 	r.EnvVars = proto.Task.EnvVars
-	r.Secrets = proto.Task.Secrets
 }

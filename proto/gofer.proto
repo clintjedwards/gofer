@@ -221,6 +221,21 @@ service Gofer {
   // DeleteRunObject removes a specific run object by run ID and key.
   rpc DeleteRunObject(DeleteRunObjectRequest) returns (DeleteRunObjectResponse);
 
+  ////////////// Secret Store RPCs //////////////
+  //
+  // The secret store is an encrypted key-value store for secrets used within
+  // pipelines.
+
+  // GetSecret returns a single secret by pipeline ID and key.
+  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse);
+
+  // PutSecret uploads a single secret by pipeline ID and key.
+  rpc PutSecret(PutSecretRequest) returns (PutSecretResponse);
+
+  // DeleteSecret removes a single secret by pipeline ID and
+  // key.
+  rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
+
   ////////////// Service RPCs //////////////
   //
   // Service RPCs exist to help with management of the Gofer service. They
@@ -262,10 +277,4 @@ service Gofer {
 
   // DeleteToken removes a token.
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
-
-  rpc AddRegistryAuth(AddRegistryAuthRequest) returns (AddRegistryAuthResponse);
-  rpc RemoveRegistryAuth(RemoveRegistryAuthRequest)
-      returns (RemoveRegistryAuthResponse);
-  rpc ListRegistryAuths(ListRegistryAuthsRequest)
-      returns (ListRegistryAuthsResponse);
 }

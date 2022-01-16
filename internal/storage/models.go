@@ -169,17 +169,3 @@ type GetTokenRequest struct {
 type DeleteTokenRequest struct {
 	Hash string
 }
-
-type AddDockerRegistryAuthRequest struct {
-	DockerRegistryAuth *models.DockerRegistryAuth
-}
-
-type RemoveDockerRegistryAuthRequest struct {
-	Registry string
-}
-
-type GetAllDockerRegistryAuthsRequest struct{}
-
-type GetDockerRegistryAuthRequest struct {
-	Registry string
-}

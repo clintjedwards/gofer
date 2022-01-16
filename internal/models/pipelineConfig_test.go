@@ -1,6 +1,8 @@
 package models
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -20,24 +22,24 @@ func TestFullParse(t *testing.T) {
 		every = "20"
 	}
 
-	task "1" {
+	task "1" "hello_world" {
 		description = "test description"
-		image_name = "hello_world"
+		registry_auth {
+			user = "obama"
+			pass = "{{secret}}"
+		}
 		depends_on = {
 			"2": "any",
 			"3": "successful",
 		}
 		env_vars = {
 			"LOGS_HEADER": "example test string 123",
-		}
-		secrets = {
-			"SECRET_LOGS_HEADER": "example/config/for/secrets"
+			"SECRET_LOGS_HEADER": "{{ secret_logs_header }}"
 		}
 	}
 
-	task "2" {
+	task "2" "hello_world" {
 		description = "test description 1"
-		image_name = "hello_world"
 	}
 		`)
 
@@ -49,19 +51,21 @@ func TestFullParse(t *testing.T) {
 			{
 				ID:          "1",
 				Description: "test description",
+				RegistryAuth: RegistryAuth{
+					User: "obama",
+					Pass: "{{secret}}",
+				},
 				DependsOn: map[string]RequiredParentState{
 					"2": RequiredParentStateAny,
 					"3": RequiredParentStateSuccess,
 				},
-				ImageName: "hello_world",
+				Image: "hello_world",
 				EnvVars: map[string]string{
-					"LOGS_HEADER": "example test string 123",
-				},
-				Secrets: map[string]string{
-					"SECRET_LOGS_HEADER": "example/config/for/secrets",
+					"LOGS_HEADER":        "example test string 123",
+					"SECRET_LOGS_HEADER": "{{ secret_logs_header }}",
 				},
 			},
-			{ID: "2", Description: "test description 1", ImageName: "hello_world", DependsOn: map[string]RequiredParentState{}},
+			{ID: "2", Description: "test description 1", Image: "hello_world", DependsOn: map[string]RequiredParentState{}},
 		},
 		Triggers: []PipelineTriggerConfig{
 			{
@@ -91,6 +95,26 @@ func TestFullParse(t *testing.T) {
 	diff := cmp.Diff(expected, conf)
 	if diff != "" {
 		t.Errorf("result is different than expected(-want +got):\n%s", diff)
+	}
+}
+
+func TestAPIExampleConfigsFromFile(t *testing.T) {
+	files, err := ioutil.ReadDir("../../examplePipelines")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files {
+		t.Run(f.Name(), func(t *testing.T) {
+			file, err := os.ReadFile("../../examplePipelines/" + f.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			hclconf := HCLPipelineConfig{}
+			err = hclconf.FromBytes(file, f.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 

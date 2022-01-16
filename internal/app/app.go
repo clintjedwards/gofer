@@ -11,6 +11,8 @@ import (
 	boltos "github.com/clintjedwards/gofer/internal/objectStore/bolt"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/scheduler/docker"
+	"github.com/clintjedwards/gofer/internal/secretStore"
+	boltsecret "github.com/clintjedwards/gofer/internal/secretStore/bolt"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/clintjedwards/gofer/internal/storage/bolt"
 	"github.com/rs/zerolog/log"
@@ -43,7 +45,14 @@ func StartServices(config *config.API) {
 
 	log.Info().Str("engine", config.ObjectStore.Engine).Msg("object store engine initialized")
 
-	newAPI, err := api.NewAPI(config, newStorage, newScheduler, newObjectStore)
+	newSecretStore, err := initSecretStore(config.SecretStore)
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not init secretStore")
+	}
+
+	log.Info().Str("engine", config.SecretStore.Engine).Msg("secret store engine initialized")
+
+	newAPI, err := api.NewAPI(config, newStorage, newScheduler, newObjectStore, newSecretStore)
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not init api")
 	}
@@ -79,14 +88,28 @@ func initObjectStore(config *config.ObjectStore) (objectstore.Engine, error) {
 
 		return &engine, err
 	default:
-		return nil, fmt.Errorf("scheduler backend %q not implemented", config.Engine)
+		return nil, fmt.Errorf("object store backend %q not implemented", config.Engine)
+	}
+}
+
+func initSecretStore(config *config.SecretStore) (secretStore.Engine, error) {
+	switch secretStore.EngineType(config.Engine) {
+	case secretStore.EngineBolt:
+		engine, err := boltsecret.New(config.BoltDB.Path, config.EncryptionKey)
+		if err != nil {
+			return nil, err
+		}
+
+		return &engine, err
+	default:
+		return nil, fmt.Errorf("secret backend %q not implemented", config.Engine)
 	}
 }
 
 func initScheduler(config *config.Scheduler) (scheduler.Engine, error) {
 	switch scheduler.EngineType(config.Engine) {
 	case scheduler.EngineDocker:
-		engine, err := docker.New(config.Docker.Prune, config.Docker.PruneInterval, config.Docker.SecretsPath)
+		engine, err := docker.New(config.Docker.Prune, config.Docker.PruneInterval)
 		if err != nil {
 			return nil, err
 		}

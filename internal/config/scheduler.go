@@ -27,11 +27,6 @@ type Docker struct {
 	// PruneIntervalHCL is the HCL compatible counter part to PruneInterval. It allows the parsing of a string
 	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
 	PruneIntervalHCL string `ignored:"true" hcl:"prune_interval,optional"`
-
-	// Secrets path is the file which container secrets that will be ingested by the docker container.
-	// Since local docker(without swarm) doesn't have a coherent way to store secrets we create one by
-	// giving the user the option to create those secrets on a per-line basis in a file.
-	SecretsPath string `split_words:"true" hcl:"secrets_path,optional"`
 }
 
 func DefaultDockerConfig() *Docker {

@@ -66,7 +66,7 @@ func (x CreateTokenRequest_Kind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CreateTokenRequest_Kind.Descriptor instead.
 func (CreateTokenRequest_Kind) EnumDescriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{84, 0}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{90, 0}
 }
 
 type GetNamespaceRequest struct {
@@ -4402,6 +4402,344 @@ func (*DeleteRunObjectResponse) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{77}
 }
 
+type GetSecretRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
+	PipelineId  string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	Key         string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+}
+
+func (x *GetSecretRequest) Reset() {
+	*x = GetSecretRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[78]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSecretRequest) ProtoMessage() {}
+
+func (x *GetSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[78]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSecretRequest.ProtoReflect.Descriptor instead.
+func (*GetSecretRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{78}
+}
+
+func (x *GetSecretRequest) GetNamespaceId() string {
+	if x != nil {
+		return x.NamespaceId
+	}
+	return ""
+}
+
+func (x *GetSecretRequest) GetPipelineId() string {
+	if x != nil {
+		return x.PipelineId
+	}
+	return ""
+}
+
+func (x *GetSecretRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+type GetSecretResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+}
+
+func (x *GetSecretResponse) Reset() {
+	*x = GetSecretResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[79]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSecretResponse) ProtoMessage() {}
+
+func (x *GetSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[79]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSecretResponse.ProtoReflect.Descriptor instead.
+func (*GetSecretResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{79}
+}
+
+func (x *GetSecretResponse) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+type PutSecretRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
+	PipelineId  string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	Key         string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+	Content     string `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
+	Force       bool   `protobuf:"varint,5,opt,name=force,proto3" json:"force,omitempty"` // Overwrites an already existing value.
+}
+
+func (x *PutSecretRequest) Reset() {
+	*x = PutSecretRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[80]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PutSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutSecretRequest) ProtoMessage() {}
+
+func (x *PutSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[80]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutSecretRequest.ProtoReflect.Descriptor instead.
+func (*PutSecretRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{80}
+}
+
+func (x *PutSecretRequest) GetNamespaceId() string {
+	if x != nil {
+		return x.NamespaceId
+	}
+	return ""
+}
+
+func (x *PutSecretRequest) GetPipelineId() string {
+	if x != nil {
+		return x.PipelineId
+	}
+	return ""
+}
+
+func (x *PutSecretRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *PutSecretRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *PutSecretRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+type PutSecretResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The number of bytes uploaded.
+	Bytes int64 `protobuf:"varint,1,opt,name=bytes,proto3" json:"bytes,omitempty"`
+}
+
+func (x *PutSecretResponse) Reset() {
+	*x = PutSecretResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[81]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PutSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutSecretResponse) ProtoMessage() {}
+
+func (x *PutSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[81]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutSecretResponse.ProtoReflect.Descriptor instead.
+func (*PutSecretResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{81}
+}
+
+func (x *PutSecretResponse) GetBytes() int64 {
+	if x != nil {
+		return x.Bytes
+	}
+	return 0
+}
+
+type DeleteSecretRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
+	PipelineId  string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	Key         string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+}
+
+func (x *DeleteSecretRequest) Reset() {
+	*x = DeleteSecretRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[82]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeleteSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteSecretRequest) ProtoMessage() {}
+
+func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[82]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteSecretRequest.ProtoReflect.Descriptor instead.
+func (*DeleteSecretRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{82}
+}
+
+func (x *DeleteSecretRequest) GetNamespaceId() string {
+	if x != nil {
+		return x.NamespaceId
+	}
+	return ""
+}
+
+func (x *DeleteSecretRequest) GetPipelineId() string {
+	if x != nil {
+		return x.PipelineId
+	}
+	return ""
+}
+
+func (x *DeleteSecretRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+type DeleteSecretResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *DeleteSecretResponse) Reset() {
+	*x = DeleteSecretResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[83]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeleteSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteSecretResponse) ProtoMessage() {}
+
+func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[83]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteSecretResponse.ProtoReflect.Descriptor instead.
+func (*DeleteSecretResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{83}
+}
+
 type GetSystemInfoRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -4411,7 +4749,7 @@ type GetSystemInfoRequest struct {
 func (x *GetSystemInfoRequest) Reset() {
 	*x = GetSystemInfoRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[78]
+		mi := &file_gofer_transport_proto_msgTypes[84]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4424,7 +4762,7 @@ func (x *GetSystemInfoRequest) String() string {
 func (*GetSystemInfoRequest) ProtoMessage() {}
 
 func (x *GetSystemInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[78]
+	mi := &file_gofer_transport_proto_msgTypes[84]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4437,7 +4775,7 @@ func (x *GetSystemInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSystemInfoRequest.ProtoReflect.Descriptor instead.
 func (*GetSystemInfoRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{78}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{84}
 }
 
 type GetSystemInfoResponse struct {
@@ -4456,7 +4794,7 @@ type GetSystemInfoResponse struct {
 func (x *GetSystemInfoResponse) Reset() {
 	*x = GetSystemInfoResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[79]
+		mi := &file_gofer_transport_proto_msgTypes[85]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4469,7 +4807,7 @@ func (x *GetSystemInfoResponse) String() string {
 func (*GetSystemInfoResponse) ProtoMessage() {}
 
 func (x *GetSystemInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[79]
+	mi := &file_gofer_transport_proto_msgTypes[85]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4482,7 +4820,7 @@ func (x *GetSystemInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSystemInfoResponse.ProtoReflect.Descriptor instead.
 func (*GetSystemInfoResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{79}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *GetSystemInfoResponse) GetBuildTime() string {
@@ -4540,7 +4878,7 @@ type RepairOrphanRequest struct {
 func (x *RepairOrphanRequest) Reset() {
 	*x = RepairOrphanRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[80]
+		mi := &file_gofer_transport_proto_msgTypes[86]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4553,7 +4891,7 @@ func (x *RepairOrphanRequest) String() string {
 func (*RepairOrphanRequest) ProtoMessage() {}
 
 func (x *RepairOrphanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[80]
+	mi := &file_gofer_transport_proto_msgTypes[86]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4566,7 +4904,7 @@ func (x *RepairOrphanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepairOrphanRequest.ProtoReflect.Descriptor instead.
 func (*RepairOrphanRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{80}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *RepairOrphanRequest) GetNamespaceId() string {
@@ -4599,7 +4937,7 @@ type RepairOrphanResponse struct {
 func (x *RepairOrphanResponse) Reset() {
 	*x = RepairOrphanResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[81]
+		mi := &file_gofer_transport_proto_msgTypes[87]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4612,7 +4950,7 @@ func (x *RepairOrphanResponse) String() string {
 func (*RepairOrphanResponse) ProtoMessage() {}
 
 func (x *RepairOrphanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[81]
+	mi := &file_gofer_transport_proto_msgTypes[87]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4625,7 +4963,7 @@ func (x *RepairOrphanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepairOrphanResponse.ProtoReflect.Descriptor instead.
 func (*RepairOrphanResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{81}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{87}
 }
 
 type ToggleEventIngressRequest struct {
@@ -4637,7 +4975,7 @@ type ToggleEventIngressRequest struct {
 func (x *ToggleEventIngressRequest) Reset() {
 	*x = ToggleEventIngressRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[82]
+		mi := &file_gofer_transport_proto_msgTypes[88]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4650,7 +4988,7 @@ func (x *ToggleEventIngressRequest) String() string {
 func (*ToggleEventIngressRequest) ProtoMessage() {}
 
 func (x *ToggleEventIngressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[82]
+	mi := &file_gofer_transport_proto_msgTypes[88]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4663,7 +5001,7 @@ func (x *ToggleEventIngressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToggleEventIngressRequest.ProtoReflect.Descriptor instead.
 func (*ToggleEventIngressRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{82}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{88}
 }
 
 type ToggleEventIngressResponse struct {
@@ -4678,7 +5016,7 @@ type ToggleEventIngressResponse struct {
 func (x *ToggleEventIngressResponse) Reset() {
 	*x = ToggleEventIngressResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[83]
+		mi := &file_gofer_transport_proto_msgTypes[89]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4691,7 +5029,7 @@ func (x *ToggleEventIngressResponse) String() string {
 func (*ToggleEventIngressResponse) ProtoMessage() {}
 
 func (x *ToggleEventIngressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[83]
+	mi := &file_gofer_transport_proto_msgTypes[89]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4704,7 +5042,7 @@ func (x *ToggleEventIngressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToggleEventIngressResponse.ProtoReflect.Descriptor instead.
 func (*ToggleEventIngressResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{83}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *ToggleEventIngressResponse) GetValue() bool {
@@ -4727,7 +5065,7 @@ type CreateTokenRequest struct {
 func (x *CreateTokenRequest) Reset() {
 	*x = CreateTokenRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[84]
+		mi := &file_gofer_transport_proto_msgTypes[90]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4740,7 +5078,7 @@ func (x *CreateTokenRequest) String() string {
 func (*CreateTokenRequest) ProtoMessage() {}
 
 func (x *CreateTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[84]
+	mi := &file_gofer_transport_proto_msgTypes[90]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4753,7 +5091,7 @@ func (x *CreateTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTokenRequest.ProtoReflect.Descriptor instead.
 func (*CreateTokenRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{84}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *CreateTokenRequest) GetKind() CreateTokenRequest_Kind {
@@ -4789,7 +5127,7 @@ type CreateTokenResponse struct {
 func (x *CreateTokenResponse) Reset() {
 	*x = CreateTokenResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[85]
+		mi := &file_gofer_transport_proto_msgTypes[91]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4802,7 +5140,7 @@ func (x *CreateTokenResponse) String() string {
 func (*CreateTokenResponse) ProtoMessage() {}
 
 func (x *CreateTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[85]
+	mi := &file_gofer_transport_proto_msgTypes[91]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4815,7 +5153,7 @@ func (x *CreateTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTokenResponse.ProtoReflect.Descriptor instead.
 func (*CreateTokenResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{85}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *CreateTokenResponse) GetDetails() *Token {
@@ -4841,7 +5179,7 @@ type BootstrapTokenRequest struct {
 func (x *BootstrapTokenRequest) Reset() {
 	*x = BootstrapTokenRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[86]
+		mi := &file_gofer_transport_proto_msgTypes[92]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4854,7 +5192,7 @@ func (x *BootstrapTokenRequest) String() string {
 func (*BootstrapTokenRequest) ProtoMessage() {}
 
 func (x *BootstrapTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[86]
+	mi := &file_gofer_transport_proto_msgTypes[92]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4867,7 +5205,7 @@ func (x *BootstrapTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BootstrapTokenRequest.ProtoReflect.Descriptor instead.
 func (*BootstrapTokenRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{86}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{92}
 }
 
 type BootstrapTokenResponse struct {
@@ -4882,7 +5220,7 @@ type BootstrapTokenResponse struct {
 func (x *BootstrapTokenResponse) Reset() {
 	*x = BootstrapTokenResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[87]
+		mi := &file_gofer_transport_proto_msgTypes[93]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4895,7 +5233,7 @@ func (x *BootstrapTokenResponse) String() string {
 func (*BootstrapTokenResponse) ProtoMessage() {}
 
 func (x *BootstrapTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[87]
+	mi := &file_gofer_transport_proto_msgTypes[93]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4908,7 +5246,7 @@ func (x *BootstrapTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BootstrapTokenResponse.ProtoReflect.Descriptor instead.
 func (*BootstrapTokenResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{87}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *BootstrapTokenResponse) GetDetails() *Token {
@@ -4936,7 +5274,7 @@ type GetTokenRequest struct {
 func (x *GetTokenRequest) Reset() {
 	*x = GetTokenRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[88]
+		mi := &file_gofer_transport_proto_msgTypes[94]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4949,7 +5287,7 @@ func (x *GetTokenRequest) String() string {
 func (*GetTokenRequest) ProtoMessage() {}
 
 func (x *GetTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[88]
+	mi := &file_gofer_transport_proto_msgTypes[94]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4962,7 +5300,7 @@ func (x *GetTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTokenRequest.ProtoReflect.Descriptor instead.
 func (*GetTokenRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{88}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *GetTokenRequest) GetToken() string {
@@ -4983,7 +5321,7 @@ type GetTokenResponse struct {
 func (x *GetTokenResponse) Reset() {
 	*x = GetTokenResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[89]
+		mi := &file_gofer_transport_proto_msgTypes[95]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4996,7 +5334,7 @@ func (x *GetTokenResponse) String() string {
 func (*GetTokenResponse) ProtoMessage() {}
 
 func (x *GetTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[89]
+	mi := &file_gofer_transport_proto_msgTypes[95]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5009,7 +5347,7 @@ func (x *GetTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTokenResponse.ProtoReflect.Descriptor instead.
 func (*GetTokenResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{89}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *GetTokenResponse) GetDetails() *Token {
@@ -5030,7 +5368,7 @@ type DeleteTokenRequest struct {
 func (x *DeleteTokenRequest) Reset() {
 	*x = DeleteTokenRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[90]
+		mi := &file_gofer_transport_proto_msgTypes[96]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5043,7 +5381,7 @@ func (x *DeleteTokenRequest) String() string {
 func (*DeleteTokenRequest) ProtoMessage() {}
 
 func (x *DeleteTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[90]
+	mi := &file_gofer_transport_proto_msgTypes[96]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5056,7 +5394,7 @@ func (x *DeleteTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTokenRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTokenRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{90}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *DeleteTokenRequest) GetToken() string {
@@ -5075,7 +5413,7 @@ type DeleteTokenResponse struct {
 func (x *DeleteTokenResponse) Reset() {
 	*x = DeleteTokenResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[91]
+		mi := &file_gofer_transport_proto_msgTypes[97]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5088,7 +5426,7 @@ func (x *DeleteTokenResponse) String() string {
 func (*DeleteTokenResponse) ProtoMessage() {}
 
 func (x *DeleteTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[91]
+	mi := &file_gofer_transport_proto_msgTypes[97]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5101,278 +5439,7 @@ func (x *DeleteTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTokenResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTokenResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{91}
-}
-
-type AddRegistryAuthRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Registry string `protobuf:"bytes,1,opt,name=registry,proto3" json:"registry,omitempty"`
-	User     string `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
-	Pass     string `protobuf:"bytes,3,opt,name=pass,proto3" json:"pass,omitempty"`
-}
-
-func (x *AddRegistryAuthRequest) Reset() {
-	*x = AddRegistryAuthRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[92]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *AddRegistryAuthRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AddRegistryAuthRequest) ProtoMessage() {}
-
-func (x *AddRegistryAuthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[92]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AddRegistryAuthRequest.ProtoReflect.Descriptor instead.
-func (*AddRegistryAuthRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{92}
-}
-
-func (x *AddRegistryAuthRequest) GetRegistry() string {
-	if x != nil {
-		return x.Registry
-	}
-	return ""
-}
-
-func (x *AddRegistryAuthRequest) GetUser() string {
-	if x != nil {
-		return x.User
-	}
-	return ""
-}
-
-func (x *AddRegistryAuthRequest) GetPass() string {
-	if x != nil {
-		return x.Pass
-	}
-	return ""
-}
-
-type AddRegistryAuthResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *AddRegistryAuthResponse) Reset() {
-	*x = AddRegistryAuthResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[93]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *AddRegistryAuthResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AddRegistryAuthResponse) ProtoMessage() {}
-
-func (x *AddRegistryAuthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[93]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AddRegistryAuthResponse.ProtoReflect.Descriptor instead.
-func (*AddRegistryAuthResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{93}
-}
-
-type RemoveRegistryAuthRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Registry string `protobuf:"bytes,1,opt,name=registry,proto3" json:"registry,omitempty"`
-}
-
-func (x *RemoveRegistryAuthRequest) Reset() {
-	*x = RemoveRegistryAuthRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[94]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RemoveRegistryAuthRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RemoveRegistryAuthRequest) ProtoMessage() {}
-
-func (x *RemoveRegistryAuthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[94]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RemoveRegistryAuthRequest.ProtoReflect.Descriptor instead.
-func (*RemoveRegistryAuthRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{94}
-}
-
-func (x *RemoveRegistryAuthRequest) GetRegistry() string {
-	if x != nil {
-		return x.Registry
-	}
-	return ""
-}
-
-type RemoveRegistryAuthResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *RemoveRegistryAuthResponse) Reset() {
-	*x = RemoveRegistryAuthResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[95]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RemoveRegistryAuthResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RemoveRegistryAuthResponse) ProtoMessage() {}
-
-func (x *RemoveRegistryAuthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[95]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RemoveRegistryAuthResponse.ProtoReflect.Descriptor instead.
-func (*RemoveRegistryAuthResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{95}
-}
-
-type ListRegistryAuthsRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *ListRegistryAuthsRequest) Reset() {
-	*x = ListRegistryAuthsRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[96]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ListRegistryAuthsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListRegistryAuthsRequest) ProtoMessage() {}
-
-func (x *ListRegistryAuthsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[96]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListRegistryAuthsRequest.ProtoReflect.Descriptor instead.
-func (*ListRegistryAuthsRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{96}
-}
-
-type ListRegistryAuthsResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Auths []*DockerRegistryAuth `protobuf:"bytes,1,rep,name=auths,proto3" json:"auths,omitempty"`
-}
-
-func (x *ListRegistryAuthsResponse) Reset() {
-	*x = ListRegistryAuthsResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[97]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ListRegistryAuthsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListRegistryAuthsResponse) ProtoMessage() {}
-
-func (x *ListRegistryAuthsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[97]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListRegistryAuthsResponse.ProtoReflect.Descriptor instead.
-func (*ListRegistryAuthsResponse) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{97}
-}
-
-func (x *ListRegistryAuthsResponse) GetAuths() []*DockerRegistryAuth {
-	if x != nil {
-		return x.Auths
-	}
-	return nil
 }
 
 var File_gofer_transport_proto protoreflect.FileDescriptor
@@ -5794,100 +5861,111 @@ var file_gofer_transport_proto_rawDesc = []byte{
 	0x28, 0x03, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
 	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x19, 0x0a, 0x17, 0x44,
 	0x65, 0x6c, 0x65, 0x74, 0x65, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x16, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x53, 0x79, 0x73,
-	0x74, 0x65, 0x6d, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0xe8,
-	0x01, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x49, 0x6e, 0x66, 0x6f,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x62, 0x75, 0x69, 0x6c,
-	0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x62, 0x75,
-	0x69, 0x6c, 0x64, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x63, 0x6f, 0x6d, 0x6d, 0x69,
-	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x12,
-	0x27, 0x0a, 0x0f, 0x64, 0x65, 0x76, 0x6d, 0x6f, 0x64, 0x65, 0x5f, 0x65, 0x6e, 0x61, 0x62, 0x6c,
-	0x65, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0e, 0x64, 0x65, 0x76, 0x6d, 0x6f, 0x64,
-	0x65, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x29, 0x0a, 0x10, 0x66, 0x72, 0x6f, 0x6e,
-	0x74, 0x65, 0x6e, 0x64, 0x5f, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x08, 0x52, 0x0f, 0x66, 0x72, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x64, 0x45, 0x6e, 0x61, 0x62,
-	0x6c, 0x65, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x05,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x2a, 0x0a,
-	0x11, 0x61, 0x63, 0x63, 0x65, 0x70, 0x74, 0x5f, 0x6e, 0x65, 0x77, 0x5f, 0x65, 0x76, 0x65, 0x6e,
-	0x74, 0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0f, 0x61, 0x63, 0x63, 0x65, 0x70, 0x74,
-	0x4e, 0x65, 0x77, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x22, 0x70, 0x0a, 0x13, 0x52, 0x65, 0x70,
-	0x61, 0x69, 0x72, 0x4f, 0x72, 0x70, 0x68, 0x61, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
-	0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f,
-	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
-	0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x22, 0x16, 0x0a, 0x14, 0x52,
-	0x65, 0x70, 0x61, 0x69, 0x72, 0x4f, 0x72, 0x70, 0x68, 0x61, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x22, 0x1b, 0x0a, 0x19, 0x54, 0x6f, 0x67, 0x67, 0x6c, 0x65, 0x45, 0x76, 0x65,
-	0x6e, 0x74, 0x49, 0x6e, 0x67, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x22, 0x32, 0x0a, 0x1a, 0x54, 0x6f, 0x67, 0x67, 0x6c, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x49,
-	0x6e, 0x67, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14,
-	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x76,
-	0x61, 0x6c, 0x75, 0x65, 0x22, 0x9b, 0x02, 0x0a, 0x12, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54,
-	0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x32, 0x0a, 0x04, 0x6b,
-	0x69, 0x6e, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1e, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x2e, 0x4b, 0x69, 0x6e, 0x64, 0x52, 0x04, 0x6b, 0x69, 0x6e, 0x64, 0x12,
-	0x1e, 0x0a, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73, 0x18, 0x02, 0x20,
-	0x03, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73, 0x12,
-	0x43, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x03, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x27, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65,
-	0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x4d, 0x65, 0x74,
-	0x61, 0x64, 0x61, 0x74, 0x61, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61,
-	0x64, 0x61, 0x74, 0x61, 0x1a, 0x3b, 0x0a, 0x0d, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38,
-	0x01, 0x22, 0x2f, 0x0a, 0x04, 0x4b, 0x69, 0x6e, 0x64, 0x12, 0x0b, 0x0a, 0x07, 0x55, 0x4e, 0x4b,
-	0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x0e, 0x0a, 0x0a, 0x4d, 0x41, 0x4e, 0x41, 0x47, 0x45,
-	0x4d, 0x45, 0x4e, 0x54, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x43, 0x4c, 0x49, 0x45, 0x4e, 0x54,
-	0x10, 0x02, 0x22, 0x53, 0x0a, 0x13, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x68, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x53, 0x65, 0x63,
+	0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61,
+	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a,
+	0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10,
+	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
+	0x22, 0x2d, 0x0a, 0x11, 0x47, 0x65, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x22,
+	0x98, 0x01, 0x0a, 0x10, 0x50, 0x75, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
+	0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65,
+	0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c,
+	0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69,
+	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f,
+	0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e,
+	0x74, 0x65, 0x6e, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20,
+	0x01, 0x28, 0x08, 0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x29, 0x0a, 0x11, 0x50, 0x75,
+	0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05,
+	0x62, 0x79, 0x74, 0x65, 0x73, 0x22, 0x6b, 0x0a, 0x13, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c,
+	0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12,
+	0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64,
+	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b,
+	0x65, 0x79, 0x22, 0x16, 0x0a, 0x14, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x65, 0x63, 0x72,
+	0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x16, 0x0a, 0x14, 0x47, 0x65,
+	0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x22, 0xe8, 0x01, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d,
+	0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a,
+	0x62, 0x75, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x09, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x63,
+	0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x63, 0x6f, 0x6d,
+	0x6d, 0x69, 0x74, 0x12, 0x27, 0x0a, 0x0f, 0x64, 0x65, 0x76, 0x6d, 0x6f, 0x64, 0x65, 0x5f, 0x65,
+	0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0e, 0x64, 0x65,
+	0x76, 0x6d, 0x6f, 0x64, 0x65, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x29, 0x0a, 0x10,
+	0x66, 0x72, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x64, 0x5f, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64,
+	0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0f, 0x66, 0x72, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x64,
+	0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f,
+	0x6e, 0x12, 0x2a, 0x0a, 0x11, 0x61, 0x63, 0x63, 0x65, 0x70, 0x74, 0x5f, 0x6e, 0x65, 0x77, 0x5f,
+	0x65, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0f, 0x61, 0x63,
+	0x63, 0x65, 0x70, 0x74, 0x4e, 0x65, 0x77, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x22, 0x70, 0x0a,
+	0x13, 0x52, 0x65, 0x70, 0x61, 0x69, 0x72, 0x4f, 0x72, 0x70, 0x68, 0x61, 0x6e, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
+	0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65,
+	0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c,
+	0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69,
+	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f,
+	0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x22,
+	0x16, 0x0a, 0x14, 0x52, 0x65, 0x70, 0x61, 0x69, 0x72, 0x4f, 0x72, 0x70, 0x68, 0x61, 0x6e, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1b, 0x0a, 0x19, 0x54, 0x6f, 0x67, 0x67, 0x6c,
+	0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x49, 0x6e, 0x67, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x22, 0x32, 0x0a, 0x1a, 0x54, 0x6f, 0x67, 0x67, 0x6c, 0x65, 0x45, 0x76,
+	0x65, 0x6e, 0x74, 0x49, 0x6e, 0x67, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x9b, 0x02, 0x0a, 0x12, 0x43, 0x72, 0x65,
+	0x61, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x32, 0x0a, 0x04, 0x6b, 0x69, 0x6e, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1e, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65,
+	0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x4b, 0x69, 0x6e, 0x64, 0x52, 0x04, 0x6b,
+	0x69, 0x6e, 0x64, 0x12, 0x1e, 0x0a, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
+	0x63, 0x65, 0x73, 0x12, 0x43, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18,
+	0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x43, 0x72,
+	0x65, 0x61, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x08,
+	0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x1a, 0x3b, 0x0a, 0x0d, 0x4d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76,
+	0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
+	0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x2f, 0x0a, 0x04, 0x4b, 0x69, 0x6e, 0x64, 0x12, 0x0b, 0x0a,
+	0x07, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x0e, 0x0a, 0x0a, 0x4d, 0x41,
+	0x4e, 0x41, 0x47, 0x45, 0x4d, 0x45, 0x4e, 0x54, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x43, 0x4c,
+	0x49, 0x45, 0x4e, 0x54, 0x10, 0x02, 0x22, 0x53, 0x0a, 0x13, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65,
+	0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x26, 0x0a,
+	0x07, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x07, 0x64, 0x65,
+	0x74, 0x61, 0x69, 0x6c, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x17, 0x0a, 0x15, 0x42,
+	0x6f, 0x6f, 0x74, 0x73, 0x74, 0x72, 0x61, 0x70, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x22, 0x56, 0x0a, 0x16, 0x42, 0x6f, 0x6f, 0x74, 0x73, 0x74, 0x72, 0x61,
+	0x70, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x26,
+	0x0a, 0x07, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x0c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x07, 0x64,
+	0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x27, 0x0a, 0x0f,
+	0x47, 0x65, 0x74, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
+	0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x3a, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x54, 0x6f, 0x6b, 0x65,
 	0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x26, 0x0a, 0x07, 0x64, 0x65, 0x74,
 	0x61, 0x69, 0x6c, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x72, 0x6f,
 	0x74, 0x6f, 0x2e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x07, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c,
-	0x73, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x17, 0x0a, 0x15, 0x42, 0x6f, 0x6f, 0x74, 0x73,
-	0x74, 0x72, 0x61, 0x70, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x22, 0x56, 0x0a, 0x16, 0x42, 0x6f, 0x6f, 0x74, 0x73, 0x74, 0x72, 0x61, 0x70, 0x54, 0x6f, 0x6b,
-	0x65, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x26, 0x0a, 0x07, 0x64, 0x65,
-	0x74, 0x61, 0x69, 0x6c, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x2e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x07, 0x64, 0x65, 0x74, 0x61, 0x69,
-	0x6c, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x27, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x54,
-	0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x74,
-	0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65,
-	0x6e, 0x22, 0x3a, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x26, 0x0a, 0x07, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x54,
-	0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x07, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x22, 0x2a, 0x0a,
-	0x12, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x15, 0x0a, 0x13, 0x44, 0x65, 0x6c,
-	0x65, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x5c, 0x0a, 0x16, 0x41, 0x64, 0x64, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x41,
-	0x75, 0x74, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x72, 0x65,
-	0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x65,
-	0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x75, 0x73, 0x65, 0x72, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x75, 0x73, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61,
-	0x73, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x73, 0x73, 0x22, 0x19,
-	0x0a, 0x17, 0x41, 0x64, 0x64, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x41, 0x75, 0x74,
-	0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x37, 0x0a, 0x19, 0x52, 0x65, 0x6d,
-	0x6f, 0x76, 0x65, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x41, 0x75, 0x74, 0x68, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x72, 0x65, 0x67, 0x69, 0x73, 0x74,
-	0x72, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x65, 0x67, 0x69, 0x73, 0x74,
-	0x72, 0x79, 0x22, 0x1c, 0x0a, 0x1a, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x52, 0x65, 0x67, 0x69,
-	0x73, 0x74, 0x72, 0x79, 0x41, 0x75, 0x74, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x1a, 0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x72, 0x79,
-	0x41, 0x75, 0x74, 0x68, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x4c, 0x0a, 0x19,
-	0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x41, 0x75, 0x74, 0x68,
-	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2f, 0x0a, 0x05, 0x61, 0x75, 0x74,
-	0x68, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2e, 0x44, 0x6f, 0x63, 0x6b, 0x65, 0x72, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x41,
-	0x75, 0x74, 0x68, 0x52, 0x05, 0x61, 0x75, 0x74, 0x68, 0x73, 0x42, 0x26, 0x5a, 0x24, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65,
-	0x64, 0x77, 0x61, 0x72, 0x64, 0x73, 0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x73, 0x22, 0x2a, 0x0a, 0x12, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x15, 0x0a,
+	0x13, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x42, 0x26, 0x5a, 0x24, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77, 0x61, 0x72, 0x64, 0x73,
+	0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -5984,26 +6062,26 @@ var file_gofer_transport_proto_goTypes = []interface{}{
 	(*PutRunObjectResponse)(nil),          // 76: proto.PutRunObjectResponse
 	(*DeleteRunObjectRequest)(nil),        // 77: proto.DeleteRunObjectRequest
 	(*DeleteRunObjectResponse)(nil),       // 78: proto.DeleteRunObjectResponse
-	(*GetSystemInfoRequest)(nil),          // 79: proto.GetSystemInfoRequest
-	(*GetSystemInfoResponse)(nil),         // 80: proto.GetSystemInfoResponse
-	(*RepairOrphanRequest)(nil),           // 81: proto.RepairOrphanRequest
-	(*RepairOrphanResponse)(nil),          // 82: proto.RepairOrphanResponse
-	(*ToggleEventIngressRequest)(nil),     // 83: proto.ToggleEventIngressRequest
-	(*ToggleEventIngressResponse)(nil),    // 84: proto.ToggleEventIngressResponse
-	(*CreateTokenRequest)(nil),            // 85: proto.CreateTokenRequest
-	(*CreateTokenResponse)(nil),           // 86: proto.CreateTokenResponse
-	(*BootstrapTokenRequest)(nil),         // 87: proto.BootstrapTokenRequest
-	(*BootstrapTokenResponse)(nil),        // 88: proto.BootstrapTokenResponse
-	(*GetTokenRequest)(nil),               // 89: proto.GetTokenRequest
-	(*GetTokenResponse)(nil),              // 90: proto.GetTokenResponse
-	(*DeleteTokenRequest)(nil),            // 91: proto.DeleteTokenRequest
-	(*DeleteTokenResponse)(nil),           // 92: proto.DeleteTokenResponse
-	(*AddRegistryAuthRequest)(nil),        // 93: proto.AddRegistryAuthRequest
-	(*AddRegistryAuthResponse)(nil),       // 94: proto.AddRegistryAuthResponse
-	(*RemoveRegistryAuthRequest)(nil),     // 95: proto.RemoveRegistryAuthRequest
-	(*RemoveRegistryAuthResponse)(nil),    // 96: proto.RemoveRegistryAuthResponse
-	(*ListRegistryAuthsRequest)(nil),      // 97: proto.ListRegistryAuthsRequest
-	(*ListRegistryAuthsResponse)(nil),     // 98: proto.ListRegistryAuthsResponse
+	(*GetSecretRequest)(nil),              // 79: proto.GetSecretRequest
+	(*GetSecretResponse)(nil),             // 80: proto.GetSecretResponse
+	(*PutSecretRequest)(nil),              // 81: proto.PutSecretRequest
+	(*PutSecretResponse)(nil),             // 82: proto.PutSecretResponse
+	(*DeleteSecretRequest)(nil),           // 83: proto.DeleteSecretRequest
+	(*DeleteSecretResponse)(nil),          // 84: proto.DeleteSecretResponse
+	(*GetSystemInfoRequest)(nil),          // 85: proto.GetSystemInfoRequest
+	(*GetSystemInfoResponse)(nil),         // 86: proto.GetSystemInfoResponse
+	(*RepairOrphanRequest)(nil),           // 87: proto.RepairOrphanRequest
+	(*RepairOrphanResponse)(nil),          // 88: proto.RepairOrphanResponse
+	(*ToggleEventIngressRequest)(nil),     // 89: proto.ToggleEventIngressRequest
+	(*ToggleEventIngressResponse)(nil),    // 90: proto.ToggleEventIngressResponse
+	(*CreateTokenRequest)(nil),            // 91: proto.CreateTokenRequest
+	(*CreateTokenResponse)(nil),           // 92: proto.CreateTokenResponse
+	(*BootstrapTokenRequest)(nil),         // 93: proto.BootstrapTokenRequest
+	(*BootstrapTokenResponse)(nil),        // 94: proto.BootstrapTokenResponse
+	(*GetTokenRequest)(nil),               // 95: proto.GetTokenRequest
+	(*GetTokenResponse)(nil),              // 96: proto.GetTokenResponse
+	(*DeleteTokenRequest)(nil),            // 97: proto.DeleteTokenRequest
+	(*DeleteTokenResponse)(nil),           // 98: proto.DeleteTokenResponse
 	nil,                                   // 99: proto.StartRunRequest.VariablesEntry
 	nil,                                   // 100: proto.CreateTokenRequest.MetadataEntry
 	(*Namespace)(nil),                     // 101: proto.Namespace
@@ -6013,7 +6091,6 @@ var file_gofer_transport_proto_goTypes = []interface{}{
 	(*TriggerEvent)(nil),                  // 105: proto.TriggerEvent
 	(*Trigger)(nil),                       // 106: proto.Trigger
 	(*Token)(nil),                         // 107: proto.Token
-	(*DockerRegistryAuth)(nil),            // 108: proto.DockerRegistryAuth
 }
 var file_gofer_transport_proto_depIdxs = []int32{
 	101, // 0: proto.GetNamespaceResponse.namespace:type_name -> proto.Namespace
@@ -6044,12 +6121,11 @@ var file_gofer_transport_proto_depIdxs = []int32{
 	107, // 25: proto.CreateTokenResponse.details:type_name -> proto.Token
 	107, // 26: proto.BootstrapTokenResponse.details:type_name -> proto.Token
 	107, // 27: proto.GetTokenResponse.details:type_name -> proto.Token
-	108, // 28: proto.ListRegistryAuthsResponse.auths:type_name -> proto.DockerRegistryAuth
-	29,  // [29:29] is the sub-list for method output_type
-	29,  // [29:29] is the sub-list for method input_type
-	29,  // [29:29] is the sub-list for extension type_name
-	29,  // [29:29] is the sub-list for extension extendee
-	0,   // [0:29] is the sub-list for field type_name
+	28,  // [28:28] is the sub-list for method output_type
+	28,  // [28:28] is the sub-list for method input_type
+	28,  // [28:28] is the sub-list for extension type_name
+	28,  // [28:28] is the sub-list for extension extendee
+	0,   // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_gofer_transport_proto_init() }
@@ -6996,7 +7072,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[78].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSystemInfoRequest); i {
+			switch v := v.(*GetSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7008,7 +7084,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[79].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSystemInfoResponse); i {
+			switch v := v.(*GetSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7020,7 +7096,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[80].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RepairOrphanRequest); i {
+			switch v := v.(*PutSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7032,7 +7108,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[81].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RepairOrphanResponse); i {
+			switch v := v.(*PutSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7044,7 +7120,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[82].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ToggleEventIngressRequest); i {
+			switch v := v.(*DeleteSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7056,7 +7132,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[83].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ToggleEventIngressResponse); i {
+			switch v := v.(*DeleteSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7068,7 +7144,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[84].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateTokenRequest); i {
+			switch v := v.(*GetSystemInfoRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7080,7 +7156,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[85].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateTokenResponse); i {
+			switch v := v.(*GetSystemInfoResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7092,7 +7168,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[86].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BootstrapTokenRequest); i {
+			switch v := v.(*RepairOrphanRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7104,7 +7180,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[87].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BootstrapTokenResponse); i {
+			switch v := v.(*RepairOrphanResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7116,7 +7192,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[88].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTokenRequest); i {
+			switch v := v.(*ToggleEventIngressRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7128,7 +7204,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[89].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTokenResponse); i {
+			switch v := v.(*ToggleEventIngressResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7140,7 +7216,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[90].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteTokenRequest); i {
+			switch v := v.(*CreateTokenRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7152,7 +7228,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[91].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteTokenResponse); i {
+			switch v := v.(*CreateTokenResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7164,7 +7240,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[92].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddRegistryAuthRequest); i {
+			switch v := v.(*BootstrapTokenRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7176,7 +7252,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[93].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddRegistryAuthResponse); i {
+			switch v := v.(*BootstrapTokenResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7188,7 +7264,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[94].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveRegistryAuthRequest); i {
+			switch v := v.(*GetTokenRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7200,7 +7276,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[95].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveRegistryAuthResponse); i {
+			switch v := v.(*GetTokenResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7212,7 +7288,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[96].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListRegistryAuthsRequest); i {
+			switch v := v.(*DeleteTokenRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7224,7 +7300,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[97].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListRegistryAuthsResponse); i {
+			switch v := v.(*DeleteTokenResponse); i {
 			case 0:
 				return &v.state
 			case 1:

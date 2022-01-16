@@ -192,6 +192,40 @@ func (api *API) taskRunLogFilePath(taskRun *models.TaskRun) string {
 		taskRun.PipelineID, taskRun.RunID, taskRun.ID)
 }
 
+func (api *API) populateEnvVarSecrets(namespace, pipeline string, envvars map[string]string) (map[string]string, error) {
+	envs := map[string]string{}
+
+	for envvar, value := range envvars {
+		key := parseSecretKeyFromString(value)
+		if len(key) == 0 {
+			envs[envvar] = value
+			continue
+		}
+
+		secret, err := api.secretStore.GetSecret(secretKey(namespace, pipeline, key))
+		if err != nil {
+			return nil, fmt.Errorf("could not find secret %q in secret store", key)
+		}
+
+		envs[envvar] = secret
+	}
+
+	return envs, nil
+}
+
+// parseSecretKeyFromString checks an envvar for the existence of a secret key. If it is a secret key we return that
+// key without the brackets, if it is not an empty string is returned
+func parseSecretKeyFromString(envvar string) string {
+	envvar = strings.TrimSpace(envvar)
+	if strings.HasPrefix(envvar, "{{") && strings.HasSuffix(envvar, "}}") {
+		envvar = strings.TrimPrefix(envvar, "{{")
+		envvar = strings.TrimSuffix(envvar, "}}")
+		return strings.TrimSpace(envvar)
+	}
+
+	return ""
+}
+
 // reviveLostTaskRun attempts to re-run as taskrun that has somehow been orphaned. It is used for taskruns
 // that have not been scheduled yet, but will be after other task runs have finished.
 func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskRun) {
@@ -215,7 +249,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 				Kind: models.TaskRunFailureKindFailedPrecondition,
 				Description: "Task could not be run due to unmet dependencies; this usually" +
 					" means that one or more parent tasks either were cancelled, skipped, or did not reflect the correct finish status.",
-			}, 0)
+			}, 1)
 
 		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
 		if err != nil {
@@ -225,15 +259,26 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		return
 	}
 
-	// Finally when we've satisfied all dependencies we can just run the container as normal
-	registryUser, registryPass := api.getImageRegistryAuth(taskrun.ImageName)
+	parsedEnvVars, err := api.populateEnvVarSecrets(taskrun.NamespaceID, taskrun.PipelineID, taskrun.EnvVars)
+	if err != nil {
+		taskrun.SetFinishedAbnormal(models.ContainerStateFailed, models.TaskRunFailure{
+			Kind:        models.TaskRunFailureKindFailedPrecondition,
+			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; could not find one or more secret keys: %v", err),
+		}, 1)
+		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
+		if err != nil {
+			log.Error().Err(err).Msg("could not update task run")
+		}
+		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		return
+	}
+
 	schedulerID, err := api.startTaskRun(scheduler.StartContainerRequest{
 		ID:           fmt.Sprintf(TASKCONTAINERIDFORMAT, taskrun.PipelineID, taskrun.RunID, taskrun.ID),
-		ImageName:    taskrun.ImageName,
-		EnvVars:      taskrun.EnvVars,
-		Secrets:      taskrun.Secrets,
-		RegistryUser: registryUser,
-		RegistryPass: registryPass,
+		ImageName:    taskrun.Image,
+		EnvVars:      parsedEnvVars,
+		RegistryUser: taskrun.RegistryAuth.User,
+		RegistryPass: taskrun.RegistryAuth.Pass,
 	}, taskrun)
 	if err != nil {
 		log.Error().Err(err).Str("id", taskrun.ID).
@@ -271,7 +316,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		"GOFER_PIPELINE_ID": run.PipelineID,
 		"GOFER_RUN_ID":      strconv.Itoa(int(run.ID)),
 		"GOFER_TASK_ID":     task.ID,
-		"GOFER_TASK_IMAGE":  task.ImageName,
+		"GOFER_TASK_IMAGE":  task.Image,
 	}
 
 	// We need to combine the environment variables we get from multiple sources in order to pass them finally to the
@@ -329,14 +374,26 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		return
 	}
 
-	registryUser, registryPass := api.getImageRegistryAuth(newTaskRun.ImageName)
+	parsedEnvVars, err := api.populateEnvVarSecrets(newTaskRun.NamespaceID, newTaskRun.PipelineID, newTaskRun.EnvVars)
+	if err != nil {
+		newTaskRun.SetFinishedAbnormal(models.ContainerStateFailed, models.TaskRunFailure{
+			Kind:        models.TaskRunFailureKindFailedPrecondition,
+			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; could not find one or more secret keys: %v", err),
+		}, 1)
+		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: newTaskRun})
+		if err != nil {
+			log.Error().Err(err).Msg("could not update task run")
+		}
+		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		return
+	}
+
 	schedulerID, err := api.startTaskRun(scheduler.StartContainerRequest{
 		ID:           fmt.Sprintf(TASKCONTAINERIDFORMAT, newTaskRun.PipelineID, newTaskRun.RunID, newTaskRun.ID),
-		ImageName:    newTaskRun.ImageName,
-		EnvVars:      newTaskRun.EnvVars,
-		Secrets:      newTaskRun.Secrets,
-		RegistryUser: registryUser,
-		RegistryPass: registryPass,
+		ImageName:    newTaskRun.Image,
+		EnvVars:      parsedEnvVars,
+		RegistryUser: newTaskRun.RegistryAuth.User,
+		RegistryPass: newTaskRun.RegistryAuth.Pass,
 	}, newTaskRun)
 	if err != nil {
 		log.Error().Err(err).Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).
@@ -902,27 +959,4 @@ func sliceToSet(elements []string) map[string]struct{} {
 		elementMap[s] = struct{}{}
 	}
 	return elementMap
-}
-
-// getImageRegistryAuth determines if an image needs registry auth credentials and pulls
-// them from the database if they exist.
-func (api *API) getImageRegistryAuth(image string) (user, pass string) {
-	splitImageString := strings.Split(image, "/")
-	if len(splitImageString) < 1 {
-		return "", ""
-	}
-	registry := strings.Join(splitImageString[:len(splitImageString)-1], "/")
-
-	auth, err := api.storage.GetDockerRegistryAuth(storage.GetDockerRegistryAuthRequest{Registry: registry})
-	if err != nil {
-		return "", ""
-	}
-
-	decryptedPass, err := decrypt([]byte(api.config.EncryptionKey), auth.Pass)
-	if err != nil {
-		log.Error().Err(err).Msg("could not decrypt pass in attempt to get registry auth")
-		return "", ""
-	}
-
-	return auth.User, string(decryptedPass)
 }

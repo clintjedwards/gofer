@@ -11,13 +11,25 @@ const (
 	RequiredParentStateFail    RequiredParentState = "FAILURE"
 )
 
+type RegistryAuth struct {
+	User string `json:"user"`
+	Pass string `json:"pass"`
+}
+
+func (r *RegistryAuth) ToProto() *proto.RegistryAuth {
+	return &proto.RegistryAuth{
+		User: r.User,
+		Pass: r.Pass,
+	}
+}
+
 type Task struct {
-	ID          string                         `json:"id"`
-	Description string                         `json:"description"`
-	ImageName   string                         `json:"image_name"`
-	DependsOn   map[string]RequiredParentState `json:"depends_on"`
-	EnvVars     map[string]string              `json:"env_vars"`
-	Secrets     map[string]string              `json:"secrets"`
+	ID           string                         `json:"id"`
+	Description  string                         `json:"description"`
+	Image        string                         `json:"image"`
+	RegistryAuth RegistryAuth                   `json:"registry_auth"`
+	DependsOn    map[string]RequiredParentState `json:"depends_on"`
+	EnvVars      map[string]string              `json:"env_vars"`
 }
 
 func (r *Task) ToProto() *proto.Task {
@@ -29,9 +41,8 @@ func (r *Task) ToProto() *proto.Task {
 	return &proto.Task{
 		Id:          r.ID,
 		Description: r.Description,
-		ImageName:   r.ImageName,
+		Image:       r.Image,
 		DependsOn:   dependsOn,
 		EnvVars:     r.EnvVars,
-		Secrets:     r.Secrets,
 	}
 }

@@ -50,7 +50,6 @@ func (api *API) startTriggers() error {
 			ID:               fmt.Sprintf(TRIGGERCONTAINERIDFORMAT, trigger.Kind),
 			ImageName:        trigger.Image,
 			EnvVars:          envVars,
-			Secrets:          trigger.Secrets,
 			RegistryUser:     trigger.User,
 			RegistryPass:     trigger.Pass,
 			EnableNetworking: true,
