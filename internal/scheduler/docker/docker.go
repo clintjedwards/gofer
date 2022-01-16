@@ -1,13 +1,10 @@
 package docker
 
 import (
-	"bufio"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -31,14 +28,13 @@ type Orchestrator struct {
 	// To avoid weird situations in which a container was cancelled, but GetState was never called afterwards(therefore
 	// creating a situation in which the cancellation is never removed from the map), we automatically clean up
 	// cancellations after they've not been reaped for a day.
-	cancelled   map[string]time.Time
-	secretsPath string // Path to local file containing docker secrets.
+	cancelled map[string]time.Time
 	*client.Client
 }
 
 const envvarFormat = "%s=%s"
 
-func New(prune bool, pruneInterval time.Duration, secretsPath string) (Orchestrator, error) {
+func New(prune bool, pruneInterval time.Duration) (Orchestrator, error) {
 	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return Orchestrator{}, nil
@@ -48,13 +44,6 @@ func New(prune bool, pruneInterval time.Duration, secretsPath string) (Orchestra
 	_, err = docker.Info(context.Background())
 	if err != nil {
 		return Orchestrator{}, fmt.Errorf("could not connect to docker; is docker installed?")
-	}
-
-	// Check existence of secrets file
-	if secretsPath != "" {
-		if _, err := os.Stat(secretsPath); errors.Is(err, os.ErrNotExist) {
-			return Orchestrator{}, fmt.Errorf("could not open secrets file")
-		}
 	}
 
 	// As we run docker containers we might not want to automatically remove them so that its possible for an operator
@@ -90,59 +79,9 @@ func New(prune bool, pruneInterval time.Duration, secretsPath string) (Orchestra
 	}()
 
 	return Orchestrator{
-		Client:      docker,
-		cancelled:   cancelled,
-		secretsPath: secretsPath,
+		Client:    docker,
+		cancelled: cancelled,
 	}, nil
-}
-
-// readSecretsFile reads in the secrets from specified file and stores them in a map so they can be mapped to envVars
-// in the container.
-func (orch *Orchestrator) readSecretsFile() (map[string]string, error) {
-	secrets := map[string]string{}
-
-	file, err := os.Open(orch.secretsPath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineSplit := strings.Split(line, "=")
-		if len(lineSplit) != 2 {
-			continue
-		}
-
-		secrets[lineSplit[0]] = lineSplit[1]
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return secrets, nil
-}
-
-// populateSecrets reads in requested secrets from secrets file. For Docker specifically all that is needed to
-// retrieve secrets is that they are in the same form as the environment variable they are tied to.
-// So in Gofer if for the secret key, placing it as "SECRET_LOGS_HEADER" would automatically search for the same
-// string in the secrets file.
-// We leave the secret empty if not found so that the user has the ability to verify the secrets exists by requiring it.
-func populateSecrets(requested, stored map[string]string) map[string]string {
-	secrets := map[string]string{}
-	for key := range requested {
-		secret, exists := stored[key]
-		if !exists {
-			secrets[key] = ""
-			continue
-		}
-
-		secrets[key] = secret
-	}
-
-	return secrets
 }
 
 func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (scheduler.StartContainerResponse, error) {
@@ -189,25 +128,6 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 	}
 
 	envMap := req.EnvVars
-
-	if orch.secretsPath == "" && len(req.Secrets) > 0 {
-		return scheduler.StartContainerResponse{}, fmt.Errorf("secrets requested, but docker scheduler secretsPath is not set;" +
-			" secretsPath config must be set to activate docker secrets.")
-	}
-
-	if len(req.Secrets) > 0 && orch.secretsPath != "" {
-		storedSecrets, err := orch.readSecretsFile()
-		if err != nil {
-			return scheduler.StartContainerResponse{}, err
-		}
-
-		secretMap := populateSecrets(req.Secrets, storedSecrets)
-
-		// We combine regular envs and secrets because they're treated in the same way once they get to the docker
-		// container level. The order is important here. We do secrets first because if the user made a mistake
-		// and there is collision we don't want them treating a regular var like a secret.
-		envMap = mergeMaps(secretMap, req.EnvVars)
-	}
 
 	containerConfig := &container.Config{
 		Image:        req.ImageName,
@@ -391,17 +311,4 @@ func convertEnvVars(envvars map[string]string) []string {
 	}
 
 	return output
-}
-
-// mergeMaps combines many string maps in a "last one in wins" format.
-func mergeMaps(maps ...map[string]string) map[string]string {
-	newMap := map[string]string{}
-
-	for _, extraMap := range maps {
-		for key, value := range extraMap {
-			newMap[key] = value
-		}
-	}
-
-	return newMap
 }

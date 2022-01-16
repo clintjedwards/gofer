@@ -394,6 +394,34 @@ message DeleteRunObjectRequest {
 }
 message DeleteRunObjectResponse {}
 
+////////////// Secret store Transport Models //////////////
+
+message GetSecretRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string key = 3;
+}
+message GetSecretResponse { string content = 1; }
+
+message PutSecretRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string key = 3;
+  string content = 4;
+  bool force = 5; // Overwrites an already existing value.
+}
+message PutSecretResponse {
+  // The number of bytes uploaded.
+  int64 bytes = 1;
+}
+
+message DeleteSecretRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  string key = 3;
+}
+message DeleteSecretResponse {}
+
 message GetSystemInfoRequest {}
 message GetSystemInfoResponse {
   string build_time = 1;
@@ -441,14 +469,3 @@ message GetTokenRequest { string token = 1; }
 message GetTokenResponse { Token details = 1; }
 message DeleteTokenRequest { string token = 1; }
 message DeleteTokenResponse {}
-
-message AddRegistryAuthRequest {
-  string registry = 1;
-  string user = 2;
-  string pass = 3;
-}
-message AddRegistryAuthResponse {}
-message RemoveRegistryAuthRequest { string registry = 1; }
-message RemoveRegistryAuthResponse {}
-message ListRegistryAuthsRequest {}
-message ListRegistryAuthsResponse { repeated DockerRegistryAuth auths = 1; }

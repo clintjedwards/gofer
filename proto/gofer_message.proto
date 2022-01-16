@@ -53,10 +53,14 @@ enum TaskRequiredParentState {
 message Task {
   string id = 1;
   string description = 2;
-  string image_name = 3;
+  string image = 3;
   map<string, TaskRequiredParentState> depends_on = 4;
   map<string, string> env_vars = 5;
-  map<string, string> secrets = 6;
+}
+
+message RegistryAuth {
+  string user = 1;
+  string pass = 2;
 }
 
 message Run {
@@ -200,10 +204,4 @@ message Namespace {
   string description = 3;
   int64 created = 4;
   int64 deleted = 5;
-}
-
-message DockerRegistryAuth {
-  string registry = 1;
-  string user = 2;
-  int64 created = 3;
 }

@@ -75,13 +75,21 @@ func (config *HCLPipelineConfig) Validate() error {
 	return result
 }
 
+type HCLPipelineRegistryAuthConfig struct {
+	User string `json:"user" hcl:"user,optional"`
+	Pass string `json:"pass" hcl:"pass,optional"`
+}
+
 type HCLPipelineTaskConfig struct {
 	ID          string            `json:"id" hcl:"id,label"`
+	ImageName   string            `json:"image_name" hcl:"image_name,label"`
 	Description string            `json:"description" hcl:"description,optional"`
-	ImageName   string            `json:"image_name" hcl:"image_name"`
 	DependsOn   map[string]string `json:"depends_on" hcl:"depends_on,optional"`
 	EnvVars     map[string]string `json:"env_vars" hcl:"env_vars,optional"`
-	Secrets     map[string]string `json:"secrets" hcl:"secrets,optional"`
+
+	// HCLv2 has many idiosyncrasies, but this one is noteworthy for future reference. The only way to make a block
+	// optional is to make the type a reference to the real struct and then make sure to check for the possible nil.
+	RegistryAuth *HCLPipelineRegistryAuthConfig `json:"registry_auth" hcl:"registry_auth,block"`
 }
 
 func (config *HCLPipelineTaskConfig) Validate() error {
@@ -177,13 +185,19 @@ func FromHCL(hcl *HCLPipelineConfig) (*PipelineConfig, error) {
 		for key, value := range task.DependsOn {
 			dependson[key] = RequiredParentState(strings.ToUpper(value))
 		}
+		registryAuth := RegistryAuth{}
+
+		if task.RegistryAuth != nil {
+			registryAuth = RegistryAuth(*task.RegistryAuth)
+		}
+
 		tasks = append(tasks, Task{
-			ID:          task.ID,
-			Description: strings.TrimSpace(task.Description),
-			ImageName:   task.ImageName,
-			DependsOn:   dependson,
-			EnvVars:     task.EnvVars,
-			Secrets:     task.Secrets,
+			ID:           task.ID,
+			Description:  strings.TrimSpace(task.Description),
+			Image:        task.ImageName,
+			RegistryAuth: registryAuth,
+			DependsOn:    dependson,
+			EnvVars:      task.EnvVars,
 		})
 	}
 

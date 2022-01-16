@@ -27,7 +27,6 @@ type StartContainerRequest struct {
 	ID        string            // The schedulerID of the container
 	ImageName string            // The docker image repository endpoint of the container; tag can be included.
 	EnvVars   map[string]string // Environment variables to be passed to the container
-	Secrets   map[string]string // Secrets to be handled by the scheduler. Secrets are a per-scheduler implementation.
 
 	RegistryUser string // Username for auth registry
 	RegistryPass string // Password for auth registry

@@ -91,10 +91,9 @@ func (p *Pipeline) ToProto() *proto.Pipeline {
 		tasks[id] = &proto.Task{
 			Id:          task.ID,
 			Description: task.Description,
-			ImageName:   task.ImageName,
+			Image:       task.Image,
 			DependsOn:   dependson,
 			EnvVars:     task.EnvVars,
-			Secrets:     task.Secrets,
 		}
 	}
 
@@ -148,10 +147,9 @@ func (p *Pipeline) FromProto(proto *proto.Pipeline) {
 		p.Tasks[id] = Task{
 			ID:          task.Id,
 			Description: task.Description,
-			ImageName:   task.ImageName,
+			Image:       task.Image,
 			DependsOn:   dependson,
 			EnvVars:     task.EnvVars,
-			Secrets:     task.Secrets,
 		}
 	}
 	for label, trigger := range proto.Triggers {

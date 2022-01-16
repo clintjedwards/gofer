@@ -79,7 +79,6 @@ type data struct {
 	Duration   string
 	Logs       []string
 	EnvVars    map[string]string
-	Secrets    map[string]string
 	PipelineID string
 	RunID      string
 	TaskRunCmd string
@@ -94,12 +93,11 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 		Duration:   format.Duration(taskRun.Started, taskRun.Ended),
 		PipelineID: color.BlueString(taskRun.PipelineId),
 		EnvVars:    taskRun.Task.EnvVars,
-		Secrets:    taskRun.Task.Secrets,
 		ExitCode:   taskRun.ExitCode,
 		RunID:      color.BlueString("#" + strconv.Itoa(int(taskRun.RunId))),
 		Failure:    taskRun.Failure,
 		TaskRunCmd: color.CyanString(fmt.Sprintf("taskrun logs %s %d %s", taskRun.PipelineId, taskRun.RunId, taskRun.Id)),
-		ImageName:  taskRun.Task.ImageName,
+		ImageName:  taskRun.Task.Image,
 	}
 
 	const formatTmpl = `TaskRun {{.ID}} :: {{.State}}
@@ -119,13 +117,6 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 
   $ Environment Variables:
   {{- range $key, $value := .EnvVars}}
-    | {{$key}}={{$value}}
-  {{- end}}
-{{- end}}
-{{- if .Secrets}}
-
-  🔒 Secrets:
-  {{- range $key, $value := .Secrets}}
     | {{$key}}={{$value}}
   {{- end}}
 {{- end}}

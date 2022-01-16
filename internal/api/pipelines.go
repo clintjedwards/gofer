@@ -123,7 +123,7 @@ func (api *API) createPipeline(location string, config *models.PipelineConfig) (
 	}
 
 	for _, triggerConfig := range config.Triggers {
-		err := api.subscribeTrigger(newPipeline.ID, newPipeline.Namespace, &triggerConfig)
+		err := api.subscribeTrigger(newPipeline.Namespace, newPipeline.ID, &triggerConfig)
 		if err != nil {
 			unsubErr := api.unsubscribeAllTriggers(newPipeline)
 			if unsubErr != nil {
@@ -271,7 +271,7 @@ func (api *API) updatePipeline(url, namespace, id string, hclConfig *models.HCLP
 	}
 
 	for _, newTrigger := range additions {
-		err := api.subscribeTrigger(currentPipeline.ID, currentPipeline.Namespace, &newTrigger)
+		err := api.subscribeTrigger(currentPipeline.Namespace, currentPipeline.ID, &newTrigger)
 		if err != nil {
 			return nil, err
 		}
@@ -355,7 +355,7 @@ func (api *API) hasActiveRuns(namespace, id string) bool {
 
 // subscribeTrigger takes a pipeline config requested trigger and communicates with the trigger container
 // in order appropriately make sure the trigger is aware for the pipeline.
-func (api *API) subscribeTrigger(pipelineID, namespaceID string, config *models.PipelineTriggerConfig) error {
+func (api *API) subscribeTrigger(namespaceID, pipelineID string, config *models.PipelineTriggerConfig) error {
 	trigger, exists := api.triggers[config.Kind]
 	if !exists {
 		return fmt.Errorf("trigger %q not found;", config.Kind)
@@ -369,12 +369,18 @@ func (api *API) subscribeTrigger(pipelineID, namespaceID string, config *models.
 
 	client := sdkProto.NewTriggerClient(conn)
 
+	subConfig, err := api.populateSecrets(namespaceID, pipelineID, config.Config)
+	if err != nil {
+		return fmt.Errorf("could not subscribe trigger %q for pipeline %q - namespace %q; %w",
+			config.Label, pipelineID, namespaceID, err)
+	}
+
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
 	_, err = client.Subscribe(ctx, &sdkProto.SubscribeRequest{
 		NamespaceId:          namespaceID,
 		PipelineTriggerLabel: config.Label,
 		PipelineId:           pipelineID,
-		Config:               config.Config,
+		Config:               subConfig,
 	})
 	if err != nil {
 		log.Error().Err(err).Str("kind", trigger.Kind).Msg("could not subscribe to trigger")

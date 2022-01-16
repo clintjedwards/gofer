@@ -18,9 +18,6 @@ type API struct {
 	// Controls how large the buffer space for the event loop channel is.
 	EventLoopChannelSize int64 `split_words:"true" hcl:"event_loop_channel_size,optional"`
 
-	// EncryptionKey is used to encrypt secret values into the database.
-	EncryptionKey string `split_words:"true" hcl:"encryption_key,optional"`
-
 	// URL for the server to bind to. Ex: localhost:8080
 	Host string `hcl:"host,optional"`
 
@@ -47,6 +44,7 @@ type API struct {
 	ExternalEventsAPI *ExternalEventsAPI `split_words:"true" hcl:"external_events_api,block"`
 	Database          *Database          `hcl:"database,block"`
 	ObjectStore       *ObjectStore       `hcl:"object_store,block"`
+	SecretStore       *SecretStore       `hcl:"secret_store,block"`
 	Scheduler         *Scheduler         `hcl:"scheduler,block"`
 	Server            *Server            `hcl:"server,block"`
 	Triggers          *Triggers          `hcl:"triggers,block"`
@@ -58,17 +56,16 @@ func DefaultAPIConfig() *API {
 		EventLoopChannelSize:  100,
 		Host:                  "localhost:8080",
 		LogLevel:              "debug",
-		EncryptionKey:         "changemechangemechangemechangeme",
 		RunLogExpiry:          20,
 		TaskRunLogsDir:        "/tmp",
 		TaskRunStopTimeout:    mustParseDuration("5m"),
-
-		ExternalEventsAPI: DefaultExternalEventsAPIConfig(),
-		Database:          DefaultDatabaseConfig(),
-		ObjectStore:       DefaultObjectStoreConfig(),
-		Scheduler:         DefaultSchedulerConfig(),
-		Server:            DefaultServerConfig(),
-		Triggers:          DefaultTriggersConfig(),
+		ExternalEventsAPI:     DefaultExternalEventsAPIConfig(),
+		Database:              DefaultDatabaseConfig(),
+		ObjectStore:           DefaultObjectStoreConfig(),
+		SecretStore:           DefaultSecretStoreConfig(),
+		Scheduler:             DefaultSchedulerConfig(),
+		Server:                DefaultServerConfig(),
+		Triggers:              DefaultTriggersConfig(),
 	}
 }
 
@@ -200,9 +197,13 @@ func DefaultExternalEventsAPIConfig() *ExternalEventsAPI {
 func defaultTriggers() []Trigger {
 	return []Trigger{
 		{Kind: "cron", Image: "ghcr.io/clintjedwards/gofer/trigger_cron:latest"},
-		{Kind: "interval", Image: "ghcr.io/clintjedwards/gofer/trigger_interval:latest", EnvVars: map[string]string{
-			"GOFER_TRIGGER_INTERVAL_MIN_DURATION": "5m",
-		}},
+		{
+			Kind:  "interval",
+			Image: "ghcr.io/clintjedwards/gofer/trigger_interval:latest",
+			EnvVars: map[string]string{
+				"GOFER_TRIGGER_INTERVAL_MIN_DURATION": "5m",
+			},
+		},
 	}
 }
 
@@ -314,12 +315,15 @@ func InitAPIConfig(userDefinedPath string) (*API, error) {
 }
 
 func (c *API) validate() error {
-	if len(c.EncryptionKey) != 32 {
-		return fmt.Errorf("encryption_key must be a 32 character random string")
-	}
+	if c.SecretStore != nil {
 
-	if !c.Server.DevMode && c.EncryptionKey == "changemechangemechangemechangeme" {
-		return fmt.Errorf("encryption_key cannot be left as default; must be changed to a 32 character random string")
+		if len(c.SecretStore.EncryptionKey) != 32 {
+			return fmt.Errorf("encryption_key must be a 32 character random string")
+		}
+
+		if !c.Server.DevMode && c.SecretStore.EncryptionKey == "changemechangemechangemechangeme" {
+			return fmt.Errorf("encryption_key cannot be left as default; must be changed to a 32 character random string")
+		}
 	}
 
 	return nil

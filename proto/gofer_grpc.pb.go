@@ -141,6 +141,13 @@ type GoferClient interface {
 	PutRunObject(ctx context.Context, in *PutRunObjectRequest, opts ...grpc.CallOption) (*PutRunObjectResponse, error)
 	// DeleteRunObject removes a specific run object by run ID and key.
 	DeleteRunObject(ctx context.Context, in *DeleteRunObjectRequest, opts ...grpc.CallOption) (*DeleteRunObjectResponse, error)
+	// GetSecret returns a single secret by pipeline ID and key.
+	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
+	// PutSecret uploads a single secret by pipeline ID and key.
+	PutSecret(ctx context.Context, in *PutSecretRequest, opts ...grpc.CallOption) (*PutSecretResponse, error)
+	// DeleteSecret removes a single secret by pipeline ID and
+	// key.
+	DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error)
 	// GetSystemInfo returns system information and general health.
 	GetSystemInfo(ctx context.Context, in *GetSystemInfoRequest, opts ...grpc.CallOption) (*GetSystemInfoResponse, error)
 	// RepairOrphan is used when a single run has gotten into a state that does
@@ -168,9 +175,6 @@ type GoferClient interface {
 	GetToken(ctx context.Context, in *GetTokenRequest, opts ...grpc.CallOption) (*GetTokenResponse, error)
 	// DeleteToken removes a token.
 	DeleteToken(ctx context.Context, in *DeleteTokenRequest, opts ...grpc.CallOption) (*DeleteTokenResponse, error)
-	AddRegistryAuth(ctx context.Context, in *AddRegistryAuthRequest, opts ...grpc.CallOption) (*AddRegistryAuthResponse, error)
-	RemoveRegistryAuth(ctx context.Context, in *RemoveRegistryAuthRequest, opts ...grpc.CallOption) (*RemoveRegistryAuthResponse, error)
-	ListRegistryAuths(ctx context.Context, in *ListRegistryAuthsRequest, opts ...grpc.CallOption) (*ListRegistryAuthsResponse, error)
 }
 
 type goferClient struct {
@@ -537,6 +541,33 @@ func (c *goferClient) DeleteRunObject(ctx context.Context, in *DeleteRunObjectRe
 	return out, nil
 }
 
+func (c *goferClient) GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error) {
+	out := new(GetSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/GetSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) PutSecret(ctx context.Context, in *PutSecretRequest, opts ...grpc.CallOption) (*PutSecretResponse, error) {
+	out := new(PutSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/PutSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error) {
+	out := new(DeleteSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/DeleteSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *goferClient) GetSystemInfo(ctx context.Context, in *GetSystemInfoRequest, opts ...grpc.CallOption) (*GetSystemInfoResponse, error) {
 	out := new(GetSystemInfoResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/GetSystemInfo", in, out, opts...)
@@ -594,33 +625,6 @@ func (c *goferClient) GetToken(ctx context.Context, in *GetTokenRequest, opts ..
 func (c *goferClient) DeleteToken(ctx context.Context, in *DeleteTokenRequest, opts ...grpc.CallOption) (*DeleteTokenResponse, error) {
 	out := new(DeleteTokenResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/DeleteToken", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) AddRegistryAuth(ctx context.Context, in *AddRegistryAuthRequest, opts ...grpc.CallOption) (*AddRegistryAuthResponse, error) {
-	out := new(AddRegistryAuthResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/AddRegistryAuth", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) RemoveRegistryAuth(ctx context.Context, in *RemoveRegistryAuthRequest, opts ...grpc.CallOption) (*RemoveRegistryAuthResponse, error) {
-	out := new(RemoveRegistryAuthResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/RemoveRegistryAuth", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) ListRegistryAuths(ctx context.Context, in *ListRegistryAuthsRequest, opts ...grpc.CallOption) (*ListRegistryAuthsResponse, error) {
-	out := new(ListRegistryAuthsResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/ListRegistryAuths", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -755,6 +759,13 @@ type GoferServer interface {
 	PutRunObject(context.Context, *PutRunObjectRequest) (*PutRunObjectResponse, error)
 	// DeleteRunObject removes a specific run object by run ID and key.
 	DeleteRunObject(context.Context, *DeleteRunObjectRequest) (*DeleteRunObjectResponse, error)
+	// GetSecret returns a single secret by pipeline ID and key.
+	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
+	// PutSecret uploads a single secret by pipeline ID and key.
+	PutSecret(context.Context, *PutSecretRequest) (*PutSecretResponse, error)
+	// DeleteSecret removes a single secret by pipeline ID and
+	// key.
+	DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error)
 	// GetSystemInfo returns system information and general health.
 	GetSystemInfo(context.Context, *GetSystemInfoRequest) (*GetSystemInfoResponse, error)
 	// RepairOrphan is used when a single run has gotten into a state that does
@@ -782,9 +793,6 @@ type GoferServer interface {
 	GetToken(context.Context, *GetTokenRequest) (*GetTokenResponse, error)
 	// DeleteToken removes a token.
 	DeleteToken(context.Context, *DeleteTokenRequest) (*DeleteTokenResponse, error)
-	AddRegistryAuth(context.Context, *AddRegistryAuthRequest) (*AddRegistryAuthResponse, error)
-	RemoveRegistryAuth(context.Context, *RemoveRegistryAuthRequest) (*RemoveRegistryAuthResponse, error)
-	ListRegistryAuths(context.Context, *ListRegistryAuthsRequest) (*ListRegistryAuthsResponse, error)
 	mustEmbedUnimplementedGoferServer()
 }
 
@@ -903,6 +911,15 @@ func (UnimplementedGoferServer) PutRunObject(context.Context, *PutRunObjectReque
 func (UnimplementedGoferServer) DeleteRunObject(context.Context, *DeleteRunObjectRequest) (*DeleteRunObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteRunObject not implemented")
 }
+func (UnimplementedGoferServer) GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSecret not implemented")
+}
+func (UnimplementedGoferServer) PutSecret(context.Context, *PutSecretRequest) (*PutSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PutSecret not implemented")
+}
+func (UnimplementedGoferServer) DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSecret not implemented")
+}
 func (UnimplementedGoferServer) GetSystemInfo(context.Context, *GetSystemInfoRequest) (*GetSystemInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSystemInfo not implemented")
 }
@@ -923,15 +940,6 @@ func (UnimplementedGoferServer) GetToken(context.Context, *GetTokenRequest) (*Ge
 }
 func (UnimplementedGoferServer) DeleteToken(context.Context, *DeleteTokenRequest) (*DeleteTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteToken not implemented")
-}
-func (UnimplementedGoferServer) AddRegistryAuth(context.Context, *AddRegistryAuthRequest) (*AddRegistryAuthResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddRegistryAuth not implemented")
-}
-func (UnimplementedGoferServer) RemoveRegistryAuth(context.Context, *RemoveRegistryAuthRequest) (*RemoveRegistryAuthResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveRegistryAuth not implemented")
-}
-func (UnimplementedGoferServer) ListRegistryAuths(context.Context, *ListRegistryAuthsRequest) (*ListRegistryAuthsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListRegistryAuths not implemented")
 }
 func (UnimplementedGoferServer) mustEmbedUnimplementedGoferServer() {}
 
@@ -1615,6 +1623,60 @@ func _Gofer_DeleteRunObject_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gofer_GetSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).GetSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/GetSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).GetSecret(ctx, req.(*GetSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_PutSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PutSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).PutSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/PutSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).PutSecret(ctx, req.(*PutSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_DeleteSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).DeleteSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/DeleteSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).DeleteSecret(ctx, req.(*DeleteSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Gofer_GetSystemInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetSystemInfoRequest)
 	if err := dec(in); err != nil {
@@ -1737,60 +1799,6 @@ func _Gofer_DeleteToken_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GoferServer).DeleteToken(ctx, req.(*DeleteTokenRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_AddRegistryAuth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddRegistryAuthRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).AddRegistryAuth(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/AddRegistryAuth",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).AddRegistryAuth(ctx, req.(*AddRegistryAuthRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_RemoveRegistryAuth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveRegistryAuthRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).RemoveRegistryAuth(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/RemoveRegistryAuth",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).RemoveRegistryAuth(ctx, req.(*RemoveRegistryAuthRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_ListRegistryAuths_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListRegistryAuthsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).ListRegistryAuths(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/ListRegistryAuths",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).ListRegistryAuths(ctx, req.(*ListRegistryAuthsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1944,6 +1952,18 @@ var _Gofer_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_DeleteRunObject_Handler,
 		},
 		{
+			MethodName: "GetSecret",
+			Handler:    _Gofer_GetSecret_Handler,
+		},
+		{
+			MethodName: "PutSecret",
+			Handler:    _Gofer_PutSecret_Handler,
+		},
+		{
+			MethodName: "DeleteSecret",
+			Handler:    _Gofer_DeleteSecret_Handler,
+		},
+		{
 			MethodName: "GetSystemInfo",
 			Handler:    _Gofer_GetSystemInfo_Handler,
 		},
@@ -1970,18 +1990,6 @@ var _Gofer_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteToken",
 			Handler:    _Gofer_DeleteToken_Handler,
-		},
-		{
-			MethodName: "AddRegistryAuth",
-			Handler:    _Gofer_AddRegistryAuth_Handler,
-		},
-		{
-			MethodName: "RemoveRegistryAuth",
-			Handler:    _Gofer_RemoveRegistryAuth_Handler,
-		},
-		{
-			MethodName: "ListRegistryAuths",
-			Handler:    _Gofer_ListRegistryAuths_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

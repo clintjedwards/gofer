@@ -17,8 +17,10 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/models"
+	objectStore "github.com/clintjedwards/gofer/internal/objectStore"
 	objectstore "github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/scheduler"
+	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/clintjedwards/gofer/proto"
 	"github.com/gorilla/handlers"
@@ -82,7 +84,11 @@ type API struct {
 
 	// ObjectStore is the mechanism in which Gofer stores pipeline and run level objects. The implementation here
 	// is meant to act as a basic object store.
-	objectStore objectstore.Engine
+	objectStore objectStore.Engine
+
+	// SecretStore is the mechanism in which Gofer pipeline secrets. This is the way in which users can fill pipeline
+	// files with secrets.
+	secretStore secretStore.Engine
 
 	// Triggers is an in-memory map of currently registered triggers. These triggers are registered on startup and
 	// launched as long running containers via the scheduler. Gofer refers to this cache as a way to communicate
@@ -103,7 +109,7 @@ type API struct {
 }
 
 // NewAPI creates a new instance of the main Gofer API service.
-func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engine, objectStore objectstore.Engine) (*API, error) {
+func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engine, objectStore objectstore.Engine, secretStore secretStore.Engine) (*API, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	newAPI := &API{
@@ -115,6 +121,7 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 		storage:         storage,
 		scheduler:       scheduler,
 		objectStore:     objectStore,
+		secretStore:     secretStore,
 		acceptNewEvents: config.AcceptEventsOnStartup,
 		triggers:        map[string]*models.Trigger{},
 	}

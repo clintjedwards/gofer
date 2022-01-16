@@ -8,7 +8,6 @@ log_level                = "info"
 run_log_expiry           = 20
 task_run_logs_dir        = "/tmp"
 task_run_stop_timeout    = "5m"
-encryption_key           = "changemechangemechangemechangeme"
 
 external_events_api {
   enable = true
@@ -30,6 +29,14 @@ object_store {
   }
   pipeline_object_limit = 10
   run_object_expiry     = 20
+}
+
+secret_store {
+  engine = "bolt"
+  boltdb {
+    path = "/tmp/gofer-secret.db"
+  }
+  encryption_key           = "changemechangemechangemechangeme"
 }
 
 scheduler {

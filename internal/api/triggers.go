@@ -50,7 +50,6 @@ func (api *API) startTriggers() error {
 			ID:               fmt.Sprintf(TRIGGERCONTAINERIDFORMAT, trigger.Kind),
 			ImageName:        trigger.Image,
 			EnvVars:          envVars,
-			Secrets:          trigger.Secrets,
 			RegistryUser:     trigger.User,
 			RegistryPass:     trigger.Pass,
 			EnableNetworking: true,
@@ -223,12 +222,18 @@ func (api *API) restoreTriggerSubscriptions() error {
 
 			client := sdkProto.NewTriggerClient(conn)
 
+			config, err := api.populateSecrets(pipeline.Namespace, pipeline.ID, subscription.Config)
+			if err != nil {
+				return fmt.Errorf("could not subscribe trigger %q for pipeline %q - namespace %q; %w",
+					subscription.Label, pipeline.ID, pipeline.Namespace, err)
+			}
+
 			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
 			_, err = client.Subscribe(ctx, &sdkProto.SubscribeRequest{
 				NamespaceId:          pipeline.Namespace,
 				PipelineTriggerLabel: label,
 				PipelineId:           pipeline.ID,
-				Config:               subscription.Config,
+				Config:               config,
 			})
 			if err != nil {
 				return fmt.Errorf("could not subscribe trigger subscription %q for pipeline %q - namespace %q; %w",

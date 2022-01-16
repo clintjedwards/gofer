@@ -57,7 +57,7 @@ To keep your deployment of Gofer safe make sure to use your own TLS certificates
 host                     = "0.0.0.0:8080"
 log_level                = "info"
 task_run_logs_dir        = "/tmp"
-encryption_key           = "change_me"
+encryption_key           = "changemechangemechangemechangeme"
 
 external_events_api {
   enable = true

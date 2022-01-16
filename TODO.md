@@ -43,6 +43,15 @@
 
 - Implement CPU/MEMORY per task values since all non-local schedulers will need this.
 
+### SecretStore
+
+- Vault impl
+- Check that the cli properly prevents people from requesting any secret, in any pipeline. This should be a simple
+- namespace check.
+- For an extension like vault we manage the read and write in the same way we would for bolt. So vault gives us a prefix
+  path and we essentially just used that prefix path to store secrets.
+- Document all changes that arise from the new revolution in secrets
+
 ### Triggers
 
 - Test that unsubscribing works with all triggers. And create a test suite that triggers can run against.
@@ -51,6 +60,7 @@
   we should continue to subscribe other triggers and mark the trigger as failed/not connected. This probably
   means that trigger subscriptions will need a state to say "config invalid" or "we could not subscribe you"
 - stopTriggers we should monitor the trigger to make sure it actually has shutdown and execute a stop container if its passes
+- triggers should follow semver
 
 ### General
 
@@ -61,8 +71,6 @@
 
 ### Rough spots in design
 
-- Docker registry auth is very awkward and requires the admin to step in to add new registries. This is good for the ops team, bad UX for the users.
-- Secrets are a bit confusing since they rely on whatever the secret fetching mechanism is of the downstream scheduler. They require the user to be aware of which scheduler is in play.
 - It currently runs as a singleton, not distributed.
 - Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of git repos is the biggest pain point here.
 - The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
@@ -74,6 +82,3 @@
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
-
-- add validation for encryption key
-- triggers should follow semver

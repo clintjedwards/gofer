@@ -7,7 +7,7 @@ type ObjectStore struct {
 	// Possible values are: bolt
 	Engine string `hcl:"engine,optional"`
 
-	BoltDB *BoltDBStore `hcl:"boltdb,block"`
+	BoltDB *BoltDB `hcl:"boltdb,block"`
 
 	// Pipeline Objects last forever but are limited in number. This is the total amount of items that can be stored
 	// per pipeline before gofer starts deleting objects.
@@ -23,15 +23,10 @@ type ObjectStore struct {
 func DefaultObjectStoreConfig() *ObjectStore {
 	return &ObjectStore{
 		Engine: "bolt",
-		BoltDB: &BoltDBStore{
+		BoltDB: &BoltDB{
 			Path: "/tmp/gofer-os.db",
 		},
 		PipelineObjectLimit: 10,
 		RunObjectExpiry:     20,
 	}
-}
-
-// BoltDB: https://pkg.go.dev/go.etcd.io/bbolt
-type BoltDBStore struct {
-	Path string `hcl:"path,optional"` // file path for database file
 }

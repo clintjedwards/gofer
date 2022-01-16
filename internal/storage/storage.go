@@ -62,9 +62,4 @@ type Engine interface {
 	RegisterRun(r RegisterRunRequest) error
 	UnregisterRun(r UnregisterRunRequest) error
 	RegistrationExists(r RegistrationExistsRequest) bool
-
-	GetAllDockerRegistryAuths(r GetAllDockerRegistryAuthsRequest) ([]*models.DockerRegistryAuth, error)
-	GetDockerRegistryAuth(r GetDockerRegistryAuthRequest) (*models.DockerRegistryAuth, error)
-	AddDockerRegistryAuth(r AddDockerRegistryAuthRequest) error
-	RemoveDockerRegistryAuth(r RemoveDockerRegistryAuthRequest) error
 }
