@@ -20,7 +20,7 @@ export GOFER_CLI_TOKEN=mysupersecrettoken
 gofer service token whoami
 ```
 
-The most up to date list of possible environment variables [exists here](https://github.com/clintjedwards/gofer/blob/6348611df7c79946ce44d8633a427178592167b0/internal/config/cli.go#L11)
+The most up to date list of possible environment variables [exists here](https://github.com/clintjedwards/gofer/blob/main/internal/config/cli.go#L11)
 
 :::note
 
@@ -46,7 +46,7 @@ You can put your CLI configuration file in any of the following locations and Go
 
 ### Configuration file options
 
-The options available in the configuration file are the same as possible environment variables. To find the most up to date values you can use [the code here](https://github.com/clintjedwards/gofer/blob/6348611df7c79946ce44d8633a427178592167b0/internal/config/cli.go#L11). For convenience, a possible out of date list and explanation is listed below:
+The options available in the configuration file are the same as possible environment variables. To find the most up to date values you can use [the code here](https://github.com/clintjedwards/gofer/blob/main/internal/config/cli.go#L11). For convenience, a possible out of date list and explanation is listed below:
 
 | configuration | type   | description                                                                                                                          |
 | ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |

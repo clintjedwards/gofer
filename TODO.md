@@ -82,3 +82,9 @@
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
+
+-DO a search for SECRETS=
+-Create pipeline cli docs for secret store
+
+- we need to refactor the encryption key to only be a boltdb thing, since other secret stores might have their own encryption methods.
+- We need to change the secret syntax to be not easily trippable maybe something like "secret{{some_secret}}"

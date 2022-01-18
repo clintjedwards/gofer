@@ -19,8 +19,7 @@ Good security practice suggests that you should be managing repository deploy ke
 potentially forgo the "per team" suggestion using a "read-only" key and the scope of things using the key
 isn't too big.
 
-Gofer's suggestion here is to make deploy keys self service and then simply enter them into whatever is your brand of secret
-store to be used with Gofer. Once there you can then use it in each job to pull the required repository.
+Gofer's suggestion here is to make deploy keys self service and then simply enter them into Gofer's secret store to be used by your pipeline tasks. Once there you can then use it in each job to pull the required repository.
 
 #### 2) How do I download the repository?
 
@@ -36,12 +35,6 @@ Three strategies:
 
 [^1]: https://github.com/google/goblet
 [^2]: https://github.com/jonasmalacofilho/git-cache-http-server
-
-### > I need to access a private docker registry in my pipeline config file, how do I do that?
-
-Since Gofer pipeline configuration files do not support in-file secrets, there isn't a way to directly put the authentication you need for a scheduler to pull your image from a private docker registry within the file.
-
-Instead you must use the [registry auth](cli/gofer_service_registry) feature. An admin can add the authentication details to Gofer using this command line interface and Gofer will automatically pass those credentials along to the scheduler when requesting a new container be run.
 
 ### > What are the different ways in reference my pipeline configuration?
 

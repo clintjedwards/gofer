@@ -24,6 +24,7 @@ The Pipeline stanza is the top most configuration layer. It contains not only ge
 ### Simple Pipeline with a trigger
 
 ```hcl
+id   = "pipeline_w_trigger"
 name = "[with_trigger] Gofer Test Pipeline"
 description = <<EOT
 This pipeline shows of the various features of a simple gofer pipeline. Triggers, Tasks, and
@@ -41,7 +42,7 @@ trigger "interval" "every_one_minute" {
 
 // Tasks are the building blocks of a pipeline. They represent individual containers and can be
 // configured to depend on one or multiple other tasks.
-task "no_dependencies" {
+task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
 	description = "This task has no dependencies so it will run immediately"
 
     // Environment variables are the way in which your container is configured.
@@ -49,20 +50,11 @@ task "no_dependencies" {
     // should always be through environment variables except in very rare circumstances: https://12factor.net/config
     env_vars = {
         "WAIT_DURATION": "10s",
+        "SECRET_LOGS_HEADER": "{{secret_key}}"
     }
-
-    // Secrets are specified here to be pulled in from the scheduler
-    // scheduler configuration determines how the scheduler actually retrieves these secrets
-    // the key is what env var the secret should be injected as, the value is any extra configuration
-    // the scheduler might need to retrieve the secert(for vault it might be the path to the secret)
-    secrets = {
-        "SECRET_LOGS_HEADER": "example/config/for/secrets"
-    }
-
-	image_name = "ghcr.io/clintjedwards/experimental:wait"
 }
 
-task "depends_on_one" {
+task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
 	description = <<EOT
 This task depends on the first task to finish with a successfull result. This means
 that if the first task fails this task will not run.
@@ -73,6 +65,5 @@ EOT
     env_vars = {
         "LOGS_HEADER": "This string can be anything you want it to be",
     }
-	image_name = "ghcr.io/clintjedwards/experimental:log"
 }
 ```

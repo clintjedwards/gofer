@@ -10,7 +10,7 @@ Gofer has a variety of parameters that can be specified via environment variable
 
 To view a listing of the possible environment variables use: `gofer service printenv`.
 
-The most up to date config file values can be found by [reading the code](https://github.com/clintjedwards/gofer/blob/ba6be3778d9c709df03c0d56b3976f2c09a6b467/internal/config/api.go#L14), but a best effort key and description list is given below.
+The most up to date config file values can be found by [reading the code](https://github.com/clintjedwards/gofer/blob/main/internal/config/api.go#L14), but a best effort key and description list is given below.
 
 ## Values
 
@@ -21,10 +21,6 @@ The most up to date config file values can be found by [reading the code](https:
 - #### `event_loop_channel_size` (int: _100_)
 
   The size of the channel that holds events from triggers. Increase this to increase the throughput of Gofer's triggered events but also increase the memory footprint.
-
-- #### `encryption_key` (string: _default_)
-
-  The key used to save secret values like docker registry information into the database. This must be a 32 character randomized value.
 
 - #### `host` (string: _localhost:8080_)
 
@@ -113,6 +109,31 @@ The most up to date config file values can be found by [reading the code](https:
   }
   ```
 
+- #### `secret_store` (block)
+
+  The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, trigger configuration, or scheduler.
+
+  You can find [more information on the secret store block here.](../secret-stores/overview)
+
+  - #### `engine` (string: _bolt_)
+    The engine Gofer will use to store state. The accepted values here are "bolt".
+  - #### `boltdb` (block)
+    [Bolt DB](https://dbdb.io/db/boltdb) is a key-value store. Its fast, lightweight, and can be run easily locally. It is the defacto development storage because of these properties.
+    - #### `path` (string: _/tmp/gofer-os.db_)
+      The path of the file that boltdb will use. If this file does not exist Gofer will create it.
+    - #### `encryption_key` (string: _default_)
+      The key used to encrypt secrets into the secretStore. This must be a 32 character randomized value.
+
+  ```hcl
+  secret_store {
+    engine = "bolt"
+    boltdb {
+      path = "/tmp/gofer-os.db"
+      encryption_key = "changemechangemechangemechangeme"
+    }
+  }
+  ```
+
 - #### `scheduler` (block)
 
   The settings for the container orchestrator that Gofer will use to schedule workloads.
@@ -127,8 +148,6 @@ The most up to date config file values can be found by [reading the code](https:
       Controls if the docker scheduler should periodically clean up old containers.
     - #### `prune_interval` (string: _24h_)
       Controls how often the prune container job should run.
-    - #### `secrets_path` (string: _""_)
-      The secrets path points to a file which controls the secrets pool for local docker secrets. You can read more about docker's [secret path file here](../schedulers/docker/overview).
 
   ```hcl
   scheduler {

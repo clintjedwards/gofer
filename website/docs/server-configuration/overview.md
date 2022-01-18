@@ -50,14 +50,13 @@ These are the bare minimum values you should populate for a production ready Gof
 The values below should be changed depending on your environment; leaving them as they currently are will lead to loss of data on server restarts.
 
 :::danger
-To keep your deployment of Gofer safe make sure to use your own TLS certificates AND change the `encryption_key` field to a 32 random character string.
+To keep your deployment of Gofer safe make sure to use your own TLS certificates instead of the default localhost ones included.
 :::
 
 ```hcl
 host                     = "0.0.0.0:8080"
 log_level                = "info"
 task_run_logs_dir        = "/tmp"
-encryption_key           = "changemechangemechangemechangeme"
 
 external_events_api {
   enable = true
@@ -76,6 +75,14 @@ object_store {
   engine = "bolt"
   boltdb {
     path = "/tmp/gofer-os.db"
+  }
+}
+
+secret_store {
+  engine = "bolt"
+  boltdb {
+    path           = "/tmp/gofer-secret.db"
+    encryption_key = "changemechangemechangemechangeme"
   }
 }
 
@@ -104,9 +111,9 @@ triggers {
 
 You can find the most recent releases of Gofer on the [github releases page.](https://github.com/clintjedwards/gofer/releases).
 
-Simply use whatever configuration management system you're most familiar with to place the binary on your chosen VPS and run it.
+Simply use whatever configuration management system you're most familiar with to place the binary on your chosen VPS and manage it. You can find a quick and dirty `wget` command to pull the latest version in the [getting started documentation.](../getting-started/installing-gofer.md)
 
-A simple systemd service file setup to run Gofer is show below:
+As an example a simple systemd service file setup to run Gofer is show below:
 
 #### Example systemd service file
 
@@ -138,12 +145,11 @@ To create your root management token use the command: `gofer service token boots
 :::danger
 The token returned is a management token and as such as access to all routes within Gofer. It is advised that:
 
-1. You use this token only in admin situations
-2. To generate other lesser permissioned tokens
-3. Store this token somewhere safe
+1. You use this token only in admin situations and to generate other lesser permissioned tokens.
+2. Store this token somewhere safe
 
 :::
 
 From here you can use your root token to provision extra lower permissioned tokens for everyday use.
 
-When communicating with Gofer through the CLI you can set the token [one of many ways.](../cli/configuration)
+When communicating with Gofer through the CLI you can set the token to be automatically passed per request in [one of many ways.](../cli/configuration)

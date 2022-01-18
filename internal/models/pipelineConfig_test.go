@@ -98,7 +98,7 @@ func TestFullParse(t *testing.T) {
 	}
 }
 
-func TestAPIExampleConfigsFromFile(t *testing.T) {
+func TestExampleConfigsFromFile(t *testing.T) {
 	files, err := ioutil.ReadDir("../../examplePipelines")
 	if err != nil {
 		t.Fatal(err)
@@ -115,6 +115,18 @@ func TestAPIExampleConfigsFromFile(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestCLIExampleConfigFile(t *testing.T) {
+	file, err := os.ReadFile("../cli/config/examplePipeline.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hclconf := HCLPipelineConfig{}
+	err = hclconf.FromBytes(file, "examplePipeline.hcl")
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

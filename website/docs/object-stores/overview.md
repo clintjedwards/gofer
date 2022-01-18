@@ -40,7 +40,7 @@ The only currently supported object store is the [boltdb object store](bolt/over
 
 ## How to add new Object Stores?
 
-Object stores are pluggable! Simply implement a new object store by following [the given interface.](https://github.com/clintjedwards/gofer/blob/053ad33e30e9fdf21a005fffbe9ad849fe258ec1/internal/objectStore/objectStore.go#L23)
+Object stores are pluggable! Simply implement a new object store by following [the given interface.](https://github.com/clintjedwards/gofer/blob/main/internal/objectStore/objectStore.go#L23)
 
 ```go
 type Engine interface {

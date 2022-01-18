@@ -14,7 +14,7 @@ The Trigger stanza is the way in which you can automate your pipeline to automat
 | ------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [label] | `string: <required>`                     | The ID of the trigger you would like to use. You can list all triggers that your gofer instance supports by using the command line: `gofer trigger list`.                                                                                                                                                                                                                            |
 | [label] | `string: <required>`                     | The name of your trigger. This string cannot have any spaces or special characters and is limited to 70 characters. This name is purely so you can differentiate your triggers from one another. Use it to provide a short description on what this trigger should be doing. For example: an interval trigger which runs on a five minute interval might be called `every_five_min`. |
-| Config  | `string key -> string value: <optional>` | Each trigger Kind has specific configuration values which can then be used with each trigger stanza. View the documentation for the trigger kind you would like to use to understand which values can be passed to each stanza.                                                                                                                                                      |
+| config  | `string key -> string value: <optional>` | Each trigger Kind has specific configuration values which can then be used with each trigger stanza. View the documentation for the trigger kind you would like to use to understand which values can be passed to each stanza.                                                                                                                                                      |
 
 ## Trigger Examples
 
@@ -51,6 +51,14 @@ trigger "interval" "every_one_minute" {
 }
 
 trigger "cron" "every_single_minute" {
-    every = "* * * * * *"
+    expression = "* * * * * *"
+}
+```
+
+### Trigger with secret
+
+```hcl
+trigger "github" "every_commit" {
+    key = "{{github_key}}"
 }
 ```

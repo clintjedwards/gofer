@@ -31,7 +31,7 @@ task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
   }
 }
 
-task "depends_on_one" "ghcr.io/clintjedwards/experimental:log"{
+task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
   description = <<EOT
 This task depends on the first task to finish with a successfull result. This means
 that if the first task fails this task will not run.
@@ -44,7 +44,7 @@ EOT
   }
 }
 
-task "depends_on_all" "ghcr.io/clintjedwards/experimental:log"{
+task "depends_on_all" "ghcr.io/clintjedwards/experimental:log" {
   description = <<EOT
 This task depends on all other tasks completing successfully. This means that even though task "no_dependencies" has
 finished it will wait until "depends_on_one" has exited.

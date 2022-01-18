@@ -10,19 +10,13 @@ The Task stanza represents a single container in your pipeline. It can be config
 
 ## Task Parameters
 
-| Param       | Type                            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [label]     | `string: <required>`            | The name of your task. This string cannot have any spaces or special characters and is limited to 70 characters.                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Description | `string: <optional>`            | A short description of the purpose of your pipeline. Limited to 3k characters.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| ImageName   | `string: <required>`            | The docker repository and image name of your docker image.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| EnvVars     | `map[string]string: <optional>` | The main mechanism of passing configuration to your container the environment variables mentioned here are passed to your container by gofer and the associated scheduler. The correct way to define these are in the form: `env_vars = { "WAIT_DURATION": "10s",}`                                                                                                                                                                                                                                                                                           |
-| Secrets     | `map[string]string: <optional>` | The main mechanism of secret handling to your container. **DO NOT PUT PLAINTEXT SECRETS IN THIS FIELD**. Instead the key is the environment variable of the secret and the value is the secret "path" or config string. <br/><br/> Since Gofer relies on the scheduler to handle secrets view the scheduler documentation on how secrets should be handled. For example, for a scheduler that uses vault as a backend, the value of a secret field might be the path of that secret in vault:`secrets = { "A_SIMPLE_SECERT": "/some/path/within/vault:key",}` |
-
-## Referencing images in private docker registries
-
-Gofer pipeline configurations do not support secret values, but you might have to pass authentication in order for your scheduler to be able to pull the docker images that you need from a private repository. To solve this, Gofer supports [registry auth](../../cli/gofer_service_registry) which requires an admin to insert the requried docker registry authentication before private registries can be accessed.
-
-Once a registry is entered, images from that registry will be pulled using the provided credentials.
+| Param         | Type                            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [label]       | `string: <required>`            | The name of your task. This string cannot have any spaces or special characters and is limited to 70 characters.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| [label]       | `string: <required>`            | The docker repository and image name of your docker image.                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| description   | `string: <optional>`            | A short description of the purpose of your pipeline. Limited to 3k characters.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| env_vars      | `map[string]string: <optional>` | The main mechanism of passing configuration to your container. The variables mentioned here are passed to your container by Gofer and the associated scheduler. The correct way to define these are in the form: `env_vars = { "WAIT_DURATION": "10s",}` <br/> <br/> The `env_vars` attribute also supports secret substitution by using Gofer's secret store and special syntax to denote a secrets exists in this field. `env_vars = { "SECRET_VALUE": "{{secret_key}}"}`<br/><br/> **DO NOT PUT PLAINTEXT SECRETS IN THIS FIELD** |
+| registry_auth | `block: <optional>`             | If your image needs registry authentication you can pass the user/pass combo in here as a block. `registry_auth { user = "me", pass = "{{secret}}"}`. <br/><br/> You can also use Gofer's secret store here to substitute secret values.                                                                                                                                                                                                                                                                                             |
 
 ## Task Examples
 
@@ -31,31 +25,24 @@ Once a registry is entered, images from that registry will be pulled using the p
 ```hcl
 // Tasks are the building blocks of a pipeline. They represent individual containers and can be
 // configured to depend on one or multiple other tasks.
-task "no_dependencies" {
+task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
 	description = "This task has no dependencies so it will run immediately"
 
     // Environment variables are the way in which your container is configured.
     // These are passed into your container at runtime.
     env_vars = {
         "WAIT_DURATION": "20s",
+        // Gofer handles secrets also! Simply use the command-line to enter secrets and then reference them
+        // in your config file by key.
+        "SECRET_LOGS_HEADER" : "{{secret_log_key}}"
     }
-
-    // Secrets are specified here to be pulled in from the scheduler.
-    // Scheduler configuration determines how the scheduler actually retrieves these secrets
-    // the key is what env var the secret should be injected as, the value is any extra configuration
-    // the scheduler might need to retrieve the secert(for vault it might be the path to the secret)
-    secrets = {
-        "SECRET_LOGS_HEADER": "example/config/for/secrets"
-    }
-
-	image_name = "ghcr.io/clintjedwards/experimental:wait"
 }
 ```
 
 ### A task with a dependency on another task with success requirement
 
 ```hcl
-task "depends_on_one" {
+task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
 	description = <<EOT
 This task depends on the first task to finish with a successfull result. This means
 that if the first task fails this task will not run.
@@ -66,6 +53,26 @@ EOT
     env_vars = {
         "LOGS_HEADER": "This string can be anything you want it to be",
     }
-	image_name = "ghcr.io/clintjedwards/experimental:log"
+}
+```
+
+### A task with registry authentication
+
+```hcl
+task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
+	description = <<EOT
+This task depends on the first task to finish with a successfull result. This means
+that if the first task fails this task will not run.
+EOT
+    registry_auth {
+        user = "my_username"
+        pass = "{{my_key_to_pass}}"
+    }
+    depends_on = {
+        "no_dependencies": "successful",
+    }
+    env_vars = {
+        "LOGS_HEADER": "This string can be anything you want it to be",
+    }
 }
 ```

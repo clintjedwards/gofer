@@ -60,3 +60,7 @@ Whether you want to schedule your containers on [K8s](https://kubernetes.io/) or
 ### Object Store
 
 Gofer provides a built in object store [you can access with the Gofer CLI](cli/gofer_pipeline_store). This object store provides a caching and data transfer mechanism so you can pass values from one container to the next, but also store objects that you might need for all containers.
+
+### Secret Store
+
+Gofer provides a built in secret store [you can access with the Gofer CLI](cli/gofer_pipeline_secret). This secret store provides a way to pass secret values needed by your pipeline configuration into Gofer.

@@ -14,7 +14,7 @@ The only currently supported storage is the [boltdb object store](bolt/overview)
 
 ## How to add new Storage?
 
-Databases are pluggable! Simply implement a new database by following [the given interface.](https://github.com/clintjedwards/gofer/blob/053ad33e30e9fdf21a005fffbe9ad849fe258ec1/internal/storage/storage.go#L30)
+Databases are pluggable! Simply implement a new database by following [the given interface.](https://github.com/clintjedwards/gofer/blob/main/internal/storage/storage.go#L30)
 
 ```go
 type Engine interface {
@@ -52,9 +52,5 @@ type Engine interface {
 	RegisterRun(r RegisterRunRequest) error
 	UnregisterRun(r UnregisterRunRequest) error
 	RegistrationExists(r RegistrationExistsRequest) bool
-
-	GetAllDockerRegistryAuths(r GetAllDockerRegistryAuthsRequest) ([]*models.DockerRegistryAuth, error)
-	AddDockerRegistryAuth(r AddDockerRegistryAuthRequest) error
-	RemoveDockerRegistryAuth(r RemoveDockerRegistryAuthRequest) error
 }
 ```
