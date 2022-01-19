@@ -52,10 +52,10 @@ func TestAPISampleFromFile(t *testing.T) {
 
 		SecretStore: &SecretStore{
 			Engine: "bolt",
-			BoltDB: &BoltDB{
-				Path: "/tmp/gofer-secret.db",
+			BoltDB: &BoltDBSecret{
+				Path:          "/tmp/gofer-secret.db",
+				EncryptionKey: "changemechangemechangemechangeme",
 			},
-			EncryptionKey: "changemechangemechangemechangeme",
 		},
 
 		Scheduler: &Scheduler{
@@ -163,10 +163,10 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 
 		SecretStore: &SecretStore{
 			Engine: "bolt",
-			BoltDB: &BoltDB{
-				Path: "/tmp/gofer-secret.db",
+			BoltDB: &BoltDBSecret{
+				Path:          "/tmp/gofer-secret.db",
+				EncryptionKey: "changemechangemechangemechangeme",
 			},
-			EncryptionKey: "changemechangemechangemechangeme",
 		},
 
 		Scheduler: &Scheduler{
@@ -241,7 +241,7 @@ func TestSetTriggersViaEnv(t *testing.T) {
 			BoltDB: &BoltDB{},
 		},
 		SecretStore: &SecretStore{
-			BoltDB: &BoltDB{},
+			BoltDB: &BoltDBSecret{},
 		},
 		Scheduler: &Scheduler{
 			Docker: &Docker{},

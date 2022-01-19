@@ -95,7 +95,7 @@ func initObjectStore(config *config.ObjectStore) (objectstore.Engine, error) {
 func initSecretStore(config *config.SecretStore) (secretStore.Engine, error) {
 	switch secretStore.EngineType(config.Engine) {
 	case secretStore.EngineBolt:
-		engine, err := boltsecret.New(config.BoltDB.Path, config.EncryptionKey)
+		engine, err := boltsecret.New(config.BoltDB.Path, config.BoltDB.EncryptionKey)
 		if err != nil {
 			return nil, err
 		}

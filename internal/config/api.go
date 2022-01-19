@@ -315,13 +315,13 @@ func InitAPIConfig(userDefinedPath string) (*API, error) {
 }
 
 func (c *API) validate() error {
-	if c.SecretStore != nil {
+	if c.SecretStore != nil && c.SecretStore.BoltDB != nil {
 
-		if len(c.SecretStore.EncryptionKey) != 32 {
+		if len(c.SecretStore.BoltDB.EncryptionKey) != 32 {
 			return fmt.Errorf("encryption_key must be a 32 character random string")
 		}
 
-		if !c.Server.DevMode && c.SecretStore.EncryptionKey == "changemechangemechangemechangeme" {
+		if !c.Server.DevMode && c.SecretStore.BoltDB.EncryptionKey == "changemechangemechangemechangeme" {
 			return fmt.Errorf("encryption_key cannot be left as default; must be changed to a 32 character random string")
 		}
 	}
