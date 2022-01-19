@@ -59,6 +59,6 @@ trigger "cron" "every_single_minute" {
 
 ```hcl
 trigger "github" "every_commit" {
-    key = "{{github_key}}"
+    key = "secret{{my_github_key}}"
 }
 ```

@@ -50,7 +50,7 @@ task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
     // should always be through environment variables except in very rare circumstances: https://12factor.net/config
     env_vars = {
         "WAIT_DURATION": "10s",
-        "SECRET_LOGS_HEADER": "{{secret_key}}"
+        "SECRET_LOGS_HEADER": "secret{{secret_key}}"
     }
 }
 

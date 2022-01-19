@@ -13,6 +13,6 @@ task "no_dependencies" "ghcr.io/clintjedwards/experimental:log" {
   // beforehand.
   env_vars = {
     "SOME_VARIABLE" : "something here"
-    "LOGS_HEADER" : "{{ logs_header }}"
+    "LOGS_HEADER" : "secret{{ logs_header }}"
   }
 }

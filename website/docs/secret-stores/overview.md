@@ -14,7 +14,7 @@ The secrets included in the pipeline file use a special syntax so that Gofer und
 ```hcl
 ...
 env_vars = {
-  "SOME_SECRET_VAR" = "{{my_key_here}}"
+  "SOME_SECRET_VAR" = "secret{{my_key_here}}"
 }
 ...
 ```

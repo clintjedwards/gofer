@@ -214,12 +214,12 @@ func (api *API) populateSecrets(namespace, pipeline string, mixedMap map[string]
 	return parsedMap, nil
 }
 
-// parseSecretKeyFromString checks a string for the existence of the secret key format "{{ example }}".
+// parseSecretKeyFromString checks a string for the existence of the secret key format "secret{{ example }}".
 // If it is a secret key we return that key without the brackets, if it is not, an empty string is returned.
 func parseSecretKeyFromString(variable string) string {
 	variable = strings.TrimSpace(variable)
-	if strings.HasPrefix(variable, "{{") && strings.HasSuffix(variable, "}}") {
-		variable = strings.TrimPrefix(variable, "{{")
+	if strings.HasPrefix(variable, "secret{{") && strings.HasSuffix(variable, "}}") {
+		variable = strings.TrimPrefix(variable, "secret{{")
 		variable = strings.TrimSuffix(variable, "}}")
 		return strings.TrimSpace(variable)
 	}
