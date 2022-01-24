@@ -53,8 +53,8 @@ The most up to date config file values can be found by [reading the code](https:
 
   ```hcl
   external_events_api {
-  enable = true
-  host   = "0.0.0.0:8081"
+    enable = true
+    host   = "0.0.0.0:8081"
   }
   ```
 

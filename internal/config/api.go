@@ -207,10 +207,6 @@ func defaultTriggers() []Trigger {
 				"GOFER_TRIGGER_INTERVAL_MIN_DURATION": "5m",
 			},
 		},
-		{
-			Kind:  "github",
-			Image: "ghcr.io/clintjedwards/gofer/trigger_github:latest",
-		},
 	}
 }
 

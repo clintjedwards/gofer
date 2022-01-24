@@ -1,5 +1,7 @@
 FROM golang:1.17 AS build-environment
 
+LABEL org.opencontainers.image.source https://github.com/clintjedwards/gofer
+
 ARG GOARCH
 ARG SEMVER
 

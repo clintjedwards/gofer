@@ -2,9 +2,9 @@
 
 #### If you fail a trigger register we should NOT complete with a valid pipeline.
 
-#### Write the github plugin
+#### \* We need to put a validation check for environment variables that do not have a key since those are illegal
 
-- It should have both polling and webhook support.
+- This validation needs to be put both in the pipeline config checks AND before we pass in trigger vars.
 
 #### Git downloader container
 
@@ -18,8 +18,14 @@
 
 #### An "export" function for pipeline configuration
 
+- we can allow things like annotations due to the feature of access to the kv store.
+- this works exactly like triggers
 - where Gofer will run a particular export container along with the user's pipeline. This container can ship
   container focused results back to something like email, slack, github, whatever.
+
+#### Access to the kv store via pipeline configuration
+
+-- we can give user's the ability to request store specific variables with the same syntax we do with secrets.
 
 #### Json output
 
@@ -97,5 +103,4 @@
   - How it works
   - How the URL is formed
 
-* We need to put a validation check for environment variables that do not have a key since those are illegal
-  - This validation needs to be put both in the pipeline config checks AND before we pass in trigger vars.
+* when we can't connect to a trigger we should print the logs output if it exists.

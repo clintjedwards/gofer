@@ -4,112 +4,151 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
+	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/clintjedwards/gofer/sdk"
 	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
 	"github.com/google/go-github/v42/github"
 	"github.com/rs/zerolog/log"
 )
 
-// parameterEvent is the type of event to watch out for the repository. Events are listed here:
-// https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads
-const parameterEvent = "event"
+// Trigger configuration env vars
+// These are general settings needed for github apps:
+// https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id
+const (
+	envvarID            = "GOFER_TRIGGER_GITHUB_APPS_ID"
+	envvarInstallation  = "GOFER_TRIGGER_GITHUB_APPS_INSTALLATION"
+	envvarKey           = "GOFER_TRIGGER_GITHUB_APPS_KEY"
+	envvarWebhookSecret = "GOFER_TRIGGER_GITHUB_APPS_WEBHOOK_SECRET"
+)
 
-// parameterRepository is the repository the pipeline will like to be alerted for.
-// The format is <organization>/<repository>
-// 	Ex: clintjedwards/gofer
-const parameterRepository = "repository"
+// Pipeline configuration parameters
+const (
+	// parameterEvents is a comma separated list of events to listen for. Events are listed here:
+	// https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads
+	parameterEvents = "events"
 
-// parameterSecret is the secret webhook token used to validate this request has come from Github.
-const parameterSecret = "secret"
+	// parameterRepository is the repository the pipeline will like to be alerted for.
+	// The format is <organization>/<repository>
+	// 	Ex: clintjedwards/gofer
+	parameterRepository = "repository"
+)
 
 // pipelineSubscription represents info about a particular pipeline subscription. Used to pass the correct event
 // back to the appropriate pipeline.
 type pipelineSubscription struct {
 	event        string
+	repository   string
 	triggerLabel string
 	pipeline     string
 	namespace    string
 }
 
-// repoSecretKey is composite key of the repository and secret. This is used to match the correct repository/secret
-// combination for payload verification.
-func repoSecretKey(repo, token string) string {
-	return fmt.Sprintf("%s:%s", repo, token)
-}
-
 type trigger struct {
+	webhookSecret string // Github app webhook secret
+
+	client *github.Client
+
+	// events channel are omitted when a pipeline should be run. The main Gofer process watches this channel.
 	events chan *sdkProto.CheckResponse
 
-	// repoKeys is a mapping of repository to possible webhook secret tokens. This is due to the nature that we
-	// don't preload repository credentials from the admin so it is provided by the user. This means that
-	// occassionally we will have to try multiple credentials to see which one works. When we find one we combine
-	// it with the repository name and store it as the key to figure out which subscriptions this should go to.
-	repoKeys map[string]map[string]struct{}
-
-	// subscriptions is a mapping that uses a composite key of repository:secretkey to map onto subscriptions.
-	subscriptions map[string][]pipelineSubscription
+	// subscriptions is a mapping of event type to pipeline subscription. A single subscription could possibly
+	// be listening for multiple
+	subscriptions map[string]map[string][]pipelineSubscription
 }
 
-func newTrigger() *trigger {
+func newTrigger() (*trigger, error) {
+	rawApp := os.Getenv(envvarID)
+	if rawApp == "" {
+		return nil, fmt.Errorf("could not find required environment variable %q", envvarID)
+	}
+	app, err := strconv.Atoi(rawApp)
+	if err != nil {
+		return nil, fmt.Errorf("malformed github app id %q", rawApp)
+	}
+
+	rawInstallation := os.Getenv(envvarInstallation)
+	if rawInstallation == "" {
+		return nil, fmt.Errorf("could not find required environment variable %q", envvarInstallation)
+	}
+	installation, err := strconv.Atoi(rawInstallation)
+	if err != nil {
+		return nil, fmt.Errorf("malformed github installation id %q", rawApp)
+	}
+
+	rawKey := os.Getenv(envvarKey)
+	if rawKey == "" {
+		return nil, fmt.Errorf("could not find required environment variable %q", envvarKey)
+	}
+
+	key, err := base64.StdEncoding.DecodeString(rawKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode base64 private key; %v", err)
+	}
+
+	webhookSecret := os.Getenv(envvarWebhookSecret)
+	if webhookSecret == "" {
+		return nil, fmt.Errorf("could not find required environment variable %q", envvarWebhookSecret)
+	}
+
+	client, err := newGithubClient(int64(app), int64(installation), key)
+	if err != nil {
+		return nil, fmt.Errorf("could not init Github client %v", err)
+	}
+
 	return &trigger{
-		repoKeys:      map[string]map[string]struct{}{},
+		client:        client,
+		webhookSecret: webhookSecret,
 		events:        make(chan *sdkProto.CheckResponse, 100),
-		subscriptions: map[string][]pipelineSubscription{},
+		subscriptions: map[string]map[string][]pipelineSubscription{},
+	}, nil
+}
+
+func newGithubClient(app, installation int64, key []byte) (*github.Client, error) {
+	transport, err := ghinstallation.New(http.DefaultTransport, app, installation, key)
+	if err != nil {
+		return nil, err
 	}
+
+	client := github.NewClient(&http.Client{Transport: transport})
+	client.UserAgent = "clintjedwards/gofer"
+	return client, nil
 }
 
-// repoInfo is used to parse the repository name from the initial payload.
-type repoInfo struct {
-	Repository *struct {
-		FullName string `json:"full_name"`
-	} `json:"repository"`
-}
-
-// processNewEvent performs the validation, parsing, and generation of a new Github webhook event.
 func (t *trigger) processNewEvent(req *http.Request) error {
-	signature := req.Header.Get(github.SHA256SignatureHeader)
-	if signature == "" {
-		signature = req.Header.Get(github.SHA1SignatureHeader)
-	}
-
-	body, err := ioutil.ReadAll(req.Body)
+	log.Debug().Msg("processing new webhook event")
+	rawPayload, err := github.ValidatePayload(req, []byte(t.webhookSecret))
 	if err != nil {
 		return err
 	}
 
-	repoInfo := repoInfo{}
-	err = json.Unmarshal(body, &repoInfo)
+	parsedPayload, err := github.ParseWebHook(github.WebHookType(req), rawPayload)
 	if err != nil {
 		return err
 	}
 
-	if repoInfo.Repository == nil {
-		return fmt.Errorf("could not process request; missing repository struct")
+	handler, exists := handlers[github.WebHookType(req)]
+	if !exists {
+		// We don't return this as an error, because it is not an error on the Github side.
+		// Instead we just log that we've received it and we move along.
+		log.Debug().Msgf("event type %q not supported", github.WebHookType(req))
+		return nil
 	}
 
-	key, payload, err := t.trySignatures(repoInfo.Repository.FullName, signature, body)
-	if err != nil {
-		return fmt.Errorf("no signatures match: %w", err)
-	}
-
-	event := github.WebHookType(req)
-	subs := t.findSubscriptionsByEvent(key, event)
-
-	metadata, err := parsePayload(event, payload)
+	repo, metadata, err := handler(parsedPayload)
 	if err != nil {
 		return err
 	}
 
-	for _, sub := range subs {
+	for _, sub := range t.matchSubscriptions(github.WebHookType(req), repo) {
 		t.events <- &sdkProto.CheckResponse{
-			Details:              fmt.Sprintf("New %q event from %q", event, repoInfo.Repository.FullName),
+			Details:              fmt.Sprintf("New %q event from %q", github.WebHookType(req), repo),
 			PipelineTriggerLabel: sub.triggerLabel,
 			NamespaceId:          sub.namespace,
 			PipelineId:           sub.pipeline,
@@ -124,133 +163,51 @@ func (t *trigger) processNewEvent(req *http.Request) error {
 	return nil
 }
 
-// parsePayload attempts to turn the payload into its appropriate struct representation. Once in this form we can
-// apply filters to also remove subscriptions
-func parsePayload(event string, payload []byte) (map[string]string, error) {
-	rawEvent, err := github.ParseWebHook(event, payload)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse webhook payload for event %q", event)
-	}
-
-	switch rawEvent := rawEvent.(type) {
-	case *github.CreateEvent:
-		return map[string]string{
-			"GOFER_TRIGGER_GITHUB_REF":        *rawEvent.Ref,
-			"GOFER_TRIGGER_GITHUB_REF_TYPE":   *rawEvent.RefType,
-			"GOFER_TRIGGER_GITHUB_REPOSITORY": *rawEvent.Repo.FullName,
-		}, nil
-	case *github.PushEvent:
-		return map[string]string{
-			"GOFER_TRIGGER_GITHUB_REF":                           *rawEvent.Ref,
-			"GOFER_TRIGGER_GITHUB_REPOSITORY":                    *rawEvent.Repo.FullName,
-			"GOFER_TRIGGER_GITHUB_HEAD_COMMIT_ID":                *rawEvent.HeadCommit.ID,
-			"GOFER_TRIGGER_GITHUB_HEAD_COMMIT_AUTHOR_NAME":       *rawEvent.HeadCommit.Author.Name,
-			"GOFER_TRIGGER_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL":      *rawEvent.HeadCommit.Author.Email,
-			"GOFER_TRIGGER_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME":   *rawEvent.HeadCommit.Author.Login,
-			"GOFER_TRIGGER_GITHUB_HEAD_COMMIT_COMMITER_NAME":     *rawEvent.HeadCommit.Committer.Name,
-			"GOFER_TRIGGER_GITHUB_HEAD_COMMIT_COMMITER_EMAIL":    *rawEvent.HeadCommit.Committer.Email,
-			"GOFER_TRIGGER_GITHUB_HEAD_COMMIT_COMMITER_USERNAME": *rawEvent.HeadCommit.Committer.Login,
-		}, nil
-	case *github.ReleaseEvent:
-		return map[string]string{
-			"GOFER_TRIGGER_GITHUB_ACTION":                   *rawEvent.Action,
-			"GOFER_TRIGGER_GITHUB_REPOSITORY":               *rawEvent.Repo.FullName,
-			"GOFER_TRIGGER_GITHUB_RELEASE_TAG_NAME":         *rawEvent.Release.TagName,
-			"GOFER_TRIGGER_GITHUB_RELEASE_TARGET_COMMITISH": *rawEvent.Release.TargetCommitish,
-			"GOFER_TRIGGER_GITHUB_RELEASE_AUTHOR_LOGIN":     *rawEvent.Release.Author.Login,
-			"GOFER_TRIGGER_GITHUB_RELEASE_CREATED_AT":       rawEvent.Release.CreatedAt.String(),
-			"GOFER_TRIGGER_GITHUB_RELEASE_PUBLISHED_AT":     rawEvent.Release.PublishedAt.String(),
-		}, nil
-	case *github.CheckSuiteEvent:
-		return map[string]string{
-			"GOFER_TRIGGER_GITHUB_ACTION":                  *rawEvent.Action,
-			"GOFER_TRIGGER_GITHUB_REPOSITORY":              *rawEvent.Repo.FullName,
-			"GOFER_TRIGGER_GITHUB_CHECK_SUITE_ID":          strconv.FormatInt(*rawEvent.CheckSuite.ID, 10),
-			"GOFER_TRIGGER_GITHUB_CHECK_SUITE_HEAD_SHA":    *rawEvent.CheckSuite.HeadSHA,
-			"GOFER_TRIGGER_GITHUB_CHECK_SUITE_HEAD_BRANCH": *rawEvent.CheckSuite.HeadBranch,
-		}, nil
-	}
-
-	return nil, nil
-}
-
-// findSubscriptionsByEvent returns all subscriptions with a certain repo/secret combination that are subscribed to
-// a particular event.
-func (t *trigger) findSubscriptionsByEvent(repoSecretKey, event string) []pipelineSubscription {
-	subscriptions := []pipelineSubscription{}
-
-	potentialSubscriptions, exists := t.subscriptions[repoSecretKey]
+// matchSubscriptions returns all subscriptions with the proper event/repo combination.
+func (t *trigger) matchSubscriptions(event, repo string) []pipelineSubscription {
+	repoMap, exists := t.subscriptions[event]
 	if !exists {
-		return nil
+		return []pipelineSubscription{}
 	}
 
-	for _, sub := range potentialSubscriptions {
-		if sub.event == event {
-			subscriptions = append(subscriptions, sub)
-		}
+	subscriptions, exists := repoMap[repo]
+	if !exists {
+		return []pipelineSubscription{}
 	}
 
 	return subscriptions
 }
 
-// trySignatures checks the payload to make sure that it is indeed from github by iterating through potentially multiple
-// secret keys and checking them against the payload.
-// We have to do this because the way github secret webhook tokens are given to the trigger is by a user's pipeline
-// configuration. Because of this it is possible that multiple users might enter different secret tokens for the
-// same repository. Even though this is incorrect, we still have to accept the key and operate in a fashion that the
-// user has a potentially correct key.
-func (t *trigger) trySignatures(repository, signature string, body []byte) (subscriptionKey string, payload []byte, err error) {
-	keys, exists := t.repoKeys[repository]
-	if !exists {
-		return "", nil, fmt.Errorf("could not find credentials in repository keystore")
-	}
-
-	for key := range keys {
-		payload, err = github.ValidatePayloadFromBody("application/json", bytes.NewBuffer(body), signature, []byte(key))
-		if err != nil {
-			continue
-		}
-
-		return repoSecretKey(repository, key), payload, nil
-	}
-
-	return "", nil, fmt.Errorf("no keys match repository/signature combination given")
-}
-
 func (t *trigger) Subscribe(ctx context.Context, request *sdkProto.SubscribeRequest) (*sdkProto.SubscribeResponse, error) {
-	event, exists := request.Config[parameterEvent]
+	eventStr, exists := request.Config[parameterEvents]
 	if !exists {
-		return nil, fmt.Errorf("could not find required configuration parameter %q", parameterEvent)
+		return nil, fmt.Errorf("could not find required configuration parameter %q", parameterEvents)
 	}
+
+	eventList := strings.Split(eventStr, ",")
 
 	repo, exists := request.Config[parameterRepository]
 	if !exists {
 		return nil, fmt.Errorf("could not find required configuration parameter %q", parameterRepository)
 	}
 
-	secret, exists := request.Config[parameterSecret]
-	if !exists {
-		return nil, fmt.Errorf("could not find required configuration parameter %q", parameterSecret)
+	for _, event := range eventList {
+		event = strings.TrimSpace(event)
+		_, exists = t.subscriptions[event]
+		if !exists {
+			t.subscriptions[event] = map[string][]pipelineSubscription{
+				repo: {},
+			}
+		}
+
+		t.subscriptions[event][repo] = append(t.subscriptions[event][repo], pipelineSubscription{
+			event:        event,
+			repository:   repo,
+			triggerLabel: request.PipelineTriggerLabel,
+			pipeline:     request.PipelineId,
+			namespace:    request.NamespaceId,
+		})
 	}
-
-	_, exists = t.repoKeys[repo]
-	if !exists {
-		t.repoKeys[repo] = map[string]struct{}{}
-	}
-
-	t.repoKeys[repo][secret] = struct{}{}
-
-	_, exists = t.subscriptions[repoSecretKey(repo, secret)]
-	if !exists {
-		t.subscriptions[repoSecretKey(repo, secret)] = []pipelineSubscription{}
-	}
-
-	t.subscriptions[repoSecretKey(repo, secret)] = append(t.subscriptions[repoSecretKey(repo, secret)], pipelineSubscription{
-		event:        event,
-		triggerLabel: request.PipelineTriggerLabel,
-		pipeline:     request.PipelineId,
-		namespace:    request.NamespaceId,
-	})
 
 	log.Debug().Str("trigger_label", request.PipelineTriggerLabel).Str("pipeline_id", request.PipelineId).
 		Str("namespace_id", request.NamespaceId).Msg("subscribed pipeline")
@@ -258,13 +215,15 @@ func (t *trigger) Subscribe(ctx context.Context, request *sdkProto.SubscribeRequ
 }
 
 func (t *trigger) Unsubscribe(ctx context.Context, request *sdkProto.UnsubscribeRequest) (*sdkProto.UnsubscribeResponse, error) {
-	for key, subscriptions := range t.subscriptions {
-		for index, subscription := range subscriptions {
-			if subscription.triggerLabel == request.PipelineTriggerLabel &&
-				subscription.namespace == request.NamespaceId &&
-				subscription.pipeline == request.PipelineId {
-				t.subscriptions[key] = append(subscriptions[:index], subscriptions[index+1:]...)
-				return &sdkProto.UnsubscribeResponse{}, nil
+	for event, repoMap := range t.subscriptions {
+		for repo, subscriptions := range repoMap {
+			for index, sub := range subscriptions {
+				if sub.triggerLabel == request.PipelineTriggerLabel &&
+					sub.namespace == request.NamespaceId &&
+					sub.pipeline == request.PipelineId {
+					t.subscriptions[event][repo] = append(subscriptions[:index], subscriptions[index+1:]...)
+					return &sdkProto.UnsubscribeResponse{}, nil
+				}
 			}
 		}
 	}
@@ -311,7 +270,10 @@ func (t *trigger) ExternalEvent(ctx context.Context, request *sdkProto.ExternalE
 }
 
 func main() {
-	newTrigger := newTrigger()
+	newTrigger, err := newTrigger()
+	if err != nil {
+		panic(err)
+	}
 
 	sdk.NewTriggerServer(newTrigger)
 }
