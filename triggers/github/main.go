@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bradleyfalzon/ghinstallation"
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/clintjedwards/gofer/sdk"
 	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
 	"github.com/google/go-github/v42/github"

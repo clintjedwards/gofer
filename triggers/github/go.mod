@@ -3,7 +3,7 @@ module github.com/clintjedwards/gofer/triggers/github
 go 1.17
 
 require (
-	github.com/bradleyfalzon/ghinstallation v1.1.1
+	github.com/bradleyfalzon/ghinstallation/v2 v2.0.3
 	github.com/clintjedwards/gofer v0.0.2
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-github/v42 v42.0.0
@@ -11,9 +11,9 @@ require (
 )
 
 require (
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-github/v29 v29.0.2 // indirect
+	github.com/google/go-github/v39 v39.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
