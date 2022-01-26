@@ -85,8 +85,8 @@ const config = {
         additionalLanguages: ["hcl"],
       },
       algolia: {
-        appId: "S5UPB9G7EC",
-        apiKey: "c6633f4d13508300cf6d97822e590469",
+        appId: "BPSEOI9BHY",
+        apiKey: "8d08c07353dede8823c0a364ff8cbe74",
         indexName: "gofer",
         contextualSearch: true,
       },
