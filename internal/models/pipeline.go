@@ -103,6 +103,7 @@ func (p *Pipeline) ToProto() *proto.Pipeline {
 			Config: trigger.Config,
 			Kind:   trigger.Kind,
 			Label:  trigger.Label,
+			State:  proto.PipelineTriggerConfig_State(proto.PipelineTriggerConfig_State_value[string(trigger.State)]),
 		}
 	}
 
@@ -157,6 +158,7 @@ func (p *Pipeline) FromProto(proto *proto.Pipeline) {
 			Label:  trigger.Label,
 			Config: trigger.Config,
 			Kind:   trigger.Kind,
+			State:  PipelineTriggerState(trigger.State.String()),
 		}
 	}
 }

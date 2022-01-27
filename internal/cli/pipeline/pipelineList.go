@@ -67,8 +67,12 @@ func pipelineList(_ *cobra.Command, _ []string) error {
 	for _, pipeline := range resp.Pipelines {
 		triggerList := []string{}
 		for _, trigger := range pipeline.Triggers {
-			triggerList = append(triggerList,
-				fmt.Sprintf("%s(%s)", trigger.Label, color.YellowString(trigger.Kind)))
+			triggerStr := fmt.Sprintf("%s(%s)", trigger.Label, color.YellowString(trigger.Kind))
+			if trigger.State == proto.PipelineTriggerConfig_DISABLED {
+				c := color.New(color.Faint)
+				triggerStr = c.Sprintf("%s", triggerStr)
+			}
+			triggerList = append(triggerList, triggerStr)
 		}
 
 		recentRunIDs := getLastNIDs(5, pipeline.LastRunId)

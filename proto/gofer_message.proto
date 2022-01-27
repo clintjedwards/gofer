@@ -167,6 +167,13 @@ message PipelineTriggerConfig {
   string kind = 1;
   string label = 2;
   map<string, string> config = 3;
+  enum State {
+    UNKNOWN = 0;
+    ACTIVE = 1;
+    DISABLED = 2;
+    UNSUPPORTED = 3;
+  }
+  State state = 4;
 }
 
 message Trigger {

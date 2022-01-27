@@ -157,6 +157,30 @@ func colorizeTriggerState(state string) string {
 	}
 }
 
+func PipelineTriggerConfigState(state string) string {
+	if state == string(proto.PipelineTriggerConfig_UNKNOWN) {
+		return "Unknown"
+	}
+
+	// Because of how colorizing a string works we need to
+	// do the manipulations on case first or else it will not work.
+	state = strings.Title(strings.ToLower(state))
+	return colorizePipelineTriggerConfigState(state)
+}
+
+func colorizePipelineTriggerConfigState(state string) string {
+	switch strings.ToUpper(state) {
+	case proto.PipelineTriggerConfig_UNKNOWN.String():
+		return color.RedString(state)
+	case proto.PipelineTriggerConfig_ACTIVE.String():
+		return color.GreenString(state)
+	case proto.PipelineTriggerConfig_DISABLED.String():
+		return color.YellowString(state)
+	default:
+		return state
+	}
+}
+
 func SliceJoin(slice []string, msg string) string {
 	if len(slice) == 0 {
 		return msg

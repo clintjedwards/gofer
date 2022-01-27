@@ -149,11 +149,23 @@ type PipelineConfig struct {
 	Triggers    []PipelineTriggerConfig // Each trigger represents an automated way to start a pipeline.
 }
 
+type PipelineTriggerState string
+
+const (
+	PipelineTriggerStateUnknown     PipelineTriggerState = "UNKNOWN"
+	PipelineTriggerStateActive      PipelineTriggerState = "ACTIVE"
+	PipelineTriggerStateDisabled    PipelineTriggerState = "DISABLED"
+	PipelineTriggerStateUnsupported PipelineTriggerState = "UNSUPPORTED"
+)
+
 // PipelineTriggerConfig is the representation of the pipeline trigger configuration without HCL elements.
 type PipelineTriggerConfig struct {
 	Kind   string            // The trigger name/id.
 	Label  string            // Custom identifier for the trigger.
 	Config map[string]string // Any configuration the trigger might need per pipeline.
+	// Trigger subscriptions might be unable to be created, in this instance we need to set the
+	// state of the trigger so that the user can understand why there might be a problem with their pipeline.
+	State PipelineTriggerState
 }
 
 // FromHCL returns a normal config struct from a given HCLConfig struct
@@ -176,6 +188,7 @@ func FromHCL(hcl *HCLPipelineConfig) (*PipelineConfig, error) {
 			Kind:   trigger.Kind,
 			Label:  trigger.Label,
 			Config: triggerConfig,
+			State:  PipelineTriggerStateActive,
 		})
 	}
 

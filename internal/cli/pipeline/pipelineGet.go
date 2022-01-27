@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
+	"sort"
 	"strconv"
+	"text/template"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
@@ -141,6 +142,7 @@ type runData struct {
 type taskData struct {
 	Name      string
 	DependsOn []string
+	NumItems  int
 }
 
 type eventData struct {
@@ -153,6 +155,7 @@ type triggerData struct {
 	Kind   string
 	Events []eventData
 	Config map[string]string
+	State  string
 }
 
 func formatStatePrefix(state string) string {
@@ -206,16 +209,22 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 			Kind:   color.YellowString(trigger.Kind),
 			Events: eventDataList,
 			Config: trigger.Config,
+			State:  format.PipelineTriggerConfigState(trigger.State.String()),
 		})
 	}
+
+	sort.Slice(triggerDataList, func(i, j int) bool { return triggerDataList[i].Label < triggerDataList[j].Label })
 
 	tasks := []taskData{}
 	for _, task := range pipeline.Tasks {
 		tasks = append(tasks, taskData{
 			Name:      color.BlueString(task.Id),
 			DependsOn: format.Dependencies(task.DependsOn),
+			NumItems:  len(task.DependsOn), // This is purely for sorting purposes
 		})
 	}
+
+	sort.Slice(tasks, func(i, j int) bool { return tasks[i].NumItems < tasks[j].NumItems })
 
 	data := data{
 		ID:          color.BlueString(pipeline.Id),
@@ -264,7 +273,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 
   🗘 Attached Triggers:
     {{- range $trigger := .Triggers}}
-    ⟳ {{ $trigger.Label }} ({{ $trigger.Kind }}) recent events:
+    ⟳ [{{ $trigger.State }}] {{ $trigger.Label }} ({{ $trigger.Kind }}) {{- if ne (len $trigger.Events) 0 }} recent events{{- end }}:
       {{- range $event := $trigger.Events }}
       + {{$event.Processed}} | {{$event.Details}}
 	  {{- end}}

@@ -88,6 +88,7 @@
 - It currently runs as a singleton, not distributed.
 - Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of git repos is the biggest pain point here.
 - The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
+- It is possible for a trigger subscription to be disabled due to network error and the trigger to still send it a successful event.
 
 ### Documentation
 
@@ -105,3 +106,4 @@
 * When we restoretriggersubscriptions on startup we should NOT hard fail for those triggers instead we should
   expand our model to allow for trigger subscription states that will mark subscriptions as "Active" or "Disabled"
   This allows us to be a bit more clinical with working around how triggers are subscribed.
+* switch all html/templates to text/templates

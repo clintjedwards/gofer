@@ -208,9 +208,19 @@ func (api *API) restoreTriggerSubscriptions() error {
 		for label, subscription := range pipeline.Triggers {
 			trigger, exists := api.triggers[subscription.Kind]
 			if !exists {
-				// Fail early here, as we want to hard fail if there is ever a difference between trigger subscriptions
-				// and gofer service registered triggers.
-				return fmt.Errorf("could not restore trigger subscriptions; trigger %q does not exist within in-memory trigger mapping", trigger.Kind)
+				pipeline.State = models.PipelineStateDisabled
+				subscription.State = models.PipelineTriggerStateDisabled
+				pipeline.Triggers[subscription.Label] = subscription
+				storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
+					Pipeline: pipeline,
+				})
+				if storageErr != nil {
+					log.Error().Err(storageErr).Msg("could not update pipeline")
+				}
+				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_kind", subscription.Kind).
+					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
+					Msg("could not restore subscription; trigger requested does not exist within Gofer service")
+				continue
 			}
 
 			conn, err := grpcDial(trigger.URL)
@@ -224,8 +234,19 @@ func (api *API) restoreTriggerSubscriptions() error {
 
 			config, err := api.populateSecrets(pipeline.Namespace, pipeline.ID, subscription.Config)
 			if err != nil {
-				return fmt.Errorf("could not subscribe trigger %q for pipeline %q - namespace %q; %w",
-					subscription.Label, pipeline.ID, pipeline.Namespace, err)
+				pipeline.State = models.PipelineStateDisabled
+				subscription.State = models.PipelineTriggerStateDisabled
+				pipeline.Triggers[subscription.Label] = subscription
+				storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
+					Pipeline: pipeline,
+				})
+				if storageErr != nil {
+					log.Error().Err(storageErr).Msg("could not update pipeline")
+				}
+				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_kind", subscription.Kind).
+					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
+					Msg("could not restore subscription; could not find appropriate secrets")
+				continue
 			}
 
 			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
@@ -236,11 +257,23 @@ func (api *API) restoreTriggerSubscriptions() error {
 				Config:               config,
 			})
 			if err != nil {
-				return fmt.Errorf("could not subscribe trigger subscription %q for pipeline %q - namespace %q; %w",
-					subscription.Label, pipeline.ID, pipeline.Namespace, err)
+				pipeline.State = models.PipelineStateDisabled
+				subscription.State = models.PipelineTriggerStateDisabled
+				pipeline.Triggers[subscription.Label] = subscription
+				storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
+					Pipeline: pipeline,
+				})
+				if storageErr != nil {
+					log.Error().Err(storageErr).Msg("could not update pipeline")
+				}
+				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_kind", subscription.Kind).
+					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
+					Msg("could not restore subscription; error contacting trigger")
+				continue
 			}
 
-			log.Debug().Str("pipeline", pipeline.ID).Str("trigger_name", trigger.Kind).Msg("restored subscription")
+			log.Debug().Str("pipeline", pipeline.ID).Str("trigger_label", subscription.Label).
+				Str("trigger_kind", trigger.Kind).Msg("restored subscription")
 		}
 	}
 

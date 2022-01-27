@@ -15,6 +15,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/storage"
 	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
 	getter "github.com/hashicorp/go-getter/v2"
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/metadata"
 )
@@ -122,29 +123,35 @@ func (api *API) createPipeline(location string, config *models.PipelineConfig) (
 		return nil, err
 	}
 
-	// We track a separate list of pipeline triggers so that if all triggers don't register
-	// correctly we can properly update the pipeline with the correct trigger list.
-	actualTriggerList := map[string]models.PipelineTriggerConfig{}
+	var configErrs *multierror.Error
 	for _, triggerConfig := range config.Triggers {
 		err := api.subscribeTrigger(newPipeline.Namespace, newPipeline.ID, &triggerConfig)
 		if err != nil {
 			newPipeline.State = models.PipelineStateDisabled
-			newPipeline.Triggers = actualTriggerList
-
-			storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
-				Pipeline: newPipeline,
-			})
-			if storageErr != nil {
-				log.Error().Err(storageErr).Msg("could not update pipeline after trigger failure")
-			}
-
-			return nil, fmt.Errorf("trigger configuration error: %v; %w", err, ErrPipelineConfigNotValid)
+			trigger := newPipeline.Triggers[triggerConfig.Label]
+			trigger.State = models.PipelineTriggerStateDisabled
+			newPipeline.Triggers[triggerConfig.Label] = trigger
+			configErrs = multierror.Append(configErrs, err)
+			continue
 		}
 
-		actualTriggerList[triggerConfig.Label] = triggerConfig
+		trigger := newPipeline.Triggers[triggerConfig.Label]
+		trigger.State = models.PipelineTriggerStateActive
+		newPipeline.Triggers[triggerConfig.Label] = trigger
 
 		log.Debug().Str("kind", triggerConfig.Kind).Str("trigger_label", triggerConfig.Label).Str("pipeline_id", newPipeline.ID).
 			Msg("successfully subscribed trigger")
+	}
+
+	err = api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
+		Pipeline: newPipeline,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("could not update pipeline")
+	}
+
+	if configErrs.ErrorOrNil() != nil {
+		return nil, fmt.Errorf("pipeline configuration error: %v; %w", configErrs, ErrPipelineConfigNotValid)
 	}
 
 	return newPipeline, nil
@@ -261,17 +268,18 @@ func (api *API) updatePipeline(url, namespace, id string, hclConfig *models.HCLP
 	// 4) For things that aren't different by name OR config we do nothing.
 	removals, additions := findTriggerDifferences(currentTriggers, config.Triggers)
 
+	var configErrs *multierror.Error
 	for _, sub := range removals {
-		err := api.unsubscribeTrigger(sub, currentPipeline)
-		if err != nil {
-			currentPipeline.State = models.PipelineStateDisabled
-			currentPipeline.Triggers = currentTriggerMap
-			storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
-			if storageErr != nil {
-				return nil, err
+		sub := sub
+		if sub.State == models.PipelineTriggerStateActive {
+			err := api.unsubscribeTrigger(sub, currentPipeline)
+			if err != nil {
+				currentPipeline.State = models.PipelineStateDisabled
+				sub.State = models.PipelineTriggerStateDisabled
+				currentTriggerMap[sub.Label] = sub
+				configErrs = multierror.Append(configErrs, err)
+				continue
 			}
-
-			return nil, fmt.Errorf("trigger configuration error: %v; %w", err, ErrPipelineConfigNotValid)
 		}
 		delete(currentTriggerMap, sub.Label)
 	}
@@ -279,21 +287,26 @@ func (api *API) updatePipeline(url, namespace, id string, hclConfig *models.HCLP
 	for _, newTrigger := range additions {
 		err := api.subscribeTrigger(currentPipeline.Namespace, currentPipeline.ID, &newTrigger)
 		if err != nil {
+			newTrigger := newTrigger
 			currentPipeline.State = models.PipelineStateDisabled
-			currentPipeline.Triggers = currentTriggerMap
-			storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
-			if storageErr != nil {
-				return nil, err
-			}
-
-			return nil, fmt.Errorf("trigger configuration error: %v; %w", err, ErrPipelineConfigNotValid)
+			newTrigger.State = models.PipelineTriggerStateDisabled
+			currentTriggerMap[newTrigger.Label] = newTrigger
+			configErrs = multierror.Append(configErrs, err)
+			continue
 		}
+		newTrigger.State = models.PipelineTriggerStateActive
 		currentTriggerMap[newTrigger.Label] = newTrigger
 	}
+
+	currentPipeline.Triggers = currentTriggerMap
 
 	err = api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
 	if err != nil {
 		return nil, err
+	}
+
+	if configErrs.ErrorOrNil() != nil {
+		return nil, fmt.Errorf("pipeline configuration error: %v; %w", configErrs, ErrPipelineConfigNotValid)
 	}
 
 	return currentPipeline, nil
