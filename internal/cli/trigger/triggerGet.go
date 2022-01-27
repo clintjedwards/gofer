@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
+	"text/template"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"

@@ -39,8 +39,8 @@ func (t *trigger) checkTimeFrames() {
 	for _, subscription := range t.subscriptions {
 		if subscription.timeframe.Able(time.Now()) {
 			t.events <- &sdkProto.CheckResponse{
-				Details: fmt.Sprintf("Triggered due to %q being within the timeframe %q",
-					time.Now().String(), subscription.timeframe.Expression),
+				Details: fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q",
+					time.Now().Format(time.RFC1123), subscription.timeframe.Expression),
 				PipelineTriggerLabel: subscription.pipelineTriggerLabel,
 				PipelineId:           subscription.pipeline,
 				NamespaceId:          subscription.namespace,

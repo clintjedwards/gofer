@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"strconv"
+	"text/template"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
