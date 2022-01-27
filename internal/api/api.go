@@ -51,8 +51,8 @@ var (
 	// ErrPipelineRunsInProgress is returned when a request is made against a pipeline with currently in progress runs.
 	ErrPipelineRunsInProgress = errors.New("api: pipeline has runs which are still in progress")
 
-	// ErrTriggerConfigNotValid is returned when a pipeline configuration contains is not valid for the trigger requested.
-	ErrTriggerConfigNotValid = errors.New("api: trigger configuration is invalid")
+	// ErrPipelineConfigNotValid is returned when a pipeline configuration contains is not valid for the trigger requested.
+	ErrPipelineConfigNotValid = errors.New("api: pipeline configuration is invalid")
 
 	// ErrTriggerNotFound is returned when a pipeline configuration contains a trigger that was not registered with the API.
 	ErrTriggerNotFound = errors.New("api: trigger is not found")

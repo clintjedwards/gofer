@@ -199,6 +199,11 @@ func (api *API) CreatePipelineRaw(ctx context.Context, request *proto.CreatePipe
 			return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition,
 				"could not create pipeline; %v;", err)
 		}
+		if errors.Is(err, ErrPipelineConfigNotValid) {
+			return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition,
+				"pipeline creation encountered errors due to configuration; the pipeline has been created, but put into"+
+					" disabled mode. please fix the configuration and then run 'pipeline update'; %v;", err)
+		}
 		return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.Internal, "could not create pipeline: %v", err)
 	}
 
@@ -250,6 +255,11 @@ func (api *API) CreatePipelineByURL(ctx context.Context, request *proto.CreatePi
 			return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition,
 				"could not create pipeline; %v;", err)
 		}
+		if errors.Is(err, ErrPipelineConfigNotValid) {
+			return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition,
+				"pipeline creation encountered errors due to configuration; the pipeline has been created, but put into"+
+					" disabled mode. please fix the configuration and then run 'pipeline update'; %v;", err)
+		}
 		return &proto.CreatePipelineByURLResponse{}, status.Error(codes.Internal, "could not create pipeline")
 	}
 
@@ -299,6 +309,9 @@ func (api *API) UpdatePipelineRaw(ctx context.Context, request *proto.UpdatePipe
 		if errors.Is(err, ErrTriggerNotFound) {
 			return &proto.UpdatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
 		}
+		if errors.Is(err, ErrPipelineConfigNotValid) {
+			return &proto.UpdatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
+		}
 		return &proto.UpdatePipelineRawResponse{}, status.Errorf(codes.Internal, "could not update pipeline; %v", err)
 	}
 
@@ -345,6 +358,9 @@ func (api *API) UpdatePipelineByURL(ctx context.Context, request *proto.UpdatePi
 			return &proto.UpdatePipelineByURLResponse{}, status.Error(codes.FailedPrecondition, "pipeline must have no in progress runs before running update")
 		}
 		if errors.Is(err, ErrTriggerNotFound) {
+			return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
+		}
+		if errors.Is(err, ErrPipelineConfigNotValid) {
 			return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
 		}
 		return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.Internal, "could not update pipeline; %v", err)

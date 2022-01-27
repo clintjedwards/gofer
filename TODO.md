@@ -1,7 +1,5 @@
 ### Top remaining features before v1.0.0
 
-#### If you fail a trigger register we should NOT complete with a valid pipeline.
-
 #### \* We need to put a validation check for environment variables that do not have a key since those are illegal
 
 - This validation needs to be put both in the pipeline config checks AND before we pass in trigger vars.
@@ -104,3 +102,6 @@
   - How the URL is formed
 
 * when we can't connect to a trigger we should print the logs output if it exists.
+* When we restoretriggersubscriptions on startup we should NOT hard fail for those triggers instead we should
+  expand our model to allow for trigger subscription states that will mark subscriptions as "Active" or "Disabled"
+  This allows us to be a bit more clinical with working around how triggers are subscribed.

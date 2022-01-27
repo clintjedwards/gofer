@@ -41,7 +41,7 @@ type Pipeline struct {
 	State PipelineState   `json:"state"`
 	Tasks map[string]Task `json:"tasks"` // Map for quickly finding pipeline tasks and assists with DAG generation.
 
-	// Triggers is a listing of trigger ids to the their trigger subscriptions
+	// Triggers is a listing of trigger labels to the their trigger subscription objects
 	Triggers map[string]PipelineTriggerConfig `json:"triggers"`
 	Objects  []string                         `json:"objects"` // Object keys that are stored at the pipeline level.
 }

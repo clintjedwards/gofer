@@ -106,8 +106,8 @@ func (api *API) configTriggersIsValid(triggers []models.PipelineTriggerConfig) e
 	return nil
 }
 
-// createPipeline creates a new pipeline based on configuration. If the pipeline triggers mention in the config
-//  don't exist the entire pipeline creation process is cancelled.
+// createPipeline creates a new pipeline based on configuration. It also attempts to subscribe the proper triggers
+// with the given configs. If this step fails the pipeline is still created, but it's state is in a disabled mode.
 func (api *API) createPipeline(location string, config *models.PipelineConfig) (*models.Pipeline, error) {
 	newPipeline := models.NewPipeline(location, config)
 	newPipeline.State = models.PipelineStateActive
@@ -122,16 +122,26 @@ func (api *API) createPipeline(location string, config *models.PipelineConfig) (
 		return nil, err
 	}
 
+	// We track a separate list of pipeline triggers so that if all triggers don't register
+	// correctly we can properly update the pipeline with the correct trigger list.
+	actualTriggerList := map[string]models.PipelineTriggerConfig{}
 	for _, triggerConfig := range config.Triggers {
 		err := api.subscribeTrigger(newPipeline.Namespace, newPipeline.ID, &triggerConfig)
 		if err != nil {
-			unsubErr := api.unsubscribeAllTriggers(newPipeline)
-			if unsubErr != nil {
-				return nil, err
+			newPipeline.State = models.PipelineStateDisabled
+			newPipeline.Triggers = actualTriggerList
+
+			storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
+				Pipeline: newPipeline,
+			})
+			if storageErr != nil {
+				log.Error().Err(storageErr).Msg("could not update pipeline after trigger failure")
 			}
 
-			return nil, err
+			return nil, fmt.Errorf("trigger configuration error: %v; %w", err, ErrPipelineConfigNotValid)
 		}
+
+		actualTriggerList[triggerConfig.Label] = triggerConfig
 
 		log.Debug().Str("kind", triggerConfig.Kind).Str("trigger_label", triggerConfig.Label).Str("pipeline_id", newPipeline.ID).
 			Msg("successfully subscribed trigger")
@@ -140,34 +150,22 @@ func (api *API) createPipeline(location string, config *models.PipelineConfig) (
 	return newPipeline, nil
 }
 
-// unsubscribeAllTriggers removes all triggers from a particular pipeline.
+// unsubscribeAllTriggers removes all triggers from a particular pipeline object.
 func (api *API) unsubscribeAllTriggers(pipeline *models.Pipeline) error {
-	for label := range pipeline.Triggers {
-		err := api.unsubscribeTrigger(label, pipeline)
+	for _, sub := range pipeline.Triggers {
+		err := api.unsubscribeTrigger(sub, pipeline)
 		if err != nil {
 			log.Error().Err(err).Msg("could not unsubscribe trigger")
 			continue
 		}
-		delete(pipeline.Triggers, label)
-	}
-
-	err := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
-		Pipeline: pipeline,
-	})
-	if err != nil {
-		return err
+		delete(pipeline.Triggers, sub.Label)
 	}
 
 	return nil
 }
 
-// unsubscribeTrigger
-func (api *API) unsubscribeTrigger(triggerLabel string, pipeline *models.Pipeline) error {
-	subscription, exists := pipeline.Triggers[triggerLabel]
-	if !exists {
-		return fmt.Errorf("could not find trigger label %q; %w", triggerLabel, ErrTriggerNotFound)
-	}
-
+// unsubscribeTrigger contacts the trigger and remove the pipeline subscription.
+func (api *API) unsubscribeTrigger(subscription models.PipelineTriggerConfig, pipeline *models.Pipeline) error {
 	trigger, exists := api.triggers[subscription.Kind]
 	if !exists {
 		return fmt.Errorf("could not find trigger kind %q in registered trigger list", subscription.Kind)
@@ -259,22 +257,38 @@ func (api *API) updatePipeline(url, namespace, id string, hclConfig *models.HCLP
 	// triggers.
 	// 2) For anything new that shows up we add to a subscribe list
 	// 3) For anything that is not different by name we make sure it not different by config
-	// IF it is different by config, we unsubscribe the old one and subscribe the new one
+	// If it is different by config, we unsubscribe the old one and subscribe the new one
 	// 4) For things that aren't different by name OR config we do nothing.
 	removals, additions := findTriggerDifferences(currentTriggers, config.Triggers)
 
 	for _, sub := range removals {
-		// TODO(clintjedwards): This is best effort, but it probably shouldn't be.
-		// maybe when we fail to unsubscribe a trigger and get into this half state we should
-		// disable the pipeline.
-		_ = api.unsubscribeTrigger(sub.Label, currentPipeline)
+		err := api.unsubscribeTrigger(sub, currentPipeline)
+		if err != nil {
+			currentPipeline.State = models.PipelineStateDisabled
+			currentPipeline.Triggers = currentTriggerMap
+			storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
+			if storageErr != nil {
+				return nil, err
+			}
+
+			return nil, fmt.Errorf("trigger configuration error: %v; %w", err, ErrPipelineConfigNotValid)
+		}
+		delete(currentTriggerMap, sub.Label)
 	}
 
 	for _, newTrigger := range additions {
 		err := api.subscribeTrigger(currentPipeline.Namespace, currentPipeline.ID, &newTrigger)
 		if err != nil {
-			return nil, err
+			currentPipeline.State = models.PipelineStateDisabled
+			currentPipeline.Triggers = currentTriggerMap
+			storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
+			if storageErr != nil {
+				return nil, err
+			}
+
+			return nil, fmt.Errorf("trigger configuration error: %v; %w", err, ErrPipelineConfigNotValid)
 		}
+		currentTriggerMap[newTrigger.Label] = newTrigger
 	}
 
 	err = api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
