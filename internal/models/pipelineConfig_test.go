@@ -72,11 +72,13 @@ func TestFullParse(t *testing.T) {
 				Kind:   "cron",
 				Label:  "every_single_minute",
 				Config: map[string]string{"expression": "* * * * *"},
+				State:  PipelineTriggerStateActive,
 			},
 			{
 				Kind:   "interval",
 				Label:  "every_20_seconds",
 				Config: map[string]string{"every": "20"},
+				State:  PipelineTriggerStateActive,
 			},
 		},
 	}
