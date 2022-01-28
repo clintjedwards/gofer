@@ -313,7 +313,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 	newTaskRun := models.NewTaskRun(run, task)
 
 	// These environment variables are present on every task run
-	CurrentRunSpecificVars := map[string]string{
+	RunSpecificVars := map[string]string{
 		"GOFER_PIPELINE_ID": run.PipelineID,
 		"GOFER_RUN_ID":      strconv.Itoa(int(run.ID)),
 		"GOFER_TASK_ID":     task.ID,
@@ -330,7 +330,15 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 	// 2) We pass in the task specific envvars defined by the user in the pipeline config.
 	// 3) Lastly we pass in the trigger's defined envvars, these are the most variable and most important since
 	// they map back to the user's intent for a specific run.
-	envVars := mergeMaps(CurrentRunSpecificVars, task.EnvVars, run.Variables)
+	envVars := mergeMaps(RunSpecificVars, task.EnvVars, run.Variables)
+
+	// We need to remove any envvars that have been added with an empty key
+	for key := range envVars {
+		key := strings.TrimSpace(key)
+		if key == "" {
+			delete(envVars, key)
+		}
+	}
 
 	newTaskRun.EnvVars = envVars
 	newTaskRun.State = models.ContainerStateWaiting

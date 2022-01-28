@@ -12,6 +12,8 @@
 
 #### Generate run level auth keys and allow people to use the binary to do stuff like download their favorite key from the object store.
 
+#### Possibly an event system so people and things can work off events.
+
 #### Nomad scheduler integration
 
 #### An "export" function for pipeline configuration
@@ -97,9 +99,5 @@
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
-- Document the events endpoint
-  - How to send events to triggers
-  - How it works
-  - How the URL is formed
 
 * when we can't connect to a trigger we should print the logs output if it exists.

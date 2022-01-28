@@ -93,6 +93,13 @@ type HCLPipelineTaskConfig struct {
 }
 
 func (config *HCLPipelineTaskConfig) Validate() error {
+	for key := range config.EnvVars {
+		key := strings.TrimSpace(key)
+		if key == "" {
+			return fmt.Errorf("envvar key fields cannot be empty")
+		}
+	}
+
 	configDeref := *config
 	return validation.ValidateStruct(&configDeref,
 		// Name cannot be empty, greater than 70 chars, and must not contain spaces/special chars etc.
