@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/config"
+	"github.com/clintjedwards/gofer/internal/eventbus"
 	"github.com/clintjedwards/gofer/internal/models"
-	objectStore "github.com/clintjedwards/gofer/internal/objectStore"
-	objectstore "github.com/clintjedwards/gofer/internal/objectStore"
+	"github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
@@ -31,6 +31,7 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -95,9 +96,14 @@ type API struct {
 	// quickly with the containers and their potentially changing endpoints.
 	triggers map[string]*models.Trigger
 
-	// AcceptNewEvents controls if pipelines can trigger runs globally. If this is set to false the entire gofer service will cease
-	// to schedule new runs.
-	acceptNewEvents bool
+	// ignorePipelineRunEvents controls if pipelines can trigger runs globally. If this is set to false the entire Gofer
+	// service will not schedule new runs.
+	ignorePipelineRunEvents *atomic.Bool
+
+	// events acts as an event bus for the Gofer application. It is used throughout the whole application to give
+	// different parts of the application the ability to listen for and respond to events that might happen in other
+	// parts.
+	events *eventbus.EventBus
 
 	// We opt out of forward compatibility with this embedded interface. This is required by GRPC.
 	//
@@ -109,7 +115,12 @@ type API struct {
 }
 
 // NewAPI creates a new instance of the main Gofer API service.
-func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engine, objectStore objectstore.Engine, secretStore secretStore.Engine) (*API, error) {
+func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engine, objectStore objectStore.Engine, secretStore secretStore.Engine) (*API, error) {
+	eventbus, err := eventbus.New(storage, config.EventLogRetention, config.PruneEventsInterval)
+	if err != nil {
+		return nil, fmt.Errorf("could not init event bus: %w", err)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	newAPI := &API{
@@ -117,16 +128,17 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 			ctx:    ctx,
 			cancel: cancel,
 		},
-		config:          config,
-		storage:         storage,
-		scheduler:       scheduler,
-		objectStore:     objectStore,
-		secretStore:     secretStore,
-		acceptNewEvents: config.AcceptEventsOnStartup,
-		triggers:        map[string]*models.Trigger{},
+		config:                  config,
+		storage:                 storage,
+		events:                  eventbus,
+		scheduler:               scheduler,
+		objectStore:             objectStore,
+		secretStore:             secretStore,
+		ignorePipelineRunEvents: atomic.NewBool(config.IgnorePipelineRunEvents),
+		triggers:                map[string]*models.Trigger{},
 	}
 
-	err := newAPI.createDefaultNamespace()
+	err = newAPI.createDefaultNamespace()
 	if err != nil {
 		return nil, fmt.Errorf("could not create default namespace: %w", err)
 	}
@@ -148,15 +160,20 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 
 	// These two functions are responsible for gofer's trigger event loop system. The first launches goroutines that
 	// consumes events from triggers and the latter processes them into pipeline runs.
-	events := newAPI.checkForTriggerEvents(newAPI.context.ctx)
-	go newAPI.processTriggerEvents(events)
+	newAPI.checkForTriggerEvents(newAPI.context.ctx)
+	go func() {
+		err := newAPI.processTriggerEvents()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	return newAPI, nil
 }
 
 // cleanup gracefully cleans up all goroutines to ensure a clean shutdown.
 func (api *API) cleanup() {
-	api.acceptNewEvents = false
+	api.ignorePipelineRunEvents.Store(true)
 
 	// Send graceful stop to all triggers
 	api.stopTriggers()
@@ -262,6 +279,8 @@ func (api *API) createDefaultNamespace() error {
 		return err
 	}
 
+	api.events.Publish(models.NewEventCreatedNamespace(*namespace))
+
 	return nil
 }
 
@@ -280,19 +299,59 @@ func (api *API) createDefaultNamespace() error {
 //     -> update logs with new logs.
 //   * If the scheduler has no record of this container ever running then assume the state is unknown.
 func (api *API) findOrphans() {
-	// Collect all in-progress run.
-	runRegistration, err := api.storage.GetAllRunRegistrations(storage.GetAllRunRegistrationsRequest{})
-	if err != nil {
-		log.Error().Err(err).Msg("could not complete find orphans function")
+	type orphankey struct {
+		namespace string
+		pipeline  string
+		run       int64
 	}
 
-	for registration := range runRegistration {
-		log.Info().Str("namespace", registration.Namespace).
-			Str("pipeline", registration.Pipeline).Int64("run", registration.Run).Msg("attempting to complete orphaned run")
-		err := api.repairOrphanRun(registration.Namespace, registration.Pipeline, registration.Run)
+	// Collect all events.
+	events := api.events.GetAll(false)
+	orphanedRuns := map[orphankey]struct{}{}
+
+	// Search events for any orphan runs.
+	for event := range events {
+		switch evt := event.(type) {
+		case *models.EventStartedRun:
+			_, exists := orphanedRuns[orphankey{
+				namespace: evt.NamespaceID,
+				pipeline:  evt.PipelineID,
+				run:       evt.RunID,
+			}]
+
+			if !exists {
+				orphanedRuns[orphankey{
+					namespace: evt.NamespaceID,
+					pipeline:  evt.PipelineID,
+					run:       evt.RunID,
+				}] = struct{}{}
+			}
+
+		case *models.EventCompletedRun:
+			_, exists := orphanedRuns[orphankey{
+				namespace: evt.NamespaceID,
+				pipeline:  evt.PipelineID,
+				run:       evt.RunID,
+			}]
+
+			if exists {
+				delete(orphanedRuns, orphankey{
+					namespace: evt.NamespaceID,
+					pipeline:  evt.PipelineID,
+					run:       evt.RunID,
+				})
+			}
+		}
+	}
+
+	for orphan := range orphanedRuns {
+		log.Info().Str("namespace", orphan.namespace).Str("pipeline", orphan.pipeline).
+			Int64("run", orphan.run).Msg("attempting to complete orphaned run")
+
+		err := api.repairOrphanRun(orphan.namespace, orphan.pipeline, orphan.run)
 		if err != nil {
-			log.Error().Err(err).Str("namespace", registration.Namespace).
-				Str("pipeline", registration.Pipeline).Int64("run", registration.Run).Msg("could not repair orphan run")
+			log.Error().Err(err).Str("namespace", orphan.namespace).
+				Str("pipeline", orphan.pipeline).Int64("run", orphan.run).Msg("could not repair orphan run")
 		}
 	}
 }

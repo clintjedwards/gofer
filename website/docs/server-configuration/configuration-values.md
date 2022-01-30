@@ -14,13 +14,17 @@ The most up to date config file values can be found by [reading the code](https:
 
 ## Values
 
-- #### `accept_events_on_startup` (bool: _true_)
+- #### `ignore_pipeline_run_events` (bool: _false_)
 
   Controls the ability for the Gofer service to execute jobs on startup. If this is set to false you can set it to true manually using the CLI command `gofer service toggle-event-ingress`.
 
-- #### `event_loop_channel_size` (int: _100_)
+- #### `event_log_retention` (string: _4380h_)
 
-  The size of the channel that holds events from triggers. Increase this to increase the throughput of Gofer's triggered events but also increase the memory footprint.
+  The limit (in hours) for how long Gofer will store events. Larger values will lead to larger database footprints. The defalt retention period is 6 months.
+
+- #### `prune_events_interval` (string: _3h_)
+
+  The limit (in hours) for how long Gofer will store events. Larger values will lead to larger database footprints. The defalt retention period is 6 months.
 
 - #### `host` (string: _localhost:8080_)
 
@@ -60,9 +64,7 @@ The most up to date config file values can be found by [reading the code](https:
 
 - #### `database` (block)
 
-  The settings for the backend database Gofer will use to store state.
-
-  You can find [more information on the database block here.](../storage/overview)
+  The settings for the backend database Gofer will use to store state. Gofer's only database option is boltdb.
 
   - #### `engine` (string: _bolt_)
     The engine Gofer will use to store state. The accepted values here are "bolt".

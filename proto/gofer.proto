@@ -103,19 +103,17 @@ service Gofer {
   // ListTriggers lists all triggers currently registered within gofer.
   rpc ListTriggers(ListTriggersRequest) returns (ListTriggersResponse);
 
-  // GetTriggerEvent returns a specific trigger event for a pipeline by ID. This
-  // is useful to check out the details of a specific triggered run instance.
-  rpc GetTriggerEvent(GetTriggerEventRequest) returns (GetTriggerEventResponse);
+  ////////////// Event RPCs //////////////
+  //
+  // Gofer emits events for actions that happen within it's purview. You can use
+  // the event api to get a list of all events or request specific events.
 
-  // BatchGetTriggerEvents returns multiple trigger events by ID.
-  rpc BatchGetTriggerEvents(BatchGetTriggerEventsRequest)
-      returns (BatchGetTriggerEventsResponse);
+  // GetEvent returns the details of a single event.
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
 
-  // ListTriggerEvents returns a list of all trigger events by pipeline ID.
-  // Pagination can be controlled via the offset and limit parameters of the
-  // request.
-  rpc ListTriggerEvents(ListTriggerEventsRequest)
-      returns (ListTriggerEventsResponse);
+  // ListEvents returns a streaming list of all events, ordered by
+  // oldest to newest.
+  rpc ListEvents(ListEventsRequest) returns (stream ListEventsResponse);
 
   ////////////// Run RPCs //////////////
   //

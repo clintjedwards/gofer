@@ -14,15 +14,14 @@ import (
 
 // GetSystemInfo returns system information and health
 func (api *API) GetSystemInfo(context context.Context, request *proto.GetSystemInfoRequest) (*proto.GetSystemInfoResponse, error) {
-	version, commit, buildTime := parseVersion(appVersion)
+	version, commit := parseVersion(appVersion)
 
 	return &proto.GetSystemInfoResponse{
-		BuildTime:       buildTime,
-		Commit:          commit,
-		DevmodeEnabled:  api.config.Server.DevMode,
-		FrontendEnabled: false,
-		Version:         version,
-		AcceptNewEvents: api.acceptNewEvents,
+		Commit:                  commit,
+		DevmodeEnabled:          api.config.Server.DevMode,
+		FrontendEnabled:         false,
+		Version:                 version,
+		IgnorePipelineRunEvents: api.ignorePipelineRunEvents.Load(),
 	}, nil
 }
 
@@ -31,10 +30,10 @@ func (api *API) ToggleEventIngress(ctx context.Context, request *proto.ToggleEve
 		return &proto.ToggleEventIngressResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
-	api.acceptNewEvents = !api.acceptNewEvents
-	log.Debug().Bool("accept_new_events", api.acceptNewEvents).Msg("toggled event ingress")
+	api.ignorePipelineRunEvents.Store(api.ignorePipelineRunEvents.Toggle())
+	log.Info().Bool("ignore_pipeline_run_events", api.ignorePipelineRunEvents.Load()).Msg("toggled event ingress")
 	return &proto.ToggleEventIngressResponse{
-		Value: api.acceptNewEvents,
+		Value: api.ignorePipelineRunEvents.Load(),
 	}, nil
 }
 

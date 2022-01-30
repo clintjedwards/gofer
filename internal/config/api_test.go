@@ -19,14 +19,17 @@ func TestAPISampleFromFile(t *testing.T) {
 	}
 
 	expected := API{
-		AcceptEventsOnStartup: true,
-		EventLoopChannelSize:  100,
-		Host:                  "localhost:8080",
-		LogLevel:              "info",
-		RunLogExpiry:          20,
-		TaskRunLogsDir:        "/tmp",
-		TaskRunStopTimeout:    time.Minute * 5,
-		TaskRunStopTimeoutHCL: "5m",
+		IgnorePipelineRunEvents: false,
+		EventLogRetention:       time.Hour * 4380,
+		EventLogRetentionHCL:    "4380h",
+		PruneEventsInterval:     time.Hour * 3,
+		PruneEventsIntervalHCL:  "3h",
+		Host:                    "localhost:8080",
+		LogLevel:                "info",
+		RunLogExpiry:            20,
+		TaskRunLogsDir:          "/tmp",
+		TaskRunStopTimeout:      time.Minute * 5,
+		TaskRunStopTimeoutHCL:   "5m",
 
 		ExternalEventsAPI: &ExternalEventsAPI{
 			Enable: true,
@@ -83,16 +86,6 @@ func TestAPISampleFromFile(t *testing.T) {
 			HealthcheckIntervalHCL: "30s",
 			TLSCertPath:            "./localhost.crt",
 			TLSKeyPath:             "./localhost.key",
-			RegisteredTriggers: []Trigger{
-				{
-					Kind:  "cron",
-					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest",
-				},
-				{
-					Kind:  "interval",
-					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest",
-				},
-			},
 		},
 	}
 
@@ -103,14 +96,14 @@ func TestAPISampleFromFile(t *testing.T) {
 }
 
 func TestAPISampleOverwriteWithEnvs(t *testing.T) {
-	_ = os.Setenv("GOFER_ACCEPT_EVENTS_ON_STARTUP", "false")
+	_ = os.Setenv("GOFER_IGNORE_PIPELINE_RUN_EVENTS", "false")
 	_ = os.Setenv("GOFER_EXTERNAL_EVENTS_API_ENABLE", "false")
 	_ = os.Setenv("GOFER_DATABASE_MAX_RESULTS_LIMIT", "1000")
 	_ = os.Setenv("GOFER_OBJECTSTORE_RUN_OBJECT_EXPIRY", "1000")
 	_ = os.Setenv("GOFER_SCHEDULER_DOCKER_PRUNE", "false")
 	_ = os.Setenv("GOFER_SERVER_TLS_CERT_PATH", "./test")
 	_ = os.Setenv("GOFER_TRIGGERS_TLS_CERT_PATH", "./test")
-	defer os.Unsetenv("GOFER_ACCEPT_EVENTS_ON_STARTUP")
+	defer os.Unsetenv("GOFER_IGNORE_PIPELINE_RUN_EVENTS")
 	defer os.Unsetenv("GOFER_EXTERNAL_EVENTS_API_ENABLE")
 	defer os.Unsetenv("GOFER_DATABASE_MAX_RESULTS_LIMIT")
 	defer os.Unsetenv("GOFER_OBJECTSTORE_RUN_OBJECT_EXPIRY")
@@ -130,14 +123,17 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 	}
 
 	expected := API{
-		AcceptEventsOnStartup: false,
-		EventLoopChannelSize:  100,
-		Host:                  "localhost:8080",
-		LogLevel:              "info",
-		RunLogExpiry:          20,
-		TaskRunLogsDir:        "/tmp",
-		TaskRunStopTimeout:    time.Minute * 5,
-		TaskRunStopTimeoutHCL: "5m",
+		IgnorePipelineRunEvents: false,
+		EventLogRetention:       time.Hour * 4380,
+		EventLogRetentionHCL:    "4380h",
+		PruneEventsInterval:     time.Hour * 3,
+		PruneEventsIntervalHCL:  "3h",
+		Host:                    "localhost:8080",
+		LogLevel:                "info",
+		RunLogExpiry:            20,
+		TaskRunLogsDir:          "/tmp",
+		TaskRunStopTimeout:      time.Minute * 5,
+		TaskRunStopTimeoutHCL:   "5m",
 
 		ExternalEventsAPI: &ExternalEventsAPI{
 			Enable: false,
@@ -194,16 +190,6 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 			HealthcheckIntervalHCL: "30s",
 			TLSCertPath:            "./test",
 			TLSKeyPath:             "./localhost.key",
-			RegisteredTriggers: []Trigger{
-				{
-					Kind:  "cron",
-					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest",
-				},
-				{
-					Kind:  "interval",
-					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest",
-				},
-			},
 		},
 	}
 

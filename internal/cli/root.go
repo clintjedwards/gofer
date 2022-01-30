@@ -5,12 +5,11 @@ package cli
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/config"
+	"github.com/clintjedwards/gofer/internal/cli/event"
 	"github.com/clintjedwards/gofer/internal/cli/namespace"
 	"github.com/clintjedwards/gofer/internal/cli/pipeline"
 	"github.com/clintjedwards/gofer/internal/cli/run"
@@ -20,7 +19,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var appVersion = "0.0.dev_000000_33333"
+var appVersion = "0.0.dev_000000"
 
 // RootCmd is the base of the cli
 var RootCmd = &cobra.Command{
@@ -49,6 +48,7 @@ func init() {
 	RootCmd.AddCommand(trigger.CmdTrigger)
 	RootCmd.AddCommand(config.CmdConfig)
 	RootCmd.AddCommand(namespace.CmdNamespace)
+	RootCmd.AddCommand(event.CmdEvent)
 
 	RootCmd.PersistentFlags().String("config", "", "configuration file path")
 	RootCmd.PersistentFlags().Bool("detail", false, "show extra detail for some commands (ex. Exact time instead of humanized)")
@@ -64,13 +64,9 @@ func Execute() error {
 }
 
 func humanizeVersion(version string) string {
-	splitVersion := strings.Split(version, "_")
-
-	semver := splitVersion[0]
-	hash := splitVersion[1]
-	i, _ := strconv.Atoi(splitVersion[2])
-	unixTime := time.Unix(int64(i), 0)
-	time := unixTime.Format("Mon Jan 2 15:04 2006")
-
-	return fmt.Sprintf("gofer %s [%s] %s\n", semver, hash, time)
+	semver, hash, err := strings.Cut(version, "_")
+	if !err {
+		return ""
+	}
+	return fmt.Sprintf("gofer %s [%s]\n", semver, hash)
 }

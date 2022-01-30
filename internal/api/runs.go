@@ -22,11 +22,12 @@ const (
 	// GOFEREOF is a special string marker we include at the end of log files.
 	// It denotes that no further logs will be written. This is to provide the functionality for downstream
 	// applications to follow log files and not also have to monitor the container for state to know when
-	// logs will not longer be printed.
+	// logs will no longer be printed.
 	GOFEREOF string = "GOFER_EOF"
 )
 
-// mergeMaps combines many string maps in a "last one in wins" format.
+// mergeMaps combines many string maps in a "last one in wins" format. Meaning that in case of key collision
+// the last map to be added will overwrite the value of the previous key.
 func mergeMaps(maps ...map[string]string) map[string]string {
 	newMap := map[string]string{}
 
@@ -231,6 +232,7 @@ func parseSecretKeyFromString(variable string) string {
 // that have not been scheduled yet, but will be after other task runs have finished.
 func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskRun) {
 	taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+	api.events.Publish(models.NewEventStartedTaskRun(*taskrun))
 
 	// First check to make sure all the parents of the current task are in a finished state.
 	for {
@@ -257,6 +259,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 			log.Error().Err(err).Msg("could not update task run")
 		}
 		taskStatusMap.Store(taskrun.Task.ID, models.ContainerStateSkipped)
+		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
 
@@ -271,6 +274,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 			log.Error().Err(err).Msg("could not update task run")
 		}
 		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
 
@@ -285,11 +289,13 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		log.Error().Err(err).Str("id", taskrun.ID).
 			Str("pipeline", taskrun.PipelineID).Int64("run", taskrun.RunID).Msg("task run could not be started")
 		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
 	log.Info().Str("id", taskrun.ID).Str("pipeline", taskrun.PipelineID).
 		Int64("run", taskrun.RunID).Msg("started task run")
 
+	api.events.Publish(models.NewEventScheduledTaskRun(*taskrun))
 	taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
 
 	err = api.monitorTaskRun(schedulerID, taskrun)
@@ -298,10 +304,12 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 			Str("pipeline", taskrun.PipelineID).Int64("run", taskrun.RunID).
 			Msg("task run monitor encountered an error")
 		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
 
 	taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+	api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 
 	log.Info().Str("id", taskrun.ID).Str("status", string(taskrun.State)).Msg("finished task run")
 }
@@ -311,6 +319,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 // is finished.
 func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task models.Task) {
 	newTaskRun := models.NewTaskRun(run, task)
+	api.events.Publish(models.NewEventStartedTaskRun(*newTaskRun))
 
 	// These environment variables are present on every task run
 	RunSpecificVars := map[string]string{
@@ -380,6 +389,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 			log.Error().Err(err).Msg("could not update task run")
 		}
 		taskStatusMap.Store(newTaskRun.Task.ID, models.ContainerStateSkipped)
+		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
 
@@ -394,6 +404,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 			log.Error().Err(err).Msg("could not update task run")
 		}
 		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
 
@@ -408,11 +419,13 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		log.Error().Err(err).Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).
 			Int64("run", newTaskRun.RunID).Msg("task run could not be started")
 		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
 	log.Info().Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).
 		Int64("run", newTaskRun.RunID).Msg("started task run")
 
+	api.events.Publish(models.NewEventScheduledTaskRun(*newTaskRun))
 	taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
 
 	err = api.monitorTaskRun(schedulerID, newTaskRun)
@@ -420,10 +433,12 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		log.Error().Err(err).Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).
 			Int64("run", newTaskRun.RunID).Msg("task run monitor encountered an error")
 		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
 
 	taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+	api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 
 	log.Info().Str("id", newTaskRun.ID).Str("status", string(newTaskRun.State)).
 		Msg("finished task run")
@@ -484,7 +499,8 @@ func dependenciesSatisfied(statusMap *sync.Map, dependencies map[string]models.R
 }
 
 // createNewRun starts a new run and launches the goroutines responsible for running tasks.
-func (api *API) createNewRun(namespaceID, pipelineID, triggerKind, triggerName string, taskFilter map[string]struct{}, vars map[string]string) (*models.Run, error) {
+func (api *API) createNewRun(namespaceID, pipelineID, triggerKind, triggerName string,
+	taskFilter map[string]struct{}, vars map[string]string) (*models.Run, error) {
 	pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{NamespaceID: namespaceID, ID: pipelineID})
 	if err != nil {
 		return nil, err
@@ -520,18 +536,10 @@ func (api *API) createNewRun(namespaceID, pipelineID, triggerKind, triggerName s
 		return nil, fmt.Errorf("could not add run; %w", err)
 	}
 
-	err = api.storage.RegisterRun(storage.RegisterRunRequest{
-		Namespace: namespaceID,
-		Pipeline:  pipelineID,
-		Run:       newRun.ID,
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("could not add run log")
-	}
-
-	go api.handleRunObjectExpiry(namespaceID, pipelineID) // Run objects expire after a given amount of runs.
-	go api.handleRunLogExpiry(namespaceID, pipelineID)    // Run logs expire after a given amount of runs.
-	go api.executeTaskTree(newRun)                        // Launch a tree of goroutines to handle task run dependencies.
+	go api.events.Publish(models.NewEventStartedRun(*newRun)) // Publish that the run is currently in motion.
+	go api.handleRunObjectExpiry(namespaceID, pipelineID)     // Run objects expire after a given amount of runs.
+	go api.handleRunLogExpiry(namespaceID, pipelineID)        // Run logs expire after a given amount of runs.
+	go api.executeTaskTree(newRun)                            // Launch a tree of goroutines to handle task run dependencies.
 
 	return newRun, nil
 }
@@ -804,11 +812,7 @@ func (api *API) monitorRunStatus(namespaceID, pipelineID string, runID int64, st
 		return err
 	}
 
-	_ = api.storage.UnregisterRun(storage.UnregisterRunRequest{
-		Namespace: run.NamespaceID,
-		Pipeline:  run.PipelineID,
-		Run:       run.ID,
-	})
+	api.events.Publish(models.NewEventCompletedRun(*run))
 
 	log.Info().Int64("id", run.ID).Str("pipeline", run.PipelineID).
 		Str("result", string(run.State)).Msg("finished run")
@@ -891,29 +895,66 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 	}
 }
 
-func (api API) cancelAllRuns(namespaceID, pipelineID, description string, force bool) ([]int64, error) {
-	// First we check the run log to collect all in-progress runs.
-	runRegistrations, _ := api.storage.GetAllRunRegistrations(storage.GetAllRunRegistrationsRequest{})
+func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force bool) ([]int64, error) {
+	type runkey struct {
+		namespace string
+		pipeline  string
+		run       int64
+	}
 
-	inProgressRuns := []*models.Run{}
-	for registrations := range runRegistrations {
-		if registrations.Namespace != namespaceID || registrations.Pipeline != pipelineID {
-			continue
-		}
+	// Collect all events.
+	events := api.events.GetAll(false)
+	inProgressRunMap := map[runkey]struct{}{}
 
-		run, err := api.storage.GetRun(storage.GetRunRequest{
-			NamespaceID: registrations.Namespace,
-			PipelineID:  registrations.Pipeline,
-			ID:          registrations.Run,
-		})
-		if err != nil {
-			if errors.Is(err, storage.ErrEntityNotFound) {
-				_ = api.storage.UnregisterRun(storage.UnregisterRunRequest{
-					Namespace: namespaceID,
-					Pipeline:  pipelineID,
-					Run:       registrations.Run,
+	// Search events for any orphan runs.
+	for event := range events {
+		switch evt := event.(type) {
+		case *models.EventStartedRun:
+			key := runkey{
+				namespace: evt.NamespaceID,
+				pipeline:  evt.PipelineID,
+				run:       evt.RunID,
+			}
+
+			if key.namespace != namespaceID || key.pipeline != pipelineID {
+				continue
+			}
+
+			_, exists := inProgressRunMap[key]
+
+			if !exists {
+				inProgressRunMap[key] = struct{}{}
+			}
+
+		case *models.EventCompletedRun:
+			_, exists := inProgressRunMap[runkey{
+				namespace: evt.NamespaceID,
+				pipeline:  evt.PipelineID,
+				run:       evt.RunID,
+			}]
+
+			if exists {
+				delete(inProgressRunMap, runkey{
+					namespace: evt.NamespaceID,
+					pipeline:  evt.PipelineID,
+					run:       evt.RunID,
 				})
 			}
+		}
+	}
+
+	// Retrieve actual runs
+	inProgressRuns := []*models.Run{}
+
+	for inProgressRun := range inProgressRunMap {
+		run, err := api.storage.GetRun(storage.GetRunRequest{
+			NamespaceID: inProgressRun.namespace,
+			PipelineID:  inProgressRun.pipeline,
+			ID:          inProgressRun.run,
+		})
+		if err != nil {
+			log.Error().Err(err).Str("namespace", inProgressRun.namespace).Str("pipeline", inProgressRun.pipeline).
+				Int64("run", inProgressRun.run).Msg("could not retrieve run from database")
 			continue
 		}
 

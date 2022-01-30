@@ -8,12 +8,6 @@ import (
 // and clearer when calling storage functions. The drawback is that they require validation since we cannot force the
 // caller to fill out the struct entirely.
 
-type RunRegistryKey struct {
-	Namespace string
-	Pipeline  string
-	Run       int64
-}
-
 // Namespace
 
 type GetAllNamespacesRequest struct {
@@ -106,50 +100,24 @@ type UpdateTaskRunRequest struct {
 	TaskRun *models.TaskRun
 }
 
-// trigger events
+// events
 
-type GetAllTriggerEventsRequest struct {
-	Offset int
-	Limit  int
-
-	NamespaceID          string
-	PipelineID           string
-	PipelineTriggerLabel string
+type GetAllEventsRequest struct {
+	Offset  int
+	Limit   int
+	Reverse bool
 }
 
-type GetTriggerEventRequest struct {
-	NamespaceID          string
-	PipelineID           string
-	PipelineTriggerLabel string
-	ID                   int64
+type GetEventRequest struct {
+	ID int64
 }
 
-type AddTriggerEventRequest struct {
-	Event *models.TriggerEvent
+type AddEventRequest struct {
+	Event models.Event
 }
 
-type UpdateTriggerEventRequest struct {
-	Event *models.TriggerEvent
-}
-
-type GetAllRunRegistrationsRequest struct{}
-
-type RegisterRunRequest struct {
-	Namespace string
-	Pipeline  string
-	Run       int64
-}
-
-type UnregisterRunRequest struct {
-	Namespace string
-	Pipeline  string
-	Run       int64
-}
-
-type RegistrationExistsRequest struct {
-	Namespace string
-	Pipeline  string
-	Run       int64
+type DeleteEventRequest struct {
+	ID int64
 }
 
 type GetAllTokensRequest struct {

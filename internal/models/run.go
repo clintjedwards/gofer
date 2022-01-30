@@ -36,7 +36,7 @@ type Run struct {
 	ID          int64      `json:"id" storm:"id,increment"` // UniqueID of a run. Autoincrementing and cannot be zero.
 	NamespaceID string     `json:"namespace_id"`            // Unique ID of namespace.
 	PipelineID  string     `json:"pipeline_id"`             // The unique ID of the related pipeline.
-	Started     int64      `json:"started" storm:"index"`   // Time of run start in epoch milli.
+	Started     int64      `json:"started"`                 // Time of run start in epoch milli.
 	State       RunState   `json:"status"`                  // The current state of the run.
 	TaskRuns    []string   `json:"task_runs"`               // The unique ID of each task run.
 

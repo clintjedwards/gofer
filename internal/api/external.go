@@ -14,13 +14,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// StartEventsService starts the events http service, which is used to pass external events (like a github webhook)
+// StartExternalEventsService starts the external events http service, which is used to pass external events (like a github webhook)
 // to triggers.
-func StartEventsService(config *config.API, api *API) {
+func StartExternalEventsService(config *config.API, api *API) {
 	router := mux.NewRouter()
 
-	router.Handle("/events/{trigger}", handlers.MethodHandler{
-		"POST": http.HandlerFunc(api.eventsHandler),
+	router.Handle("/external/{trigger}", handlers.MethodHandler{
+		"POST": http.HandlerFunc(api.externalEventsHandler),
 	})
 
 	tlsConfig, err := api.generateTLSConfig(api.config.Server.TLSCertPath, api.config.Server.TLSKeyPath)
@@ -43,7 +43,7 @@ func StartEventsService(config *config.API, api *API) {
 			log.Fatal().Err(err).Msg("server exited abnormally")
 		}
 	}()
-	log.Info().Str("url", config.ExternalEventsAPI.Host).Msg("started gofer events http service")
+	log.Info().Str("url", config.ExternalEventsAPI.Host).Msg("started gofer external events http service")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
@@ -60,5 +60,5 @@ func StartEventsService(config *config.API, api *API) {
 		return
 	}
 
-	log.Info().Msg("events service exited gracefully")
+	log.Info().Msg("external events service exited gracefully")
 }

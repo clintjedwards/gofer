@@ -160,6 +160,12 @@ func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream prot
 
 	for {
 		select {
+		case <-stream.Context().Done():
+			_ = file.Stop()
+			return nil
+		case <-api.context.ctx.Done():
+			_ = file.Stop()
+			return nil
 		case line := <-file.Lines:
 			// We insert a special EOF delimiter at the end of each file to signify that there are no more logs to be
 			// written. When reading these files from other applications this is an indicator that
@@ -182,9 +188,6 @@ func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream prot
 					Str("task", taskRun.ID).Msg("error sending log stream to client")
 				return status.Errorf(codes.Internal, "error sending log stream: %v", err)
 			}
-		case <-stream.Context().Done():
-			_ = file.Stop()
-			return nil
 		}
 	}
 }

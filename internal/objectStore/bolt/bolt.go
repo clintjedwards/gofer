@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/asdine/storm/v3"
-	objectstore "github.com/clintjedwards/gofer/internal/objectStore"
+	"github.com/clintjedwards/gofer/internal/objectStore"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -34,7 +34,7 @@ func (store *Store) GetObject(key string) ([]byte, error) {
 	err := store.Get(rootBucket, key, &storedObject)
 	if err != nil {
 		if errors.Is(err, storm.ErrNotFound) {
-			return nil, objectstore.ErrEntityNotFound
+			return nil, objectStore.ErrEntityNotFound
 		}
 
 		return nil, err
@@ -56,7 +56,7 @@ func (store *Store) DeleteObject(key string) error {
 	err := store.Delete(rootBucket, key)
 	if err != nil {
 		if errors.Is(err, storm.ErrNotFound) {
-			return objectstore.ErrEntityNotFound
+			return objectStore.ErrEntityNotFound
 		}
 
 		return err

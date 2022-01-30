@@ -154,6 +154,8 @@ func (api *API) createPipeline(location string, config *models.PipelineConfig) (
 		return nil, fmt.Errorf("pipeline configuration error: %v; %w", configErrs, ErrPipelineConfigNotValid)
 	}
 
+	api.events.Publish(models.NewEventCreatedPipeline(*newPipeline))
+
 	return newPipeline, nil
 }
 

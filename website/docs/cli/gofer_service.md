@@ -30,7 +30,6 @@ These commands help with managing and running the Gofer service.
 - [gofer](gofer.md) - Gofer is a distributed, continuous thing do-er.
 - [gofer service init-config](gofer_service_init-config.md) - Create example gofer config file.
 - [gofer service printenv](gofer_service_printenv.md) - Print the list of environment variables the server looks for on startup.
-- [gofer service registry](gofer_service_registry.md) - Manage docker registry authentication
 - [gofer service start](gofer_service_start.md) - Start the Gofer GRPC/HTTP combined server
 - [gofer service toggle-event-ingress](gofer_service_toggle-event-ingress.md) - Allows the operator to control run ingress
 - [gofer service token](gofer_service_token.md) - Manage api tokens

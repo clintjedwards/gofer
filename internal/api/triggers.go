@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const TRIGGERCONTAINERIDFORMAT = "trigger_%s" // trigger_triggerKind
+const TRIGGERCONTAINERIDFORMAT = "trigger_%s" // trigger_<triggerKind>
 
 // startTriggers attempts to start each trigger from config on the provided scheduler. Once scheduled it then collects
 // the initial trigger information so it can check for connectivity and store the network location.
@@ -283,9 +283,7 @@ func (api *API) restoreTriggerSubscriptions() error {
 // checkForTriggerEvents spawns a goroutine for every trigger that is responsible for collecting the trigger events
 // on that trigger. The "Check" method for receiving events from a trigger is a blocking RPC, so each
 // go routine essentially blocks until they receive an event and then immediately pushes it into the receiving channel.
-func (api *API) checkForTriggerEvents(ctx context.Context) <-chan models.TriggerEvent {
-	events := make(chan models.TriggerEvent, api.config.EventLoopChannelSize)
-
+func (api *API) checkForTriggerEvents(ctx context.Context) {
 	for id, trigger := range api.triggers {
 		go func(id string, trigger models.Trigger) {
 			conn, err := grpcDial(trigger.URL)
@@ -322,27 +320,52 @@ func (api *API) checkForTriggerEvents(ctx context.Context) <-chan models.Trigger
 
 					log.Debug().Str("trigger", id).Interface("response", resp).Msg("new trigger event found")
 
-					newTriggerEvent := models.TriggerEvent{}
-					newTriggerEvent.FromCheckResponse(resp)
-					events <- newTriggerEvent
+					result := models.TriggerResult{
+						Details: resp.Details,
+						State:   models.TriggerResultState(resp.Result.String()),
+					}
+
+					api.events.Publish(models.NewEventFiredTrigger(resp.NamespaceId,
+						resp.PipelineId,
+						resp.PipelineTriggerLabel,
+						result,
+						resp.Metadata))
 				}
 			}
 		}(id, *trigger)
 	}
-	return events
 }
 
-// processTriggerEvents consumes all trigger events from the event channel and makes sure the appropriate pipeline
-// is notified about said event.
-func (api *API) processTriggerEvents(events <-chan models.TriggerEvent) {
-	for event := range events {
-		event.Processed = time.Now().UnixMilli()
-		log.Debug().Int("queue_size", len(events)).Msg("processing new trigger event")
+// processTriggerEvents listens to and consumes all events from the TriggerEventReceived channel and starts the
+// appropriate pipeline.
+func (api *API) processTriggerEvents() error {
+	subscription, err := api.events.Subscribe(models.FiredTriggerEvent)
+	if err != nil {
+		return fmt.Errorf("could not subscribe to trigger events: %w", err)
+	}
+	defer api.events.Unsubscribe(subscription)
 
-		if api.acceptNewEvents {
+	for eventRaw := range subscription.Events {
+		event, ok := eventRaw.(*models.EventFiredTrigger)
+		if !ok {
+			continue
+		}
+
+		result := models.TriggerResult{
+			Details: event.Result.Details,
+			State:   event.Result.State,
+		}
+
+		api.events.Publish(models.NewEventProcessedTrigger(event.Namespace,
+			event.Pipeline,
+			event.Label,
+			result,
+			event.TriggerMetadata))
+
+		if !api.ignorePipelineRunEvents.Load() {
 			pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{
-				NamespaceID: event.NamespaceID,
-				ID:          event.PipelineID,
+				NamespaceID: event.Namespace,
+				ID:          event.Pipeline,
 			})
 			if err != nil {
 				if errors.Is(err, storage.ErrEntityNotFound) {
@@ -354,13 +377,14 @@ func (api *API) processTriggerEvents(events <-chan models.TriggerEvent) {
 				continue
 			}
 
-			triggerSubscription, exists := pipeline.Triggers[event.PipelineTriggerLabel]
+			triggerSubscription, exists := pipeline.Triggers[event.Label]
 			if !exists {
-				log.Error().Str("trigger_label", event.PipelineTriggerLabel).
+				log.Error().Str("trigger_label", event.Label).
 					Msg("could not process trigger event; could not find trigger label within pipeline")
 			}
 
-			_, err = api.createNewRun(pipeline.Namespace, pipeline.ID, triggerSubscription.Kind, event.PipelineTriggerLabel, map[string]struct{}{}, event.Metadata)
+			_, err = api.createNewRun(pipeline.Namespace, pipeline.ID, triggerSubscription.Kind,
+				event.Label, map[string]struct{}{}, event.TriggerMetadata)
 			if err != nil {
 				if errors.Is(err, ErrPipelineNotActive) {
 					log.Debug().Str("namespace", pipeline.Namespace).Str("pipeline", pipeline.ID).
@@ -371,22 +395,24 @@ func (api *API) processTriggerEvents(events <-chan models.TriggerEvent) {
 				log.Error().Err(err).Msg("could not create run from trigger event")
 				continue
 			}
+
+			api.events.Publish(models.NewEventResolvedTrigger(event.Namespace, event.Pipeline, event.Label,
+				result,
+				event.TriggerMetadata))
 		} else {
-			event.Result = models.TriggerResult{
-				Details: "API not accepting new events; This is due to operator controlled setting 'AcceptNewEvents'.",
+			result = models.TriggerResult{
+				Details: "API not accepting new events; This is due to operator controlled setting 'IgnorePipelineRunEvents'.",
 				State:   models.TriggerResultStateSkipped,
 			}
-			log.Debug().Msg("skipped event due to AcceptNewEvents set to false")
-		}
+			log.Debug().Msg("skipped event due to IgnorePipelineRunEvents set to false")
 
-		err := api.storage.AddTriggerEvent(storage.AddTriggerEventRequest{
-			Event: &event,
-		})
-		if err != nil {
-			log.Error().Err(err).Interface("event", event).Msg("could not add event")
-			continue
+			api.events.Publish(models.NewEventResolvedTrigger(event.Namespace, event.Pipeline, event.Label,
+				result,
+				event.TriggerMetadata))
 		}
 	}
+
+	return nil
 }
 
 // collectLogs simply streams a container's log right to stderr. This is useful when pipeing trigger logs to the main

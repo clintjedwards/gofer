@@ -13,10 +13,25 @@ import (
 // API defines config settings for the gofer server
 type API struct {
 	// Controls the ability to trigger runs. This setting can be toggled while the server is running.
-	AcceptEventsOnStartup bool `split_words:"true" hcl:"accept_events_on_startup,optional"`
+	IgnorePipelineRunEvents bool `split_words:"true" hcl:"ignore_pipeline_run_events,optional"`
 
-	// Controls how large the buffer space for the event loop channel is.
-	EventLoopChannelSize int64 `split_words:"true" hcl:"event_loop_channel_size,optional"`
+	// Controls how long Gofer will hold onto events before discarding them. This is important factor in disk space
+	// and memory footprint.
+	//
+	// Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention
+	//  puts the memory and storage footprint at about 9GB.
+	EventLogRetention time.Duration `split_words:"true"`
+
+	// EventLogRetentionHCL is the HCL compatible counter part to EventLogRetention. It allows the parsing of a string
+	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
+	EventLogRetentionHCL string `ignored:"true" hcl:"event_log_retention,optional"`
+
+	// How often the background process for pruning events should run.
+	PruneEventsInterval time.Duration `split_words:"true"`
+
+	// PruneEventsIntervalHCL is the HCL compatible counter part to PruneEventsInterval. It allows the parsing of a string
+	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
+	PruneEventsIntervalHCL string `ignored:"true" hcl:"prune_events_interval,optional"`
 
 	// URL for the server to bind to. Ex: localhost:8080
 	Host string `hcl:"host,optional"`
@@ -52,20 +67,21 @@ type API struct {
 
 func DefaultAPIConfig() *API {
 	return &API{
-		AcceptEventsOnStartup: true,
-		EventLoopChannelSize:  100,
-		Host:                  "localhost:8080",
-		LogLevel:              "debug",
-		RunLogExpiry:          20,
-		TaskRunLogsDir:        "/tmp",
-		TaskRunStopTimeout:    mustParseDuration("5m"),
-		ExternalEventsAPI:     DefaultExternalEventsAPIConfig(),
-		Database:              DefaultDatabaseConfig(),
-		ObjectStore:           DefaultObjectStoreConfig(),
-		SecretStore:           DefaultSecretStoreConfig(),
-		Scheduler:             DefaultSchedulerConfig(),
-		Server:                DefaultServerConfig(),
-		Triggers:              DefaultTriggersConfig(),
+		IgnorePipelineRunEvents: false,
+		EventLogRetention:       mustParseDuration("4380h"), // 4380 hours is roughly 6 months.
+		PruneEventsInterval:     mustParseDuration("3h"),
+		Host:                    "localhost:8080",
+		LogLevel:                "debug",
+		RunLogExpiry:            20,
+		TaskRunLogsDir:          "/tmp",
+		TaskRunStopTimeout:      mustParseDuration("5m"),
+		ExternalEventsAPI:       DefaultExternalEventsAPIConfig(),
+		Database:                DefaultDatabaseConfig(),
+		ObjectStore:             DefaultObjectStoreConfig(),
+		SecretStore:             DefaultSecretStoreConfig(),
+		Scheduler:               DefaultSchedulerConfig(),
+		Server:                  DefaultServerConfig(),
+		Triggers:                DefaultTriggersConfig(),
 	}
 }
 
@@ -194,7 +210,12 @@ func DefaultExternalEventsAPIConfig() *ExternalEventsAPI {
 	}
 }
 
-func defaultTriggers() []Trigger {
+func defaultTriggers(devmode bool) []Trigger {
+	duration := "5m"
+	if devmode {
+		duration = "1m"
+	}
+
 	return []Trigger{
 		{
 			Kind:  "cron",
@@ -204,7 +225,7 @@ func defaultTriggers() []Trigger {
 			Kind:  "interval",
 			Image: "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest",
 			EnvVars: map[string]string{
-				"GOFER_TRIGGER_INTERVAL_MIN_DURATION": "5m",
+				"GOFER_TRIGGER_INTERVAL_MIN_DURATION": duration,
 			},
 		},
 	}
@@ -259,6 +280,14 @@ func (c *API) convertDurationFromHCL() {
 		c.TaskRunStopTimeout = mustParseDuration(c.TaskRunStopTimeoutHCL)
 	}
 
+	if c != nil && c.EventLogRetentionHCL != "" {
+		c.EventLogRetention = mustParseDuration(c.EventLogRetentionHCL)
+	}
+
+	if c != nil && c.PruneEventsIntervalHCL != "" {
+		c.PruneEventsInterval = mustParseDuration(c.PruneEventsIntervalHCL)
+	}
+
 	if c != nil && c.Triggers.StopTimeoutHCL != "" {
 		c.Triggers.StopTimeout = mustParseDuration(c.Triggers.StopTimeoutHCL)
 	}
@@ -307,7 +336,7 @@ func InitAPIConfig(userDefinedPath string) (*API, error) {
 	}
 
 	// Always append default triggers
-	config.Triggers.RegisteredTriggers = append(config.Triggers.RegisteredTriggers, defaultTriggers()...)
+	config.Triggers.RegisteredTriggers = append(config.Triggers.RegisteredTriggers, defaultTriggers(config.Server.DevMode)...)
 
 	err = config.validate()
 	if err != nil {

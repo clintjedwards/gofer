@@ -77,6 +77,8 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 		return &proto.DisablePipelineResponse{}, status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
 	}
 
+	api.events.Publish(models.NewEventDisabledPipeline(*currentPipeline))
+
 	return &proto.DisablePipelineResponse{}, nil
 }
 
@@ -126,6 +128,8 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 		return &proto.EnablePipelineResponse{},
 			status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
 	}
+
+	api.events.Publish(models.NewEventEnabledPipeline(*currentPipeline))
 
 	return &proto.EnablePipelineResponse{}, nil
 }
@@ -410,6 +414,8 @@ func (api *API) AbandonPipeline(ctx context.Context, request *proto.AbandonPipel
 		log.Error().Err(err).Str("id", request.Id).Msg("could not abandon pipeline")
 		return &proto.AbandonPipelineResponse{}, status.Errorf(codes.Internal, "could not abandon pipeline: %q", request.Id)
 	}
+
+	api.events.Publish(models.NewEventAbandonedPipeline(*pipeline))
 
 	return &proto.AbandonPipelineResponse{}, nil
 }

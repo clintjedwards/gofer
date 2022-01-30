@@ -21,7 +21,7 @@ func New(path string, maxResultsLimit int) (DB, error) {
 	}
 
 	err = store.Bolt.Update(func(tx *bolt.Tx) error {
-		_, err := store.CreateBucketIfNotExists(tx, runRegistryBucketName)
+		_, err := store.CreateBucketIfNotExists(tx, eventsBucket)
 		if err != nil {
 			return err
 		}

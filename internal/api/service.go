@@ -4,14 +4,13 @@ import (
 	"strings"
 )
 
-var appVersion = "0.0.dev_000000_33333"
+var appVersion = "0.0.dev_000000"
 
-func parseVersion(versionString string) (version, commit, buildTime string) {
-	splitVersion := strings.Split(versionString, "_")
-
-	version = splitVersion[0]
-	commit = splitVersion[1]
-	buildTime = splitVersion[2]
+func parseVersion(versionString string) (version, commit string) {
+	version, commit, err := strings.Cut(versionString, "_")
+	if !err {
+		return "", ""
+	}
 
 	return
 }

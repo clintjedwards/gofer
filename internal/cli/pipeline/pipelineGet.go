@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"strconv"
 	"text/template"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/proto"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -100,18 +102,48 @@ func recentRuns(client proto.GoferClient, pipeline string, runs []int64) ([]*pro
 	return resp.Runs, err
 }
 
-func recentEvents(client proto.GoferClient, namespace, pipeline, trigger string, limit int64) ([]*proto.TriggerEvent, error) {
-	resp, err := client.ListTriggerEvents(context.Background(), &proto.ListTriggerEventsRequest{
-		Limit:                limit,
-		PipelineId:           pipeline,
-		NamespaceId:          namespace,
-		PipelineTriggerLabel: trigger,
+func recentEvents(client proto.GoferClient, namespace, pipeline, trigger string, limit int) ([]models.EventResolvedTrigger, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := client.ListEvents(ctx, &proto.ListEventsRequest{
+		Reverse: true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Events, err
+	events := []models.EventResolvedTrigger{}
+
+	count := 0
+	for count < limit {
+		response, err := resp.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+
+		event, ok := response.Event.(*proto.ListEventsResponse_ResolvedTriggerEvent)
+		if !ok {
+			continue
+		}
+
+		if event.ResolvedTriggerEvent.Namespace != namespace ||
+			event.ResolvedTriggerEvent.Pipeline != pipeline ||
+			event.ResolvedTriggerEvent.Label != trigger {
+			continue
+		}
+
+		concreteEvent := &models.EventResolvedTrigger{}
+		concreteEvent.FromProto(event.ResolvedTriggerEvent)
+
+		events = append(events, *concreteEvent)
+		count++
+	}
+
+	return events, nil
 }
 
 type data struct {
@@ -191,7 +223,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 
 	triggerDataList := []triggerData{}
 	for _, trigger := range pipeline.Triggers {
-		recentEvents, err := recentEvents(client, pipeline.Namespace, pipeline.Id, trigger.Label, 3)
+		recentEvents, err := recentEvents(client, pipeline.Namespace, pipeline.Id, trigger.Label, 5)
 		if err != nil {
 			return "", fmt.Errorf("could not get event data: %v", err)
 		}
@@ -199,7 +231,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 		eventDataList := []eventData{}
 		for _, event := range recentEvents {
 			eventDataList = append(eventDataList, eventData{
-				Processed: format.UnixMilli(event.Processed, "Never", detail),
+				Processed: format.UnixMilli(event.Emitted, "Never", detail),
 				Details:   event.Result.Details,
 			})
 		}
@@ -248,7 +280,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 
   📦 Recent Runs
     {{- range $run := .RecentRuns}}
-    • {{ $run.ID }} :: Started {{ $run.Started }} by trigger {{$run.TriggerName}} ({{$run.TriggerKind}}) :: {{ $run.StatePrefix }} {{ $run.Lasted }} :: {{ $run.State }}
+    • {{ $run.ID }} :: {{ $run.Started }} by trigger {{$run.TriggerName}} ({{$run.TriggerKind}}) :: {{ $run.StatePrefix }} {{ $run.Lasted }} :: {{ $run.State }}
     {{- end}}
   {{- end}}
   {{- if .Tasks }}
@@ -273,7 +305,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 
   🗘 Attached Triggers:
     {{- range $trigger := .Triggers}}
-    ⟳ [{{ $trigger.State }}] {{ $trigger.Label }} ({{ $trigger.Kind }}) {{- if ne (len $trigger.Events) 0 }} recent events{{- end }}:
+    ⟳ [{{ $trigger.State }}] {{ $trigger.Label }} ({{ $trigger.Kind }}) {{- if ne (len $trigger.Events) 0 }} recent events:{{- end }}
       {{- range $event := $trigger.Events }}
       + {{$event.Processed}} | {{$event.Details}}
 	  {{- end}}

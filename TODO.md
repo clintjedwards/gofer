@@ -1,6 +1,6 @@
 ### Top remaining features before v1.0.0
 
-#### Repo downloader container
+#### Git downloader container
 
 - Support auth, support downloading into run or pipeline objects, support checking out specific commit.
 - Support sparse checkouts?
@@ -49,6 +49,7 @@
 - Add command line options for controlling pagination
 - When presenting errors back to the user make sure we're presenting them in an understandable manner. This might mean catching errors and providing the users with tips on how to fix them.
 - Implement json output makes sense. This should involve separating the output of what should be humanized vs regular.
+- ListEvents does not have proper CLI filter implementation.
 
 ### Scheduler
 
@@ -82,9 +83,10 @@
 ### Rough spots in design
 
 - It currently runs as a singleton, not distributed.
-- Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of git repos is the biggest pain point here.
+- Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of large git repos is the biggest pain point here.
 - The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
 - It is possible for a trigger subscription to be disabled due to network error and the trigger to still send it a successful event.
+- Events have to be managed in multiple places making them a maintenance nightmare when you have to add, remove, or update events.
 
 ### Documentation
 
@@ -93,5 +95,3 @@
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
-
-* when we can't connect to a trigger we should print the logs output if it exists.

@@ -1,13 +1,14 @@
 // Gofer Service configuration file is used as an alternative to proving the server configurations via envvars.
 // You can find an explanation of these configuration variables and where to put this file so the server can read this
 // file in the documenation: https://clintjedwards.com/gofer/docs/server-configuration/overview
-accept_events_on_startup = true
-event_loop_channel_size  = 100
-host                     = "localhost:8080"
-log_level                = "info"
-run_log_expiry           = 20
-task_run_logs_dir        = "/tmp"
-task_run_stop_timeout    = "5m"
+ignore_pipeline_run_events = false
+event_log_retention        = "4380h"
+prune_events_interval      = "3h"
+host                       = "localhost:8080"
+log_level                  = "info"
+run_log_expiry             = 20
+task_run_logs_dir          = "/tmp"
+task_run_stop_timeout      = "5m"
 
 external_events_api {
   enable = true
@@ -60,11 +61,5 @@ triggers {
   healthcheck_interval = "30s"
   tls_cert_path        = "./localhost.crt"
   tls_key_path         = "./localhost.key"
-  registered_triggers "cron" {
-    image = "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest"
-  }
-  registered_triggers "interval" {
-    image = "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest"
-  }
 }
 

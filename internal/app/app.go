@@ -58,7 +58,7 @@ func StartServices(config *config.API) {
 	}
 
 	if config.ExternalEventsAPI.Enable {
-		go api.StartEventsService(config, newAPI)
+		go api.StartExternalEventsService(config, newAPI)
 	}
 	newAPI.StartAPIService()
 }

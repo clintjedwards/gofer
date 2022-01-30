@@ -10,7 +10,7 @@ option go_package = "github.com/clintjedwards/gofer/proto";
 // Why represent what amounts to the same model twice in protobuf AND a struct
 // you ask?
 //
-//   Essentially, the separation of the transport layer and the
+//   Essentially, because the separation of the transport layer and the
 //   application layer is a good thing. There are probably many reasons, but
 //   the most straightforward is that we might want to represent something in
 //   the database or within the application that might not be easily
@@ -141,28 +141,6 @@ message TaskRun {
   Task task = 14;
 }
 
-message TriggerResult {
-  enum State {
-    UNKNOWN = 0;
-    FAILURE = 1;
-    SUCCESS = 2;
-    SKIPPED = 3;
-  }
-  State state = 1;
-  string details = 2;
-}
-
-message TriggerEvent {
-  int64 id = 1;
-  int64 received = 2;
-  int64 processed = 3;
-  string pipeline_trigger_label = 4;
-  string pipeline_id = 5;
-  string namespace_id = 6;
-  TriggerResult result = 7;
-  map<string, string> metadata = 8;
-}
-
 message PipelineTriggerConfig {
   string kind = 1;
   string label = 2;
@@ -174,6 +152,7 @@ message PipelineTriggerConfig {
     UNSUPPORTED = 3;
   }
   State state = 4;
+  repeated string events = 5;
 }
 
 message Trigger {

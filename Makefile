@@ -1,5 +1,4 @@
 APP_NAME = gofer
-EPOCH_TIME = $(shell date +%s)
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 # Although go 1.18 has the git info baked into the binary now it still seems like there is no support
 # For including outside variables except this. So keep it for now.
@@ -7,13 +6,13 @@ GO_LDFLAGS = '-X "github.com/clintjedwards/${APP_NAME}/internal/cli.appVersion=$
 				-X "github.com/clintjedwards/${APP_NAME}/internal/api.appVersion=$(VERSION)"'
 SHELL = /bin/bash
 SEMVER = 0.0.1
-VERSION = ${SEMVER}_${GIT_COMMIT}_${EPOCH_TIME}
+VERSION = ${SEMVER}_${GIT_COMMIT}
 
 ## build: run tests and compile application
-build: check-path-included build-protos
-	go test ./...
+build: check-path-included check-semver-included build-protos
+	go test ./... -race
 	go mod tidy
-	CGO_ENABLED=0 go build -ldflags $(GO_LDFLAGS) -o $(path)
+	CGO_ENABLED=0 go build -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
 
 ## build-protos: build protobufs
 build-protos:
@@ -27,7 +26,7 @@ build-protos:
 ## run: build application and run server
 run: export DEBUG=true
 run:
-	go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME} && /tmp/${APP_NAME} service start
+	go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME} && /tmp/${APP_NAME} service start
 
 ## run-website: build website js and run dev server
 run-website:
@@ -49,7 +48,12 @@ help:
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
 check-path-included:
-ifndef path
-	$(error path is undefined; ex. path=/tmp/${APP_NAME})
+ifndef OUTPUT
+	$(error OUTPUT is undefined; ex. OUTPUT=/tmp/${APP_NAME})
+endif
+
+check-semver-included:
+ifndef SEMVER
+	$(error SEMVER is undefined; ex. SEMVER=0.0.1)
 endif
 

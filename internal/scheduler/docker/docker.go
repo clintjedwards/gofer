@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/models"
@@ -19,6 +20,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type cancellations struct {
+	sync.Mutex
+	cancelled map[string]time.Time
+}
+
 type Orchestrator struct {
 	// cancelled keeps track of cancelled containers. This is needed due to there being no way to differentiate a
 	// container that was stopped in docker from a container that exited naturally.
@@ -28,7 +34,7 @@ type Orchestrator struct {
 	// To avoid weird situations in which a container was cancelled, but GetState was never called afterwards(therefore
 	// creating a situation in which the cancellation is never removed from the map), we automatically clean up
 	// cancellations after they've not been reaped for a day.
-	cancelled map[string]time.Time
+	cancellations *cancellations
 	*client.Client
 }
 
@@ -66,21 +72,25 @@ func New(prune bool, pruneInterval time.Duration) (Orchestrator, error) {
 	}
 
 	// Start a goroutine to handle the reaping of cancellations.
-	cancelled := map[string]time.Time{}
+	cancellations := cancellations{
+		cancelled: map[string]time.Time{},
+	}
 	go func() {
 		for {
-			for container, insertTime := range cancelled {
+			cancellations.Lock()
+			for container, insertTime := range cancellations.cancelled {
 				if insertTime.Before(time.Now().AddDate(0, 0, -1)) {
-					delete(cancelled, container)
+					delete(cancellations.cancelled, container)
 				}
 			}
+			cancellations.Unlock()
 			time.Sleep(time.Hour * 24)
 		}
 	}()
 
 	return Orchestrator{
-		Client:    docker,
-		cancelled: cancelled,
+		Client:        docker,
+		cancellations: &cancellations,
 	}, nil
 }
 
@@ -201,7 +211,10 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 func (orch *Orchestrator) StopContainer(req scheduler.StopContainerRequest) error {
 	ctx := context.Background()
 
-	orch.cancelled[req.SchedulerID] = time.Now()
+	orch.cancellations.Lock()
+	orch.cancellations.cancelled[req.SchedulerID] = time.Now()
+	orch.cancellations.Unlock()
+
 	err := orch.ContainerStop(ctx, req.SchedulerID, &req.Timeout)
 	if err != nil {
 		if strings.Contains(err.Error(), "No such container") {
@@ -238,14 +251,16 @@ func (orch *Orchestrator) GetState(gs scheduler.GetStateRequest) (scheduler.GetS
 			State:    models.ContainerStateRunning,
 		}, nil
 	case "exited":
-		_, wasCancelled := orch.cancelled[gs.SchedulerID]
+		orch.cancellations.Lock()
+		defer orch.cancellations.Unlock()
+		_, wasCancelled := orch.cancellations.cancelled[gs.SchedulerID]
 		if wasCancelled {
 			return scheduler.GetStateResponse{
 				ExitCode: containerInfo.State.ExitCode,
 				State:    models.ContainerStateCancelled,
 			}, nil
 		}
-		delete(orch.cancelled, gs.SchedulerID)
+		delete(orch.cancellations.cancelled, gs.SchedulerID)
 
 		if containerInfo.State.ExitCode == 0 {
 			return scheduler.GetStateResponse{

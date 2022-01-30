@@ -33,7 +33,7 @@ type Pipeline struct {
 	Namespace   string `json:"namespace"`             // The namespace this pipeline belongs to.
 	LastRunTime int64  `json:"last_run_time"`         // Last time a run was triggered for this pipeline.
 	LastRunID   int64  `json:"last_run_id"`           // The ID of the most recent run.
-	Updated     int64  `json:"updated"`               // Modified time in epoch milliseconds.
+	Updated     int64  `json:"updated"`               // Modified time in epoch millisecs. User initiated changes only.
 	Name        string `json:"name"`                  // Name refers to a human readable pipeline name.
 	Sequential  bool   `json:"sequential"`            // Only run one job at a time.
 	// The current running state of the pipeline. This is used to determine if the pipeline should continue to process

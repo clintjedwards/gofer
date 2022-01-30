@@ -1,4 +1,4 @@
-package objectstore
+package objectStore
 
 import "errors"
 

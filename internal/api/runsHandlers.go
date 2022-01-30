@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/clintjedwards/gofer/proto"
 	"github.com/rs/zerolog/log"
@@ -111,7 +112,7 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 		return &proto.StartRunResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	if !api.acceptNewEvents {
+	if api.ignorePipelineRunEvents.Load() {
 		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "api is not accepting new events at this time")
 	}
 
@@ -134,6 +135,15 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 		log.Error().Err(err).Msg("could not create run")
 		return &proto.StartRunResponse{}, status.Errorf(codes.Internal, "could not create run; %v", err)
 	}
+
+	// Emit a new resolve trigger so that manually initiated runs still count as a trigger.
+	resolvedTriggerEvent := models.NewEventResolvedTrigger(request.NamespaceId, request.PipelineId, newRun.TriggerName,
+		models.TriggerResult{
+			Details: "triggered via API",
+			State:   models.TriggerResultStateSuccess,
+		}, request.Variables)
+
+	api.events.Publish(resolvedTriggerEvent)
 
 	return &proto.StartRunResponse{
 		Run: newRun.ToProto(),

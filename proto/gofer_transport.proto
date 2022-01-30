@@ -4,6 +4,7 @@ package proto;
 
 option go_package = "github.com/clintjedwards/gofer/proto";
 
+import "gofer_message_events.proto";
 import "gofer_message.proto";
 
 ////////////// Namespace Transport Models //////////////
@@ -283,36 +284,6 @@ message DeleteTaskRunLogsResponse {}
 
 ////////////// Trigger Transport Models //////////////
 
-message GetTriggerEventRequest {
-  string namespace_id = 1; // Unique namespace identifier
-  string pipeline_id = 2;
-  string pipeline_trigger_label = 3;
-  int64 id = 4; // Trigger Event ID
-}
-message GetTriggerEventResponse { TriggerEvent event = 1; }
-
-message BatchGetTriggerEventsRequest {
-  string namespace_id = 1; // Unique namespace identifier
-  string pipeline_id = 2;
-  string pipeline_trigger_label = 3;
-  repeated int64 ids = 4; // Trigger Event IDs
-}
-message BatchGetTriggerEventsResponse { repeated TriggerEvent events = 1; }
-
-message ListTriggerEventsRequest {
-  // offset is a pagination parameter that defines where to start when
-  // counting the list of pipelines to return
-  int64 offset = 1;
-
-  // limit is a pagination parameter that defines how many pipelines to return
-  // per result.
-  int64 limit = 2;
-  string namespace_id = 3; // Unique namespace identifier
-  string pipeline_id = 4;
-  string pipeline_trigger_label = 5;
-}
-message ListTriggerEventsResponse { repeated TriggerEvent events = 1; }
-
 message GetTriggerRequest {
   string name = 1; // The unique name for a particular trigger
 }
@@ -320,6 +291,62 @@ message GetTriggerResponse { Trigger trigger = 1; }
 
 message ListTriggersRequest {}
 message ListTriggersResponse { repeated Trigger triggers = 1; }
+
+////////////// Events Transport Models //////////////
+
+message GetEventRequest { int64 id = 1; } // Event ID
+message GetEventResponse {
+  EventType kind = 1;
+  oneof event {
+    EventCreatedNamespace created_namespace_event = 2;
+
+    EventDisabledPipeline disabled_pipeline_event = 5;
+    EventEnabledPipeline enabled_pipeline_event = 6;
+    EventCreatedPipeline created_pipeline_event = 7;
+    EventAbandonedPipeline abandoned_pipeline_event = 8;
+
+    EventStartedRun started_run_event = 10;
+    EventCompletedRun completed_run_event = 11;
+
+    EventStartedTaskRun started_task_run_event = 15;
+    EventScheduledTaskRun scheduled_task_run_event = 16;
+    EventCompletedTaskRun completed_task_run_event = 17;
+
+    EventFiredTrigger fired_trigger_event = 20;
+    EventProcessedTrigger processed_trigger_event = 21;
+    EventResolvedTrigger resolved_trigger_event = 22;
+  }
+}
+
+message ListEventsRequest {
+  // defaults to false; meaning oldest to newest events by default.
+  bool reverse = 1;
+  // Tell Gofer to continually stream new events instead of closing the stream
+  // after it gets to the end.
+  bool follow = 2;
+}
+message ListEventsResponse {
+  EventType kind = 1;
+  oneof event {
+    EventCreatedNamespace created_namespace_event = 2;
+
+    EventDisabledPipeline disabled_pipeline_event = 5;
+    EventEnabledPipeline enabled_pipeline_event = 6;
+    EventCreatedPipeline created_pipeline_event = 7;
+    EventAbandonedPipeline abandoned_pipeline_event = 8;
+
+    EventStartedRun started_run_event = 10;
+    EventCompletedRun completed_run_event = 11;
+
+    EventStartedTaskRun started_task_run_event = 15;
+    EventScheduledTaskRun scheduled_task_run_event = 16;
+    EventCompletedTaskRun completed_task_run_event = 17;
+
+    EventFiredTrigger fired_trigger_event = 20;
+    EventProcessedTrigger processed_trigger_event = 21;
+    EventResolvedTrigger resolved_trigger_event = 22;
+  }
+}
 
 ////////////// Object store Transport Models //////////////
 
@@ -424,12 +451,11 @@ message DeleteSecretResponse {}
 
 message GetSystemInfoRequest {}
 message GetSystemInfoResponse {
-  string build_time = 1;
-  string commit = 2;
-  bool devmode_enabled = 3;
-  bool frontend_enabled = 4;
-  string version = 5;
-  bool accept_new_events = 6;
+  string commit = 1;
+  bool devmode_enabled = 2;
+  bool frontend_enabled = 3;
+  string version = 4;
+  bool ignore_pipeline_run_events = 5;
 }
 
 message RepairOrphanRequest {

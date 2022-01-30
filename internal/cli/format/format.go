@@ -9,6 +9,8 @@ import (
 	"github.com/clintjedwards/gofer/proto"
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // UnixMilli returns a humanized version of time given in unix millisecond. The zeroMsg is the string returned when
@@ -34,7 +36,10 @@ func PipelineState(state string) string {
 
 	// Because of how colorizing a string works we need to
 	// do the manipulations on case first or else it will not work.
-	state = strings.Title(strings.ToLower(state))
+	toTitle := cases.Title(language.AmericanEnglish)
+	toLower := cases.Lower(language.AmericanEnglish)
+	state = toTitle.String(toLower.String(state))
+
 	return colorizePipelineState(state)
 }
 
@@ -78,7 +83,9 @@ func RunState(state string) string {
 
 	// Because of how colorizing a string works we need to
 	// do the manipulations on case first or else it will not work.
-	state = strings.Title(strings.ToLower(state))
+	toTitle := cases.Title(language.AmericanEnglish)
+	toLower := cases.Lower(language.AmericanEnglish)
+	state = toTitle.String(toLower.String(state))
 	return colorizeRunState(state)
 }
 
@@ -108,7 +115,9 @@ func TaskRunState(state string) string {
 
 	// Because of how colorizing a string works we need to
 	// do the manipulations on case first or else it will not work.
-	state = strings.Title(strings.ToLower(state))
+	toTitle := cases.Title(language.AmericanEnglish)
+	toLower := cases.Lower(language.AmericanEnglish)
+	state = toTitle.String(toLower.String(state))
 	return colorizeTaskRunState(state)
 }
 
@@ -136,7 +145,10 @@ func TriggerState(state string) string {
 
 	// Because of how colorizing a string works we need to
 	// do the manipulations on case first or else it will not work.
-	state = strings.Title(strings.ToLower(state))
+	toTitle := cases.Title(language.AmericanEnglish)
+	toLower := cases.Lower(language.AmericanEnglish)
+	state = toTitle.String(toLower.String(state))
+
 	return colorizeTriggerState(state)
 }
 
@@ -164,7 +176,9 @@ func PipelineTriggerConfigState(state string) string {
 
 	// Because of how colorizing a string works we need to
 	// do the manipulations on case first or else it will not work.
-	state = strings.Title(strings.ToLower(state))
+	toTitle := cases.Title(language.AmericanEnglish)
+	toLower := cases.Lower(language.AmericanEnglish)
+	state = toTitle.String(toLower.String(state))
 	return colorizePipelineTriggerConfigState(state)
 }
 

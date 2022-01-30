@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) eventsHandler(w http.ResponseWriter, req *http.Request) {
+func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	triggerKind := vars["trigger"]
 	trigger, exists := api.triggers[triggerKind]
