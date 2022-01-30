@@ -16,10 +16,10 @@ On startup, Gofer launches the interval trigger as a long-running container. Whe
 
 Currently the only triggers are included by default:
 
-| name                          | image                                               | included | description                                                                                         |
-| ----------------------------- | --------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
-| [interval](interval/overview) | ghcr.io/clintjedwards/gofer/trigger_interval:latest | yes      | interval triggers an event after a predetermined amount of time has passed                          |
-| [cron](cron/overview)         | ghcr.io/clintjedwards/gofer/trigger_cron:latest     | yes      | Cron is used for longer termed intervals. For instance, running a pipeline every year on Christmas. |
+| name                          | image                                                          | included | description                                                                                         |
+| ----------------------------- | -------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| [interval](interval/overview) | ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest | yes      | interval triggers an event after a predetermined amount of time has passed                          |
+| [cron](cron/overview)         | ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest     | yes      | Cron is used for longer termed intervals. For instance, running a pipeline every year on Christmas. |
 
 ## How to add new Triggers?
 

@@ -13,18 +13,6 @@ build: check-path-included build-protos
 	go mod tidy
 	CGO_ENABLED=0 go build -ldflags $(GO_LDFLAGS) -o $(path)
 
-## build-triggers: build trigger docker containers
-build-triggers:
-	docker build -f triggers/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/trigger_cron:latest .
-	docker build -f triggers/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/trigger_interval:latest .
-	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer/trigger_github:latest .
-
-## push-triggers: push default trigger docker to github
-push-triggers:
-	docker push ghcr.io/clintjedwards/gofer/trigger_cron:latest
-	docker push ghcr.io/clintjedwards/gofer/trigger_interval:latest
-	docker push ghcr.io/clintjedwards/gofer/trigger_github:latest
-
 ## build-protos: build protobufs
 build-protos:
 	protoc --go_out=. --go_opt=paths=source_relative \

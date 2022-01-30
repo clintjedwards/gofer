@@ -86,11 +86,11 @@ func TestAPISampleFromFile(t *testing.T) {
 			RegisteredTriggers: []Trigger{
 				{
 					Kind:  "cron",
-					Image: "ghcr.io/clintjedwards/gofer/trigger_cron:latest",
+					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest",
 				},
 				{
 					Kind:  "interval",
-					Image: "ghcr.io/clintjedwards/gofer/trigger_interval:latest",
+					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest",
 				},
 			},
 		},
@@ -197,11 +197,11 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 			RegisteredTriggers: []Trigger{
 				{
 					Kind:  "cron",
-					Image: "ghcr.io/clintjedwards/gofer/trigger_cron:latest",
+					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest",
 				},
 				{
 					Kind:  "interval",
-					Image: "ghcr.io/clintjedwards/gofer/trigger_interval:latest",
+					Image: "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest",
 				},
 			},
 		},

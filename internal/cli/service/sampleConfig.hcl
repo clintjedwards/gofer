@@ -61,10 +61,10 @@ triggers {
   tls_cert_path        = "./localhost.crt"
   tls_key_path         = "./localhost.key"
   registered_triggers "cron" {
-    image = "ghcr.io/clintjedwards/gofer/trigger_cron:latest"
+    image = "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest"
   }
   registered_triggers "interval" {
-    image = "ghcr.io/clintjedwards/gofer/trigger_interval:latest"
+    image = "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest"
   }
 }
 

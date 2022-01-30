@@ -1,10 +1,10 @@
 ### Top remaining features before v1.0.0
 
-#### \* We need to put a validation check for environment variables that do not have a key since those are illegal
+#### Consider creating a container repository that lists containers people can use to do menial jobs
 
-- This validation needs to be put both in the pipeline config checks AND before we pass in trigger vars.
+Might have different sections like trigger containers or task containers.
 
-#### Git downloader container
+#### Repo downloader container
 
 - Support auth, support downloading into run or pipeline objects, support checking out specific commit.
 - Support sparse checkouts?
@@ -12,11 +12,13 @@
 
 #### Generate run level auth keys and allow people to use the binary to do stuff like download their favorite key from the object store.
 
-#### Possibly an event system so people and things can work off events.
+#### Possibly an event system so people and things can work off events
+
+- We could have async subscriptions so that
 
 #### Nomad scheduler integration
 
-#### An "export" function for pipeline configuration
+#### An "notify" function for pipeline configuration
 
 - we can allow things like annotations due to the feature of access to the kv store.
 - this works exactly like triggers
@@ -101,3 +103,4 @@
 - Add interval as the example for new triggers in the docs
 
 * when we can't connect to a trigger we should print the logs output if it exists.
+* When new version of go comes out replace the LDflags shit
