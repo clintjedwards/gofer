@@ -74,10 +74,6 @@ Might have different sections like trigger containers or task containers.
 
 - Test that unsubscribing works with all triggers. And create a test suite that triggers can run against.
 - The interval trigger should create jitter of about 2-5 mins. During that time it can choose when to start counting to trigger an event. This is so that when we restart the server all events don't perfectly line up with each other.
-- When we are subscribing triggers, triggers should reject configs that they don't find acceptable. when rejected
-  we should continue to subscribe other triggers and mark the trigger as failed/not connected. This probably
-  means that trigger subscriptions will need a state to say "config invalid" or "we could not subscribe you"
-- stopTriggers we should monitor the trigger to make sure it actually has shutdown and execute a stop container if its passes
 - triggers should follow semver
 
 ### General

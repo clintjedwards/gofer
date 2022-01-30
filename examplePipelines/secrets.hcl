@@ -12,7 +12,7 @@ task "no_dependencies" "ghcr.io/clintjedwards/experimental:log" {
   // As such we use the special secret syntax to convey to Gofer that the secret must be retrieved from the secret store
   // beforehand.
   env_vars = {
-    "SOME_VARIABLE" : "something here"
-    "LOGS_HEADER" : "secret{{ logs_header }}"
+    "SOME_VARIABLE" : "something here",
+    "LOGS_HEADER" : "secret{{ logs_header }}",
   }
 }
