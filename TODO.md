@@ -1,9 +1,5 @@
 ### Top remaining features before v1.0.0
 
-#### Consider creating a container repository that lists containers people can use to do menial jobs
-
-Might have different sections like trigger containers or task containers.
-
 #### Repo downloader container
 
 - Support auth, support downloading into run or pipeline objects, support checking out specific commit.
@@ -99,4 +95,3 @@ Might have different sections like trigger containers or task containers.
 - Add interval as the example for new triggers in the docs
 
 * when we can't connect to a trigger we should print the logs output if it exists.
-* When new version of go comes out replace the LDflags shit

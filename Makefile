@@ -1,6 +1,8 @@
 APP_NAME = gofer
 EPOCH_TIME = $(shell date +%s)
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
+# Although go 1.18 has the git info baked into the binary now it still seems like there is no support
+# For including outside variables except this. So keep it for now.
 GO_LDFLAGS = '-X "github.com/clintjedwards/${APP_NAME}/internal/cli.appVersion=$(VERSION)" \
 				-X "github.com/clintjedwards/${APP_NAME}/internal/api.appVersion=$(VERSION)"'
 SHELL = /bin/bash
