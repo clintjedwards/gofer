@@ -35,13 +35,12 @@ func init() {
 func pipelineSecretStorePut(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 	keyValueStr := args[1]
-	keyValuePair := strings.SplitN(keyValueStr, "=", 2)
-	if len(keyValuePair) != 2 {
-		fmt.Println("Key-value pair malformed; should be key=value")
-		return fmt.Errorf("Key-value pair malformed; should be key=value")
+
+	key, value, ok := strings.Cut(keyValueStr, "=")
+	if !ok {
+		fmt.Println("Key-value pair malformed; should be in format: <key>=<value>")
+		return fmt.Errorf("Key-value pair malformed; should be in format <key>=<value>")
 	}
-	key := keyValuePair[0]
-	value := keyValuePair[1]
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {

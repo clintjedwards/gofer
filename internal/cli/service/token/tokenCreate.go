@@ -27,13 +27,13 @@ func init() {
 func metadataToMap(metadata []string) map[string]string {
 	metadataMap := map[string]string{}
 
-	for _, value := range metadata {
-		splitValue := strings.Split(value, ":")
-		if len(splitValue) != 2 {
+	for _, keyPairString := range metadata {
+		key, value, ok := strings.Cut(keyPairString, ":")
+		if !ok {
 			continue
 		}
 
-		metadataMap[splitValue[0]] = splitValue[1]
+		metadataMap[key] = value
 	}
 
 	return metadataMap

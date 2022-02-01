@@ -432,13 +432,16 @@ func (api *API) createGRPCServer() (*grpc.Server, error) {
 
 // grpcDial establishes a connection with the request URL via GRPC.
 func grpcDial(url string) (*grpc.ClientConn, error) {
-	hostPortTuple := strings.Split(url, ":")
+	host, port, ok := strings.Cut(url, ":")
+	if !ok {
+		return nil, fmt.Errorf("could not parse url %q; format should be <host>:<port>", url)
+	}
 
 	var opt []grpc.DialOption
 	var tlsConf *tls.Config
 
 	// If we're testing in development bypass the cert checks.
-	if hostPortTuple[0] == "localhost" || hostPortTuple[0] == "127.0.0.1" {
+	if host == "localhost" || host == "127.0.0.1" {
 		tlsConf = &tls.Config{
 			InsecureSkipVerify: true,
 		}
@@ -447,7 +450,7 @@ func grpcDial(url string) (*grpc.ClientConn, error) {
 
 	opt = append(opt, grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(grpc_retry.WithMax(3), grpc_retry.WithBackoff(grpc_retry.BackoffExponential(time.Millisecond*100)))))
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", hostPortTuple[0], hostPortTuple[1]), opt...)
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), opt...)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to server: %w", err)
 	}

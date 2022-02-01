@@ -26,27 +26,23 @@ type Harness struct {
 var State *Harness
 
 func (s *Harness) Connect() (*grpc.ClientConn, error) {
-	hostPortTuple := strings.Split(s.Config.Host, ":")
-
-	if len(hostPortTuple) > 2 {
-		return nil, fmt.Errorf("malformed host string; must be in format: <host>:<port>")
-	}
+	host, port, _ := strings.Cut(s.Config.Host, ":")
 
 	// If we are not given a port we assume that port is 443
-	if len(hostPortTuple) == 1 {
-		hostPortTuple = append(hostPortTuple, "443")
+	if port == "" {
+		port = "443"
 	}
 
 	var opt []grpc.DialOption
 	var tlsConf *tls.Config
-	if hostPortTuple[0] == "localhost" || hostPortTuple[0] == "127.0.0.1" {
+	if host == "localhost" || host == "127.0.0.1" {
 		tlsConf = &tls.Config{
 			InsecureSkipVerify: true,
 		}
 	}
 
 	opt = append(opt, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", hostPortTuple[0], hostPortTuple[1]), opt...)
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), opt...)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to server: %w", err)
 	}
