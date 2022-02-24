@@ -339,6 +339,7 @@ func (api *API) checkForTriggerEvents(ctx context.Context) {
 // processTriggerEvents listens to and consumes all events from the TriggerEventReceived channel and starts the
 // appropriate pipeline.
 func (api *API) processTriggerEvents() error {
+	// Subscribe to all fired trigger events so we can watch for them.
 	subscription, err := api.events.Subscribe(models.FiredTriggerEvent)
 	if err != nil {
 		return fmt.Errorf("could not subscribe to trigger events: %w", err)
@@ -361,6 +362,14 @@ func (api *API) processTriggerEvents() error {
 			event.Label,
 			result,
 			event.TriggerMetadata))
+
+		// If the trigger event state != success then we should log that and skip it.
+		if event.Result.State != models.TriggerResultStateSuccess {
+			api.events.Publish(models.NewEventResolvedTrigger(event.Namespace, event.Pipeline, event.Label,
+				result,
+				event.TriggerMetadata))
+			return nil
+		}
 
 		if !api.ignorePipelineRunEvents.Load() {
 			pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{

@@ -2,11 +2,14 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/proto"
+	"github.com/fatih/color"
+	"github.com/fatih/structs"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
@@ -73,10 +76,38 @@ func eventList(cmd *cobra.Command, _ []string) error {
 			break
 		}
 
-		cl.State.Fmt.Println(resp)
+		cl.State.Fmt.Println(printEvent(resp))
 	}
 
 	cl.State.Fmt.Finish()
 
 	return nil
+}
+
+func printEvent(event *proto.ListEventsResponse) string {
+	// We're doing hacks here because I refuse to build long switch chains
+	convertedMap := structs.Map(event.Event)
+	kind := ""
+	metadata := map[string]interface{}{}
+	rawMap := map[string]interface{}{}
+	for key, value := range convertedMap {
+		rawMap = value.(map[string]interface{})
+		metadata = rawMap["Metadata"].(map[string]interface{})
+		kind = key
+		break // We only interate through this map so we can take the first (and only) key
+	}
+
+	other := map[string]string{}
+	for key, value := range rawMap {
+		if key == "Metadata" {
+			continue
+		}
+
+		other[key] = fmt.Sprint(value)
+	}
+
+	otherRaw, _ := json.Marshal(other)
+	id := metadata["EventId"].(int64)
+
+	return fmt.Sprintf("[%s] %s: %v", color.YellowString(fmt.Sprint(id)), color.BlueString(kind), string(otherRaw))
 }
