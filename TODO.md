@@ -99,4 +99,9 @@
 - Add interval as the example for new triggers in the docs
 - Write a design document
 - Improve documentation and examples for features.
+
   - For example: writing custom notifiers allows you to implement Google style
+
+- We were cleaning up some documentation word vomit when we last left our hero
+- Investigate why publish seems to wait a long time. 144s by go trace
+  Just do a duration log for each publish call.

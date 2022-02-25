@@ -669,7 +669,7 @@ func (api *API) handleRunObjectExpiry(namespace, pipeline string) {
 			log.Error().Err(err).Msg("could not update run")
 		}
 
-		log.Debug().Int("removed_objects", len(run.Objects)).Int("run_age_limit", limit).Int64("id", run.ID).Msg("old run objects removed")
+		log.Debug().Int("removed_objects", len(run.Objects)).Int("run_age_limit", limit).Int64("run_id", run.ID).Msg("old run objects removed")
 		return
 	}
 }

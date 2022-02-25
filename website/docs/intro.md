@@ -23,11 +23,15 @@ It's meant to run short term jobs such as: code linters, build tools, tests, por
 
 ## Gofer's Philosophy
 
-Things should be _easy and fast_. For if they are not, people will look for an alternate solution.
+_Things should be **easy and fast**. For if they are not, people will look for an alternate solution._
 
-Gofer focuses on the usage of easy to create containers to run workloads that don't belong as long-running applications. The ability to run containers easily, is powerful tool for users who need to run various short-term workloads and don't want to care about the idiosyncrasies of the tooling that they run on top of.
+Gofer focuses on the usage of common docker containers to run workloads that don't belong as long-running applications. The ability to run containers easily, is powerful tool for users who need to run various short-term workloads and don't want to care about the idiosyncrasies of the tooling that they run on top of.
 
-Gofer tries to make this easy by getting out of the way as much as possible. Operators can set up Gofer to run on their already established favorite systems, making it easy to manage and users just have to build their jobs as docker containers and tell Gofer where to find them.
+## How do I use Gofer? What's a common workflow?
+
+1. Create a docker container with the workload/code you want to run.
+2. Create a configuration file (kept with your workload code) in which you tell Gofer what containers to run and when they should be run.
+3. Gofer takes care of the rest!
 
 ## What problem is Gofer attempting to solve?
 
@@ -126,7 +130,7 @@ The easiest primer on cloud native best practices is the [12-factor guide](https
 
 Gofer makes a best effort to start jobs on their defined timeline, but it is at the mercy of many parts of the system (scheduling lag, image download time, competition with other pipelines). If you need precise down to the second or minute runs of code Gofer does not guarantee such a thing.
 
-Gofer works better when jobs are expected to run +0 to +5 mins of their scheduled event/time.
+Gofer works better when jobs are expected to run +1 to +5 mins of their scheduled event/time.
 
 ## Why not use <insert favorite tool here\>?
 
