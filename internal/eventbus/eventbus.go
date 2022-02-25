@@ -108,17 +108,19 @@ func (eb *EventBus) Unsubscribe(sub Subscription) {
 		listeners[index] = listeners[len(listeners)-1]
 		listeners = listeners[:len(listeners)-1]
 	}
+
+	eb.subscribers[sub.kind] = listeners
 }
 
 // Publish allows caller to emit a new event to the eventbus.
 func (eb *EventBus) Publish(evt models.Event) {
-	eb.mu.Lock()
-	defer eb.mu.Unlock()
-
 	err := eb.storage.AddEvent(storage.AddEventRequest{Event: evt})
 	if err != nil {
 		log.Error().Err(err).Msg("could not add event to storage")
 	}
+
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
 
 	listeners, exists := eb.subscribers[evt.GetKind()]
 	if !exists {

@@ -1,6 +1,7 @@
 package eventbus
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -82,6 +83,29 @@ func TestSubscribe(t *testing.T) {
 	if three.GetID() != thirdEvent.GetID() {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
 			three.GetID(), thirdEvent.GetID())
+	}
+}
+
+func TestUnsubscribe(t *testing.T) {
+	db := mustOpenDB()
+
+	eb, err := New(db, time.Minute*5, time.Minute*5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sub, err := eb.Subscribe(models.StartedRunEvent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	eb.Publish(models.NewEventStartedRun(models.Run{}))
+
+	eb.Unsubscribe(sub)
+
+	if len(eb.subscribers[models.StartedRunEvent]) != 0 {
+		t.Error("Unsubscribe not successful")
+		fmt.Println(eb.subscribers[models.StartedRunEvent])
 	}
 }
 
