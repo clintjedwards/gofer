@@ -17,3 +17,27 @@ func TestMergeMaps(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 }
+
+func TestParseInterpolationSyntax(t *testing.T) {
+	tests := map[string]struct {
+		kind     string
+		value    string
+		expected string
+	}{
+		"secret":         {kind: "secret", value: "secret{{example}}", expected: "example"},
+		"pipeline":       {kind: "pipeline", value: "pipeline{{example}}", expected: "example"},
+		"run":            {kind: "run", value: "run{{example}}", expected: "example"},
+		"incorrect_kind": {kind: "secret", value: "run{{example}}", expected: ""},
+		"normal_value":   {kind: "secret", value: "normal_value", expected: ""},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := parseInterpolationSyntax(test.kind, test.value)
+
+			if result != test.expected {
+				t.Errorf("incorrect interpolation result; want %s got %s", test.expected, result)
+			}
+		})
+	}
+}

@@ -232,7 +232,7 @@ func (api *API) restoreTriggerSubscriptions() error {
 
 			client := sdkProto.NewTriggerClient(conn)
 
-			config, err := api.populateSecrets(pipeline.Namespace, pipeline.ID, subscription.Config)
+			config, err := api.interpolateVars(pipeline.Namespace, pipeline.ID, subscription.Config)
 			if err != nil {
 				pipeline.State = models.PipelineStateDisabled
 				subscription.State = models.PipelineTriggerStateDisabled

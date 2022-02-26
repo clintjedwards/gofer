@@ -398,7 +398,7 @@ func (api *API) subscribeTrigger(namespaceID, pipelineID string, config *models.
 
 	client := sdkProto.NewTriggerClient(conn)
 
-	subConfig, err := api.populateSecrets(namespaceID, pipelineID, config.Config)
+	subConfig, err := api.interpolateVars(namespaceID, pipelineID, config.Config)
 	if err != nil {
 		return fmt.Errorf("could not subscribe trigger %q for pipeline %q - namespace %q; %w",
 			config.Label, pipelineID, namespaceID, err)

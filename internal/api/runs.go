@@ -193,38 +193,79 @@ func (api *API) taskRunLogFilePath(taskRun *models.TaskRun) string {
 		taskRun.PipelineID, taskRun.RunID, taskRun.ID)
 }
 
-// populateSecrets takes in a map of mixed plaintext and raw secret strings and populates it with the fetched secrets.
-func (api *API) populateSecrets(namespace, pipeline string, mixedMap map[string]string) (map[string]string, error) {
+// interpolateVars takes in a map of mixed plaintext and raw secret/store strings and populates it with the fetched
+// results.
+func (api *API) interpolateVars(namespace, pipeline string, mixedMap map[string]string) (map[string]string, error) {
 	parsedMap := map[string]string{}
 
 	for mapKey, value := range mixedMap {
-		key := parseSecretKeyFromString(value)
-		if len(key) == 0 {
-			parsedMap[mapKey] = value
+		// Parse for secrets
+		key := parseInterpolationSyntax("secret", value) // secret{{ example }}
+		if len(key) != 0 {
+			secret, err := api.secretStore.GetSecret(secretKey(namespace, pipeline, key))
+			if err != nil {
+				return nil, fmt.Errorf("could not find secret %q in secret store", key)
+			}
+			parsedMap[mapKey] = secret
 			continue
 		}
 
-		secret, err := api.secretStore.GetSecret(secretKey(namespace, pipeline, key))
-		if err != nil {
-			return nil, fmt.Errorf("could not find secret %q in secret store", key)
+		// Parse for pipeline objects
+		key = parseInterpolationSyntax("pipeline", value) // pipeline{{ example }}
+		if len(key) != 0 {
+			object, err := api.objectStore.GetObject(pipelineObjectKey(namespace, pipeline, key))
+			if err != nil {
+				return nil, fmt.Errorf("could not find pipeline object %q in object store", key)
+			}
+			parsedMap[mapKey] = string(object)
+			continue
 		}
 
-		parsedMap[mapKey] = secret
+		parsedMap[mapKey] = value
+		continue
 	}
 
 	return parsedMap, nil
 }
 
-// parseSecretKeyFromString checks a string for the existence of the secret key format "secret{{ example }}".
-// If it is a secret key we return that key without the brackets, if it is not, an empty string is returned.
-func parseSecretKeyFromString(variable string) string {
+// interpolateRunStoreVars takes in a map of mixed plaintext and raw run store strings and populates it with the fetched
+// results.
+func (api *API) interpolateRunStoreVars(namespace, pipeline string, mixedMap map[string]string, run int64) (map[string]string, error) {
+	parsedMap := map[string]string{}
+
+	for mapKey, value := range mixedMap {
+		// Parse for run objects
+		key := parseInterpolationSyntax("run", value) // run{{ example }}
+		if len(key) != 0 {
+			object, err := api.objectStore.GetObject(runObjectKey(namespace, pipeline, key, run))
+			if err != nil {
+				return nil, fmt.Errorf("could not find run object %q in object store", key)
+			}
+			parsedMap[mapKey] = string(object)
+			continue
+		}
+
+		parsedMap[mapKey] = value
+		continue
+	}
+
+	return parsedMap, nil
+}
+
+// parseInterpolationSyntax checks a string for the existence of a interpolation format. ex: "secret{{ example }}".
+// If it is we return that key without the brackets, if it is not, an empty string is returned.
+//
+// Currently the supported interpolation syntaxes are:
+// `secret{{ example }}` for inserting from the secret store.
+// `pipeline{{ example }}` for inserting from the pipeline object store.
+// `run{{ example }}` for inserting from the run object store.
+func parseInterpolationSyntax(prefix, variable string) string {
 	variable = strings.TrimSpace(variable)
-	if strings.HasPrefix(variable, "secret{{") && strings.HasSuffix(variable, "}}") {
-		variable = strings.TrimPrefix(variable, "secret{{")
+	if strings.HasPrefix(variable, fmt.Sprintf("%s{{", prefix)) && strings.HasSuffix(variable, "}}") {
+		variable = strings.TrimPrefix(variable, fmt.Sprintf("%s{{", prefix))
 		variable = strings.TrimSuffix(variable, "}}")
 		return strings.TrimSpace(variable)
 	}
-
 	return ""
 }
 
@@ -263,11 +304,28 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		return
 	}
 
-	parsedEnvVars, err := api.populateSecrets(taskrun.NamespaceID, taskrun.PipelineID, taskrun.EnvVars)
+	// First we attempt to find any pipeline/secret store variables and replace them with the correct var.
+	parsedEnvVars, err := api.interpolateVars(taskrun.NamespaceID, taskrun.PipelineID, taskrun.EnvVars)
 	if err != nil {
 		taskrun.SetFinishedAbnormal(models.ContainerStateFailed, models.TaskRunFailure{
 			Kind:        models.TaskRunFailureKindFailedPrecondition,
-			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; could not find one or more secret keys: %v", err),
+			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; could not find one or more keys: %v", err),
+		}, 1)
+		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
+		if err != nil {
+			log.Error().Err(err).Msg("could not update task run")
+		}
+		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
+		return
+	}
+
+	// Then we attempt to find any run store variables and replace them with the correct var.
+	parsedEnvVars, err = api.interpolateRunStoreVars(taskrun.NamespaceID, taskrun.PipelineID, parsedEnvVars, taskrun.RunID)
+	if err != nil {
+		taskrun.SetFinishedAbnormal(models.ContainerStateFailed, models.TaskRunFailure{
+			Kind:        models.TaskRunFailureKindFailedPrecondition,
+			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; could not find one or more keys: %v", err),
 		}, 1)
 		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
 		if err != nil {
@@ -283,7 +341,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		ImageName:    taskrun.Image,
 		EnvVars:      parsedEnvVars,
 		RegistryUser: taskrun.RegistryAuth.User,
-		RegistryPass: parseSecretKeyFromString(taskrun.RegistryAuth.Pass),
+		RegistryPass: parseInterpolationSyntax("secret", taskrun.RegistryAuth.Pass),
 	}, taskrun)
 	if err != nil {
 		log.Error().Err(err).Str("id", taskrun.ID).
@@ -393,11 +451,30 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		return
 	}
 
-	parsedEnvVars, err := api.populateSecrets(newTaskRun.NamespaceID, newTaskRun.PipelineID, newTaskRun.EnvVars)
+	// First we attempt to find any pipeline/secret store variables and replace them with the correct var.
+	parsedEnvVars, err := api.interpolateVars(newTaskRun.NamespaceID, newTaskRun.PipelineID, newTaskRun.EnvVars)
 	if err != nil {
 		newTaskRun.SetFinishedAbnormal(models.ContainerStateFailed, models.TaskRunFailure{
-			Kind:        models.TaskRunFailureKindFailedPrecondition,
-			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; could not find one or more secret keys: %v", err),
+			Kind: models.TaskRunFailureKindFailedPrecondition,
+			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; "+
+				"could not find one or more keys in store: %v", err),
+		}, 1)
+		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: newTaskRun})
+		if err != nil {
+			log.Error().Err(err).Msg("could not update task run")
+		}
+		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
+		return
+	}
+
+	// Then we attempt to find any run store variables and replace them with the correct var.
+	parsedEnvVars, err = api.interpolateRunStoreVars(newTaskRun.NamespaceID, newTaskRun.PipelineID, parsedEnvVars, newTaskRun.RunID)
+	if err != nil {
+		newTaskRun.SetFinishedAbnormal(models.ContainerStateFailed, models.TaskRunFailure{
+			Kind: models.TaskRunFailureKindFailedPrecondition,
+			Description: fmt.Sprintf("Task could not be run due to unmet dependencies; "+
+				"could not find one or more keys in store: %v", err),
 		}, 1)
 		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: newTaskRun})
 		if err != nil {
@@ -413,7 +490,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		ImageName:    newTaskRun.Image,
 		EnvVars:      parsedEnvVars,
 		RegistryUser: newTaskRun.RegistryAuth.User,
-		RegistryPass: parseSecretKeyFromString(newTaskRun.RegistryAuth.Pass),
+		RegistryPass: parseInterpolationSyntax("secret", newTaskRun.RegistryAuth.Pass),
 	}, newTaskRun)
 	if err != nil {
 		log.Error().Err(err).Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).

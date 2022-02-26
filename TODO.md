@@ -99,8 +99,7 @@
 - Add interval as the example for new triggers in the docs
 - Write a design document
 - Improve documentation and examples for features.
+  - For example: writing custom notifiers allows you to implement Google style static analysis
 
-  - For example: writing custom notifiers allows you to implement Google style
-
-- Investigate why publish seems to wait a long time. 144s by go trace
-  Just do a duration log for each publish call.
+* Investigate possible bug where user changes a pipe to a different ID and then tries to update the old pipeline.
+  From the error it seems like its trying to pull the incorrect pipeline.
