@@ -8,10 +8,6 @@
 
 #### Generate per run auth keys and allow people to use the binary to do stuff like download their favorite key from the object store.
 
-#### Access to the kv store via pipeline configuration
-
--- we can give user's the ability to request store specific variables with the same syntax we do with secrets.
-
 #### Nomad scheduler integration
 
 #### An "notify" function for pipeline configuration

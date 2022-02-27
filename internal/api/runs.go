@@ -50,7 +50,7 @@ func (api *API) startTaskRun(sc scheduler.StartContainerRequest, taskRun *models
 				Kind:        models.TaskRunFailureKindSchedulerError,
 				Description: fmt.Sprintf("Could not start container on scheduler: %v", err),
 			},
-			0)
+			1)
 
 		storageErr := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskRun})
 		if storageErr != nil {
@@ -112,7 +112,7 @@ func (api *API) waitTaskRunFinish(schedulerID string, taskRun *models.TaskRun) e
 					Kind:        models.TaskRunFailureKindSchedulerError,
 					Description: fmt.Sprintf("Could not query the scheduler for container state: %v", err),
 				},
-				0)
+				1)
 			return err
 		}
 
@@ -129,7 +129,7 @@ func (api *API) waitTaskRunFinish(schedulerID string, taskRun *models.TaskRun) e
 					Kind:        models.TaskRunFailureKindCancelled,
 					Description: "Task cancelled during run.",
 				},
-				0)
+				1)
 			return nil
 		case models.ContainerStateFailed:
 			taskRun.SetFinishedAbnormal(models.ContainerStateFailed,
@@ -440,7 +440,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 				Kind: models.TaskRunFailureKindFailedPrecondition,
 				Description: "Task could not be run due to unmet dependencies; this usually" +
 					" means that one or more parent tasks either were cancelled, skipped, or did not reflect the correct finish status.",
-			}, 0)
+			}, 1)
 
 		err = api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: newTaskRun})
 		if err != nil {
