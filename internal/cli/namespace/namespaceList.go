@@ -25,6 +25,7 @@ Namespaces act as divider lines between different sets of pipelines.
 }
 
 func init() {
+	cmdNamespaceList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
 	CmdNamespace.AddCommand(cmdNamespaceList)
 }
 
@@ -33,6 +34,13 @@ func namespaceList(cmd *cobra.Command, _ []string) error {
 	detail, _ := cmd.Flags().GetBool("detail")
 
 	cl.State.Fmt.Print("Retrieving namespaces")
+
+	limit, err := cmd.Flags().GetInt("limit")
+	if err != nil {
+		cl.State.Fmt.PrintErr(err)
+		cl.State.Fmt.Finish()
+		return err
+	}
 
 	conn, err := cl.State.Connect()
 	if err != nil {
@@ -45,7 +53,9 @@ func namespaceList(cmd *cobra.Command, _ []string) error {
 
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	resp, err := client.ListNamespaces(ctx, &proto.ListNamespacesRequest{})
+	resp, err := client.ListNamespaces(ctx, &proto.ListNamespacesRequest{
+		Limit: int64(limit),
+	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not list namespaces: %v", err))
 		cl.State.Fmt.Finish()

@@ -99,3 +99,7 @@
 
 * Investigate possible bug where user changes a pipe to a different ID and then tries to update the old pipeline.
   From the error it seems like its trying to pull the incorrect pipeline.
+* Cancelled during run should say something more descriptive.
+* Printing a task run in CLI should also show parents
+* Can we get FAILED_PRECONDITION to be a bit clearer on where things failed? FOr example is should say what it was depending on, what the status of that thing was and explain thats why it failed.
+* If a task run does not actually have logs we shouldn't error when trying to remove it.

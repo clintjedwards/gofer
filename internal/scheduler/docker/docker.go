@@ -49,7 +49,7 @@ func New(prune bool, pruneInterval time.Duration) (Orchestrator, error) {
 	// Check connection to docker
 	_, err = docker.Info(context.Background())
 	if err != nil {
-		return Orchestrator{}, fmt.Errorf("could not connect to docker; is docker installed?")
+		return Orchestrator{}, fmt.Errorf("could not connect to docker; make sure docker is installed and running")
 	}
 
 	// As we run docker containers we might not want to automatically remove them so that its possible for an operator

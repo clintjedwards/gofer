@@ -31,11 +31,19 @@ Health shows a quick glimpse into how the last 5 builds performed.
 }
 
 func init() {
+	cmdPipelineList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
 	CmdPipeline.AddCommand(cmdPipelineList)
 }
 
-func pipelineList(_ *cobra.Command, _ []string) error {
+func pipelineList(cmd *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving pipelines")
+
+	limit, err := cmd.Flags().GetInt("limit")
+	if err != nil {
+		cl.State.Fmt.PrintErr(err)
+		cl.State.Fmt.Finish()
+		return err
+	}
 
 	conn, err := cl.State.Connect()
 	if err != nil {
@@ -50,6 +58,7 @@ func pipelineList(_ *cobra.Command, _ []string) error {
 
 	resp, err := client.ListPipelines(ctx, &proto.ListPipelinesRequest{
 		NamespaceId: cl.State.Config.Namespace,
+		Limit:       int64(limit),
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not list pipelines: %v", err))

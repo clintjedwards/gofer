@@ -485,6 +485,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		return
 	}
 
+	// Finally start the task run.
 	schedulerID, err := api.startTaskRun(scheduler.StartContainerRequest{
 		ID:           fmt.Sprintf(TASKCONTAINERIDFORMAT, newTaskRun.PipelineID, newTaskRun.RunID, newTaskRun.ID),
 		ImageName:    newTaskRun.Image,
@@ -505,6 +506,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 	api.events.Publish(models.NewEventScheduledTaskRun(*newTaskRun))
 	taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
 
+	// Block until taskrun status can be logged
 	err = api.monitorTaskRun(schedulerID, newTaskRun)
 	if err != nil {
 		log.Error().Err(err).Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).

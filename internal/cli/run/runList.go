@@ -27,13 +27,21 @@ A short listing of all currently started runs.`,
 }
 
 func init() {
+	cmdRunList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
 	CmdRun.AddCommand(cmdRunList)
 }
 
-func runList(_ *cobra.Command, args []string) error {
+func runList(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 
 	cl.State.Fmt.Print("Retrieving runs")
+
+	limit, err := cmd.Flags().GetInt("limit")
+	if err != nil {
+		cl.State.Fmt.PrintErr(err)
+		cl.State.Fmt.Finish()
+		return err
+	}
 
 	conn, err := cl.State.Connect()
 	if err != nil {
@@ -50,6 +58,7 @@ func runList(_ *cobra.Command, args []string) error {
 	resp, err := client.ListRuns(ctx, &proto.ListRunsRequest{
 		NamespaceId: cl.State.Config.Namespace,
 		PipelineId:  pipelineID,
+		Limit:       int64(limit),
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not list runs: %v", err))
