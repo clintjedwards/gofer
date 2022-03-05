@@ -579,7 +579,8 @@ func dependenciesSatisfied(statusMap *sync.Map, dependencies map[string]models.R
 
 // createNewRun starts a new run and launches the goroutines responsible for running tasks.
 func (api *API) createNewRun(namespaceID, pipelineID, triggerKind, triggerName string,
-	taskFilter map[string]struct{}, vars map[string]string) (*models.Run, error) {
+	taskFilter map[string]struct{}, vars map[string]string,
+) (*models.Run, error) {
 	pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{NamespaceID: namespaceID, ID: pipelineID})
 	if err != nil {
 		return nil, err
@@ -686,7 +687,7 @@ func (api *API) handleRunLogExpiry(namespaceID, pipelineID string) {
 			taskRun := taskRun
 			err := os.Remove(api.taskRunLogFilePath(taskRun))
 			if err != nil {
-				log.Error().Err(err).Msg("could not remove task run log file")
+				log.Debug().Err(err).Msg("could not remove task run log file")
 			}
 			taskRun.LogsExpired = true
 			taskRun.LogsRemoved = true
