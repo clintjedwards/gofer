@@ -99,7 +99,17 @@
 
 * Investigate possible bug where user changes a pipe to a different ID and then tries to update the old pipeline.
   From the error it seems like its trying to pull the incorrect pipeline.
-* Cancelled during run should say something more descriptive.
+* We need concurrent protection for `triggers map[string]*models.Trigger`
+* Cancelled during run should say something more descriptive. See if we can track down by cancel function and if there
+  is a space for more description.
 * Printing a task run in CLI should also show parents
 * Can we get FAILED_PRECONDITION to be a bit clearer on where things failed? FOr example is should say what it was depending on, what the status of that thing was and explain thats why it failed.
-* If a task run does not actually have logs we shouldn't error when trying to remove it.
+
+* Exec command
+* Take what we get from the exec command input
+* We strip the whitespace from the ends
+* We base64 the entire thing and store it alongside the pipeline
+* We can then pass this to the receiver by calling the relevant bash command and un-base64ing it in the container.
+* Document how one would test exec commands locally (simply just echo into docker)
+* Document new exec statement
+* Last we left off we implemented the exec into tasks so now we just need to implement them on the scheduler side.

@@ -16,10 +16,15 @@ type RegistryAuth struct {
 	Pass string `json:"pass"`
 }
 
-func (r *RegistryAuth) ToProto() *proto.RegistryAuth {
-	return &proto.RegistryAuth{
-		User: r.User,
-		Pass: r.Pass,
+type Exec struct {
+	Shell  string `json:"shell"`  // Which shell the user would like to use.
+	Script string `json:"script"` // Base64 representation of the script.
+}
+
+func (r *Exec) ToProto() *proto.Exec {
+	return &proto.Exec{
+		Shell:  r.Shell,
+		Script: r.Script,
 	}
 }
 
@@ -30,6 +35,7 @@ type Task struct {
 	RegistryAuth RegistryAuth                   `json:"registry_auth"`
 	DependsOn    map[string]RequiredParentState `json:"depends_on"`
 	EnvVars      map[string]string              `json:"env_vars"`
+	Exec         Exec                           `json:"exec"` // Exec is a representation of a script to be run via container.
 }
 
 func (r *Task) ToProto() *proto.Task {
@@ -44,5 +50,6 @@ func (r *Task) ToProto() *proto.Task {
 		Image:       r.Image,
 		DependsOn:   dependsOn,
 		EnvVars:     r.EnvVars,
+		Exec:        r.Exec.ToProto(),
 	}
 }

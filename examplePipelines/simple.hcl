@@ -33,9 +33,15 @@ EOT
 // Task two is the last in line to be run since it's dependency tree looks like:
 // "no_dependencies" -> "depends_on_one" -> "depends_on_task_two".
 // It's only difference is that regardless of the state that "depends_on_one" ends with it will run.
+// This task also shows the exec command which you can use to run shell commands on any container.
 task "depends_on_task_two" "docker.io/library/hello-world" {
   description = "This task depends on the second task, but will run after its finished regardless of the result."
   depends_on = {
     "depends_on_one" : "any",
+  }
+  exec "/bin/bash" {
+    script = <<EOT
+echo Hello from Gofer!
+EOT
   }
 }

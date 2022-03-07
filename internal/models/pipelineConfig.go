@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -80,12 +81,18 @@ type HCLPipelineRegistryAuthConfig struct {
 	Pass string `json:"pass" hcl:"pass,optional"`
 }
 
+type HCLPipelineExecConfig struct {
+	Shell  string `json:"shell" hcl:"shell,label"`
+	Script string `json:"script" hcl:"script"`
+}
+
 type HCLPipelineTaskConfig struct {
-	ID          string            `json:"id" hcl:"id,label"`
-	ImageName   string            `json:"image_name" hcl:"image_name,label"`
-	Description string            `json:"description" hcl:"description,optional"`
-	DependsOn   map[string]string `json:"depends_on" hcl:"depends_on,optional"`
-	EnvVars     map[string]string `json:"env_vars" hcl:"env_vars,optional"`
+	ID          string                 `json:"id" hcl:"id,label"`
+	ImageName   string                 `json:"image_name" hcl:"image_name,label"`
+	Description string                 `json:"description" hcl:"description,optional"`
+	DependsOn   map[string]string      `json:"depends_on" hcl:"depends_on,optional"`
+	EnvVars     map[string]string      `json:"env_vars" hcl:"env_vars,optional"`
+	Exec        *HCLPipelineExecConfig `json:"exec" hcl:"exec,block"`
 
 	// HCLv2 has many idiosyncrasies, but this one is noteworthy for future reference. The only way to make a block
 	// optional is to make the type a reference to the real struct and then make sure to check for the possible nil.
@@ -205,11 +212,19 @@ func FromHCL(hcl *HCLPipelineConfig) (*PipelineConfig, error) {
 		for key, value := range task.DependsOn {
 			dependson[key] = RequiredParentState(strings.ToUpper(value))
 		}
-		registryAuth := RegistryAuth{}
 
+		registryAuth := RegistryAuth{}
 		if task.RegistryAuth != nil {
 			registryAuth = RegistryAuth(*task.RegistryAuth)
 		}
+
+		exec := Exec{}
+		if task.Exec != nil {
+			exec = Exec(*task.Exec)
+		}
+
+		// Encode shell script into base64 so it's easy to store and pass around.
+		exec.Script = base64.StdEncoding.EncodeToString([]byte(exec.Script))
 
 		tasks = append(tasks, Task{
 			ID:           task.ID,
@@ -218,6 +233,7 @@ func FromHCL(hcl *HCLPipelineConfig) (*PipelineConfig, error) {
 			RegistryAuth: registryAuth,
 			DependsOn:    dependson,
 			EnvVars:      task.EnvVars,
+			Exec:         exec,
 		})
 	}
 

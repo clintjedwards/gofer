@@ -50,17 +50,18 @@ enum TaskRequiredParentState {
   FAILURE = 3;
 }
 
+message Exec {
+  string shell = 1;
+  string script = 2;
+}
+
 message Task {
   string id = 1;
   string description = 2;
   string image = 3;
   map<string, TaskRequiredParentState> depends_on = 4;
   map<string, string> env_vars = 5;
-}
-
-message RegistryAuth {
-  string user = 1;
-  string pass = 2;
+  Exec exec = 6;
 }
 
 message Run {
