@@ -23,6 +23,11 @@ var ErrNoSuchContainer = errors.New("scheduler: entity not found")
 // ErrNoSuchImage is returned when the requested container image could not be pulled.
 var ErrNoSuchImage = errors.New("scheduler: docker image not found")
 
+type Exec struct {
+	Shell  string // The shell in which to run the script under.
+	Script string // List of commands to run in entrypoint of container.
+}
+
 type StartContainerRequest struct {
 	ID        string            // The schedulerID of the container
 	ImageName string            // The docker image repository endpoint of the container; tag can be included.
@@ -37,6 +42,7 @@ type StartContainerRequest struct {
 
 	// Networking is used to communicate to the container via RPC. This is only needed by triggers.
 	EnableNetworking bool
+	Exec             Exec
 }
 
 type StartContainerResponse struct {

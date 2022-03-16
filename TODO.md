@@ -39,6 +39,7 @@
 - Implement the feature allowing people to ssh into their containers and allow maintainers to turn that off.
 - Offer canary type deployments for these. Allow the user to easily rollback pipeline configuration. Allow measuring failure rate and auto-rollback.
 - Offer the ability to run two different versions of a container at the same time so that people can slowly roll out new jobs in a safe fashion. (green blue/canary)
+  - You can all the different versions "revision"
 - This can possibly be done in the run step by specifying a different image name than is currently set to run.
 - DeleteNamespace should abandon all pipelines. Technically if you know the namespace name you're still allowed to run jobs.
 - For security reasons we probably need to narrow the amount of places you can import remote files from. Because we need to hide any auth information if included.
@@ -113,3 +114,4 @@
 * Document how one would test exec commands locally (simply just echo into docker)
 * Document new exec statement
 * Last we left off we implemented the exec into tasks so now we just need to implement them on the scheduler side.
+* Document that it is intentional that you cannot make complicated bash scripts inside exec.

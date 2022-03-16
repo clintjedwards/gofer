@@ -20,40 +20,11 @@ trigger "interval" "every_one_minute" {
 
 // Tasks are the building blocks of a pipeline. They represent individual containers and can be
 // configured to depend on one or multiple other tasks.
-task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
-  description = "This task has no dependencies so it will run immediately"
-
-  // Environment variables are the way in which your container is configured.
-  // These are passed into your container at runtime. The way to pass variables to your container
-  // should always be through environment variables except in very rare circumstances: https://12factor.net/config
-  env_vars = {
-    "WAIT_DURATION" : "10s",
-  }
-}
-
-task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
-  description = <<EOT
-This task depends on the first task to finish with a successfull result. This means
-that if the first task fails this task will not run.
-EOT
-  depends_on = {
-    "no_dependencies" : "successful",
-  }
-  env_vars = {
-    "LOGS_HEADER" : "This string can be anything you want it to be",
-  }
-}
-
-task "depends_on_all" "ghcr.io/clintjedwards/experimental:log" {
-  description = <<EOT
-This task depends on all other tasks completing successfully. This means that even though task "no_dependencies" has
-finished it will wait until "depends_on_one" has exited.
-EOT
-  depends_on = {
-    "no_dependencies" : "successful",
-    "depends_on_one" : "successful",
-  }
-  env_vars = {
-    "LOGS_HEADER" : "This string can be anything you want it to be",
+task "simple_task" "ubuntu:latest" {
+  description = "This task simply prints our hello-world message and exits!"
+  exec "/bin/bash" {
+    script = <<EOT
+    echo Hello from Gofer!
+    EOT
   }
 }

@@ -337,9 +337,13 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 	}
 
 	schedulerID, err := api.startTaskRun(scheduler.StartContainerRequest{
-		ID:           fmt.Sprintf(TASKCONTAINERIDFORMAT, taskrun.PipelineID, taskrun.RunID, taskrun.ID),
-		ImageName:    taskrun.Image,
-		EnvVars:      parsedEnvVars,
+		ID:        fmt.Sprintf(TASKCONTAINERIDFORMAT, taskrun.PipelineID, taskrun.RunID, taskrun.ID),
+		ImageName: taskrun.Image,
+		EnvVars:   parsedEnvVars,
+		Exec: scheduler.Exec{
+			Shell:  taskrun.Exec.Shell,
+			Script: taskrun.Exec.Script,
+		},
 		RegistryUser: taskrun.RegistryAuth.User,
 		RegistryPass: parseInterpolationSyntax("secret", taskrun.RegistryAuth.Pass),
 	}, taskrun)
@@ -487,9 +491,13 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 
 	// Finally start the task run.
 	schedulerID, err := api.startTaskRun(scheduler.StartContainerRequest{
-		ID:           fmt.Sprintf(TASKCONTAINERIDFORMAT, newTaskRun.PipelineID, newTaskRun.RunID, newTaskRun.ID),
-		ImageName:    newTaskRun.Image,
-		EnvVars:      parsedEnvVars,
+		ID:        fmt.Sprintf(TASKCONTAINERIDFORMAT, newTaskRun.PipelineID, newTaskRun.RunID, newTaskRun.ID),
+		ImageName: newTaskRun.Image,
+		EnvVars:   parsedEnvVars,
+		Exec: scheduler.Exec{
+			Shell:  newTaskRun.Exec.Shell,
+			Script: newTaskRun.Exec.Script,
+		},
 		RegistryUser: newTaskRun.RegistryAuth.User,
 		RegistryPass: parseInterpolationSyntax("secret", newTaskRun.RegistryAuth.Pass),
 	}, newTaskRun)
