@@ -10,32 +10,27 @@ The Task stanza represents a single container in your pipeline. It can be config
 
 ## Task Parameters
 
-| Param         | Type                            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| ------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [label]       | `string: <required>`            | The name of your task. This string cannot have any spaces or special characters and is limited to 70 characters.                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| [label]       | `string: <required>`            | The docker repository and image name of your docker image.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| description   | `string: <optional>`            | A short description of the purpose of your pipeline. Limited to 3k characters.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| env_vars      | `map[string]string: <optional>` | The main mechanism of passing configuration to your container. The variables mentioned here are passed to your container by Gofer and the associated scheduler. The correct way to define these are in the form: `env_vars = { "WAIT_DURATION": "10s",}` <br/> <br/> The `env_vars` attribute also supports secret substitution by using Gofer's secret store and special syntax to denote a secrets exists in this field. `env_vars = { "SECRET_VALUE": "secret{{secret_key}}"}`<br/><br/> **DO NOT PUT PLAINTEXT SECRETS IN THIS FIELD** |
-| registry_auth | `block: <optional>`             | If your image needs registry authentication you can pass the user/pass combo in here as a block. `registry_auth { user = "me", pass = "secret{{my_pass}}"}`. <br/><br/> You can also use Gofer's secret store here to substitute secret values.                                                                                                                                                                                                                                                                                            |
+| Param         | Type                            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [label]       | `string: <required>`            | The name of your task. This string cannot have any spaces or special characters and is limited to 70 characters.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| [label]       | `string: <required>`            | The docker repository and image name of your docker image.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| description   | `string: <optional>`            | A short description of the purpose of your pipeline. Limited to 3k characters.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| env_vars      | `map[string]string: <optional>` | The main mechanism of passing configuration to your container. The variables mentioned here are passed to your container by Gofer and the associated scheduler. The correct way to define these are in the form: `env_vars = { "WAIT_DURATION": "10s",}` <br/> <br/> The `env_vars` attribute also supports secret/store substitution by using Gofer's secret or object store and special syntax to denote a variable exists in this field. `env_vars = { "SECRET_VALUE": "secret{{secret_key}}"}`<br/><br/> **DO NOT PUT PLAINTEXT SECRETS IN THIS FIELD** |
+| registry_auth | `block: <optional>`             | If your image needs registry authentication you can pass the user/pass combo in here as a block. `registry_auth { user = "me", pass = "secret{{my_pass}}"}`. <br/><br/> You can also use Gofer's secret store here to substitute secret values.                                                                                                                                                                                                                                                                                                             |
+| exec          | `block: <optional>`             | Exec allows you to run simple shell commands against your container. Useful for debugging or small programs.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## Task Examples
 
-### A simple task with no dependencies
+### A simple task with an exec statement
 
 ```hcl
-// Tasks are the building blocks of a pipeline. They represent individual containers and can be
-// configured to depend on one or multiple other tasks.
-task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
-	description = "This task has no dependencies so it will run immediately"
-
-    // Environment variables are the way in which your container is configured.
-    // These are passed into your container at runtime.
-    env_vars = {
-        "WAIT_DURATION": "20s",
-        // Gofer handles secrets also! Simply use the command-line to enter secrets and then reference them
-        // in your config file by key.
-        "SECRET_LOGS_HEADER" : "secret{{secret_log_key}}"
-    }
+task "simple_task" "ubuntu:latest" {
+  description = "This task simply prints our hello-world message and exits!"
+  exec "/bin/bash" {
+    script = <<EOT
+    echo Hello from Gofer!
+    EOT
+  }
 }
 ```
 
@@ -74,5 +69,22 @@ EOT
     env_vars = {
         "LOGS_HEADER": "This string can be anything you want it to be",
     }
+}
+```
+
+### A task with variable substitution from the pipeline object store
+
+```hcl
+task "no_dependencies" "ghcr.io/clintjedwards/experimental:log" {
+  description = "This task has no dependencies so it will run immediately"
+
+  // The env_variable mentioned here is special, for this example we're pretending its a value we've stored in our
+  // pipeline store.
+  // As such we use the special secret syntax to convey to Gofer that the valuhe must be retrieved from the object store
+  // beforehand.
+  env_vars = {
+    "SOME_VARIABLE" : "something here",
+    "LOGS_HEADER" : "pipeline{{ logs_header }}",
+  }
 }
 ```
