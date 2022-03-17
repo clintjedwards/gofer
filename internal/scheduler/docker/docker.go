@@ -94,24 +94,6 @@ func New(prune bool, pruneInterval time.Duration) (Orchestrator, error) {
 	}, nil
 }
 
-func commandsToEntrypoint(rawCommands []string) []string {
-	entrypoint := []string{}
-
-	for _, command := range rawCommands {
-		if len(entrypoint) != 0 {
-			entrypoint = append(entrypoint, "&&")
-		}
-		splitCommand := strings.Split(command, " ")
-		entrypoint = append(entrypoint, splitCommand...)
-	}
-
-	for _, c := range entrypoint {
-		fmt.Printf("%q ", c)
-	}
-
-	return entrypoint
-}
-
 func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (scheduler.StartContainerResponse, error) {
 	ctx := context.Background()
 

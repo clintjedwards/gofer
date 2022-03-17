@@ -287,12 +287,11 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 
 	// Then check to make sure that the parents all finished in the required states. If not
 	// we'll have to cancel this task.
-	if !dependenciesSatisfied(taskStatusMap, taskrun.DependsOn) {
+	if err := dependenciesSatisfied(taskStatusMap, taskrun.DependsOn); err != nil {
 		taskrun.SetFinishedAbnormal(models.ContainerStateSkipped,
 			models.TaskRunFailure{
-				Kind: models.TaskRunFailureKindFailedPrecondition,
-				Description: "Task could not be run due to unmet dependencies; this usually" +
-					" means that one or more parent tasks either were cancelled, skipped, or did not reflect the correct finish status.",
+				Kind:        models.TaskRunFailureKindFailedPrecondition,
+				Description: fmt.Sprintf("Task could not be run due to unmet dependencies: %v", err),
 			}, 1)
 
 		err := api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
@@ -438,12 +437,11 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 
 	// Then check to make sure that the parents all finished in the required states. If not
 	// we'll have to cancel this task.
-	if !dependenciesSatisfied(taskStatusMap, task.DependsOn) {
+	if err := dependenciesSatisfied(taskStatusMap, task.DependsOn); err != nil {
 		newTaskRun.SetFinishedAbnormal(models.ContainerStateSkipped,
 			models.TaskRunFailure{
-				Kind: models.TaskRunFailureKindFailedPrecondition,
-				Description: "Task could not be run due to unmet dependencies; this usually" +
-					" means that one or more parent tasks either were cancelled, skipped, or did not reflect the correct finish status.",
+				Kind:        models.TaskRunFailureKindFailedPrecondition,
+				Description: fmt.Sprintf("Task could not be run due to unmet dependencies: %v", err),
 			}, 1)
 
 		err = api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: newTaskRun})
@@ -553,36 +551,30 @@ func parentTasksFinished(statusMap *sync.Map, dependencies map[string]models.Req
 }
 
 // dependenciesSatisfied examines the dependency map to make sure that all parents are in the correct states.
-func dependenciesSatisfied(statusMap *sync.Map, dependencies map[string]models.RequiredParentState) bool {
-	total := len(dependencies)
-	satisfied := 0
+// If there is a parent not in the correct state we report that back to the caller via an error.
+func dependenciesSatisfied(statusMap *sync.Map, dependencies map[string]models.RequiredParentState) error {
 	for parentTaskName, parentRequiredState := range dependencies {
 		// Check to see if all parents exist
 		parentStatus, exists := statusMap.Load(parentTaskName)
 		if !exists {
-			return false
+			return fmt.Errorf("parent %q was not found in executed tasks but is required for task", parentTaskName)
 		}
 
-		// It should be noted here that cancelled or skipped is not considered a continuable state. Dependents that rely
-		// on a parent with one of those status will always be skipped.
 		switch parentRequiredState {
 		case models.RequiredParentStateFail:
-			if parentStatus.(models.ContainerState) == models.ContainerStateFailed {
-				satisfied++
+			if parentStatus.(models.ContainerState) != models.ContainerStateFailed {
+				return fmt.Errorf("parent %q is in incorrect state %q; task requires it be in state 'FAILED'",
+					parentTaskName, parentStatus.(models.ContainerState))
 			}
 		case models.RequiredParentStateSuccess:
-			if parentStatus.(models.ContainerState) == models.ContainerStateSuccess {
-				satisfied++
-			}
-		case models.RequiredParentStateAny:
-			if parentStatus.(models.ContainerState) == models.ContainerStateSuccess ||
-				parentStatus.(models.ContainerState) == models.ContainerStateFailed {
-				satisfied++
+			if parentStatus.(models.ContainerState) != models.ContainerStateSuccess {
+				return fmt.Errorf("parent %q is in incorrect state %q; task requires it be in state 'SUCCESS'",
+					parentTaskName, parentStatus.(models.ContainerState))
 			}
 		}
 	}
 
-	return total == satisfied
+	return nil
 }
 
 // createNewRun starts a new run and launches the goroutines responsible for running tasks.

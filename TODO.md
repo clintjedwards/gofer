@@ -104,4 +104,3 @@
 * Cancelled during run should say something more descriptive. See if we can track down by cancel function and if there
   is a space for more description.
 * Printing a task run in CLI should also show parents
-* Can we get FAILED_PRECONDITION to be a bit clearer on where things failed? FOr example is should say what it was depending on, what the status of that thing was and explain thats why it failed.
