@@ -72,6 +72,7 @@ func taskrunGet(_ *cobra.Command, args []string) error {
 type data struct {
 	ID         string
 	State      string
+	Parents    []string
 	Started    string
 	Ended      string
 	Failure    *proto.TaskRunFailure
@@ -85,6 +86,15 @@ type data struct {
 	ImageName  string
 }
 
+func formatParents(dependencyMap map[string]proto.TaskRequiredParentState) []string {
+	parents := []string{}
+	for taskID := range dependencyMap {
+		parents = append(parents, color.BlueString(taskID))
+	}
+
+	return parents
+}
+
 func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 	data := data{
 		ID:         color.BlueString(taskRun.Id),
@@ -92,6 +102,7 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 		Started:    format.UnixMilli(taskRun.Started, "Not yet", detail),
 		Duration:   format.Duration(taskRun.Started, taskRun.Ended),
 		PipelineID: color.BlueString(taskRun.PipelineId),
+		Parents:    formatParents(taskRun.Task.DependsOn),
 		EnvVars:    taskRun.Task.EnvVars,
 		ExitCode:   taskRun.ExitCode,
 		RunID:      color.BlueString("#" + strconv.Itoa(int(taskRun.RunId))),
@@ -102,13 +113,21 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 
 	const formatTmpl = `TaskRun {{.ID}} :: {{.State}}
 
-  ✏ Parent Pipeline {{.PipelineID}} | Parent Run {{.RunID}}
+  ✏ Pipeline {{.PipelineID}} | Run {{.RunID}}
   ✏ Started {{.Started}} and ran for {{.Duration}}
   ✏ {{.ImageName}}
 
+{{- if .Parents}}
+
+  ☍ Parents:
+  {{- range $key, $value := .Parents}}
+    | {{$value}}
+  {{- end}}
+{{- end}}
+
 {{- if .Failure.Kind}}
 
-  Failure Details:
+  x Failure Details:
     | Exit code: {{.ExitCode}}
     | Kind: {{.Failure.Kind}}
     | Reason: {{.Failure.Description}}
