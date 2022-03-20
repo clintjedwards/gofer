@@ -98,9 +98,4 @@
 - Improve documentation and examples for features.
   - For example: writing custom notifiers allows you to implement Google style static analysis
 
-* Investigate possible bug where user changes a pipe to a different ID and then tries to update the old pipeline.
-  From the error it seems like its trying to pull the incorrect pipeline.
 * We need concurrent protection for `triggers map[string]*models.Trigger`
-* Cancelled during run should say something more descriptive. See if we can track down by cancel function and if there
-  is a space for more description.
-* Printing a task run in CLI should also show parents

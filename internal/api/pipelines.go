@@ -224,6 +224,12 @@ func (api *API) updatePipeline(url, namespace, id string, hclConfig *models.HCLP
 		return nil, fmt.Errorf("could not get previous pipeline: %w", err)
 	}
 
+	// Check to make sure id provided in HCLConfig is the same as the ID we're attempting to change
+	if hclConfig.ID != currentPipeline.ID {
+		return nil, fmt.Errorf("id in config %q is not equal to id in update request %q; pipeline ids cannot be updated",
+			hclConfig.ID, currentPipeline.ID)
+	}
+
 	if currentPipeline.State == models.PipelineStateAbandoned {
 		return nil, ErrPipelineAbandoned
 	}

@@ -233,7 +233,7 @@ func (api *API) CancelRun(ctx context.Context, request *proto.CancelRunRequest) 
 		return &proto.CancelRunResponse{}, status.Errorf(codes.Internal, "failed to retrieve run %d from database", request.Id)
 	}
 
-	err = api.cancelRun(run, "Run has been cancelled via API", request.Force)
+	err = api.cancelRun(run, "Run cancelled via API", request.Force)
 	if err != nil {
 		return &proto.CancelRunResponse{}, status.Errorf(codes.Internal, "could not cancel run: %v", err)
 	}
