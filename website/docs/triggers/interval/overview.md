@@ -20,6 +20,6 @@ trigger "interval" "every_five_mins" {
 
 Trigger configurations are set upon trigger startup and cannot be changed afterwards. They are set via the [server configuration](../../server-configuration/overview).
 
-| EnvVar                              | Default | Description                                               |
-| ----------------------------------- | ------- | --------------------------------------------------------- |
-| GOFER_TRIGGER_INTERVAL_MIN_DURATION | "5m"    | The minimum duration users can set their pipelines to run |
+| EnvVar       | Default | Description                                               |
+| ------------ | ------- | --------------------------------------------------------- |
+| MIN_DURATION | "5m"    | The minimum duration users can set their pipelines to run |

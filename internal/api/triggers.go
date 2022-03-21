@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/models"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// The containerID format dictates what the container name will be of the trigger.
 const TRIGGERCONTAINERIDFORMAT = "trigger_%s" // trigger_<triggerKind>
 
 // startTriggers attempts to start each trigger from config on the provided scheduler. Once scheduled it then collects
@@ -33,6 +35,13 @@ func (api *API) startTriggers() error {
 	triggerKey := generateToken(32)
 
 	for _, trigger := range api.config.Triggers.RegisteredTriggers {
+		// Convert trigger envvars into properly structured envvars; GOFER_TRIGGER_<trigger name>_<config key>
+		configVars := map[string]string{}
+		for key, value := range trigger.EnvVars {
+			newKey := fmt.Sprintf("GOFER_TRIGGER_%s_%s", strings.ToUpper(trigger.Kind), strings.ToUpper(key))
+			configVars[newKey] = value
+		}
+
 		// We need to first populate the triggers with their required environment variables.
 		// Order is important here maps later in the list will overwrite earlier maps.
 		// We first include the Gofer defined environment variables and then the operator configured environment
@@ -43,7 +52,7 @@ func (api *API) startTriggers() error {
 			"GOFER_TRIGGER_KIND":      trigger.Kind,
 			"GOFER_TRIGGER_LOG_LEVEL": api.config.LogLevel,
 			"GOFER_TRIGGER_KEY":       triggerKey,
-		}, trigger.EnvVars)
+		}, configVars)
 
 		log.Info().Str("name", trigger.Kind).Msg("starting trigger")
 		sc := scheduler.StartContainerRequest{

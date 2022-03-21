@@ -41,6 +41,10 @@ func TestFullParse(t *testing.T) {
 	task "2" "hello_world" {
 		description = "test description 1"
 	}
+
+	notify "log" "test_notifier" {
+		every = "20"
+	}
 		`)
 
 	expected := &PipelineConfig{
@@ -79,6 +83,13 @@ func TestFullParse(t *testing.T) {
 				Label:  "every_20_seconds",
 				Config: map[string]string{"every": "20"},
 				State:  PipelineTriggerStateActive,
+			},
+		},
+		Notifiers: []PipelineNotifierConfig{
+			{
+				Kind:   "log",
+				Label:  "test_notifier",
+				Config: map[string]string{"every": "20"},
 			},
 		},
 	}

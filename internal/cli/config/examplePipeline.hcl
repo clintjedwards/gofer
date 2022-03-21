@@ -7,7 +7,7 @@ EOT
 
 // Tasks are the building blocks of a pipeline. They represent individual containers and can be
 // configured to depend on one or multiple other tasks.
-task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
+task "no_dependencies" "ghcr.io/clintjedwards/gofer-containers/debug/wait:latest" {
   description = "This task has no dependencies so it will run immediately"
 
   // Environment variables are the way in which your container is configured.
@@ -17,7 +17,7 @@ task "no_dependencies" "ghcr.io/clintjedwards/experimental:wait" {
   }
 }
 
-task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
+task "depends_on_one" "ghcr.io/clintjedwards/gofer-containers/debug/log:latest" {
   description = <<EOT
 This task depends on the first task to finish with a successfull result. This means
 that if the first task fails this task will not run.

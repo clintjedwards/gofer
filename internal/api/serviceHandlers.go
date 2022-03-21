@@ -64,8 +64,6 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 		return &proto.CreateTokenResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
-	token, hash := api.createNewAPIToken()
-
 	for _, namespace := range request.Namespaces {
 		_, err := api.storage.GetNamespace(storage.GetNamespaceRequest{ID: namespace})
 		if err != nil {
@@ -78,19 +76,15 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 		}
 	}
 
-	newToken := models.NewToken(hash, models.TokenKind(request.Kind.String()), request.Namespaces, request.Metadata)
-
-	err := api.storage.AddToken(storage.AddTokenRequest{
-		Token: newToken,
-	})
+	key, token, err := api.createNewAPIToken(models.TokenKind(request.Kind.String()), request.Namespaces, request.Metadata)
 	if err != nil {
-		log.Error().Err(err).Msg("could not save token to storage")
-		return &proto.CreateTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)
+		log.Error().Err(err).Msg("could not create API token")
+		return &proto.CreateTokenResponse{}, status.Errorf(codes.Internal, "could not create token: %v", err)
 	}
 
 	return &proto.CreateTokenResponse{
-		Details: newToken.ToProto(),
-		Token:   token,
+		Details: token.ToProto(),
+		Token:   key,
 	}, nil
 }
 
@@ -150,7 +144,7 @@ func (api *API) BootstrapToken(ctx context.Context, request *proto.BootstrapToke
 		return &proto.BootstrapTokenResponse{}, status.Error(codes.FailedPrecondition, "bootstrap token already created")
 	}
 
-	token, hash := api.createNewAPIToken()
+	token, hash := api.generateNewAPIToken()
 	newToken := models.NewToken(hash, models.TokenKindManagement, []string{}, map[string]string{
 		"bootstrap_token": "true",
 	})

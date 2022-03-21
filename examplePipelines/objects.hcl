@@ -5,7 +5,7 @@ This pipeline hows how one might use Gofer's object/kv store to pass container r
 EOT
 
 
-task "no_dependencies" "ghcr.io/clintjedwards/experimental:log" {
+task "no_dependencies" "ghcr.io/clintjedwards/gofer-containers/debug/log:latest" {
   description = "This task has no dependencies so it will run immediately"
 
   // The env_variable mentioned here is special, for this example we're pretending its a value we've stored in our

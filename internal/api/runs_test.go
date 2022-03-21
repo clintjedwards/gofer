@@ -27,8 +27,8 @@ func TestParseInterpolationSyntax(t *testing.T) {
 		"secret":         {kind: "secret", value: "secret{{example}}", expected: "example"},
 		"pipeline":       {kind: "pipeline", value: "pipeline{{example}}", expected: "example"},
 		"run":            {kind: "run", value: "run{{example}}", expected: "example"},
-		"incorrect_kind": {kind: "secret", value: "run{{example}}", expected: ""},
-		"normal_value":   {kind: "secret", value: "normal_value", expected: ""},
+		"incorrect_kind": {kind: "secret", value: "run{{example}}", expected: "run{{example}}"},
+		"normal_value":   {kind: "secret", value: "normal_value", expected: "normal_value"},
 	}
 
 	for name, test := range tests {

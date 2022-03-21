@@ -35,7 +35,9 @@ type Task struct {
 	RegistryAuth RegistryAuth                   `json:"registry_auth"`
 	DependsOn    map[string]RequiredParentState `json:"depends_on"`
 	EnvVars      map[string]string              `json:"env_vars"`
-	Exec         Exec                           `json:"exec"` // Exec is a representation of a script to be run via container.
+	// Secrets are passed in the exact same way as env_vars; but we don't allow the user to list the values.
+	Secrets map[string]string `json:"secrets"`
+	Exec    Exec              `json:"exec"` // Exec is a representation of a script to be run via container.
 }
 
 func (r *Task) ToProto() *proto.Task {
@@ -44,12 +46,20 @@ func (r *Task) ToProto() *proto.Task {
 		dependsOn[key] = proto.TaskRequiredParentState(proto.TaskRequiredParentState_value[string(value)])
 	}
 
+	// We want to show users what env_vars got passed into their task run without exposing certain secret values.
+	// So we pass the proto a list of the keys that were passed in.
+	secrets := []string{}
+	for key := range r.Secrets {
+		secrets = append(secrets, key)
+	}
+
 	return &proto.Task{
 		Id:          r.ID,
 		Description: r.Description,
 		Image:       r.Image,
 		DependsOn:   dependsOn,
 		EnvVars:     r.EnvVars,
+		Secrets:     secrets,
 		Exec:        r.Exec.ToProto(),
 	}
 }

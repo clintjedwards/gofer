@@ -103,6 +103,17 @@ service Gofer {
   // ListTriggers lists all triggers currently registered within gofer.
   rpc ListTriggers(ListTriggersRequest) returns (ListTriggersResponse);
 
+  ////////////// Notifier RPCs //////////////
+  //
+  // A notifier is a provided way to notify external systems about the
+  // completion of a run.
+
+  // GetNotifier returns details about a specific notifier.
+  rpc GetNotifier(GetNotifierRequest) returns (GetNotifierResponse);
+
+  // ListNotifiers lists all notifiers currently registered within gofer.
+  rpc ListNotifiers(ListNotifiersRequest) returns (ListNotifiersResponse);
+
   ////////////// Event RPCs //////////////
   //
   // Gofer emits events for actions that happen within it's purview. You can use

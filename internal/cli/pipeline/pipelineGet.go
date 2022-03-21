@@ -155,6 +155,7 @@ type data struct {
 	Tasks       []taskData
 	Health      string
 	Triggers    []triggerData
+	Notifiers   []notifierData
 	Objects     string
 	Created     string
 	LastRun     string
@@ -188,6 +189,12 @@ type triggerData struct {
 	Events []eventData
 	Config map[string]string
 	State  string
+}
+
+type notifierData struct {
+	Label  string
+	Kind   string
+	Config map[string]string
 }
 
 func formatStatePrefix(state string) string {
@@ -247,6 +254,17 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 
 	sort.Slice(triggerDataList, func(i, j int) bool { return triggerDataList[i].Label < triggerDataList[j].Label })
 
+	notifierDataList := []notifierData{}
+	for _, notifier := range pipeline.Notifiers {
+		notifierDataList = append(notifierDataList, notifierData{
+			Label:  color.BlueString(notifier.Label),
+			Kind:   color.YellowString(notifier.Kind),
+			Config: notifier.Config,
+		})
+	}
+
+	sort.Slice(notifierDataList, func(i, j int) bool { return notifierDataList[i].Label < notifierDataList[j].Label })
+
 	tasks := []taskData{}
 	for _, task := range pipeline.Tasks {
 		tasks = append(tasks, taskData{
@@ -265,6 +283,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 		Description: pipeline.Description,
 		RecentRuns:  recentRunList,
 		Triggers:    triggerDataList,
+		Notifiers:   notifierDataList,
 		Health:      format.Health(recentRunHealth, true),
 		Objects:     format.SliceJoin(pipeline.Objects, "None"),
 		Tasks:       tasks,
@@ -309,6 +328,14 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
       {{- range $event := $trigger.Events }}
       + {{$event.Processed}} | {{$event.Details}}
 	  {{- end}}
+    {{- end}}
+  {{- end}}
+
+  {{- if .Notifiers }}
+
+  🕪 Attached Notifiers:
+    {{- range $notifier := .Notifiers}}
+    🕩 {{ $notifier.Label }} ({{ $notifier.Kind }})
     {{- end}}
   {{- end}}
 

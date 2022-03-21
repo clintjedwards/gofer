@@ -1,4 +1,4 @@
-id          = "simple_test_pipeline1"
+id          = "simple_test_pipeline"
 name        = "[simple] Gofer Test Pipeline"
 description = <<EOT
 This pipeline shows off a very simple pipeline that simply pulls in a container and runs a command.

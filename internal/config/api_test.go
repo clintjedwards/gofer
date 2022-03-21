@@ -243,9 +243,6 @@ func TestSetTriggersViaEnv(t *testing.T) {
 					EnvVars: map[string]string{
 						"envvar1": "hello",
 					},
-					Secrets: map[string]string{
-						"secretone": "weow",
-					},
 				},
 			},
 		},

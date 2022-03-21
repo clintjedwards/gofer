@@ -80,6 +80,7 @@ type data struct {
 	Duration   string
 	Logs       []string
 	EnvVars    map[string]string
+	Secrets    []string
 	PipelineID string
 	RunID      string
 	TaskRunCmd string
@@ -104,6 +105,7 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 		PipelineID: color.BlueString(taskRun.PipelineId),
 		Parents:    formatParents(taskRun.Task.DependsOn),
 		EnvVars:    taskRun.Task.EnvVars,
+		Secrets:    taskRun.Task.Secrets,
 		ExitCode:   taskRun.ExitCode,
 		RunID:      color.BlueString("#" + strconv.Itoa(int(taskRun.RunId))),
 		Failure:    taskRun.Failure,
@@ -137,6 +139,9 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
   $ Environment Variables:
   {{- range $key, $value := .EnvVars}}
     | {{$key}}={{$value}}
+  {{- end}}
+  {{- range $index, $key := .Secrets}}
+    | {{$key}}=<hidden>
   {{- end}}
 {{- end}}
 

@@ -4,30 +4,20 @@
 
 - Support auth, support downloading into run or pipeline objects, support checking out specific commit.
 - Support sparse checkouts?
-- Support caching, don't redownload the container every run just simply git pull it.
-
-#### Generate per run auth keys and allow people to use the binary to do stuff like download their favorite key from the object store.
+- Support caching, don't re-download the container every run just simply git pull it.
 
 #### Nomad scheduler integration
 
-#### An "notify" function for pipeline configuration
+#### Github notifier
 
-- Notifications work in the same fashion as triggers. We spin up a bunch at launch time and then continually feed them
-  events as they happen.
-- These containers can use a default "if this should happen" function that we write and provide in the sdk. Things like:
-  - If pipeline run fails x times
-  - If % of pipeline run fails
-  - If total time of run > <duration>
-- The output of that function should be whether to send a notification or not and a message on what failed.
-- The container can then format that message for the notifier and then send it to the respective platform.
-- Why not make this a container that just runs right after the user's container?
-  - Some queries based on time will be very hard to write. For example: "Please alert me when this pipeline has not run
-    in a while.". With trigger-like notifers you can do that, with pipeline based notifiers you cannot.
-- we can allow things like annotations due to the feature of access to the kv store. Meaning that results from the most
-  recent container run can be stored in the kv store and then we can pull those and pass to the notifer before it triggers.
-- First notifier should be the github notifier
+#### Deprecate the URL retrieving of pipeline configs.
 
-#### Json output
+- Pipelines wont be able to be retrieved from a repo instead we'll require users to pass them in via CLI.
+  - This means that the CLI is a first class citizen, but maybe it's better this way? This mirrors k8's approach.
+- Instead we can replace them with CDK like tooling.
+- The CLI should auto-detect what language you used and auto-compile and absorb the output.
+- You can also just use straight up HCL.
+- We'll need to write a CDK package that translates go functions to HCL as an example.
 
 ### API
 
@@ -43,9 +33,23 @@
 - This can possibly be done in the run step by specifying a different image name than is currently set to run.
 - DeleteNamespace should abandon all pipelines. Technically if you know the namespace name you're still allowed to run jobs.
 - For security reasons we probably need to narrow the amount of places you can import remote files from. Because we need to hide any auth information if included.
+- How do we make it easy for users to request authentication? Should that be an ops problem?
+
+### Notifiers
+
+- It would be nice to provide notifiers with some basic "the user wants to do something when this condition
+  happens". What is the best way to do this?
+  - If pipeline fails 3 runs in a row.
+  - If pipeline failure rate ever dives below certain percentage.
+  - If total time of a run exceeds a given duration.
+  - When a run finishes.
+  - When a run fails.
+  - If a particular task run fails or succeeds.
 
 ### CLI
 
+- Biggest feature missing is we are not currently doing proper json output. Explore that AND how to print
+  stuff such that it's easy to use common tooling like grep/tail/etc. (How does k8s do this?)
 - Provide custom errors downstream via grpc metadata so the CLI can pass back intelligent errors to users.
 - Add command line options for controlling pagination
 - Implement json output. This should involve separating the output of what should be humanized vs regular.
@@ -89,13 +93,27 @@
 
 ### Documentation
 
+- Document the different env variables that get injected into each Trigger, Task, Notifier.
 - Trigger documentation:
   - How to test triggers
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
 - Write a design document
+  - Document why notifiers are designed the way they are first-class citizens.
+  - Why is this? Because of authentication. It's nice to set up the Slack app once and protect the credentials such that any user for you application can use it.
 - Improve documentation and examples for features.
   - For example: writing custom notifiers allows you to implement Google style static analysis
 
-* We need concurrent protection for `triggers map[string]*models.Trigger`
+* We can probably bring up a public version of Gofer in which the timeout is super low. How do we properly secure this? Can we prevent root containers when using the Docker mode? Maybe this is a thing for Nomad? Can we prevent root containers there? This might mean we need to add quotas and rate limiting to the main process
+  which would suck and is boring to implement.
+
+### On the floor
+
+- We need concurrent protection for `triggers map[string]*models.Trigger` (and notifiers)
+
+  - Should we wait for generics to catch up here so we can have an easy to use type safe thing?
+
+- ExecuteTaskTree has a bunch of ways to fail. When it does we should allow those failures to be shown in the taskrun
+  instead of just being printed out in the logs. So we'll probably need to add all the taskruns as cancelled and the
+  run as failed due to preconditions.

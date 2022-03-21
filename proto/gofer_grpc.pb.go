@@ -79,6 +79,10 @@ type GoferClient interface {
 	GetTrigger(ctx context.Context, in *GetTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error)
 	// ListTriggers lists all triggers currently registered within gofer.
 	ListTriggers(ctx context.Context, in *ListTriggersRequest, opts ...grpc.CallOption) (*ListTriggersResponse, error)
+	// GetNotifier returns details about a specific notifier.
+	GetNotifier(ctx context.Context, in *GetNotifierRequest, opts ...grpc.CallOption) (*GetNotifierResponse, error)
+	// ListNotifiers lists all notifiers currently registered within gofer.
+	ListNotifiers(ctx context.Context, in *ListNotifiersRequest, opts ...grpc.CallOption) (*ListNotifiersResponse, error)
 	// GetEvent returns the details of a single event.
 	GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*GetEventResponse, error)
 	// ListEvents returns a streaming list of all events, ordered by
@@ -324,6 +328,24 @@ func (c *goferClient) GetTrigger(ctx context.Context, in *GetTriggerRequest, opt
 func (c *goferClient) ListTriggers(ctx context.Context, in *ListTriggersRequest, opts ...grpc.CallOption) (*ListTriggersResponse, error) {
 	out := new(ListTriggersResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/ListTriggers", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) GetNotifier(ctx context.Context, in *GetNotifierRequest, opts ...grpc.CallOption) (*GetNotifierResponse, error) {
+	out := new(GetNotifierResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/GetNotifier", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) ListNotifiers(ctx context.Context, in *ListNotifiersRequest, opts ...grpc.CallOption) (*ListNotifiersResponse, error) {
+	out := new(ListNotifiersResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListNotifiers", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -707,6 +729,10 @@ type GoferServer interface {
 	GetTrigger(context.Context, *GetTriggerRequest) (*GetTriggerResponse, error)
 	// ListTriggers lists all triggers currently registered within gofer.
 	ListTriggers(context.Context, *ListTriggersRequest) (*ListTriggersResponse, error)
+	// GetNotifier returns details about a specific notifier.
+	GetNotifier(context.Context, *GetNotifierRequest) (*GetNotifierResponse, error)
+	// ListNotifiers lists all notifiers currently registered within gofer.
+	ListNotifiers(context.Context, *ListNotifiersRequest) (*ListNotifiersResponse, error)
 	// GetEvent returns the details of a single event.
 	GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error)
 	// ListEvents returns a streaming list of all events, ordered by
@@ -858,6 +884,12 @@ func (UnimplementedGoferServer) GetTrigger(context.Context, *GetTriggerRequest) 
 }
 func (UnimplementedGoferServer) ListTriggers(context.Context, *ListTriggersRequest) (*ListTriggersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTriggers not implemented")
+}
+func (UnimplementedGoferServer) GetNotifier(context.Context, *GetNotifierRequest) (*GetNotifierResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNotifier not implemented")
+}
+func (UnimplementedGoferServer) ListNotifiers(context.Context, *ListNotifiersRequest) (*ListNotifiersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListNotifiers not implemented")
 }
 func (UnimplementedGoferServer) GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEvent not implemented")
@@ -1246,6 +1278,42 @@ func _Gofer_ListTriggers_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GoferServer).ListTriggers(ctx, req.(*ListTriggersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_GetNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNotifierRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).GetNotifier(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/GetNotifier",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).GetNotifier(ctx, req.(*GetNotifierRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_ListNotifiers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNotifiersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).ListNotifiers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/ListNotifiers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).ListNotifiers(ctx, req.(*ListNotifiersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1866,6 +1934,14 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTriggers",
 			Handler:    _Gofer_ListTriggers_Handler,
+		},
+		{
+			MethodName: "GetNotifier",
+			Handler:    _Gofer_GetNotifier_Handler,
+		},
+		{
+			MethodName: "ListNotifiers",
+			Handler:    _Gofer_ListNotifiers_Handler,
 		},
 		{
 			MethodName: "GetEvent",

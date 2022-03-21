@@ -292,6 +292,16 @@ message GetTriggerResponse { Trigger trigger = 1; }
 message ListTriggersRequest {}
 message ListTriggersResponse { repeated Trigger triggers = 1; }
 
+////////////// Notifier Transport Models //////////////
+
+message GetNotifierRequest {
+  string name = 1; // The unique name/kind for a particular notifier
+}
+message GetNotifierResponse { Notifier notifier = 1; }
+
+message ListNotifiersRequest {}
+message ListNotifiersResponse { repeated Notifier notifiers = 1; }
+
 ////////////// Events Transport Models //////////////
 
 message GetEventRequest { int64 id = 1; } // Event ID

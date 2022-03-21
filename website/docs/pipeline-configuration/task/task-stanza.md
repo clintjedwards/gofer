@@ -37,7 +37,7 @@ task "simple_task" "ubuntu:latest" {
 ### A task with a dependency on another task with success requirement
 
 ```hcl
-task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
+task "depends_on_one" "ghcr.io/clintjedwards/gofer-containers/debug/log:latest" {
 	description = <<EOT
 This task depends on the first task to finish with a successfull result. This means
 that if the first task fails this task will not run.
@@ -54,7 +54,7 @@ EOT
 ### A task with registry authentication
 
 ```hcl
-task "depends_on_one" "ghcr.io/clintjedwards/experimental:log" {
+task "depends_on_one" "ghcr.io/clintjedwards/gofer-containers/debug/log:latest" {
 	description = <<EOT
 This task depends on the first task to finish with a successfull result. This means
 that if the first task fails this task will not run.
@@ -75,7 +75,7 @@ EOT
 ### A task with variable substitution from the pipeline object store
 
 ```hcl
-task "no_dependencies" "ghcr.io/clintjedwards/experimental:log" {
+task "no_dependencies" "ghcr.io/clintjedwards/gofer-containers/debug/log:latest" {
   description = "This task has no dependencies so it will run immediately"
 
   // The env_variable mentioned here is special, for this example we're pretending its a value we've stored in our

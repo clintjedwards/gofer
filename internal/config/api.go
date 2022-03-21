@@ -63,6 +63,7 @@ type API struct {
 	Scheduler         *Scheduler         `hcl:"scheduler,block"`
 	Server            *Server            `hcl:"server,block"`
 	Triggers          *Triggers          `hcl:"triggers,block"`
+	Notifiers         *Notifiers         `hcl:"notifiers,block"`
 }
 
 func DefaultAPIConfig() *API {
@@ -82,6 +83,7 @@ func DefaultAPIConfig() *API {
 		Scheduler:               DefaultSchedulerConfig(),
 		Server:                  DefaultServerConfig(),
 		Triggers:                DefaultTriggersConfig(),
+		Notifiers:               DefaultNotifiersConfig(),
 	}
 }
 
@@ -168,9 +170,6 @@ type Trigger struct {
 
 	// Environment variables to pass to the trigger container. This is used to pass runtime settings to the container.
 	EnvVars map[string]string `json:"env_vars" hcl:"env_vars,optional"`
-
-	// Secrets to pass to the trigger container. The way secrets are passed depends on the scheduler.
-	Secrets map[string]string `json:"secrets" hcl:"secrets,optional"`
 }
 
 // RegisteredTrigger represents the list of triggers that Gofer will attempt to startup with and use.
@@ -187,6 +186,54 @@ func (t *RegisteredTriggers) Set(value string) error {
 	}
 
 	*t = RegisteredTriggers(triggers)
+	return nil
+}
+
+// Notifiers represents the configuration for Gofer Notifiers.
+// Notifiers are used to perform some action upon the completion of a run.
+type Notifiers struct {
+	// RegisteredNotifiers represents the notifiers that Gofer will attempt to startup with.
+	RegisteredNotifiers RegisteredNotifiers `split_words:"true" hcl:"registered_notifiers,block"`
+}
+
+func DefaultNotifiersConfig() *Notifiers {
+	return &Notifiers{
+		RegisteredNotifiers: []Notifier{},
+	}
+}
+
+// Notifier represents the settings for all notifiers within Gofer.
+type Notifier struct {
+	// The name for a trigger this should be alphanumerical and can't contain spaces.
+	Kind string `json:"kind" hcl:"kind,label"`
+
+	// The docker repository and image name of the trigger: Ex. docker.io/library/hello-world:latest
+	Image string `json:"image" hcl:"image"`
+
+	// The user id for the docker repository; if needed.
+	User string `json:"user" hcl:"user,optional"`
+
+	// The password for the docker repository; if needed.
+	Pass string `json:"pass" hcl:"pass,optional"`
+
+	// Environment variables to pass to the trigger container. This is used to pass runtime settings to the container.
+	EnvVars map[string]string `json:"env_vars" hcl:"env_vars,optional"`
+}
+
+// Notifiers represents the list of notifiers that Gofer will attempt to startup with and use.
+type RegisteredNotifiers []Notifier
+
+// Set is a method that implements the ability for envconfig to unfurl a notifier mentioned as an environment variable.
+// Basically the notifier is just wrapped up as a json blurb and set will unwrap it into the proper struct.
+func (t *RegisteredNotifiers) Set(value string) error {
+	notifiers := []Notifier{}
+
+	err := json.Unmarshal([]byte(value), &notifiers)
+	if err != nil {
+		return err
+	}
+
+	*t = RegisteredNotifiers(notifiers)
 	return nil
 }
 
@@ -219,13 +266,25 @@ func defaultTriggers(devmode bool) []Trigger {
 	return []Trigger{
 		{
 			Kind:  "cron",
-			Image: "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest",
+			Image: "ghcr.io/clintjedwards/gofer-containers/trigger/cron:latest",
 		},
 		{
 			Kind:  "interval",
-			Image: "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest",
+			Image: "ghcr.io/clintjedwards/gofer-containers/trigger/interval:latest",
 			EnvVars: map[string]string{
-				"GOFER_TRIGGER_INTERVAL_MIN_DURATION": duration,
+				"MIN_DURATION": duration,
+			},
+		},
+	}
+}
+
+func defaultNotifiers(devmode bool) []Notifier {
+	return []Notifier{
+		{
+			Kind:  "log",
+			Image: "ghcr.io/clintjedwards/gofer-containers/notifiers/log:latest",
+			EnvVars: map[string]string{
+				"TEST_VAR": "this config does nothing; it's simply for debugging.",
 			},
 		},
 	}
@@ -337,6 +396,7 @@ func InitAPIConfig(userDefinedPath string) (*API, error) {
 
 	// Always append default triggers
 	config.Triggers.RegisteredTriggers = append(config.Triggers.RegisteredTriggers, defaultTriggers(config.Server.DevMode)...)
+	config.Notifiers.RegisteredNotifiers = append(config.Notifiers.RegisteredNotifiers, defaultNotifiers(config.Server.DevMode)...)
 
 	err = config.validate()
 	if err != nil {

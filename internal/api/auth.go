@@ -38,8 +38,8 @@ func generateToken(length int) string {
 	return fmt.Sprintf("%x", b)
 }
 
-// createNewAPIToken creates returns the new token and its hash.
-func (api *API) createNewAPIToken() (token string, hash string) {
+// generateNewAPIToken returns a newly generated API token and its hash.
+func (api *API) generateNewAPIToken() (token string, hash string) {
 	token = generateToken(32)
 
 	hasher := sha256.New()

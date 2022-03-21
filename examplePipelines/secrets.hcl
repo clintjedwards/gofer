@@ -5,7 +5,7 @@ This pipeline shows off how secrets might be used. Gofer can read secrets from a
 the pipeline configuration with them.
 EOT
 
-task "no_dependencies" "ghcr.io/clintjedwards/experimental:log" {
+task "no_dependencies" "ghcr.io/clintjedwards/gofer-containers/debug/log:latest" {
   description = "This task has no dependencies so it will run immediately"
 
   // The env_variable mentioned here is special, for this example we're pretending its a secret we don't want exposed.

@@ -43,17 +43,20 @@ type Pipeline struct {
 
 	// Triggers is a listing of trigger labels to the their trigger subscription objects
 	Triggers map[string]PipelineTriggerConfig `json:"triggers"`
-	Objects  []string                         `json:"objects"` // Object keys that are stored at the pipeline level.
+	// Notifiers is a listing of the notifier labels to their notifier object counterparts in the API.
+	Notifiers map[string]PipelineNotifierConfig `json:"notifiers"`
+	Objects   []string                          `json:"objects"` // Object keys that are stored at the pipeline level.
 }
 
 func NewPipeline(location string, pipelineConfig *PipelineConfig) *Pipeline {
 	newPipeline := &Pipeline{
-		Location: location,
-		Created:  time.Now().UnixMilli(),
-		Updated:  time.Now().UnixMilli(),
-		Tasks:    map[string]Task{},
-		Triggers: map[string]PipelineTriggerConfig{},
-		Objects:  []string{},
+		Location:  location,
+		Created:   time.Now().UnixMilli(),
+		Updated:   time.Now().UnixMilli(),
+		Tasks:     map[string]Task{},
+		Triggers:  map[string]PipelineTriggerConfig{},
+		Notifiers: map[string]PipelineNotifierConfig{},
+		Objects:   []string{},
 	}
 
 	newPipeline.FromConfig(pipelineConfig)
@@ -72,6 +75,11 @@ func (p *Pipeline) FromConfig(config *PipelineConfig) {
 	p.Triggers = map[string]PipelineTriggerConfig{}
 	for _, trigger := range config.Triggers {
 		p.Triggers[trigger.Label] = trigger
+	}
+
+	p.Notifiers = map[string]PipelineNotifierConfig{}
+	for _, notifier := range config.Notifiers {
+		p.Notifiers[notifier.Label] = notifier
 	}
 
 	p.Tasks = map[string]Task{}
@@ -107,6 +115,15 @@ func (p *Pipeline) ToProto() *proto.Pipeline {
 		}
 	}
 
+	notifiers := map[string]*proto.PipelineNotifierConfig{}
+	for label, notifier := range p.Notifiers {
+		notifiers[label] = &proto.PipelineNotifierConfig{
+			Config: notifier.Config,
+			Kind:   notifier.Kind,
+			Label:  notifier.Label,
+		}
+	}
+
 	return &proto.Pipeline{
 		Location:    p.Location,
 		Created:     p.Created,
@@ -120,6 +137,7 @@ func (p *Pipeline) ToProto() *proto.Pipeline {
 		State:       proto.Pipeline_State(proto.Pipeline_State_value[string(p.State)]),
 		Tasks:       tasks,
 		Triggers:    triggers,
+		Notifiers:   notifiers,
 		Namespace:   p.Namespace,
 		Objects:     p.Objects,
 	}
@@ -159,6 +177,14 @@ func (p *Pipeline) FromProto(proto *proto.Pipeline) {
 			Config: trigger.Config,
 			Kind:   trigger.Kind,
 			State:  PipelineTriggerState(trigger.State.String()),
+		}
+	}
+
+	for label, notifier := range proto.Notifiers {
+		p.Notifiers[label] = PipelineNotifierConfig{
+			Label:  notifier.Label,
+			Config: notifier.Config,
+			Kind:   notifier.Kind,
 		}
 	}
 }

@@ -135,15 +135,11 @@ func (eb *EventBus) Publish(evt models.Event) {
 	}
 
 	for _, anyListener := range anyListeners {
-		go func(anyListener Subscription) {
-			anyListener.Events <- evt
-		}(anyListener)
+		anyListener.Events <- evt
 	}
 
 	for _, subscription := range listeners {
-		go func(subscription Subscription) {
-			subscription.Events <- evt
-		}(subscription)
+		subscription.Events <- evt
 	}
 }
 

@@ -81,8 +81,8 @@ func TestSubscribe(t *testing.T) {
 	<-sub.Events
 	three := <-sub.Events
 	if three.GetID() != thirdEvent.GetID() {
-		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			three.GetID(), thirdEvent.GetID())
+		t.Errorf("published event id and received event id do not match; published %d; received %d",
+			thirdEvent.GetID(), three.GetID())
 	}
 }
 

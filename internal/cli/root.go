@@ -11,6 +11,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/config"
 	"github.com/clintjedwards/gofer/internal/cli/event"
 	"github.com/clintjedwards/gofer/internal/cli/namespace"
+	"github.com/clintjedwards/gofer/internal/cli/notifier"
 	"github.com/clintjedwards/gofer/internal/cli/pipeline"
 	"github.com/clintjedwards/gofer/internal/cli/run"
 	"github.com/clintjedwards/gofer/internal/cli/service"
@@ -25,14 +26,11 @@ var appVersion = "0.0.dev_000000"
 var RootCmd = &cobra.Command{
 	Use:   "gofer",
 	Short: "Gofer is a distributed, continuous thing do-er.",
-	Long: `Gofer is a distributed, continuous thing do-er.
-
-It uses a similar model to concourse(https://concourse-ci.org/), leveraging the docker container as a key mechanism
-to run short-lived workloads. The benefits of this is simplicity. No foreign agents, no cluster setup, just run
-containers.
-
-Read more at https://clintjedwards.com/gofer
-`,
+	Long: "Gofer is a distributed, continuous thing do-er.\n\n" +
+		"It uses a similar model to concourse(https://concourse-ci.org/), " +
+		"leveraging the docker container as a key mechanism to run short-lived workloads. " +
+		"This results in simplicity; No foreign agents, no cluster setup, just run containers.\n\n" +
+		"Read more at https://clintjedwards.com/gofer",
 	Version: " ", // We leave this added but empty so that the rootcmd will supply the -v flag
 	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 		cl.InitState(cmd)
@@ -46,6 +44,7 @@ func init() {
 	RootCmd.AddCommand(run.CmdRun)
 	RootCmd.AddCommand(taskrun.CmdTaskRun)
 	RootCmd.AddCommand(trigger.CmdTrigger)
+	RootCmd.AddCommand(notifier.CmdNotifier)
 	RootCmd.AddCommand(config.CmdConfig)
 	RootCmd.AddCommand(namespace.CmdNamespace)
 	RootCmd.AddCommand(event.CmdEvent)

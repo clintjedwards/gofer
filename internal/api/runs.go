@@ -28,8 +28,8 @@ const (
 
 // mergeMaps combines many string maps in a "last one in wins" format. Meaning that in case of key collision
 // the last map to be added will overwrite the value of the previous key.
-func mergeMaps(maps ...map[string]string) map[string]string {
-	newMap := map[string]string{}
+func mergeMaps[KeyType comparable, ValueType any](maps ...map[KeyType]ValueType) map[KeyType]ValueType {
+	newMap := map[KeyType]ValueType{}
 
 	for _, extraMap := range maps {
 		for key, value := range extraMap {
@@ -195,13 +195,15 @@ func (api *API) taskRunLogFilePath(taskRun *models.TaskRun) string {
 
 // interpolateVars takes in a map of mixed plaintext and raw secret/store strings and populates it with the fetched
 // results.
+// We do pipeline level store substitutions and secret substitutions only here because those are globally available.
+// Run level interpolation is written in another function because it's run dependent.
 func (api *API) interpolateVars(namespace, pipeline string, mixedMap map[string]string) (map[string]string, error) {
 	parsedMap := map[string]string{}
 
 	for mapKey, value := range mixedMap {
 		// Parse for secrets
 		key := parseInterpolationSyntax("secret", value) // secret{{ example }}
-		if len(key) != 0 {
+		if key != value {
 			secret, err := api.secretStore.GetSecret(secretKey(namespace, pipeline, key))
 			if err != nil {
 				return nil, fmt.Errorf("could not find secret %q in secret store", key)
@@ -212,7 +214,7 @@ func (api *API) interpolateVars(namespace, pipeline string, mixedMap map[string]
 
 		// Parse for pipeline objects
 		key = parseInterpolationSyntax("pipeline", value) // pipeline{{ example }}
-		if len(key) != 0 {
+		if key != value {
 			object, err := api.objectStore.GetObject(pipelineObjectKey(namespace, pipeline, key))
 			if err != nil {
 				return nil, fmt.Errorf("could not find pipeline object %q in object store", key)
@@ -236,7 +238,7 @@ func (api *API) interpolateRunStoreVars(namespace, pipeline string, mixedMap map
 	for mapKey, value := range mixedMap {
 		// Parse for run objects
 		key := parseInterpolationSyntax("run", value) // run{{ example }}
-		if len(key) != 0 {
+		if key != value {
 			object, err := api.objectStore.GetObject(runObjectKey(namespace, pipeline, key, run))
 			if err != nil {
 				return nil, fmt.Errorf("could not find run object %q in object store", key)
@@ -253,7 +255,7 @@ func (api *API) interpolateRunStoreVars(namespace, pipeline string, mixedMap map
 }
 
 // parseInterpolationSyntax checks a string for the existence of a interpolation format. ex: "secret{{ example }}".
-// If it is we return that key without the brackets, if it is not, an empty string is returned.
+// If it is we return that key without the brackets, if it is not, the string is returned.
 //
 // Currently the supported interpolation syntaxes are:
 // `secret{{ example }}` for inserting from the secret store.
@@ -266,7 +268,7 @@ func parseInterpolationSyntax(prefix, variable string) string {
 		variable = strings.TrimSuffix(variable, "}}")
 		return strings.TrimSpace(variable)
 	}
-	return ""
+	return variable
 }
 
 // reviveLostTaskRun attempts to re-run as taskrun that has somehow been orphaned. It is used for taskruns
@@ -335,10 +337,26 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		return
 	}
 
+	// We create a run level token here that we pass into each task run. This allows task runs to perform actions
+	// against the API.
+	key, tokenObject, err := api.createNewAPIToken(models.TokenKindClient, []string{taskrun.NamespaceID},
+		map[string]string{"description": "temporary run token"})
+	if err != nil {
+		log.Error().Err(err).Msg("could not create token")
+	} else {
+		defer api.storage.DeleteToken(storage.DeleteTokenRequest{
+			Hash: tokenObject.Hash,
+		})
+	}
+
+	taskrun.Secrets = map[string]string{
+		"GOFER_API_TOKEN": key, // We use this token to give task runs the ability to interact with Gofer.
+	}
+
 	schedulerID, err := api.startTaskRun(scheduler.StartContainerRequest{
 		ID:        fmt.Sprintf(TASKCONTAINERIDFORMAT, taskrun.PipelineID, taskrun.RunID, taskrun.ID),
 		ImageName: taskrun.Image,
-		EnvVars:   parsedEnvVars,
+		EnvVars:   mergeMaps(taskrun.Secrets, parsedEnvVars),
 		Exec: scheduler.Exec{
 			Shell:  taskrun.Exec.Shell,
 			Script: taskrun.Exec.Script,
@@ -378,7 +396,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 // createNewTaskRun launches a brand new task run as part of a larger run for a specific task.
 // It blocks until the taskrun has gone through the full lifecycle or waiting, running, and then finally
 // is finished.
-func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task models.Task) {
+func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task models.Task, token string) {
 	newTaskRun := models.NewTaskRun(run, task)
 	api.events.Publish(models.NewEventStartedTaskRun(*newTaskRun))
 
@@ -411,6 +429,9 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 	}
 
 	newTaskRun.EnvVars = envVars
+	newTaskRun.Secrets = map[string]string{
+		"GOFER_API_TOKEN": token, // We use this token to give task runs the ability to interact with Gofer via API.
+	}
 	newTaskRun.State = models.ContainerStateWaiting
 
 	err := api.storage.AddTaskRun(storage.AddTaskRunRequest{TaskRun: newTaskRun})
@@ -491,7 +512,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 	schedulerID, err := api.startTaskRun(scheduler.StartContainerRequest{
 		ID:        fmt.Sprintf(TASKCONTAINERIDFORMAT, newTaskRun.PipelineID, newTaskRun.RunID, newTaskRun.ID),
 		ImageName: newTaskRun.Image,
-		EnvVars:   parsedEnvVars,
+		EnvVars:   mergeMaps(newTaskRun.Secrets, parsedEnvVars),
 		Exec: scheduler.Exec{
 			Shell:  newTaskRun.Exec.Shell,
 			Script: newTaskRun.Exec.Script,
@@ -575,6 +596,68 @@ func dependenciesSatisfied(statusMap *sync.Map, dependencies map[string]models.R
 	}
 
 	return nil
+}
+
+// addNotifiersAsTasks takes the notifier configs and converts them into tasks for a potential taskrun.
+// We need to do several things which are important to get right in order:
+// * We need all pipeline tasks to be dependencies of the notifier task
+// * We need to figure out which pipeline tasks might be run in case the user is using the "only" feature, so we
+// don't end up waiting on tasks that will never be run.
+// * We need to pass in the user requested envvars and the main process envvars set in the config.
+func (api *API) addNotifiersAsTasks(notifiers map[string]models.PipelineNotifierConfig, pipelineTasks map[string]models.Task,
+	filter map[string]struct{},
+) (map[string]models.Task, error) {
+	tasks := map[string]models.Task{}
+	dependsOn := map[string]models.RequiredParentState{}
+
+	// Add all the pipeline tasks as dependencies for the notifier tasks.
+	for taskID := range pipelineTasks {
+		// If a filter exists don't add tasks that are not found in it.
+		if len(filter) != 0 {
+			_, exists := filter[taskID]
+			if !exists {
+				continue
+			}
+		}
+
+		dependsOn[taskID] = models.RequiredParentStateAny
+	}
+
+	// Remove any notifiers from the dependency list.
+	for label := range notifiers {
+		delete(dependsOn, label)
+	}
+
+	for label, config := range notifiers {
+		notifier, exists := api.notifiers[config.Kind]
+		if !exists {
+			return nil, fmt.Errorf("notifier %q is not a registered notifier", config.Kind)
+		}
+
+		// We need to format all user envvars going into the notifier as GOFER_NOTIFIER_USER_CONFIG_<value>
+		formattedUserEnvVars := map[string]string{}
+		for key, value := range config.Config {
+			formattedUserEnvVars[fmt.Sprintf("GOFER_NOTIFIER_USER_CONFIG_%s", strings.ToUpper(key))] = value
+		}
+
+		// We need to format all Gofer config envvars going into the notifier as GOFER_NOTIFIER_MAIN_CONFIG_<value>
+		formattedMainEnvVars := map[string]string{}
+		for key, value := range notifier.EnvVars {
+			formattedMainEnvVars[fmt.Sprintf("GOFER_NOTIFIER_MAIN_CONFIG_%s", strings.ToUpper(key))] = value
+		}
+
+		tasks[label] = models.Task{
+			ID:           label,
+			Description:  "auto-generated notifier task",
+			Image:        notifier.Image,
+			RegistryAuth: notifier.RegistryAuth,
+			DependsOn:    dependsOn,
+			EnvVars:      formattedUserEnvVars,
+			Secrets:      formattedMainEnvVars,
+		}
+	}
+
+	return tasks, nil
 }
 
 // createNewRun starts a new run and launches the goroutines responsible for running tasks.
@@ -766,9 +849,29 @@ func (api *API) executeTaskTree(run *models.Run) {
 		return
 	}
 
+	// We create a run level token here that we pass into each task run. This allows task runs to perform actions
+	// against the API.
+	key, tokenObject, err := api.createNewAPIToken(models.TokenKindClient, []string{run.NamespaceID},
+		map[string]string{"description": "temporary run token"})
+	if err != nil {
+		log.Error().Err(err).Msg("could not create token")
+	} else {
+		defer api.storage.DeleteToken(storage.DeleteTokenRequest{
+			Hash: tokenObject.Hash,
+		})
+	}
+
+	// We run notifiers as regular run tasks, so that they enjoy all the same perks.
+	notifierTasks, err := api.addNotifiersAsTasks(pipeline.Notifiers, pipeline.Tasks, run.Only)
+	if err != nil {
+		log.Error().Err(err).Msg("could not properly create notifier tasks")
+	}
+
+	runnableTasks := mergeMaps(notifierTasks, pipeline.Tasks)
+
 	var taskStatusMap sync.Map
 
-	for id, task := range pipeline.Tasks {
+	for id, task := range runnableTasks {
 		// If it already exists in the status map, skip it
 		_, exists := taskStatusMap.Load(id)
 		if exists {
@@ -777,7 +880,7 @@ func (api *API) executeTaskTree(run *models.Run) {
 
 		// If run.Only is empty then we want to run everything so auto add anything we find
 		if len(run.Only) == 0 {
-			go api.createNewTaskRun(&taskStatusMap, *run, task)
+			go api.createNewTaskRun(&taskStatusMap, *run, task, key)
 			// Put an initial entry into taskstatusmap so the run monitor knows how many to wait on.
 			taskStatusMap.Store(task.ID, models.ContainerStateProcessing)
 			continue
@@ -801,7 +904,7 @@ func (api *API) executeTaskTree(run *models.Run) {
 			}
 		}
 
-		go api.createNewTaskRun(&taskStatusMap, *run, task)
+		go api.createNewTaskRun(&taskStatusMap, *run, task, key)
 		// Put an initial entry into taskstatusmap so the run monitor knows how many to wait on.
 		taskStatusMap.Store(task.ID, models.ContainerStateProcessing)
 	}
@@ -813,8 +916,8 @@ func (api *API) executeTaskTree(run *models.Run) {
 	}
 }
 
-// monitorRunStatus takes into account all task run status that are currently being run and then determines
-// the final run status based on all finished task run statuses.
+// monitorRunStatus takes into account all task run statuses that are currently being run and then determines
+// the final run status based on all finished task run statuses. It will block until all task runs have finished.
 func (api *API) monitorRunStatus(namespaceID, pipelineID string, runID int64, statusMap *sync.Map) error {
 	run, err := api.storage.GetRun(storage.GetRunRequest{
 		NamespaceID: namespaceID,

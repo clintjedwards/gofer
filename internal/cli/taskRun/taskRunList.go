@@ -3,6 +3,7 @@ package taskrun
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -63,6 +64,9 @@ func taskrunList(_ *cobra.Command, args []string) error {
 	}
 
 	data := [][]string{}
+
+	sort.Slice(resp.TaskRuns, func(i, j int) bool { return resp.TaskRuns[i].Started < resp.TaskRuns[j].Started })
+
 	for _, taskrun := range resp.TaskRuns {
 		data = append(data, []string{
 			taskrun.Id,

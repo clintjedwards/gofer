@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"text/template"
 
@@ -96,6 +97,7 @@ type data struct {
 type taskRunData struct {
 	Duration    string
 	Started     string
+	StartedUnix int64
 	ID          string
 	State       string
 	StatePrefix string
@@ -120,12 +122,15 @@ func formatRunInfo(run *proto.Run, taskRuns []*proto.TaskRun, detail bool) strin
 		taskRunList = append(taskRunList, taskRunData{
 			Duration:    format.Duration(task.Started, task.Ended),
 			Started:     format.UnixMilli(task.Started, "Not yet", detail),
+			StartedUnix: task.Started, // this is purely meant for sorting
 			ID:          color.BlueString(task.Id),
 			State:       format.TaskRunState(task.State.String()),
 			StatePrefix: formatStatePrefix(task.State.String()),
 			DependsOn:   format.Dependencies(task.Task.DependsOn),
 		})
 	}
+
+	sort.Slice(taskRunList, func(i, j int) bool { return taskRunList[i].StartedUnix < taskRunList[j].StartedUnix })
 
 	data := data{
 		ID:             color.BlueString("#" + strconv.Itoa(int(run.Id))),

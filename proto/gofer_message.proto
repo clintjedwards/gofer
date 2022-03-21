@@ -40,7 +40,8 @@ message Pipeline {
   State state = 11;
   map<string, Task> tasks = 12;
   map<string, PipelineTriggerConfig> triggers = 13;
-  repeated string objects = 14;
+  map<string, PipelineNotifierConfig> notifiers = 14;
+  repeated string objects = 15;
 }
 
 enum TaskRequiredParentState {
@@ -61,7 +62,10 @@ message Task {
   string image = 3;
   map<string, TaskRequiredParentState> depends_on = 4;
   map<string, string> env_vars = 5;
-  Exec exec = 6;
+  // secrets never contains actual secrets just the name of the env vars
+  // whose values aren't shown to the user.
+  repeated string secrets = 6;
+  Exec exec = 7;
 }
 
 message Run {
@@ -171,6 +175,18 @@ message Trigger {
   }
   State state = 5;
   string documentation = 6;
+}
+
+message PipelineNotifierConfig {
+  string kind = 1;
+  string label = 2;
+  map<string, string> config = 3;
+}
+
+message Notifier {
+  string kind = 1;
+  string image = 2;
+  string documentation = 3;
 }
 
 message Token {

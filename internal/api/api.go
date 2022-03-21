@@ -96,6 +96,11 @@ type API struct {
 	// quickly with the containers and their potentially changing endpoints.
 	triggers map[string]*models.Trigger
 
+	// Notifiers is an in-memory map of the currently registered notifiers. These notifiers are registered on startup
+	// and launched as needed at the end of a user's pipeline run. Gofer refers to this cache as a way to quickly look
+	// up which container is needed to be launched.
+	notifiers map[string]*models.Notifier
+
 	// ignorePipelineRunEvents controls if pipelines can trigger runs globally. If this is set to false the entire Gofer
 	// service will not schedule new runs.
 	ignorePipelineRunEvents *atomic.Bool
@@ -136,6 +141,7 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 		secretStore:             secretStore,
 		ignorePipelineRunEvents: atomic.NewBool(config.IgnorePipelineRunEvents),
 		triggers:                map[string]*models.Trigger{},
+		notifiers:               map[string]*models.Notifier{},
 	}
 
 	err = newAPI.createDefaultNamespace()
@@ -146,6 +152,9 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 	// findOrphans is a repair method that picks up where the gofer service left off if it was shutdown while
 	// a run was currently in progress.
 	go newAPI.findOrphans()
+
+	// Register notifiers with API so that they can be looked up easily.
+	newAPI.registerNotifiers()
 
 	err = newAPI.startTriggers()
 	if err != nil {

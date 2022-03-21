@@ -50,25 +50,25 @@ trigger "github" "only_from_experimental" {
 
 ## Trigger Configuration
 
-Trigger configurations are set upon startup and cannot be changed afterwards. They are set via the [server configuration](../../server-configuration/overview).
+Trigger configurations are set upon startup and cannot be changed without a restart. They are set via the [server configuration](../../server-configuration/overview).
 
 The Github trigger requires the setup and use of a [new Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps). You can [view setup instructions below](#additional-setup) which will walk you through how to retrieve the required env var variables.
 
-| EnvVar                                   | Default  | Description                                                                                                                                                             |
-| ---------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GOFER_TRIGGER_GITHUB_APPS_ID             | Required | The Github app ID                                                                                                                                                       |
-| GOFER_TRIGGER_GITHUB_APPS_INSTALLATION   | Required | The Github installation ID. This can be found by viewing the webhook payload delivery. See a more details walkthrough on where to find this below.                      |
-| GOFER_TRIGGER_GITHUB_APPS_KEY            | Required | The base64'd private key of the Github app. This can be generated during Github app creation time.                                                                      |
-| GOFER_TRIGGER_GITHUB_APPS_WEBHOOK_SECRET | Required | The Github app webhook secret key. This should be a long, randomized character string. It will be used to verify that an event came from Github and not another source. |
+| EnvVar              | Default  | Description                                                                                                                                                             |
+| ------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| APPS_ID             | Required | The Github app ID                                                                                                                                                       |
+| APPS_INSTALLATION   | Required | The Github installation ID. This can be found by viewing the webhook payload delivery. See a more details walkthrough on where to find this below.                      |
+| APPS_KEY            | Required | The base64'd private key of the Github app. This can be generated during Github app creation time.                                                                      |
+| APPS_WEBHOOK_SECRET | Required | The Github app webhook secret key. This should be a long, randomized character string. It will be used to verify that an event came from Github and not another source. |
 
 ```hcl
 triggers {
   registered_triggers "github" {
-    image = "ghcr.io/clintjedwards/gofer-containers/trigger_github:latest"
+    image = "ghcr.io/clintjedwards/gofer-containers/trigger/github:latest"
     env_vars = {
-      "GOFER_TRIGGER_GITHUB_APPS_ID": "112348",
-      "GOFER_TRIGGER_GITHUB_APPS_INSTALLATION": "99560091",
-      "GOFER_TRIGGER_GITHUB_APPS_KEY": <<EOT
+      "APPS_ID": "112348",
+      "APPS_INSTALLATION": "99560091",
+      "APPS_KEY": <<EOT
 TUtkUnhYY01LTUI1ejgzZU84MFhKQWhoNnBkaFlCQlg0NGl5awpUUTBuaENySGRVT2kvN3hVaHp6
 eTgxb3d0RUdpdUFQakJIOVhpSlczQm9hazYrSTZKWjU2RC95YllPbkVSaTdFClIxVkRQeGdGa0lE
 NHdUbmtHdU4vdFY1VzBuZ3Q1aW0yVG5OVGVqc0NnWUVBb0pBMlJXZ2ZaSDdobVo3VS82TFUKSi9a
@@ -76,7 +76,7 @@ WTBZYmNkOU80anpYdWRUTUo1TXVKcVEwY004bnZhb09tS1Q1ekRadnBla01sRDlaYmZ4Rlg2Mzh3
 N2ZuZwp0N05lbGFZc3IxYUhFWi9Rd2pveFo2RXpEWUJSQ0M2SEFvQmJXZmdwc1FCMkhNV3lzb2ls
 LUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
 EOT
-      "GOFER_TRIGGER_GITHUB_APPS_WEBHOOK_SECRET": "somereallylongstringofcharacters",
+      "APPS_WEBHOOK_SECRET": "somereallylongstringofcharacters",
     }
   }
 }
