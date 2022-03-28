@@ -149,12 +149,11 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 		return nil, fmt.Errorf("could not create default namespace: %w", err)
 	}
 
-	// findOrphans is a repair method that picks up where the gofer service left off if it was shutdown while
-	// a run was currently in progress.
-	go newAPI.findOrphans()
-
-	// Register notifiers with API so that they can be looked up easily.
-	newAPI.registerNotifiers()
+	newAPI.installNotifiersFromConfig()
+	err = newAPI.installTriggersFromConfig()
+	if err != nil {
+		return nil, fmt.Errorf("could not install triggers from config file: %w", err)
+	}
 
 	err = newAPI.startTriggers()
 	if err != nil {
@@ -166,6 +165,10 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 		newAPI.cleanup()
 		return nil, fmt.Errorf("could not restore trigger subscriptions: %w", err)
 	}
+
+	// findOrphans is a repair method that picks up where the Gofer service left off if it was shutdown while
+	// a run was currently in progress.
+	go newAPI.findOrphans()
 
 	// These two functions are responsible for gofer's trigger event loop system. The first launches goroutines that
 	// consumes events from triggers and the latter processes them into pipeline runs.

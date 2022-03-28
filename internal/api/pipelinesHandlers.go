@@ -26,7 +26,7 @@ func (api *API) GetPipeline(ctx context.Context, request *proto.GetPipelineReque
 	pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{NamespaceID: request.NamespaceId, ID: request.Id})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.GetPipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
+			return &proto.GetPipelineResponse{}, status.Error(codes.NotFound, "pipeline not found")
 		}
 		log.Error().Err(err).Msg("could not get pipeline")
 		return &proto.GetPipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
@@ -195,7 +195,6 @@ func (api *API) CreatePipelineRaw(ctx context.Context, request *proto.CreatePipe
 	newPipeline, err := api.createPipeline(request.Path, config)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
-			log.Debug().Err(err).Msg("pipeline id conflict")
 			return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.AlreadyExists,
 				"pipeline id already exists; please try again.")
 		}
@@ -392,7 +391,7 @@ func (api *API) AbandonPipeline(ctx context.Context, request *proto.AbandonPipel
 	pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{NamespaceID: request.NamespaceId, ID: request.Id})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.AbandonPipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
+			return &proto.AbandonPipelineResponse{}, status.Error(codes.NotFound, "pipeline not found")
 		}
 		log.Error().Err(err).Msg("could not get pipeline")
 		return &proto.AbandonPipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")

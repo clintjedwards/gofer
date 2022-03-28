@@ -285,22 +285,34 @@ message DeleteTaskRunLogsResponse {}
 ////////////// Trigger Transport Models //////////////
 
 message GetTriggerRequest {
-  string name = 1; // The unique name for a particular trigger
+  string kind = 1; // The unique name for a particular trigger
 }
 message GetTriggerResponse { Trigger trigger = 1; }
 
 message ListTriggersRequest {}
 message ListTriggersResponse { repeated Trigger triggers = 1; }
 
+message InstallTriggerRequest { TriggerConfig trigger = 1; }
+message InstallTriggerResponse {}
+
+message UninstallTriggerRequest { string kind = 1; }
+message UninstallTriggerResponse {}
+
 ////////////// Notifier Transport Models //////////////
 
 message GetNotifierRequest {
-  string name = 1; // The unique name/kind for a particular notifier
+  string kind = 1; // The unique name/kind for a particular notifier
 }
 message GetNotifierResponse { Notifier notifier = 1; }
 
 message ListNotifiersRequest {}
 message ListNotifiersResponse { repeated Notifier notifiers = 1; }
+
+message InstallNotifierRequest { NotifierConfig notifier = 1; }
+message InstallNotifierResponse {}
+
+message UninstallNotifierRequest { string kind = 1; }
+message UninstallNotifierResponse {}
 
 ////////////// Events Transport Models //////////////
 

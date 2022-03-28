@@ -26,6 +26,7 @@ require (
 	github.com/spf13/cobra v1.4.0
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.9.0
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.45.0
 	google.golang.org/protobuf v1.28.0
@@ -60,6 +61,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
+	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect

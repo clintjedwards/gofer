@@ -76,6 +76,9 @@ message InfoResponse {
   // Triggers are allowed to provide a link to more extensive documentation on
   // how to use and configure them.
   string documentation = 2;
+
+  // A listing of all registred pipelines in the format: <namespace>/<pipeline>
+  repeated string registered = 3;
 }
 
 message SubscribeRequest {

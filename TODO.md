@@ -10,6 +10,13 @@
 
 #### Github notifier
 
+#### Enable the ability to install triggers and notifiers by CLI. Config will just be one of two ways to install.
+
+- This will allow us to uncomplicate some installations like installing the Github trigger
+- Is there a way we could build this into triggers so that we simply run the container and connect to it in order
+  to run the installation. (then the container can pass orchestrate the entire thing, we can also communicate with
+  Gofer automatically to install it)
+
 #### Deprecate the URL retrieving of pipeline configs.
 
 - Pipelines wont be able to be retrieved from a repo instead we'll require users to pass them in via CLI.
@@ -18,11 +25,12 @@
 - The CLI should auto-detect what language you used and auto-compile and absorb the output.
 - You can also just use straight up HCL.
 - We'll need to write a CDK package that translates go functions to HCL as an example.
+- Remove the complicated documentation around this.
 
 ### API
 
 - Write validation for all endpoints
-- User should also be able to give their builds a per-task timeout. Limit this to 5 min - 8 hours. If this is not set the scheduler should set it to 8hours.
+- User should also be able to give their builds a per-task timeout. Limit this to 5 min - 8 hours. If this is not set the scheduler should set it to 8 hours.
 - We should have a feature that allows individual tasks and pipelines the ability to turn off logging.
   and anything else that is hard to glean from other locations.
 - Global timeout for all runs
@@ -95,6 +103,8 @@
 
 - Document the different env variables that get injected into each Trigger, Task, Notifier.
 - Trigger documentation:
+  - Triggers now have two required functions, trigger installations and trigger runs
+    - Run is the service, Install runs a small program meant to help with installation.
   - How to test triggers
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
@@ -119,4 +129,12 @@
   run as failed due to preconditions.
 
 * Think about re-writing and packaging the Config package
-* Think about a better way to do the print package so we can support grep and such.
+* Make sure the Notifier config and the Trigger config saved into the database don't save sensitive values in plaintext.
+* Investigate writing a small script to help with updating events. We can run it with make.
+* Triggers when asked should return a list of registered pipelines
+* Fill out the registered response in all triggers
+* All triggers/notifiers now need installer scripts
+* Should we swap over to SQLite?
+* The trigger/notifier/installer code needs some massive cleanup
+* When we lose a check connection with a trigger go ahead and mark that trigger as inactive. This removes the need for monitorTrigger routine.
+* When we uninstall a trigger we need to then kill the goroutinue for the check routine.

@@ -103,6 +103,13 @@ service Gofer {
   // ListTriggers lists all triggers currently registered within gofer.
   rpc ListTriggers(ListTriggersRequest) returns (ListTriggersResponse);
 
+  // InstallTrigger attempts to install a new trigger.
+  rpc InstallTrigger(InstallTriggerRequest) returns (InstallTriggerResponse);
+
+  // UninstallTrigger attempts to uninstall a trigger.
+  rpc UninstallTrigger(UninstallTriggerRequest)
+      returns (UninstallTriggerResponse);
+
   ////////////// Notifier RPCs //////////////
   //
   // A notifier is a provided way to notify external systems about the
@@ -113,6 +120,13 @@ service Gofer {
 
   // ListNotifiers lists all notifiers currently registered within gofer.
   rpc ListNotifiers(ListNotifiersRequest) returns (ListNotifiersResponse);
+
+  // InstallNotifier attempts to install a new notifier.
+  rpc InstallNotifier(InstallNotifierRequest) returns (InstallNotifierResponse);
+
+  // UninstallNotifier attempts to uninstall a notifier.
+  rpc UninstallNotifier(UninstallNotifierRequest)
+      returns (UninstallNotifierResponse);
 
   ////////////// Event RPCs //////////////
   //

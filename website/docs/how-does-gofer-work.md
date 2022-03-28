@@ -54,6 +54,11 @@ Triggers are brought up alongside Gofer as docker containers that it launches an
 6. When the event happens it figures out which pipeline should be alerted and sends an event to the main Gofer process.
 7. The main gofer process then starts a pipeline run on behalf of the trigger.
 
+### Notifiers
+
+Notifiers work in a similar way to triggers. They're just docker containers that run alongside your pipeline. Notifiers are first registered
+with Gofer and then once added to a pipeline will wait until the pipeline has finished all task-runs before running themselves.
+
 ### Pluggable Everything
 
 Gofer plugs into all your favorite backends your team is already using. This means that you never have to maintain things outside of your wheelhouse.

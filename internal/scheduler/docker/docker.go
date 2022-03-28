@@ -109,7 +109,8 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		})
 		if err != nil {
 			if strings.Contains(err.Error(), "manifest unknown") {
-				return scheduler.StartContainerResponse{}, fmt.Errorf("image '%s' not found or missing auth: %w", req.ImageName, scheduler.ErrNoSuchImage)
+				return scheduler.StartContainerResponse{}, fmt.Errorf("image %q not found or missing auth: %w",
+					req.ImageName, scheduler.ErrNoSuchImage)
 			}
 			return scheduler.StartContainerResponse{}, err
 		}
@@ -124,10 +125,13 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		})
 
 		if len(list) == 0 {
-			r, err := orch.ImagePull(ctx, req.ImageName, types.ImagePullOptions{})
+			r, err := orch.ImagePull(ctx, req.ImageName, types.ImagePullOptions{
+				RegistryAuth: dockerRegistryAuth,
+			})
 			if err != nil {
 				if strings.Contains(err.Error(), "manifest unknown") {
-					return scheduler.StartContainerResponse{}, fmt.Errorf("image '%s' not found or missing auth: %w", req.ImageName, scheduler.ErrNoSuchImage)
+					return scheduler.StartContainerResponse{}, fmt.Errorf("image %q not found or missing auth: %w",
+						req.ImageName, scheduler.ErrNoSuchImage)
 				}
 				return scheduler.StartContainerResponse{}, err
 			}

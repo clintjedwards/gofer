@@ -41,15 +41,15 @@ The current landscape for running short-term jobs is heavily splintered and coul
 
 This is actually a good thing in most cases and something that most small companies should embrace. The guarantees and structure of gitops is useful for building and testing software.
 
-Eventually as your workload grows though, you'll start to notice that tying your short-term job runner to gitops leaves a few holes in the proper management of those jobs.
+Eventually as your workload grows though, you'll start to notice that tying your short-term job runner to a particular repository leaves a few holes in the proper management of those jobs.
 
 **Let's take a look at an example:**
 
-Let's imagine you've built a tool that uses static analysis to examine PRs for potential issues[^1]. The philosophy of gitops would have you store your tool's job settings in that same repository.
+Imagine you've built a tool that uses static analysis to examine PRs for potential issues[^1]. The philosophy of gitops would have you store your tool's job settings in that same repository.
 
 [Here is an example of buildkite's approach](https://buildkite.com/docs/pipelines/defining-steps#customizing-the-pipeline-upload-path) where your job definition is uploaded on every run via the buildkite config file at that certain commit.
 
-This model of joining your job to the commit it's operating on works well until you have to fix something.
+This model of joining your job to the repository and the commit that repository is operating on works well until you have to fix something.
 
 Suddenly you have to fix a bug in your job and it's a breaking change with other parts of the system. Not terribly uncommon.
 

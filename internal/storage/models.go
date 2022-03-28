@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/models"
 )
 
@@ -136,4 +137,36 @@ type GetTokenRequest struct {
 
 type DeleteTokenRequest struct {
 	Hash string
+}
+
+// Triggers
+
+type GetAllTriggersRequest struct{}
+
+type GetTriggerRequest struct {
+	Kind string
+}
+
+type AddTriggerRequest struct {
+	Trigger *config.Trigger
+}
+
+type DeleteTriggerRequest struct {
+	Kind string
+}
+
+// Notifiers
+
+type GetAllNotifiersRequest struct{}
+
+type GetNotifierRequest struct {
+	Kind string
+}
+
+type AddNotifierRequest struct {
+	Notifier *config.Notifier
+}
+
+type DeleteNotifierRequest struct {
+	Kind string
 }

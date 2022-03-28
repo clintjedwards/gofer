@@ -28,7 +28,7 @@ Gofer provides several key features that differ from traditional CI/CD philosoph
   jobs. Avoiding the swiss army knife of mess that most CD/CD tools give and instead focuses on delivering an experience where you can be happy with; strong, well-supported core functionality and practices.
 
 - **Pluggable**: Gofer provides pluggable interfaces to run on all your favorite cloud-native tooling. The default service
-  is easily run locally making it easy to develop against or troubleshoot. More advanced setups can leverage your
+  is easily run locally making it simple to develop against or troubleshoot. More advanced setups can leverage your
   favorite container orchestrator, object store, and more.
 
 - **DAG(Directed Acyclic Graph) support**: Run simple or complex graphs of containers to accomplish your tasks
@@ -38,14 +38,15 @@ Gofer provides several key features that differ from traditional CI/CD philosoph
   - Wait on the result of other containers.
   - Allow the result of other containers to dictate which downstream containers will run.
 
-- **One abstraction layer above the norm**: Many modern "ci/cd/ETL/thing do-er" tools focus specifically
-  on the concept of git-ops. This makes them in-flexible for workloads that require a different paradigm of operation.
+- **Decoupled from the repo**: Many modern "ci/cd/ETL/thing do-er" tools focus specifically
+  on the concept of git-ops. While this provides some pros for CI specific work, this makes them in-flexible and awkward
+  for workloads that require a different paradigm of operation.
 
-  Instead Gofer operates one abstration layer above these tools, offering what those tools as a optional feature. This and allowing the developer to choose what works best for them. The result is the ability for pipeline owners to possess the same values (stability, predictability, reliability) that brings their familiar long-running services success.
+  Instead Gofer operates one abstration layer above these tools, offering git-ops as a optional feature and allowing the developer to choose what works best for them. The result is the ability for pipeline owners to impart the same values (stability, predictability, reliability) that brings long-running services success.
 
   - The ability to properly version.
   - A/B test.
-  - [Canary][canarying-url] out new versions!
+  - [Canarying][canarying-url].
 
 [You can read more about Gofer and it's philosophy here.](https://clintjedwards.com/gofer/docs/intro)
 

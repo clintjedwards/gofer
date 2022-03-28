@@ -162,9 +162,10 @@ message PipelineTriggerConfig {
 
 message Trigger {
   string kind = 1;
-  string url = 2;
-  string scheduler_id = 3;
-  int64 started = 4;
+  string image = 2;
+  string url = 3;
+  string scheduler_id = 4;
+  int64 started = 5;
   enum State {
     UNKNOWN = 0;
     PROCESSING = 1;
@@ -173,8 +174,16 @@ message Trigger {
     FAILED = 4;
     SUCCESS = 5;
   }
-  State state = 5;
-  string documentation = 6;
+  State state = 6;
+  string documentation = 7;
+}
+
+message TriggerConfig {
+  string kind = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> env_vars = 5;
 }
 
 message PipelineNotifierConfig {
@@ -187,6 +196,14 @@ message Notifier {
   string kind = 1;
   string image = 2;
   string documentation = 3;
+}
+
+message NotifierConfig {
+  string kind = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> env_vars = 5;
 }
 
 message Token {

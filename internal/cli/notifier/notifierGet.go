@@ -14,7 +14,7 @@ import (
 )
 
 var cmdNotifierGet = &cobra.Command{
-	Use:     "get <name>",
+	Use:     "get <kind>",
 	Short:   "Get a specific notifier by name.",
 	Example: `$ gofer notifier get log`,
 	RunE:    notifierGet,
@@ -26,7 +26,7 @@ func init() {
 }
 
 func notifierGet(_ *cobra.Command, args []string) error {
-	name := args[0]
+	kind := args[0]
 
 	cl.State.Fmt.Print("Retrieving notifier")
 
@@ -42,7 +42,7 @@ func notifierGet(_ *cobra.Command, args []string) error {
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	resp, err := client.GetNotifier(ctx, &proto.GetNotifierRequest{
-		Name: name,
+		Kind: kind,
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get notifier: %v", err))
@@ -67,9 +67,7 @@ type notifierInfo struct {
 }
 
 func formatNotifierInfo(ti notifierInfo) string {
-	const formatTmpl = `Notifier "{{.Kind}}"
-
-Image {{.Image}}
+	const formatTmpl = `Notifier "{{.Kind}}" :: {{.Image}}
 
 {{- if .Documentation }}
 

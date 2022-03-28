@@ -64,7 +64,7 @@ The Github trigger requires the setup and use of a [new Github app](https://docs
 ```hcl
 triggers {
   registered_triggers "github" {
-    image = "ghcr.io/clintjedwards/gofer-containers/trigger/github:latest"
+    image = "ghcr.io/clintjedwards/gofer-containers/triggers/github:latest"
     env_vars = {
       "APPS_ID": "112348",
       "APPS_INSTALLATION": "99560091",

@@ -36,7 +36,7 @@ Three strategies:
 [^1]: https://github.com/google/goblet
 [^2]: https://github.com/jonasmalacofilho/git-cache-http-server
 
-### > What are the different ways in reference my pipeline configuration?
+### > What are the different ways to reference my pipeline configuration?
 
 The Gofer command line allows you to reference your pipeline configuration in many ways.
 

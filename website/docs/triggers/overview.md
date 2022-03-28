@@ -14,11 +14,11 @@ On startup, Gofer launches the interval trigger as a long-running container. Whe
 
 ## Supported Triggers
 
-| name                          | image                                                          | included | description                                                                                         |
-| ----------------------------- | -------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
-| [interval](interval/overview) | ghcr.io/clintjedwards/gofer-containers/trigger/interval:latest | yes      | Interval triggers an event after a predetermined amount of time has passed.                         |
-| [cron](cron/overview)         | ghcr.io/clintjedwards/gofer-containers/trigger/cron:latest     | yes      | Cron is used for longer termed intervals. For instance, running a pipeline every year on Christmas. |
-| [github](github/overview)     | ghcr.io/clintjedwards/gofer-containers/trigger/github:latest   | yes      | Allow your pipelines to run based on branch, tag, or release activity.                              |
+| name                          | image                                                           | included | description                                                                                         |
+| ----------------------------- | --------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| [interval](interval/overview) | ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest | yes      | Interval triggers an event after a predetermined amount of time has passed.                         |
+| [cron](cron/overview)         | ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest     | yes      | Cron is used for longer termed intervals. For instance, running a pipeline every year on Christmas. |
+| [github](github/overview)     | ghcr.io/clintjedwards/gofer-containers/triggers/github:latest   | yes      | Allow your pipelines to run based on branch, tag, or release activity.                              |
 
 ## How to add new Triggers?
 

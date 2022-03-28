@@ -7,6 +7,7 @@ package storage
 import (
 	"errors"
 
+	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/models"
 )
 
@@ -61,4 +62,14 @@ type Engine interface {
 	GetEvent(r GetEventRequest) (models.Event, error)
 	AddEvent(r AddEventRequest) error
 	DeleteEvent(r DeleteEventRequest) error
+
+	GetAllTriggers(r GetAllTriggersRequest) ([]*config.Trigger, error)
+	GetTrigger(r GetTriggerRequest) (*config.Trigger, error)
+	AddTrigger(r AddTriggerRequest) error
+	DeleteTrigger(r DeleteTriggerRequest) error
+
+	GetAllNotifiers(r GetAllNotifiersRequest) ([]*config.Notifier, error)
+	GetNotifier(r GetNotifierRequest) (*config.Notifier, error)
+	AddNotifier(r AddNotifierRequest) error
+	DeleteNotifier(r DeleteNotifierRequest) error
 }

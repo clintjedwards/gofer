@@ -15,8 +15,8 @@ import (
 )
 
 var cmdTriggerGet = &cobra.Command{
-	Use:     "get <name>",
-	Short:   "Get a specific trigger by name.",
+	Use:     "get <kind>",
+	Short:   "Get a specific trigger by kind.",
 	Example: `$ gofer trigger get cron`,
 	RunE:    triggerGet,
 	Args:    cobra.ExactArgs(1),
@@ -27,7 +27,7 @@ func init() {
 }
 
 func triggerGet(_ *cobra.Command, args []string) error {
-	name := args[0]
+	kind := args[0]
 
 	cl.State.Fmt.Print("Retrieving trigger")
 
@@ -43,7 +43,7 @@ func triggerGet(_ *cobra.Command, args []string) error {
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	resp, err := client.GetTrigger(ctx, &proto.GetTriggerRequest{
-		Name: name,
+		Kind: kind,
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get trigger: %v", err))
@@ -57,6 +57,7 @@ func triggerGet(_ *cobra.Command, args []string) error {
 		Started:       cliformat.UnixMilli(resp.Trigger.Started, "Not yet", cl.State.Config.Detail),
 		URL:           resp.Trigger.Url,
 		Documentation: resp.Trigger.Documentation,
+		Image:         resp.Trigger.Image,
 	}))
 	cl.State.Fmt.Finish()
 
@@ -69,10 +70,11 @@ type triggerInfo struct {
 	Started       string
 	State         string
 	Documentation string
+	Image         string
 }
 
 func formatTriggerInfo(ti triggerInfo) string {
-	const formatTmpl = `Trigger "{{.Kind}}" :: {{.State}}
+	const formatTmpl = `Trigger "{{.Kind}}" :: {{.State}} :: {{.Image}}
 
 Started {{.Started}}
 

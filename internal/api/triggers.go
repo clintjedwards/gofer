@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
 	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -23,185 +23,189 @@ import (
 // The containerID format dictates what the container name will be of the trigger.
 const TRIGGERCONTAINERIDFORMAT = "trigger_%s" // trigger_<triggerKind>
 
-// startTriggers attempts to start each trigger from config on the provided scheduler. Once scheduled it then collects
-// the initial trigger information so it can check for connectivity and store the network location.
-// This information will eventually be used in other parts of the API to communicate with said triggers.
+func (api *API) installTriggersFromConfig() error {
+	for _, trigger := range api.config.Triggers.RegisteredTriggers {
+		_, exists := api.triggers[trigger.Kind]
+		if exists {
+			continue
+		}
+		err := api.startTrigger(&trigger, generateToken(32))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// startTriggers attempts to start each installed trigger. It is run on startup when we're attempting to reestablish
+// all needed triggers.
 func (api *API) startTriggers() error {
+	installedTriggers, err := api.storage.GetAllTriggers(storage.GetAllTriggersRequest{})
+	if err != nil {
+		return err
+	}
+
+	for _, trigger := range installedTriggers {
+		err := api.startTrigger(trigger, generateToken(32))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// startTrigger attempts to start the trigger given. The function itself attempts to do everything needed so that the
+// resulting trigger is ready to use by Gofer.
+//
+// A list of the many responsibilities:
+// 1) Convert passed trigger config to properly named envvars
+// 2) Pass in config envvars and Gofer provided envars.
+// 3) Starts the container and checks that the container can communicate.
+// 4) Enters the information gleaned from the communication of the container into the trigger registry.
+// 5) Launches the goroutine that collects container logs and outputs it into stdout.
+func (api *API) startTrigger(trigger *config.Trigger, triggerKey string) error {
 	cert, key, err := api.getTLSFromFile(api.config.Triggers.TLSCertPath, api.config.Triggers.TLSKeyPath)
 	if err != nil {
 		return err
 	}
 
-	triggerKey := generateToken(32)
+	// Convert trigger envvars into properly structured envvars; GOFER_TRIGGER_<trigger name>_<config key>
+	configVars := map[string]string{}
+	for mapkey, value := range trigger.EnvVars {
+		newKey := fmt.Sprintf("GOFER_TRIGGER_%s_%s", strings.ToUpper(trigger.Kind), strings.ToUpper(mapkey))
+		configVars[newKey] = value
+	}
 
-	for _, trigger := range api.config.Triggers.RegisteredTriggers {
-		// Convert trigger envvars into properly structured envvars; GOFER_TRIGGER_<trigger name>_<config key>
-		configVars := map[string]string{}
-		for key, value := range trigger.EnvVars {
-			newKey := fmt.Sprintf("GOFER_TRIGGER_%s_%s", strings.ToUpper(trigger.Kind), strings.ToUpper(key))
-			configVars[newKey] = value
+	// We need to first populate the triggers with their required environment variables.
+	// Order is important here maps later in the list will overwrite earlier maps.
+	// We first include the Gofer defined environment variables and then the operator configured environment
+	// variables.
+	envVars := mergeMaps(map[string]string{
+		"GOFER_TRIGGER_TLS_CERT":  string(cert),
+		"GOFER_TRIGGER_TLS_KEY":   string(key),
+		"GOFER_TRIGGER_KIND":      trigger.Kind,
+		"GOFER_TRIGGER_LOG_LEVEL": api.config.LogLevel,
+		"GOFER_TRIGGER_KEY":       triggerKey,
+	}, configVars)
+
+	log.Info().Str("name", trigger.Kind).Msg("starting trigger")
+	sc := scheduler.StartContainerRequest{
+		ID:               fmt.Sprintf(TRIGGERCONTAINERIDFORMAT, trigger.Kind),
+		ImageName:        trigger.Image,
+		EnvVars:          envVars,
+		RegistryUser:     trigger.User,
+		RegistryPass:     trigger.Pass,
+		EnableNetworking: true,
+	}
+
+	resp, err := api.scheduler.StartContainer(sc)
+	if err != nil {
+		log.Error().Err(err).Str("trigger", trigger.Kind).Msg("could not start trigger")
+		return err
+	}
+
+	var info *sdkProto.InfoResponse
+
+	// For some reason I can't get GRPC's retry to properly handle this, so instead we resort to a simple for loop.
+	//
+	// There is a race condition where we schedule the container, but the actual container application might not
+	// have gotten a chance to start before we issue a query.
+	// So instead of baking in some arbitrary sleep time between these two actions instead we retry
+	// until we get a good state.
+	attempts := 0
+	for {
+		if attempts >= 30 {
+			log.Error().Msg("maximum amount of attempts reached for starting trigger; could not connect to trigger")
+			return fmt.Errorf("could not connect to trigger; maximum amount of attempts reached")
 		}
 
-		// We need to first populate the triggers with their required environment variables.
-		// Order is important here maps later in the list will overwrite earlier maps.
-		// We first include the Gofer defined environment variables and then the operator configured environment
-		// variables.
-		envVars := mergeMaps(map[string]string{
-			"GOFER_TRIGGER_TLS_CERT":  string(cert),
-			"GOFER_TRIGGER_TLS_KEY":   string(key),
-			"GOFER_TRIGGER_KIND":      trigger.Kind,
-			"GOFER_TRIGGER_LOG_LEVEL": api.config.LogLevel,
-			"GOFER_TRIGGER_KEY":       triggerKey,
-		}, configVars)
-
-		log.Info().Str("name", trigger.Kind).Msg("starting trigger")
-		sc := scheduler.StartContainerRequest{
-			ID:               fmt.Sprintf(TRIGGERCONTAINERIDFORMAT, trigger.Kind),
-			ImageName:        trigger.Image,
-			EnvVars:          envVars,
-			RegistryUser:     trigger.User,
-			RegistryPass:     trigger.Pass,
-			EnableNetworking: true,
-		}
-
-		resp, err := api.scheduler.StartContainer(sc)
+		conn, err := grpcDial(resp.URL)
 		if err != nil {
-			log.Error().Err(err).Str("trigger", trigger.Kind).Msg("could not start trigger")
-			return err
+			log.Debug().Err(err).Str("trigger", trigger.Kind).Msg("could not connect to trigger")
+			time.Sleep(time.Millisecond * 300)
+			attempts++
+			continue
 		}
 
-		var info *sdkProto.InfoResponse
+		client := sdkProto.NewTriggerClient(conn)
 
-		// For some reason I can't get GRPC's retry to properly handle this, so instead we resort to a simple for loop.
-		//
-		// There is a race condition where we schedule the container, but the actual container application might not
-		// have gotten a chance to start before we issue a query.
-		// So instead of baking in some arbitrary sleep time between these two actions instead we retry
-		// until we get a good state.
-		attempts := 0
-		for {
-			if attempts >= 30 {
-				log.Error().Msg("maximum amount of attempts reached for starting trigger; could not connect to trigger")
-				return fmt.Errorf("could not connect to trigger; maximum amount of attempts reached")
-			}
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(triggerKey))
 
-			conn, err := grpcDial(resp.URL)
-			if err != nil {
-				log.Debug().Err(err).Str("trigger", trigger.Kind).Msg("could not connect to trigger")
-				time.Sleep(time.Millisecond * 300)
-				attempts++
-				continue
-			}
-
-			client := sdkProto.NewTriggerClient(conn)
-
-			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(triggerKey))
-
-			info, err = client.Info(ctx, &sdkProto.InfoRequest{})
-			if err != nil {
-				if status.Code(err) == codes.Canceled {
-					return nil
-				}
-
-				conn.Close()
-				log.Debug().Err(err).Msg("failed to communicate with trigger startup")
-				time.Sleep(time.Millisecond * 300)
-				attempts++
-				continue
+		info, err = client.Info(ctx, &sdkProto.InfoRequest{})
+		if err != nil {
+			if status.Code(err) == codes.Canceled {
+				return nil
 			}
 
 			conn.Close()
-			break
+			log.Debug().Err(err).Msg("failed to communicate with trigger startup")
+			time.Sleep(time.Millisecond * 300)
+			attempts++
+			continue
 		}
 
-		// Add the trigger to the in-memory registry so we can refer to its variable network location later.
-		api.triggers[trigger.Kind] = &models.Trigger{
-			Key:           triggerKey,
-			Kind:          trigger.Kind,
-			URL:           resp.URL,
-			SchedulerID:   resp.SchedulerID,
-			Started:       time.Now().UnixMilli(),
-			State:         models.ContainerStateRunning,
-			Documentation: info.Documentation,
-		}
-
-		log.Info().
-			Str("kind", trigger.Kind).
-			Str("id", resp.SchedulerID).
-			Str("url", resp.URL).Msg("started trigger")
-
-		go api.collectLogs(resp.SchedulerID)
+		conn.Close()
+		break
 	}
 
-	go api.monitorTriggers(api.context.ctx)
+	// Add the trigger to the in-memory registry so we can refer to its variable network location later.
+	api.triggers[trigger.Kind] = &models.Trigger{
+		Key:           triggerKey,
+		Kind:          trigger.Kind,
+		Image:         trigger.Image,
+		URL:           resp.URL,
+		SchedulerID:   resp.SchedulerID,
+		Started:       time.Now().UnixMilli(),
+		State:         models.ContainerStateRunning,
+		Documentation: info.Documentation,
+	}
+
+	log.Info().
+		Str("kind", trigger.Kind).
+		Str("id", resp.SchedulerID).
+		Str("url", resp.URL).Msg("started trigger")
+
+	go api.collectLogs(resp.SchedulerID)
 
 	return nil
 }
 
-// monitorTriggers periodically healthchecks registered Gofer triggers and updates their status.
-// This allows Gofer to not only report the connectivity between the service and the triggers
-// but alert admins when triggers aren't connected properly.
-func (api *API) monitorTriggers(ctx context.Context) {
-	// Since we'll be constantly pinging the triggers create a pool of connections that we can reuse.
-	connectionPool := map[string]*grpc.ClientConn{}
-	for _, trigger := range api.triggers {
-		conn, err := grpcDial(trigger.URL)
+// stopTriggers sends a shutdown request to each trigger, initiating a graceful shutdown for each one.
+func (api *API) stopTriggers() {
+	for kind := range api.triggers {
+		err := api.stopTrigger(kind)
 		if err != nil {
-			log.Debug().Str("trigger", trigger.Kind).Err(err).Msg("healthcheck failed; could not connect to trigger")
-			api.triggers[trigger.Kind].State = models.ContainerStateFailed
+			log.Error().Err(err).Str("kind", kind).Msg("could not stop trigger; continuing")
 			continue
-		}
-		connectionPool[trigger.Kind] = conn
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Debug().Msg("cleaning up healthcheck connections")
-			for _, conn := range connectionPool {
-				conn.Close()
-			}
-			return
-		case <-time.After(api.config.Triggers.HealthcheckInterval):
-			for triggerKind, conn := range connectionPool {
-				client := sdkProto.NewTriggerClient(conn)
-
-				ctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+string(api.triggers[triggerKind].Key))
-				_, err := client.Info(ctx, &sdkProto.InfoRequest{})
-				if err != nil {
-					if status.Code(err) == codes.Canceled {
-						return
-					}
-
-					api.triggers[triggerKind].State = models.ContainerStateFailed
-					log.Debug().Err(err).Msg("healthcheck failed")
-					continue
-				}
-
-				api.triggers[triggerKind].State = models.ContainerStateRunning
-			}
 		}
 	}
 }
 
-// stopTriggers sends a shutdown request to each trigger, initiating a graceful shutdown for each one.
-func (api *API) stopTriggers() {
-	for _, trigger := range api.triggers {
-		conn, err := grpcDial(trigger.URL)
-		if err != nil {
-			continue
-		}
-		defer conn.Close()
-
-		client := sdkProto.NewTriggerClient(conn)
-
-		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
-		_, err = client.Shutdown(ctx, &sdkProto.ShutdownRequest{})
-		if err != nil {
-			continue
-		}
-
+// stopTrigger attempts to stop a trigger.
+func (api *API) stopTrigger(kind string) error {
+	trigger, exists := api.triggers[kind]
+	if !exists {
+		return fmt.Errorf("could not find trigger %q", trigger.Kind)
 	}
+	conn, err := grpcDial(trigger.URL)
+	if err != nil {
+		return fmt.Errorf("could not connect to trigger %q; %w", trigger.Kind, err)
+	}
+	defer conn.Close()
+
+	client := sdkProto.NewTriggerClient(conn)
+
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
+	_, err = client.Shutdown(ctx, &sdkProto.ShutdownRequest{})
+	if err != nil {
+		return fmt.Errorf("could not shutdown trigger %q; %w", trigger.Kind, err)
+	}
+
+	delete(api.triggers, kind)
+
+	return nil
 }
 
 // restoreTriggerSubscriptions iterates through all pipelines and subscribes them all back to their defined triggers.

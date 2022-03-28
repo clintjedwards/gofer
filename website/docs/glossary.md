@@ -13,3 +13,5 @@ sidebar_position: 1
 - **Task:** A task is the lowest unit in Gofer. It is a small abstraction over running a single container. Through tasks you can define what container you want to run, when to run it in relation to other containers, and what variables/secrets those containers should use.
 
 - **Task Run:** A task run is an execution of a single task container. Referencing a specific task run is how you can examine the results, logs, and details of one of your tasks.
+
+- **Notifier:** A notifier is a task that runs after your task runs have all finished and reports the result to some other entity.

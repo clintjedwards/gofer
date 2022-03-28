@@ -79,10 +79,18 @@ type GoferClient interface {
 	GetTrigger(ctx context.Context, in *GetTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error)
 	// ListTriggers lists all triggers currently registered within gofer.
 	ListTriggers(ctx context.Context, in *ListTriggersRequest, opts ...grpc.CallOption) (*ListTriggersResponse, error)
+	// InstallTrigger attempts to install a new trigger.
+	InstallTrigger(ctx context.Context, in *InstallTriggerRequest, opts ...grpc.CallOption) (*InstallTriggerResponse, error)
+	// UninstallTrigger attempts to uninstall a trigger.
+	UninstallTrigger(ctx context.Context, in *UninstallTriggerRequest, opts ...grpc.CallOption) (*UninstallTriggerResponse, error)
 	// GetNotifier returns details about a specific notifier.
 	GetNotifier(ctx context.Context, in *GetNotifierRequest, opts ...grpc.CallOption) (*GetNotifierResponse, error)
 	// ListNotifiers lists all notifiers currently registered within gofer.
 	ListNotifiers(ctx context.Context, in *ListNotifiersRequest, opts ...grpc.CallOption) (*ListNotifiersResponse, error)
+	// InstallNotifier attempts to install a new notifier.
+	InstallNotifier(ctx context.Context, in *InstallNotifierRequest, opts ...grpc.CallOption) (*InstallNotifierResponse, error)
+	// UninstallNotifier attempts to uninstall a notifier.
+	UninstallNotifier(ctx context.Context, in *UninstallNotifierRequest, opts ...grpc.CallOption) (*UninstallNotifierResponse, error)
 	// GetEvent returns the details of a single event.
 	GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*GetEventResponse, error)
 	// ListEvents returns a streaming list of all events, ordered by
@@ -334,6 +342,24 @@ func (c *goferClient) ListTriggers(ctx context.Context, in *ListTriggersRequest,
 	return out, nil
 }
 
+func (c *goferClient) InstallTrigger(ctx context.Context, in *InstallTriggerRequest, opts ...grpc.CallOption) (*InstallTriggerResponse, error) {
+	out := new(InstallTriggerResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/InstallTrigger", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) UninstallTrigger(ctx context.Context, in *UninstallTriggerRequest, opts ...grpc.CallOption) (*UninstallTriggerResponse, error) {
+	out := new(UninstallTriggerResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/UninstallTrigger", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *goferClient) GetNotifier(ctx context.Context, in *GetNotifierRequest, opts ...grpc.CallOption) (*GetNotifierResponse, error) {
 	out := new(GetNotifierResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/GetNotifier", in, out, opts...)
@@ -346,6 +372,24 @@ func (c *goferClient) GetNotifier(ctx context.Context, in *GetNotifierRequest, o
 func (c *goferClient) ListNotifiers(ctx context.Context, in *ListNotifiersRequest, opts ...grpc.CallOption) (*ListNotifiersResponse, error) {
 	out := new(ListNotifiersResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/ListNotifiers", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) InstallNotifier(ctx context.Context, in *InstallNotifierRequest, opts ...grpc.CallOption) (*InstallNotifierResponse, error) {
+	out := new(InstallNotifierResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/InstallNotifier", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) UninstallNotifier(ctx context.Context, in *UninstallNotifierRequest, opts ...grpc.CallOption) (*UninstallNotifierResponse, error) {
+	out := new(UninstallNotifierResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/UninstallNotifier", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -729,10 +773,18 @@ type GoferServer interface {
 	GetTrigger(context.Context, *GetTriggerRequest) (*GetTriggerResponse, error)
 	// ListTriggers lists all triggers currently registered within gofer.
 	ListTriggers(context.Context, *ListTriggersRequest) (*ListTriggersResponse, error)
+	// InstallTrigger attempts to install a new trigger.
+	InstallTrigger(context.Context, *InstallTriggerRequest) (*InstallTriggerResponse, error)
+	// UninstallTrigger attempts to uninstall a trigger.
+	UninstallTrigger(context.Context, *UninstallTriggerRequest) (*UninstallTriggerResponse, error)
 	// GetNotifier returns details about a specific notifier.
 	GetNotifier(context.Context, *GetNotifierRequest) (*GetNotifierResponse, error)
 	// ListNotifiers lists all notifiers currently registered within gofer.
 	ListNotifiers(context.Context, *ListNotifiersRequest) (*ListNotifiersResponse, error)
+	// InstallNotifier attempts to install a new notifier.
+	InstallNotifier(context.Context, *InstallNotifierRequest) (*InstallNotifierResponse, error)
+	// UninstallNotifier attempts to uninstall a notifier.
+	UninstallNotifier(context.Context, *UninstallNotifierRequest) (*UninstallNotifierResponse, error)
 	// GetEvent returns the details of a single event.
 	GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error)
 	// ListEvents returns a streaming list of all events, ordered by
@@ -885,11 +937,23 @@ func (UnimplementedGoferServer) GetTrigger(context.Context, *GetTriggerRequest) 
 func (UnimplementedGoferServer) ListTriggers(context.Context, *ListTriggersRequest) (*ListTriggersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTriggers not implemented")
 }
+func (UnimplementedGoferServer) InstallTrigger(context.Context, *InstallTriggerRequest) (*InstallTriggerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallTrigger not implemented")
+}
+func (UnimplementedGoferServer) UninstallTrigger(context.Context, *UninstallTriggerRequest) (*UninstallTriggerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UninstallTrigger not implemented")
+}
 func (UnimplementedGoferServer) GetNotifier(context.Context, *GetNotifierRequest) (*GetNotifierResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetNotifier not implemented")
 }
 func (UnimplementedGoferServer) ListNotifiers(context.Context, *ListNotifiersRequest) (*ListNotifiersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNotifiers not implemented")
+}
+func (UnimplementedGoferServer) InstallNotifier(context.Context, *InstallNotifierRequest) (*InstallNotifierResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallNotifier not implemented")
+}
+func (UnimplementedGoferServer) UninstallNotifier(context.Context, *UninstallNotifierRequest) (*UninstallNotifierResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UninstallNotifier not implemented")
 }
 func (UnimplementedGoferServer) GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEvent not implemented")
@@ -1282,6 +1346,42 @@ func _Gofer_ListTriggers_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gofer_InstallTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallTriggerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).InstallTrigger(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/InstallTrigger",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).InstallTrigger(ctx, req.(*InstallTriggerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_UninstallTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UninstallTriggerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).UninstallTrigger(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/UninstallTrigger",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).UninstallTrigger(ctx, req.(*UninstallTriggerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Gofer_GetNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetNotifierRequest)
 	if err := dec(in); err != nil {
@@ -1314,6 +1414,42 @@ func _Gofer_ListNotifiers_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GoferServer).ListNotifiers(ctx, req.(*ListNotifiersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_InstallNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallNotifierRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).InstallNotifier(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/InstallNotifier",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).InstallNotifier(ctx, req.(*InstallNotifierRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_UninstallNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UninstallNotifierRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).UninstallNotifier(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/UninstallNotifier",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).UninstallNotifier(ctx, req.(*UninstallNotifierRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1936,12 +2072,28 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_ListTriggers_Handler,
 		},
 		{
+			MethodName: "InstallTrigger",
+			Handler:    _Gofer_InstallTrigger_Handler,
+		},
+		{
+			MethodName: "UninstallTrigger",
+			Handler:    _Gofer_UninstallTrigger_Handler,
+		},
+		{
 			MethodName: "GetNotifier",
 			Handler:    _Gofer_GetNotifier_Handler,
 		},
 		{
 			MethodName: "ListNotifiers",
 			Handler:    _Gofer_ListNotifiers_Handler,
+		},
+		{
+			MethodName: "InstallNotifier",
+			Handler:    _Gofer_InstallNotifier_Handler,
+		},
+		{
+			MethodName: "UninstallNotifier",
+			Handler:    _Gofer_UninstallNotifier_Handler,
 		},
 		{
 			MethodName: "GetEvent",

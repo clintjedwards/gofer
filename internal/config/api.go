@@ -26,6 +26,9 @@ type API struct {
 	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
 	EventLogRetentionHCL string `ignored:"true" hcl:"event_log_retention,optional"`
 
+	// Key used for encryption of secret values specific to Gofer operation. Ex. API tokens, trigger keys, etc
+	EncryptionKey string `split_words:"true" hcl:"encryption_key,optional"`
+
 	// How often the background process for pruning events should run.
 	PruneEventsInterval time.Duration `split_words:"true"`
 
@@ -157,7 +160,7 @@ func DefaultTriggersConfig() *Triggers {
 // Trigger represents the settings for all triggers within Gofer.
 type Trigger struct {
 	// The name for a trigger this should be alphanumerical and can't contain spaces.
-	Kind string `json:"kind" hcl:"kind,label"`
+	Kind string `json:"kind" hcl:"kind,label" storm:"id"`
 
 	// The docker repository and image name of the trigger: Ex. docker.io/library/hello-world:latest
 	Image string `json:"image" hcl:"image"`
@@ -205,7 +208,7 @@ func DefaultNotifiersConfig() *Notifiers {
 // Notifier represents the settings for all notifiers within Gofer.
 type Notifier struct {
 	// The name for a trigger this should be alphanumerical and can't contain spaces.
-	Kind string `json:"kind" hcl:"kind,label"`
+	Kind string `json:"kind" hcl:"kind,label" storm:"id"`
 
 	// The docker repository and image name of the trigger: Ex. docker.io/library/hello-world:latest
 	Image string `json:"image" hcl:"image"`
@@ -266,11 +269,11 @@ func defaultTriggers(devmode bool) []Trigger {
 	return []Trigger{
 		{
 			Kind:  "cron",
-			Image: "ghcr.io/clintjedwards/gofer-containers/trigger/cron:latest",
+			Image: "ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest",
 		},
 		{
 			Kind:  "interval",
-			Image: "ghcr.io/clintjedwards/gofer-containers/trigger/interval:latest",
+			Image: "ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest",
 			EnvVars: map[string]string{
 				"MIN_DURATION": duration,
 			},

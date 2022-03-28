@@ -46,6 +46,9 @@ type Trigger struct {
 	// Kind is a unique identifier for the trigger usually in plain english.
 	Kind string `json:"kind" storm:"id,unique"`
 
+	// The docker image string.
+	Image string `json:"image"`
+
 	// URL is the network address used to communicate with the trigger by the main process.
 	URL string `json:"url"`
 
@@ -61,6 +64,7 @@ func (t *Trigger) ToProto() *proto.Trigger {
 	return &proto.Trigger{
 		Kind:          t.Kind,
 		Url:           t.URL,
+		Image:         t.Image,
 		SchedulerId:   t.SchedulerID,
 		Started:       t.Started,
 		State:         proto.Trigger_State(proto.Trigger_State_value[string(t.State)]),
