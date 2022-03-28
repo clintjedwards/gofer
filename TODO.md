@@ -117,3 +117,6 @@
 - ExecuteTaskTree has a bunch of ways to fail. When it does we should allow those failures to be shown in the taskrun
   instead of just being printed out in the logs. So we'll probably need to add all the taskruns as cancelled and the
   run as failed due to preconditions.
+
+* Think about re-writing and packaging the Config package
+* Think about a better way to do the print package so we can support grep and such.
