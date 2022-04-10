@@ -7,8 +7,11 @@
 package sdk
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
+	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -38,6 +41,22 @@ func parseLogLevel(loglevel string) zerolog.Level {
 		log.Error().Msgf("loglevel %s not recognized; defaulting to debug", loglevel)
 		return zerolog.DebugLevel
 	}
+}
+
+// GetConfig is a convienance function that returns trigger/notifier config values from the environment.
+// It simply puts the needed config in the correct format to be retrieved from the environment
+// so the caller doesn't have to.
+func GetConfig(name string) string {
+	kind := os.Getenv("GOFER_TRIGGER_KIND")
+	return os.Getenv(fmt.Sprintf("GOFER_TRIGGER_%s_%s", strings.ToUpper(kind), strings.ToUpper(name)))
+}
+
+// InfoResponse is a convienance function for the Info interface function response.
+func InfoResponse(documentationLink string) (*sdkProto.InfoResponse, error) {
+	return &sdkProto.InfoResponse{
+		Kind:          os.Getenv("GOFER_TRIGGER_KIND"),
+		Documentation: documentationLink,
+	}, nil
 }
 
 // NewTrigger is used as the final step in establishing a trigger. It should be the final call in a trigger's main func.

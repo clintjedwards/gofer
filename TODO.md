@@ -138,3 +138,4 @@
 * The trigger/notifier/installer code needs some massive cleanup
 * When we lose a check connection with a trigger go ahead and mark that trigger as inactive. This removes the need for monitorTrigger routine.
 * When we uninstall a trigger we need to then kill the goroutinue for the check routine.
+* Remove all replace in gofer-containers.
