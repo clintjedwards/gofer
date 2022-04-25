@@ -191,6 +191,8 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 			TLSCertPath:            "./test",
 			TLSKeyPath:             "./localhost.key",
 		},
+
+		Notifiers: &Notifiers{},
 	}
 
 	diff := cmp.Diff(expected, hclconf)
@@ -246,6 +248,7 @@ func TestSetTriggersViaEnv(t *testing.T) {
 				},
 			},
 		},
+		Notifiers: &Notifiers{},
 	}
 
 	diff := cmp.Diff(expected, hclconf)
