@@ -13,6 +13,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
+	"github.com/clintjedwards/gofer/internal/syncmap"
 	"github.com/rs/zerolog/log"
 )
 
@@ -273,8 +274,8 @@ func parseInterpolationSyntax(prefix, variable string) string {
 
 // reviveLostTaskRun attempts to re-run as taskrun that has somehow been orphaned. It is used for taskruns
 // that have not been scheduled yet, but will be after other task runs have finished.
-func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskRun) {
-	taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+func (api *API) reviveLostTaskRun(taskStatusMap *syncmap.Syncmap[string, models.ContainerState], taskrun *models.TaskRun) {
+	taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 	api.events.Publish(models.NewEventStartedTaskRun(*taskrun))
 
 	// First check to make sure all the parents of the current task are in a finished state.
@@ -300,7 +301,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		if err != nil {
 			log.Error().Err(err).Msg("could not update task run")
 		}
-		taskStatusMap.Store(taskrun.Task.ID, models.ContainerStateSkipped)
+		taskStatusMap.Set(taskrun.Task.ID, models.ContainerStateSkipped)
 		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
@@ -316,7 +317,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		if err != nil {
 			log.Error().Err(err).Msg("could not update task run")
 		}
-		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
@@ -332,7 +333,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		if err != nil {
 			log.Error().Err(err).Msg("could not update task run")
 		}
-		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
@@ -367,7 +368,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 	if err != nil {
 		log.Error().Err(err).Str("id", taskrun.ID).
 			Str("pipeline", taskrun.PipelineID).Int64("run", taskrun.RunID).Msg("task run could not be started")
-		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
@@ -375,19 +376,19 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 		Int64("run", taskrun.RunID).Msg("started task run")
 
 	api.events.Publish(models.NewEventScheduledTaskRun(*taskrun))
-	taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+	taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 
 	err = api.monitorTaskRun(schedulerID, taskrun)
 	if err != nil {
 		log.Error().Err(err).Str("id", taskrun.ID).
 			Str("pipeline", taskrun.PipelineID).Int64("run", taskrun.RunID).
 			Msg("task run monitor encountered an error")
-		taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 		return
 	}
 
-	taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+	taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 	api.events.Publish(models.NewEventCompletedTaskRun(*taskrun))
 
 	log.Info().Str("id", taskrun.ID).Str("status", string(taskrun.State)).Msg("finished task run")
@@ -396,7 +397,7 @@ func (api *API) reviveLostTaskRun(taskStatusMap *sync.Map, taskrun *models.TaskR
 // createNewTaskRun launches a brand new task run as part of a larger run for a specific task.
 // It blocks until the taskrun has gone through the full lifecycle or waiting, running, and then finally
 // is finished.
-func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task models.Task, token string) {
+func (api *API) createNewTaskRun(taskStatusMap *syncmap.Syncmap[string, models.ContainerState], run models.Run, task models.Task, token string) {
 	newTaskRun := models.NewTaskRun(run, task)
 	api.events.Publish(models.NewEventStartedTaskRun(*newTaskRun))
 
@@ -444,7 +445,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		return
 	}
 
-	taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+	taskStatusMap.Set(newTaskRun.Task.ID, newTaskRun.State)
 
 	// First check to make sure all the parents of the current task are in a finished state.
 	for {
@@ -469,7 +470,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		if err != nil {
 			log.Error().Err(err).Msg("could not update task run")
 		}
-		taskStatusMap.Store(newTaskRun.Task.ID, models.ContainerStateSkipped)
+		taskStatusMap.Set(newTaskRun.Task.ID, models.ContainerStateSkipped)
 		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
@@ -486,7 +487,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		if err != nil {
 			log.Error().Err(err).Msg("could not update task run")
 		}
-		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		taskStatusMap.Set(newTaskRun.Task.ID, newTaskRun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
@@ -503,7 +504,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		if err != nil {
 			log.Error().Err(err).Msg("could not update task run")
 		}
-		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		taskStatusMap.Set(newTaskRun.Task.ID, newTaskRun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
@@ -523,7 +524,7 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 	if err != nil {
 		log.Error().Err(err).Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).
 			Int64("run", newTaskRun.RunID).Msg("task run could not be started")
-		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		taskStatusMap.Set(newTaskRun.Task.ID, newTaskRun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
@@ -531,19 +532,19 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 		Int64("run", newTaskRun.RunID).Msg("started task run")
 
 	api.events.Publish(models.NewEventScheduledTaskRun(*newTaskRun))
-	taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+	taskStatusMap.Set(newTaskRun.Task.ID, newTaskRun.State)
 
 	// Block until taskrun status can be logged
 	err = api.monitorTaskRun(schedulerID, newTaskRun)
 	if err != nil {
 		log.Error().Err(err).Str("id", newTaskRun.ID).Str("pipeline", newTaskRun.PipelineID).
 			Int64("run", newTaskRun.RunID).Msg("task run monitor encountered an error")
-		taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+		taskStatusMap.Set(newTaskRun.Task.ID, newTaskRun.State)
 		api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 		return
 	}
 
-	taskStatusMap.Store(newTaskRun.Task.ID, newTaskRun.State)
+	taskStatusMap.Set(newTaskRun.Task.ID, newTaskRun.State)
 	api.events.Publish(models.NewEventCompletedTaskRun(*newTaskRun))
 
 	log.Info().Str("id", newTaskRun.ID).Str("status", string(newTaskRun.State)).
@@ -551,19 +552,19 @@ func (api *API) createNewTaskRun(taskStatusMap *sync.Map, run models.Run, task m
 }
 
 // parentTasksFinished checks to see if all parents dependencies are in a finished state.
-func parentTasksFinished(statusMap *sync.Map, dependencies map[string]models.RequiredParentState) bool {
+func parentTasksFinished(statusMap *syncmap.Syncmap[string, models.ContainerState], dependencies map[string]models.RequiredParentState) bool {
 	for parentTaskName := range dependencies {
 		// Check to see if all parents exist
-		parentStatus, exists := statusMap.Load(parentTaskName)
+		parentStatus, exists := statusMap.Get(parentTaskName)
 		if !exists {
 			return false
 		}
 
 		// Check to see if parent is still running
-		if parentStatus.(models.ContainerState) == models.ContainerStateRunning ||
-			parentStatus.(models.ContainerState) == models.ContainerStateProcessing ||
-			parentStatus.(models.ContainerState) == models.ContainerStateWaiting ||
-			parentStatus.(models.ContainerState) == models.ContainerStateUnknown {
+		if parentStatus == models.ContainerStateRunning ||
+			parentStatus == models.ContainerStateProcessing ||
+			parentStatus == models.ContainerStateWaiting ||
+			parentStatus == models.ContainerStateUnknown {
 			return false
 		}
 	}
@@ -573,24 +574,24 @@ func parentTasksFinished(statusMap *sync.Map, dependencies map[string]models.Req
 
 // dependenciesSatisfied examines the dependency map to make sure that all parents are in the correct states.
 // If there is a parent not in the correct state we report that back to the caller via an error.
-func dependenciesSatisfied(statusMap *sync.Map, dependencies map[string]models.RequiredParentState) error {
+func dependenciesSatisfied(statusMap *syncmap.Syncmap[string, models.ContainerState], dependencies map[string]models.RequiredParentState) error {
 	for parentTaskName, parentRequiredState := range dependencies {
 		// Check to see if all parents exist
-		parentStatus, exists := statusMap.Load(parentTaskName)
+		parentStatus, exists := statusMap.Get(parentTaskName)
 		if !exists {
 			return fmt.Errorf("parent %q was not found in executed tasks but is required for task", parentTaskName)
 		}
 
 		switch parentRequiredState {
 		case models.RequiredParentStateFail:
-			if parentStatus.(models.ContainerState) != models.ContainerStateFailed {
+			if parentStatus != models.ContainerStateFailed {
 				return fmt.Errorf("parent %q is in incorrect state %q; task requires it be in state 'FAILED'",
-					parentTaskName, parentStatus.(models.ContainerState))
+					parentTaskName, parentStatus)
 			}
 		case models.RequiredParentStateSuccess:
-			if parentStatus.(models.ContainerState) != models.ContainerStateSuccess {
+			if parentStatus != models.ContainerStateSuccess {
 				return fmt.Errorf("parent %q is in incorrect state %q; task requires it be in state 'SUCCESS'",
-					parentTaskName, parentStatus.(models.ContainerState))
+					parentTaskName, parentStatus)
 			}
 		}
 	}
@@ -629,7 +630,7 @@ func (api *API) addNotifiersAsTasks(notifiers map[string]models.PipelineNotifier
 	}
 
 	for label, config := range notifiers {
-		notifier, exists := api.notifiers[config.Kind]
+		notifier, exists := api.notifiers.Get(config.Kind)
 		if !exists {
 			return nil, fmt.Errorf("notifier %q is not a registered notifier", config.Kind)
 		}
@@ -869,11 +870,11 @@ func (api *API) executeTaskTree(run *models.Run) {
 
 	runnableTasks := mergeMaps(notifierTasks, pipeline.Tasks)
 
-	var taskStatusMap sync.Map
+	taskStatusMap := syncmap.New[string, models.ContainerState]()
 
 	for id, task := range runnableTasks {
 		// If it already exists in the status map, skip it
-		_, exists := taskStatusMap.Load(id)
+		_, exists := taskStatusMap.Get(id)
 		if exists {
 			continue
 		}
@@ -882,7 +883,7 @@ func (api *API) executeTaskTree(run *models.Run) {
 		if len(run.Only) == 0 {
 			go api.createNewTaskRun(&taskStatusMap, *run, task, key)
 			// Put an initial entry into taskstatusmap so the run monitor knows how many to wait on.
-			taskStatusMap.Store(task.ID, models.ContainerStateProcessing)
+			taskStatusMap.Set(task.ID, models.ContainerStateProcessing)
 			continue
 		}
 
@@ -906,7 +907,7 @@ func (api *API) executeTaskTree(run *models.Run) {
 
 		go api.createNewTaskRun(&taskStatusMap, *run, task, key)
 		// Put an initial entry into taskstatusmap so the run monitor knows how many to wait on.
-		taskStatusMap.Store(task.ID, models.ContainerStateProcessing)
+		taskStatusMap.Set(task.ID, models.ContainerStateProcessing)
 	}
 
 	err = api.monitorRunStatus(run.NamespaceID, run.PipelineID, run.ID, &taskStatusMap)
@@ -918,7 +919,7 @@ func (api *API) executeTaskTree(run *models.Run) {
 
 // monitorRunStatus takes into account all task run statuses that are currently being run and then determines
 // the final run status based on all finished task run statuses. It will block until all task runs have finished.
-func (api *API) monitorRunStatus(namespaceID, pipelineID string, runID int64, statusMap *sync.Map) error {
+func (api *API) monitorRunStatus(namespaceID, pipelineID string, runID int64, statusMap *syncmap.Syncmap[string, models.ContainerState]) error {
 	run, err := api.storage.GetRun(storage.GetRunRequest{
 		NamespaceID: namespaceID,
 		PipelineID:  pipelineID,
@@ -941,11 +942,14 @@ func (api *API) monitorRunStatus(namespaceID, pipelineID string, runID int64, st
 	for {
 		time.Sleep(time.Second * 3)
 		statusList := []models.ContainerState{}
-		statusMap.Range(func(_, statusRaw interface{}) bool {
-			status := statusRaw.(models.ContainerState)
+		for _, key := range statusMap.Keys() {
+			status, exists := statusMap.Get(key)
+			if !exists {
+				continue
+			}
+
 			statusList = append(statusList, status)
-			return true
-		})
+		}
 
 		failures = 0
 		finished = 0

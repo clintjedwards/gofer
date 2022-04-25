@@ -98,7 +98,7 @@ func parseConfigDir(path string) ([]byte, error) {
 // API triggers.
 func (api *API) configTriggersIsValid(triggers []models.PipelineTriggerConfig) error {
 	for _, potentialTrigger := range triggers {
-		_, exists := api.triggers[potentialTrigger.Kind]
+		_, exists := api.triggers.Get(potentialTrigger.Kind)
 		if !exists {
 			return fmt.Errorf("could not find trigger %q in gofer registered triggers: %w", potentialTrigger.Kind, ErrTriggerNotFound)
 		}
@@ -175,7 +175,7 @@ func (api *API) unsubscribeAllTriggers(pipeline *models.Pipeline) error {
 
 // unsubscribeTrigger contacts the trigger and remove the pipeline subscription.
 func (api *API) unsubscribeTrigger(subscription models.PipelineTriggerConfig, pipeline *models.Pipeline) error {
-	trigger, exists := api.triggers[subscription.Kind]
+	trigger, exists := api.triggers.Get(subscription.Kind)
 	if !exists {
 		return fmt.Errorf("could not find trigger kind %q in registered trigger list", subscription.Kind)
 	}
@@ -391,7 +391,7 @@ func (api *API) hasActiveRuns(namespace, id string) bool {
 // subscribeTrigger takes a pipeline config requested trigger and communicates with the trigger container
 // in order appropriately make sure the trigger is aware for the pipeline.
 func (api *API) subscribeTrigger(namespaceID, pipelineID string, config *models.PipelineTriggerConfig) error {
-	trigger, exists := api.triggers[config.Kind]
+	trigger, exists := api.triggers.Get(config.Kind)
 	if !exists {
 		return fmt.Errorf("trigger %q not found;", config.Kind)
 	}

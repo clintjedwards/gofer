@@ -10,7 +10,7 @@ import (
 
 func (api *API) installNotifiersFromConfig() {
 	for _, notifier := range api.config.Notifiers.RegisteredNotifiers {
-		_, exists := api.notifiers[notifier.Kind]
+		_, exists := api.notifiers.Get(notifier.Kind)
 		if exists {
 			continue
 		}
@@ -19,7 +19,7 @@ func (api *API) installNotifiersFromConfig() {
 }
 
 func (api *API) registerNotifier(notifier config.Notifier) {
-	api.notifiers[notifier.Kind] = &models.Notifier{
+	api.notifiers.Set(notifier.Kind, &models.Notifier{
 		Kind:          notifier.Kind,
 		Image:         notifier.Image,
 		Documentation: fmt.Sprintf("https://clintjedwards.com/gofer/docs/notifiers/%s/overview", notifier.Kind),
@@ -28,7 +28,7 @@ func (api *API) registerNotifier(notifier config.Notifier) {
 			Pass: notifier.Pass,
 		},
 		EnvVars: notifier.EnvVars,
-	}
+	})
 
 	log.Info().Str("kind", notifier.Kind).Msg("registered notifier")
 }

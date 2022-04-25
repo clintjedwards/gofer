@@ -25,7 +25,7 @@ const TRIGGERCONTAINERIDFORMAT = "trigger_%s" // trigger_<triggerKind>
 
 func (api *API) installTriggersFromConfig() error {
 	for _, trigger := range api.config.Triggers.RegisteredTriggers {
-		_, exists := api.triggers[trigger.Kind]
+		_, exists := api.triggers.Get(trigger.Kind)
 		if exists {
 			continue
 		}
@@ -151,7 +151,7 @@ func (api *API) startTrigger(trigger *config.Trigger, triggerKey string) error {
 	}
 
 	// Add the trigger to the in-memory registry so we can refer to its variable network location later.
-	api.triggers[trigger.Kind] = &models.Trigger{
+	api.triggers.Set(trigger.Kind, &models.Trigger{
 		Key:           triggerKey,
 		Kind:          trigger.Kind,
 		Image:         trigger.Image,
@@ -160,7 +160,7 @@ func (api *API) startTrigger(trigger *config.Trigger, triggerKey string) error {
 		Started:       time.Now().UnixMilli(),
 		State:         models.ContainerStateRunning,
 		Documentation: info.Documentation,
-	}
+	})
 
 	log.Info().
 		Str("kind", trigger.Kind).
@@ -174,7 +174,7 @@ func (api *API) startTrigger(trigger *config.Trigger, triggerKey string) error {
 
 // stopTriggers sends a shutdown request to each trigger, initiating a graceful shutdown for each one.
 func (api *API) stopTriggers() {
-	for kind := range api.triggers {
+	for _, kind := range api.triggers.Keys() {
 		err := api.stopTrigger(kind)
 		if err != nil {
 			log.Error().Err(err).Str("kind", kind).Msg("could not stop trigger; continuing")
@@ -185,7 +185,7 @@ func (api *API) stopTriggers() {
 
 // stopTrigger attempts to stop a trigger.
 func (api *API) stopTrigger(kind string) error {
-	trigger, exists := api.triggers[kind]
+	trigger, exists := api.triggers.Get(kind)
 	if !exists {
 		return fmt.Errorf("could not find trigger %q", trigger.Kind)
 	}
@@ -203,7 +203,7 @@ func (api *API) stopTrigger(kind string) error {
 		return fmt.Errorf("could not shutdown trigger %q; %w", trigger.Kind, err)
 	}
 
-	delete(api.triggers, kind)
+	api.triggers.Delete(kind)
 
 	return nil
 }
@@ -219,7 +219,7 @@ func (api *API) restoreTriggerSubscriptions() error {
 
 	for _, pipeline := range pipelines {
 		for label, subscription := range pipeline.Triggers {
-			trigger, exists := api.triggers[subscription.Kind]
+			trigger, exists := api.triggers.Get(subscription.Kind)
 			if !exists {
 				pipeline.State = models.PipelineStateDisabled
 				subscription.State = models.PipelineTriggerStateDisabled
@@ -297,7 +297,12 @@ func (api *API) restoreTriggerSubscriptions() error {
 // on that trigger. The "Check" method for receiving events from a trigger is a blocking RPC, so each
 // go routine essentially blocks until they receive an event and then immediately pushes it into the receiving channel.
 func (api *API) checkForTriggerEvents(ctx context.Context) {
-	for id, trigger := range api.triggers {
+	for _, id := range api.triggers.Keys() {
+		trigger, exists := api.triggers.Get(id)
+		if !exists {
+			continue
+		}
+
 		go func(id string, trigger models.Trigger) {
 			conn, err := grpcDial(trigger.URL)
 			if err != nil {

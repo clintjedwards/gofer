@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
+	"github.com/clintjedwards/gofer/internal/syncmap"
 	"github.com/clintjedwards/gofer/proto"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -91,15 +91,16 @@ type API struct {
 	// files with secrets.
 	secretStore secretStore.Engine
 
+	// TODO(clintjedwards): replace this syncmap with a actually good version once generics catches up.
 	// Triggers is an in-memory map of currently registered triggers. These triggers are registered on startup and
 	// launched as long running containers via the scheduler. Gofer refers to this cache as a way to communicate
 	// quickly with the containers and their potentially changing endpoints.
-	triggers map[string]*models.Trigger
+	triggers syncmap.Syncmap[string, *models.Trigger]
 
 	// Notifiers is an in-memory map of the currently registered notifiers. These notifiers are registered on startup
 	// and launched as needed at the end of a user's pipeline run. Gofer refers to this cache as a way to quickly look
 	// up which container is needed to be launched.
-	notifiers map[string]*models.Notifier
+	notifiers syncmap.Syncmap[string, *models.Notifier]
 
 	// ignorePipelineRunEvents controls if pipelines can trigger runs globally. If this is set to false the entire Gofer
 	// service will not schedule new runs.
@@ -140,8 +141,8 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 		objectStore:             objectStore,
 		secretStore:             secretStore,
 		ignorePipelineRunEvents: atomic.NewBool(config.IgnorePipelineRunEvents),
-		triggers:                map[string]*models.Trigger{},
-		notifiers:               map[string]*models.Notifier{},
+		triggers:                syncmap.New[string, *models.Trigger](),
+		notifiers:               syncmap.New[string, *models.Notifier](),
 	}
 
 	err = newAPI.createDefaultNamespace()
@@ -385,7 +386,7 @@ func (api *API) repairOrphanRun(namespace, pipeline string, runID int64) error {
 		return err
 	}
 
-	var taskStatusMap sync.Map
+	taskStatusMap := syncmap.New[string, models.ContainerState]()
 
 	// For each run we also need to handle the individual task runs.
 	for _, taskrunID := range run.TaskRuns {
@@ -402,7 +403,7 @@ func (api *API) repairOrphanRun(namespace, pipeline string, runID int64) error {
 		}
 
 		if taskrun.IsComplete() {
-			taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+			taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 			continue
 		}
 
@@ -419,7 +420,7 @@ func (api *API) repairOrphanRun(namespace, pipeline string, runID int64) error {
 				Description: "could not find schedulerID for taskrun during recovery.",
 			}, 1)
 
-			taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+			taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 
 			err = api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
 			if err != nil {
@@ -446,7 +447,7 @@ func (api *API) repairOrphanRun(namespace, pipeline string, runID int64) error {
 					Str("pipeline", taskrun.PipelineID).
 					Int64("run", taskrun.RunID).Msg("could not get state for container update")
 			}
-			taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+			taskStatusMap.Set(taskrun.Task.ID, taskrun.State)
 			err = api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
 			if err != nil {
 				log.Error().Err(err).Str("task", taskrun.ID).

@@ -18,7 +18,7 @@ import (
 func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	triggerKind := vars["trigger"]
-	trigger, exists := api.triggers[triggerKind]
+	trigger, exists := api.triggers.Get(triggerKind)
 	if !exists {
 		sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("trigger %q does not exist", triggerKind))
 		return

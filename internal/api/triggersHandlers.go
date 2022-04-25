@@ -17,7 +17,7 @@ func (api *API) GetTrigger(ctx context.Context, request *proto.GetTriggerRequest
 		return &proto.GetTriggerResponse{}, status.Error(codes.FailedPrecondition, "kind required")
 	}
 
-	trigger, exists := api.triggers[request.Kind]
+	trigger, exists := api.triggers.Get(request.Kind)
 	if !exists {
 		log.Error().Msg("trigger was found in config, but not in run information")
 		return &proto.GetTriggerResponse{}, status.Error(codes.NotFound, "trigger not found")
@@ -28,7 +28,11 @@ func (api *API) GetTrigger(ctx context.Context, request *proto.GetTriggerRequest
 
 func (api *API) ListTriggers(ctx context.Context, request *proto.ListTriggersRequest) (*proto.ListTriggersResponse, error) {
 	protoTriggers := []*proto.Trigger{}
-	for _, trigger := range api.triggers {
+	for _, id := range api.triggers.Keys() {
+		trigger, exists := api.triggers.Get(id)
+		if !exists {
+			continue
+		}
 		protoTriggers = append(protoTriggers, trigger.ToProto())
 	}
 

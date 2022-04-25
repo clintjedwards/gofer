@@ -17,7 +17,7 @@ func (api *API) GetNotifier(ctx context.Context, request *proto.GetNotifierReque
 		return &proto.GetNotifierResponse{}, status.Error(codes.FailedPrecondition, "kind required")
 	}
 
-	notifier, exists := api.notifiers[request.Kind]
+	notifier, exists := api.notifiers.Get(request.Kind)
 	if !exists {
 		log.Error().Msg("notifier was found in config, but not in run information")
 		return &proto.GetNotifierResponse{}, status.Error(codes.NotFound, "notifier not found")
@@ -28,7 +28,11 @@ func (api *API) GetNotifier(ctx context.Context, request *proto.GetNotifierReque
 
 func (api *API) ListNotifiers(ctx context.Context, request *proto.ListNotifiersRequest) (*proto.ListNotifiersResponse, error) {
 	protoNotifiers := []*proto.Notifier{}
-	for _, notifier := range api.notifiers {
+	for _, id := range api.notifiers.Keys() {
+		notifier, exists := api.notifiers.Get(id)
+		if !exists {
+			continue
+		}
 		protoNotifiers = append(protoNotifiers, notifier.ToProto())
 	}
 
@@ -71,7 +75,7 @@ func (api *API) UninstallNotifier(ctx context.Context, request *proto.UninstallN
 		return &proto.UninstallNotifierResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
-	delete(api.notifiers, request.Kind)
+	api.notifiers.Delete(request.Kind)
 
 	err := api.storage.DeleteNotifier(storage.DeleteNotifierRequest{
 		Kind: request.Kind,
