@@ -1,0 +1,292 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/clintjedwards/gofer/proto";
+
+// Documentation for these models can be found in the "models" package as these
+// are just protobuf representations of those models.
+//
+// Why represent what amounts to the same model twice in protobuf AND a struct
+// you ask?
+//
+//   Essentially, because the separation of the transport layer and the
+//   application layer is a good thing. There are probably many reasons, but
+//   the most straightforward is that we might want to represent something in
+//   the database or within the application that might not be easily
+//   representable in protobuf, a structure mainly made for transport.
+//
+//   There might also be things that we don't want to expose outside and so
+//   the separation gives us a chance to not mess that up by simply forgetting a
+//   json:"-".
+
+message Namespace {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  uint64 created = 4;
+  uint64 modified = 5;
+}
+
+enum VariableOwner {
+  UNKNOWN = 0;
+  USER = 1;
+  SYSTEM = 2;
+}
+message Variable {
+  string key = 1;
+  string value = 2;
+  VariableOwner owner = 3;
+}
+
+message Pipeline {
+  string namespace = 1;
+  string id = 2;
+  string name = 3;
+  string description = 4;
+  uint64 last_run_id = 5;
+  uint64 last_run_time = 6;
+  uint64 parallelism = 7;
+  uint64 created = 8;
+  uint64 modified = 9;
+  enum PipelineState {
+    PIPELINE_STATE_UNKNOWN = 0;
+    ACTIVE = 1;
+    DISABLED = 2;
+  }
+  PipelineState state = 10;
+  map<string, Task> tasks = 11;
+  map<string, PipelineTriggerSettings> triggers = 12;
+  map<string, PipelineNotifierSettings> notifiers = 13;
+  repeated string store_keys = 14;
+}
+
+message PipelineConfig {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  uint64 parallelism = 4;
+  repeated TaskConfig tasks = 5;
+  repeated PipelineTriggerConfig triggers = 6;
+  repeated PipelineNotifierConfig notifiers = 7;
+}
+
+message Run {
+  string namespace = 1;
+  string pipeline = 2;
+  uint64 id = 3;
+  uint64 started = 4;
+  uint64 ended = 5;
+  enum RunState {
+    RUN_STATE_UNKNOWN = 0;
+    PENDING = 1;
+    RUNNING = 2;
+    COMPLETE = 3;
+  }
+  RunState state = 6;
+  enum RunStatus {
+    RUN_STATUS_UNKNOWN = 0;
+    SUCCESSFUL = 1;
+    FAILED = 2;
+    CANCELLED = 3;
+  }
+  RunStatus status = 7;
+  RunFailureInfo failure_info = 8;
+  repeated string task_runs = 9;
+  RunTriggerInfo trigger = 10;
+  repeated Variable variables = 11;
+  RunStoreInfo store_info = 12;
+}
+
+message RunFailureInfo {
+  enum RunFailureReason {
+    RUN_FAILURE_REASON_UNKNOWN = 0;
+    ABNORMAL_EXIT = 1;
+    SCHEDULER_ERROR = 2;
+    FAILED_PRECONDITION = 3;
+    USER_CANCELLED = 4;
+    ADMIN_CANCELLED = 5;
+  }
+  RunFailureReason reason = 1;
+  string description = 2;
+}
+
+message RunTriggerInfo {
+  string name = 1;
+  string label = 2;
+}
+
+message RunStoreInfo {
+  bool is_expired = 1;
+  repeated string keys = 2;
+}
+
+message RegistryAuth {
+  string user = 1;
+  string pass = 2;
+}
+message Task {
+  string id = 1;
+  string description = 2;
+  string image = 3;
+  RegistryAuth registry_auth = 4;
+  enum RequiredParentStatus {
+    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
+    ANY = 1;
+    SUCCESS = 2;
+    FAILURE = 3;
+  }
+  map<string, RequiredParentStatus> depends_on = 5;
+  repeated Variable variables = 6;
+  repeated string entrypoint = 7;
+}
+
+message PipelineTriggerSettings {
+  string name = 1;
+  string label = 2;
+  map<string, string> settings = 3;
+  string error = 4;
+}
+
+message PipelineNotifierSettings {
+  string name = 1;
+  string label = 2;
+  map<string, string> settings = 3;
+  string error = 4;
+}
+
+message TaskConfig {
+  string id = 1;
+  string description = 2;
+  string image = 3;
+  RegistryAuth registry_auth = 4;
+  enum RequiredParentStatus {
+    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
+    ANY = 1;
+    SUCCESS = 2;
+    FAILURE = 3;
+  }
+  map<string, RequiredParentStatus> depends_on = 5;
+  map<string, string> variables = 6;
+  repeated string entrypoint = 7;
+}
+
+message PipelineTriggerConfig {
+  string name = 1;
+  string label = 2;
+  map<string, string> settings = 3;
+}
+
+message PipelineNotifierConfig {
+  string name = 1;
+  string label = 2;
+  map<string, string> settings = 3;
+}
+
+message TaskRunFailure {
+  enum Kind {
+    UNKNOWN = 0;
+    ABNORMAL_EXIT = 1;
+    SCHEDULER_ERROR = 2;
+    FAILED_PRECONDITION = 3;
+    CANCELLED = 4;
+    ORPHANED = 5;
+  }
+  Kind kind = 1;
+  string description = 2;
+}
+
+message TaskRun {
+  uint64 created = 1;
+  uint64 ended = 2;
+  uint64 exit_code = 3;
+  TaskRunFailure failure = 4;
+  string id = 5;
+  bool logs_expired = 6;
+  bool logs_removed = 7;
+  string namespace_id = 8;
+  string pipeline_id = 9;
+  uint64 run_id = 10;
+  string scheduler_id = 11;
+  uint64 started = 12;
+  enum TaskRunState {
+    UNKNOWN_STATE = 0;
+    PROCESSING = 1;
+    RUNNING = 2;
+    COMPLETE = 3;
+  }
+  TaskRunState state = 13;
+  enum TaskRunStatus {
+    UNKNOWN_STATUS = 0;
+    SUCCESSFUL = 1;
+    FAILED = 2;
+    CANCELLED = 3;
+    SKIPPED = 4;
+  }
+  TaskRunStatus status = 14;
+  Task task = 15;
+}
+
+message Trigger {
+  string name = 1;
+  string image = 2;
+  string url = 3;
+  string scheduler_id = 4;
+  uint64 started = 5;
+  enum TriggerState {
+    UNKNOWN_STATE = 0;
+    PROCESSING = 1;
+    RUNNING = 2;
+    EXITED = 3;
+  }
+  TriggerState state = 6;
+  enum TriggerStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  TriggerStatus status = 7;
+  string documentation = 8;
+}
+
+message TriggerRegistration {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+  uint64 created = 6;
+  enum TriggerStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  TriggerStatus status = 7;
+}
+
+message Notifier {
+  string name = 1;
+  string image = 2;
+  string documentation = 3;
+  enum NotifierStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  NotifierStatus status = 4;
+}
+
+message NotifierRegistration {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+  uint64 created = 6;
+  enum NotifierStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  NotifierStatus status = 7;
+}

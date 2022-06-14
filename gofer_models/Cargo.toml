@@ -1,0 +1,10 @@
+[package]
+name = "gofer_models"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+strum = { version = "0.24", features = ["derive"] }
+gofer_proto = { path = "../gofer_proto" }
+gofer_sdk = { path = "../gofer_sdk/rust" }
+serde = "1.0.137"

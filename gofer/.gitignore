@@ -1,0 +1,11 @@
+/target
+.vscode/
+dist/
+
+#frontend
+src/frontend/node_modules/
+src/frontend/public/build/
+src/frontend/public/global.css
+
+#ignore frontend static import
+src/frontend/public/css/main.css

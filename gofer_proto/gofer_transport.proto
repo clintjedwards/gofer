@@ -1,0 +1,368 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/clintjedwards/gofer/proto";
+
+import "gofer_message.proto";
+
+////////////// System Transport Models //////////////
+
+message GetSystemInfoRequest {}
+message GetSystemInfoResponse {
+  string commit = 1;
+  bool dev_mode_enabled = 2;
+  string semver = 3;
+}
+
+////////////// Namespace Transport Models //////////////
+
+message GetNamespaceRequest {
+  string id = 1; // Unique identifier
+}
+message GetNamespaceResponse { Namespace namespace = 1; }
+
+message ListNamespacesRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of objects to return.
+  uint64 offset = 1;
+
+  // limit is a pagination parameter that defines how many objects to return
+  // per result.
+  uint64 limit = 2;
+}
+
+message ListNamespacesResponse { repeated Namespace namespaces = 1; }
+
+message CreateNamespaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+message CreateNamespaceResponse { Namespace namespace = 1; }
+
+message UpdateNamespaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+message UpdateNamespaceResponse {}
+
+message DeleteNamespaceRequest {
+  string id = 1; // Unique identifier
+}
+message DeleteNamespaceResponse {}
+
+////////////// Pipeline Transport Models //////////////
+
+message GetPipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique identifier
+}
+message GetPipelineResponse { Pipeline pipeline = 1; }
+
+message ListPipelinesRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of pipelines to return.
+  uint64 offset = 1;
+
+  // limit is a pagination parameter that defines how many pipelines to return
+  // per result.
+  uint64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+}
+message ListPipelinesResponse { repeated Pipeline pipelines = 1; }
+
+message RunPipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;
+
+  // variables allows for the replacement of task environment variables, it
+  // overrides all other environment variables if there is a name collision.
+  map<string, string> variables = 3;
+}
+message RunPipelineResponse { Run run = 1; }
+
+message DisablePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique namespace identifier
+}
+message DisablePipelineResponse {}
+
+message EnablePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique identifier
+}
+message EnablePipelineResponse {}
+
+message CreatePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  PipelineConfig pipeline_config = 2;
+}
+message CreatePipelineResponse { Pipeline pipeline = 1; }
+
+message UpdatePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  PipelineConfig pipeline_config = 2;
+}
+message UpdatePipelineResponse { Pipeline pipeline = 1; }
+
+message DeletePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Pipeline ID
+}
+message DeletePipelineResponse {}
+
+////////////// Runs Transport Models //////////////
+
+message GetRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 id = 3; // Run ID
+}
+message GetRunResponse { Run run = 1; }
+
+message BatchGetRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  repeated uint64 ids = 3; // Run IDs
+}
+message BatchGetRunsResponse { repeated Run runs = 1; }
+
+message ListRunsRequest {
+  // offset is a pagination parameter that defines where to start when
+  // counting the list of pipelines to return
+  uint64 offset = 1;
+
+  // limit is a pagination parameter that defines how many pipelines to return
+  // per result.
+  uint64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+  string pipeline_id = 4;
+}
+message ListRunsResponse { repeated Run runs = 1; }
+
+message StartRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+
+  // variables allows for the replacement of task environment variables, it
+  // overrides all other environment variables if there is a name collision.
+  map<string, string> variables = 3;
+}
+message StartRunResponse { Run run = 1; }
+
+message RetryRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 id = 3; // Run ID
+}
+message RetryRunResponse { Run run = 1; }
+
+message CancelRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 id = 3; // Run ID
+
+  // force will cause Gofer to hard kill any outstanding task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 4;
+}
+message CancelRunResponse {}
+
+message CancelAllRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+
+  // force will cause Gofer to hard kill any outstanding task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 3;
+}
+message CancelAllRunsResponse { repeated uint64 runs = 1; }
+
+////////////// Task Run Transport Models //////////////
+
+message ListTaskRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+}
+message ListTaskRunsResponse { repeated TaskRun task_runs = 1; }
+
+message GetTaskRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message GetTaskRunResponse { TaskRun task_run = 1; }
+
+message CancelTaskRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+
+  // force will cause Gofer to hard kill this task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 5;
+}
+message CancelTaskRunResponse {}
+
+message GetTaskRunLogsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message GetTaskRunLogsResponse {
+  string log_line = 1; // The string content of the current log line.
+  uint64 line_num = 2; // The current line number.
+}
+
+message DeleteTaskRunLogsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message DeleteTaskRunLogsResponse {}
+
+////////////// Trigger Transport Models //////////////
+
+message GetTriggerRequest {
+  string name = 1; // The unique name for a particular trigger
+}
+message GetTriggerResponse { Trigger trigger = 1; }
+
+message ListTriggersRequest {}
+message ListTriggersResponse { repeated Trigger triggers = 1; }
+
+message InstallTriggerRequest {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+}
+message InstallTriggerResponse {}
+
+message UninstallTriggerRequest { string name = 1; }
+message UninstallTriggerResponse {}
+
+message EnableTriggerRequest { string name = 1; }
+message EnableTriggerResponse {}
+
+message DisableTriggerRequest { string name = 1; }
+message DisableTriggerResponse {}
+
+message GetTriggerInstallInstructionsRequest {
+  string image = 1;
+  string user = 2;
+  string pass = 3;
+}
+message GetTriggerInstallInstructionsResponse { string instructions = 1; }
+
+////////////// Notifier Transport Models //////////////
+
+message GetNotifierRequest {
+  string name = 1; // The unique name/kind for a particular notifier
+}
+message GetNotifierResponse { Notifier notifier = 1; }
+
+message ListNotifiersRequest {}
+message ListNotifiersResponse { repeated Notifier notifiers = 1; }
+
+message InstallNotifierRequest {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+}
+message InstallNotifierResponse {}
+
+message UninstallNotifierRequest { string name = 1; }
+message UninstallNotifierResponse {}
+
+message EnableNotifierRequest { string name = 1; }
+message EnableNotifierResponse {}
+
+message DisableNotifierRequest { string name = 1; }
+message DisableNotifierResponse {}
+
+////////////// Trigger Service Transport Models //////////////
+
+message TriggerWatchRequest {}
+message TriggerWatchResponse {
+  // The trigger can choose to give extra details about the specific trigger
+  // event result in the form of a string description.
+  string details = 1;
+
+  // Unique identifier for namespace.
+  string namespace_id = 2;
+
+  // Unique identifier for pipeline.
+  string pipeline_id = 3;
+
+  // Unique id of trigger instance.
+  string pipeline_trigger_label = 4;
+
+  enum Result {
+    UNKNOWN = 0;
+    SUCCESS = 1;
+    FAILURE = 2;
+    SKIPPED = 3;
+  }
+  Result result = 5;
+
+  // Metadata is passed to the tasks as extra environment variables.
+  map<string, string> metadata = 6;
+}
+
+message TriggerInfoRequest {}
+message TriggerInfoResponse {
+  // kind corresponds a unique trigger identifier, this is passed as a envvar
+  // via the main process(and as such can be left empty), as the main process
+  // container the configuration for which trigger "kind" corresponds to which
+  // trigger container.
+  string name = 1;
+
+  // Triggers are allowed to provide a link to more extensive documentation on
+  // how to use and configure them.
+  string documentation = 2;
+
+  // A listing of all registered pipelines in the format: <namespace>/<pipeline>
+  repeated string registered = 3;
+}
+
+message TriggerSubscribeRequest {
+  string namespace_id = 1; // unique identifier for associated namespace
+  string pipeline_id = 2;  // unique identifier for associated pipeline
+  string pipeline_trigger_label = 3; // pipeline specific subscription id
+
+  // pipelines are allowed to pass a configuration to triggers denoting what
+  // specific settings they might like for a specific trigger. The acceptable
+  // values of this config map is defined by the triggers and should be
+  // mentioned in documentation.
+  //
+  // Additionally, the trigger should verify config settings and pass back an
+  // error when it does not meet requirements.
+  map<string, string> config = 4;
+}
+message TriggerSubscribeResponse {}
+
+message TriggerUnsubscribeRequest {
+  string namespace_id = 1; // unique identifier for associated namespace
+  string pipeline_id = 2;  // unique identifier for associated pipeline
+  string pipeline_trigger_label = 3; // pipeline specific subscription id
+}
+message TriggerUnsubscribeResponse {}
+
+message TriggerShutdownRequest {}
+message TriggerShutdownResponse {}
+
+message TriggerExternalEventRequest { bytes payload = 1; }
+message TriggerExternalEventResponse {}
+
+// message TriggerConfigResponse { map<string, string> config = 1; }

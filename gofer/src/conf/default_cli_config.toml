@@ -1,0 +1,8 @@
+dev_mode = true
+# The URL of the Gofer server. Must be https.
+# The only IP address accepted here is the loopback address (127.0.0.1), which we treat
+# as a special case.
+# (You can obviously use fully qualified hostnames just fine)
+# Because of the frustrating limits imposed by rustls, this will not work with any other
+# IP values even if your certificate validates that IP.
+server = "https://127.0.0.1:8080"

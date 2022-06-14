@@ -1,0 +1,55 @@
+[package]
+name = "gofer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.57"
+async-stream = "0.3.3"
+async-trait = "0.1.56"
+axum = "0.5.4"
+axum-server = { version = "0.4.0", features = ["tls-rustls"] }
+base64 = "0.13.0"
+bollard = "0.12"
+bytes = "1.1.0"
+chrono = "0.4.19"
+chrono-humanize = "0.2.1"
+clap = { version = "3.1.8", features = ["derive"] }
+colored = "2.0.0"
+comfy-table = "5.0.1"
+config = "0.13.0"
+crossbeam = "0.8.1"
+crossterm = "0.23.2"
+dashmap = "5.3.4"
+econf = "0.2.0"
+futures = "0.3.21"
+http = "0.2.8"
+hyper = "0.14.18"
+indicatif = "0.16.2"
+lazy-regex = "2.3.0"
+mime_guess = "2.0.4"
+nanoid = "0.4.0"                                                            # UUID generation
+rust-embed = "6.3.0"                                                        # We embed the configuration files and frontend
+rustls = "0.20.6"
+rustls-pemfile = "1.0.0"
+serde = "1.0.137"
+serde_json = "1"
+slog = "2.7.0"
+slog-scope = "4.4.0"
+sloggers = "2.1.1"
+sqlx = { version = "0.5", features = ["runtime-tokio-rustls", "sqlite"] }
+strum = { version = "0.24", features = ["derive"] }
+thiserror = "1.0.31"
+tinytemplate = "1.2.1"
+tokio = { version = "1.0", features = ["full"] }
+tokio-rustls = "0.23"
+tonic = { version = "0.7.2", features = ["tls", "transport", "tls-roots"] }
+tower = { version = "0.4", features = ["make", "steer"] }
+url = "2.2.2"
+
+gofer_models = { path = "../gofer_models" }
+gofer_proto = { path = "../gofer_proto" }
+gofer_sdk = { path = "../gofer_sdk/rust" }
+
+[dev-dependencies]
+rand = "0.8.5"
