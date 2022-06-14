@@ -344,8 +344,8 @@ pub mod task_run {
     pub enum State {
         UnknownState = 0,
         Processing = 1,
-        Running = 3,
-        Complete = 4,
+        Running = 2,
+        Complete = 3,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
@@ -356,6 +356,78 @@ pub mod task_run {
         Cancelled = 3,
         Skipped = 4,
     }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Trigger {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub image: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub url: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub scheduler_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag="5")]
+    pub started: u64,
+    #[prost(enumeration="trigger::State", tag="6")]
+    pub state: i32,
+    #[prost(enumeration="trigger::Status", tag="7")]
+    pub status: i32,
+    #[prost(string, tag="8")]
+    pub documentation: ::prost::alloc::string::String,
+}
+/// Nested message and enum types in `Trigger`.
+pub mod trigger {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum State {
+        UnknownState = 0,
+        Processing = 1,
+        Running = 2,
+        Complete = 3,
+    }
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Status {
+        UnknownStatus = 0,
+        Successful = 1,
+        Failed = 2,
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerConfig {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub image: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub user: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub pass: ::prost::alloc::string::String,
+    #[prost(map="string, string", tag="5")]
+    pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Notifier {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub image: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub documentation: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NotifierConfig {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub image: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub user: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub pass: ::prost::alloc::string::String,
+    #[prost(map="string, string", tag="5")]
+    pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -771,6 +843,189 @@ pub struct DeleteTaskRunLogsRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteTaskRunLogsResponse {
+}
+////////////// Trigger Transport Models //////////////
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTriggerRequest {
+    /// The unique name for a particular trigger
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTriggerResponse {
+    #[prost(message, optional, tag="1")]
+    pub trigger: ::core::option::Option<Trigger>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListTriggersRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListTriggersResponse {
+    #[prost(message, repeated, tag="1")]
+    pub triggers: ::prost::alloc::vec::Vec<Trigger>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InstallTriggerRequest {
+    #[prost(message, optional, tag="1")]
+    pub trigger: ::core::option::Option<TriggerConfig>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InstallTriggerResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UninstallTriggerRequest {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UninstallTriggerResponse {
+}
+////////////// Notifier Transport Models //////////////
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetNotifierRequest {
+    /// The unique name/kind for a particular notifier
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetNotifierResponse {
+    #[prost(message, optional, tag="1")]
+    pub notifier: ::core::option::Option<Notifier>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListNotifiersRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListNotifiersResponse {
+    #[prost(message, repeated, tag="1")]
+    pub notifiers: ::prost::alloc::vec::Vec<Notifier>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InstallNotifierRequest {
+    #[prost(message, optional, tag="1")]
+    pub notifier: ::core::option::Option<NotifierConfig>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InstallNotifierResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UninstallNotifierRequest {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UninstallNotifierResponse {
+}
+////////////// Trigger Service Transport Models //////////////
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WatchRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WatchResponse {
+    /// The trigger can choose to give extra details about the specific trigger
+    /// event result in the form of a string description.
+    #[prost(string, tag="1")]
+    pub details: ::prost::alloc::string::String,
+    /// Unique identifier for namespace.
+    #[prost(string, tag="2")]
+    pub namespace_id: ::prost::alloc::string::String,
+    /// Unique identifier for pipeline.
+    #[prost(string, tag="3")]
+    pub pipeline_id: ::prost::alloc::string::String,
+    /// Unique id of trigger instance.
+    #[prost(string, tag="4")]
+    pub pipeline_trigger_label: ::prost::alloc::string::String,
+    #[prost(enumeration="watch_response::Result", tag="5")]
+    pub result: i32,
+    /// Metadata is passed to the tasks as extra environment variables.
+    #[prost(map="string, string", tag="6")]
+    pub metadata: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+}
+/// Nested message and enum types in `WatchResponse`.
+pub mod watch_response {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Result {
+        Unknown = 0,
+        Success = 1,
+        Failure = 2,
+        Skipped = 3,
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InfoRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InfoResponse {
+    /// kind corresponds a unique trigger identifier, this is passed as a envvar
+    /// via the main process(and as such can be left empty), as the main process
+    /// container the configuration for which trigger "kind" corresponds to which
+    /// trigger container.
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    /// Triggers are allowed to provide a link to more extensive documentation on
+    /// how to use and configure them.
+    #[prost(string, tag="2")]
+    pub documentation: ::prost::alloc::string::String,
+    /// A listing of all registered pipelines in the format: <namespace>/<pipeline>
+    #[prost(string, repeated, tag="3")]
+    pub registered: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubscribeRequest {
+    /// unique identifier for associated namespace
+    #[prost(string, tag="1")]
+    pub namespace_id: ::prost::alloc::string::String,
+    /// unique identifier for associated pipeline
+    #[prost(string, tag="2")]
+    pub pipeline_id: ::prost::alloc::string::String,
+    /// pipeline specific subscription id
+    #[prost(string, tag="3")]
+    pub pipeline_trigger_label: ::prost::alloc::string::String,
+    /// pipelines are allowed to pass a configuration to triggers denoting what
+    /// specific settings they might like for a specific trigger. The acceptable
+    /// values of this config map is defined by the triggers and should be
+    /// mentioned in documentation.
+    ///
+    /// Additionally, the trigger should verify config settings and pass back an
+    /// error when it does not meet requirements.
+    #[prost(map="string, string", tag="4")]
+    pub config: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubscribeResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnsubscribeRequest {
+    /// unique identifier for associated namespace
+    #[prost(string, tag="1")]
+    pub namespace_id: ::prost::alloc::string::String,
+    /// unique identifier for associated pipeline
+    #[prost(string, tag="2")]
+    pub pipeline_id: ::prost::alloc::string::String,
+    /// pipeline specific subscription id
+    #[prost(string, tag="3")]
+    pub pipeline_trigger_label: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnsubscribeResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ShutdownRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ShutdownResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExternalEventRequest {
+    #[prost(bytes="vec", tag="1")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExternalEventResponse {
 }
 /// Generated client implementations.
 pub mod gofer_client {
@@ -1347,6 +1602,354 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// GetTrigger returns details about a specific trigger.
+        pub async fn get_trigger(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetTriggerRequest>,
+        ) -> Result<tonic::Response<super::GetTriggerResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetTrigger");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// ListTriggers lists all triggers currently registered within gofer.
+        pub async fn list_triggers(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListTriggersRequest>,
+        ) -> Result<tonic::Response<super::ListTriggersResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/ListTriggers");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// InstallTrigger attempts to install a new trigger.
+        pub async fn install_trigger(
+            &mut self,
+            request: impl tonic::IntoRequest<super::InstallTriggerRequest>,
+        ) -> Result<tonic::Response<super::InstallTriggerResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/InstallTrigger",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// UninstallTrigger attempts to uninstall a trigger.
+        pub async fn uninstall_trigger(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UninstallTriggerRequest>,
+        ) -> Result<tonic::Response<super::UninstallTriggerResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/UninstallTrigger",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// GetNotifier returns details about a specific notifier.
+        pub async fn get_notifier(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetNotifierRequest>,
+        ) -> Result<tonic::Response<super::GetNotifierResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetNotifier");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// ListNotifiers lists all notifiers currently registered within gofer.
+        pub async fn list_notifiers(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListNotifiersRequest>,
+        ) -> Result<tonic::Response<super::ListNotifiersResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/ListNotifiers",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// InstallNotifier attempts to install a new notifier.
+        pub async fn install_notifier(
+            &mut self,
+            request: impl tonic::IntoRequest<super::InstallNotifierRequest>,
+        ) -> Result<tonic::Response<super::InstallNotifierResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/InstallNotifier",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// UninstallNotifier attempts to uninstall a notifier.
+        pub async fn uninstall_notifier(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UninstallNotifierRequest>,
+        ) -> Result<tonic::Response<super::UninstallNotifierResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/UninstallNotifier",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+    }
+}
+/// Generated client implementations.
+pub mod trigger_service_client {
+    #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::*;
+    #[derive(Debug, Clone)]
+    pub struct TriggerServiceClient<T> {
+        inner: tonic::client::Grpc<T>,
+    }
+    impl TriggerServiceClient<tonic::transport::Channel> {
+        /// Attempt to create a new client by connecting to a given endpoint.
+        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
+        where
+            D: std::convert::TryInto<tonic::transport::Endpoint>,
+            D::Error: Into<StdError>,
+        {
+            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
+            Ok(Self::new(conn))
+        }
+    }
+    impl<T> TriggerServiceClient<T>
+    where
+        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
+        <T::ResponseBody as Body>::Error: Into<StdError> + Send,
+    {
+        pub fn new(inner: T) -> Self {
+            let inner = tonic::client::Grpc::new(inner);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> TriggerServiceClient<InterceptedService<T, F>>
+        where
+            F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
+            T: tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
+            >,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
+        {
+            TriggerServiceClient::new(InterceptedService::new(inner, interceptor))
+        }
+        /// Compress requests with `gzip`.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
+        pub fn send_gzip(mut self) -> Self {
+            self.inner = self.inner.send_gzip();
+            self
+        }
+        /// Enable decompressing responses with `gzip`.
+        #[must_use]
+        pub fn accept_gzip(mut self) -> Self {
+            self.inner = self.inner.accept_gzip();
+            self
+        }
+        /// Watch blocks until the trigger has a pipeline that should be run, then it
+        /// returns.
+        pub async fn watch(
+            &mut self,
+            request: impl tonic::IntoRequest<super::WatchRequest>,
+        ) -> Result<tonic::Response<super::WatchResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.TriggerService/Watch",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// Info returns information on the specific plugin
+        pub async fn info(
+            &mut self,
+            request: impl tonic::IntoRequest<super::InfoRequest>,
+        ) -> Result<tonic::Response<super::InfoResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.TriggerService/Info",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// Subscribe allows a trigger to keep track of all pipelines currently
+        /// dependant on that trigger so that we can trigger them at appropriate times.
+        pub async fn subscribe(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SubscribeRequest>,
+        ) -> Result<tonic::Response<super::SubscribeResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.TriggerService/Subscribe",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// Unsubscribe allows pipelines to remove their trigger subscriptions. This is
+        /// useful if the pipeline no longer needs to be notified about a specific
+        /// trigger automation.
+        pub async fn unsubscribe(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UnsubscribeRequest>,
+        ) -> Result<tonic::Response<super::UnsubscribeResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.TriggerService/Unsubscribe",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
+        /// does not shutdown in a time defined by the gofer API the trigger will
+        /// instead be Force shutdown(SIGKILL). This is to say that all triggers should
+        /// lean toward quick cleanups and shutdowns.
+        pub async fn shutdown(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ShutdownRequest>,
+        ) -> Result<tonic::Response<super::ShutdownResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.TriggerService/Shutdown",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// ExternalEvent are json blobs of gofer's /events endpoint. Normally
+        /// webhooks.
+        pub async fn external_event(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ExternalEventRequest>,
+        ) -> Result<tonic::Response<super::ExternalEventResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.TriggerService/ExternalEvent",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -1515,6 +2118,46 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DeleteTaskRunLogsRequest>,
         ) -> Result<tonic::Response<super::DeleteTaskRunLogsResponse>, tonic::Status>;
+        /// GetTrigger returns details about a specific trigger.
+        async fn get_trigger(
+            &self,
+            request: tonic::Request<super::GetTriggerRequest>,
+        ) -> Result<tonic::Response<super::GetTriggerResponse>, tonic::Status>;
+        /// ListTriggers lists all triggers currently registered within gofer.
+        async fn list_triggers(
+            &self,
+            request: tonic::Request<super::ListTriggersRequest>,
+        ) -> Result<tonic::Response<super::ListTriggersResponse>, tonic::Status>;
+        /// InstallTrigger attempts to install a new trigger.
+        async fn install_trigger(
+            &self,
+            request: tonic::Request<super::InstallTriggerRequest>,
+        ) -> Result<tonic::Response<super::InstallTriggerResponse>, tonic::Status>;
+        /// UninstallTrigger attempts to uninstall a trigger.
+        async fn uninstall_trigger(
+            &self,
+            request: tonic::Request<super::UninstallTriggerRequest>,
+        ) -> Result<tonic::Response<super::UninstallTriggerResponse>, tonic::Status>;
+        /// GetNotifier returns details about a specific notifier.
+        async fn get_notifier(
+            &self,
+            request: tonic::Request<super::GetNotifierRequest>,
+        ) -> Result<tonic::Response<super::GetNotifierResponse>, tonic::Status>;
+        /// ListNotifiers lists all notifiers currently registered within gofer.
+        async fn list_notifiers(
+            &self,
+            request: tonic::Request<super::ListNotifiersRequest>,
+        ) -> Result<tonic::Response<super::ListNotifiersResponse>, tonic::Status>;
+        /// InstallNotifier attempts to install a new notifier.
+        async fn install_notifier(
+            &self,
+            request: tonic::Request<super::InstallNotifierRequest>,
+        ) -> Result<tonic::Response<super::InstallNotifierResponse>, tonic::Status>;
+        /// UninstallNotifier attempts to uninstall a notifier.
+        async fn uninstall_notifier(
+            &self,
+            request: tonic::Request<super::UninstallNotifierRequest>,
+        ) -> Result<tonic::Response<super::UninstallNotifierResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct GoferServer<T: Gofer> {
@@ -2542,6 +3185,320 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
+                "/proto.Gofer/GetTrigger" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetTriggerSvc<T: Gofer>(pub Arc<T>);
+                    impl<T: Gofer> tonic::server::UnaryService<super::GetTriggerRequest>
+                    for GetTriggerSvc<T> {
+                        type Response = super::GetTriggerResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetTriggerRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).get_trigger(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetTriggerSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/ListTriggers" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListTriggersSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::ListTriggersRequest>
+                    for ListTriggersSvc<T> {
+                        type Response = super::ListTriggersResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListTriggersRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).list_triggers(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListTriggersSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/InstallTrigger" => {
+                    #[allow(non_camel_case_types)]
+                    struct InstallTriggerSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::InstallTriggerRequest>
+                    for InstallTriggerSvc<T> {
+                        type Response = super::InstallTriggerResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::InstallTriggerRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).install_trigger(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = InstallTriggerSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/UninstallTrigger" => {
+                    #[allow(non_camel_case_types)]
+                    struct UninstallTriggerSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::UninstallTriggerRequest>
+                    for UninstallTriggerSvc<T> {
+                        type Response = super::UninstallTriggerResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UninstallTriggerRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).uninstall_trigger(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = UninstallTriggerSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/GetNotifier" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetNotifierSvc<T: Gofer>(pub Arc<T>);
+                    impl<T: Gofer> tonic::server::UnaryService<super::GetNotifierRequest>
+                    for GetNotifierSvc<T> {
+                        type Response = super::GetNotifierResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetNotifierRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).get_notifier(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetNotifierSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/ListNotifiers" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListNotifiersSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::ListNotifiersRequest>
+                    for ListNotifiersSvc<T> {
+                        type Response = super::ListNotifiersResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListNotifiersRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).list_notifiers(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListNotifiersSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/InstallNotifier" => {
+                    #[allow(non_camel_case_types)]
+                    struct InstallNotifierSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::InstallNotifierRequest>
+                    for InstallNotifierSvc<T> {
+                        type Response = super::InstallNotifierResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::InstallNotifierRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).install_notifier(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = InstallNotifierSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/UninstallNotifier" => {
+                    #[allow(non_camel_case_types)]
+                    struct UninstallNotifierSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::UninstallNotifierRequest>
+                    for UninstallNotifierSvc<T> {
+                        type Response = super::UninstallNotifierResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UninstallNotifierRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).uninstall_notifier(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = UninstallNotifierSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 _ => {
                     Box::pin(async move {
                         Ok(
@@ -2579,5 +3536,365 @@ pub mod gofer_server {
     }
     impl<T: Gofer> tonic::transport::NamedService for GoferServer<T> {
         const NAME: &'static str = "proto.Gofer";
+    }
+}
+/// Generated server implementations.
+pub mod trigger_service_server {
+    #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::*;
+    ///Generated trait containing gRPC methods that should be implemented for use with TriggerServiceServer.
+    #[async_trait]
+    pub trait TriggerService: Send + Sync + 'static {
+        /// Watch blocks until the trigger has a pipeline that should be run, then it
+        /// returns.
+        async fn watch(
+            &self,
+            request: tonic::Request<super::WatchRequest>,
+        ) -> Result<tonic::Response<super::WatchResponse>, tonic::Status>;
+        /// Info returns information on the specific plugin
+        async fn info(
+            &self,
+            request: tonic::Request<super::InfoRequest>,
+        ) -> Result<tonic::Response<super::InfoResponse>, tonic::Status>;
+        /// Subscribe allows a trigger to keep track of all pipelines currently
+        /// dependant on that trigger so that we can trigger them at appropriate times.
+        async fn subscribe(
+            &self,
+            request: tonic::Request<super::SubscribeRequest>,
+        ) -> Result<tonic::Response<super::SubscribeResponse>, tonic::Status>;
+        /// Unsubscribe allows pipelines to remove their trigger subscriptions. This is
+        /// useful if the pipeline no longer needs to be notified about a specific
+        /// trigger automation.
+        async fn unsubscribe(
+            &self,
+            request: tonic::Request<super::UnsubscribeRequest>,
+        ) -> Result<tonic::Response<super::UnsubscribeResponse>, tonic::Status>;
+        /// Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
+        /// does not shutdown in a time defined by the gofer API the trigger will
+        /// instead be Force shutdown(SIGKILL). This is to say that all triggers should
+        /// lean toward quick cleanups and shutdowns.
+        async fn shutdown(
+            &self,
+            request: tonic::Request<super::ShutdownRequest>,
+        ) -> Result<tonic::Response<super::ShutdownResponse>, tonic::Status>;
+        /// ExternalEvent are json blobs of gofer's /events endpoint. Normally
+        /// webhooks.
+        async fn external_event(
+            &self,
+            request: tonic::Request<super::ExternalEventRequest>,
+        ) -> Result<tonic::Response<super::ExternalEventResponse>, tonic::Status>;
+    }
+    #[derive(Debug)]
+    pub struct TriggerServiceServer<T: TriggerService> {
+        inner: _Inner<T>,
+        accept_compression_encodings: (),
+        send_compression_encodings: (),
+    }
+    struct _Inner<T>(Arc<T>);
+    impl<T: TriggerService> TriggerServiceServer<T> {
+        pub fn new(inner: T) -> Self {
+            Self::from_arc(Arc::new(inner))
+        }
+        pub fn from_arc(inner: Arc<T>) -> Self {
+            let inner = _Inner(inner);
+            Self {
+                inner,
+                accept_compression_encodings: Default::default(),
+                send_compression_encodings: Default::default(),
+            }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> InterceptedService<Self, F>
+        where
+            F: tonic::service::Interceptor,
+        {
+            InterceptedService::new(Self::new(inner), interceptor)
+        }
+    }
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for TriggerServiceServer<T>
+    where
+        T: TriggerService,
+        B: Body + Send + 'static,
+        B::Error: Into<StdError> + Send + 'static,
+    {
+        type Response = http::Response<tonic::body::BoxBody>;
+        type Error = std::convert::Infallible;
+        type Future = BoxFuture<Self::Response, Self::Error>;
+        fn poll_ready(
+            &mut self,
+            _cx: &mut Context<'_>,
+        ) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn call(&mut self, req: http::Request<B>) -> Self::Future {
+            let inner = self.inner.clone();
+            match req.uri().path() {
+                "/proto.TriggerService/Watch" => {
+                    #[allow(non_camel_case_types)]
+                    struct WatchSvc<T: TriggerService>(pub Arc<T>);
+                    impl<
+                        T: TriggerService,
+                    > tonic::server::UnaryService<super::WatchRequest> for WatchSvc<T> {
+                        type Response = super::WatchResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::WatchRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).watch(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = WatchSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.TriggerService/Info" => {
+                    #[allow(non_camel_case_types)]
+                    struct InfoSvc<T: TriggerService>(pub Arc<T>);
+                    impl<
+                        T: TriggerService,
+                    > tonic::server::UnaryService<super::InfoRequest> for InfoSvc<T> {
+                        type Response = super::InfoResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::InfoRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).info(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = InfoSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.TriggerService/Subscribe" => {
+                    #[allow(non_camel_case_types)]
+                    struct SubscribeSvc<T: TriggerService>(pub Arc<T>);
+                    impl<
+                        T: TriggerService,
+                    > tonic::server::UnaryService<super::SubscribeRequest>
+                    for SubscribeSvc<T> {
+                        type Response = super::SubscribeResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SubscribeRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).subscribe(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SubscribeSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.TriggerService/Unsubscribe" => {
+                    #[allow(non_camel_case_types)]
+                    struct UnsubscribeSvc<T: TriggerService>(pub Arc<T>);
+                    impl<
+                        T: TriggerService,
+                    > tonic::server::UnaryService<super::UnsubscribeRequest>
+                    for UnsubscribeSvc<T> {
+                        type Response = super::UnsubscribeResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UnsubscribeRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).unsubscribe(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = UnsubscribeSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.TriggerService/Shutdown" => {
+                    #[allow(non_camel_case_types)]
+                    struct ShutdownSvc<T: TriggerService>(pub Arc<T>);
+                    impl<
+                        T: TriggerService,
+                    > tonic::server::UnaryService<super::ShutdownRequest>
+                    for ShutdownSvc<T> {
+                        type Response = super::ShutdownResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ShutdownRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).shutdown(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ShutdownSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.TriggerService/ExternalEvent" => {
+                    #[allow(non_camel_case_types)]
+                    struct ExternalEventSvc<T: TriggerService>(pub Arc<T>);
+                    impl<
+                        T: TriggerService,
+                    > tonic::server::UnaryService<super::ExternalEventRequest>
+                    for ExternalEventSvc<T> {
+                        type Response = super::ExternalEventResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ExternalEventRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).external_event(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ExternalEventSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                _ => {
+                    Box::pin(async move {
+                        Ok(
+                            http::Response::builder()
+                                .status(200)
+                                .header("grpc-status", "12")
+                                .header("content-type", "application/grpc")
+                                .body(empty_body())
+                                .unwrap(),
+                        )
+                    })
+                }
+            }
+        }
+    }
+    impl<T: TriggerService> Clone for TriggerServiceServer<T> {
+        fn clone(&self) -> Self {
+            let inner = self.inner.clone();
+            Self {
+                inner,
+                accept_compression_encodings: self.accept_compression_encodings,
+                send_compression_encodings: self.send_compression_encodings,
+            }
+        }
+    }
+    impl<T: TriggerService> Clone for _Inner<T> {
+        fn clone(&self) -> Self {
+            Self(self.0.clone())
+        }
+    }
+    impl<T: std::fmt::Debug> std::fmt::Debug for _Inner<T> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", self.0)
+        }
+    }
+    impl<T: TriggerService> tonic::transport::NamedService for TriggerServiceServer<T> {
+        const NAME: &'static str = "proto.TriggerService";
     }
 }

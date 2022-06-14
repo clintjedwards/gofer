@@ -218,8 +218,8 @@ message TaskRun {
   enum State {
     UNKNOWN_STATE = 0;
     PROCESSING = 1;
-    RUNNING = 3;
-    COMPLETE = 4;
+    RUNNING = 2;
+    COMPLETE = 3;
   }
   State state = 13;
   enum Status {
@@ -231,4 +231,48 @@ message TaskRun {
   }
   Status status = 14;
   Task task = 15;
+}
+
+message Trigger {
+  string kind = 1;
+  string image = 2;
+  string url = 3;
+  string scheduler_id = 4;
+  uint64 started = 5;
+  enum State {
+    UNKNOWN_STATE = 0;
+    PROCESSING = 1;
+    RUNNING = 2;
+    COMPLETE = 3;
+  }
+  State state = 6;
+  enum Status {
+    UNKNOWN_STATUS = 0;
+    SUCCESSFUL = 1;
+    FAILED = 2;
+  }
+  Status status = 7;
+  string documentation = 8;
+}
+
+message TriggerConfig {
+  string kind = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+}
+
+message Notifier {
+  string kind = 1;
+  string image = 2;
+  string documentation = 3;
+}
+
+message NotifierConfig {
+  string kind = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
 }

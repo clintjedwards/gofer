@@ -135,4 +135,70 @@ service Gofer {
   // useful for if logs mistakenly contain sensitive data.
   rpc DeleteTaskRunLogs(DeleteTaskRunLogsRequest)
       returns (DeleteTaskRunLogsResponse);
+
+  ////////////// Trigger RPCs //////////////
+  //
+  // A trigger is an automated way to execute pipeline runs. Pipelines
+  // "subscribe" to one or more triggers (usually with some individual
+  // configuration) and those triggers send "events" back to gofer about when to
+  // trigger a new pipeline run.
+
+  // GetTrigger returns details about a specific trigger.
+  rpc GetTrigger(GetTriggerRequest) returns (GetTriggerResponse);
+
+  // ListTriggers lists all triggers currently registered within gofer.
+  rpc ListTriggers(ListTriggersRequest) returns (ListTriggersResponse);
+
+  // InstallTrigger attempts to install a new trigger.
+  rpc InstallTrigger(InstallTriggerRequest) returns (InstallTriggerResponse);
+
+  // UninstallTrigger attempts to uninstall a trigger.
+  rpc UninstallTrigger(UninstallTriggerRequest)
+      returns (UninstallTriggerResponse);
+
+  ////////////// Notifier RPCs //////////////
+  //
+  // A notifier is a provided way to notify external systems about the
+  // completion of a run.
+
+  // GetNotifier returns details about a specific notifier.
+  rpc GetNotifier(GetNotifierRequest) returns (GetNotifierResponse);
+
+  // ListNotifiers lists all notifiers currently registered within gofer.
+  rpc ListNotifiers(ListNotifiersRequest) returns (ListNotifiersResponse);
+
+  // InstallNotifier attempts to install a new notifier.
+  rpc InstallNotifier(InstallNotifierRequest) returns (InstallNotifierResponse);
+
+  // UninstallNotifier attempts to uninstall a notifier.
+  rpc UninstallNotifier(UninstallNotifierRequest)
+      returns (UninstallNotifierResponse);
+}
+
+service TriggerService {
+  // Watch blocks until the trigger has a pipeline that should be run, then it
+  // returns.
+  rpc Watch(WatchRequest) returns (WatchResponse);
+
+  // Info returns information on the specific plugin
+  rpc Info(InfoRequest) returns (InfoResponse);
+
+  // Subscribe allows a trigger to keep track of all pipelines currently
+  // dependant on that trigger so that we can trigger them at appropriate times.
+  rpc Subscribe(SubscribeRequest) returns (SubscribeResponse);
+
+  // Unsubscribe allows pipelines to remove their trigger subscriptions. This is
+  // useful if the pipeline no longer needs to be notified about a specific
+  // trigger automation.
+  rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse);
+
+  // Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
+  // does not shutdown in a time defined by the gofer API the trigger will
+  // instead be Force shutdown(SIGKILL). This is to say that all triggers should
+  // lean toward quick cleanups and shutdowns.
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+
+  // ExternalEvent are json blobs of gofer's /events endpoint. Normally
+  // webhooks.
+  rpc ExternalEvent(ExternalEventRequest) returns (ExternalEventResponse);
 }
