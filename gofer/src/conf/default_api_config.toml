@@ -1,0 +1,16 @@
+[general]
+# dev_mode turns on humanized debug messages, extra debug logging for the webserver and other
+# convenient features for development. Usually turned on along side log_level=debug.
+dev_mode = true
+log_level = "debug"
+encryption_key = "default"
+
+[server]
+url = "127.0.0.1:8080"
+storage_path = "/tmp/gofer.db"
+tls_cert = ""
+tls_key = ""
+
+[scheduler.docker]
+prune = true
+prune_interval = 604800

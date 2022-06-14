@@ -1,0 +1,29 @@
+{
+  "name": "gofer",
+  "version": "0.1.0",
+  "description": "frontend component for the gofer service",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "rebuild-js": "node build.js",
+    "rebuild-css": "npx tailwindcss -i ./tailwind.css -o ./public/build/tailwind.css --watch",
+    "release": "node build.js prod && NODE_ENV=production tailwindcss-cli build ./src/tailwind.css -o ./public/build/tailwind.css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/clintjedwards/gofer"
+  },
+  "author": "clintjedwards",
+  "license": "MIT",
+  "dependencies": {
+    "esbuild": "^0.14.38",
+    "esbuild-svelte": "^0.7.0",
+    "google-protobuf": "^3.20.1",
+    "grpc-web": "^1.3.1",
+    "svelte": "^3.48.0",
+    "svelte-routing": "^1.6.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.0.24"
+  }
+}

@@ -1,0 +1,229 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/clintjedwards/gofer/proto";
+
+import "gofer_message.proto";
+
+////////////// System Transport Models //////////////
+
+message GetSystemInfoRequest {}
+message GetSystemInfoResponse {
+  string commit = 1;
+  bool dev_mode_enabled = 2;
+  string semver = 3;
+}
+
+////////////// Namespace Transport Models //////////////
+
+message GetNamespaceRequest {
+  string id = 1; // Unique identifier
+}
+message GetNamespaceResponse { Namespace namespace = 1; }
+
+message ListNamespacesRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of objects to return.
+  uint64 offset = 1;
+
+  // limit is a pagination parameter that defines how many objects to return
+  // per result.
+  uint64 limit = 2;
+}
+
+message ListNamespacesResponse { repeated Namespace namespaces = 1; }
+
+message CreateNamespaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+message CreateNamespaceResponse { Namespace namespace = 1; }
+
+message UpdateNamespaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+message UpdateNamespaceResponse {}
+
+message DeleteNamespaceRequest {
+  string id = 1; // Unique identifier
+}
+message DeleteNamespaceResponse {}
+
+////////////// Pipeline Transport Models //////////////
+
+message GetPipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique identifier
+}
+message GetPipelineResponse { Pipeline pipeline = 1; }
+
+message ListPipelinesRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of pipelines to return.
+  uint64 offset = 1;
+
+  // limit is a pagination parameter that defines how many pipelines to return
+  // per result.
+  uint64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+}
+message ListPipelinesResponse { repeated Pipeline pipelines = 1; }
+
+message RunPipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;
+
+  // variables allows for the replacement of task environment variables, it
+  // overrides all other environment variables if there is a name collision.
+  map<string, string> variables = 3;
+}
+message RunPipelineResponse { Run run = 1; }
+
+message DisablePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique namespace identifier
+}
+message DisablePipelineResponse {}
+
+message EnablePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Unique identifier
+}
+message EnablePipelineResponse {}
+
+message CreatePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  PipelineConfig pipeline_config = 2;
+}
+message CreatePipelineResponse { Pipeline pipeline = 1; }
+
+message UpdatePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  PipelineConfig pipeline_config = 2;
+}
+message UpdatePipelineResponse { Pipeline pipeline = 1; }
+
+message DeletePipelineRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string id = 2;           // Pipeline ID
+}
+message DeletePipelineResponse {}
+
+////////////// Runs Transport Models //////////////
+
+message GetRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 id = 3; // Run ID
+}
+message GetRunResponse { Run run = 1; }
+
+message BatchGetRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  repeated uint64 ids = 3; // Run IDs
+}
+message BatchGetRunsResponse { repeated Run runs = 1; }
+
+message ListRunsRequest {
+  // offset is a pagination parameter that defines where to start when
+  // counting the list of pipelines to return
+  uint64 offset = 1;
+
+  // limit is a pagination parameter that defines how many pipelines to return
+  // per result.
+  uint64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+  string pipeline_id = 4;
+}
+message ListRunsResponse { repeated Run runs = 1; }
+
+message StartRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+
+  // variables allows for the replacement of task environment variables, it
+  // overrides all other environment variables if there is a name collision.
+  map<string, string> variables = 3;
+}
+message StartRunResponse { Run run = 1; }
+
+message RetryRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 id = 3; // Run ID
+}
+message RetryRunResponse { Run run = 1; }
+
+message CancelRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 id = 3; // Run ID
+
+  // force will cause Gofer to hard kill any outstanding task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 4;
+}
+message CancelRunResponse {}
+
+message CancelAllRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+
+  // force will cause Gofer to hard kill any outstanding task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 3;
+}
+message CancelAllRunsResponse { repeated uint64 runs = 1; }
+
+////////////// Task Run Transport Models //////////////
+
+message ListTaskRunsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+}
+message ListTaskRunsResponse { repeated TaskRun task_runs = 1; }
+
+message GetTaskRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message GetTaskRunResponse { TaskRun task_run = 1; }
+
+message CancelTaskRunRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+
+  // force will cause Gofer to hard kill this task run containers.
+  // Usually this means that the container receives a SIGKILL.
+  bool force = 5;
+}
+message CancelTaskRunResponse {}
+
+message GetTaskRunLogsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message GetTaskRunLogsResponse {
+  string log_line = 1; // The string content of the current log line.
+  uint64 line_num = 2; // The current line number.
+}
+
+message DeleteTaskRunLogsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  uint64 run_id = 3;
+  string id = 4; // Task Run ID
+}
+message DeleteTaskRunLogsResponse {}
