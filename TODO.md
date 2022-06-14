@@ -5,6 +5,8 @@
 - Support auth, support downloading into run or pipeline objects, support checking out specific commit.
 - Support sparse checkouts?
 - Support caching, don't re-download the container every run just simply git pull it.
+- Should we include this as a feature of the github plugin? When a new trigger event comes in we can give the option
+  to go ahead and make sure the github repo is up to date in the object store.
 
 #### Nomad scheduler integration
 
