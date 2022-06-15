@@ -179,3 +179,4 @@
 - Rust trigger SDK
 - Install trigger should be able to be called again to update the trigger's configuration.
 - When we check the name for created identifiers make sure we use the same check as the one for the sdk config
+- Pipeline validate - must have at least one task - limit parallesim to something like 20

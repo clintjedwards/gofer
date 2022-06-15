@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 )
@@ -196,6 +197,13 @@ func (p *Pipeline) Finish() error {
 	if err != nil {
 		return err
 	}
+
+	output, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s", output)
 
 	return nil
 }
