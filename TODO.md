@@ -177,3 +177,5 @@
   stopped and started. This way we can have more accurate running times instead of just leaving it as whenever
   the server restarted.
 - Rust trigger SDK
+- Install trigger should be able to be called again to update the trigger's configuration.
+- When we check the name for created identifiers make sure we use the same check as the one for the sdk config

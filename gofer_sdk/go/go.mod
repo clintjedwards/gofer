@@ -5,7 +5,6 @@ replace github.com/clintjedwards/gofer/gofer_sdk/go/proto => ./proto
 go 1.18
 
 require (
-	github.com/clintjedwards/gofer v0.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/rs/zerolog v1.27.0

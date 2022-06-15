@@ -383,8 +383,8 @@ impl Task {
         self
     }
 
-    pub fn exec(mut self, exec: Exec) -> Self {
-        self.exec = Some(exec);
+    pub fn exec(mut self, shell: String, script: String) -> Self {
+        self.exec = Some(Exec { shell, script });
         self
     }
 }

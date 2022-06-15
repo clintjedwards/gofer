@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/gofer_sdk/go/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -23,7 +23,7 @@ type installData struct {
 	Pass  string
 }
 
-// panics if env var is empty
+// Returns an error if key is empty.
 func getEnv(key string) (string, error) {
 	value := os.Getenv(key)
 	if value != "" {
@@ -106,11 +106,11 @@ func InstallTrigger(config map[string]string) error {
 	}
 
 	triggerConfig := &proto.TriggerConfig{
-		Kind:    vars.Kind,
-		Image:   vars.Image,
-		User:    vars.User,
-		Pass:    vars.Pass,
-		EnvVars: config,
+		Kind:      vars.Kind,
+		Image:     vars.Image,
+		User:      vars.User,
+		Pass:      vars.Pass,
+		Variables: config,
 	}
 
 	client := proto.NewGoferClient(conn)
@@ -145,11 +145,11 @@ func InstallNotifier(config map[string]string) error {
 	}
 
 	notifierConfig := &proto.NotifierConfig{
-		Kind:    vars.Kind,
-		Image:   vars.Image,
-		User:    vars.User,
-		Pass:    vars.Pass,
-		EnvVars: config,
+		Kind:      vars.Kind,
+		Image:     vars.Image,
+		User:      vars.User,
+		Pass:      vars.Pass,
+		Variables: config,
 	}
 
 	client := proto.NewGoferClient(conn)
