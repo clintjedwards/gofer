@@ -11,11 +11,11 @@ fn format_env_var(key: &str, value: &str) -> String {
     return format!("{}={}", key, value);
 }
 
-pub struct Engine {
+pub struct Docker {
     client: Arc<bollard::Docker>,
 }
 
-impl Engine {
+impl Docker {
     pub async fn new(prune: bool, prune_interval: u64) -> Result<Self, SchedulerError> {
         let client = bollard::Docker::connect_with_socket_defaults().map_err(|e| {
             SchedulerError::Connection(format!(
@@ -63,7 +63,7 @@ impl Engine {
 }
 
 #[async_trait]
-impl Scheduler for Engine {
+impl Scheduler for Docker {
     async fn start_container(
         &self,
         req: StartContainerRequest,

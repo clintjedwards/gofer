@@ -4,6 +4,7 @@ use crate::conf;
 use crate::models::TaskRunState;
 use async_trait::async_trait;
 use futures::Stream;
+use serde::Deserialize;
 use std::{collections::HashMap, pin::Pin};
 
 /// Represents different scheduler failure possibilities.
@@ -137,19 +138,19 @@ pub trait Scheduler {
     ) -> Pin<Box<dyn Stream<Item = Result<Log, SchedulerError>>>>;
 }
 
-pub enum SchedulerEngine {
+#[derive(Debug, Clone, Deserialize, strum::Display, strum::EnumString)]
+pub enum Engine {
     Docker,
 }
 
 pub async fn init_scheduler(
-    engine: SchedulerEngine,
-    config: conf::api::Scheduler,
-) -> Result<Box<dyn Scheduler>, SchedulerError> {
+    config: &conf::api::Scheduler,
+) -> Result<Box<dyn Scheduler + Send + Sync>, SchedulerError> {
     #[allow(clippy::match_single_binding)]
-    match engine {
-        SchedulerEngine::Docker => {
-            if let Some(config) = config.docker {
-                let engine = docker::Engine::new(config.prune, config.prune_interval).await?;
+    match config.engine {
+        Engine::Docker => {
+            if let Some(config) = &config.docker {
+                let engine = docker::Docker::new(config.prune, config.prune_interval).await?;
                 Ok(Box::new(engine))
             } else {
                 Err(SchedulerError::FailedPrecondition(

@@ -29,8 +29,7 @@ pub enum ServiceCommands {
 
 impl CliHarness {
     pub async fn service_start(&self, config: conf::api::Config) {
-        let api = api::Api::new(config).await;
-        api.start_service().await;
+        api::Api::start(config).await;
     }
 
     pub async fn service_info(&self) {

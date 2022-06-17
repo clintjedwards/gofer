@@ -1,7 +1,7 @@
 mod service;
 mod validate;
 
-use crate::{conf, frontend, models, storage};
+use crate::{conf, frontend, models, scheduler, storage};
 use gofer_proto::{
     gofer_server::{Gofer, GoferServer},
     *,
@@ -9,8 +9,8 @@ use gofer_proto::{
 
 use futures::Stream;
 use slog_scope::info;
-use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::{pin::Pin, str::FromStr};
 use thiserror::Error;
 use tonic::{Request, Response, Status};
 
@@ -32,10 +32,10 @@ fn epoch() -> u64 {
     u64::try_from(current_epoch).unwrap()
 }
 
-#[derive(Clone)]
 pub struct Api {
     conf: conf::api::Config,
     storage: storage::Db,
+    scheduler: Box<dyn scheduler::Scheduler + Sync + Send>,
 }
 
 #[tonic::async_trait]
@@ -664,18 +664,78 @@ impl Gofer for Api {
     ) -> Result<Response<DeleteTaskRunLogsResponse>, Status> {
         todo!()
     }
+
+    async fn get_trigger(
+        &self,
+        request: Request<GetTriggerRequest>,
+    ) -> Result<Response<GetTriggerResponse>, Status> {
+        todo!()
+    }
+
+    async fn list_triggers(
+        &self,
+        request: Request<ListTriggersRequest>,
+    ) -> Result<Response<ListTriggersResponse>, Status> {
+        todo!()
+    }
+
+    async fn install_trigger(
+        &self,
+        request: Request<InstallTriggerRequest>,
+    ) -> Result<Response<InstallTriggerResponse>, Status> {
+        todo!()
+    }
+
+    async fn uninstall_trigger(
+        &self,
+        request: Request<UninstallTriggerRequest>,
+    ) -> Result<Response<UninstallTriggerResponse>, Status> {
+        todo!()
+    }
+
+    async fn get_notifier(
+        &self,
+        request: Request<GetNotifierRequest>,
+    ) -> Result<Response<GetNotifierResponse>, Status> {
+        todo!()
+    }
+
+    async fn list_notifiers(
+        &self,
+        request: Request<ListNotifiersRequest>,
+    ) -> Result<Response<ListNotifiersResponse>, Status> {
+        todo!()
+    }
+
+    async fn install_notifier(
+        &self,
+        request: Request<InstallNotifierRequest>,
+    ) -> Result<Response<InstallNotifierResponse>, Status> {
+        todo!()
+    }
+
+    async fn uninstall_notifier(
+        &self,
+        request: Request<UninstallNotifierRequest>,
+    ) -> Result<Response<UninstallNotifierResponse>, Status> {
+        todo!()
+    }
 }
 
 impl Api {
-    /// Create new API object. Subsequently you can run start_service to start the server.
-    pub async fn new(conf: conf::api::Config) -> Self {
+    /// Create a new instance of API with all services started.
+    pub async fn start(conf: conf::api::Config) {
         let storage = storage::Db::new(&conf.server.storage_path).await.unwrap();
+        let scheduler = scheduler::init_scheduler(&conf.scheduler).await.unwrap();
 
-        let api = Api { conf, storage };
+        let api = Api {
+            conf,
+            storage,
+            scheduler,
+        };
 
         api.create_default_namespace().await.unwrap();
-
-        api
+        api.start_service().await;
     }
 
     /// Gofer starts with a default namespace that all users have access to.
@@ -701,21 +761,23 @@ impl Api {
     }
 
     /// Start a TLS enabled, multiplexed, grpc/http server.
-    pub async fn start_service(&self) {
+    pub async fn start_service(self) {
         let rest =
             axum::Router::new().route("/*path", axum::routing::any(frontend::frontend_handler));
-        let grpc = GoferServer::new(self.clone());
+
+        let config = self.conf.clone();
+        let cert = config.server.tls_cert.clone().into_bytes();
+        let key = config.server.tls_key.clone().into_bytes();
+
+        let grpc = GoferServer::new(self);
 
         let service = service::MultiplexService { rest, grpc };
 
-        let cert = self.conf.server.tls_cert.clone().into_bytes();
-        let key = self.conf.server.tls_key.clone().into_bytes();
-
-        if self.conf.general.dev_mode {
-            service::start_server(service, &self.conf.server.url).await;
+        if config.general.dev_mode {
+            service::start_server(service, &config.server.url).await;
             return;
         }
 
-        service::start_tls_server(service, &self.conf.server.url, cert, key).await;
+        service::start_tls_server(service, &config.server.url, cert, key).await;
     }
 }

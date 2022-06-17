@@ -149,13 +149,9 @@
 - Possibly make the comfy-tables crate respect NO_COLOR
 - Take a look at all the places we unwrap and clean up if needed.
 - Reflection doesn't work.
-- Move validators of the models in the new fn to the api. THe api can do much better at validating that things
-  are correct.
-- Implement object store
-- Refactor storage into smaller functions
-- To prevent issues when a trigger container is being restarted, it needs to somehow communicate it is brand new
+- To prevent issues when a trigger container is being restarted(Lets say by the scheduler), it needs to somehow communicate it is brand new
   and ready to reload pipeline settings.
-- We may need to rewrite the config package to allow for:
+  -> We may need to rewrite the config package to allow for:
   - cleaner and less obtuse env variables parsing
   - the ability to alter configuration and write it back to the file.
 - Create a namespace set command that allows the user to switch between namespaces and save it in their configuration file.
@@ -181,3 +177,4 @@
 - When we check the name for created identifiers make sure we use the same check as the one for the sdk config
 - Pipeline validate - must have at least one task - limit parallesim to something like 20
 - Remove replace directive use normal go get
+- Write the compiler logic for golang now that the sdk is finished.
