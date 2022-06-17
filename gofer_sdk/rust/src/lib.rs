@@ -1,5 +1,4 @@
 pub mod config;
-pub mod sdk_proto;
 pub mod trigger;
 
 use lazy_regex::regex;

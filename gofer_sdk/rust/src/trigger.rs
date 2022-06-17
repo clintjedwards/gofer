@@ -1,4 +1,8 @@
-use crate::sdk_proto::*;
+use gofer_proto::{
+    ExternalEventRequest, ExternalEventResponse, InfoRequest, InfoResponse, ShutdownRequest,
+    ShutdownResponse, SubscribeRequest, SubscribeResponse, UnsubscribeRequest, UnsubscribeResponse,
+    WatchRequest, WatchResponse,
+};
 
 pub enum TriggerError {
     Unknown,
