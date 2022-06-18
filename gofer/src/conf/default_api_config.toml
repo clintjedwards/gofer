@@ -11,6 +11,9 @@ storage_path = "/tmp/gofer.db"
 tls_cert = ""
 tls_key = ""
 
+[scheduler]
+engine = "Docker" # possible values: ["Docker"]
+
 [scheduler.docker]
 prune = true
 prune_interval = 604800

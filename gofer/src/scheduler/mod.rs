@@ -5,6 +5,7 @@ use crate::models::TaskRunState;
 use async_trait::async_trait;
 use futures::Stream;
 use serde::Deserialize;
+use slog_scope::error;
 use std::{collections::HashMap, pin::Pin};
 
 /// Represents different scheduler failure possibilities.
@@ -138,9 +139,17 @@ pub trait Scheduler {
     ) -> Pin<Box<dyn Stream<Item = Result<Log, SchedulerError>>>>;
 }
 
-#[derive(Debug, Clone, Deserialize, strum::Display, strum::EnumString)]
+#[derive(
+    Debug, Clone, Deserialize, PartialEq, Eq, strum::Display, strum::EnumString, econf::LoadEnv,
+)]
 pub enum Engine {
     Docker,
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Engine::Docker
+    }
 }
 
 pub async fn init_scheduler(

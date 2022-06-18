@@ -151,9 +151,6 @@
 - Reflection doesn't work.
 - To prevent issues when a trigger container is being restarted(Lets say by the scheduler), it needs to somehow communicate it is brand new
   and ready to reload pipeline settings.
-  -> We may need to rewrite the config package to allow for:
-  - cleaner and less obtuse env variables parsing
-  - the ability to alter configuration and write it back to the file.
 - Create a namespace set command that allows the user to switch between namespaces and save it in their configuration file.
 - Document/Comment all libraries
 - Because of the way pipelines work now it is possible to write your pipeline in any language
@@ -163,8 +160,7 @@
 - Fix this regression: {{- if not (len $trigger.Events) 0 }} recent events:{{- end }} in pipeline get
 - Fix events for all cli stuff.
 - We should be more detailed on some of the parameters in proto, instead of 'id' use 'pipeline_id'
-- IN our integration testing test that cascading deletes works
-- See where we can clean up some of the extra impls we made assuming we would import from models instead of a separate sdk
+- In our integration testing for storage, test that cascading deletes works
 - Separate store_keys into it's own table
 - Reevaluate if we need docker-cancellations
 - We can make an env package that doesn't suck.
@@ -178,3 +174,11 @@
 - Pipeline validate - must have at least one task - limit parallesim to something like 20
 - Remove replace directive use normal go get
 - Write the compiler logic for golang now that the sdk is finished.
+- Config is near completion we just have to fix: https://github.com/YushiOMOTE/econf/issues/11
+
+- We may need to rewrite the config package to allow for:
+  - cleaner and less obtuse env variables parsing
+  - the ability to alter configuration and write it back to the file.
+  - Write extensive documentation about configuration order.
+  - We don't have to support time.Duration in humanized form, seconds is fine.
+- We should write the event system early so that we can just slot it in everywhere.

@@ -92,30 +92,19 @@ impl Kind {
         // Then attempt to deserialize based on which config needed.
         match self {
             Kind::Api(_) => {
-                // Lastly env vars always override everything.
-                let config_src = config_src_builder
-                    .add_source(
-                        config::Environment::with_prefix("GOFER")
-                            .prefix_separator("_")
-                            .separator("__")
-                            .ignore_empty(true),
-                    )
-                    .build()?;
-
+                let config_src = config_src_builder.build()?;
                 let parsed_config = config_src.try_deserialize::<api::Config>()?;
+
+                // Lastly env vars always override everything.
+                let parsed_config = econf::load(parsed_config, "GOFER");
                 Ok(Kind::Api(parsed_config))
             }
             Kind::Cli(_) => {
-                // Lastly env vars always override everything.
-                let config_src = config_src_builder
-                    .add_source(
-                        config::Environment::with_prefix("GOFER_CLI")
-                            .separator("_")
-                            .ignore_empty(true),
-                    )
-                    .build()?;
-
+                let config_src = config_src_builder.build()?;
                 let parsed_config = config_src.try_deserialize::<cli::Config>()?;
+
+                // Lastly env vars always override everything.
+                let parsed_config = econf::load(parsed_config, "GOFER_CLI");
                 Ok(Kind::Cli(parsed_config))
             }
         }
