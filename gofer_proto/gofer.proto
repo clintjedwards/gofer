@@ -83,9 +83,6 @@ service Gofer {
   // GetRun returns the details of a single run.
   rpc GetRun(GetRunRequest) returns (GetRunResponse);
 
-  // BatchGetRuns returns multiple runs by ID.
-  rpc BatchGetRuns(BatchGetRunsRequest) returns (BatchGetRunsResponse);
-
   // ListRuns returns a list of all runs by Pipeline ID. Pagination can be
   // controlled via the offset and limit parameters of the request.
   rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);

@@ -1,6 +1,6 @@
 use crate::{RunStatus, TaskRunStatus};
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
     /// The Any kind is a special event kind that denotes the caller wants to listen for any event.
     /// It should not be used as a normal event type(for example do not publish anything with it).
@@ -81,6 +81,7 @@ pub enum EventKind {
 }
 
 /// A single event type
+#[derive(Debug, PartialEq, Eq)]
 pub struct Event {
     /// Unique identifier for event.
     pub id: u64,

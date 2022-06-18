@@ -22,7 +22,7 @@ impl Db {
 
         let result = sqlx::query(
             r#"
-        SELECT id, kind, emitted, metadata
+        SELECT id, kind, emitted
         FROM events
         ORDER BY id DESC
         LIMIT ?
@@ -33,15 +33,11 @@ impl Db {
         .bind(offset as i64)
         .map(|row: SqliteRow| Event {
             id: row.get::<i64, _>("id") as u64,
-            kind: gofer_models::EventKind::from_str(row.get("kind"))
-                .map_err(|_| StorageError::Parse {
-                    value: row.get("kind"),
-                    column: "kind".to_string(),
-                    err: "could not parse value into event kind enum".to_string(),
-                })
-                .unwrap(),
+            kind: {
+                let kind = row.get::<String, _>("kind");
+                serde_json::from_str(&kind).unwrap()
+            },
             emitted: row.get::<i64, _>("emitted") as u64,
-            metadata: row.get("metadata"),
         })
         .fetch_all(&mut conn)
         .await;
@@ -50,23 +46,21 @@ impl Db {
     }
 
     /// Create a new event.
-    pub async fn create_event(&self, event: &Event) -> Result<(), StorageError> {
+    pub async fn create_event(&self, event: &Event) -> Result<u64, StorageError> {
         let mut conn = self
             .pool
             .acquire()
             .map_err(|e| StorageError::Unknown(e.to_string()))
             .await?;
 
-        sqlx::query(
+        let result = sqlx::query(
             r#"
-        INSERT INTO events (id, kind, emitted, metadata)
-        VALUES (?, ?, ?, ?);
+        INSERT INTO events (kind, emitted)
+        VALUES (?, ?);
             "#,
         )
-        .bind(event.id as i64)
         .bind(serde_json::to_string(&event.kind).unwrap())
         .bind(event.emitted as i64)
-        .bind(&event.metadata)
         .execute(&mut conn)
         .map_err(|e| match e {
             sqlx::Error::Database(database_err) => {
@@ -81,11 +75,11 @@ impl Db {
         })
         .await?;
 
-        Ok(())
+        Ok(result.last_insert_rowid() as u64)
     }
 
     /// Get details on a specific event.
-    pub async fn get_event(&self, id: &str) -> Result<Event, StorageError> {
+    pub async fn get_event(&self, id: u64) -> Result<Event, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -94,23 +88,19 @@ impl Db {
 
         sqlx::query(
             r#"
-        SELECT id, kind, emitted, metadata
+        SELECT id, kind, emitted
         FROM events
         WHERE id = ?;
             "#,
         )
-        .bind(id)
+        .bind(id as i64)
         .map(|row: SqliteRow| Event {
             id: row.get::<i64, _>("id") as u64,
-            kind: gofer_models::EventKind::from_str(row.get("kind"))
-                .map_err(|_| StorageError::Parse {
-                    value: row.get("kind"),
-                    column: "kind".to_string(),
-                    err: "could not parse value into event kind enum".to_string(),
-                })
-                .unwrap(),
+            kind: {
+                let kind = row.get::<String, _>("kind");
+                serde_json::from_str(&kind).unwrap()
+            },
             emitted: row.get::<i64, _>("emitted") as u64,
-            metadata: row.get("metadata"),
         })
         .fetch_one(&mut conn)
         .map_err(|e| match e {
@@ -120,7 +110,7 @@ impl Db {
         .await
     }
 
-    pub async fn delete_event(&self, id: &str) -> Result<(), StorageError> {
+    pub async fn delete_event(&self, id: u64) -> Result<(), StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -133,7 +123,7 @@ impl Db {
         WHERE id = ?;
             "#,
         )
-        .bind(id)
+        .bind(id as i64)
         .execute(&mut conn)
         .map_ok(|_| ())
         .map_err(|e| match e {

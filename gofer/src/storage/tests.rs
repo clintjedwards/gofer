@@ -404,9 +404,31 @@ async fn crud_task_runs() {
 async fn crud_events() {
     let harness = TestHarness::new().await;
 
-    let test_event_one =
-        gofer_models::Event::new("test_namespace", "Test Namespace", "Test Description");
-    let test_event_two =
-        gofer_models::Event::new("test_namespace", "Test Namespace", "Test Description");
-    harness.db.create_namespace(&test_namespace).await.unwrap();
+    let mut test_event_one = gofer_models::Event::new(gofer_models::EventKind::CreatedNamespace);
+    let mut test_event_two = gofer_models::Event::new(gofer_models::EventKind::CreatedPipeline {
+        namespace_id: "test_namespace".to_string(),
+        pipeline_id: "test_pipeline".to_string(),
+    });
+    let id_one = harness.db.create_event(&test_event_one).await.unwrap();
+    let id_two = harness.db.create_event(&test_event_two).await.unwrap();
+
+    assert_eq!(id_one, 1);
+    assert_eq!(id_two, 2);
+
+    test_event_one.id = id_one;
+    test_event_two.id = id_two;
+
+    let events = harness.db.list_events(0, 0).await.unwrap();
+
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0], test_event_two);
+    assert_eq!(events[1], test_event_one);
+
+    let event = harness.db.get_event(2).await.unwrap();
+    assert_eq!(event, test_event_two);
+
+    harness.db.delete_event(1).await.unwrap();
+    let event = harness.db.get_event(1).await.unwrap_err();
+
+    assert_eq!(event, StorageError::NotFound);
 }

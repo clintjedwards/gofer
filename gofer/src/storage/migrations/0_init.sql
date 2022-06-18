@@ -121,9 +121,7 @@ CREATE TABLE IF NOT EXISTS task_runs (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS events (
-    id       TEXT NOT NULL,
+    id       INTEGER PRIMARY KEY,
     kind     TEXT NOT NULL,
-    emitted  INTEGER NOT NULL,
-    metadata TEXT,
-    PRIMARY KEY (id)
+    emitted  INTEGER NOT NULL
 ) STRICT;

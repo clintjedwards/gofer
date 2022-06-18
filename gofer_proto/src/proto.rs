@@ -1396,24 +1396,6 @@ pub mod gofer_client {
             let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetRun");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// BatchGetRuns returns multiple runs by ID.
-        pub async fn batch_get_runs(
-            &mut self,
-            request: impl tonic::IntoRequest<super::BatchGetRunsRequest>,
-        ) -> Result<tonic::Response<super::BatchGetRunsResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/BatchGetRuns");
-            self.inner.unary(request.into_request(), path, codec).await
-        }
         /// ListRuns returns a list of all runs by Pipeline ID. Pagination can be
         /// controlled via the offset and limit parameters of the request.
         pub async fn list_runs(
@@ -2047,11 +2029,6 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::GetRunRequest>,
         ) -> Result<tonic::Response<super::GetRunResponse>, tonic::Status>;
-        /// BatchGetRuns returns multiple runs by ID.
-        async fn batch_get_runs(
-            &self,
-            request: tonic::Request<super::BatchGetRunsRequest>,
-        ) -> Result<tonic::Response<super::BatchGetRunsResponse>, tonic::Status>;
         /// ListRuns returns a list of all runs by Pipeline ID. Pagination can be
         /// controlled via the offset and limit parameters of the request.
         async fn list_runs(
@@ -2787,46 +2764,6 @@ pub mod gofer_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetRunSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/BatchGetRuns" => {
-                    #[allow(non_camel_case_types)]
-                    struct BatchGetRunsSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<super::BatchGetRunsRequest>
-                    for BatchGetRunsSvc<T> {
-                        type Response = super::BatchGetRunsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::BatchGetRunsRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).batch_get_runs(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = BatchGetRunsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
