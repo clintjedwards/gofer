@@ -1,9 +1,9 @@
 use std::ops::Deref;
 
-use crate::models::{Run, RunState, RunStatus};
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use sqlx::{sqlite::SqliteRow, Acquire, Execute, QueryBuilder, Row, Sqlite};
+use gofer_models::{Run, RunState, RunStatus};
+use sqlx::{sqlite::SqliteRow, Acquire, Row};
 use std::str::FromStr;
 
 impl Db {
@@ -276,103 +276,6 @@ impl Db {
         .await?;
 
         Ok(run)
-    }
-
-    /// Get details on several runs.
-    pub async fn batch_get_runs(
-        &self,
-        namespace: &str,
-        pipeline: &str,
-        ids: &Vec<u64>,
-    ) -> Result<Vec<Run>, StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let mut run_query: QueryBuilder<Sqlite> = QueryBuilder::new(
-            r#"SELECT namespace, pipeline, id, started, ended, state, status, failure_info,
-            task_runs, trigger, variables, store_info
-            FROM runs
-            WHERE "#,
-        );
-
-        run_query.push("namespace = ");
-        run_query.push_bind(namespace);
-        run_query.push(" AND pipeline = ");
-        run_query.push_bind(pipeline);
-        run_query.push(" AND id IN (");
-
-        for (index, id) in ids.iter().enumerate() {
-            run_query.push_bind(*id as i64);
-
-            if index + 1 != ids.len() {
-                run_query.push(", ");
-            }
-        }
-
-        run_query.push(");");
-        let run_query = run_query.build();
-
-        let runs = run_query
-            .map(|row: SqliteRow| Run {
-                namespace: row.get("namespace"),
-                pipeline: row.get("pipeline"),
-                started: row.get::<i64, _>("started") as u64,
-                ended: row.get::<i64, _>("ended") as u64,
-                id: row.get::<i64, _>("id") as u64,
-                state: RunState::from_str(row.get("state"))
-                    .map_err(|_| StorageError::Parse {
-                        value: row.get("state"),
-                        column: "state".to_string(),
-                        err: "could not parse value into run state enum".to_string(),
-                    })
-                    .unwrap(),
-                status: RunStatus::from_str(row.get("status"))
-                    .map_err(|_| StorageError::Parse {
-                        value: row.get("status"),
-                        column: "status".to_string(),
-                        err: "could not parse value into run status enum".to_string(),
-                    })
-                    .unwrap(),
-                failure_info: {
-                    let failure_info = row.get::<String, _>("failure_info");
-                    if failure_info.is_empty() {
-                        None
-                    } else {
-                        serde_json::from_str(&failure_info).unwrap()
-                    }
-                },
-                task_runs: {
-                    let task_run_json = row.get::<String, _>("task_runs");
-                    serde_json::from_str(&task_run_json).unwrap()
-                },
-                trigger: {
-                    let trigger_info_json = row.get::<String, _>("trigger");
-                    serde_json::from_str(&trigger_info_json).unwrap()
-                },
-                variables: {
-                    let variables_json = row.get::<String, _>("variables");
-                    serde_json::from_str(&variables_json).unwrap()
-                },
-                store_info: {
-                    let store_info = row.get::<String, _>("store_info");
-                    if store_info.is_empty() {
-                        None
-                    } else {
-                        serde_json::from_str(&store_info).unwrap()
-                    }
-                },
-            })
-            .fetch_all(&mut conn)
-            .map_err(|e| match e {
-                sqlx::Error::RowNotFound => StorageError::NotFound,
-                _ => StorageError::Unknown(e.to_string()),
-            })
-            .await?;
-
-        Ok(runs)
     }
 
     pub async fn update_run_state(

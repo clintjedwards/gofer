@@ -1,4 +1,4 @@
-use crate::models::{epoch, Task};
+use super::{epoch, Task};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 

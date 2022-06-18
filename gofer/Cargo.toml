@@ -42,6 +42,7 @@ tower = "0.4.12"
 url = "2.2.2"
 gofer_proto = { path = "../gofer_proto" }
 gofer_sdk = { path = "../gofer_sdk/rust" }
+gofer_models = { path = "../gofer_models" }
 
 [dev-dependencies]
 rand = "0.8.5"

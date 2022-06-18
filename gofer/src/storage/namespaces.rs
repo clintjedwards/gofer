@@ -1,8 +1,8 @@
 use std::ops::Deref;
 
-use crate::models::Namespace;
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
+use gofer_models::Namespace;
 use sqlx::{sqlite::SqliteRow, Row};
 
 impl Db {

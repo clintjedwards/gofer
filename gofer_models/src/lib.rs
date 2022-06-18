@@ -1,9 +1,11 @@
+mod event;
 mod namespace;
 mod pipeline;
 mod run;
 mod task;
 mod task_run;
 
+pub use self::event::*;
 pub use self::namespace::*;
 pub use self::pipeline::*;
 pub use self::run::*;

@@ -1,3 +1,4 @@
+mod events;
 mod namespaces;
 mod pipelines;
 mod runs;

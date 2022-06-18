@@ -1,10 +1,10 @@
 use std::{collections::HashMap, ops::Deref};
 
-use crate::models::{
-    Pipeline, PipelineNotifierSettings, PipelineState, PipelineTriggerSettings, RunState, Task,
-};
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
+use gofer_models::{
+    Pipeline, PipelineNotifierSettings, PipelineState, PipelineTriggerSettings, RunState, Task,
+};
 use sqlx::{sqlite::SqliteRow, Acquire, Row};
 use std::str::FromStr;
 

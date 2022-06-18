@@ -876,6 +876,7 @@ dependencies = [
  "config",
  "econf",
  "futures",
+ "gofer_models",
  "gofer_proto",
  "gofer_sdk",
  "hyper",
@@ -900,6 +901,16 @@ dependencies = [
  "tonic-reflection",
  "tower",
  "url",
+]
+
+[[package]]
+name = "gofer_models"
+version = "0.1.0"
+dependencies = [
+ "gofer_proto",
+ "gofer_sdk",
+ "serde",
+ "strum 0.24.0",
 ]
 
 [[package]]

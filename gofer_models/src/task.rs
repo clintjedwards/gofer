@@ -1,4 +1,4 @@
-use crate::models::{Variable, VariableOwner};
+use super::{Variable, VariableOwner};
 use gofer_sdk::config;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};

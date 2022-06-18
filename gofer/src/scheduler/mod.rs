@@ -1,9 +1,9 @@
 mod docker;
 
 use crate::conf;
-use crate::models::TaskRunState;
 use async_trait::async_trait;
 use futures::Stream;
+use gofer_models::TaskRunState;
 use serde::Deserialize;
 use slog_scope::error;
 use std::{collections::HashMap, pin::Pin};

@@ -176,9 +176,4 @@
 - Write the compiler logic for golang now that the sdk is finished.
 - Config is near completion we just have to fix: https://github.com/YushiOMOTE/econf/issues/11
 
-- We may need to rewrite the config package to allow for:
-  - cleaner and less obtuse env variables parsing
-  - the ability to alter configuration and write it back to the file.
-  - Write extensive documentation about configuration order.
-  - We don't have to support time.Duration in humanized form, seconds is fine.
 - We should write the event system early so that we can just slot it in everywhere.

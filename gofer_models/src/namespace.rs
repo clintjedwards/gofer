@@ -1,4 +1,4 @@
-use crate::models::epoch;
+use super::epoch;
 
 /// Represents a division of pipelines. Normally it is used to divide teams or logically different
 /// sections of workloads. This is the highest level unit.

@@ -1,5 +1,4 @@
-use super::Variable;
-use crate::models::epoch;
+use super::{epoch, Variable};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 
@@ -41,7 +40,7 @@ impl From<RunState> for gofer_proto::run::RunState {
 }
 
 /// Represents the current status of a completed run.
-#[derive(Debug, Display, EnumString, PartialEq, Eq)]
+#[derive(Debug, Display, EnumString, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RunStatus {
     /// Could not determine current state of the status. Should only be in this state if
     /// the run has not yet completed.

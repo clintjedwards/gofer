@@ -1,8 +1,8 @@
 use std::ops::Deref;
 
-use crate::models::{TaskRun, TaskRunState, TaskRunStatus};
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
+use gofer_models::{TaskRun, TaskRunState, TaskRunStatus};
 use sqlx::{sqlite::SqliteRow, Acquire, Row};
 use std::str::FromStr;
 

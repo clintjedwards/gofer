@@ -1,8 +1,8 @@
 use super::*;
-use crate::models::TaskRunState;
 use async_trait::async_trait;
 use futures::stream::TryStreamExt;
 use futures::Stream;
+use gofer_models::TaskRunState;
 use slog_scope::{debug, error};
 use std::pin::Pin;
 use std::{collections::HashMap, sync::Arc};

@@ -1,8 +1,8 @@
 mod api;
 mod cli;
 mod conf;
+mod events;
 mod frontend;
-mod models;
 mod scheduler;
 mod storage;
 

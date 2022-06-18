@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["gofer", "gofer_sdk/rust", "gofer_proto"]
+members = ["gofer", "gofer_sdk/rust", "gofer_proto", "gofer_models"]
 exclude = ["example_pipelines"]

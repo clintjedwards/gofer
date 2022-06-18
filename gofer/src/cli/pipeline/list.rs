@@ -1,6 +1,5 @@
 use super::super::CliHarness;
 use crate::cli::{humanize_duration, DEFAULT_NAMESPACE};
-use crate::models;
 use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
 use std::process;
 
@@ -65,7 +64,7 @@ impl CliHarness {
                 Cell::new({
                     let state =
                         gofer_proto::pipeline::PipelineState::from_i32(pipeline.state).unwrap();
-                    models::PipelineState::from(state).to_string()
+                    gofer_models::PipelineState::from(state).to_string()
                 }),
                 Cell::new(humanize_duration(pipeline.created as i64)),
             ]);

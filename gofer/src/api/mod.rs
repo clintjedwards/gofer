@@ -1,7 +1,7 @@
 mod service;
 mod validate;
 
-use crate::{conf, frontend, models, scheduler, storage};
+use crate::{conf, frontend, scheduler, storage};
 use gofer_proto::{
     gofer_server::{Gofer, GoferServer},
     *,
@@ -9,8 +9,8 @@ use gofer_proto::{
 
 use futures::Stream;
 use slog_scope::info;
+use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{pin::Pin, str::FromStr};
 use thiserror::Error;
 use tonic::{Request, Response, Status};
 
@@ -81,7 +81,7 @@ impl Gofer for Api {
             return Err(Status::failed_precondition(e.to_string()));
         }
 
-        let new_namespace = models::Namespace::new(&args.id, &args.name, &args.description);
+        let new_namespace = gofer_models::Namespace::new(&args.id, &args.name, &args.description);
 
         let result = self.storage.create_namespace(&new_namespace).await;
         match result {
@@ -136,7 +136,7 @@ impl Gofer for Api {
 
         let result = self
             .storage
-            .update_namespace(&models::Namespace {
+            .update_namespace(&gofer_models::Namespace {
                 id: args.id.clone(),
                 name: args.name.clone(),
                 description: args.description.clone(),
@@ -232,7 +232,7 @@ impl Gofer for Api {
         };
 
         let new_pipeline =
-            models::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
+            gofer_models::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
         let result = self.storage.create_pipeline(&new_pipeline).await;
         match result {
@@ -348,7 +348,11 @@ impl Gofer for Api {
 
         let result = self
             .storage
-            .update_pipeline_state(&args.namespace_id, &args.id, models::PipelineState::Active)
+            .update_pipeline_state(
+                &args.namespace_id,
+                &args.id,
+                gofer_models::PipelineState::Active,
+            )
             .await;
         match result {
             Ok(pipeline) => pipeline,
@@ -387,7 +391,7 @@ impl Gofer for Api {
             .update_pipeline_state(
                 &args.namespace_id,
                 &args.id,
-                models::PipelineState::Disabled,
+                gofer_models::PipelineState::Disabled,
             )
             .await;
         match result {
@@ -426,7 +430,7 @@ impl Gofer for Api {
         };
 
         let new_pipeline =
-            models::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
+            gofer_models::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
         let result = self.storage.update_pipeline(&new_pipeline).await;
         match result {
@@ -745,7 +749,7 @@ impl Api {
         const DEFAULT_NAMESPACE_DESCRIPTION: &str =
             "The default namespace when no other namespace is specified.";
 
-        let default_namespace = models::Namespace::new(
+        let default_namespace = gofer_models::Namespace::new(
             DEFAULT_NAMESPACE_ID,
             DEFAULT_NAMESPACE_NAME,
             DEFAULT_NAMESPACE_DESCRIPTION,

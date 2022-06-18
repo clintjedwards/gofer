@@ -119,3 +119,11 @@ CREATE TABLE IF NOT EXISTS task_runs (
     FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, run, id)
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS events (
+    id       TEXT NOT NULL,
+    kind     TEXT NOT NULL,
+    emitted  INTEGER NOT NULL,
+    metadata TEXT,
+    PRIMARY KEY (id)
+) STRICT;
