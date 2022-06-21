@@ -4,6 +4,9 @@
 dev_mode = true
 log_level = "debug"
 encryption_key = "default"
+# Events are only kept for a finite amount of time
+events_prune_interval = 604800 # How often to clear out old events past the retention date (in seconds)
+events_retention = 7889238     # At what age should events be pruned (in seconds)
 
 [server]
 url = "127.0.0.1:8080"

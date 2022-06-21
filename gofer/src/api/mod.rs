@@ -1,14 +1,13 @@
 mod service;
 mod validate;
 
-use crate::{conf, frontend, scheduler, storage};
+use crate::{conf, events, frontend, scheduler, storage};
 use gofer_proto::{
     gofer_server::{Gofer, GoferServer},
     *,
 };
 
 use futures::Stream;
-use slog_scope::info;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
@@ -36,6 +35,7 @@ pub struct Api {
     conf: conf::api::Config,
     storage: storage::Db,
     scheduler: Box<dyn scheduler::Scheduler + Sync + Send>,
+    event_bus: events::EventBus,
 }
 
 #[tonic::async_trait]
@@ -97,7 +97,11 @@ impl Gofer for Api {
             },
         };
 
-        info!("Created new namespace"; "namespace" => format!("{:?}", new_namespace));
+        self.event_bus
+            .publish(gofer_models::EventKind::CreatedNamespace {
+                namespace_id: new_namespace.id.clone(),
+            })
+            .await;
         Ok(Response::new(CreateNamespaceResponse {
             namespace: Some(new_namespace.into()),
         }))
@@ -181,7 +185,11 @@ impl Gofer for Api {
             },
         };
 
-        info!("Deleted namespace"; "id" => &args.id);
+        self.event_bus
+            .publish(gofer_models::EventKind::DeletedNamespace {
+                namespace_id: args.id.clone(),
+            })
+            .await;
         Ok(Response::new(DeleteNamespaceResponse {}))
     }
 
@@ -248,7 +256,12 @@ impl Gofer for Api {
             },
         };
 
-        info!("Created new pipeline"; "pipeline" => format!("{:?}", new_pipeline));
+        self.event_bus
+            .publish(gofer_models::EventKind::CreatedPipeline {
+                namespace_id: new_pipeline.namespace.clone(),
+                pipeline_id: new_pipeline.id.clone(),
+            })
+            .await;
         Ok(Response::new(CreatePipelineResponse {
             pipeline: Some(new_pipeline.into()),
         }))
@@ -484,7 +497,12 @@ impl Gofer for Api {
             },
         };
 
-        info!("Deleted pipeline"; "id" => &args.id);
+        self.event_bus
+            .publish(gofer_models::EventKind::DeletedPipeline {
+                namespace_id: args.namespace_id.clone(),
+                pipeline_id: args.id.clone(),
+            })
+            .await;
         Ok(Response::new(DeletePipelineResponse {}))
     }
 
@@ -688,11 +706,17 @@ impl Api {
     pub async fn start(conf: conf::api::Config) {
         let storage = storage::Db::new(&conf.server.storage_path).await.unwrap();
         let scheduler = scheduler::init_scheduler(&conf.scheduler).await.unwrap();
+        let event_bus = events::EventBus::new(
+            storage.clone(),
+            conf.general.events_retention,
+            conf.general.events_prune_interval,
+        );
 
         let api = Api {
             conf,
             storage,
             scheduler,
+            event_bus,
         };
 
         api.create_default_namespace().await.unwrap();
@@ -713,7 +737,14 @@ impl Api {
         );
 
         match self.storage.create_namespace(&default_namespace).await {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                self.event_bus
+                    .publish(gofer_models::EventKind::CreatedNamespace {
+                        namespace_id: DEFAULT_NAMESPACE_ID.to_string(),
+                    })
+                    .await;
+                Ok(())
+            }
             Err(e) => match e {
                 storage::StorageError::Exists => Ok(()),
                 _ => Err(e),

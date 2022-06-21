@@ -13,6 +13,9 @@ pub enum EventKind {
     CreatedNamespace {
         namespace_id: String,
     },
+    DeletedNamespace {
+        namespace_id: String,
+    },
 
     // Pipeline events
     DisabledPipeline {

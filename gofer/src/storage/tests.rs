@@ -13,7 +13,7 @@ impl TestHarness {
     async fn new() -> Self {
         let mut rng = rand::thread_rng();
         let append_num: u8 = rng.gen();
-        let storage_path = format!("/tmp/gofer_integration_test{}.db", append_num);
+        let storage_path = format!("/tmp/gofer_tests_storage{}.db", append_num);
 
         let db = Db::new(&storage_path).await.unwrap();
 

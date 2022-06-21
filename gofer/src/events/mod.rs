@@ -12,6 +12,9 @@ use strum::IntoEnumIterator;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EventError {
+    #[error("unforeseen error occurred; '{0}'")]
+    Unknown(String),
+
     #[error("could not find event '{0}'")]
     NotFound(u64),
 
@@ -81,37 +84,61 @@ impl EventBus {
     pub async fn subscribe(
         &self,
         kind: gofer_models::EventKind,
-    ) -> channel::Receiver<gofer_models::Event> {
-        let event_channel_map = self.event_channel_map.read().unwrap();
+    ) -> Result<channel::Receiver<gofer_models::Event>, EventError> {
+        let event_channel_map = match self.event_channel_map.read() {
+            Ok(v) => v,
+            Err(e) => {
+                error!("could not subscribe to event"; "error" => e.to_string());
+                return Err(EventError::Unknown(e.to_string()));
+            }
+        };
         let (_, read_channel) = &event_channel_map[&mem::discriminant(&kind)];
 
-        read_channel.clone()
+        Ok(read_channel.clone())
     }
 
     /// Allows caller to emit a new event to the eventbus. Mutates event to have the proper
     /// id and returns the id generated.
-    pub async fn publish(&self, event: &mut gofer_models::Event) -> Result<u64, EventError> {
-        let id = self
-            .storage
-            .create_event(event)
-            .await
-            .map_err(|e| EventError::StorageError(e.to_string()))?;
+    pub async fn publish(&self, kind: gofer_models::EventKind) -> Option<gofer_models::Event> {
+        let mut new_event = gofer_models::Event::new(kind.clone());
 
-        event.id = id;
+        let id = match self.storage.create_event(&new_event).await {
+            Ok(id) => id,
+            Err(e) => {
+                error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
+                return None;
+            }
+        };
 
-        let event_channel_map = self.event_channel_map.read().unwrap();
-        let (event_send_channel, _) = &event_channel_map[&mem::discriminant(&event.kind)];
+        new_event.id = id;
+
+        let event_channel_map = match self.event_channel_map.read() {
+            Ok(map) => map,
+            Err(e) => {
+                error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
+                return None;
+            }
+        };
+        let (event_send_channel, _) = &event_channel_map[&mem::discriminant(&kind)];
         let (any_send_channel, _) =
             &event_channel_map[&mem::discriminant(&gofer_models::EventKind::Any)];
 
-        event_send_channel
-            .send(event.clone())
-            .map_err(|e| EventError::StorageError(e.to_string()))?;
-        any_send_channel
-            .send(event.clone())
-            .map_err(|e| EventError::StorageError(e.to_string()))?;
+        match event_send_channel.send(new_event.clone()) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
+                return None;
+            }
+        };
+        match any_send_channel.send(new_event.clone()) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
+                return None;
+            }
+        };
 
-        Ok(id)
+        Some(new_event)
     }
 }
 

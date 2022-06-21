@@ -15,6 +15,8 @@ pub struct General {
     pub dev_mode: bool,
     pub log_level: String,
     pub encryption_key: String,
+    pub events_prune_interval: u64, // in seconds
+    pub events_retention: u64,      // in seconds
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
@@ -70,6 +72,8 @@ mod tests {
                 dev_mode: true,
                 log_level: "debug".to_string(),
                 encryption_key: "default".to_string(),
+                events_prune_interval: 604800,
+                events_retention: 7889238,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
@@ -103,7 +107,6 @@ mod tests {
         set_var("GOFER_GENERAL_LOG_LEVEL", "test_value");
         set_var("GOFER_SERVER_URL", "test_value");
         set_var("GOFER_SCHEDULER_ENGINE", "Docker");
-        set_var("GOFER_SCHEDULER_DOCKER_PRUNE", "false");
 
         let expected_config = Config {
             general: General {
@@ -117,10 +120,7 @@ mod tests {
             },
             scheduler: Scheduler {
                 engine: Engine::Docker,
-                docker: Some(DockerScheduler {
-                    prune: false,
-                    ..Default::default()
-                }),
+                ..Default::default()
             },
         };
         let parsed_config = econf::load(config, "GOFER");
@@ -132,6 +132,5 @@ mod tests {
         remove_var("GOFER_GENERAL_LOG_LEVEL");
         remove_var("GOFER_SERVER_URL");
         remove_var("GOFER_SCHEDULER_ENGINE");
-        remove_var("GOFER_SCHEDULER_DOCKER_PRUNE");
     }
 }
