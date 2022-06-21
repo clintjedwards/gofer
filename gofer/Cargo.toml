@@ -40,6 +40,7 @@ tokio-rustls = "0.23"
 tonic = { version = "0.7.1", features = ["tls", "transport", "tls-roots"] }
 tonic-reflection = "0.4.0"
 tower = "0.4.12"
+nanoid = "0.4.0"                                                            # UUID generation
 url = "2.2.2"
 gofer_proto = { path = "../gofer_proto" }
 gofer_sdk = { path = "../gofer_sdk/rust" }

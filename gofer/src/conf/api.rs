@@ -15,8 +15,8 @@ pub struct General {
     pub dev_mode: bool,
     pub log_level: String,
     pub encryption_key: String,
-    pub events_prune_interval: u64, // in seconds
-    pub events_retention: u64,      // in seconds
+    pub event_prune_interval: u64, // in seconds
+    pub event_retention: u64,      // in seconds
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
@@ -72,8 +72,8 @@ mod tests {
                 dev_mode: true,
                 log_level: "debug".to_string(),
                 encryption_key: "default".to_string(),
-                events_prune_interval: 604800,
-                events_retention: 7889238,
+                event_prune_interval: 604800,
+                event_retention: 7889238,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),

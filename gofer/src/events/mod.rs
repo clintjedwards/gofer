@@ -4,11 +4,10 @@ mod tests;
 use crate::storage::{self, StorageError};
 use crossbeam::{channel, sync::ShardedLock};
 use gofer_models::EventKind;
+use nanoid::nanoid;
 use slog_scope::{debug, error, info};
-use std::collections::HashMap;
-use std::mem;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use strum::IntoEnumIterator;
+use std::{collections::HashMap, mem};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EventError {
@@ -25,15 +24,36 @@ pub enum EventError {
     ChannelError(String),
 }
 
-/// A mapping of each event type to the sender and receiver channels for that type.
+pub struct Subscription<'a> {
+    id: String,
+    kind: gofer_models::EventKind,
+    event_bus: &'a EventBus,
+    pub receiver: channel::Receiver<gofer_models::Event>,
+}
+
+impl Drop for Subscription<'_> {
+    fn drop(&mut self) {
+        let mut event_channel_map = match self.event_bus.event_channel_map.write() {
+            Ok(v) => v,
+            Err(e) => {
+                error!("could not unsubscribe"; "id" => &self.id, "error" => e.to_string());
+                return;
+            }
+        };
+
+        if let Some(subscription_map) = event_channel_map.get_mut(&mem::discriminant(&self.kind)) {
+            let send_channel = subscription_map[&self.id].to_owned();
+            drop(send_channel);
+            subscription_map.remove(&self.id);
+        }
+    }
+}
+
+/// A mapping of each event kind to the subscription id and sender end of the channel.
+/// When publishing events we need just a lookup by event kind, but when removing
+/// an event channel we need to be able to lookup by event kind and subscription id.
 type EventChannelMap = ShardedLock<
-    HashMap<
-        mem::Discriminant<EventKind>,
-        (
-            channel::Sender<gofer_models::Event>,
-            channel::Receiver<gofer_models::Event>,
-        ),
-    >,
+    HashMap<mem::Discriminant<EventKind>, HashMap<String, channel::Sender<gofer_models::Event>>>,
 >;
 
 /// The event bus is a central handler for all things related to events with the application.
@@ -47,15 +67,9 @@ pub struct EventBus {
 
 impl EventBus {
     pub fn new(storage: storage::Db, retention: u64, prune_interval: u64) -> Self {
-        let mut subscriber_map = HashMap::new();
-        for event in gofer_models::EventKind::iter() {
-            let (sender, receiver) = crossbeam::channel::unbounded::<gofer_models::Event>();
-            subscriber_map.insert(mem::discriminant(&event), (sender, receiver));
-        }
-
         let event_bus = Self {
             storage: storage.clone(),
-            event_channel_map: ShardedLock::new(subscriber_map),
+            event_channel_map: ShardedLock::new(HashMap::new()),
         };
 
         tokio::spawn(async move {
@@ -79,22 +93,38 @@ impl EventBus {
     /// are populated (you can use blank fields) even though they are thrown away.
     /// Passing fields to the EventKind you wish to subscribe to DOES NOT filter which
     /// events you receive back.
+    ///
     /// For example specifying the namespace_id for a CreateNamespace event will get still
     /// get you a subscription to all namespaces.
+    ///
+    /// Additionally the subscription return type automatically drops it's subscription upon drop/loss of scope.
     pub async fn subscribe(
         &self,
         kind: gofer_models::EventKind,
-    ) -> Result<channel::Receiver<gofer_models::Event>, EventError> {
-        let event_channel_map = match self.event_channel_map.read() {
+    ) -> Result<Subscription<'_>, EventError> {
+        let mut event_channel_map = match self.event_channel_map.write() {
             Ok(v) => v,
             Err(e) => {
                 error!("could not subscribe to event"; "error" => e.to_string());
                 return Err(EventError::Unknown(e.to_string()));
             }
         };
-        let (_, read_channel) = &event_channel_map[&mem::discriminant(&kind)];
 
-        Ok(read_channel.clone())
+        let subscription_map = event_channel_map
+            .entry(mem::discriminant(&kind))
+            .or_insert_with(HashMap::new);
+
+        let (sender, receiver) = channel::unbounded::<gofer_models::Event>();
+        let new_subscription = Subscription {
+            id: nanoid!(10),
+            kind,
+            event_bus: self,
+            receiver,
+        };
+
+        subscription_map.insert(new_subscription.id.clone(), sender);
+
+        Ok(new_subscription)
     }
 
     /// Allows caller to emit a new event to the eventbus. Mutates event to have the proper
@@ -119,24 +149,32 @@ impl EventBus {
                 return None;
             }
         };
-        let (event_send_channel, _) = &event_channel_map[&mem::discriminant(&kind)];
-        let (any_send_channel, _) =
-            &event_channel_map[&mem::discriminant(&gofer_models::EventKind::Any)];
 
-        match event_send_channel.send(new_event.clone()) {
-            Ok(v) => v,
-            Err(e) => {
-                error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
-                return None;
+        if let Some(specific_event_subs) = event_channel_map.get(&mem::discriminant(&kind)) {
+            for (_, send_channel) in specific_event_subs.iter() {
+                match send_channel.send(new_event.clone()) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
+                        break;
+                    }
+                };
             }
-        };
-        match any_send_channel.send(new_event.clone()) {
-            Ok(v) => v,
-            Err(e) => {
-                error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
-                return None;
+        }
+
+        if let Some(any_event_subs) =
+            event_channel_map.get(&mem::discriminant(&gofer_models::EventKind::Any))
+        {
+            for (_, send_channel) in any_event_subs.iter() {
+                match send_channel.send(new_event.clone()) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
+                        break;
+                    }
+                };
             }
-        };
+        }
 
         Some(new_event)
     }

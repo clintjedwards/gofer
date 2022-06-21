@@ -708,8 +708,8 @@ impl Api {
         let scheduler = scheduler::init_scheduler(&conf.scheduler).await.unwrap();
         let event_bus = events::EventBus::new(
             storage.clone(),
-            conf.general.events_retention,
-            conf.general.events_prune_interval,
+            conf.general.event_retention,
+            conf.general.event_prune_interval,
         );
 
         let api = Api {

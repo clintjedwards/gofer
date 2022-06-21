@@ -178,4 +178,7 @@
 - Subscribe in the event system should ideally take an enum without the caller having to specify what is inside
   the enum. (what is inside gets thrown away anyway). Is there an easy way to do this?
 
-- We should write the event system early so that we can just slot it in everywhere.
+- We need to change events to be per subscriber, we tried to make a big table work but after thinking about it that doesn't
+  work at all.
+- We can probably make the Subscription object in the event_bus auto unsubscribe itself, but I'm not sure how without
+  creating a circular reference.

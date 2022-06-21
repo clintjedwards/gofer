@@ -73,8 +73,8 @@ async fn subscribe_one() {
         .await
         .unwrap();
 
-    let received_event_one = subscription.recv().unwrap();
-    let received_event_two = subscription.recv().unwrap();
+    let received_event_one = subscription.receiver.recv().unwrap();
+    let received_event_two = subscription.receiver.recv().unwrap();
 
     assert_eq!(received_event_one, new_event_one);
     assert_eq!(received_event_two, new_event_two);
@@ -107,8 +107,8 @@ async fn subscribe_any() {
         .await
         .unwrap();
 
-    let received_event_one = subscription.recv().unwrap();
-    let received_event_two = subscription.recv().unwrap();
+    let received_event_one = subscription.receiver.recv().unwrap();
+    let received_event_two = subscription.receiver.recv().unwrap();
 
     assert_eq!(received_event_one, new_event_one);
     assert_eq!(received_event_two, new_event_two);
@@ -122,14 +122,14 @@ async fn correctly_prune_events() {
     let harness = TestHarness::new().await;
     let event_bus = EventBus::new(harness.db.clone(), 1, 5000);
 
-    let event_one = event_bus
+    event_bus
         .publish(CreatedNamespace {
             namespace_id: "test_namespace".to_string(),
         })
         .await
         .unwrap();
 
-    let event_two = event_bus
+    event_bus
         .publish(CreatedPipeline {
             namespace_id: "test_namespace".to_string(),
             pipeline_id: "test_pipeline".to_string(),
