@@ -1,6 +1,8 @@
 use crate::{RunStatus, TaskRunStatus};
+use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter, EnumString};
 
-#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, EnumIter, EnumString, Display, Serialize, Deserialize, Clone)]
 pub enum EventKind {
     /// The Any kind is a special event kind that denotes the caller wants to listen for any event.
     /// It should not be used as a normal event type(for example do not publish anything with it).
@@ -8,7 +10,9 @@ pub enum EventKind {
     Any,
 
     // Namespace events
-    CreatedNamespace,
+    CreatedNamespace {
+        namespace_id: String,
+    },
 
     // Pipeline events
     DisabledPipeline {
@@ -48,12 +52,6 @@ pub enum EventKind {
         run_id: u64,
         task_run_id: String,
     },
-    ScheduledTaskRun {
-        namespace_id: String,
-        pipeline_id: String,
-        run_id: u64,
-        task_run_id: String,
-    },
     CompletedTaskRun {
         namespace_id: String,
         pipeline_id: String,
@@ -81,7 +79,7 @@ pub enum EventKind {
 }
 
 /// A single event type
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Event {
     /// Unique identifier for event.
     pub id: u64,

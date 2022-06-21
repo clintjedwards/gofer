@@ -40,7 +40,7 @@ impl From<RunState> for gofer_proto::run::RunState {
 }
 
 /// Represents the current status of a completed run.
-#[derive(Debug, Display, EnumString, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Display, EnumString, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum RunStatus {
     /// Could not determine current state of the status. Should only be in this state if
     /// the run has not yet completed.
@@ -51,6 +51,12 @@ pub enum RunStatus {
     Failed,
     /// One or more tasks in a run have been cancelled.
     Cancelled,
+}
+
+impl Default for RunStatus {
+    fn default() -> Self {
+        Self::Unknown
+    }
 }
 
 impl From<gofer_proto::run::RunStatus> for RunStatus {

@@ -404,7 +404,9 @@ async fn crud_task_runs() {
 async fn crud_events() {
     let harness = TestHarness::new().await;
 
-    let mut test_event_one = gofer_models::Event::new(gofer_models::EventKind::CreatedNamespace);
+    let mut test_event_one = gofer_models::Event::new(gofer_models::EventKind::CreatedNamespace {
+        namespace_id: "test_namespace".to_string(),
+    });
     let mut test_event_two = gofer_models::Event::new(gofer_models::EventKind::CreatedPipeline {
         namespace_id: "test_namespace".to_string(),
         pipeline_id: "test_pipeline".to_string(),
@@ -418,7 +420,7 @@ async fn crud_events() {
     test_event_one.id = id_one;
     test_event_two.id = id_two;
 
-    let events = harness.db.list_events(0, 0).await.unwrap();
+    let events = harness.db.list_events(0, 0, true).await.unwrap();
 
     assert_eq!(events.len(), 2);
     assert_eq!(events[0], test_event_two);

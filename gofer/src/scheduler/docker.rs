@@ -50,7 +50,7 @@ impl Docker {
                     }
                 };
 
-                tokio::time::sleep(std::time::Duration::new(prune_interval, 0)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(prune_interval)).await;
             });
 
             debug!("started docker pruning"; "interval" => format!("{:?}",prune_interval));

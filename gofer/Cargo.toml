@@ -11,6 +11,7 @@ axum-server = { version = "0.4.0", features = ["tls-rustls"] }
 bytes = "1.1.0"
 chrono = "0.4.19"
 chrono-humanize = "0.2.1"
+crossbeam = "0.8.1"
 base64 = "0.13.0"
 bollard = "0.12"
 clap = { version = "3.1.8", features = ["derive"] }

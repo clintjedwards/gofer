@@ -18,7 +18,7 @@ pub enum TaskRunState {
 
 /// Since task runs are basically an abstraction over containers, this tells us
 /// which status the container is in upon completion.
-#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum TaskRunStatus {
     /// Status is unknown; if task run is complete and this is that status, something is wrong.
     Unknown,
@@ -30,6 +30,12 @@ pub enum TaskRunStatus {
     Cancelled,
     /// The task run was skipped; could be due to unmet dependencies or user intervention.
     Skipped,
+}
+
+impl Default for TaskRunStatus {
+    fn default() -> Self {
+        Self::Unknown
+    }
 }
 
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]

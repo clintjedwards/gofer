@@ -7,7 +7,13 @@ use sqlx::{sqlite::SqliteRow, Row};
 
 impl Db {
     /// Return all events; limited to 200 rows in any one response.
-    pub async fn list_events(&self, offset: u64, limit: u64) -> Result<Vec<Event>, StorageError> {
+    /// The reverse parameter allows the sorting the events in reverse chronological order.
+    pub async fn list_events(
+        &self,
+        offset: u64,
+        limit: u64,
+        reverse: bool,
+    ) -> Result<Vec<Event>, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -20,27 +26,31 @@ impl Db {
             limit = MAX_ROW_LIMIT;
         }
 
-        let result = sqlx::query(
-            r#"
-        SELECT id, kind, emitted
-        FROM events
-        ORDER BY id DESC
-        LIMIT ?
-        OFFSET ?;
-            "#,
-        )
-        .bind(limit as i64)
-        .bind(offset as i64)
-        .map(|row: SqliteRow| Event {
-            id: row.get::<i64, _>("id") as u64,
-            kind: {
-                let kind = row.get::<String, _>("kind");
-                serde_json::from_str(&kind).unwrap()
-            },
-            emitted: row.get::<i64, _>("emitted") as u64,
-        })
-        .fetch_all(&mut conn)
-        .await;
+        let query_str = r#"SELECT id, kind, emitted
+FROM events
+ORDER BY id ASC
+LIMIT ?
+OFFSET ?;"#;
+
+        let query_str = if reverse {
+            query_str.replacen("ASC", "DESC", 1)
+        } else {
+            query_str.to_string()
+        };
+
+        let result = sqlx::query(&query_str)
+            .bind(limit as i64)
+            .bind(offset as i64)
+            .map(|row: SqliteRow| Event {
+                id: row.get::<i64, _>("id") as u64,
+                kind: {
+                    let kind = row.get::<String, _>("kind");
+                    serde_json::from_str(&kind).unwrap()
+                },
+                emitted: row.get::<i64, _>("emitted") as u64,
+            })
+            .fetch_all(&mut conn)
+            .await;
 
         result.map_err(|e| StorageError::Unknown(e.to_string()))
     }

@@ -175,5 +175,7 @@
 - Remove replace directive use normal go get
 - Write the compiler logic for golang now that the sdk is finished.
 - Config is near completion we just have to fix: https://github.com/YushiOMOTE/econf/issues/11
+- Subscribe in the event system should ideally take an enum without the caller having to specify what is inside
+  the enum. (what is inside gets thrown away anyway). Is there an easy way to do this?
 
 - We should write the event system early so that we can just slot it in everywhere.
