@@ -65,8 +65,6 @@ type GoferClient interface {
 	DeletePipeline(ctx context.Context, in *DeletePipelineRequest, opts ...grpc.CallOption) (*DeletePipelineResponse, error)
 	// GetRun returns the details of a single run.
 	GetRun(ctx context.Context, in *GetRunRequest, opts ...grpc.CallOption) (*GetRunResponse, error)
-	// BatchGetRuns returns multiple runs by ID.
-	BatchGetRuns(ctx context.Context, in *BatchGetRunsRequest, opts ...grpc.CallOption) (*BatchGetRunsResponse, error)
 	// ListRuns returns a list of all runs by Pipeline ID. Pagination can be
 	// controlled via the offset and limit parameters of the request.
 	ListRuns(ctx context.Context, in *ListRunsRequest, opts ...grpc.CallOption) (*ListRunsResponse, error)
@@ -255,15 +253,6 @@ func (c *goferClient) DeletePipeline(ctx context.Context, in *DeletePipelineRequ
 func (c *goferClient) GetRun(ctx context.Context, in *GetRunRequest, opts ...grpc.CallOption) (*GetRunResponse, error) {
 	out := new(GetRunResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/GetRun", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) BatchGetRuns(ctx context.Context, in *BatchGetRunsRequest, opts ...grpc.CallOption) (*BatchGetRunsResponse, error) {
-	out := new(BatchGetRunsResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/BatchGetRuns", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -493,8 +482,6 @@ type GoferServer interface {
 	DeletePipeline(context.Context, *DeletePipelineRequest) (*DeletePipelineResponse, error)
 	// GetRun returns the details of a single run.
 	GetRun(context.Context, *GetRunRequest) (*GetRunResponse, error)
-	// BatchGetRuns returns multiple runs by ID.
-	BatchGetRuns(context.Context, *BatchGetRunsRequest) (*BatchGetRunsResponse, error)
 	// ListRuns returns a list of all runs by Pipeline ID. Pagination can be
 	// controlled via the offset and limit parameters of the request.
 	ListRuns(context.Context, *ListRunsRequest) (*ListRunsResponse, error)
@@ -595,9 +582,6 @@ func (UnimplementedGoferServer) DeletePipeline(context.Context, *DeletePipelineR
 }
 func (UnimplementedGoferServer) GetRun(context.Context, *GetRunRequest) (*GetRunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRun not implemented")
-}
-func (UnimplementedGoferServer) BatchGetRuns(context.Context, *BatchGetRunsRequest) (*BatchGetRunsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BatchGetRuns not implemented")
 }
 func (UnimplementedGoferServer) ListRuns(context.Context, *ListRunsRequest) (*ListRunsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRuns not implemented")
@@ -929,24 +913,6 @@ func _Gofer_GetRun_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GoferServer).GetRun(ctx, req.(*GetRunRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_BatchGetRuns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BatchGetRunsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).BatchGetRuns(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/BatchGetRuns",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).BatchGetRuns(ctx, req.(*BatchGetRunsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1328,10 +1294,6 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_GetRun_Handler,
 		},
 		{
-			MethodName: "BatchGetRuns",
-			Handler:    _Gofer_BatchGetRuns_Handler,
-		},
-		{
 			MethodName: "ListRuns",
 			Handler:    _Gofer_ListRuns_Handler,
 		},
@@ -1412,24 +1374,24 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 type TriggerServiceClient interface {
 	// Watch blocks until the trigger has a pipeline that should be run, then it
 	// returns.
-	Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (*WatchResponse, error)
+	Watch(ctx context.Context, in *TriggerWatchRequest, opts ...grpc.CallOption) (*TriggerWatchResponse, error)
 	// Info returns information on the specific plugin
-	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
+	Info(ctx context.Context, in *TriggerInfoRequest, opts ...grpc.CallOption) (*TriggerInfoResponse, error)
 	// Subscribe allows a trigger to keep track of all pipelines currently
 	// dependant on that trigger so that we can trigger them at appropriate times.
-	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error)
+	Subscribe(ctx context.Context, in *TriggerSubscribeRequest, opts ...grpc.CallOption) (*TriggerSubscribeResponse, error)
 	// Unsubscribe allows pipelines to remove their trigger subscriptions. This is
 	// useful if the pipeline no longer needs to be notified about a specific
 	// trigger automation.
-	Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*UnsubscribeResponse, error)
+	Unsubscribe(ctx context.Context, in *TriggerUnsubscribeRequest, opts ...grpc.CallOption) (*TriggerUnsubscribeResponse, error)
 	// Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
 	// does not shutdown in a time defined by the gofer API the trigger will
 	// instead be Force shutdown(SIGKILL). This is to say that all triggers should
 	// lean toward quick cleanups and shutdowns.
-	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
+	Shutdown(ctx context.Context, in *TriggerShutdownRequest, opts ...grpc.CallOption) (*TriggerShutdownResponse, error)
 	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
 	// webhooks.
-	ExternalEvent(ctx context.Context, in *ExternalEventRequest, opts ...grpc.CallOption) (*ExternalEventResponse, error)
+	ExternalEvent(ctx context.Context, in *TriggerExternalEventRequest, opts ...grpc.CallOption) (*TriggerExternalEventResponse, error)
 }
 
 type triggerServiceClient struct {
@@ -1440,8 +1402,8 @@ func NewTriggerServiceClient(cc grpc.ClientConnInterface) TriggerServiceClient {
 	return &triggerServiceClient{cc}
 }
 
-func (c *triggerServiceClient) Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (*WatchResponse, error) {
-	out := new(WatchResponse)
+func (c *triggerServiceClient) Watch(ctx context.Context, in *TriggerWatchRequest, opts ...grpc.CallOption) (*TriggerWatchResponse, error) {
+	out := new(TriggerWatchResponse)
 	err := c.cc.Invoke(ctx, "/proto.TriggerService/Watch", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1449,8 +1411,8 @@ func (c *triggerServiceClient) Watch(ctx context.Context, in *WatchRequest, opts
 	return out, nil
 }
 
-func (c *triggerServiceClient) Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error) {
-	out := new(InfoResponse)
+func (c *triggerServiceClient) Info(ctx context.Context, in *TriggerInfoRequest, opts ...grpc.CallOption) (*TriggerInfoResponse, error) {
+	out := new(TriggerInfoResponse)
 	err := c.cc.Invoke(ctx, "/proto.TriggerService/Info", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1458,8 +1420,8 @@ func (c *triggerServiceClient) Info(ctx context.Context, in *InfoRequest, opts .
 	return out, nil
 }
 
-func (c *triggerServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error) {
-	out := new(SubscribeResponse)
+func (c *triggerServiceClient) Subscribe(ctx context.Context, in *TriggerSubscribeRequest, opts ...grpc.CallOption) (*TriggerSubscribeResponse, error) {
+	out := new(TriggerSubscribeResponse)
 	err := c.cc.Invoke(ctx, "/proto.TriggerService/Subscribe", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1467,8 +1429,8 @@ func (c *triggerServiceClient) Subscribe(ctx context.Context, in *SubscribeReque
 	return out, nil
 }
 
-func (c *triggerServiceClient) Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*UnsubscribeResponse, error) {
-	out := new(UnsubscribeResponse)
+func (c *triggerServiceClient) Unsubscribe(ctx context.Context, in *TriggerUnsubscribeRequest, opts ...grpc.CallOption) (*TriggerUnsubscribeResponse, error) {
+	out := new(TriggerUnsubscribeResponse)
 	err := c.cc.Invoke(ctx, "/proto.TriggerService/Unsubscribe", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1476,8 +1438,8 @@ func (c *triggerServiceClient) Unsubscribe(ctx context.Context, in *UnsubscribeR
 	return out, nil
 }
 
-func (c *triggerServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
-	out := new(ShutdownResponse)
+func (c *triggerServiceClient) Shutdown(ctx context.Context, in *TriggerShutdownRequest, opts ...grpc.CallOption) (*TriggerShutdownResponse, error) {
+	out := new(TriggerShutdownResponse)
 	err := c.cc.Invoke(ctx, "/proto.TriggerService/Shutdown", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1485,8 +1447,8 @@ func (c *triggerServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest
 	return out, nil
 }
 
-func (c *triggerServiceClient) ExternalEvent(ctx context.Context, in *ExternalEventRequest, opts ...grpc.CallOption) (*ExternalEventResponse, error) {
-	out := new(ExternalEventResponse)
+func (c *triggerServiceClient) ExternalEvent(ctx context.Context, in *TriggerExternalEventRequest, opts ...grpc.CallOption) (*TriggerExternalEventResponse, error) {
+	out := new(TriggerExternalEventResponse)
 	err := c.cc.Invoke(ctx, "/proto.TriggerService/ExternalEvent", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1500,24 +1462,24 @@ func (c *triggerServiceClient) ExternalEvent(ctx context.Context, in *ExternalEv
 type TriggerServiceServer interface {
 	// Watch blocks until the trigger has a pipeline that should be run, then it
 	// returns.
-	Watch(context.Context, *WatchRequest) (*WatchResponse, error)
+	Watch(context.Context, *TriggerWatchRequest) (*TriggerWatchResponse, error)
 	// Info returns information on the specific plugin
-	Info(context.Context, *InfoRequest) (*InfoResponse, error)
+	Info(context.Context, *TriggerInfoRequest) (*TriggerInfoResponse, error)
 	// Subscribe allows a trigger to keep track of all pipelines currently
 	// dependant on that trigger so that we can trigger them at appropriate times.
-	Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error)
+	Subscribe(context.Context, *TriggerSubscribeRequest) (*TriggerSubscribeResponse, error)
 	// Unsubscribe allows pipelines to remove their trigger subscriptions. This is
 	// useful if the pipeline no longer needs to be notified about a specific
 	// trigger automation.
-	Unsubscribe(context.Context, *UnsubscribeRequest) (*UnsubscribeResponse, error)
+	Unsubscribe(context.Context, *TriggerUnsubscribeRequest) (*TriggerUnsubscribeResponse, error)
 	// Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
 	// does not shutdown in a time defined by the gofer API the trigger will
 	// instead be Force shutdown(SIGKILL). This is to say that all triggers should
 	// lean toward quick cleanups and shutdowns.
-	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
+	Shutdown(context.Context, *TriggerShutdownRequest) (*TriggerShutdownResponse, error)
 	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
 	// webhooks.
-	ExternalEvent(context.Context, *ExternalEventRequest) (*ExternalEventResponse, error)
+	ExternalEvent(context.Context, *TriggerExternalEventRequest) (*TriggerExternalEventResponse, error)
 	mustEmbedUnimplementedTriggerServiceServer()
 }
 
@@ -1525,22 +1487,22 @@ type TriggerServiceServer interface {
 type UnimplementedTriggerServiceServer struct {
 }
 
-func (UnimplementedTriggerServiceServer) Watch(context.Context, *WatchRequest) (*WatchResponse, error) {
+func (UnimplementedTriggerServiceServer) Watch(context.Context, *TriggerWatchRequest) (*TriggerWatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }
-func (UnimplementedTriggerServiceServer) Info(context.Context, *InfoRequest) (*InfoResponse, error) {
+func (UnimplementedTriggerServiceServer) Info(context.Context, *TriggerInfoRequest) (*TriggerInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
 }
-func (UnimplementedTriggerServiceServer) Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error) {
+func (UnimplementedTriggerServiceServer) Subscribe(context.Context, *TriggerSubscribeRequest) (*TriggerSubscribeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
-func (UnimplementedTriggerServiceServer) Unsubscribe(context.Context, *UnsubscribeRequest) (*UnsubscribeResponse, error) {
+func (UnimplementedTriggerServiceServer) Unsubscribe(context.Context, *TriggerUnsubscribeRequest) (*TriggerUnsubscribeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unsubscribe not implemented")
 }
-func (UnimplementedTriggerServiceServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
+func (UnimplementedTriggerServiceServer) Shutdown(context.Context, *TriggerShutdownRequest) (*TriggerShutdownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
 }
-func (UnimplementedTriggerServiceServer) ExternalEvent(context.Context, *ExternalEventRequest) (*ExternalEventResponse, error) {
+func (UnimplementedTriggerServiceServer) ExternalEvent(context.Context, *TriggerExternalEventRequest) (*TriggerExternalEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExternalEvent not implemented")
 }
 func (UnimplementedTriggerServiceServer) mustEmbedUnimplementedTriggerServiceServer() {}
@@ -1557,7 +1519,7 @@ func RegisterTriggerServiceServer(s grpc.ServiceRegistrar, srv TriggerServiceSer
 }
 
 func _TriggerService_Watch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WatchRequest)
+	in := new(TriggerWatchRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1569,13 +1531,13 @@ func _TriggerService_Watch_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: "/proto.TriggerService/Watch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TriggerServiceServer).Watch(ctx, req.(*WatchRequest))
+		return srv.(TriggerServiceServer).Watch(ctx, req.(*TriggerWatchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TriggerService_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InfoRequest)
+	in := new(TriggerInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1587,13 +1549,13 @@ func _TriggerService_Info_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: "/proto.TriggerService/Info",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TriggerServiceServer).Info(ctx, req.(*InfoRequest))
+		return srv.(TriggerServiceServer).Info(ctx, req.(*TriggerInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TriggerService_Subscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubscribeRequest)
+	in := new(TriggerSubscribeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1605,13 +1567,13 @@ func _TriggerService_Subscribe_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/proto.TriggerService/Subscribe",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TriggerServiceServer).Subscribe(ctx, req.(*SubscribeRequest))
+		return srv.(TriggerServiceServer).Subscribe(ctx, req.(*TriggerSubscribeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TriggerService_Unsubscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UnsubscribeRequest)
+	in := new(TriggerUnsubscribeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1623,13 +1585,13 @@ func _TriggerService_Unsubscribe_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/proto.TriggerService/Unsubscribe",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TriggerServiceServer).Unsubscribe(ctx, req.(*UnsubscribeRequest))
+		return srv.(TriggerServiceServer).Unsubscribe(ctx, req.(*TriggerUnsubscribeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TriggerService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ShutdownRequest)
+	in := new(TriggerShutdownRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1641,13 +1603,13 @@ func _TriggerService_Shutdown_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/proto.TriggerService/Shutdown",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TriggerServiceServer).Shutdown(ctx, req.(*ShutdownRequest))
+		return srv.(TriggerServiceServer).Shutdown(ctx, req.(*TriggerShutdownRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TriggerService_ExternalEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExternalEventRequest)
+	in := new(TriggerExternalEventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1659,7 +1621,7 @@ func _TriggerService_ExternalEvent_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/proto.TriggerService/ExternalEvent",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TriggerServiceServer).ExternalEvent(ctx, req.(*ExternalEventRequest))
+		return srv.(TriggerServiceServer).ExternalEvent(ctx, req.(*TriggerExternalEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

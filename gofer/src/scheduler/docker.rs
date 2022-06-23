@@ -2,7 +2,6 @@ use super::*;
 use async_trait::async_trait;
 use futures::stream::TryStreamExt;
 use futures::Stream;
-use gofer_models::TaskRunState;
 use slog_scope::{debug, error};
 use std::pin::Pin;
 use std::{collections::HashMap, sync::Arc};
@@ -81,7 +80,7 @@ impl Scheduler for Docker {
             self.client
                 .create_image(
                     Some(bollard::image::CreateImageOptions {
-                        from_image: req.image_name.clone(),
+                        from_image: req.image.clone(),
                         ..Default::default()
                     }),
                     None,
@@ -92,7 +91,7 @@ impl Scheduler for Docker {
                 .map_err(|e| SchedulerError::NoSuchImage(e.to_string()))?;
         } else {
             let mut filters = HashMap::new();
-            filters.insert("reference".to_string(), vec![req.image_name.clone()]);
+            filters.insert("reference".to_string(), vec![req.image.clone()]);
 
             let images = self
                 .client
@@ -108,7 +107,7 @@ impl Scheduler for Docker {
                 self.client
                     .create_image(
                         Some(bollard::image::CreateImageOptions {
-                            from_image: req.image_name.clone(),
+                            from_image: req.image.clone(),
                             ..Default::default()
                         }),
                         None,
@@ -136,7 +135,7 @@ impl Scheduler for Docker {
         }
 
         let mut container_config = bollard::container::Config {
-            image: Some(req.image_name.clone()),
+            image: Some(req.image.clone()),
             env: Some(
                 req.variables
                     .into_iter()
@@ -275,71 +274,22 @@ impl Scheduler for Docker {
             | bollard::models::ContainerStateStatusEnum::RUNNING => {
                 return Ok(GetStateResponse {
                     exit_code: None,
-                    state: TaskRunState::Running,
+                    state: ContainerState::Running,
                 });
             }
             bollard::models::ContainerStateStatusEnum::EXITED => {
                 dbg!(&container_info.state);
                 return Ok(GetStateResponse {
                     exit_code: Some(container_info.state.unwrap().exit_code.unwrap() as u8),
-                    state: TaskRunState::Complete,
+                    state: ContainerState::Exited,
                 });
             }
             _ => {
                 return Ok(GetStateResponse {
                     exit_code: None,
-                    state: TaskRunState::Unknown,
+                    state: ContainerState::Unknown,
                 })
             }
         }
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::scheduler::GetLogsRequest;
-//     use futures::stream::StreamExt;
-//     use std::time::Duration;
-
-//     use super::*;
-
-//     #[tokio::test]
-//     async fn hello() {
-//         let engine = Engine::new(true, 100).await.unwrap();
-//         engine
-//             .start_container(StartContainerRequest {
-//                 name: "container_test".to_string(),
-//                 image_name: "ghcr.io/clintjedwards/gofer-containers/debug/log:latest".to_string(),
-//                 variables: HashMap::new(),
-//                 registry_auth: None,
-//                 always_pull: true,
-//                 enable_networking: false,
-//                 exec: None,
-//             })
-//             .await
-//             .unwrap();
-
-//         // engine
-//         //     .stop_container(StopContainerRequest {
-//         //         name: "container_test".to_string(),
-//         //         timeout: 100,
-//         //     })
-//         //     .await
-//         //     .unwrap();
-
-//         // let status = engine
-//         //     .get_state(GetStateRequest {
-//         //         name: "container_test".to_string(),
-//         //     })
-//         //     .await
-//         //     .unwrap();
-
-//         let mut logs = engine.get_logs(GetLogsRequest {
-//             name: "container_test".to_string(),
-//         });
-
-//         while let Some(foo) = logs.next().await {
-//             dbg!(foo);
-//         }
-//     }
-// }

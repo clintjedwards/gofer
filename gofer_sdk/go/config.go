@@ -96,7 +96,7 @@ func (t *Task) WithExec(shell, script string) *Task {
 }
 
 type PipelineTriggerConfig struct {
-	Kind     string            `json:"kind"`
+	Name     string            `json:"name"`
 	Label    string            `json:"label"`
 	Settings map[string]string `json:"settings"`
 }
@@ -106,7 +106,7 @@ func (p *PipelineTriggerConfig) validate() error {
 }
 
 type PipelineNotifierConfig struct {
-	Kind     string            `json:"kind"`
+	Name     string            `json:"name"`
 	Label    string            `json:"label"`
 	Settings map[string]string `json:"settings"`
 }

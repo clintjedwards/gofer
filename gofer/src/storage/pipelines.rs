@@ -172,7 +172,7 @@ impl Db {
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
             .map(|row: SqliteRow| PipelineTriggerSettings {
-                kind: row.get("kind"),
+                name: row.get("kind"),
                 label: row.get("label"),
                 settings: {
                     let value = row.get::<String, _>("settings");
@@ -202,7 +202,7 @@ impl Db {
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
             .map(|row: SqliteRow| PipelineNotifierSettings {
-                kind: row.get("kind"),
+                name: row.get("kind"),
                 label: row.get("label"),
                 settings: {
                     let value = row.get::<String, _>("settings");
@@ -325,7 +325,7 @@ impl Db {
             )
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
-            .bind(&settings.kind)
+            .bind(&settings.name)
             .bind(&settings.label)
             .bind(serde_json::to_string(&settings.settings).unwrap())
             .bind(&settings.error)
@@ -353,7 +353,7 @@ impl Db {
             )
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
-            .bind(&settings.kind)
+            .bind(&settings.name)
             .bind(&settings.label)
             .bind(serde_json::to_string(&settings.settings).unwrap())
             .bind(&settings.error)
@@ -532,7 +532,7 @@ impl Db {
         .bind(&pipeline.namespace)
         .bind(&pipeline.id)
         .map(|row: SqliteRow| PipelineTriggerSettings {
-            kind: row.get("kind"),
+            name: row.get("kind"),
             label: row.get("label"),
             settings: {
                 let value = row.get::<String, _>("settings");
@@ -562,7 +562,7 @@ impl Db {
         .bind(&pipeline.namespace)
         .bind(&pipeline.id)
         .map(|row: SqliteRow| PipelineNotifierSettings {
-            kind: row.get("kind"),
+            name: row.get("kind"),
             label: row.get("label"),
             settings: {
                 let value = row.get::<String, _>("settings");
@@ -836,7 +836,7 @@ impl Db {
             )
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
-            .bind(&settings.kind)
+            .bind(&settings.name)
             .bind(&settings.label)
             .bind(&settings.error)
             .execute(&mut tx)
@@ -880,7 +880,7 @@ impl Db {
             )
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
-            .bind(&settings.kind)
+            .bind(&settings.name)
             .bind(&settings.label)
             .bind(&settings.error)
             .execute(&mut tx)

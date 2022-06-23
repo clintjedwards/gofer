@@ -163,7 +163,7 @@ pub mod run_failure_info {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RunTriggerInfo {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub label: ::prost::alloc::string::String,
 }
@@ -219,7 +219,7 @@ pub mod task {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PipelineTriggerSettings {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub label: ::prost::alloc::string::String,
     #[prost(map="string, string", tag="3")]
@@ -230,7 +230,7 @@ pub struct PipelineTriggerSettings {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PipelineNotifierSettings {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub label: ::prost::alloc::string::String,
     #[prost(map="string, string", tag="3")]
@@ -269,7 +269,7 @@ pub mod task_config {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PipelineTriggerConfig {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub label: ::prost::alloc::string::String,
     #[prost(map="string, string", tag="3")]
@@ -278,7 +278,7 @@ pub struct PipelineTriggerConfig {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PipelineNotifierConfig {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub label: ::prost::alloc::string::String,
     #[prost(map="string, string", tag="3")]
@@ -360,7 +360,7 @@ pub mod task_run {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Trigger {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub image: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
@@ -371,9 +371,7 @@ pub struct Trigger {
     pub started: u64,
     #[prost(enumeration="trigger::State", tag="6")]
     pub state: i32,
-    #[prost(enumeration="trigger::Status", tag="7")]
-    pub status: i32,
-    #[prost(string, tag="8")]
+    #[prost(string, tag="7")]
     pub documentation: ::prost::alloc::string::String,
 }
 /// Nested message and enum types in `Trigger`.
@@ -384,20 +382,13 @@ pub mod trigger {
         UnknownState = 0,
         Processing = 1,
         Running = 2,
-        Complete = 3,
-    }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Status {
-        UnknownStatus = 0,
-        Successful = 1,
-        Failed = 2,
+        Exited = 3,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TriggerConfig {
+pub struct TriggerRegistration {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub image: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
@@ -406,20 +397,22 @@ pub struct TriggerConfig {
     pub pass: ::prost::alloc::string::String,
     #[prost(map="string, string", tag="5")]
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(uint64, tag="6")]
+    pub created: u64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Notifier {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub image: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
     pub documentation: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NotifierConfig {
+pub struct NotifierRegistration {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub image: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
@@ -428,6 +421,8 @@ pub struct NotifierConfig {
     pub pass: ::prost::alloc::string::String,
     #[prost(map="string, string", tag="5")]
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(uint64, tag="6")]
+    pub created: u64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -850,7 +845,7 @@ pub struct DeleteTaskRunLogsResponse {
 pub struct GetTriggerRequest {
     /// The unique name for a particular trigger
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetTriggerResponse {
@@ -867,8 +862,16 @@ pub struct ListTriggersResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InstallTriggerRequest {
-    #[prost(message, optional, tag="1")]
-    pub trigger: ::core::option::Option<TriggerConfig>,
+    #[prost(string, tag="1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub image: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub user: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub pass: ::prost::alloc::string::String,
+    #[prost(map="string, string", tag="5")]
+    pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InstallTriggerResponse {
@@ -876,7 +879,7 @@ pub struct InstallTriggerResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UninstallTriggerRequest {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UninstallTriggerResponse {
@@ -887,7 +890,7 @@ pub struct UninstallTriggerResponse {
 pub struct GetNotifierRequest {
     /// The unique name/kind for a particular notifier
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetNotifierResponse {
@@ -904,8 +907,16 @@ pub struct ListNotifiersResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InstallNotifierRequest {
-    #[prost(message, optional, tag="1")]
-    pub notifier: ::core::option::Option<NotifierConfig>,
+    #[prost(string, tag="1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub image: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub user: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub pass: ::prost::alloc::string::String,
+    #[prost(map="string, string", tag="5")]
+    pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InstallNotifierResponse {
@@ -913,7 +924,7 @@ pub struct InstallNotifierResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UninstallNotifierRequest {
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UninstallNotifierResponse {
@@ -921,10 +932,10 @@ pub struct UninstallNotifierResponse {
 ////////////// Trigger Service Transport Models //////////////
 
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WatchRequest {
+pub struct TriggerWatchRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WatchResponse {
+pub struct TriggerWatchResponse {
     /// The trigger can choose to give extra details about the specific trigger
     /// event result in the form of a string description.
     #[prost(string, tag="1")]
@@ -938,14 +949,14 @@ pub struct WatchResponse {
     /// Unique id of trigger instance.
     #[prost(string, tag="4")]
     pub pipeline_trigger_label: ::prost::alloc::string::String,
-    #[prost(enumeration="watch_response::Result", tag="5")]
+    #[prost(enumeration="trigger_watch_response::Result", tag="5")]
     pub result: i32,
     /// Metadata is passed to the tasks as extra environment variables.
     #[prost(map="string, string", tag="6")]
     pub metadata: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
-/// Nested message and enum types in `WatchResponse`.
-pub mod watch_response {
+/// Nested message and enum types in `TriggerWatchResponse`.
+pub mod trigger_watch_response {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Result {
@@ -956,16 +967,16 @@ pub mod watch_response {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InfoRequest {
+pub struct TriggerInfoRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InfoResponse {
+pub struct TriggerInfoResponse {
     /// kind corresponds a unique trigger identifier, this is passed as a envvar
     /// via the main process(and as such can be left empty), as the main process
     /// container the configuration for which trigger "kind" corresponds to which
     /// trigger container.
     #[prost(string, tag="1")]
-    pub kind: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
     /// Triggers are allowed to provide a link to more extensive documentation on
     /// how to use and configure them.
     #[prost(string, tag="2")]
@@ -975,7 +986,7 @@ pub struct InfoResponse {
     pub registered: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SubscribeRequest {
+pub struct TriggerSubscribeRequest {
     /// unique identifier for associated namespace
     #[prost(string, tag="1")]
     pub namespace_id: ::prost::alloc::string::String,
@@ -996,10 +1007,10 @@ pub struct SubscribeRequest {
     pub config: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SubscribeResponse {
+pub struct TriggerSubscribeResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UnsubscribeRequest {
+pub struct TriggerUnsubscribeRequest {
     /// unique identifier for associated namespace
     #[prost(string, tag="1")]
     pub namespace_id: ::prost::alloc::string::String,
@@ -1011,21 +1022,21 @@ pub struct UnsubscribeRequest {
     pub pipeline_trigger_label: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UnsubscribeResponse {
+pub struct TriggerUnsubscribeResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ShutdownRequest {
+pub struct TriggerShutdownRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ShutdownResponse {
+pub struct TriggerShutdownResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExternalEventRequest {
+pub struct TriggerExternalEventRequest {
     #[prost(bytes="vec", tag="1")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExternalEventResponse {
+pub struct TriggerExternalEventResponse {
 }
 /// Generated client implementations.
 pub mod gofer_client {
@@ -1808,8 +1819,8 @@ pub mod trigger_service_client {
         /// returns.
         pub async fn watch(
             &mut self,
-            request: impl tonic::IntoRequest<super::WatchRequest>,
-        ) -> Result<tonic::Response<super::WatchResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::TriggerWatchRequest>,
+        ) -> Result<tonic::Response<super::TriggerWatchResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1828,8 +1839,8 @@ pub mod trigger_service_client {
         /// Info returns information on the specific plugin
         pub async fn info(
             &mut self,
-            request: impl tonic::IntoRequest<super::InfoRequest>,
-        ) -> Result<tonic::Response<super::InfoResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::TriggerInfoRequest>,
+        ) -> Result<tonic::Response<super::TriggerInfoResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1849,8 +1860,8 @@ pub mod trigger_service_client {
         /// dependant on that trigger so that we can trigger them at appropriate times.
         pub async fn subscribe(
             &mut self,
-            request: impl tonic::IntoRequest<super::SubscribeRequest>,
-        ) -> Result<tonic::Response<super::SubscribeResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::TriggerSubscribeRequest>,
+        ) -> Result<tonic::Response<super::TriggerSubscribeResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1871,8 +1882,8 @@ pub mod trigger_service_client {
         /// trigger automation.
         pub async fn unsubscribe(
             &mut self,
-            request: impl tonic::IntoRequest<super::UnsubscribeRequest>,
-        ) -> Result<tonic::Response<super::UnsubscribeResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::TriggerUnsubscribeRequest>,
+        ) -> Result<tonic::Response<super::TriggerUnsubscribeResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1894,8 +1905,8 @@ pub mod trigger_service_client {
         /// lean toward quick cleanups and shutdowns.
         pub async fn shutdown(
             &mut self,
-            request: impl tonic::IntoRequest<super::ShutdownRequest>,
-        ) -> Result<tonic::Response<super::ShutdownResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::TriggerShutdownRequest>,
+        ) -> Result<tonic::Response<super::TriggerShutdownResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1915,8 +1926,11 @@ pub mod trigger_service_client {
         /// webhooks.
         pub async fn external_event(
             &mut self,
-            request: impl tonic::IntoRequest<super::ExternalEventRequest>,
-        ) -> Result<tonic::Response<super::ExternalEventResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::TriggerExternalEventRequest>,
+        ) -> Result<
+            tonic::Response<super::TriggerExternalEventResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3486,40 +3500,40 @@ pub mod trigger_service_server {
         /// returns.
         async fn watch(
             &self,
-            request: tonic::Request<super::WatchRequest>,
-        ) -> Result<tonic::Response<super::WatchResponse>, tonic::Status>;
+            request: tonic::Request<super::TriggerWatchRequest>,
+        ) -> Result<tonic::Response<super::TriggerWatchResponse>, tonic::Status>;
         /// Info returns information on the specific plugin
         async fn info(
             &self,
-            request: tonic::Request<super::InfoRequest>,
-        ) -> Result<tonic::Response<super::InfoResponse>, tonic::Status>;
+            request: tonic::Request<super::TriggerInfoRequest>,
+        ) -> Result<tonic::Response<super::TriggerInfoResponse>, tonic::Status>;
         /// Subscribe allows a trigger to keep track of all pipelines currently
         /// dependant on that trigger so that we can trigger them at appropriate times.
         async fn subscribe(
             &self,
-            request: tonic::Request<super::SubscribeRequest>,
-        ) -> Result<tonic::Response<super::SubscribeResponse>, tonic::Status>;
+            request: tonic::Request<super::TriggerSubscribeRequest>,
+        ) -> Result<tonic::Response<super::TriggerSubscribeResponse>, tonic::Status>;
         /// Unsubscribe allows pipelines to remove their trigger subscriptions. This is
         /// useful if the pipeline no longer needs to be notified about a specific
         /// trigger automation.
         async fn unsubscribe(
             &self,
-            request: tonic::Request<super::UnsubscribeRequest>,
-        ) -> Result<tonic::Response<super::UnsubscribeResponse>, tonic::Status>;
+            request: tonic::Request<super::TriggerUnsubscribeRequest>,
+        ) -> Result<tonic::Response<super::TriggerUnsubscribeResponse>, tonic::Status>;
         /// Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
         /// does not shutdown in a time defined by the gofer API the trigger will
         /// instead be Force shutdown(SIGKILL). This is to say that all triggers should
         /// lean toward quick cleanups and shutdowns.
         async fn shutdown(
             &self,
-            request: tonic::Request<super::ShutdownRequest>,
-        ) -> Result<tonic::Response<super::ShutdownResponse>, tonic::Status>;
+            request: tonic::Request<super::TriggerShutdownRequest>,
+        ) -> Result<tonic::Response<super::TriggerShutdownResponse>, tonic::Status>;
         /// ExternalEvent are json blobs of gofer's /events endpoint. Normally
         /// webhooks.
         async fn external_event(
             &self,
-            request: tonic::Request<super::ExternalEventRequest>,
-        ) -> Result<tonic::Response<super::ExternalEventResponse>, tonic::Status>;
+            request: tonic::Request<super::TriggerExternalEventRequest>,
+        ) -> Result<tonic::Response<super::TriggerExternalEventResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct TriggerServiceServer<T: TriggerService> {
@@ -3573,15 +3587,16 @@ pub mod trigger_service_server {
                     struct WatchSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::WatchRequest> for WatchSvc<T> {
-                        type Response = super::WatchResponse;
+                    > tonic::server::UnaryService<super::TriggerWatchRequest>
+                    for WatchSvc<T> {
+                        type Response = super::TriggerWatchResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::WatchRequest>,
+                            request: tonic::Request<super::TriggerWatchRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).watch(request).await };
@@ -3610,15 +3625,16 @@ pub mod trigger_service_server {
                     struct InfoSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::InfoRequest> for InfoSvc<T> {
-                        type Response = super::InfoResponse;
+                    > tonic::server::UnaryService<super::TriggerInfoRequest>
+                    for InfoSvc<T> {
+                        type Response = super::TriggerInfoResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::InfoRequest>,
+                            request: tonic::Request<super::TriggerInfoRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).info(request).await };
@@ -3647,16 +3663,16 @@ pub mod trigger_service_server {
                     struct SubscribeSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::SubscribeRequest>
+                    > tonic::server::UnaryService<super::TriggerSubscribeRequest>
                     for SubscribeSvc<T> {
-                        type Response = super::SubscribeResponse;
+                        type Response = super::TriggerSubscribeResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::SubscribeRequest>,
+                            request: tonic::Request<super::TriggerSubscribeRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).subscribe(request).await };
@@ -3685,16 +3701,16 @@ pub mod trigger_service_server {
                     struct UnsubscribeSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::UnsubscribeRequest>
+                    > tonic::server::UnaryService<super::TriggerUnsubscribeRequest>
                     for UnsubscribeSvc<T> {
-                        type Response = super::UnsubscribeResponse;
+                        type Response = super::TriggerUnsubscribeResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::UnsubscribeRequest>,
+                            request: tonic::Request<super::TriggerUnsubscribeRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).unsubscribe(request).await };
@@ -3723,16 +3739,16 @@ pub mod trigger_service_server {
                     struct ShutdownSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::ShutdownRequest>
+                    > tonic::server::UnaryService<super::TriggerShutdownRequest>
                     for ShutdownSvc<T> {
-                        type Response = super::ShutdownResponse;
+                        type Response = super::TriggerShutdownResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ShutdownRequest>,
+                            request: tonic::Request<super::TriggerShutdownRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).shutdown(request).await };
@@ -3761,16 +3777,16 @@ pub mod trigger_service_server {
                     struct ExternalEventSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::ExternalEventRequest>
+                    > tonic::server::UnaryService<super::TriggerExternalEventRequest>
                     for ExternalEventSvc<T> {
-                        type Response = super::ExternalEventResponse;
+                        type Response = super::TriggerExternalEventResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ExternalEventRequest>,
+                            request: tonic::Request<super::TriggerExternalEventRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {

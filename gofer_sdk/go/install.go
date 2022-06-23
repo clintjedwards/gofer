@@ -15,7 +15,7 @@ import (
 
 // installData is a representation of information needed by trigger/notifier installer scripts.
 type installData struct {
-	Kind  string
+	Name  string
 	Host  string // The url of the Gofer server.
 	Token string
 	Image string
@@ -36,7 +36,7 @@ func getEnv(key string) (string, error) {
 // getInstallData returns a data structure with information needed by typical trigger/notification installer
 // scripts.
 func getInstallData() (installData, error) {
-	kind, err := getEnv("GOFER_TRIGGER_INSTALLER_KIND")
+	name, err := getEnv("GOFER_TRIGGER_INSTALLER_NAME")
 	if err != nil {
 		return installData{}, err
 	}
@@ -53,7 +53,7 @@ func getInstallData() (installData, error) {
 	pass := os.Getenv("GOFER_TRIGGER_INSTALLER_IMAGE_PASS")
 
 	return installData{
-		Kind:  kind,
+		Name:  name,
 		Host:  host,
 		Token: token,
 		Image: image,
@@ -106,7 +106,7 @@ func InstallTrigger(config map[string]string) error {
 	}
 
 	triggerConfig := &proto.TriggerConfig{
-		Kind:      vars.Kind,
+		Name:      vars.Name,
 		Image:     vars.Image,
 		User:      vars.User,
 		Pass:      vars.Pass,
@@ -145,7 +145,7 @@ func InstallNotifier(config map[string]string) error {
 	}
 
 	notifierConfig := &proto.NotifierConfig{
-		Kind:      vars.Kind,
+		Name:      vars.Name,
 		Image:     vars.Image,
 		User:      vars.User,
 		Pass:      vars.Pass,

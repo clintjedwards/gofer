@@ -1,4 +1,5 @@
 mod service;
+mod trigger;
 mod validate;
 
 use crate::{conf, events, frontend, scheduler, storage};
@@ -7,6 +8,7 @@ use gofer_proto::{
     *,
 };
 
+use dashmap::DashMap;
 use futures::Stream;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -31,11 +33,44 @@ fn epoch() -> u64 {
     u64::try_from(current_epoch).unwrap()
 }
 
+/// Checks expressions passed (currently restricted to those that are is_empty-able) to make sure they aren't the
+/// zero value.
+macro_rules! require_args {
+    ($var:expr) => {
+        if $var.is_empty() {
+            return Err(Status::failed_precondition(format!("missing/empty required argument '{}'", {
+                if stringify!($var).contains('.') {
+                    let (_, var) = stringify!($var).rsplit_once('.').unwrap();
+                    var
+                } else {
+                    stringify!($var)
+                }
+            })));
+        }
+    };
+    ($var:expr, $($var_m:expr),+) => {
+        require_args! {$var}
+        require_args! {$($var_m),+}
+    }
+}
+
 pub struct Api {
+    /// Various configurations needed by the api
     conf: conf::api::Config,
+
+    /// The main backend storage implementation. Gofer stores most of its critical state information here.
     storage: storage::Db,
+
+    /// The mechanism in which Gofer uses to run individual containers.
     scheduler: Box<dyn scheduler::Scheduler + Sync + Send>,
+
+    /// Used throughout the whole application in order to allow functions to wait on state changes in Gofer.
     event_bus: events::EventBus,
+
+    /// Triggers is an in-memory map of currently registered and started triggers.
+    /// This is necessary due to triggers being based on containers and their state needing to be constantly
+    /// updated and maintained.
+    triggers: DashMap<String, gofer_models::Trigger>,
 }
 
 #[tonic::async_trait]
@@ -57,18 +92,15 @@ impl Gofer for Api {
     ) -> Result<Response<ListNamespacesResponse>, Status> {
         let args = &request.into_inner();
 
-        let result = self.storage.list_namespaces(args.offset, args.limit).await;
-
-        match result {
-            Ok(namespaces_raw) => {
-                let namespaces = namespaces_raw
-                    .into_iter()
-                    .map(gofer_proto::Namespace::from)
-                    .collect();
-                return Ok(Response::new(ListNamespacesResponse { namespaces }));
-            }
-            Err(storage_err) => return Err(Status::internal(storage_err.to_string())),
-        }
+        self.storage
+            .list_namespaces(args.offset, args.limit)
+            .await
+            .map(|namespaces| {
+                Response::new(ListNamespacesResponse {
+                    namespaces: namespaces.into_iter().map(Namespace::from).collect(),
+                })
+            })
+            .map_err(|e| Status::internal(e.to_string()))
     }
 
     async fn create_namespace(
@@ -76,6 +108,7 @@ impl Gofer for Api {
         request: Request<CreateNamespaceRequest>,
     ) -> Result<Response<CreateNamespaceResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.id, args.name);
 
         if let Err(e) = validate::identifier(&args.id) {
             return Err(Status::failed_precondition(e.to_string()));
@@ -83,19 +116,16 @@ impl Gofer for Api {
 
         let new_namespace = gofer_models::Namespace::new(&args.id, &args.name, &args.description);
 
-        let result = self.storage.create_namespace(&new_namespace).await;
-        match result {
-            Ok(_) => (),
-            Err(e) => match e {
-                storage::StorageError::Exists => {
-                    return Err(Status::already_exists(format!(
-                        "namespace with id '{}' already exists",
-                        new_namespace.id
-                    )))
-                }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+        self.storage
+            .create_namespace(&new_namespace)
+            .await
+            .map_err(|e| match e {
+                storage::StorageError::Exists => Status::already_exists(format!(
+                    "namespace with id '{}' already exists",
+                    new_namespace.id
+                )),
+                _ => Status::internal(e.to_string()),
+            })?;
 
         self.event_bus
             .publish(gofer_models::EventKind::CreatedNamespace {
@@ -112,24 +142,22 @@ impl Gofer for Api {
         request: Request<GetNamespaceRequest>,
     ) -> Result<Response<GetNamespaceResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.id);
 
-        let result = self.storage.get_namespace(&args.id).await;
-        let namespace = match result {
-            Ok(namespace) => namespace,
-            Err(e) => match e {
+        self.storage
+            .get_namespace(&args.id)
+            .await
+            .map(|namespace| {
+                Response::new(GetNamespaceResponse {
+                    namespace: Some(namespace.into()),
+                })
+            })
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "namespace with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("namespace with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
-
-        Ok(Response::new(GetNamespaceResponse {
-            namespace: Some(namespace.into()),
-        }))
+                _ => Status::internal(e.to_string()),
+            })
     }
 
     async fn update_namespace(
@@ -137,9 +165,9 @@ impl Gofer for Api {
         request: Request<UpdateNamespaceRequest>,
     ) -> Result<Response<UpdateNamespaceResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.id, args.name);
 
-        let result = self
-            .storage
+        self.storage
             .update_namespace(&gofer_models::Namespace {
                 id: args.id.clone(),
                 name: args.name.clone(),
@@ -147,20 +175,13 @@ impl Gofer for Api {
                 created: 0,
                 modified: epoch(),
             })
-            .await;
-
-        match result {
-            Ok(_) => (),
-            Err(e) => match e {
+            .await
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "namespace with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("namespace with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+                _ => Status::internal(e.to_string()),
+            })?;
 
         Ok(Response::new(UpdateNamespaceResponse {}))
     }
@@ -170,20 +191,17 @@ impl Gofer for Api {
         request: Request<DeleteNamespaceRequest>,
     ) -> Result<Response<DeleteNamespaceResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.id);
 
-        let result = self.storage.delete_namespace(&args.id).await;
-        match result {
-            Ok(_) => (),
-            Err(e) => match e {
+        self.storage
+            .delete_namespace(&args.id)
+            .await
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "namespace with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("namespace with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+                _ => Status::internal(e.to_string()),
+            })?;
 
         self.event_bus
             .publish(gofer_models::EventKind::DeletedNamespace {
@@ -198,26 +216,17 @@ impl Gofer for Api {
         request: Request<ListPipelinesRequest>,
     ) -> Result<Response<ListPipelinesResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.namespace_id);
 
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
-
-        let result = self
-            .storage
+        self.storage
             .list_pipelines(args.offset as u64, args.limit as u64, &args.namespace_id)
-            .await;
-
-        match result {
-            Ok(pipelines_raw) => {
-                let pipelines = pipelines_raw
-                    .into_iter()
-                    .map(gofer_proto::Pipeline::from)
-                    .collect();
-                return Ok(Response::new(ListPipelinesResponse { pipelines }));
-            }
-            Err(storage_err) => return Err(Status::internal(storage_err.to_string())),
-        }
+            .await
+            .map(|pipelines| {
+                Response::new(ListPipelinesResponse {
+                    pipelines: pipelines.into_iter().map(Pipeline::from).collect(),
+                })
+            })
+            .map_err(|e| Status::internal(e.to_string()))
     }
 
     async fn create_pipeline(
@@ -225,10 +234,7 @@ impl Gofer for Api {
         request: Request<CreatePipelineRequest>,
     ) -> Result<Response<CreatePipelineResponse>, Status> {
         let args = &request.into_inner();
-
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
+        require_args!(args.namespace_id);
 
         let pipeline_config = match &args.pipeline_config {
             Some(config) => config,
@@ -242,19 +248,16 @@ impl Gofer for Api {
         let new_pipeline =
             gofer_models::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
-        let result = self.storage.create_pipeline(&new_pipeline).await;
-        match result {
-            Ok(_) => (),
-            Err(e) => match e {
-                storage::StorageError::Exists => {
-                    return Err(Status::already_exists(format!(
-                        "pipeline with id '{}' already exists",
-                        new_pipeline.id
-                    )))
-                }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+        self.storage
+            .create_pipeline(&new_pipeline)
+            .await
+            .map_err(|e| match e {
+                storage::StorageError::Exists => Status::already_exists(format!(
+                    "pipeline with id '{}' already exists",
+                    new_pipeline.id
+                )),
+                _ => Status::internal(e.to_string()),
+            })?;
 
         self.event_bus
             .publish(gofer_models::EventKind::CreatedPipeline {
@@ -272,37 +275,22 @@ impl Gofer for Api {
         request: Request<GetPipelineRequest>,
     ) -> Result<Response<GetPipelineResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.namespace_id, args.id);
 
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
-
-        if args.id.is_empty() {
-            return Err(Status::failed_precondition(
-                "must include target pipeline id",
-            ));
-        }
-
-        let result = self
-            .storage
+        self.storage
             .get_pipeline(&args.namespace_id, &args.id)
-            .await;
-        let pipeline = match result {
-            Ok(pipeline) => pipeline,
-            Err(e) => match e {
+            .await
+            .map(|pipeline| {
+                Response::new(GetPipelineResponse {
+                    pipeline: Some(pipeline.into()),
+                })
+            })
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "pipeline with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
-
-        Ok(Response::new(GetPipelineResponse {
-            pipeline: Some(pipeline.into()),
-        }))
+                _ => Status::internal(e.to_string()),
+            })
     }
 
     async fn run_pipeline(
@@ -310,33 +298,19 @@ impl Gofer for Api {
         request: Request<RunPipelineRequest>,
     ) -> Result<Response<RunPipelineResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.namespace_id, args.id);
 
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
+        // check parrellism here through events
 
-        if args.id.is_empty() {
-            return Err(Status::failed_precondition(
-                "must include target pipeline id",
-            ));
-        }
-
-        let result = self
-            .storage
+        self.storage
             .get_pipeline(&args.namespace_id, &args.id)
-            .await;
-
-        if let Err(e) = result {
-            match e {
+            .await
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "pipeline with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            }
-        }
+                _ => Status::internal(e.to_string()),
+            })?;
 
         unimplemented!();
 
@@ -348,37 +322,21 @@ impl Gofer for Api {
         request: Request<EnablePipelineRequest>,
     ) -> Result<Response<EnablePipelineResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.namespace_id, args.id);
 
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
-
-        if args.id.is_empty() {
-            return Err(Status::failed_precondition(
-                "must include target pipeline id",
-            ));
-        }
-
-        let result = self
-            .storage
+        self.storage
             .update_pipeline_state(
                 &args.namespace_id,
                 &args.id,
                 gofer_models::PipelineState::Active,
             )
-            .await;
-        match result {
-            Ok(pipeline) => pipeline,
-            Err(e) => match e {
+            .await
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "pipeline with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+                _ => Status::internal(e.to_string()),
+            })?;
 
         Ok(Response::new(EnablePipelineResponse {}))
     }
@@ -388,37 +346,21 @@ impl Gofer for Api {
         request: Request<DisablePipelineRequest>,
     ) -> Result<Response<DisablePipelineResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.namespace_id, args.id);
 
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
-
-        if args.id.is_empty() {
-            return Err(Status::failed_precondition(
-                "must include target pipeline id",
-            ));
-        }
-
-        let result = self
-            .storage
+        self.storage
             .update_pipeline_state(
                 &args.namespace_id,
                 &args.id,
                 gofer_models::PipelineState::Disabled,
             )
-            .await;
-        match result {
-            Ok(pipeline) => pipeline,
-            Err(e) => match e {
+            .await
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "pipeline with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+                _ => Status::internal(e.to_string()),
+            })?;
 
         Ok(Response::new(DisablePipelineResponse {}))
     }
@@ -428,10 +370,7 @@ impl Gofer for Api {
         request: Request<UpdatePipelineRequest>,
     ) -> Result<Response<UpdatePipelineResponse>, Status> {
         let args = &request.into_inner();
-
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
+        require_args!(args.namespace_id);
 
         let pipeline_config = match &args.pipeline_config {
             Some(config) => config,
@@ -445,19 +384,16 @@ impl Gofer for Api {
         let new_pipeline =
             gofer_models::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
-        let result = self.storage.update_pipeline(&new_pipeline).await;
-        match result {
-            Ok(_) => (),
-            Err(e) => match e {
-                storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "pipeline with id '{}' does not exist",
-                        &new_pipeline.id
-                    )))
-                }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+        self.storage
+            .update_pipeline(&new_pipeline)
+            .await
+            .map_err(|e| match e {
+                storage::StorageError::NotFound => Status::not_found(format!(
+                    "pipeline with id '{}' does not exist",
+                    &new_pipeline.id
+                )),
+                _ => Status::internal(e.to_string()),
+            })?;
 
         Ok(Response::new(UpdatePipelineResponse {
             pipeline: Some(new_pipeline.into()),
@@ -469,33 +405,17 @@ impl Gofer for Api {
         request: Request<DeletePipelineRequest>,
     ) -> Result<Response<DeletePipelineResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.namespace_id, args.id);
 
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
-
-        if args.id.is_empty() {
-            return Err(Status::failed_precondition(
-                "must include target pipeline id",
-            ));
-        }
-
-        let result = self
-            .storage
+        self.storage
             .delete_pipeline(&args.namespace_id, &args.id)
-            .await;
-        match result {
-            Ok(_) => (),
-            Err(e) => match e {
+            .await
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "pipeline with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
+                _ => Status::internal(e.to_string()),
+            })?;
 
         self.event_bus
             .publish(gofer_models::EventKind::DeletedPipeline {
@@ -511,42 +431,26 @@ impl Gofer for Api {
         request: Request<GetRunRequest>,
     ) -> Result<Response<GetRunResponse>, Status> {
         let args = &request.into_inner();
-
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
-
-        if args.pipeline_id.is_empty() {
-            return Err(Status::failed_precondition(
-                "must include target pipeline id",
-            ));
-        }
+        require_args!(args.namespace_id, args.pipeline_id);
 
         if args.id == 0 {
             return Err(Status::failed_precondition("must include target run id"));
         }
 
-        let result = self
-            .storage
+        self.storage
             .get_run(&args.namespace_id, &args.pipeline_id, args.id)
-            .await;
-
-        let run = match result {
-            Ok(run) => run,
-            Err(e) => match e {
+            .await
+            .map(|run| {
+                Response::new(GetRunResponse {
+                    run: Some(run.into()),
+                })
+            })
+            .map_err(|e| match e {
                 storage::StorageError::NotFound => {
-                    return Err(Status::not_found(format!(
-                        "run with id '{}' does not exist",
-                        &args.id
-                    )))
+                    Status::not_found(format!("run with id '{}' does not exist", &args.id))
                 }
-                _ => return Err(Status::internal(e.to_string())),
-            },
-        };
-
-        Ok(Response::new(GetRunResponse {
-            run: Some(run.into()),
-        }))
+                _ => Status::internal(e.to_string()),
+            })
     }
 
     async fn list_runs(
@@ -554,35 +458,22 @@ impl Gofer for Api {
         request: Request<ListRunsRequest>,
     ) -> Result<Response<ListRunsResponse>, Status> {
         let args = &request.into_inner();
+        require_args!(args.namespace_id, args.pipeline_id);
 
-        if args.namespace_id.is_empty() {
-            return Err(Status::failed_precondition("must include target namespace"));
-        }
-
-        if args.pipeline_id.is_empty() {
-            return Err(Status::failed_precondition(
-                "must include target pipeline id",
-            ));
-        }
-
-        let result = self
-            .storage
+        self.storage
             .list_runs(
                 args.offset as u64,
                 args.limit as u64,
                 &args.namespace_id,
                 &args.pipeline_id,
             )
-            .await;
-
-        match result {
-            Ok(runs) => {
-                return Ok(Response::new(ListRunsResponse {
-                    runs: runs.into_iter().map(gofer_proto::Run::from).collect(),
-                }));
-            }
-            Err(storage_err) => return Err(Status::internal(storage_err.to_string())),
-        }
+            .await
+            .map(|runs| {
+                Response::new(ListRunsResponse {
+                    runs: runs.into_iter().map(Run::from).collect(),
+                })
+            })
+            .map_err(|e| Status::internal(e.to_string()))
     }
 
     async fn retry_run(
@@ -662,7 +553,32 @@ impl Gofer for Api {
         &self,
         request: Request<InstallTriggerRequest>,
     ) -> Result<Response<InstallTriggerResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        require_args!(args.name, args.image);
+
+        if self.triggers.contains_key(&args.name) {
+            return Err(Status::already_exists(format!(
+                "trigger '{}' already exists",
+                &args.name
+            )));
+        }
+
+        self.storage
+            .create_trigger_registration(&args.clone().into())
+            .await
+            .map_err(|e| match e {
+                storage::StorageError::Exists => Status::already_exists(format!(
+                    "trigger with name '{}' already exists",
+                    &args.name
+                )),
+                _ => Status::internal(e.to_string()),
+            })?;
+
+        self.start_trigger(&args.clone().into())
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        Ok(Response::new(InstallTriggerResponse {}))
     }
 
     async fn uninstall_trigger(
@@ -717,6 +633,7 @@ impl Api {
             storage,
             scheduler,
             event_bus,
+            triggers: DashMap::new(),
         };
 
         api.create_default_namespace().await.unwrap();
@@ -753,7 +670,7 @@ impl Api {
     }
 
     /// Start a TLS enabled, multiplexed, grpc/http server.
-    pub async fn start_service(self) {
+    async fn start_service(self) {
         let rest =
             axum::Router::new().route("/*path", axum::routing::any(frontend::frontend_handler));
 

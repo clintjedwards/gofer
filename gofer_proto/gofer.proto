@@ -175,27 +175,29 @@ service Gofer {
 service TriggerService {
   // Watch blocks until the trigger has a pipeline that should be run, then it
   // returns.
-  rpc Watch(WatchRequest) returns (WatchResponse);
+  rpc Watch(TriggerWatchRequest) returns (TriggerWatchResponse);
 
   // Info returns information on the specific plugin
-  rpc Info(InfoRequest) returns (InfoResponse);
+  rpc Info(TriggerInfoRequest) returns (TriggerInfoResponse);
 
   // Subscribe allows a trigger to keep track of all pipelines currently
   // dependant on that trigger so that we can trigger them at appropriate times.
-  rpc Subscribe(SubscribeRequest) returns (SubscribeResponse);
+  rpc Subscribe(TriggerSubscribeRequest) returns (TriggerSubscribeResponse);
 
   // Unsubscribe allows pipelines to remove their trigger subscriptions. This is
   // useful if the pipeline no longer needs to be notified about a specific
   // trigger automation.
-  rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse);
+  rpc Unsubscribe(TriggerUnsubscribeRequest)
+      returns (TriggerUnsubscribeResponse);
 
   // Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
   // does not shutdown in a time defined by the gofer API the trigger will
   // instead be Force shutdown(SIGKILL). This is to say that all triggers should
   // lean toward quick cleanups and shutdowns.
-  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+  rpc Shutdown(TriggerShutdownRequest) returns (TriggerShutdownResponse);
 
   // ExternalEvent are json blobs of gofer's /events endpoint. Normally
   // webhooks.
-  rpc ExternalEvent(ExternalEventRequest) returns (ExternalEventResponse);
+  rpc ExternalEvent(TriggerExternalEventRequest)
+      returns (TriggerExternalEventResponse);
 }

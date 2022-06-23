@@ -231,39 +231,51 @@ message DeleteTaskRunLogsResponse {}
 ////////////// Trigger Transport Models //////////////
 
 message GetTriggerRequest {
-  string kind = 1; // The unique name for a particular trigger
+  string name = 1; // The unique name for a particular trigger
 }
 message GetTriggerResponse { Trigger trigger = 1; }
 
 message ListTriggersRequest {}
 message ListTriggersResponse { repeated Trigger triggers = 1; }
 
-message InstallTriggerRequest { TriggerConfig trigger = 1; }
+message InstallTriggerRequest {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+}
 message InstallTriggerResponse {}
 
-message UninstallTriggerRequest { string kind = 1; }
+message UninstallTriggerRequest { string name = 1; }
 message UninstallTriggerResponse {}
 
 ////////////// Notifier Transport Models //////////////
 
 message GetNotifierRequest {
-  string kind = 1; // The unique name/kind for a particular notifier
+  string name = 1; // The unique name/kind for a particular notifier
 }
 message GetNotifierResponse { Notifier notifier = 1; }
 
 message ListNotifiersRequest {}
 message ListNotifiersResponse { repeated Notifier notifiers = 1; }
 
-message InstallNotifierRequest { NotifierConfig notifier = 1; }
+message InstallNotifierRequest {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+}
 message InstallNotifierResponse {}
 
-message UninstallNotifierRequest { string kind = 1; }
+message UninstallNotifierRequest { string name = 1; }
 message UninstallNotifierResponse {}
 
 ////////////// Trigger Service Transport Models //////////////
 
-message WatchRequest {}
-message WatchResponse {
+message TriggerWatchRequest {}
+message TriggerWatchResponse {
   // The trigger can choose to give extra details about the specific trigger
   // event result in the form of a string description.
   string details = 1;
@@ -289,13 +301,13 @@ message WatchResponse {
   map<string, string> metadata = 6;
 }
 
-message InfoRequest {}
-message InfoResponse {
+message TriggerInfoRequest {}
+message TriggerInfoResponse {
   // kind corresponds a unique trigger identifier, this is passed as a envvar
   // via the main process(and as such can be left empty), as the main process
   // container the configuration for which trigger "kind" corresponds to which
   // trigger container.
-  string kind = 1;
+  string name = 1;
 
   // Triggers are allowed to provide a link to more extensive documentation on
   // how to use and configure them.
@@ -305,7 +317,7 @@ message InfoResponse {
   repeated string registered = 3;
 }
 
-message SubscribeRequest {
+message TriggerSubscribeRequest {
   string namespace_id = 1; // unique identifier for associated namespace
   string pipeline_id = 2;  // unique identifier for associated pipeline
   string pipeline_trigger_label = 3; // pipeline specific subscription id
@@ -319,17 +331,17 @@ message SubscribeRequest {
   // error when it does not meet requirements.
   map<string, string> config = 4;
 }
-message SubscribeResponse {}
+message TriggerSubscribeResponse {}
 
-message UnsubscribeRequest {
+message TriggerUnsubscribeRequest {
   string namespace_id = 1; // unique identifier for associated namespace
   string pipeline_id = 2;  // unique identifier for associated pipeline
   string pipeline_trigger_label = 3; // pipeline specific subscription id
 }
-message UnsubscribeResponse {}
+message TriggerUnsubscribeResponse {}
 
-message ShutdownRequest {}
-message ShutdownResponse {}
+message TriggerShutdownRequest {}
+message TriggerShutdownResponse {}
 
-message ExternalEventRequest { bytes payload = 1; }
-message ExternalEventResponse {}
+message TriggerExternalEventRequest { bytes payload = 1; }
+message TriggerExternalEventResponse {}

@@ -127,8 +127,8 @@ impl EventBus {
         Ok(new_subscription)
     }
 
-    /// Allows caller to emit a new event to the eventbus. Mutates event to have the proper
-    /// id and returns the id generated.
+    /// Allows caller to emit a new event to the eventbus. Returns the resulting
+    /// event once it has been successfully published.
     pub async fn publish(&self, kind: gofer_models::EventKind) -> Option<gofer_models::Event> {
         let mut new_event = gofer_models::Event::new(kind.clone());
 

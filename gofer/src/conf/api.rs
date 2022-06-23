@@ -6,6 +6,7 @@ pub struct Config {
     pub general: General,
     pub server: Server,
     pub scheduler: Scheduler,
+    pub triggers: Triggers,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
@@ -15,8 +16,14 @@ pub struct General {
     pub dev_mode: bool,
     pub log_level: String,
     pub encryption_key: String,
-    pub event_prune_interval: u64, // in seconds
-    pub event_retention: u64,      // in seconds
+    /// How often the background process for pruning events should run (in seconds).
+    pub event_prune_interval: u64,
+    /// Controls how long Gofer will hold onto events before discarding them.
+    /// This is important factor in disk space and memory footprint.
+    ///
+    /// Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention
+    ///  puts the memory and storage footprint at about 9GB.
+    pub event_retention: u64,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
@@ -37,6 +44,12 @@ pub struct Scheduler {
 pub struct DockerScheduler {
     pub prune: bool,
     pub prune_interval: u64, // in seconds
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+pub struct Triggers {
+    pub tls_cert: String,
+    pub tls_key: String,
 }
 
 #[cfg(test)]
@@ -87,6 +100,9 @@ mod tests {
                     prune_interval: 604800,
                 }),
             },
+            triggers: Triggers {
+                ..Default::default()
+            },
         };
 
         assert_eq!(parsed_config, expected_config);
@@ -120,6 +136,9 @@ mod tests {
             },
             scheduler: Scheduler {
                 engine: Engine::Docker,
+                ..Default::default()
+            },
+            triggers: Triggers {
                 ..Default::default()
             },
         };

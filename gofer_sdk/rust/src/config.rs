@@ -130,7 +130,7 @@ impl Pipeline {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PipelineTriggerConfig {
     /// A global unique identifier for the trigger type.
-    pub kind: String,
+    pub name: String,
     /// A user defined identifier for the trigger so that a pipeline with
     /// multiple notifiers can be differentiated.
     pub label: String,
@@ -139,9 +139,9 @@ pub struct PipelineTriggerConfig {
 }
 
 impl PipelineTriggerConfig {
-    pub fn new(kind: &str, label: &str) -> Self {
+    pub fn new(name: &str, label: &str) -> Self {
         PipelineTriggerConfig {
-            kind: kind.to_string(),
+            name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
         }
@@ -161,7 +161,7 @@ impl PipelineTriggerConfig {
 impl From<gofer_proto::PipelineTriggerConfig> for PipelineTriggerConfig {
     fn from(p: gofer_proto::PipelineTriggerConfig) -> Self {
         PipelineTriggerConfig {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
         }
@@ -171,7 +171,7 @@ impl From<gofer_proto::PipelineTriggerConfig> for PipelineTriggerConfig {
 impl From<PipelineTriggerConfig> for gofer_proto::PipelineTriggerConfig {
     fn from(p: PipelineTriggerConfig) -> Self {
         gofer_proto::PipelineTriggerConfig {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
         }
@@ -181,7 +181,7 @@ impl From<PipelineTriggerConfig> for gofer_proto::PipelineTriggerConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PipelineNotifierConfig {
     /// A global unique identifier for the notifier type.
-    pub kind: String,
+    pub name: String,
     /// A user defined identifier for the notifier so that a pipeline with
     /// multiple notifiers can be differentiated.
     pub label: String,
@@ -190,9 +190,9 @@ pub struct PipelineNotifierConfig {
 }
 
 impl PipelineNotifierConfig {
-    pub fn new(kind: &str, label: &str) -> Self {
+    pub fn new(name: &str, label: &str) -> Self {
         PipelineNotifierConfig {
-            kind: kind.to_string(),
+            name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
         }
@@ -212,7 +212,7 @@ impl PipelineNotifierConfig {
 impl From<gofer_proto::PipelineNotifierConfig> for PipelineNotifierConfig {
     fn from(p: gofer_proto::PipelineNotifierConfig) -> Self {
         PipelineNotifierConfig {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
         }
@@ -222,7 +222,7 @@ impl From<gofer_proto::PipelineNotifierConfig> for PipelineNotifierConfig {
 impl From<PipelineNotifierConfig> for gofer_proto::PipelineNotifierConfig {
     fn from(p: PipelineNotifierConfig) -> Self {
         gofer_proto::PipelineNotifierConfig {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
         }

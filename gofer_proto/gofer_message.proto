@@ -112,7 +112,7 @@ message RunFailureInfo {
 }
 
 message RunTriggerInfo {
-  string kind = 1;
+  string name = 1;
   string label = 2;
 }
 
@@ -148,14 +148,14 @@ message Task {
 }
 
 message PipelineTriggerSettings {
-  string kind = 1;
+  string name = 1;
   string label = 2;
   map<string, string> settings = 3;
   string error = 4;
 }
 
 message PipelineNotifierSettings {
-  string kind = 1;
+  string name = 1;
   string label = 2;
   map<string, string> settings = 3;
   string error = 4;
@@ -178,13 +178,13 @@ message TaskConfig {
 }
 
 message PipelineTriggerConfig {
-  string kind = 1;
+  string name = 1;
   string label = 2;
   map<string, string> settings = 3;
 }
 
 message PipelineNotifierConfig {
-  string kind = 1;
+  string name = 1;
   string label = 2;
   map<string, string> settings = 3;
 }
@@ -234,7 +234,7 @@ message TaskRun {
 }
 
 message Trigger {
-  string kind = 1;
+  string name = 1;
   string image = 2;
   string url = 3;
   string scheduler_id = 4;
@@ -243,36 +243,32 @@ message Trigger {
     UNKNOWN_STATE = 0;
     PROCESSING = 1;
     RUNNING = 2;
-    COMPLETE = 3;
+    EXITED = 3;
   }
   State state = 6;
-  enum Status {
-    UNKNOWN_STATUS = 0;
-    SUCCESSFUL = 1;
-    FAILED = 2;
-  }
-  Status status = 7;
-  string documentation = 8;
+  string documentation = 7;
 }
 
-message TriggerConfig {
-  string kind = 1;
+message TriggerRegistration {
+  string name = 1;
   string image = 2;
   string user = 3;
   string pass = 4;
   map<string, string> variables = 5;
+  uint64 created = 6;
 }
 
 message Notifier {
-  string kind = 1;
+  string name = 1;
   string image = 2;
   string documentation = 3;
 }
 
-message NotifierConfig {
-  string kind = 1;
+message NotifierRegistration {
+  string name = 1;
   string image = 2;
   string user = 3;
   string pass = 4;
   map<string, string> variables = 5;
+  uint64 created = 6;
 }

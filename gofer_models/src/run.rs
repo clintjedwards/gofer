@@ -166,7 +166,7 @@ impl From<RunFailureInfo> for gofer_proto::RunFailureInfo {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunTriggerInfo {
     /// The trigger kind responsible for starting the run.
-    pub kind: String,
+    pub name: String,
     /// The trigger label responsible for starting the run. The label is a user chosen name
     /// for the trigger to differentiate it from other pipeline triggers of the same kind.
     pub label: String,
@@ -175,7 +175,7 @@ pub struct RunTriggerInfo {
 impl From<RunTriggerInfo> for gofer_proto::RunTriggerInfo {
     fn from(r: RunTriggerInfo) -> Self {
         Self {
-            kind: r.kind,
+            name: r.name,
             label: r.label,
         }
     }

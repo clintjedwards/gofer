@@ -177,8 +177,12 @@
 - Config is near completion we just have to fix: https://github.com/YushiOMOTE/econf/issues/11
 - Subscribe in the event system should ideally take an enum without the caller having to specify what is inside
   the enum. (what is inside gets thrown away anyway). Is there an easy way to do this?
+- TLS needs more time spent.
 
-- We need to change events to be per subscriber, we tried to make a big table work but after thinking about it that doesn't
-  work at all.
-- We can probably make the Subscription object in the event_bus auto unsubscribe itself, but I'm not sure how without
-  creating a circular reference.
+  - We need to figure out how to pass a file path,
+  - It would be great if we could get untrusted certs to work, so we don't have to be in two different modes for
+    dev and prod.
+
+- If a trigger by the same name is already installed, we should refuse to install another.
+  - Maybe have a force function in the CLI to say "hey, if you want we'll uninstall this for you".
+- Implement collect logs for triggers.

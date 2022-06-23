@@ -3,6 +3,7 @@ mod namespaces;
 mod pipelines;
 mod runs;
 mod task_runs;
+mod trigger_registrations;
 
 #[cfg(test)]
 mod tests;

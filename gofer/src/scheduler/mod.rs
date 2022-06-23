@@ -3,7 +3,7 @@ mod docker;
 use crate::conf;
 use async_trait::async_trait;
 use futures::Stream;
-use gofer_models::TaskRunState;
+use gofer_models::{TaskRunState, TriggerState};
 use serde::Deserialize;
 use slog_scope::error;
 use std::{collections::HashMap, pin::Pin};
@@ -34,6 +34,35 @@ pub enum SchedulerError {
     Unknown(String),
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum ContainerState {
+    Unknown,
+    Running,
+    Paused,
+    Restarting,
+    Exited,
+}
+
+impl From<ContainerState> for TaskRunState {
+    fn from(c: ContainerState) -> Self {
+        match c {
+            ContainerState::Unknown | ContainerState::Restarting => TaskRunState::Unknown,
+            ContainerState::Running | ContainerState::Paused => TaskRunState::Running,
+            ContainerState::Exited => TaskRunState::Complete,
+        }
+    }
+}
+
+impl From<ContainerState> for TriggerState {
+    fn from(c: ContainerState) -> Self {
+        match c {
+            ContainerState::Unknown | ContainerState::Restarting => TriggerState::Unknown,
+            ContainerState::Running | ContainerState::Paused => TriggerState::Running,
+            ContainerState::Exited => TriggerState::Exited,
+        }
+    }
+}
+
 /// It is sometimes desirable for someone to run a different entrypoint with their container.
 /// This represents the shell and script of that entrypoint.
 #[derive(Debug)]
@@ -54,7 +83,7 @@ pub struct StartContainerRequest {
     /// A unique identifier to identify the container with.
     pub name: String,
     /// The docker image repository and docker image name; tag can be included.
-    pub image_name: String,
+    pub image: String,
     /// Environment variables to be passed to the container.
     pub variables: HashMap<String, String>,
     /// Registry authentication details.
@@ -99,7 +128,7 @@ pub struct GetStateResponse {
     /// In the event that the container is in a "complete" state; the exit code of that container.
     pub exit_code: Option<u8>,
     /// The current state of the container, state referencing how complete the container process of running is.
-    pub state: TaskRunState,
+    pub state: ContainerState,
 }
 
 #[derive(Debug)]

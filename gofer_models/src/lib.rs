@@ -4,6 +4,7 @@ mod pipeline;
 mod run;
 mod task;
 mod task_run;
+mod trigger;
 
 pub use self::event::*;
 pub use self::namespace::*;
@@ -11,6 +12,7 @@ pub use self::pipeline::*;
 pub use self::run::*;
 pub use self::task::*;
 pub use self::task_run::*;
+pub use self::trigger::*;
 
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

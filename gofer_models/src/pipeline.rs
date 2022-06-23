@@ -144,7 +144,7 @@ impl Pipeline {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PipelineTriggerSettings {
     /// A global unique identifier for the trigger type.
-    pub kind: String,
+    pub name: String,
     /// A user defined identifier for the trigger so that a pipeline with
     /// multiple notifiers can be differentiated.
     pub label: String,
@@ -157,7 +157,7 @@ pub struct PipelineTriggerSettings {
 impl PipelineTriggerSettings {
     pub fn new(kind: &str, label: &str) -> Self {
         PipelineTriggerSettings {
-            kind: kind.to_string(),
+            name: kind.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
             error: None,
@@ -173,7 +173,7 @@ impl PipelineTriggerSettings {
 impl From<gofer_proto::PipelineTriggerSettings> for PipelineTriggerSettings {
     fn from(p: gofer_proto::PipelineTriggerSettings) -> Self {
         PipelineTriggerSettings {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
             error: {
@@ -190,7 +190,7 @@ impl From<gofer_proto::PipelineTriggerSettings> for PipelineTriggerSettings {
 impl From<PipelineTriggerSettings> for gofer_proto::PipelineTriggerSettings {
     fn from(p: PipelineTriggerSettings) -> Self {
         gofer_proto::PipelineTriggerSettings {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
             error: match p.error {
@@ -204,7 +204,7 @@ impl From<PipelineTriggerSettings> for gofer_proto::PipelineTriggerSettings {
 impl From<gofer_sdk::config::PipelineTriggerConfig> for PipelineTriggerSettings {
     fn from(p: gofer_sdk::config::PipelineTriggerConfig) -> Self {
         Self {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
             error: None,
@@ -215,7 +215,7 @@ impl From<gofer_sdk::config::PipelineTriggerConfig> for PipelineTriggerSettings 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PipelineNotifierSettings {
     /// A global unique identifier for the notifier type.
-    pub kind: String,
+    pub name: String,
     /// A user defined identifier for the notifier so that a pipeline with
     /// multiple notifiers can be differentiated.
     pub label: String,
@@ -226,9 +226,9 @@ pub struct PipelineNotifierSettings {
 }
 
 impl PipelineNotifierSettings {
-    pub fn new(kind: &str, label: &str) -> Self {
+    pub fn new(name: &str, label: &str) -> Self {
         PipelineNotifierSettings {
-            kind: kind.to_string(),
+            name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
             error: None,
@@ -244,7 +244,7 @@ impl PipelineNotifierSettings {
 impl From<gofer_proto::PipelineNotifierSettings> for PipelineNotifierSettings {
     fn from(p: gofer_proto::PipelineNotifierSettings) -> Self {
         PipelineNotifierSettings {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
             error: {
@@ -261,7 +261,7 @@ impl From<gofer_proto::PipelineNotifierSettings> for PipelineNotifierSettings {
 impl From<PipelineNotifierSettings> for gofer_proto::PipelineNotifierSettings {
     fn from(p: PipelineNotifierSettings) -> Self {
         gofer_proto::PipelineNotifierSettings {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
             error: match p.error {
@@ -275,7 +275,7 @@ impl From<PipelineNotifierSettings> for gofer_proto::PipelineNotifierSettings {
 impl From<gofer_sdk::config::PipelineNotifierConfig> for PipelineNotifierSettings {
     fn from(p: gofer_sdk::config::PipelineNotifierConfig) -> Self {
         Self {
-            kind: p.kind,
+            name: p.name,
             label: p.label,
             settings: p.settings,
             error: None,

@@ -64,17 +64,27 @@ pub enum EventKind {
     },
 
     // Trigger events
-    FiredTrigger {
+    RegisteredTrigger {
+        name: String,
+        image: String,
+    },
+    StartedTrigger {
+        name: String,
+        image: String,
+    },
+
+    // Trigger event events
+    FiredTriggerEvent {
         namespace_id: String,
         pipeline_id: String,
         label: String,
     },
-    ProcessedTrigger {
+    ProcessedTriggerEvent {
         namespace_id: String,
         pipeline_id: String,
         label: String,
     },
-    ResolvedTrigger {
+    ResolvedTriggerEvent {
         namespace_id: String,
         pipeline_id: String,
         label: String,

@@ -20,3 +20,7 @@ engine = "Docker" # possible values: ["Docker"]
 [scheduler.docker]
 prune = true
 prune_interval = 604800
+
+[triggers]
+tls_cert = ""
+tls_key = ""

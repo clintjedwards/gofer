@@ -87,12 +87,25 @@ CREATE TABLE IF NOT EXISTS tasks (
     PRIMARY KEY (namespace, pipeline, id)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS triggers (
-    id TEXT NOT NULL
+
+CREATE TABLE IF NOT EXISTS trigger_registrations (
+    name      TEXT NOT NULL,
+    image     TEXT NOT NULL,
+    user      TEXT,
+    pass      TEXT,
+    variables TEXT NOT NULL,
+    created   TEXT NOT NULL,
+    PRIMARY KEY (name)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS notifiers (
-    id TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS notifier_registrations (
+    name      TEXT NOT NULL,
+    image     TEXT NOT NULL,
+    user      TEXT,
+    pass      TEXT,
+    variables TEXT NOT NULL,
+    created   TEXT NOT NULL,
+    PRIMARY KEY (name)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS object_store_run_keys(
