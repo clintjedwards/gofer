@@ -330,9 +330,9 @@ pub struct TaskRun {
     pub scheduler_id: ::prost::alloc::string::String,
     #[prost(uint64, tag="12")]
     pub started: u64,
-    #[prost(enumeration="task_run::State", tag="13")]
+    #[prost(enumeration="task_run::TaskRunState", tag="13")]
     pub state: i32,
-    #[prost(enumeration="task_run::Status", tag="14")]
+    #[prost(enumeration="task_run::TaskRunStatus", tag="14")]
     pub status: i32,
     #[prost(message, optional, tag="15")]
     pub task: ::core::option::Option<Task>,
@@ -341,7 +341,7 @@ pub struct TaskRun {
 pub mod task_run {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum State {
+    pub enum TaskRunState {
         UnknownState = 0,
         Processing = 1,
         Running = 2,
@@ -349,7 +349,7 @@ pub mod task_run {
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum Status {
+    pub enum TaskRunStatus {
         UnknownStatus = 0,
         Successful = 1,
         Failed = 2,
@@ -369,7 +369,7 @@ pub struct Trigger {
     pub scheduler_id: ::prost::alloc::string::String,
     #[prost(uint64, tag="5")]
     pub started: u64,
-    #[prost(enumeration="trigger::State", tag="6")]
+    #[prost(enumeration="trigger::TriggerState", tag="6")]
     pub state: i32,
     #[prost(string, tag="7")]
     pub documentation: ::prost::alloc::string::String,
@@ -378,7 +378,7 @@ pub struct Trigger {
 pub mod trigger {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum State {
+    pub enum TriggerState {
         UnknownState = 0,
         Processing = 1,
         Running = 2,

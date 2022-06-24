@@ -67,10 +67,15 @@ pub struct Api {
     /// Used throughout the whole application in order to allow functions to wait on state changes in Gofer.
     event_bus: events::EventBus,
 
-    /// Triggers is an in-memory map of currently registered and started triggers.
+    /// An in-memory map of currently registered and started triggers.
     /// This is necessary due to triggers being based on containers and their state needing to be constantly
     /// updated and maintained.
     triggers: DashMap<String, gofer_models::Trigger>,
+
+    /// An in-memory map of currently registered notifiers. These notifiers are registered on startup
+    /// and launched as needed at the end of a user's pipeline run. Gofer refers to this cache as a way
+    /// to quickly look up which container is needed to be launched.
+    notifiers: DashMap<String, gofer_models::Notifier>,
 }
 
 #[tonic::async_trait]
@@ -606,7 +611,28 @@ impl Gofer for Api {
         &self,
         request: Request<InstallNotifierRequest>,
     ) -> Result<Response<InstallNotifierResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        require_args!(args.name, args.image);
+
+        if self.notifiers.contains_key(&args.name) {
+            return Err(Status::already_exists(format!(
+                "notifier '{}' already exists",
+                &args.name
+            )));
+        }
+
+        self.storage
+            .create_notifier_registration(&args.clone().into())
+            .await
+            .map_err(|e| match e {
+                storage::StorageError::Exists => Status::already_exists(format!(
+                    "notifier with name '{}' already exists",
+                    &args.name
+                )),
+                _ => Status::internal(e.to_string()),
+            })?;
+
+        Ok(Response::new(InstallNotifierResponse {}))
     }
 
     async fn uninstall_notifier(
@@ -634,6 +660,7 @@ impl Api {
             scheduler,
             event_bus,
             triggers: DashMap::new(),
+            notifiers: DashMap::new(),
         };
 
         api.create_default_namespace().await.unwrap();

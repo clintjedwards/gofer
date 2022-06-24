@@ -1,5 +1,6 @@
 mod events;
 mod namespaces;
+mod notifier_registrations;
 mod pipelines;
 mod runs;
 mod task_runs;

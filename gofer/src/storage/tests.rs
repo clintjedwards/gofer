@@ -480,3 +480,49 @@ async fn crud_trigger_registrations() {
 
     assert_eq!(trigger, StorageError::NotFound);
 }
+
+#[tokio::test]
+/// Basic CRUD can be accomplished for notifier_registrations.
+async fn crud_notifier_registrations() {
+    let harness = TestHarness::new().await;
+
+    let test_notifier_registration = gofer_models::NotifierRegistration {
+        name: "test_notifier".to_string(),
+        image: "docker/test".to_string(),
+        user: None,
+        pass: None,
+        variables: HashMap::new(),
+        created: 0,
+    };
+
+    harness
+        .db
+        .create_notifier_registration(&test_notifier_registration)
+        .await
+        .unwrap();
+
+    let notifiers = harness.db.list_notifier_registrations(0, 0).await.unwrap();
+
+    assert_eq!(notifiers.len(), 1);
+    assert_eq!(notifiers[0], test_notifier_registration);
+
+    let notifier = harness
+        .db
+        .get_notifier_registration("test_notifier")
+        .await
+        .unwrap();
+    assert_eq!(notifier, test_notifier_registration);
+
+    harness
+        .db
+        .delete_notifier_registration("test_notifier")
+        .await
+        .unwrap();
+    let notifier = harness
+        .db
+        .get_notifier_registration("test_notifier")
+        .await
+        .unwrap_err();
+
+    assert_eq!(notifier, StorageError::NotFound);
+}

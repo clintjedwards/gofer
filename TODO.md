@@ -186,3 +186,5 @@
 - If a trigger by the same name is already installed, we should refuse to install another.
   - Maybe have a force function in the CLI to say "hey, if you want we'll uninstall this for you".
 - Implement collect logs for triggers.
+- Make sure to go back and make sure that all secret values persisted to the database are encrypted.
+- Write healthcheck and autoheal for triggers.

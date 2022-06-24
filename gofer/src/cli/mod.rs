@@ -2,6 +2,7 @@ mod namespace;
 mod pipeline;
 mod service;
 mod spinner;
+mod trigger;
 
 pub use self::spinner::*;
 
@@ -80,6 +81,9 @@ enum Commands {
 
     /// Manages pipeline related commands.
     Pipeline(pipeline::PipelineSubcommands),
+
+    /// Manages trigger related commands.
+    Trigger(trigger::TriggerSubcommands),
 }
 
 fn init_logging(severity: Severity) -> slog_scope::GlobalLoggerGuard {
@@ -189,6 +193,9 @@ pub async fn init() {
                 pipeline::PipelineCommands::Update { path } => cli.pipeline_update(&path).await,
                 pipeline::PipelineCommands::Delete { id } => cli.pipeline_delete(&id).await,
             }
+        }
+        Commands::Trigger(trigger) => {
+            unimplemented!()
         }
     }
 }

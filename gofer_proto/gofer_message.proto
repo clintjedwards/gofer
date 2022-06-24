@@ -215,21 +215,21 @@ message TaskRun {
   uint64 run_id = 10;
   string scheduler_id = 11;
   uint64 started = 12;
-  enum State {
+  enum TaskRunState {
     UNKNOWN_STATE = 0;
     PROCESSING = 1;
     RUNNING = 2;
     COMPLETE = 3;
   }
-  State state = 13;
-  enum Status {
+  TaskRunState state = 13;
+  enum TaskRunStatus {
     UNKNOWN_STATUS = 0;
     SUCCESSFUL = 1;
     FAILED = 2;
     CANCELLED = 3;
     SKIPPED = 4;
   }
-  Status status = 14;
+  TaskRunStatus status = 14;
   Task task = 15;
 }
 
@@ -239,13 +239,13 @@ message Trigger {
   string url = 3;
   string scheduler_id = 4;
   uint64 started = 5;
-  enum State {
+  enum TriggerState {
     UNKNOWN_STATE = 0;
     PROCESSING = 1;
     RUNNING = 2;
     EXITED = 3;
   }
-  State state = 6;
+  TriggerState state = 6;
   string documentation = 7;
 }
 

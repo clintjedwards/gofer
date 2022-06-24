@@ -31,6 +31,17 @@ pub enum TriggerState {
     Exited,
 }
 
+impl From<gofer_proto::trigger::TriggerState> for TriggerState {
+    fn from(r: gofer_proto::trigger::TriggerState) -> Self {
+        match r {
+            gofer_proto::trigger::TriggerState::UnknownState => TriggerState::Unknown,
+            gofer_proto::trigger::TriggerState::Processing => TriggerState::Processing,
+            gofer_proto::trigger::TriggerState::Running => TriggerState::Running,
+            gofer_proto::trigger::TriggerState::Exited => TriggerState::Exited,
+        }
+    }
+}
+
 /// The in-memory representation of a trigger, because triggers are somewhat ephemeral, many of the items listed
 /// here quickly go out of date and are not worth storing in the database.
 /// Because of this we keep an in-memory representation and store only trigger registrations.

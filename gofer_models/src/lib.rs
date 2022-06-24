@@ -1,5 +1,6 @@
 mod event;
 mod namespace;
+mod notifier;
 mod pipeline;
 mod run;
 mod task;
@@ -8,6 +9,7 @@ mod trigger;
 
 pub use self::event::*;
 pub use self::namespace::*;
+pub use self::notifier::*;
 pub use self::pipeline::*;
 pub use self::run::*;
 pub use self::task::*;
@@ -25,6 +27,13 @@ fn epoch() -> u64 {
         .as_millis();
 
     u64::try_from(current_epoch).unwrap()
+}
+
+/// Private repositories sometimes require authentication.
+#[derive(Debug)]
+pub struct RegistryAuth {
+    pub user: String,
+    pub pass: String,
 }
 
 /// The owner for the variable controls where the value of the variable
