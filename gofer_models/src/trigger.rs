@@ -55,12 +55,14 @@ pub struct Trigger {
 
 /// When installing a new trigger, we allow the trigger installer to pass a bunch of settings that
 /// allow us to go get that trigger on future startups.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct TriggerRegistration {
     pub name: String,
     pub image: String,
     pub user: Option<String>,
     pub pass: Option<String>,
     pub variables: HashMap<String, String>,
+    pub created: u64,
 }
 
 impl From<gofer_proto::InstallTriggerRequest> for TriggerRegistration {
@@ -83,6 +85,7 @@ impl From<gofer_proto::InstallTriggerRequest> for TriggerRegistration {
                 }
             },
             variables: v.variables,
+            created: super::epoch(),
         }
     }
 }

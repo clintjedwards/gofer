@@ -30,29 +30,29 @@ import (
 type TriggerServiceInterface interface {
 	// Watch blocks until the trigger has a pipeline that should be run, then it returns. This is ideal for setting
 	// the watch endpoint as an channel result.
-	Watch(context.Context, *proto.WatchRequest) (*proto.WatchResponse, error)
+	Watch(context.Context, *proto.TriggerWatchRequest) (*proto.TriggerWatchResponse, error)
 
 	// Info returns information on the specific plugin
-	Info(context.Context, *proto.InfoRequest) (*proto.InfoResponse, error)
+	Info(context.Context, *proto.TriggerInfoRequest) (*proto.TriggerInfoResponse, error)
 
 	// Subscribe allows a trigger to keep track of all pipelines currently
 	// dependant on that trigger so that we can trigger them at appropriate times.
-	Subscribe(context.Context, *proto.SubscribeRequest) (*proto.SubscribeResponse, error)
+	Subscribe(context.Context, *proto.TriggerSubscribeRequest) (*proto.TriggerSubscribeResponse, error)
 
 	// Unsubscribe allows pipelines to remove their trigger subscriptions. This is
 	// useful if the pipeline no longer needs to be notified about a specific
 	// trigger automation.
-	Unsubscribe(context.Context, *proto.UnsubscribeRequest) (*proto.UnsubscribeResponse, error)
+	Unsubscribe(context.Context, *proto.TriggerUnsubscribeRequest) (*proto.TriggerUnsubscribeResponse, error)
 
 	// Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
 	// does not shutdown in a time defined by the gofer API the trigger will
 	// instead be Force shutdown(SIGKILL). This is to say that all triggers should
 	// lean toward quick cleanups and shutdowns.
-	Shutdown(context.Context, *proto.ShutdownRequest) (*proto.ShutdownResponse, error)
+	Shutdown(context.Context, *proto.TriggerShutdownRequest) (*proto.TriggerShutdownResponse, error)
 
 	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
 	// webhooks.
-	ExternalEvent(context.Context, *proto.ExternalEventRequest) (*proto.ExternalEventResponse, error)
+	ExternalEvent(context.Context, *proto.TriggerExternalEventRequest) (*proto.TriggerExternalEventResponse, error)
 }
 
 type trigger struct {
@@ -68,61 +68,61 @@ type trigger struct {
 	proto.UnsafeTriggerServiceServer
 }
 
-func (t *trigger) Watch(ctx context.Context, req *proto.WatchRequest) (*proto.WatchResponse, error) {
+func (t *trigger) Watch(ctx context.Context, req *proto.TriggerWatchRequest) (*proto.TriggerWatchResponse, error) {
 	resp, err := t.impl.Watch(ctx, req)
 	if err != nil {
-		return &proto.WatchResponse{}, err
+		return &proto.TriggerWatchResponse{}, err
 	}
 
 	if resp == nil {
-		return &proto.WatchResponse{}, nil
+		return &proto.TriggerWatchResponse{}, nil
 	}
 
 	return resp, nil
 }
 
-func (t *trigger) Info(ctx context.Context, req *proto.InfoRequest) (*proto.InfoResponse, error) {
+func (t *trigger) Info(ctx context.Context, req *proto.TriggerInfoRequest) (*proto.TriggerInfoResponse, error) {
 	resp, err := t.impl.Info(ctx, req)
 	if err != nil {
-		return &proto.InfoResponse{}, err
+		return &proto.TriggerInfoResponse{}, err
 	}
 
 	if resp == nil {
-		return &proto.InfoResponse{}, nil
+		return &proto.TriggerInfoResponse{}, nil
 	}
 
-	resp.Kind = os.Getenv("GOFER_TRIGGER_KIND")
+	resp.Name = os.Getenv("GOFER_TRIGGER_NAME")
 
 	return resp, nil
 }
 
-func (t *trigger) Subscribe(ctx context.Context, req *proto.SubscribeRequest) (*proto.SubscribeResponse, error) {
+func (t *trigger) Subscribe(ctx context.Context, req *proto.TriggerSubscribeRequest) (*proto.TriggerSubscribeResponse, error) {
 	resp, err := t.impl.Subscribe(ctx, req)
 	if err != nil {
-		return &proto.SubscribeResponse{}, err
+		return &proto.TriggerSubscribeResponse{}, err
 	}
 
 	if resp == nil {
-		return &proto.SubscribeResponse{}, nil
+		return &proto.TriggerSubscribeResponse{}, nil
 	}
 
 	return resp, nil
 }
 
-func (t *trigger) Unsubscribe(ctx context.Context, req *proto.UnsubscribeRequest) (*proto.UnsubscribeResponse, error) {
+func (t *trigger) Unsubscribe(ctx context.Context, req *proto.TriggerUnsubscribeRequest) (*proto.TriggerUnsubscribeResponse, error) {
 	resp, err := t.impl.Unsubscribe(ctx, req)
 	if err != nil {
-		return &proto.UnsubscribeResponse{}, err
+		return &proto.TriggerUnsubscribeResponse{}, err
 	}
 
 	if resp == nil {
-		return &proto.UnsubscribeResponse{}, nil
+		return &proto.TriggerUnsubscribeResponse{}, nil
 	}
 
 	return resp, nil
 }
 
-func (t *trigger) Shutdown(ctx context.Context, req *proto.ShutdownRequest) (*proto.ShutdownResponse, error) {
+func (t *trigger) Shutdown(ctx context.Context, req *proto.TriggerShutdownRequest) (*proto.TriggerShutdownResponse, error) {
 	resp, err := t.impl.Shutdown(ctx, req)
 	if err != nil {
 		return nil, err
@@ -132,14 +132,14 @@ func (t *trigger) Shutdown(ctx context.Context, req *proto.ShutdownRequest) (*pr
 	return resp, nil
 }
 
-func (t *trigger) ExternalEvent(ctx context.Context, req *proto.ExternalEventRequest) (*proto.ExternalEventResponse, error) {
+func (t *trigger) ExternalEvent(ctx context.Context, req *proto.TriggerExternalEventRequest) (*proto.TriggerExternalEventResponse, error) {
 	resp, err := t.impl.ExternalEvent(ctx, req)
 	if err != nil {
-		return &proto.ExternalEventResponse{}, err
+		return &proto.TriggerExternalEventResponse{}, err
 	}
 
 	if resp == nil {
-		return &proto.ExternalEventResponse{}, nil
+		return &proto.TriggerExternalEventResponse{}, nil
 	}
 
 	return resp, nil
@@ -151,7 +151,7 @@ func newTriggerService(t TriggerServiceInterface) {
 		log.Fatal().Err(err).Msg("could not get environment variables for config")
 	}
 
-	setupLogging(config.Kind, config.LogLevel)
+	setupLogging(config.Name, config.LogLevel)
 
 	triggerServer := &trigger{
 		authKey: config.Key,
@@ -250,7 +250,7 @@ type internalTriggerConfig struct {
 	// Key is the auth key passed by the main gofer application to prevent other
 	// actors from attempting to communicate with the triggers.
 	Key  string `required:"true" json:"-"`
-	Kind string `required:"true"`
+	Name string `required:"true"`
 	// Possible values "debug", "info", "warn", "error", "fatal", "panic"
 	LogLevel string `split_words:"true" default:"info"`
 	// Contains the raw bytes for a TLS cert used by the trigger to authenticate clients.
@@ -274,10 +274,10 @@ func getTriggerConfig() (*internalTriggerConfig, error) {
 // Ideally we'd want to offer the caller some way to log through the package,
 // but since Go doesn't have good log interfaces we can just set this up by default
 // and suggest they use this.
-func setupLogging(triggerKind, loglevel string) {
+func setupLogging(triggerName, loglevel string) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.With().Caller().Logger()
-	log.Logger = log.With().Str("trigger", triggerKind).Logger()
+	log.Logger = log.With().Str("trigger", triggerName).Logger()
 	zerolog.SetGlobalLevel(parseLogLevel(loglevel))
 }
 
@@ -304,15 +304,15 @@ func parseLogLevel(loglevel string) zerolog.Level {
 // GetConfig is a convenience function that returns trigger/notifier config values from the environment.
 // It simply puts the needed config in the correct format to be retrieved from the environment
 // so the caller doesn't have to.
-func GetConfig(name string) string {
-	kind := os.Getenv("GOFER_TRIGGER_KIND")
-	return os.Getenv(fmt.Sprintf("GOFER_TRIGGER_%s_%s", strings.ToUpper(kind), strings.ToUpper(name)))
+func GetConfig(variable string) string {
+	name := os.Getenv("GOFER_TRIGGER_NAME")
+	return os.Getenv(fmt.Sprintf("GOFER_TRIGGER_%s_%s", strings.ToUpper(name), strings.ToUpper(variable)))
 }
 
 // InfoResponse is a convenience function for the Info interface function response.
-func InfoResponse(documentationLink string) (*proto.InfoResponse, error) {
-	return &proto.InfoResponse{
-		Kind:          os.Getenv("GOFER_TRIGGER_KIND"),
+func InfoResponse(documentationLink string) (*proto.TriggerInfoResponse, error) {
+	return &proto.TriggerInfoResponse{
+		Name:          os.Getenv("GOFER_TRIGGER_NAME"),
 		Documentation: documentationLink,
 	}, nil
 }

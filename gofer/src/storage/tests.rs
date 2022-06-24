@@ -440,33 +440,43 @@ async fn crud_events() {
 async fn crud_trigger_registrations() {
     let harness = TestHarness::new().await;
 
-    let mut test_event_one = gofer_models::Event::new(gofer_models::EventKind::CreatedNamespace {
-        namespace_id: "test_namespace".to_string(),
-    });
-    let mut test_event_two = gofer_models::Event::new(gofer_models::EventKind::CreatedPipeline {
-        namespace_id: "test_namespace".to_string(),
-        pipeline_id: "test_pipeline".to_string(),
-    });
-    let id_one = harness.db.create_event(&test_event_one).await.unwrap();
-    let id_two = harness.db.create_event(&test_event_two).await.unwrap();
+    let test_trigger_registration = gofer_models::TriggerRegistration {
+        name: "test_trigger".to_string(),
+        image: "docker/test".to_string(),
+        user: None,
+        pass: None,
+        variables: HashMap::new(),
+        created: 0,
+    };
 
-    assert_eq!(id_one, 1);
-    assert_eq!(id_two, 2);
+    harness
+        .db
+        .create_trigger_registration(&test_trigger_registration)
+        .await
+        .unwrap();
 
-    test_event_one.id = id_one;
-    test_event_two.id = id_two;
+    let triggers = harness.db.list_trigger_registrations(0, 0).await.unwrap();
 
-    let events = harness.db.list_events(0, 0, true).await.unwrap();
+    assert_eq!(triggers.len(), 1);
+    assert_eq!(triggers[0], test_trigger_registration);
 
-    assert_eq!(events.len(), 2);
-    assert_eq!(events[0], test_event_two);
-    assert_eq!(events[1], test_event_one);
+    let trigger = harness
+        .db
+        .get_trigger_registration("test_trigger")
+        .await
+        .unwrap();
+    assert_eq!(trigger, test_trigger_registration);
 
-    let event = harness.db.get_event(2).await.unwrap();
-    assert_eq!(event, test_event_two);
+    harness
+        .db
+        .delete_trigger_registration("test_trigger")
+        .await
+        .unwrap();
+    let trigger = harness
+        .db
+        .get_trigger_registration("test_trigger")
+        .await
+        .unwrap_err();
 
-    harness.db.delete_event(1).await.unwrap();
-    let event = harness.db.get_event(1).await.unwrap_err();
-
-    assert_eq!(event, StorageError::NotFound);
+    assert_eq!(trigger, StorageError::NotFound);
 }

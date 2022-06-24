@@ -105,19 +105,15 @@ func InstallTrigger(config map[string]string) error {
 		return err
 	}
 
-	triggerConfig := &proto.TriggerConfig{
+	client := proto.NewGoferClient(conn)
+	md := metadata.Pairs("Authorization", "Bearer "+vars.Token)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	_, err = client.InstallTrigger(ctx, &proto.InstallTriggerRequest{
 		Name:      vars.Name,
 		Image:     vars.Image,
 		User:      vars.User,
 		Pass:      vars.Pass,
 		Variables: config,
-	}
-
-	client := proto.NewGoferClient(conn)
-	md := metadata.Pairs("Authorization", "Bearer "+vars.Token)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	_, err = client.InstallTrigger(ctx, &proto.InstallTriggerRequest{
-		Trigger: triggerConfig,
 	})
 	if err != nil {
 		return err
@@ -144,19 +140,15 @@ func InstallNotifier(config map[string]string) error {
 		return err
 	}
 
-	notifierConfig := &proto.NotifierConfig{
+	client := proto.NewGoferClient(conn)
+	md := metadata.Pairs("Authorization", "Bearer "+vars.Token)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	_, err = client.InstallNotifier(ctx, &proto.InstallNotifierRequest{
 		Name:      vars.Name,
 		Image:     vars.Image,
 		User:      vars.User,
 		Pass:      vars.Pass,
 		Variables: config,
-	}
-
-	client := proto.NewGoferClient(conn)
-	md := metadata.Pairs("Authorization", "Bearer "+vars.Token)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	_, err = client.InstallNotifier(ctx, &proto.InstallNotifierRequest{
-		Notifier: notifierConfig,
 	})
 	if err != nil {
 		return err

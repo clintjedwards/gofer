@@ -26,7 +26,7 @@ impl Db {
 
         let result = sqlx::query(
             r#"
-        SELECT name, image, user, pass, variables
+        SELECT name, image, user, pass, variables, created
         FROM trigger_registrations
         LIMIT ?
         OFFSET ?;
@@ -43,6 +43,7 @@ impl Db {
                 let variables_json = row.get::<String, _>("variables");
                 serde_json::from_str(&variables_json).unwrap()
             },
+            created: row.get::<i64, _>("created") as u64,
         })
         .fetch_all(&mut conn)
         .await;
@@ -63,8 +64,8 @@ impl Db {
 
         sqlx::query(
             r#"
-        INSERT INTO trigger_registrations (name, image, user, pass, variables)
-        VALUES (?, ?, ?, ?, ?);
+        INSERT INTO trigger_registrations (name, image, user, pass, variables, created)
+        VALUES (?, ?, ?, ?, ?, ?);
             "#,
         )
         .bind(&trigger_registration.name)
@@ -72,6 +73,7 @@ impl Db {
         .bind(&trigger_registration.user)
         .bind(&trigger_registration.pass)
         .bind(serde_json::to_string(&trigger_registration.variables).unwrap())
+        .bind(trigger_registration.created as i64)
         .execute(&mut conn)
         .map_err(|e| match e {
             sqlx::Error::Database(database_err) => {
@@ -102,7 +104,7 @@ impl Db {
 
         sqlx::query(
             r#"
-        SELECT name, image, user, pass, variables
+        SELECT name, image, user, pass, variables, created
         FROM trigger_registrations
         WHERE name = ?;
             "#,
@@ -117,6 +119,7 @@ impl Db {
                 let variables_json = row.get::<String, _>("variables");
                 serde_json::from_str(&variables_json).unwrap()
             },
+            created: row.get::<i64, _>("created") as u64,
         })
         .fetch_one(&mut conn)
         .map_err(|e| match e {

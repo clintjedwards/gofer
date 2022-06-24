@@ -89,22 +89,22 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 
 CREATE TABLE IF NOT EXISTS trigger_registrations (
-    name      TEXT NOT NULL,
-    image     TEXT NOT NULL,
+    name      TEXT    NOT NULL,
+    image     TEXT    NOT NULL,
     user      TEXT,
     pass      TEXT,
-    variables TEXT NOT NULL,
-    created   TEXT NOT NULL,
+    variables TEXT    NOT NULL,
+    created   INTEGER NOT NULL,
     PRIMARY KEY (name)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS notifier_registrations (
-    name      TEXT NOT NULL,
-    image     TEXT NOT NULL,
+    name      TEXT    NOT NULL,
+    image     TEXT    NOT NULL,
     user      TEXT,
     pass      TEXT,
-    variables TEXT NOT NULL,
-    created   TEXT NOT NULL,
+    variables TEXT    NOT NULL,
+    created   INTEGER NOT NULL,
     PRIMARY KEY (name)
 ) STRICT;
 
