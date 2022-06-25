@@ -102,6 +102,7 @@ impl Api {
                 scheduler_id: resp.scheduler_id,
                 started: epoch(),
                 state: gofer_models::TriggerState::Running,
+                status: settings.status.clone(),
                 documentation: {
                     if !info.documentation.is_empty() {
                         Some(info.documentation)

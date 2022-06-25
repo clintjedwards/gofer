@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS trigger_registrations (
     pass      TEXT,
     variables TEXT    NOT NULL,
     created   INTEGER NOT NULL,
+    status    TEXT    NOT NULL,
     PRIMARY KEY (name)
 ) STRICT;
 
@@ -105,6 +106,7 @@ CREATE TABLE IF NOT EXISTS notifier_registrations (
     pass      TEXT,
     variables TEXT    NOT NULL,
     created   INTEGER NOT NULL,
+    status    TEXT    NOT NULL,
     PRIMARY KEY (name)
 ) STRICT;
 

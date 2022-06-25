@@ -153,6 +153,12 @@ service Gofer {
   rpc UninstallTrigger(UninstallTriggerRequest)
       returns (UninstallTriggerResponse);
 
+  // EnableTrigger attempts to enable a new trigger.
+  rpc EnableTrigger(EnableTriggerRequest) returns (EnableTriggerResponse);
+
+  // DisableTrigger attempts to disable a new trigger.
+  rpc DisableTrigger(DisableTriggerRequest) returns (DisableTriggerResponse);
+
   ////////////// Notifier RPCs //////////////
   //
   // A notifier is a provided way to notify external systems about the
@@ -170,6 +176,12 @@ service Gofer {
   // UninstallNotifier attempts to uninstall a notifier.
   rpc UninstallNotifier(UninstallNotifierRequest)
       returns (UninstallNotifierResponse);
+
+  // EnableNotifier attempts to enable a new notifier.
+  rpc EnableNotifier(EnableNotifierRequest) returns (EnableNotifierResponse);
+
+  // DisableNotifier attempts to disable a new notifier.
+  rpc DisableNotifier(DisableNotifierRequest) returns (DisableNotifierResponse);
 }
 
 service TriggerService {
@@ -200,4 +212,15 @@ service TriggerService {
   // webhooks.
   rpc ExternalEvent(TriggerExternalEventRequest)
       returns (TriggerExternalEventResponse);
+
+  // Install attempts to perform all pre-setup steps required for running a
+  // trigger. For example, a trigger which performs pipeline runs off of github
+  // trigger events, might first
+  rpc Install(stream TriggerInstallRequest)
+      returns (stream TriggerInstallResponse);
+
+  // Uninstall attempts to perform all post-trigger steps required for running a
+  // trigger.
+  rpc Uninstall(stream TriggerUninstallRequest)
+      returns (stream TriggerUninstallResponse);
 }

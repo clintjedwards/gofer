@@ -246,7 +246,13 @@ message Trigger {
     EXITED = 3;
   }
   TriggerState state = 6;
-  string documentation = 7;
+  enum TriggerStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  TriggerStatus status = 7;
+  string documentation = 8;
 }
 
 message TriggerRegistration {
@@ -256,12 +262,24 @@ message TriggerRegistration {
   string pass = 4;
   map<string, string> variables = 5;
   uint64 created = 6;
+  enum TriggerStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  TriggerStatus status = 7;
 }
 
 message Notifier {
   string name = 1;
   string image = 2;
   string documentation = 3;
+  enum NotifierStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  NotifierStatus status = 4;
 }
 
 message NotifierRegistration {
@@ -271,4 +289,10 @@ message NotifierRegistration {
   string pass = 4;
   map<string, string> variables = 5;
   uint64 created = 6;
+  enum NotifierStatus {
+    UNKNOWN_STATUS = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+  NotifierStatus status = 7;
 }

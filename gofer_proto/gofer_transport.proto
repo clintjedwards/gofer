@@ -250,6 +250,12 @@ message InstallTriggerResponse {}
 message UninstallTriggerRequest { string name = 1; }
 message UninstallTriggerResponse {}
 
+message EnableTriggerRequest { string name = 1; }
+message EnableTriggerResponse {}
+
+message DisableTriggerRequest { string name = 1; }
+message DisableTriggerResponse {}
+
 ////////////// Notifier Transport Models //////////////
 
 message GetNotifierRequest {
@@ -271,6 +277,12 @@ message InstallNotifierResponse {}
 
 message UninstallNotifierRequest { string name = 1; }
 message UninstallNotifierResponse {}
+
+message EnableNotifierRequest { string name = 1; }
+message EnableNotifierResponse {}
+
+message DisableNotifierRequest { string name = 1; }
+message DisableNotifierResponse {}
 
 ////////////// Trigger Service Transport Models //////////////
 
@@ -345,3 +357,21 @@ message TriggerShutdownResponse {}
 
 message TriggerExternalEventRequest { bytes payload = 1; }
 message TriggerExternalEventResponse {}
+
+message TriggerConfigResponse { map<string, string> config = 1; }
+
+message TriggerInstallRequest { string message = 1; }
+message TriggerInstallResponse {
+  oneof response {
+    string message = 1;
+    TriggerConfigResponse config = 2;
+  }
+}
+
+message TriggerUninstallRequest { string message = 1; }
+message TriggerUninstallResponse {
+  oneof response {
+    string message = 1;
+    TriggerConfigResponse config = 2;
+  }
+}

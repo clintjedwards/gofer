@@ -53,6 +53,14 @@ type TriggerServiceInterface interface {
 	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
 	// webhooks.
 	ExternalEvent(context.Context, *proto.TriggerExternalEventRequest) (*proto.TriggerExternalEventResponse, error)
+
+	// Install attempts to perform all pre-setup steps required for running a trigger.
+	// For example, a trigger which performs pipeline runs off of github trigger events,
+	// might first
+	Install(context.Context, *proto.TriggerInstallRequest) (*proto.TriggerInstallResponse, error)
+
+	// Uninstall attempts to perform all post-trigger steps required for running a trigger.
+	Uninstall(context.Context, *proto.TriggerUninstallRequest) (*proto.TriggerUninstallResponse, error)
 }
 
 type trigger struct {
@@ -145,7 +153,35 @@ func (t *trigger) ExternalEvent(ctx context.Context, req *proto.TriggerExternalE
 	return resp, nil
 }
 
-func newTriggerService(t TriggerServiceInterface) {
+func (t *trigger) Install(ctx context.Context, req *proto.TriggerInstallRequest) (*proto.TriggerInstallResponse, error) {
+	resp, err := t.impl.Install(ctx, req)
+	if err != nil {
+		return &proto.TriggerInstallResponse{}, err
+	}
+
+	if resp == nil {
+		return &proto.TriggerInstallResponse{}, nil
+	}
+
+	return resp, nil
+}
+
+func (t *trigger) Uninstall(ctx context.Context, req *proto.TriggerUninstallRequest) (*proto.TriggerUninstallResponse, error) {
+	resp, err := t.impl.Uninstall(ctx, req)
+	if err != nil {
+		return &proto.TriggerUninstallResponse{}, err
+	}
+
+	if resp == nil {
+		return &proto.TriggerUninstallResponse{}, nil
+	}
+
+	return resp, nil
+}
+
+// NewTrigger is used as the final step in establishing a trigger.
+// It should be the final call in a trigger's main func.
+func NewTrigger(impl TriggerServiceInterface) {
 	config, err := getTriggerConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not get environment variables for config")
@@ -156,7 +192,7 @@ func newTriggerService(t TriggerServiceInterface) {
 	triggerServer := &trigger{
 		authKey: config.Key,
 		stop:    make(chan os.Signal, 1),
-		impl:    t,
+		impl:    impl,
 	}
 	triggerServer.run()
 }
@@ -315,25 +351,4 @@ func InfoResponse(documentationLink string) (*proto.TriggerInfoResponse, error) 
 		Name:          os.Getenv("GOFER_TRIGGER_NAME"),
 		Documentation: documentationLink,
 	}, nil
-}
-
-// NewTrigger is used as the final step in establishing a trigger. It should be the final call in a trigger's main func.
-//
-// It takes two parameters:
-// 1) The concrete service implementation which is turned into a GRPC service in order to handle pipeline trigger events.
-// 2) A installer function which is called upon when a user wants to install this particular trigger.
-// More documentation for the implementation is coming soon: TODO(clintjedwards):
-func NewTrigger(service TriggerServiceInterface, installer func()) {
-	if len(os.Args) != 2 {
-		log.Fatal().Msg("Usage: ./trigger <server|installer>")
-	}
-
-	switch os.Args[1] {
-	case "server":
-		newTriggerService(service)
-	case "installer":
-		installer()
-	default:
-		log.Fatal().Msg("Usage: ./trigger <server|installer>")
-	}
 }

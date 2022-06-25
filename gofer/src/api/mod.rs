@@ -593,6 +593,20 @@ impl Gofer for Api {
         todo!()
     }
 
+    async fn enable_trigger(
+        &self,
+        request: Request<EnableTriggerRequest>,
+    ) -> Result<Response<EnableTriggerResponse>, Status> {
+        todo!()
+    }
+
+    async fn disable_trigger(
+        &self,
+        request: Request<DisableTriggerRequest>,
+    ) -> Result<Response<DisableTriggerResponse>, Status> {
+        todo!()
+    }
+
     async fn get_notifier(
         &self,
         request: Request<GetNotifierRequest>,
@@ -639,6 +653,20 @@ impl Gofer for Api {
         &self,
         request: Request<UninstallNotifierRequest>,
     ) -> Result<Response<UninstallNotifierResponse>, Status> {
+        todo!()
+    }
+
+    async fn enable_notifier(
+        &self,
+        request: Request<EnableNotifierRequest>,
+    ) -> Result<Response<EnableNotifierResponse>, Status> {
+        todo!()
+    }
+
+    async fn disable_notifier(
+        &self,
+        request: Request<DisableNotifierRequest>,
+    ) -> Result<Response<DisableNotifierResponse>, Status> {
         todo!()
     }
 }

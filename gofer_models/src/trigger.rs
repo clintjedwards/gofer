@@ -42,6 +42,17 @@ impl From<gofer_proto::trigger::TriggerState> for TriggerState {
     }
 }
 
+/// Triggers can be enabled and disabled.
+#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub enum TriggerStatus {
+    /// Cannot determine status of Trigger, should never be in this status.
+    Unknown,
+    /// Available and able to be called.
+    Enabled,
+    /// Unavailable and unusable for all users.
+    Disabled,
+}
+
 /// The in-memory representation of a trigger, because triggers are somewhat ephemeral, many of the items listed
 /// here quickly go out of date and are not worth storing in the database.
 /// Because of this we keep an in-memory representation and store only trigger registrations.
@@ -57,6 +68,7 @@ pub struct Trigger {
     pub scheduler_id: Option<String>,
     pub started: u64,
     pub state: TriggerState,
+    pub status: TriggerStatus,
     pub documentation: Option<String>,
     /// Key is a trigger's authentication key used to validate requests from the Gofer main service.
     /// On every request the Gofer service passes this key so that it is impossible for other service to contact
@@ -74,6 +86,7 @@ pub struct TriggerRegistration {
     pub pass: Option<String>,
     pub variables: HashMap<String, String>,
     pub created: u64,
+    pub status: TriggerStatus,
 }
 
 impl From<gofer_proto::InstallTriggerRequest> for TriggerRegistration {
@@ -97,6 +110,7 @@ impl From<gofer_proto::InstallTriggerRequest> for TriggerRegistration {
             },
             variables: v.variables,
             created: super::epoch(),
+            status: TriggerStatus::Enabled,
         }
     }
 }

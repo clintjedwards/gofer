@@ -148,45 +148,45 @@ impl Task {
         }
     }
 
-    pub fn description(mut self, description: &str) -> Self {
-        self.description = Some(description.to_string());
-        self
-    }
+    // pub fn description(mut self, description: &str) -> Self {
+    //     self.description = Some(description.to_string());
+    //     self
+    // }
 
-    pub fn registry_auth(mut self, username: &str, password: &str) -> Self {
-        self.registry_auth = Some(RegistryAuth {
-            user: username.to_string(),
-            pass: password.to_string(),
-        });
-        self
-    }
+    // pub fn registry_auth(mut self, username: &str, password: &str) -> Self {
+    //     self.registry_auth = Some(RegistryAuth {
+    //         user: username.to_string(),
+    //         pass: password.to_string(),
+    //     });
+    //     self
+    // }
 
-    pub fn depends_on_one(mut self, task_id: &str, state: RequiredParentStatus) -> Self {
-        self.depends_on.insert(task_id.to_string(), state);
-        self
-    }
+    // pub fn depends_on_one(mut self, task_id: &str, state: RequiredParentStatus) -> Self {
+    //     self.depends_on.insert(task_id.to_string(), state);
+    //     self
+    // }
 
-    pub fn depends_on_many(mut self, depends_on: HashMap<String, RequiredParentStatus>) -> Self {
-        self.depends_on.extend(depends_on);
-        self
-    }
+    // pub fn depends_on_many(mut self, depends_on: HashMap<String, RequiredParentStatus>) -> Self {
+    //     self.depends_on.extend(depends_on);
+    //     self
+    // }
 
-    pub fn variables(mut self, variables: HashMap<String, String>) -> Self {
-        self.variables = variables
-            .into_iter()
-            .map(|(key, value)| Variable {
-                key,
-                value,
-                owner: VariableOwner::User,
-            })
-            .collect();
-        self
-    }
+    // pub fn variables(mut self, variables: HashMap<String, String>) -> Self {
+    //     self.variables = variables
+    //         .into_iter()
+    //         .map(|(key, value)| Variable {
+    //             key,
+    //             value,
+    //             owner: VariableOwner::User,
+    //         })
+    //         .collect();
+    //     self
+    // }
 
-    pub fn exec(mut self, exec: Exec) -> Self {
-        self.exec = Some(exec);
-        self
-    }
+    // pub fn exec(mut self, exec: Exec) -> Self {
+    //     self.exec = Some(exec);
+    //     self
+    // }
 }
 
 impl From<gofer_proto::Task> for Task {

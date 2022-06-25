@@ -447,6 +447,7 @@ async fn crud_trigger_registrations() {
         pass: None,
         variables: HashMap::new(),
         created: 0,
+        status: gofer_models::TriggerStatus::Enabled,
     };
 
     harness
