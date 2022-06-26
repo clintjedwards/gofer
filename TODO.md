@@ -165,3 +165,6 @@
 - We should have a watch function for run that nicely displays the task runs as they start and finish.
   (We could even have the active task_runs display the last 5 log lines as it runs each in their own personal terminal print load bar thing)
 - Change triggers so that the CLI collects the configuration needed for install and uninstall.
+
+-- When we instll/uninstall triggers the first line should be which trigger we're setting up. and query lines should be
+prefixed with >

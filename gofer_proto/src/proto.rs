@@ -1116,20 +1116,49 @@ pub struct TriggerExternalEventRequest {
 pub struct TriggerExternalEventResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerConfigResponse {
+    #[prost(map="string, string", tag="1")]
+    pub config: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TriggerInstallRequest {
     #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
+    pub message: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TriggerInstallResponse {
+    #[prost(oneof="trigger_install_response::Response", tags="1, 2")]
+    pub response: ::core::option::Option<trigger_install_response::Response>,
+}
+/// Nested message and enum types in `TriggerInstallResponse`.
+pub mod trigger_install_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Response {
+        #[prost(string, tag="1")]
+        Message(::prost::alloc::string::String),
+        #[prost(message, tag="2")]
+        Config(super::TriggerConfigResponse),
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TriggerUninstallRequest {
     #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
+    pub message: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TriggerUninstallResponse {
+    #[prost(oneof="trigger_uninstall_response::Response", tags="1, 2")]
+    pub response: ::core::option::Option<trigger_uninstall_response::Response>,
+}
+/// Nested message and enum types in `TriggerUninstallResponse`.
+pub mod trigger_uninstall_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Response {
+        #[prost(string, tag="1")]
+        Message(::prost::alloc::string::String),
+        #[prost(message, tag="2")]
+        Config(super::TriggerConfigResponse),
+    }
 }
 /// Generated client implementations.
 pub mod gofer_client {
@@ -2124,8 +2153,13 @@ pub mod trigger_service_client {
         /// trigger events, might first
         pub async fn install(
             &mut self,
-            request: impl tonic::IntoRequest<super::TriggerInstallRequest>,
-        ) -> Result<tonic::Response<super::TriggerInstallResponse>, tonic::Status> {
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::TriggerInstallRequest,
+            >,
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::TriggerInstallResponse>>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2139,14 +2173,19 @@ pub mod trigger_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/proto.TriggerService/Install",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
         /// Uninstall attempts to perform all post-trigger steps required for running a
         /// trigger.
         pub async fn uninstall(
             &mut self,
-            request: impl tonic::IntoRequest<super::TriggerUninstallRequest>,
-        ) -> Result<tonic::Response<super::TriggerUninstallResponse>, tonic::Status> {
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::TriggerUninstallRequest,
+            >,
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::TriggerUninstallResponse>>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2160,7 +2199,7 @@ pub mod trigger_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/proto.TriggerService/Uninstall",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
     }
 }
@@ -3930,19 +3969,31 @@ pub mod trigger_service_server {
             &self,
             request: tonic::Request<super::TriggerExternalEventRequest>,
         ) -> Result<tonic::Response<super::TriggerExternalEventResponse>, tonic::Status>;
+        ///Server streaming response type for the Install method.
+        type InstallStream: futures_core::Stream<
+                Item = Result<super::TriggerInstallResponse, tonic::Status>,
+            >
+            + Send
+            + 'static;
         /// Install attempts to perform all pre-setup steps required for running a
         /// trigger. For example, a trigger which performs pipeline runs off of github
         /// trigger events, might first
         async fn install(
             &self,
-            request: tonic::Request<super::TriggerInstallRequest>,
-        ) -> Result<tonic::Response<super::TriggerInstallResponse>, tonic::Status>;
+            request: tonic::Request<tonic::Streaming<super::TriggerInstallRequest>>,
+        ) -> Result<tonic::Response<Self::InstallStream>, tonic::Status>;
+        ///Server streaming response type for the Uninstall method.
+        type UninstallStream: futures_core::Stream<
+                Item = Result<super::TriggerUninstallResponse, tonic::Status>,
+            >
+            + Send
+            + 'static;
         /// Uninstall attempts to perform all post-trigger steps required for running a
         /// trigger.
         async fn uninstall(
             &self,
-            request: tonic::Request<super::TriggerUninstallRequest>,
-        ) -> Result<tonic::Response<super::TriggerUninstallResponse>, tonic::Status>;
+            request: tonic::Request<tonic::Streaming<super::TriggerUninstallRequest>>,
+        ) -> Result<tonic::Response<Self::UninstallStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct TriggerServiceServer<T: TriggerService> {
@@ -4226,16 +4277,19 @@ pub mod trigger_service_server {
                     struct InstallSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::TriggerInstallRequest>
+                    > tonic::server::StreamingService<super::TriggerInstallRequest>
                     for InstallSvc<T> {
                         type Response = super::TriggerInstallResponse;
+                        type ResponseStream = T::InstallStream;
                         type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
+                            tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TriggerInstallRequest>,
+                            request: tonic::Request<
+                                tonic::Streaming<super::TriggerInstallRequest>,
+                            >,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).install(request).await };
@@ -4254,7 +4308,7 @@ pub mod trigger_service_server {
                                 accept_compression_encodings,
                                 send_compression_encodings,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -4264,16 +4318,19 @@ pub mod trigger_service_server {
                     struct UninstallSvc<T: TriggerService>(pub Arc<T>);
                     impl<
                         T: TriggerService,
-                    > tonic::server::UnaryService<super::TriggerUninstallRequest>
+                    > tonic::server::StreamingService<super::TriggerUninstallRequest>
                     for UninstallSvc<T> {
                         type Response = super::TriggerUninstallResponse;
+                        type ResponseStream = T::UninstallStream;
                         type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
+                            tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TriggerUninstallRequest>,
+                            request: tonic::Request<
+                                tonic::Streaming<super::TriggerUninstallRequest>,
+                            >,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).uninstall(request).await };
@@ -4292,7 +4349,7 @@ pub mod trigger_service_server {
                                 accept_compression_encodings,
                                 send_compression_encodings,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

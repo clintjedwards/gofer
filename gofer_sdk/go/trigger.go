@@ -57,10 +57,10 @@ type TriggerServiceInterface interface {
 	// Install attempts to perform all pre-setup steps required for running a trigger.
 	// For example, a trigger which performs pipeline runs off of github trigger events,
 	// might first
-	Install(context.Context, *proto.TriggerInstallRequest) (*proto.TriggerInstallResponse, error)
+	Install(proto.TriggerService_InstallServer) error
 
 	// Uninstall attempts to perform all post-trigger steps required for running a trigger.
-	Uninstall(context.Context, *proto.TriggerUninstallRequest) (*proto.TriggerUninstallResponse, error)
+	Uninstall(proto.TriggerService_UninstallServer) error
 }
 
 type trigger struct {
@@ -153,30 +153,22 @@ func (t *trigger) ExternalEvent(ctx context.Context, req *proto.TriggerExternalE
 	return resp, nil
 }
 
-func (t *trigger) Install(ctx context.Context, req *proto.TriggerInstallRequest) (*proto.TriggerInstallResponse, error) {
-	resp, err := t.impl.Install(ctx, req)
+func (t *trigger) Install(stream proto.TriggerService_InstallServer) error {
+	err := t.impl.Install(stream)
 	if err != nil {
-		return &proto.TriggerInstallResponse{}, err
+		return err
 	}
 
-	if resp == nil {
-		return &proto.TriggerInstallResponse{}, nil
-	}
-
-	return resp, nil
+	return nil
 }
 
-func (t *trigger) Uninstall(ctx context.Context, req *proto.TriggerUninstallRequest) (*proto.TriggerUninstallResponse, error) {
-	resp, err := t.impl.Uninstall(ctx, req)
+func (t *trigger) Uninstall(stream proto.TriggerService_UninstallServer) error {
+	err := t.impl.Uninstall(stream)
 	if err != nil {
-		return &proto.TriggerUninstallResponse{}, err
+		return err
 	}
 
-	if resp == nil {
-		return &proto.TriggerUninstallResponse{}, nil
-	}
-
-	return resp, nil
+	return nil
 }
 
 // NewTrigger is used as the final step in establishing a trigger.

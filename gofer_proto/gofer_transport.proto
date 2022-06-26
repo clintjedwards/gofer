@@ -364,7 +364,8 @@ message TriggerInstallRequest { string message = 1; }
 message TriggerInstallResponse {
   oneof response {
     string message = 1;
-    TriggerConfigResponse config = 2;
+    string query = 2;
+    TriggerConfigResponse config = 3;
   }
 }
 
@@ -372,6 +373,7 @@ message TriggerUninstallRequest { string message = 1; }
 message TriggerUninstallResponse {
   oneof response {
     string message = 1;
-    TriggerConfigResponse config = 2;
+    string query = 2;
+    TriggerConfigResponse config = 3;
   }
 }
