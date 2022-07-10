@@ -11,6 +11,7 @@ use std::process;
 pub trait Spinner {
     fn new() -> Self;
     fn println_success(&self, message: &str);
+    fn println_error(&self, message: &str);
     fn finish_and_error(&self, message: &str) -> !;
     fn finish_and_success(&self, message: &str) -> !;
     fn abandon_and_success(&self, message: &str);
@@ -29,6 +30,10 @@ impl Spinner for ProgressBar {
 
     fn println_success(&self, message: &str) {
         self.println(format!("{} {}", "✓".green(), message));
+    }
+
+    fn println_error(&self, message: &str) {
+        self.println(format!("{} {}", "x".red(), message));
     }
 
     fn finish_and_error(&self, message: &str) -> ! {

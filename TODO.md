@@ -173,3 +173,4 @@ prefixed with >2
 
 - The gofer sdk installationInstructions doesn't modify self. So you have to remember to assign it to yourself.
 - Switch gofer-containers to point to the main branch and not rust rewrite
+- trigger-install cli cmd should force the user to chose either use -i or -v. Even if that means -v must be empty

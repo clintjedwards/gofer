@@ -16,11 +16,11 @@ impl CliHarness {
         spinner.set_message("Creating pipeline");
 
         // Figure out absolute path for any given path string.
-        let path = PathBuf::from(path);
-        let full_path = path.canonicalize().unwrap_or_else(|e| {
+        let parsed_path = PathBuf::from(path);
+        let full_path = parsed_path.canonicalize().unwrap_or_else(|e| {
             spinner.finish_and_error(&format!(
-                "Could not determine full path for '{}'; {}",
-                path.to_string_lossy(),
+                "Could not determine full path for '{}'; {:?}",
+                parsed_path.to_string_lossy(),
                 e
             ));
         });
@@ -38,7 +38,7 @@ impl CliHarness {
             .spawn()
             .unwrap_or_else(|e| {
                 spinner.finish_and_error(&format!(
-                    "Could not run build command for target config '{}'; {}",
+                    "Could not run build command for target config '{}'; {:?}",
                     full_path, e
                 ));
             });
@@ -47,10 +47,13 @@ impl CliHarness {
         let stderr = cmd.stderr.take().unwrap();
         let stderr_reader = BufReader::new(stderr).lines();
 
+        let mut last_lines = vec![];
         for line in stderr_reader {
-            let line = line.unwrap();
+            let read_line = line.unwrap();
+            last_lines.push(read_line.to_string());
+            let read_line = read_line.trim();
             spinner.set_message({
-                let mut status_line = format!("Building pipeline config: {}", line.trim());
+                let mut status_line = format!("Building pipeline config: {}", read_line);
                 status_line.truncate(80);
                 status_line
             });
@@ -58,19 +61,31 @@ impl CliHarness {
 
         let exit_status = cmd.wait().unwrap_or_else(|e| {
             spinner.finish_and_error(&format!(
-                "Could not run build command for target config; {}",
+                "Could not run build command for target pipeline config; {:?}",
                 e
             ));
         });
 
         if !exit_status.success() {
-            let mut output = String::from("");
-            cmd.stderr.unwrap().read_to_string(&mut output).unwrap();
+            if last_lines.is_empty() {
+                last_lines = vec!["No output found for this pipeline build".to_string()];
+            }
 
-            spinner.finish_and_error(&format!(
-                "Could not run build command for target config; {}",
-                output
-            ));
+            let last_few_lines: Vec<String> = last_lines.into_iter().rev().take(15).collect();
+
+            spinner.println_error(
+                "Could not successfully build target pipeline; Examine partial error output below:\n...",
+            );
+
+            for line in last_few_lines {
+                spinner.println(format!("  {}", line))
+            }
+
+            let helper_cargo_cmd = format!("cargo run --manifest-path {path}/Cargo.toml").cyan();
+            spinner.println(format!("...\nView full error output: {helper_cargo_cmd}"));
+
+            spinner.finish_and_clear();
+            process::exit(1);
         }
 
         spinner.set_message("Parsing pipeline config");

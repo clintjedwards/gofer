@@ -1,5 +1,4 @@
-use crate::api::{epoch, validate, Api};
-use crate::storage;
+use crate::api::Api;
 use futures::Stream;
 use gofer_proto::{gofer_server::Gofer, *};
 use std::pin::Pin;
@@ -264,33 +263,7 @@ impl Gofer for Api {
         &self,
         request: Request<InstallNotifierRequest>,
     ) -> Result<Response<InstallNotifierResponse>, Status> {
-        let args = request.into_inner();
-        validate::arg(
-            "name",
-            args.name.clone().clone(),
-            vec![validate::not_empty_str],
-        )?;
-        validate::arg("image", args.image.clone(), vec![validate::not_empty_str])?;
-
-        if self.notifiers.contains_key(&args.name) {
-            return Err(Status::already_exists(format!(
-                "notifier '{}' already exists",
-                &args.name
-            )));
-        }
-
-        self.storage
-            .create_notifier_registration(&args.clone().into())
-            .await
-            .map_err(|e| match e {
-                storage::StorageError::Exists => Status::already_exists(format!(
-                    "notifier with name '{}' already exists",
-                    &args.name
-                )),
-                _ => Status::internal(e.to_string()),
-            })?;
-
-        Ok(Response::new(InstallNotifierResponse {}))
+        todo!()
     }
 
     async fn uninstall_notifier(

@@ -91,7 +91,7 @@ impl CliHarness {
         }
 
         print!(
-            "Install trigger '{}' with above settings? [Y/N]: ",
+            "Install trigger '{}' with above settings? [Y/n]: ",
             to_title_case(name)
         );
         stdout().flush().unwrap();
