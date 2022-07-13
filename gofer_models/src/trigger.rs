@@ -108,7 +108,7 @@ impl From<gofer_proto::InstallTriggerRequest> for TriggerRegistration {
             },
             variables: v.variables,
             created: super::epoch(),
-            status: TriggerStatus::Disabled,
+            status: TriggerStatus::Enabled,
         }
     }
 }

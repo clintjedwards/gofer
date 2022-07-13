@@ -9,7 +9,6 @@ pub use self::spinner::*;
 pub use self::utils::*;
 
 use crate::conf::{self, cli::Config};
-use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use gofer_proto::gofer_client::GoferClient;
 use slog::o;

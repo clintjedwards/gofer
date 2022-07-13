@@ -11,7 +11,7 @@ pub struct Config {
 
 impl Config {
     pub fn inject_localhost_dev_certs(&mut self) {
-        if !self.dev_mode && self.tls_ca.is_some() {
+        if !self.dev_mode || self.tls_ca.is_some() {
             return;
         }
 
