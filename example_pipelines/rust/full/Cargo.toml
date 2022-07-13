@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-gofer_sdk = { path = "../../gofer_sdk/rust" }
+gofer_sdk = { path = "../../../gofer_sdk/rust" }

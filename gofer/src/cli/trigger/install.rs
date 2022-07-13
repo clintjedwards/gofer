@@ -124,7 +124,7 @@ impl CliHarness {
         let mut client = match self.connect().await {
             Ok(client) => client,
             Err(e) => {
-                printerr_and_finish(&format!("Could not connect to Gofer server; {:?}", e));
+                printerr_and_finish(&format!("Could not connect to Gofer server; {}", e));
             }
         };
 

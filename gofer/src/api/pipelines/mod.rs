@@ -6,6 +6,7 @@ use gofer_proto::{
     GetPipelineRequest, GetPipelineResponse, ListPipelinesRequest, ListPipelinesResponse, Pipeline,
     RunPipelineRequest, RunPipelineResponse, UpdatePipelineRequest, UpdatePipelineResponse,
 };
+use slog_scope::debug;
 use tonic::{Response, Status};
 
 impl Api {
@@ -69,6 +70,8 @@ impl Api {
                 pipeline_id: new_pipeline.id.clone(),
             })
             .await;
+
+        debug!("pipeline created"; "pipeline" => format!("{:?}", &new_pipeline));
 
         Ok(Response::new(CreatePipelineResponse {
             pipeline: Some(new_pipeline.into()),

@@ -9,6 +9,7 @@ pub use self::spinner::*;
 pub use self::utils::*;
 
 use crate::conf::{self, cli::Config};
+use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use gofer_proto::gofer_client::GoferClient;
 use slog::o;
@@ -17,6 +18,7 @@ use sloggers::types::Severity;
 use sloggers::Build;
 use std::{
     error::Error,
+    fmt::Debug,
     str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -62,7 +64,14 @@ impl CliHarness {
         let channel = Channel::from_shared(self.config.server.to_string())?
             .tls_config(tls_config)?
             .connect()
-            .await?;
+            .await
+            .map_err(|e| {
+                if let Some(source_err) = e.source() {
+                    source_err.to_string()
+                } else {
+                    e.to_string()
+                }
+            })?;
 
         Ok(GoferClient::new(channel))
     }

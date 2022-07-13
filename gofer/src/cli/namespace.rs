@@ -55,7 +55,7 @@ pub enum NamespaceCommands {
 impl CliHarness {
     pub async fn namespace_list(&self) {
         let mut client = self.connect().await.unwrap_or_else(|e| {
-            eprintln!("Command failed; {}", e.source().unwrap());
+            eprintln!("Command failed; {}", e);
             process::exit(1);
         });
 
