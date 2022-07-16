@@ -2,23 +2,23 @@ mod docker;
 
 use crate::conf;
 use async_trait::async_trait;
+use econf::LoadEnv;
 use futures::Stream;
 use gofer_models::{TaskRunState, TriggerState};
 use serde::Deserialize;
 use slog_scope::error;
 use std::{collections::HashMap, pin::Pin};
+use strum::{Display, EnumString};
 
 /// Represents different scheduler failure possibilities.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum SchedulerError {
     /// Failed to start scheduled due to misconfigured settings, usually from a misconfigured settings file.
     #[error("could not init scheduler; {0}")]
-    #[allow(dead_code)]
     FailedSchedulerPrecondition(String),
 
     /// Failed to start scheduled due to misconfigured settings, usually from a misconfigured settings file.
     #[error("could not init container config; {0}")]
-    #[allow(dead_code)]
     FailedContainerPrecondition(String),
 
     /// Failed to communicate with scheduler due to network error or other.
@@ -164,9 +164,7 @@ pub trait Scheduler {
     ) -> Pin<Box<dyn Stream<Item = Result<Log, SchedulerError>> + Send>>;
 }
 
-#[derive(
-    Debug, Clone, Deserialize, PartialEq, Eq, strum::Display, strum::EnumString, econf::LoadEnv,
-)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Display, EnumString, LoadEnv)]
 pub enum Engine {
     Docker,
 }

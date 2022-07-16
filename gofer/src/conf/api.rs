@@ -1,5 +1,6 @@
 use crate::conf::{LOCALHOST_CA, LOCALHOST_CRT, LOCALHOST_KEY};
-use crate::scheduler::Engine;
+use crate::scheduler;
+use crate::object_store;
 use serde::Deserialize;
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
@@ -25,6 +26,8 @@ pub struct General {
     /// Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention
     ///  puts the memory and storage footprint at about 9GB.
     pub event_retention: u64,
+    /// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
+    pub run_parallelism_limit: u64,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
@@ -37,7 +40,7 @@ pub struct Server {
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
 pub struct Scheduler {
-    pub engine: Engine,
+    pub engine: scheduler::Engine,
     pub docker: Option<DockerScheduler>,
 }
 
@@ -52,6 +55,19 @@ pub struct Triggers {
     pub tls_ca: Option<String>,
     pub tls_cert: String,
     pub tls_key: String,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+pub struct ObjectStore {
+    pub engine: object_store::Engine,
+    pub embedded: Option<EmbeddedObjectStore>,
+    pub pipeline_object_limit: u64,
+    pub run_object_expiry: u64,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+pub struct EmbeddedObjectStore {
+    pub path: String,
 }
 
 impl Config {
@@ -113,6 +129,7 @@ mod tests {
                 encryption_key: "default".to_string(),
                 event_prune_interval: 604800,
                 event_retention: 7889238,
+                run_parallelism_limit: 0,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
@@ -159,6 +176,7 @@ mod tests {
                 encryption_key: "default".to_string(),
                 event_prune_interval: 604800,
                 event_retention: 7889238,
+                run_parallelism_limit: 0,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),

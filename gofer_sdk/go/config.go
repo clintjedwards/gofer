@@ -200,7 +200,7 @@ func (p *Pipeline) Finish() error {
 	return nil
 }
 
-var alphanumericWithHyphens = regexp.MustCompile("^[a-zA-Z0-9_]*$")
+var alphanumericWithUnderscores = regexp.MustCompile("^[a-zA-Z0-9_]*$")
 
 /// Identifiers are used as the primary key in most of gofer's resources.
 /// They're defined by the user and therefore should have some sane bounds.
@@ -216,7 +216,7 @@ func validateIdentifier(arg, value string) error {
 		return fmt.Errorf("length of arg %q cannot be less than 3", arg)
 	}
 
-	if !alphanumericWithHyphens.MatchString(value) {
+	if !alphanumericWithUnderscores.MatchString(value) {
 		return fmt.Errorf("can only be made up of alphanumeric and underscore characters")
 	}
 	return nil

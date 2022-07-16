@@ -37,6 +37,7 @@ serde_json = "1"
 slog = "2.7.0"
 slog-scope = "4.4.0"
 sloggers = "2.1.1"
+sled = "0.34.7"
 sqlx = { version = "0.5", features = ["runtime-tokio-rustls", "sqlite"] }
 strum = { version = "0.24", features = ["derive"] }
 thiserror = "1.0.31"
@@ -53,3 +54,4 @@ gofer_sdk = { path = "../gofer_sdk/rust" }
 
 [dev-dependencies]
 rand = "0.8.5"
+defer-lite = "1.0.0"

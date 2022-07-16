@@ -28,15 +28,21 @@ message Namespace {
   uint64 modified = 5;
 }
 
-enum VariableOwner {
-  UNKNOWN = 0;
-  USER = 1;
-  SYSTEM = 2;
-}
 message Variable {
+  enum VariableSensitivity {
+    VARIABLE_SENSITIVITY_UNKNOWN = 0;
+    PUBLIC = 1;
+    PRIVATE = 2;
+  }
+  enum VariableOwner {
+    VARIABLE_OWNER_UNKNOWN = 0;
+    USER = 1;
+    SYSTEM = 2;
+  }
   string key = 1;
   string value = 2;
   VariableOwner owner = 3;
+  VariableSensitivity sensitivity = 4;
 }
 
 message Pipeline {

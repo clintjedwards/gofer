@@ -23,7 +23,7 @@ pub enum NamespaceCommands {
     /// Create a new namespace.
     Create {
         /// Identifier for namespace; Must be alphanumeric, lowercase,
-        /// with only hyphens/dashes as alternate characters.
+        /// with only underscores as alternate characters.
         id: String,
         /// Humanized name for namespace.
         #[clap(short, long)]

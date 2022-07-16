@@ -33,8 +33,27 @@ pub struct Variable {
     pub key: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub value: ::prost::alloc::string::String,
-    #[prost(enumeration="VariableOwner", tag="3")]
+    #[prost(enumeration="variable::VariableOwner", tag="3")]
     pub owner: i32,
+    #[prost(enumeration="variable::VariableSensitivity", tag="4")]
+    pub sensitivity: i32,
+}
+/// Nested message and enum types in `Variable`.
+pub mod variable {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum VariableSensitivity {
+        Unknown = 0,
+        Public = 1,
+        Private = 2,
+    }
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum VariableOwner {
+        Unknown = 0,
+        User = 1,
+        System = 2,
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Pipeline {
@@ -461,13 +480,6 @@ pub mod notifier_registration {
         Enabled = 1,
         Disabled = 2,
     }
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum VariableOwner {
-    Unknown = 0,
-    User = 1,
-    System = 2,
 }
 ////////////// System Transport Models //////////////
 

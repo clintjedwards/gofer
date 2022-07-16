@@ -140,6 +140,8 @@ impl EventBus {
             }
         };
 
+        debug!("new event"; "kind" => format!("{:?}", &kind));
+
         new_event.id = id;
 
         let event_channel_map = match self.event_channel_map.read() {

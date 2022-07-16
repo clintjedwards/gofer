@@ -1,3 +1,5 @@
+mod utils;
+
 use crate::api::{validate, Api};
 use crate::storage;
 use gofer_proto::{
@@ -71,8 +73,6 @@ impl Api {
             })
             .await;
 
-        debug!("pipeline created"; "pipeline" => format!("{:?}", &new_pipeline));
-
         Ok(Response::new(CreatePipelineResponse {
             pipeline: Some(new_pipeline.into()),
         }))
@@ -116,9 +116,8 @@ impl Api {
         )?;
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
-        // check parrellism here through events
-
-        self.storage
+        let pipeline = self
+            .storage
             .get_pipeline(&args.namespace_id, &args.id)
             .await
             .map_err(|e| match e {
@@ -128,9 +127,56 @@ impl Api {
                 _ => Status::internal(e.to_string()),
             })?;
 
-        unimplemented!();
+        if pipeline.state != gofer_models::PipelineState::Active {
+            return Err(Status::failed_precondition(
+                "could not create run; pipeline is not active",
+            ));
+        }
 
-        //Ok(Response::new(RunPipelineResponse {}))
+        while self
+            .parallelism_limit_exceeded(&pipeline.namespace, &pipeline.id, pipeline.parallelism)
+            .await
+        {
+            debug!("parallelism limit exceeded; waiting for runs to end before launching new run"; "limit" => pipeline.parallelism);
+        }
+
+        let mut new_run = gofer_models::Run::new(
+            &pipeline.namespace,
+            &pipeline.id,
+            gofer_models::RunTriggerInfo {
+                name: "manual".to_string(),
+                label: "via_api".to_string(),
+            },
+            utils::map_to_variables(
+                args.variables,
+                gofer_models::VariableOwner::User,
+                gofer_models::VariableSensitivity::Public,
+            ),
+        );
+
+        let id = self
+            .storage
+            .create_run(&new_run)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        new_run.id = id;
+
+        self.event_bus
+            .publish(gofer_models::EventKind::StartedRun {
+                namespace_id: new_run.namespace.clone(),
+                pipeline_id: new_run.pipeline.clone(),
+                run_id: new_run.id,
+            })
+            .await;
+
+        // Handle run object expiry
+        // Handle run log expiry
+        // executeTaskTree
+
+        Ok(Response::new(RunPipelineResponse {
+            run: Some(new_run.into()),
+        }))
     }
 
     pub async fn enable_pipeline_handler(

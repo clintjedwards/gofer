@@ -175,3 +175,6 @@ prefixed with >2
 - Switch gofer-containers to point to the main branch and not rust rewrite
 - trigger-install cli cmd should force the user to chose either use -i or -v. Even if that means -v must be empty
 - Add an example of entrypoint running a script
+- It is possible if you have more than 200 runs going at the same time and your parrallesim limit goes over that amount. We wont correctly calculate it. Because we take the lazy route out and just grab the last 200 runs.
+
+- Bar user from having to care about sensitivity It shouldn't show up anywhere user can see it unless they list env vars.

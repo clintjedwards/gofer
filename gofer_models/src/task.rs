@@ -1,4 +1,4 @@
-use super::{Variable, VariableOwner};
+use super::{Variable, VariableOwner, VariableSensitivity};
 use gofer_sdk::config;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
@@ -185,6 +185,7 @@ impl From<config::Task> for Task {
                         key,
                         value,
                         owner: VariableOwner::User,
+                        sensitivity: VariableSensitivity::Unknown,
                     })
                     .collect()
             },

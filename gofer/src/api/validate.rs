@@ -20,7 +20,7 @@ pub fn arg<T: Clone>(
 /// * 32 > characters < 3
 /// * Only alphanumeric characters or underscores
 pub fn is_valid_identifier(id: String) -> Result<(), String> {
-    let alphanumeric_w_hyphens = regex!("^[a-zA-Z0-9_]*$");
+    let alphanumeric_w_underscores = regex!("^[a-zA-Z0-9_]*$");
 
     if id.len() > 32 {
         return Err("length cannot be greater than 32".to_string());
@@ -30,7 +30,7 @@ pub fn is_valid_identifier(id: String) -> Result<(), String> {
         return Err("length cannot be less than 3".to_string());
     }
 
-    if !alphanumeric_w_hyphens.is_match(&id) {
+    if !alphanumeric_w_underscores.is_match(&id) {
         return Err("can only be made up of alphanumeric and underscore characters".to_string());
     }
 

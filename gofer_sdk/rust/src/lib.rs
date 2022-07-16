@@ -21,7 +21,7 @@ pub enum ConfigError {
 /// * 32 > characters < 3
 /// * Only alphanumeric characters or underscores
 fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
-    let alphanumeric_w_hyphens = regex!("^[a-zA-Z0-9_]*$");
+    let alphanumeric_w_underscores = regex!("^[a-zA-Z0-9_]*$");
 
     if value.len() > 32 {
         return Err(ConfigError::InvalidArgument {
@@ -39,7 +39,7 @@ fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
         });
     }
 
-    if !alphanumeric_w_hyphens.is_match(arg) {
+    if !alphanumeric_w_underscores.is_match(arg) {
         return Err(ConfigError::InvalidArgument {
             argument: arg.to_string(),
             value: value.to_string(),
