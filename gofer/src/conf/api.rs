@@ -1,9 +1,9 @@
 use crate::conf::{LOCALHOST_CA, LOCALHOST_CRT, LOCALHOST_KEY};
-use crate::scheduler;
-use crate::object_store;
+use crate::{object_store, scheduler, secret_store};
+use econf::LoadEnv;
 use serde::Deserialize;
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct Config {
     pub general: General,
     pub server: Server,
@@ -11,12 +11,13 @@ pub struct Config {
     pub triggers: Triggers,
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct General {
     /// Turns on humanized debug messages, extra debug logging for the webserver and other
     /// convenient features for development. Usually turned on along side LogLevel=debug.
     pub dev_mode: bool,
     pub log_level: String,
+    /// The encryption key is used to store sensitive Gofer values. It MUST be 32 characters long.
     pub encryption_key: String,
     /// How often the background process for pruning events should run (in seconds).
     pub event_prune_interval: u64,
@@ -30,7 +31,7 @@ pub struct General {
     pub run_parallelism_limit: u64,
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct Server {
     pub url: String,
     pub storage_path: String,
@@ -38,26 +39,26 @@ pub struct Server {
     pub tls_key: String,
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct Scheduler {
     pub engine: scheduler::Engine,
     pub docker: Option<DockerScheduler>,
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct DockerScheduler {
     pub prune: bool,
     pub prune_interval: u64, // in seconds
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct Triggers {
     pub tls_ca: Option<String>,
     pub tls_cert: String,
     pub tls_key: String,
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct ObjectStore {
     pub engine: object_store::Engine,
     pub embedded: Option<EmbeddedObjectStore>,
@@ -65,9 +66,22 @@ pub struct ObjectStore {
     pub run_object_expiry: u64,
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, econf::LoadEnv)]
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct EmbeddedObjectStore {
     pub path: String,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
+pub struct SecretStore {
+    pub engine: secret_store::Engine,
+    pub embedded: Option<EmbeddedSecretStore>,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
+pub struct EmbeddedSecretStore {
+    pub path: String,
+    /// The encryption key is used to store sensitive Gofer values. It MUST be 32 characters long.
+    pub encryption_key: String,
 }
 
 impl Config {

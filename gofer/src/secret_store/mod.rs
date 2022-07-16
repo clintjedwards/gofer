@@ -10,9 +10,9 @@ use strum::{Display, EnumString};
 #[cfg(test)]
 mod tests;
 
-/// Represents different object store failure possibilities.
+/// Represents different secret store failure possibilities.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
-pub enum ObjectStoreError {
+pub enum SecretStoreError {
     #[error("unknown error occurred; {0}")]
     Unknown(String),
 
@@ -27,19 +27,18 @@ pub enum ObjectStoreError {
 
     #[error("could not init store; {0}")]
     FailedInitPrecondition(String),
+
+    #[error("could not encrypt/decrypt key; {0}")]
+    FailedEncryption(String),
 }
 
-/// The store trait defines what the interface between Gofer and an Object store should adhere to.
+/// The store trait defines what the interface between Gofer and a Secret store should adhere to.
 #[async_trait]
 pub trait Store {
-    async fn get_object(&self, key: &str) -> Result<Vec<u8>, ObjectStoreError>;
-    async fn put_object(
-        &self,
-        key: &str,
-        value: Vec<u8>,
-        force: bool,
-    ) -> Result<(), ObjectStoreError>;
-    async fn delete_object(&self, key: &str) -> Result<(), ObjectStoreError>;
+    async fn get_secret(&self, key: &str) -> Result<Vec<u8>, SecretStoreError>;
+    async fn put_secret(&self, key: &str, value: &str, force: bool)
+        -> Result<(), SecretStoreError>;
+    async fn delete_secret(&self, key: &str) -> Result<(), SecretStoreError>;
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq, Display, EnumString, LoadEnv)]
@@ -53,17 +52,17 @@ impl Default for Engine {
     }
 }
 
-pub async fn init_object_store(
-    config: &conf::api::ObjectStore,
-) -> Result<Box<dyn Store + Send + Sync>, ObjectStoreError> {
+pub async fn init_secret_store(
+    config: &conf::api::SecretStore,
+) -> Result<Box<dyn Store + Send + Sync>, SecretStoreError> {
     #[allow(clippy::match_single_binding)]
     match config.engine {
         Engine::Embedded => {
             if let Some(config) = &config.embedded {
-                let engine = embedded::Engine::new(&config.path).await?;
+                let engine = embedded::Engine::new(&config.path, &config.encryption_key).await?;
                 Ok(Box::new(engine))
             } else {
-                Err(ObjectStoreError::FailedInitPrecondition(
+                Err(SecretStoreError::FailedInitPrecondition(
                     "engine settings not found in config".into(),
                 ))
             }

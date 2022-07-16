@@ -32,6 +32,7 @@ nanoid = "0.4.0"                                                            # UU
 rust-embed = "6.3.0"                                                        # We embed the configuration files and frontend
 rustls = "0.20.6"
 rustls-pemfile = "1.0.0"
+orion = "0.17.1"
 serde = "1.0.137"
 serde_json = "1"
 slog = "2.7.0"
