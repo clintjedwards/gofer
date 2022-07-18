@@ -2,6 +2,8 @@ mod utils;
 
 use crate::api::{validate, Api};
 use crate::storage;
+use gofer_models::{event, pipeline, run};
+use gofer_models::{VariableOwner, VariableSensitivity};
 use gofer_proto::{
     CreatePipelineRequest, CreatePipelineResponse, DeletePipelineRequest, DeletePipelineResponse,
     DisablePipelineRequest, DisablePipelineResponse, EnablePipelineRequest, EnablePipelineResponse,
@@ -52,10 +54,8 @@ impl Api {
             }
         };
 
-        let new_pipeline = gofer_models::pipeline::Pipeline::new(
-            &args.namespace_id,
-            pipeline_config.to_owned().into(),
-        );
+        let new_pipeline =
+            pipeline::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
         self.storage
             .create_pipeline(&new_pipeline)
@@ -69,7 +69,7 @@ impl Api {
             })?;
 
         self.event_bus
-            .publish(gofer_models::event::EventKind::CreatedPipeline {
+            .publish(event::Kind::CreatedPipeline {
                 namespace_id: new_pipeline.namespace.clone(),
                 pipeline_id: new_pipeline.id.clone(),
             })
@@ -129,7 +129,7 @@ impl Api {
                 _ => Status::internal(e.to_string()),
             })?;
 
-        if pipeline.state != gofer_models::pipeline::PipelineState::Active {
+        if pipeline.state != pipeline::State::Active {
             return Err(Status::failed_precondition(
                 "could not create run; pipeline is not active",
             ));
@@ -142,17 +142,17 @@ impl Api {
             debug!("parallelism limit exceeded; waiting for runs to end before launching new run"; "limit" => pipeline.parallelism);
         }
 
-        let mut new_run = gofer_models::run::Run::new(
+        let mut new_run = run::Run::new(
             &pipeline.namespace,
             &pipeline.id,
-            gofer_models::run::RunTriggerInfo {
+            run::TriggerInfo {
                 name: "manual".to_string(),
                 label: "via_api".to_string(),
             },
             utils::map_to_variables(
                 args.variables,
-                gofer_models::VariableOwner::User,
-                gofer_models::VariableSensitivity::Public,
+                VariableOwner::User,
+                VariableSensitivity::Public,
             ),
         );
 
@@ -165,7 +165,7 @@ impl Api {
         new_run.id = id;
 
         self.event_bus
-            .publish(gofer_models::event::EventKind::StartedRun {
+            .publish(event::Kind::StartedRun {
                 namespace_id: new_run.namespace.clone(),
                 pipeline_id: new_run.pipeline.clone(),
                 run_id: new_run.id,
@@ -199,11 +199,7 @@ impl Api {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
         self.storage
-            .update_pipeline_state(
-                &args.namespace_id,
-                &args.id,
-                gofer_models::pipeline::PipelineState::Active,
-            )
+            .update_pipeline_state(&args.namespace_id, &args.id, pipeline::State::Active)
             .await
             .map_err(|e| match e {
                 storage::StorageError::NotFound => {
@@ -227,11 +223,7 @@ impl Api {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
         self.storage
-            .update_pipeline_state(
-                &args.namespace_id,
-                &args.id,
-                gofer_models::pipeline::PipelineState::Disabled,
-            )
+            .update_pipeline_state(&args.namespace_id, &args.id, pipeline::State::Disabled)
             .await
             .map_err(|e| match e {
                 storage::StorageError::NotFound => {
@@ -262,10 +254,8 @@ impl Api {
             }
         };
 
-        let new_pipeline = gofer_models::pipeline::Pipeline::new(
-            &args.namespace_id,
-            pipeline_config.to_owned().into(),
-        );
+        let new_pipeline =
+            pipeline::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
         self.storage
             .update_pipeline(&new_pipeline)
@@ -305,7 +295,7 @@ impl Api {
             })?;
 
         self.event_bus
-            .publish(gofer_models::event::EventKind::DeletedPipeline {
+            .publish(event::Kind::DeletedPipeline {
                 namespace_id: args.namespace_id.clone(),
                 pipeline_id: args.id.clone(),
             })

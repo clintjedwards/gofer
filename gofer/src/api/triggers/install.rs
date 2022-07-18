@@ -3,6 +3,7 @@ use crate::{
     scheduler, storage,
 };
 use futures::stream::StreamExt;
+use gofer_models::{event, trigger};
 use gofer_proto::{
     GetTriggerInstallInstructionsRequest, GetTriggerInstallInstructionsResponse,
     InstallTriggerRequest, InstallTriggerResponse,
@@ -46,13 +47,13 @@ impl Api {
 
         self.triggers.insert(
             args.name.clone(),
-            gofer_models::trigger::Trigger {
+            trigger::Trigger {
                 registration: args.clone().into(),
                 url: Some(trigger_info.url.clone()),
                 scheduler_id: trigger_info.scheduler_id.clone(),
                 started: epoch(),
-                state: gofer_models::trigger::TriggerState::Running,
-                status: gofer_models::trigger::TriggerStatus::Enabled,
+                state: trigger::State::Running,
+                status: trigger::Status::Enabled,
                 documentation: {
                     if !trigger_info.documentation.is_empty() {
                         Some(trigger_info.documentation.clone())
@@ -65,7 +66,7 @@ impl Api {
         );
 
         self.event_bus
-            .publish(gofer_models::event::EventKind::InstalledTrigger {
+            .publish(event::Kind::InstalledTrigger {
                 name: args.name.clone(),
                 image: args.image.clone(),
             })

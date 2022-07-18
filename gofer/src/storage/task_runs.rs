@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::task_run::{TaskRun, TaskRunState, TaskRunStatus};
+use gofer_models::task_run::{State, Status, TaskRun};
 use sqlx::{sqlite::SqliteRow, Acquire, Row};
 use std::str::FromStr;
 
@@ -81,14 +81,14 @@ impl Db {
                 };
                 logs_removed
             },
-            state: TaskRunState::from_str(row.get("state"))
+            state: State::from_str(row.get("state"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("state"),
                     column: "state".to_string(),
                     err: "could not parse value into task_run state enum".to_string(),
                 })
                 .unwrap(),
-            status: TaskRunStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -249,14 +249,14 @@ impl Db {
                 };
                 logs_removed
             },
-            state: TaskRunState::from_str(row.get("state"))
+            state: State::from_str(row.get("state"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("state"),
                     column: "state".to_string(),
                     err: "could not parse value into task_run state enum".to_string(),
                 })
                 .unwrap(),
-            status: TaskRunStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -285,7 +285,7 @@ impl Db {
         pipeline: &str,
         run: u64,
         id: &str,
-        state: TaskRunState,
+        state: State,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool
@@ -322,7 +322,7 @@ impl Db {
         pipeline: &str,
         run: u64,
         id: &str,
-        status: TaskRunStatus,
+        status: Status,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool

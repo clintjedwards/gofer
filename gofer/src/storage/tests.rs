@@ -175,7 +175,7 @@ async fn crud_runs() {
     let mut test_run = run::Run::new(
         &test_namespace.id,
         &test_pipeline.id,
-        run::RunTriggerInfo {
+        run::TriggerInfo {
             name: "test_trigger".to_string(),
             label: "my_test_trigger".to_string(),
         },
@@ -188,7 +188,7 @@ async fn crud_runs() {
     let mut test_run_2 = run::Run::new(
         &test_namespace.id,
         &test_pipeline.id,
-        run::RunTriggerInfo {
+        run::TriggerInfo {
             name: "test_trigger".to_string(),
             label: "my_test_trigger".to_string(),
         },
@@ -217,7 +217,7 @@ async fn crud_runs() {
 
     assert_eq!(run, test_run);
 
-    test_run.state = run::RunState::Complete;
+    test_run.state = run::State::Complete;
 
     harness.db.update_run(&test_run).await.unwrap();
 
@@ -267,7 +267,7 @@ async fn crud_task_runs() {
     let test_run = run::Run::new(
         &test_namespace.id,
         &test_pipeline.id,
-        run::RunTriggerInfo {
+        run::TriggerInfo {
             name: "test_trigger".to_string(),
             label: "my_test_trigger".to_string(),
         },
@@ -307,7 +307,7 @@ async fn crud_task_runs() {
 
     assert_eq!(task_run, test_task_run);
 
-    test_task_run.state = task_run::TaskRunState::Complete;
+    test_task_run.state = task_run::State::Complete;
     harness.db.update_task_run(&test_task_run).await.unwrap();
 
     let task_run = harness
@@ -330,7 +330,7 @@ async fn crud_task_runs() {
             &test_task_run.pipeline,
             test_task_run.run,
             &test_task_run.id,
-            task_run::TaskRunState::Processing,
+            task_run::State::Processing,
         )
         .await
         .unwrap();
@@ -346,7 +346,7 @@ async fn crud_task_runs() {
         .await
         .unwrap();
 
-    assert_eq!(task_run.state, task_run::TaskRunState::Processing);
+    assert_eq!(task_run.state, task_run::State::Processing);
 
     harness
         .db
@@ -355,7 +355,7 @@ async fn crud_task_runs() {
             &test_task_run.pipeline,
             test_task_run.run,
             &test_task_run.id,
-            task_run::TaskRunStatus::Failed,
+            task_run::Status::Failed,
         )
         .await
         .unwrap();
@@ -371,7 +371,7 @@ async fn crud_task_runs() {
         .await
         .unwrap();
 
-    assert_eq!(task_run.status, task_run::TaskRunStatus::Failed);
+    assert_eq!(task_run.status, task_run::Status::Failed);
 
     harness
         .db
@@ -403,10 +403,10 @@ async fn crud_task_runs() {
 async fn crud_events() {
     let harness = TestHarness::new().await;
 
-    let mut test_event_one = event::Event::new(event::EventKind::CreatedNamespace {
+    let mut test_event_one = event::Event::new(event::Kind::CreatedNamespace {
         namespace_id: "test_namespace".to_string(),
     });
-    let mut test_event_two = event::Event::new(event::EventKind::CreatedPipeline {
+    let mut test_event_two = event::Event::new(event::Kind::CreatedPipeline {
         namespace_id: "test_namespace".to_string(),
         pipeline_id: "test_pipeline".to_string(),
     });
@@ -439,14 +439,14 @@ async fn crud_events() {
 async fn crud_trigger_registrations() {
     let harness = TestHarness::new().await;
 
-    let test_trigger_registration = trigger::TriggerRegistration {
+    let test_trigger_registration = trigger::Registration {
         name: "test_trigger".to_string(),
         image: "docker/test".to_string(),
         user: None,
         pass: None,
         variables: HashMap::new(),
         created: 0,
-        status: trigger::TriggerStatus::Enabled,
+        status: trigger::Status::Enabled,
     };
 
     harness
@@ -486,14 +486,14 @@ async fn crud_trigger_registrations() {
 async fn crud_notifier_registrations() {
     let harness = TestHarness::new().await;
 
-    let test_notifier_registration = notifier::NotifierRegistration {
+    let test_notifier_registration = notifier::Registration {
         name: "test_notifier".to_string(),
         image: "docker/test".to_string(),
         user: None,
         pass: None,
         variables: HashMap::new(),
         created: 0,
-        status: notifier::NotifierStatus::Enabled,
+        status: notifier::Status::Enabled,
     };
 
     harness

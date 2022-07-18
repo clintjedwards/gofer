@@ -1,9 +1,9 @@
-use crate::{run::RunStatus, task_run::TaskRunStatus};
+use crate::{run, task_run};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};
 
 #[derive(Debug, PartialEq, Eq, EnumIter, EnumString, Display, Serialize, Deserialize, Clone)]
-pub enum EventKind {
+pub enum Kind {
     /// The Any kind is a special event kind that denotes the caller wants to listen for any event.
     /// It should not be used as a normal event type(for example do not publish anything with it).
     /// It is internal only and not passed back on event streaming.
@@ -45,7 +45,7 @@ pub enum EventKind {
         namespace_id: String,
         pipeline_id: String,
         run_id: u64,
-        status: RunStatus,
+        status: run::Status,
     },
 
     // Task run events
@@ -60,7 +60,7 @@ pub enum EventKind {
         pipeline_id: String,
         run_id: u64,
         task_run_id: String,
-        status: TaskRunStatus,
+        status: task_run::Status,
     },
 
     // Trigger events
@@ -105,13 +105,13 @@ pub struct Event {
     /// Unique identifier for event.
     pub id: u64,
     /// The type of event it is.
-    pub kind: EventKind,
+    pub kind: Kind,
     /// Time event was performed in epoch milliseconds.
     pub emitted: u64,
 }
 
 impl Event {
-    pub fn new(kind: EventKind) -> Self {
+    pub fn new(kind: Kind) -> Self {
         Self {
             id: 0,
             kind,

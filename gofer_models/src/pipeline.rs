@@ -5,7 +5,7 @@ use strum::{Display, EnumString};
 
 /// The current state of the pipeline. Pipelines can be disabled to stop execution.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
-pub enum PipelineState {
+pub enum State {
     /// The state of the pipeline is unknown. This should never happen.
     Unknown,
     /// Pipeline is enabled and able to start runs.
@@ -15,22 +15,22 @@ pub enum PipelineState {
     Disabled,
 }
 
-impl From<gofer_proto::pipeline::PipelineState> for PipelineState {
+impl From<gofer_proto::pipeline::PipelineState> for State {
     fn from(p: gofer_proto::pipeline::PipelineState) -> Self {
         match p {
-            gofer_proto::pipeline::PipelineState::Unknown => PipelineState::Unknown,
-            gofer_proto::pipeline::PipelineState::Active => PipelineState::Active,
-            gofer_proto::pipeline::PipelineState::Disabled => PipelineState::Disabled,
+            gofer_proto::pipeline::PipelineState::Unknown => State::Unknown,
+            gofer_proto::pipeline::PipelineState::Active => State::Active,
+            gofer_proto::pipeline::PipelineState::Disabled => State::Disabled,
         }
     }
 }
 
-impl From<PipelineState> for gofer_proto::pipeline::PipelineState {
-    fn from(p: PipelineState) -> Self {
+impl From<State> for gofer_proto::pipeline::PipelineState {
+    fn from(p: State) -> Self {
         match p {
-            PipelineState::Unknown => gofer_proto::pipeline::PipelineState::Unknown,
-            PipelineState::Active => gofer_proto::pipeline::PipelineState::Active,
-            PipelineState::Disabled => gofer_proto::pipeline::PipelineState::Disabled,
+            State::Unknown => gofer_proto::pipeline::PipelineState::Unknown,
+            State::Active => gofer_proto::pipeline::PipelineState::Active,
+            State::Disabled => gofer_proto::pipeline::PipelineState::Disabled,
         }
     }
 }
@@ -60,13 +60,13 @@ pub struct Pipeline {
     /// things like last run time.
     pub modified: u64,
     /// The current state of the pipeline. Pipelines can be disabled to stop execution of runs/tasks.
-    pub state: PipelineState,
+    pub state: State,
     /// A mapping of pipeline owned tasks.
     pub tasks: HashMap<String, Task>,
     /// A mapping of pipeline owned triggers to their settings.
-    pub triggers: HashMap<String, PipelineTriggerSettings>,
+    pub triggers: HashMap<String, TriggerSettings>,
     /// A mapping of pipeline owned notifiers to their settings.
-    pub notifiers: HashMap<String, PipelineNotifierSettings>,
+    pub notifiers: HashMap<String, NotifierSettings>,
     /// A listing pipeline owned keys that are stored in Gofer's object store.
     pub store_keys: Vec<String>,
 }
@@ -116,7 +116,7 @@ impl Pipeline {
             parallelism: config.parallelism,
             created: epoch(),
             modified: epoch(),
-            state: PipelineState::Active,
+            state: State::Active,
             tasks: config
                 .tasks
                 .into_iter()
@@ -142,7 +142,7 @@ impl Pipeline {
 /// permanent state, these settings are kept here so that when triggers are restarted
 /// they can be restored with proper settings.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct PipelineTriggerSettings {
+pub struct TriggerSettings {
     /// A global unique identifier for the trigger type.
     pub name: String,
     /// A user defined identifier for the trigger so that a pipeline with
@@ -154,9 +154,9 @@ pub struct PipelineTriggerSettings {
     pub error: Option<String>,
 }
 
-impl PipelineTriggerSettings {
+impl TriggerSettings {
     pub fn new(kind: &str, label: &str) -> Self {
-        PipelineTriggerSettings {
+        TriggerSettings {
             name: kind.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
@@ -170,9 +170,9 @@ impl PipelineTriggerSettings {
     }
 }
 
-impl From<gofer_proto::PipelineTriggerSettings> for PipelineTriggerSettings {
+impl From<gofer_proto::PipelineTriggerSettings> for TriggerSettings {
     fn from(p: gofer_proto::PipelineTriggerSettings) -> Self {
-        PipelineTriggerSettings {
+        TriggerSettings {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -187,8 +187,8 @@ impl From<gofer_proto::PipelineTriggerSettings> for PipelineTriggerSettings {
     }
 }
 
-impl From<PipelineTriggerSettings> for gofer_proto::PipelineTriggerSettings {
-    fn from(p: PipelineTriggerSettings) -> Self {
+impl From<TriggerSettings> for gofer_proto::PipelineTriggerSettings {
+    fn from(p: TriggerSettings) -> Self {
         gofer_proto::PipelineTriggerSettings {
             name: p.name,
             label: p.label,
@@ -201,7 +201,7 @@ impl From<PipelineTriggerSettings> for gofer_proto::PipelineTriggerSettings {
     }
 }
 
-impl From<gofer_sdk::config::PipelineTriggerConfig> for PipelineTriggerSettings {
+impl From<gofer_sdk::config::PipelineTriggerConfig> for TriggerSettings {
     fn from(p: gofer_sdk::config::PipelineTriggerConfig) -> Self {
         Self {
             name: p.name,
@@ -213,7 +213,7 @@ impl From<gofer_sdk::config::PipelineTriggerConfig> for PipelineTriggerSettings 
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct PipelineNotifierSettings {
+pub struct NotifierSettings {
     /// A global unique identifier for the notifier type.
     pub name: String,
     /// A user defined identifier for the notifier so that a pipeline with
@@ -225,9 +225,9 @@ pub struct PipelineNotifierSettings {
     pub error: Option<String>,
 }
 
-impl PipelineNotifierSettings {
+impl NotifierSettings {
     pub fn new(name: &str, label: &str) -> Self {
-        PipelineNotifierSettings {
+        NotifierSettings {
             name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
@@ -241,9 +241,9 @@ impl PipelineNotifierSettings {
     }
 }
 
-impl From<gofer_proto::PipelineNotifierSettings> for PipelineNotifierSettings {
+impl From<gofer_proto::PipelineNotifierSettings> for NotifierSettings {
     fn from(p: gofer_proto::PipelineNotifierSettings) -> Self {
-        PipelineNotifierSettings {
+        NotifierSettings {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -258,8 +258,8 @@ impl From<gofer_proto::PipelineNotifierSettings> for PipelineNotifierSettings {
     }
 }
 
-impl From<PipelineNotifierSettings> for gofer_proto::PipelineNotifierSettings {
-    fn from(p: PipelineNotifierSettings) -> Self {
+impl From<NotifierSettings> for gofer_proto::PipelineNotifierSettings {
+    fn from(p: NotifierSettings) -> Self {
         gofer_proto::PipelineNotifierSettings {
             name: p.name,
             label: p.label,
@@ -272,7 +272,7 @@ impl From<PipelineNotifierSettings> for gofer_proto::PipelineNotifierSettings {
     }
 }
 
-impl From<gofer_sdk::config::PipelineNotifierConfig> for PipelineNotifierSettings {
+impl From<gofer_sdk::config::PipelineNotifierConfig> for NotifierSettings {
     fn from(p: gofer_sdk::config::PipelineNotifierConfig) -> Self {
         Self {
             name: p.name,

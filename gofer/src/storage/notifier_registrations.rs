@@ -1,6 +1,6 @@
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::notifier::{NotifierRegistration, NotifierStatus};
+use gofer_models::notifier::{Registration, Status};
 use sqlx::{sqlite::SqliteRow, Row};
 use std::ops::Deref;
 use std::str::FromStr;
@@ -11,7 +11,7 @@ impl Db {
         &self,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<NotifierRegistration>, StorageError> {
+    ) -> Result<Vec<Registration>, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -34,7 +34,7 @@ impl Db {
         )
         .bind(limit as i64)
         .bind(offset as i64)
-        .map(|row: SqliteRow| NotifierRegistration {
+        .map(|row: SqliteRow| Registration {
             name: row.get("name"),
             image: row.get("image"),
             user: row.get("user"),
@@ -44,7 +44,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: NotifierStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -61,7 +61,7 @@ impl Db {
     /// Create a new notifier registration.
     pub async fn create_notifier_registration(
         &self,
-        notifier_registration: &NotifierRegistration,
+        notifier_registration: &Registration,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool
@@ -103,7 +103,7 @@ impl Db {
     pub async fn get_notifier_registration(
         &self,
         name: &str,
-    ) -> Result<NotifierRegistration, StorageError> {
+    ) -> Result<Registration, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -118,7 +118,7 @@ impl Db {
             "#,
         )
         .bind(name)
-        .map(|row: SqliteRow| NotifierRegistration {
+        .map(|row: SqliteRow| Registration {
             name: row.get("name"),
             image: row.get("image"),
             user: row.get("user"),
@@ -128,7 +128,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: NotifierStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -147,7 +147,7 @@ impl Db {
     /// Update a specific notifier_registration.
     pub async fn update_notifier_registration(
         &self,
-        notifier_registration: &NotifierRegistration,
+        notifier_registration: &Registration,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool

@@ -2,11 +2,7 @@ use std::{collections::HashMap, ops::Deref};
 
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::{
-    pipeline::{Pipeline, PipelineNotifierSettings, PipelineState, PipelineTriggerSettings},
-    run::RunState,
-    task::Task,
-};
+use gofer_models::{pipeline, run, task};
 use sqlx::{sqlite::SqliteRow, Acquire, Row};
 use std::str::FromStr;
 
@@ -17,7 +13,7 @@ impl Db {
         offset: u64,
         limit: u64,
         namespace: &str,
-    ) -> Result<Vec<Pipeline>, StorageError> {
+    ) -> Result<Vec<pipeline::Pipeline>, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -49,7 +45,7 @@ impl Db {
         .bind(namespace)
         .bind(limit as i64)
         .bind(offset as i64)
-        .map(|row: SqliteRow| Pipeline {
+        .map(|row: SqliteRow| pipeline::Pipeline {
             namespace: row.get("namespace"),
             id: row.get("id"),
             name: row.get("name"),
@@ -59,7 +55,7 @@ impl Db {
             parallelism: row.get::<i64, _>("parallelism") as u64,
             created: row.get::<i64, _>("created") as u64,
             modified: row.get::<i64, _>("modified") as u64,
-            state: PipelineState::from_str(row.get("state"))
+            state: pipeline::State::from_str(row.get("state"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("state"),
                     column: "state".to_string(),
@@ -123,7 +119,7 @@ impl Db {
             )
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
-            .map(|row: SqliteRow| Task {
+            .map(|row: SqliteRow| task::Task {
                 id: row.get("id"),
                 description: row.get("description"),
                 image: row.get("image"),
@@ -169,7 +165,7 @@ impl Db {
             )
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
-            .map(|row: SqliteRow| PipelineTriggerSettings {
+            .map(|row: SqliteRow| pipeline::TriggerSettings {
                 name: row.get("kind"),
                 label: row.get("label"),
                 settings: {
@@ -199,7 +195,7 @@ impl Db {
             )
             .bind(&pipeline.namespace)
             .bind(&pipeline.id)
-            .map(|row: SqliteRow| PipelineNotifierSettings {
+            .map(|row: SqliteRow| pipeline::NotifierSettings {
                 name: row.get("kind"),
                 label: row.get("label"),
                 settings: {
@@ -230,7 +226,7 @@ impl Db {
     }
 
     /// Create a new pipeline.
-    pub async fn create_pipeline(&self, pipeline: &Pipeline) -> Result<(), StorageError> {
+    pub async fn create_pipeline(&self, pipeline: &pipeline::Pipeline) -> Result<(), StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -375,7 +371,11 @@ impl Db {
     }
 
     /// Get details on a specific pipeline.
-    pub async fn get_pipeline(&self, namespace: &str, id: &str) -> Result<Pipeline, StorageError> {
+    pub async fn get_pipeline(
+        &self,
+        namespace: &str,
+        id: &str,
+    ) -> Result<pipeline::Pipeline, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -399,7 +399,7 @@ impl Db {
         .bind(namespace)
         .bind(id)
         .map(|row: SqliteRow|
-            Pipeline {
+            pipeline::Pipeline {
             namespace: row.get("namespace"),
             id: row.get("id"),
             name: row.get("name"),
@@ -409,7 +409,7 @@ impl Db {
             parallelism: row.get::<i64, _>("parallelism") as u64,
             created: row.get::<i64, _>("created") as u64,
             modified: row.get::<i64, _>("modified") as u64,
-            state: PipelineState::from_str(row.get("state"))
+            state: pipeline::State::from_str(row.get("state"))
                 .map_err(|_| {
                     StorageError::Parse {
                     value: row.get("state"),
@@ -475,7 +475,7 @@ impl Db {
         )
         .bind(&pipeline.namespace)
         .bind(&pipeline.id)
-        .map(|row: SqliteRow| Task {
+        .map(|row: SqliteRow| task::Task {
             id: row.get("id"),
             description: row.get("description"),
             image: row.get("image"),
@@ -521,7 +521,7 @@ impl Db {
         )
         .bind(&pipeline.namespace)
         .bind(&pipeline.id)
-        .map(|row: SqliteRow| PipelineTriggerSettings {
+        .map(|row: SqliteRow| pipeline::TriggerSettings {
             name: row.get("kind"),
             label: row.get("label"),
             settings: {
@@ -551,7 +551,7 @@ impl Db {
         )
         .bind(&pipeline.namespace)
         .bind(&pipeline.id)
-        .map(|row: SqliteRow| PipelineNotifierSettings {
+        .map(|row: SqliteRow| pipeline::NotifierSettings {
             name: row.get("kind"),
             label: row.get("label"),
             settings: {
@@ -584,7 +584,7 @@ impl Db {
         &self,
         namespace: &str,
         id: &str,
-        state: PipelineState,
+        state: pipeline::State,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool
@@ -608,7 +608,7 @@ impl Db {
         )
         .bind(namespace)
         .bind(id)
-        .map(|row: SqliteRow| Pipeline {
+        .map(|row: SqliteRow| pipeline::Pipeline {
             namespace: row.get("namespace"),
             id: row.get("id"),
             name: row.get("name"),
@@ -618,7 +618,7 @@ impl Db {
             parallelism: row.get::<i64, _>("parallelism") as u64,
             created: row.get::<i64, _>("created") as u64,
             modified: row.get::<i64, _>("modified") as u64,
-            state: PipelineState::from_str(row.get("state"))
+            state: pipeline::State::from_str(row.get("state"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("state"),
                     column: "state".to_string(),
@@ -641,7 +641,7 @@ impl Db {
         .await?;
 
         struct Run {
-            state: RunState,
+            state: run::State,
         }
 
         let last_run: Option<Run> = match sqlx::query(
@@ -656,7 +656,7 @@ impl Db {
         .bind(&pipeline.namespace)
         .bind(&pipeline.id)
         .map(|row: SqliteRow| Run {
-            state: RunState::from_str(&row.get::<String, _>("state")).unwrap(),
+            state: run::State::from_str(&row.get::<String, _>("state")).unwrap(),
         })
         .fetch_one(&mut tx)
         .await
@@ -669,7 +669,7 @@ impl Db {
         };
 
         if let Some(last_run) = last_run {
-            if last_run.state != RunState::Complete {
+            if last_run.state != run::State::Complete {
                 return Err(StorageError::FailedPrecondition);
             }
         }
@@ -704,7 +704,7 @@ impl Db {
     }
 
     /// Update a specific pipeline.
-    pub async fn update_pipeline(&self, pipeline: &Pipeline) -> Result<(), StorageError> {
+    pub async fn update_pipeline(&self, pipeline: &pipeline::Pipeline) -> Result<(), StorageError> {
         let mut conn = self
             .pool
             .acquire()

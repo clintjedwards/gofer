@@ -5,7 +5,7 @@ use strum::{Display, EnumString};
 /// Since task runs are basically an abstraction over containers, this tells us
 /// which state of progress the container is currently in.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum TaskRunState {
+pub enum State {
     /// Cannot determine state of task run, should never be in this state.
     Unknown,
     /// Task run is going through pre-scheduling verification and prep.
@@ -19,7 +19,7 @@ pub enum TaskRunState {
 /// Since task runs are basically an abstraction over containers, this tells us
 /// which status the container is in upon completion.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum TaskRunStatus {
+pub enum Status {
     /// Status is unknown; if task run is complete and this is that status, something is wrong.
     Unknown,
     /// The task run has completed successfully.
@@ -35,14 +35,14 @@ pub enum TaskRunStatus {
     Skipped,
 }
 
-impl Default for TaskRunStatus {
+impl Default for Status {
     fn default() -> Self {
         Self::Unknown
     }
 }
 
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
-pub enum TaskRunFailureKind {
+pub enum FailureKind {
     /// Failure type is unknown, should never be in this state.
     Unknown,
     /// A non-zero exit code has been received.
@@ -59,9 +59,9 @@ pub enum TaskRunFailureKind {
 
 /// A description of the error the task run encountered as part of being executed.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TaskRunFailure {
+pub struct Failure {
     /// The type of error that has occurred. Can be anything from user error to scheduler error.
-    pub kind: TaskRunFailureKind,
+    pub kind: FailureKind,
     /// A short description of the incident to help the user understand how to proceed.
     pub description: String,
 }
@@ -90,15 +90,15 @@ pub struct TaskRun {
     /// The exit code of the task run.
     pub exit_code: Option<u8>,
     /// In the event of a failure provides extra information.
-    pub failure: Option<TaskRunFailure>,
+    pub failure: Option<Failure>,
     /// If the logs have past their predefined retention time.
     pub logs_expired: bool,
     /// If the logs have been removed due to user request or automatic action based on expiry time.
     pub logs_removed: bool,
     /// The current place of progress that task run is at.
-    pub state: TaskRunState,
+    pub state: State,
     /// Upon completion of the task run, the status it has completed with.
-    pub status: TaskRunStatus,
+    pub status: Status,
     /// Identifier used by the scheduler to identify this specific task run container.
     /// This is provided by the scheduler at the time of scheduling.
     pub scheduler_id: Option<String>,
@@ -121,23 +121,18 @@ impl TaskRun {
             failure: None,
             logs_expired: false,
             logs_removed: false,
-            state: TaskRunState::Processing,
-            status: TaskRunStatus::Unknown,
+            state: State::Processing,
+            status: Status::Unknown,
             scheduler_id: None,
             variables: vec![],
         }
     }
 
     /// Mark a task object as finished, but failed in some way.
-    pub fn set_finished_abnormal(
-        &mut self,
-        status: TaskRunStatus,
-        failure: TaskRunFailure,
-        code: Option<u8>,
-    ) {
+    pub fn set_finished_abnormal(&mut self, status: Status, failure: Failure, code: Option<u8>) {
         self.exit_code = code;
         self.status = status;
-        self.state = TaskRunState::Complete;
+        self.state = State::Complete;
         self.ended = epoch();
         self.failure = Some(failure);
     }
@@ -145,8 +140,8 @@ impl TaskRun {
     /// Mark a task object as finished successfully.
     pub fn set_finished(&mut self) {
         self.exit_code = Some(0);
-        self.status = TaskRunStatus::Successful;
+        self.status = Status::Successful;
         self.ended = epoch();
-        self.state = TaskRunState::Complete;
+        self.state = State::Complete;
     }
 }

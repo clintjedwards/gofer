@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::run::{Run, RunState, RunStatus};
+use gofer_models::run::{Run, State, Status};
 use sqlx::{sqlite::SqliteRow, Acquire, Row};
 use std::str::FromStr;
 
@@ -50,14 +50,14 @@ impl Db {
             started: row.get::<i64, _>("started") as u64,
             ended: row.get::<i64, _>("ended") as u64,
             id: row.get::<i64, _>("id") as u64,
-            state: RunState::from_str(row.get("state"))
+            state: State::from_str(row.get("state"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("state"),
                     column: "state".to_string(),
                     err: "could not parse value into run state enum".to_string(),
                 })
                 .unwrap(),
-            status: RunStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -226,14 +226,14 @@ impl Db {
             started: row.get::<i64, _>("started") as u64,
             ended: row.get::<i64, _>("ended") as u64,
             id: row.get::<i64, _>("id") as u64,
-            state: RunState::from_str(row.get("state"))
+            state: State::from_str(row.get("state"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("state"),
                     column: "state".to_string(),
                     err: "could not parse value into run state enum".to_string(),
                 })
                 .unwrap(),
-            status: RunStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -284,7 +284,7 @@ impl Db {
         namespace: &str,
         pipeline: &str,
         id: u64,
-        state: RunState,
+        state: State,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool
@@ -319,7 +319,7 @@ impl Db {
         namespace: &str,
         pipeline: &str,
         id: u64,
-        status: RunStatus,
+        status: Status,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool

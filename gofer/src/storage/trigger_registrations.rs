@@ -2,7 +2,7 @@ use std::{ops::Deref, str::FromStr};
 
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::trigger::{TriggerRegistration, TriggerStatus};
+use gofer_models::trigger::{Registration, Status};
 use sqlx::{sqlite::SqliteRow, Row};
 
 impl Db {
@@ -11,7 +11,7 @@ impl Db {
         &self,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<TriggerRegistration>, StorageError> {
+    ) -> Result<Vec<Registration>, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -34,7 +34,7 @@ impl Db {
         )
         .bind(limit as i64)
         .bind(offset as i64)
-        .map(|row: SqliteRow| TriggerRegistration {
+        .map(|row: SqliteRow| Registration {
             name: row.get("name"),
             image: row.get("image"),
             user: row.get("user"),
@@ -44,7 +44,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: TriggerStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -61,7 +61,7 @@ impl Db {
     /// Create a new trigger registration.
     pub async fn create_trigger_registration(
         &self,
-        trigger_registration: &TriggerRegistration,
+        trigger_registration: &Registration,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool
@@ -100,10 +100,7 @@ impl Db {
     }
 
     /// Get details on a specific trigger_registration.
-    pub async fn get_trigger_registration(
-        &self,
-        name: &str,
-    ) -> Result<TriggerRegistration, StorageError> {
+    pub async fn get_trigger_registration(&self, name: &str) -> Result<Registration, StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -118,7 +115,7 @@ impl Db {
             "#,
         )
         .bind(name)
-        .map(|row: SqliteRow| TriggerRegistration {
+        .map(|row: SqliteRow| Registration {
             name: row.get("name"),
             image: row.get("image"),
             user: row.get("user"),
@@ -128,7 +125,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: TriggerStatus::from_str(row.get("status"))
+            status: Status::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -147,7 +144,7 @@ impl Db {
     /// Update a specific trigger_registration.
     pub async fn update_trigger_registration(
         &self,
-        trigger_registration: &TriggerRegistration,
+        trigger_registration: &Registration,
     ) -> Result<(), StorageError> {
         let mut conn = self
             .pool

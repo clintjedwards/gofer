@@ -45,7 +45,7 @@ impl Api {
             })?;
 
         self.event_bus
-            .publish(gofer_models::event::EventKind::CreatedNamespace {
+            .publish(gofer_models::event::Kind::CreatedNamespace {
                 namespace_id: new_namespace.id.clone(),
             })
             .await;
@@ -119,7 +119,7 @@ impl Api {
             })?;
 
         self.event_bus
-            .publish(gofer_models::event::EventKind::DeletedNamespace {
+            .publish(gofer_models::event::Kind::DeletedNamespace {
                 namespace_id: args.id.clone(),
             })
             .await;

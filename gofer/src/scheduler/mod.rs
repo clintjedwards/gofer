@@ -4,7 +4,7 @@ use crate::conf;
 use async_trait::async_trait;
 use econf::LoadEnv;
 use futures::Stream;
-use gofer_models::{task_run::TaskRunState, trigger::TriggerState};
+use gofer_models::{task_run, trigger};
 use serde::Deserialize;
 use slog_scope::error;
 use std::sync::Arc;
@@ -49,22 +49,22 @@ pub enum ContainerState {
     Exited,
 }
 
-impl From<ContainerState> for TaskRunState {
+impl From<ContainerState> for task_run::State {
     fn from(c: ContainerState) -> Self {
         match c {
-            ContainerState::Unknown | ContainerState::Restarting => TaskRunState::Unknown,
-            ContainerState::Running | ContainerState::Paused => TaskRunState::Running,
-            ContainerState::Exited => TaskRunState::Complete,
+            ContainerState::Unknown | ContainerState::Restarting => task_run::State::Unknown,
+            ContainerState::Running | ContainerState::Paused => task_run::State::Running,
+            ContainerState::Exited => task_run::State::Complete,
         }
     }
 }
 
-impl From<ContainerState> for TriggerState {
+impl From<ContainerState> for trigger::State {
     fn from(c: ContainerState) -> Self {
         match c {
-            ContainerState::Unknown | ContainerState::Restarting => TriggerState::Unknown,
-            ContainerState::Running | ContainerState::Paused => TriggerState::Running,
-            ContainerState::Exited => TriggerState::Exited,
+            ContainerState::Unknown | ContainerState::Restarting => trigger::State::Unknown,
+            ContainerState::Running | ContainerState::Paused => trigger::State::Running,
+            ContainerState::Exited => trigger::State::Exited,
         }
     }
 }

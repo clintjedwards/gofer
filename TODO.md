@@ -181,3 +181,4 @@ prefixed with >2
 - Make sure to go over the database and encrypt the places where we should.
 - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values.
 - Go over imported types and extract them to use at the top of document. to much gofer_models:::::::
+- TODO(clintjedwards): Go throught he gofer_models file and unstutter what you can.

@@ -33,7 +33,7 @@ async fn publish() {
     let event_bus = EventBus::new(harness.db.clone(), 5, 5000);
 
     let new_event = event_bus
-        .publish(EventKind::CreatedNamespace {
+        .publish(Kind::CreatedNamespace {
             namespace_id: "test_namespace".to_string(),
         })
         .await
@@ -53,21 +53,21 @@ async fn subscribe_one() {
     let event_bus = EventBus::new(harness.db.clone(), 5, 5000);
 
     let subscription = event_bus
-        .subscribe(EventKind::CreatedNamespace {
+        .subscribe(Kind::CreatedNamespace {
             namespace_id: "".to_string(),
         })
         .await
         .unwrap();
 
     let new_event_one = event_bus
-        .publish(EventKind::CreatedNamespace {
+        .publish(Kind::CreatedNamespace {
             namespace_id: "test_namespace".to_string(),
         })
         .await
         .unwrap();
 
     let new_event_two = event_bus
-        .publish(EventKind::CreatedNamespace {
+        .publish(Kind::CreatedNamespace {
             namespace_id: "test_namespace_1".to_string(),
         })
         .await
@@ -87,17 +87,17 @@ async fn subscribe_any() {
     let harness = TestHarness::new().await;
     let event_bus = EventBus::new(harness.db.clone(), 5, 5000);
 
-    let subscription = event_bus.subscribe(EventKind::Any).await.unwrap();
+    let subscription = event_bus.subscribe(Kind::Any).await.unwrap();
 
     let new_event_one = event_bus
-        .publish(EventKind::CreatedNamespace {
+        .publish(Kind::CreatedNamespace {
             namespace_id: "test_namespace".to_string(),
         })
         .await
         .unwrap();
 
     let new_event_two = event_bus
-        .publish(EventKind::CreatedPipeline {
+        .publish(Kind::CreatedPipeline {
             namespace_id: "test_namespace".to_string(),
             pipeline_id: "test_pipeline".to_string(),
         })
@@ -114,7 +114,7 @@ async fn subscribe_any() {
 
 #[tokio::test]
 async fn correctly_prune_events() {
-    use EventKind::{CreatedNamespace, CreatedPipeline};
+    use Kind::{CreatedNamespace, CreatedPipeline};
 
     let harness = TestHarness::new().await;
     let event_bus = EventBus::new(harness.db.clone(), 1, 5000);

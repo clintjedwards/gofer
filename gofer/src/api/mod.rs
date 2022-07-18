@@ -9,6 +9,7 @@ mod validate;
 use crate::{conf, events, frontend, object_store, scheduler, secret_store, storage};
 use anyhow::anyhow;
 use dashmap::DashMap;
+use gofer_models::{event::Kind, namespace, notifier, trigger};
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
@@ -93,12 +94,12 @@ pub struct Api {
     /// An in-memory map of currently registered and started triggers.
     /// This is necessary due to triggers being based on containers and their state needing to be constantly
     /// updated and maintained.
-    triggers: DashMap<String, gofer_models::trigger::Trigger>,
+    triggers: DashMap<String, trigger::Trigger>,
 
     /// An in-memory map of currently registered notifiers. These notifiers are registered on startup
     /// and launched as needed at the end of a user's pipeline run. Gofer refers to this cache as a way
     /// to quickly look up which container is needed to be launched.
-    notifiers: DashMap<String, gofer_models::notifier::Notifier>,
+    notifiers: DashMap<String, notifier::Notifier>,
 }
 
 impl Api {
@@ -141,7 +142,7 @@ impl Api {
         const DEFAULT_NAMESPACE_DESCRIPTION: &str =
             "The default namespace when no other namespace is specified.";
 
-        let default_namespace = gofer_models::namespace::Namespace::new(
+        let default_namespace = namespace::Namespace::new(
             DEFAULT_NAMESPACE_ID,
             DEFAULT_NAMESPACE_NAME,
             DEFAULT_NAMESPACE_DESCRIPTION,
@@ -150,7 +151,7 @@ impl Api {
         match self.storage.create_namespace(&default_namespace).await {
             Ok(_) => {
                 self.event_bus
-                    .publish(gofer_models::event::EventKind::CreatedNamespace {
+                    .publish(Kind::CreatedNamespace {
                         namespace_id: DEFAULT_NAMESPACE_ID.to_string(),
                     })
                     .await;

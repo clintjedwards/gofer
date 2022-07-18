@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use futures::Future;
 use gofer_models::task::RequiredParentStatus;
-use gofer_models::task_run::{TaskRunFailure, TaskRunFailureKind, TaskRunState, TaskRunStatus};
+use gofer_models::task_run::{Failure, FailureKind, State, Status};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
 use slog_scope::{debug, error};
 use std::collections::HashMap;
@@ -28,7 +28,7 @@ pub enum InterpolationKind {
     Run,
 }
 
-type StatusMap = dashmap::DashMap<String, (TaskRunStatus, TaskRunState)>;
+type StatusMap = dashmap::DashMap<String, (Status, State)>;
 
 impl Api {
     /// Returns true if there are more runs in progress than the parallelism limit
@@ -62,7 +62,7 @@ impl Api {
 
         let mut runs_in_progress = 0;
         for run in runs {
-            if run.state != gofer_models::run::RunState::Complete {
+            if run.state != gofer_models::run::State::Complete {
                 runs_in_progress += 1;
             }
         }
@@ -93,7 +93,7 @@ impl Api {
                 gofer_models::task_run::TaskRun::new(&namespace, &pipeline, run.id, task.clone());
 
             event_bus
-                .publish(gofer_models::event::EventKind::StartedTaskRun {
+                .publish(gofer_models::event::Kind::StartedTaskRun {
                     namespace_id: namespace.clone(),
                     pipeline_id: pipeline.clone(),
                     run_id: run.id,
@@ -101,8 +101,8 @@ impl Api {
                 })
                 .await;
 
-            new_task_run.state = gofer_models::task_run::TaskRunState::Processing;
-            new_task_run.status = gofer_models::task_run::TaskRunStatus::Unknown;
+            new_task_run.state = gofer_models::task_run::State::Processing;
+            new_task_run.status = gofer_models::task_run::Status::Unknown;
 
             if let Err(e) = storage.create_task_run(&new_task_run).await {
                 error!("could not add task run to storage"; "error" => format!("{:?}", e));
@@ -219,9 +219,9 @@ impl Api {
             if let Err(e) = task_dependencies_satisfied(&status_map, &new_task_run.task.depends_on)
             {
                 new_task_run.set_finished_abnormal(
-                    TaskRunStatus::Skipped,
-                    TaskRunFailure {
-                        kind: TaskRunFailureKind::FailedPrecondition,
+                    Status::Skipped,
+                    Failure {
+                        kind: FailureKind::FailedPrecondition,
                         description: format!(
                             "task could not be run due to unmet dependencies; {}",
                             e
@@ -241,7 +241,7 @@ impl Api {
                 );
 
                 event_bus
-                    .publish(gofer_models::event::EventKind::CompletedTaskRun {
+                    .publish(gofer_models::event::Kind::CompletedTaskRun {
                         namespace_id: namespace.clone(),
                         pipeline_id: pipeline.clone(),
                         run_id: run.id,
@@ -271,9 +271,9 @@ impl Api {
             .await
             {
                 new_task_run.set_finished_abnormal(
-                    TaskRunStatus::Skipped,
-                    TaskRunFailure {
-                        kind: TaskRunFailureKind::FailedPrecondition,
+                    Status::Skipped,
+                    Failure {
+                        kind: FailureKind::FailedPrecondition,
                         description: format!(
                             "task could not be run due to unmet dependencies; {}",
                             e
@@ -293,7 +293,7 @@ impl Api {
                 );
 
                 event_bus
-                    .publish(gofer_models::event::EventKind::CompletedTaskRun {
+                    .publish(gofer_models::event::Kind::CompletedTaskRun {
                         namespace_id: namespace.clone(),
                         pipeline_id: pipeline.clone(),
                         run_id: run.id,
@@ -365,7 +365,7 @@ impl Api {
             }
 
             for mut run in runs.into_iter().rev() {
-                if run.state != gofer_models::run::RunState::Complete {
+                if run.state != gofer_models::run::State::Complete {
                     continue;
                 };
 
@@ -520,7 +520,7 @@ fn parent_tasks_finished(
 ) -> bool {
     for parent in dependencies.keys() {
         if let Some(status_entry) = status_map.get(parent) {
-            if status_entry.1 != gofer_models::task_run::TaskRunState::Complete {
+            if status_entry.1 != gofer_models::task_run::State::Complete {
                 return false;
             }
         } else {
@@ -544,9 +544,9 @@ fn task_dependencies_satisfied(
                     ));
                 }
                 gofer_models::task::RequiredParentStatus::Any => {
-                    if status_entry.0 != TaskRunStatus::Successful
-                        && status_entry.0 != TaskRunStatus::Failed
-                        && status_entry.0 != TaskRunStatus::Skipped
+                    if status_entry.0 != Status::Successful
+                        && status_entry.0 != Status::Failed
+                        && status_entry.0 != Status::Skipped
                     {
                         return Err(anyhow::anyhow!(
                             "parent '{parent}' is in incorrect state '{}'
@@ -556,22 +556,22 @@ fn task_dependencies_satisfied(
                     }
                 }
                 RequiredParentStatus::Success => {
-                    if status_entry.0 != TaskRunStatus::Successful {
+                    if status_entry.0 != Status::Successful {
                         return Err(anyhow::anyhow!(
                             "parent '{parent}' is in incorrect state '{}';
                             task requires it to be in state '{}'",
                             status_entry.0,
-                            TaskRunStatus::Successful.to_string()
+                            Status::Successful.to_string()
                         ));
                     }
                 }
                 RequiredParentStatus::Failure => {
-                    if status_entry.0 != TaskRunStatus::Failed {
+                    if status_entry.0 != Status::Failed {
                         return Err(anyhow::anyhow!(
                             "parent '{parent}' is in incorrect state '{}';
                             task requires it to be in state '{}'",
                             status_entry.0,
-                            TaskRunStatus::Failed.to_string()
+                            Status::Failed.to_string()
                         ));
                     }
                 }

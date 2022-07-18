@@ -10,7 +10,7 @@ use strum::{Display, EnumString};
 /// For example: A trigger that evaluates whether a pipeline should run on a specific date might also skip certain
 /// holidays. In this case it would pass down an "skipped" event result to inform the user that their pipeline
 /// would have ran, but did not due to holiday.
-pub enum TriggerResult {
+pub enum Result {
     Unknown,
     Success,
     Failure,
@@ -20,7 +20,7 @@ pub enum TriggerResult {
 /// Since triggers are run solely via containers, we need a way to track their state so that Gofer understands
 /// what a container is currently doing and when it's ready to serve traffic.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
-pub enum TriggerState {
+pub enum State {
     /// Cannot determine state of Trigger, should never be in this state.
     Unknown,
     /// Going through pre-scheduling verification and prep.
@@ -31,20 +31,20 @@ pub enum TriggerState {
     Exited,
 }
 
-impl From<gofer_proto::trigger::TriggerState> for TriggerState {
+impl From<gofer_proto::trigger::TriggerState> for State {
     fn from(r: gofer_proto::trigger::TriggerState) -> Self {
         match r {
-            gofer_proto::trigger::TriggerState::UnknownState => TriggerState::Unknown,
-            gofer_proto::trigger::TriggerState::Processing => TriggerState::Processing,
-            gofer_proto::trigger::TriggerState::Running => TriggerState::Running,
-            gofer_proto::trigger::TriggerState::Exited => TriggerState::Exited,
+            gofer_proto::trigger::TriggerState::UnknownState => State::Unknown,
+            gofer_proto::trigger::TriggerState::Processing => State::Processing,
+            gofer_proto::trigger::TriggerState::Running => State::Running,
+            gofer_proto::trigger::TriggerState::Exited => State::Exited,
         }
     }
 }
 
 /// Triggers can be enabled and disabled.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum TriggerStatus {
+pub enum Status {
     /// Cannot determine status of Trigger, should never be in this status.
     Unknown,
     /// Installed and able to be used by pipelines.
@@ -58,15 +58,15 @@ pub enum TriggerStatus {
 /// here quickly go out of date and are not worth storing in the database.
 /// Because of this we keep an in-memory representation and store only trigger registrations.
 pub struct Trigger {
-    pub registration: TriggerRegistration,
+    pub registration: Registration,
     /// URL is the network address used to communicate with the trigger by the main process.
     pub url: Option<String>,
     /// SchedulerID is an identifier used by the scheduler to point out which container this trigger is mapped to. Used
     /// when manipulating the container through the identifier.
     pub scheduler_id: Option<String>,
     pub started: u64,
-    pub state: TriggerState,
-    pub status: TriggerStatus,
+    pub state: State,
+    pub status: Status,
     pub documentation: Option<String>,
     /// Key is a trigger's authentication key used to validate requests from the Gofer main service.
     /// On every request the Gofer service passes this key so that it is impossible for other service to contact
@@ -77,17 +77,17 @@ pub struct Trigger {
 /// When installing a new trigger, we allow the trigger installer to pass a bunch of settings that
 /// allow us to go get that trigger on future startups.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct TriggerRegistration {
+pub struct Registration {
     pub name: String,
     pub image: String,
     pub user: Option<String>,
     pub pass: Option<String>,
     pub variables: HashMap<String, String>,
     pub created: u64,
-    pub status: TriggerStatus,
+    pub status: Status,
 }
 
-impl From<gofer_proto::InstallTriggerRequest> for TriggerRegistration {
+impl From<gofer_proto::InstallTriggerRequest> for Registration {
     fn from(v: gofer_proto::InstallTriggerRequest) -> Self {
         Self {
             name: v.name,
@@ -108,7 +108,7 @@ impl From<gofer_proto::InstallTriggerRequest> for TriggerRegistration {
             },
             variables: v.variables,
             created: super::epoch(),
-            status: TriggerStatus::Enabled,
+            status: Status::Enabled,
         }
     }
 }

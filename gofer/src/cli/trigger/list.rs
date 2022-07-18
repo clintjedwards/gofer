@@ -51,7 +51,7 @@ impl CliHarness {
                 Cell::new({
                     let state =
                         gofer_proto::trigger::TriggerState::from_i32(trigger.state).unwrap();
-                    gofer_models::trigger::TriggerState::from(state).to_string()
+                    gofer_models::trigger::State::from(state).to_string()
                 }),
                 Cell::new(trigger.documentation),
             ]);

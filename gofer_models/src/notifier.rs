@@ -4,7 +4,7 @@ use strum::{Display, EnumString};
 
 /// Notifiers can be enabled and disabled.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum NotifierStatus {
+pub enum Status {
     /// Cannot determine status, should never be in this status.
     Unknown,
     /// Installed and able to be used by pipelines.
@@ -28,17 +28,17 @@ pub struct Notifier {
 /// When installing a new notifier, we allow the notifier installer to pass a bunch of settings that
 /// allow us to customize notifier containers on startup.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct NotifierRegistration {
+pub struct Registration {
     pub name: String,
     pub image: String,
     pub user: Option<String>,
     pub pass: Option<String>,
     pub variables: HashMap<String, String>,
     pub created: u64,
-    pub status: NotifierStatus,
+    pub status: Status,
 }
 
-impl From<gofer_proto::InstallNotifierRequest> for NotifierRegistration {
+impl From<gofer_proto::InstallNotifierRequest> for Registration {
     fn from(v: gofer_proto::InstallNotifierRequest) -> Self {
         Self {
             name: v.name,
@@ -59,7 +59,7 @@ impl From<gofer_proto::InstallNotifierRequest> for NotifierRegistration {
             },
             variables: v.variables,
             created: super::epoch(),
-            status: NotifierStatus::Enabled,
+            status: Status::Enabled,
         }
     }
 }

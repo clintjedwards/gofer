@@ -21,7 +21,7 @@ fn epoch() -> u64 {
 }
 
 /// Private repositories sometimes require authentication.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RegistryAuth {
     pub user: String,
     pub pass: String,
