@@ -7,6 +7,7 @@ use futures::Stream;
 use gofer_models::{task_run, trigger};
 use serde::Deserialize;
 use slog_scope::error;
+use std::fmt::Debug;
 use std::sync::Arc;
 use std::{collections::HashMap, pin::Pin};
 use strum::{Display, EnumString};
@@ -153,7 +154,7 @@ pub enum Log {
 
 /// The scheduler trait defines what the interface between Gofer and a container scheduler should look like.
 #[async_trait]
-pub trait Scheduler {
+pub trait Scheduler: Debug {
     /// Start a container based on details passed; Should implement automatically pulling and registry auth
     /// of container if necessary.
     async fn start_container(

@@ -15,6 +15,7 @@ pub enum Status {
 }
 
 /// The in-memory representation of a notifier.
+#[derive(Debug, Clone)]
 pub struct Notifier {
     /// User given custom name for a notifier, allowing multiple notifiers of the same image to be used with different
     /// configurations. Must be unique among other notifiers.

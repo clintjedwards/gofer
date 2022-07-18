@@ -1,13 +1,15 @@
 use crate::api::Api;
 use futures::Stream;
 use gofer_proto::{gofer_server::Gofer, *};
-use std::pin::Pin;
+use std::{ops::Deref, pin::Pin};
 use tonic::{Request, Response, Status};
+
+use super::ApiWrapper;
 
 // Since we can't implement this trait over many files each function here just calls out to a clone function
 // located in other, more neatly organized files.
 #[tonic::async_trait]
-impl Gofer for Api {
+impl Gofer for ApiWrapper {
     async fn get_system_info(
         &self,
         _: Request<GetSystemInfoRequest>,
@@ -84,7 +86,7 @@ impl Gofer for Api {
         request: Request<RunPipelineRequest>,
     ) -> Result<Response<RunPipelineResponse>, Status> {
         let args = request.into_inner();
-        self.run_pipeline_handler(args).await
+        self.deref().clone().run_pipeline_handler(args).await
     }
 
     async fn enable_pipeline(

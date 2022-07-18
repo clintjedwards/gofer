@@ -59,6 +59,7 @@ type EventChannelMap =
 /// It allows the caller to listen to and emit events.
 /// This is useful as it provides an internal interface for functions to listen for events.
 /// But it's even more powerful when you think of the outside applications that can be written on top.
+#[derive(Debug)]
 pub struct EventBus {
     storage: storage::Db,
     event_channel_map: EventChannelMap,

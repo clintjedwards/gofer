@@ -19,7 +19,7 @@ pub enum Result {
 
 /// Since triggers are run solely via containers, we need a way to track their state so that Gofer understands
 /// what a container is currently doing and when it's ready to serve traffic.
-#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
 pub enum State {
     /// Cannot determine state of Trigger, should never be in this state.
     Unknown,
@@ -57,6 +57,7 @@ pub enum Status {
 /// The in-memory representation of a trigger, because triggers are somewhat ephemeral, many of the items listed
 /// here quickly go out of date and are not worth storing in the database.
 /// Because of this we keep an in-memory representation and store only trigger registrations.
+#[derive(Debug, Clone)]
 pub struct Trigger {
     pub registration: Registration,
     /// URL is the network address used to communicate with the trigger by the main process.

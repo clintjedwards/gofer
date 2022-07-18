@@ -10,6 +10,7 @@ fn format_env_var(key: &str, value: &str) -> String {
     return format!("{}={}", key, value);
 }
 
+#[derive(Debug)]
 pub struct Docker {
     client: Arc<bollard::Docker>,
 }

@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use econf::LoadEnv;
 use serde::Deserialize;
 use slog_scope::error;
+use std::fmt::Debug;
 use std::sync::Arc;
 use strum::{Display, EnumString};
 
@@ -32,7 +33,7 @@ pub enum ObjectStoreError {
 
 /// The store trait defines what the interface between Gofer and an Object store should adhere to.
 #[async_trait]
-pub trait Store {
+pub trait Store: Debug {
     async fn get_object(&self, key: &str) -> Result<Vec<u8>, ObjectStoreError>;
     async fn put_object(
         &self,

@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use econf::LoadEnv;
 use serde::Deserialize;
 use slog_scope::error;
+use std::fmt::Debug;
 use std::sync::Arc;
 use strum::{Display, EnumString};
 
@@ -35,7 +36,7 @@ pub enum SecretStoreError {
 
 /// The store trait defines what the interface between Gofer and a Secret store should adhere to.
 #[async_trait]
-pub trait Store {
+pub trait Store: Debug {
     async fn get_secret(&self, key: &str) -> Result<Vec<u8>, SecretStoreError>;
     async fn put_secret(&self, key: &str, value: &str, force: bool)
         -> Result<(), SecretStoreError>;

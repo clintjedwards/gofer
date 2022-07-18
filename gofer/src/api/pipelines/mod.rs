@@ -11,6 +11,7 @@ use gofer_proto::{
     RunPipelineRequest, RunPipelineResponse, UpdatePipelineRequest, UpdatePipelineResponse,
 };
 use slog_scope::debug;
+use std::sync::Arc;
 use tonic::{Response, Status};
 
 impl Api {
@@ -108,7 +109,7 @@ impl Api {
     }
 
     pub async fn run_pipeline_handler(
-        &self,
+        self: Arc<Self>,
         args: RunPipelineRequest,
     ) -> Result<Response<RunPipelineResponse>, Status> {
         validate::arg(
@@ -172,10 +173,9 @@ impl Api {
             })
             .await;
 
-        tokio::spawn(
+        tokio::spawn({
             self.handle_run_object_expiry(new_run.namespace.clone(), new_run.pipeline.clone())
-                .await,
-        );
+        });
 
         // TODO!(clintjedwards): Handle run log expiry
         tokio::spawn(utils::handle_run_log_expiry());

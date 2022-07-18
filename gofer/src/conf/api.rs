@@ -183,7 +183,6 @@ mod tests {
                 embedded: Some(EmbeddedSecretStore {
                     ..Default::default()
                 }),
-                ..Default::default()
             },
         };
 

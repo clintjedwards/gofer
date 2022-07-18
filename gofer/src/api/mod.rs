@@ -13,9 +13,9 @@ use gofer_models::{event::Kind, namespace, notifier, trigger};
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::{ops::Deref, str::FromStr};
 use tonic::transport::{Certificate, ClientTlsConfig, Uri};
 use tower::{steer::Steer, ServiceExt};
 
@@ -70,6 +70,18 @@ fn get_tls_client_config(url: &str, ca_cert: Option<String>) -> anyhow::Result<C
     Ok(tls_config)
 }
 
+#[derive(Debug)]
+pub struct ApiWrapper(Arc<Api>);
+
+impl Deref for ApiWrapper {
+    type Target = Arc<Api>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
 pub struct Api {
     /// Various configurations needed by the api
     conf: conf::api::Config,
@@ -176,7 +188,7 @@ impl Api {
             .boxed_clone();
 
         let grpc = tonic::transport::Server::builder()
-            .add_service(GoferServer::new(self))
+            .add_service(GoferServer::new(ApiWrapper(Arc::new(self))))
             .into_service()
             .map_response(|r| r.map(axum::body::boxed))
             .boxed_clone();
