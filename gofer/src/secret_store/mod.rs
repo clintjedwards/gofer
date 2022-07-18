@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use econf::LoadEnv;
 use serde::Deserialize;
 use slog_scope::error;
+use std::sync::Arc;
 use strum::{Display, EnumString};
 
 #[cfg(test)]
@@ -54,13 +55,13 @@ impl Default for Engine {
 
 pub async fn init_secret_store(
     config: &conf::api::SecretStore,
-) -> Result<Box<dyn Store + Send + Sync>, SecretStoreError> {
+) -> Result<Arc<dyn Store + Send + Sync>, SecretStoreError> {
     #[allow(clippy::match_single_binding)]
     match config.engine {
         Engine::Embedded => {
             if let Some(config) = &config.embedded {
                 let engine = embedded::Engine::new(&config.path, &config.encryption_key).await?;
-                Ok(Box::new(engine))
+                Ok(Arc::new(engine))
             } else {
                 Err(SecretStoreError::FailedInitPrecondition(
                     "engine settings not found in config".into(),

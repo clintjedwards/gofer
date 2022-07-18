@@ -1,10 +1,10 @@
-use super::{epoch, Task};
+use super::{epoch, Task, Variable};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 
 /// Since task runs are basically an abstraction over containers, this tells us
 /// which state of progress the container is currently in.
-#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum TaskRunState {
     /// Cannot determine state of task run, should never be in this state.
     Unknown,
@@ -26,9 +26,12 @@ pub enum TaskRunStatus {
     Successful,
     /// The task run has failed either with an abnormal error code or during processing.
     Failed,
-    /// The task run was cancelled during it's execution.
+    /// The task run was cancelled during it's execution. Cancelled is explicitly a user
+    /// invoked action. The only way a task gets cancelled is from an external request for
+    /// it to be.
     Cancelled,
-    /// The task run was skipped; could be due to unmet dependencies or user intervention.
+    /// The task run was skipped; This can happen be due to a task failing to meet it's dependencies
+    /// (for instance it's parent was in an incorrect state).
     Skipped,
 }
 
@@ -99,6 +102,8 @@ pub struct TaskRun {
     /// Identifier used by the scheduler to identify this specific task run container.
     /// This is provided by the scheduler at the time of scheduling.
     pub scheduler_id: Option<String>,
+    /// The environment variables injected during this particular task run.
+    pub variables: Vec<Variable>,
 }
 
 impl TaskRun {
@@ -119,6 +124,29 @@ impl TaskRun {
             state: TaskRunState::Processing,
             status: TaskRunStatus::Unknown,
             scheduler_id: None,
+            variables: vec![],
         }
+    }
+
+    /// Mark a task object as finished, but failed in some way.
+    pub fn set_finished_abnormal(
+        &mut self,
+        status: TaskRunStatus,
+        failure: TaskRunFailure,
+        code: Option<u8>,
+    ) {
+        self.exit_code = code;
+        self.status = status;
+        self.state = TaskRunState::Complete;
+        self.ended = epoch();
+        self.failure = Some(failure);
+    }
+
+    /// Mark a task object as finished successfully.
+    pub fn set_finished(&mut self) {
+        self.exit_code = Some(0);
+        self.status = TaskRunStatus::Successful;
+        self.ended = epoch();
+        self.state = TaskRunState::Complete;
     }
 }

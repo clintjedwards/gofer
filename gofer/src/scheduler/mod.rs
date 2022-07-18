@@ -7,6 +7,7 @@ use futures::Stream;
 use gofer_models::{TaskRunState, TriggerState};
 use serde::Deserialize;
 use slog_scope::error;
+use std::sync::Arc;
 use std::{collections::HashMap, pin::Pin};
 use strum::{Display, EnumString};
 
@@ -177,13 +178,13 @@ impl Default for Engine {
 
 pub async fn init_scheduler(
     config: &conf::api::Scheduler,
-) -> Result<Box<dyn Scheduler + Send + Sync>, SchedulerError> {
+) -> Result<Arc<dyn Scheduler + Send + Sync>, SchedulerError> {
     #[allow(clippy::match_single_binding)]
     match config.engine {
         Engine::Docker => {
             if let Some(config) = &config.docker {
                 let engine = docker::Docker::new(config.prune, config.prune_interval).await?;
-                Ok(Box::new(engine))
+                Ok(Arc::new(engine))
             } else {
                 Err(SchedulerError::FailedSchedulerPrecondition(
                     "docker engine settings not found in config".into(),

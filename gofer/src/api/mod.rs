@@ -6,13 +6,14 @@ mod system;
 mod triggers;
 mod validate;
 
-use crate::{conf, events, frontend, scheduler, storage};
+use crate::{conf, events, frontend, object_store, scheduler, secret_store, storage};
 use anyhow::anyhow;
 use dashmap::DashMap;
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tonic::transport::{Certificate, ClientTlsConfig, Uri};
 use tower::{steer::Steer, ServiceExt};
@@ -60,10 +61,18 @@ pub struct Api {
     storage: storage::Db,
 
     /// The mechanism in which Gofer uses to run individual containers.
-    scheduler: Box<dyn scheduler::Scheduler + Sync + Send>,
+    scheduler: Arc<dyn scheduler::Scheduler + Sync + Send>,
+
+    /// The mechanism in which Gofer stores pipeline and run level objects. The implementation is meant to
+    /// act as a basic object store.
+    object_store: Arc<dyn object_store::Store + Sync + Send>,
+
+    /// The mechanism in which Gofer stores pipeline secrets. It allows users to store secret that can be
+    /// interpreted in their pipeline files.
+    secret_store: Arc<dyn secret_store::Store + Sync + Send>,
 
     /// Used throughout the whole application in order to allow functions to wait on state changes in Gofer.
-    event_bus: events::EventBus,
+    event_bus: Arc<events::EventBus>,
 
     /// An in-memory map of currently registered and started triggers.
     /// This is necessary due to triggers being based on containers and their state needing to be constantly
@@ -81,16 +90,24 @@ impl Api {
     pub async fn start(conf: conf::api::Config) {
         let storage = storage::Db::new(&conf.server.storage_path).await.unwrap();
         let scheduler = scheduler::init_scheduler(&conf.scheduler).await.unwrap();
-        let event_bus = events::EventBus::new(
+        let object_store = object_store::init_object_store(&conf.object_store)
+            .await
+            .unwrap();
+        let secret_store = secret_store::init_secret_store(&conf.secret_store)
+            .await
+            .unwrap();
+        let event_bus = Arc::new(events::EventBus::new(
             storage.clone(),
             conf.general.event_retention,
             conf.general.event_prune_interval,
-        );
+        ));
 
         let api = Api {
             conf,
             storage,
             scheduler,
+            object_store,
+            secret_store,
             event_bus,
             triggers: DashMap::new(),
             notifiers: DashMap::new(),

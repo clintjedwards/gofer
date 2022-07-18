@@ -32,7 +32,7 @@ impl Db {
         let task_runs = sqlx::query(
             r#"
         SELECT namespace, pipeline, run, id, task, created, started, ended, exit_code, failure,
-        logs_expired, logs_removed, state, status, scheduler_id
+        logs_expired, logs_removed, state, status, scheduler_id, variables
         FROM task_runs
         WHERE namespace = ? AND pipeline = ? AND run = ?
         LIMIT ?
@@ -96,6 +96,10 @@ impl Db {
                 })
                 .unwrap(),
             scheduler_id: row.get("scheduler_id"),
+            variables: {
+                let variables_json = row.get::<String, _>("variables");
+                serde_json::from_str(&variables_json).unwrap()
+            },
         })
         .fetch_all(&mut conn)
         .map_err(|e| StorageError::Unknown(e.to_string()))
@@ -120,8 +124,8 @@ impl Db {
         sqlx::query(
             r#"
         INSERT INTO task_runs (namespace, pipeline, run, id, task, created, started, ended,
-            exit_code, failure, logs_expired, logs_removed, state, status, scheduler_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            exit_code, failure, logs_expired, logs_removed, state, status, scheduler_id, variables)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             "#,
         )
         .bind(&task_run.namespace)
@@ -159,6 +163,7 @@ impl Db {
         .bind(task_run.state.to_string())
         .bind(task_run.status.to_string())
         .bind(&task_run.scheduler_id)
+        .bind(serde_json::to_string(&task_run.variables).unwrap())
         .execute(&mut tx)
         .map_err(|e| match e {
             sqlx::Error::Database(database_err) => {
@@ -198,7 +203,7 @@ impl Db {
         let task_run = sqlx::query(
             r#"
         SELECT namespace, pipeline, run, id, task, created, started, ended, exit_code, failure,
-        logs_expired, logs_removed, state, status, scheduler_id
+        logs_expired, logs_removed, state, status, scheduler_id, variables
         FROM task_runs
         WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;
             "#,
@@ -259,6 +264,10 @@ impl Db {
                 })
                 .unwrap(),
             scheduler_id: row.get("scheduler_id"),
+            variables: {
+                let variables_json = row.get::<String, _>("variables");
+                serde_json::from_str(&variables_json).unwrap()
+            },
         })
         .fetch_one(&mut conn)
         .map_err(|e| match e {
@@ -356,8 +365,8 @@ impl Db {
             r#"
         UPDATE task_runs
         SET started = ?, ended = ?, exit_code = ?, failure = ?, logs_expired = ?, logs_removed = ?,
-        state = ?, status = ?, scheduler_id = ?
-        WHERE namespace = ? AND pipeline = ? AND run =? AND id = ?;
+        state = ?, status = ?, scheduler_id = ?, variables = ?
+        WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;
             "#,
         )
         .bind(task_run.started as i64)
@@ -389,6 +398,7 @@ impl Db {
         .bind(task_run.state.to_string())
         .bind(task_run.status.to_string())
         .bind(&task_run.scheduler_id)
+        .bind(serde_json::to_string(&task_run.variables).unwrap())
         .bind(&task_run.namespace)
         .bind(&task_run.pipeline)
         .bind(task_run.run as i64)

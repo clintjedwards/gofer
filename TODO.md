@@ -178,3 +178,4 @@ prefixed with >2
 - It is possible if you have more than 200 runs going at the same time and your parrallesim limit goes over that amount. We wont correctly calculate it. Because we take the lazy route out and just grab the last 200 runs.
 
 - Bar user from having to care about sensitivity It shouldn't show up anywhere user can see it unless they list env vars.
+- Make sure to go over the database and encrypt the places where we should.

@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 impl Db {
     /// Return all runs for a given namespace/pipeline; limited to 200 rows per response.
+    /// Returns runs by id(which is sequential) in descending order.
     pub async fn list_runs(
         &self,
         offset: u64,

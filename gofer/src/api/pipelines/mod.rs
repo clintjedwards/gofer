@@ -170,8 +170,14 @@ impl Api {
             })
             .await;
 
-        // Handle run object expiry
-        // Handle run log expiry
+        tokio::spawn(
+            self.handle_run_object_expiry(new_run.namespace.clone(), new_run.pipeline.clone())
+                .await,
+        );
+
+        // TODO!(clintjedwards): Handle run log expiry
+        tokio::spawn(utils::handle_run_log_expiry());
+
         // executeTaskTree
 
         Ok(Response::new(RunPipelineResponse {

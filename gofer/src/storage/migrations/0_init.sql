@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS task_runs (
     state         TEXT    NOT NULL,
     status        TEXT    NOT NULL,
     scheduler_id  TEXT,
+    variables     TEXT NOT NULL,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, run, id)

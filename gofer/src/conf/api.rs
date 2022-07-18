@@ -9,6 +9,8 @@ pub struct Config {
     pub server: Server,
     pub scheduler: Scheduler,
     pub triggers: Triggers,
+    pub object_store: ObjectStore,
+    pub secret_store: SecretStore,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
@@ -16,19 +18,27 @@ pub struct General {
     /// Turns on humanized debug messages, extra debug logging for the webserver and other
     /// convenient features for development. Usually turned on along side LogLevel=debug.
     pub dev_mode: bool,
+
     pub log_level: String,
+
     /// The encryption key is used to store sensitive Gofer values. It MUST be 32 characters long.
     pub encryption_key: String,
+
     /// How often the background process for pruning events should run (in seconds).
     pub event_prune_interval: u64,
+
     /// Controls how long Gofer will hold onto events before discarding them.
     /// This is important factor in disk space and memory footprint.
     ///
     /// Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention
     ///  puts the memory and storage footprint at about 9GB.
     pub event_retention: u64,
+
     /// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
     pub run_parallelism_limit: u64,
+
+    /// The total amount of runs before logs of the oldest run will be deleted.
+    pub run_log_expiry: u64,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
@@ -116,7 +126,7 @@ impl Config {
 mod tests {
     use super::*;
     use crate::conf::{Kind, LOCALHOST_CA, LOCALHOST_CRT, LOCALHOST_KEY};
-    use crate::scheduler::Engine;
+    use crate::{object_store, scheduler, secret_store};
     use config;
     use std::env::{remove_var, set_var};
 
@@ -144,6 +154,7 @@ mod tests {
                 event_prune_interval: 604800,
                 event_retention: 7889238,
                 run_parallelism_limit: 0,
+                run_log_expiry: 20,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
@@ -151,13 +162,27 @@ mod tests {
                 ..Default::default()
             },
             scheduler: Scheduler {
-                engine: Engine::Docker,
+                engine: scheduler::Engine::Docker,
                 docker: Some(DockerScheduler {
                     prune: true,
                     prune_interval: 604800,
                 }),
             },
             triggers: Triggers {
+                ..Default::default()
+            },
+            object_store: ObjectStore {
+                engine: object_store::Engine::Embedded,
+                embedded: Some(EmbeddedObjectStore {
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            secret_store: SecretStore {
+                engine: secret_store::Engine::Embedded,
+                embedded: Some(EmbeddedSecretStore {
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
         };
@@ -191,6 +216,7 @@ mod tests {
                 event_prune_interval: 604800,
                 event_retention: 7889238,
                 run_parallelism_limit: 0,
+                run_log_expiry: 20,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
@@ -198,7 +224,7 @@ mod tests {
                 ..Default::default()
             },
             scheduler: Scheduler {
-                engine: Engine::Docker,
+                engine: scheduler::Engine::Docker,
                 docker: Some(DockerScheduler {
                     prune: true,
                     prune_interval: 604800,
@@ -208,6 +234,19 @@ mod tests {
                 tls_ca: Some(LOCALHOST_CA.to_string()),
                 tls_cert: LOCALHOST_CRT.to_string(),
                 tls_key: LOCALHOST_KEY.to_string(),
+            },
+            object_store: ObjectStore {
+                engine: object_store::Engine::Embedded,
+                embedded: Some(EmbeddedObjectStore {
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            secret_store: SecretStore {
+                engine: secret_store::Engine::Embedded,
+                embedded: Some(EmbeddedSecretStore {
+                    ..Default::default()
+                }),
             },
         };
 
@@ -241,10 +280,18 @@ mod tests {
                 ..Default::default()
             },
             scheduler: Scheduler {
-                engine: Engine::Docker,
+                engine: scheduler::Engine::Docker,
                 ..Default::default()
             },
             triggers: Triggers {
+                ..Default::default()
+            },
+            object_store: ObjectStore {
+                engine: object_store::Engine::Embedded,
+                ..Default::default()
+            },
+            secret_store: SecretStore {
+                engine: secret_store::Engine::Embedded,
                 ..Default::default()
             },
         };

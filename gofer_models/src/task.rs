@@ -3,6 +3,12 @@ use gofer_sdk::config;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
 
+/// Defines what a tasks parent status must be for the task to continue.
+/// This indirectly maps back to a task run's [status](super::TaskRunStatus) and
+/// is only evaluated for task runs that have come to a [Complete](super::TaskRunState::Complete) state.
+///
+/// Somewhat uniquely an Any status will accept both a success or failure or a task run, but also will
+/// run even if the status was [skipped](super::TaskRunState::Skipped).
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum RequiredParentStatus {
     Unknown,

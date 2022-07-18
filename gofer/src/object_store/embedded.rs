@@ -48,12 +48,14 @@ impl Store for Engine {
         force: bool,
     ) -> Result<(), ObjectStoreError> {
         if key.is_empty() {
-            return Err(ObjectStoreError::FailedPrecondition)
+            return Err(ObjectStoreError::FailedPrecondition);
         };
 
         if force {
-            self.db.insert(key, value).map_err(|e| ObjectStoreError::Unknown(e.to_string()))?;
-            return Ok(())
+            self.db
+                .insert(key, value)
+                .map_err(|e| ObjectStoreError::Unknown(e.to_string()))?;
+            return Ok(());
         }
 
         self.db.compare_and_swap::<_, Vec<u8>, _>(key, None, Some(value)).
@@ -65,7 +67,9 @@ impl Store for Engine {
     }
 
     async fn delete_object(&self, key: &str) -> Result<(), ObjectStoreError> {
-        self.db.remove(key).map_err(|e| ObjectStoreError::Unknown(e.to_string()))?;
+        self.db
+            .remove(key)
+            .map_err(|e| ObjectStoreError::Unknown(e.to_string()))?;
 
         Ok(())
     }

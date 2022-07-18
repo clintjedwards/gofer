@@ -4,7 +4,7 @@ use strum::{Display, EnumString};
 
 /// Represents the current state of the run as it progresses through the steps
 /// involved to completion.
-#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RunState {
     /// Could not determine current state of the run. Should never happen.
     Unknown,
@@ -82,7 +82,7 @@ impl From<RunStatus> for gofer_proto::run::RunStatus {
 }
 
 /// Explains in more detail why a particular run might have failed.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RunFailureReason {
     /// Could not determine failure reason for current run. Should never happen.
     Unknown,
@@ -145,7 +145,7 @@ impl From<RunFailureReason> for gofer_proto::run_failure_info::RunFailureReason 
 }
 
 /// Information about a run's failure. Does not get populated before a run is finished.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunFailureInfo {
     /// Why the run might have failed.
     pub reason: RunFailureReason,
@@ -163,7 +163,7 @@ impl From<RunFailureInfo> for gofer_proto::RunFailureInfo {
 }
 
 /// Information about which trigger was responsible for the run's execution.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunTriggerInfo {
     /// The trigger kind responsible for starting the run.
     pub name: String,
@@ -182,7 +182,7 @@ impl From<RunTriggerInfo> for gofer_proto::RunTriggerInfo {
 }
 
 /// Information about the run's store keys as they pertain to Gofer's object store.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunStoreInfo {
     /// After a certain number of runs Gofer's run objects are removed.
     pub is_expired: bool,
