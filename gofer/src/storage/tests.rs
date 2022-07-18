@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::*;
-use gofer_models::{RunState, RunTriggerInfo, TaskRunState, TaskRunStatus};
+use gofer_models::*;
 use rand::prelude::*;
 
 struct TestHarness {
@@ -34,7 +34,7 @@ impl Drop for TestHarness {
 async fn crud_namespaces() {
     let harness = TestHarness::new().await;
 
-    let new_namespace = gofer_models::Namespace::new(
+    let new_namespace = namespace::Namespace::new(
         "test_namespace",
         "Test Namespace",
         "a namespace example for integration testing",
@@ -82,11 +82,11 @@ async fn crud_pipelines() {
     let harness = TestHarness::new().await;
 
     let test_namespace =
-        gofer_models::Namespace::new("test_namespace", "Test Namespace", "Test Description");
+        namespace::Namespace::new("test_namespace", "Test Namespace", "Test Description");
     harness.db.create_namespace(&test_namespace).await.unwrap();
 
     let test_pipeline_config = gofer_sdk::config::Pipeline::new("test_pipeline", "Test Pipeline");
-    let mut test_pipeline = gofer_models::Pipeline::new(&test_namespace.id, test_pipeline_config);
+    let mut test_pipeline = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_config);
 
     harness.db.create_pipeline(&test_pipeline).await.unwrap();
 
@@ -106,8 +106,7 @@ async fn crud_pipelines() {
                 "test_notifier",
                 "test_notifier",
             )]);
-    let test_pipeline_full =
-        gofer_models::Pipeline::new(&test_namespace.id, test_pipeline_full_config);
+    let test_pipeline_full = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_full_config);
 
     harness
         .db
@@ -165,18 +164,18 @@ async fn crud_runs() {
     let harness = TestHarness::new().await;
 
     let test_namespace =
-        gofer_models::Namespace::new("test_namespace", "Test Namespace", "Test Description");
+        namespace::Namespace::new("test_namespace", "Test Namespace", "Test Description");
     harness.db.create_namespace(&test_namespace).await.unwrap();
 
     let test_pipeline_config = gofer_sdk::config::Pipeline::new("test_pipeline", "Test Pipeline");
-    let test_pipeline = gofer_models::Pipeline::new(&test_namespace.id, test_pipeline_config);
+    let test_pipeline = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_config);
 
     harness.db.create_pipeline(&test_pipeline).await.unwrap();
 
-    let mut test_run = gofer_models::Run::new(
+    let mut test_run = run::Run::new(
         &test_namespace.id,
         &test_pipeline.id,
-        RunTriggerInfo {
+        run::RunTriggerInfo {
             name: "test_trigger".to_string(),
             label: "my_test_trigger".to_string(),
         },
@@ -186,10 +185,10 @@ async fn crud_runs() {
     test_run.started = 0;
     harness.db.create_run(&test_run).await.unwrap();
 
-    let mut test_run_2 = gofer_models::Run::new(
+    let mut test_run_2 = run::Run::new(
         &test_namespace.id,
         &test_pipeline.id,
-        RunTriggerInfo {
+        run::RunTriggerInfo {
             name: "test_trigger".to_string(),
             label: "my_test_trigger".to_string(),
         },
@@ -218,7 +217,7 @@ async fn crud_runs() {
 
     assert_eq!(run, test_run);
 
-    test_run.state = RunState::Complete;
+    test_run.state = run::RunState::Complete;
 
     harness.db.update_run(&test_run).await.unwrap();
 
@@ -250,13 +249,13 @@ async fn crud_task_runs() {
     let harness = TestHarness::new().await;
 
     let test_namespace =
-        gofer_models::Namespace::new("test_namespace", "Test Namespace", "Test Description");
+        namespace::Namespace::new("test_namespace", "Test Namespace", "Test Description");
     harness.db.create_namespace(&test_namespace).await.unwrap();
 
     let test_pipeline_config = gofer_sdk::config::Pipeline::new("test_pipeline", "Test Pipeline");
-    let mut test_pipeline = gofer_models::Pipeline::new(&test_namespace.id, test_pipeline_config);
+    let mut test_pipeline = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_config);
 
-    let test_task = gofer_models::Task::new("test_task", "test_image");
+    let test_task = task::Task::new("test_task", "test_image");
 
     test_pipeline.tasks = HashMap::new();
     test_pipeline
@@ -265,10 +264,10 @@ async fn crud_task_runs() {
 
     harness.db.create_pipeline(&test_pipeline).await.unwrap();
 
-    let test_run = gofer_models::Run::new(
+    let test_run = run::Run::new(
         &test_namespace.id,
         &test_pipeline.id,
-        RunTriggerInfo {
+        run::RunTriggerInfo {
             name: "test_trigger".to_string(),
             label: "my_test_trigger".to_string(),
         },
@@ -277,7 +276,7 @@ async fn crud_task_runs() {
 
     harness.db.create_run(&test_run).await.unwrap();
 
-    let mut test_task_run = gofer_models::TaskRun::new(
+    let mut test_task_run = task_run::TaskRun::new(
         &test_namespace.id,
         &test_pipeline.id,
         test_run.id,
@@ -308,7 +307,7 @@ async fn crud_task_runs() {
 
     assert_eq!(task_run, test_task_run);
 
-    test_task_run.state = TaskRunState::Complete;
+    test_task_run.state = task_run::TaskRunState::Complete;
     harness.db.update_task_run(&test_task_run).await.unwrap();
 
     let task_run = harness
@@ -331,7 +330,7 @@ async fn crud_task_runs() {
             &test_task_run.pipeline,
             test_task_run.run,
             &test_task_run.id,
-            TaskRunState::Processing,
+            task_run::TaskRunState::Processing,
         )
         .await
         .unwrap();
@@ -347,7 +346,7 @@ async fn crud_task_runs() {
         .await
         .unwrap();
 
-    assert_eq!(task_run.state, TaskRunState::Processing);
+    assert_eq!(task_run.state, task_run::TaskRunState::Processing);
 
     harness
         .db
@@ -356,7 +355,7 @@ async fn crud_task_runs() {
             &test_task_run.pipeline,
             test_task_run.run,
             &test_task_run.id,
-            TaskRunStatus::Failed,
+            task_run::TaskRunStatus::Failed,
         )
         .await
         .unwrap();
@@ -372,7 +371,7 @@ async fn crud_task_runs() {
         .await
         .unwrap();
 
-    assert_eq!(task_run.status, TaskRunStatus::Failed);
+    assert_eq!(task_run.status, task_run::TaskRunStatus::Failed);
 
     harness
         .db
@@ -404,10 +403,10 @@ async fn crud_task_runs() {
 async fn crud_events() {
     let harness = TestHarness::new().await;
 
-    let mut test_event_one = gofer_models::Event::new(gofer_models::EventKind::CreatedNamespace {
+    let mut test_event_one = event::Event::new(event::EventKind::CreatedNamespace {
         namespace_id: "test_namespace".to_string(),
     });
-    let mut test_event_two = gofer_models::Event::new(gofer_models::EventKind::CreatedPipeline {
+    let mut test_event_two = event::Event::new(event::EventKind::CreatedPipeline {
         namespace_id: "test_namespace".to_string(),
         pipeline_id: "test_pipeline".to_string(),
     });
@@ -440,14 +439,14 @@ async fn crud_events() {
 async fn crud_trigger_registrations() {
     let harness = TestHarness::new().await;
 
-    let test_trigger_registration = gofer_models::TriggerRegistration {
+    let test_trigger_registration = trigger::TriggerRegistration {
         name: "test_trigger".to_string(),
         image: "docker/test".to_string(),
         user: None,
         pass: None,
         variables: HashMap::new(),
         created: 0,
-        status: gofer_models::TriggerStatus::Enabled,
+        status: trigger::TriggerStatus::Enabled,
     };
 
     harness
@@ -487,14 +486,14 @@ async fn crud_trigger_registrations() {
 async fn crud_notifier_registrations() {
     let harness = TestHarness::new().await;
 
-    let test_notifier_registration = gofer_models::NotifierRegistration {
+    let test_notifier_registration = notifier::NotifierRegistration {
         name: "test_notifier".to_string(),
         image: "docker/test".to_string(),
         user: None,
         pass: None,
         variables: HashMap::new(),
         created: 0,
-        status: gofer_models::NotifierStatus::Enabled,
+        status: notifier::NotifierStatus::Enabled,
     };
 
     harness

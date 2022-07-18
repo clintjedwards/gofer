@@ -1,4 +1,4 @@
-use super::{epoch, Task, Variable};
+use super::{epoch, task::Task, Variable};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 

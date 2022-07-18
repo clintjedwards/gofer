@@ -30,7 +30,8 @@ impl Api {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
         validate::arg("name", args.name.clone(), vec![validate::not_empty_str])?;
 
-        let new_namespace = gofer_models::Namespace::new(&args.id, &args.name, &args.description);
+        let new_namespace =
+            gofer_models::namespace::Namespace::new(&args.id, &args.name, &args.description);
 
         self.storage
             .create_namespace(&new_namespace)
@@ -44,7 +45,7 @@ impl Api {
             })?;
 
         self.event_bus
-            .publish(gofer_models::EventKind::CreatedNamespace {
+            .publish(gofer_models::event::EventKind::CreatedNamespace {
                 namespace_id: new_namespace.id.clone(),
             })
             .await;
@@ -83,7 +84,7 @@ impl Api {
         validate::arg("name", args.name.clone(), vec![validate::not_empty_str])?;
 
         self.storage
-            .update_namespace(&gofer_models::Namespace {
+            .update_namespace(&gofer_models::namespace::Namespace {
                 id: args.id.clone(),
                 name: args.name.clone(),
                 description: args.description.clone(),
@@ -118,7 +119,7 @@ impl Api {
             })?;
 
         self.event_bus
-            .publish(gofer_models::EventKind::DeletedNamespace {
+            .publish(gofer_models::event::EventKind::DeletedNamespace {
                 namespace_id: args.id.clone(),
             })
             .await;

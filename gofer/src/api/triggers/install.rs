@@ -46,13 +46,13 @@ impl Api {
 
         self.triggers.insert(
             args.name.clone(),
-            gofer_models::Trigger {
+            gofer_models::trigger::Trigger {
                 registration: args.clone().into(),
                 url: Some(trigger_info.url.clone()),
                 scheduler_id: trigger_info.scheduler_id.clone(),
                 started: epoch(),
-                state: gofer_models::TriggerState::Running,
-                status: gofer_models::TriggerStatus::Enabled,
+                state: gofer_models::trigger::TriggerState::Running,
+                status: gofer_models::trigger::TriggerStatus::Enabled,
                 documentation: {
                     if !trigger_info.documentation.is_empty() {
                         Some(trigger_info.documentation.clone())
@@ -65,7 +65,7 @@ impl Api {
         );
 
         self.event_bus
-            .publish(gofer_models::EventKind::InstalledTrigger {
+            .publish(gofer_models::event::EventKind::InstalledTrigger {
                 name: args.name.clone(),
                 image: args.image.clone(),
             })

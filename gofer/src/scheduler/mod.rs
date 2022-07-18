@@ -4,7 +4,7 @@ use crate::conf;
 use async_trait::async_trait;
 use econf::LoadEnv;
 use futures::Stream;
-use gofer_models::{TaskRunState, TriggerState};
+use gofer_models::{task_run::TaskRunState, trigger::TriggerState};
 use serde::Deserialize;
 use slog_scope::error;
 use std::sync::Arc;
@@ -74,6 +74,15 @@ impl From<ContainerState> for TriggerState {
 pub struct RegistryAuth {
     pub user: String,
     pub pass: String,
+}
+
+impl From<gofer_models::task::RegistryAuth> for RegistryAuth {
+    fn from(ra: gofer_models::task::RegistryAuth) -> Self {
+        Self {
+            user: ra.user,
+            pass: ra.pass,
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::NotifierRegistration;
+use gofer_models::notifier::{NotifierRegistration, NotifierStatus};
 use sqlx::{sqlite::SqliteRow, Row};
 use std::ops::Deref;
 use std::str::FromStr;
@@ -44,7 +44,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: gofer_models::NotifierStatus::from_str(row.get("status"))
+            status: NotifierStatus::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -128,7 +128,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: gofer_models::NotifierStatus::from_str(row.get("status"))
+            status: NotifierStatus::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),

@@ -3,7 +3,9 @@ use std::{collections::HashMap, ops::Deref};
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
 use gofer_models::{
-    Pipeline, PipelineNotifierSettings, PipelineState, PipelineTriggerSettings, RunState, Task,
+    pipeline::{Pipeline, PipelineNotifierSettings, PipelineState, PipelineTriggerSettings},
+    run::RunState,
+    task::Task,
 };
 use sqlx::{sqlite::SqliteRow, Acquire, Row};
 use std::str::FromStr;

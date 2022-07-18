@@ -62,7 +62,7 @@ impl CliHarness {
                 Cell::new({
                     let state =
                         gofer_proto::pipeline::PipelineState::from_i32(pipeline.state).unwrap();
-                    gofer_models::PipelineState::from(state).to_string()
+                    gofer_models::pipeline::PipelineState::from(state).to_string()
                 }),
                 Cell::new(humanize_duration(pipeline.created as i64)),
             ]);

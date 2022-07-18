@@ -18,7 +18,7 @@ impl From<gofer_proto::Trigger> for Data {
             name: v.name,
             state: {
                 let state = gofer_proto::trigger::TriggerState::from_i32(v.state).unwrap();
-                gofer_models::TriggerState::from(state).to_string()
+                gofer_models::trigger::TriggerState::from(state).to_string()
             },
             image: v.image,
             started: super::super::humanize_duration(v.started as i64),

@@ -3,7 +3,7 @@ mod tests;
 
 use crate::storage::{self, StorageError};
 use crossbeam::{channel, sync::ShardedLock};
-use gofer_models::EventKind;
+use gofer_models::event::{Event, EventKind};
 use nanoid::nanoid;
 use slog_scope::{debug, error, info};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -26,9 +26,9 @@ pub enum EventError {
 
 pub struct Subscription<'a> {
     id: String,
-    kind: gofer_models::EventKind,
+    kind: EventKind,
     event_bus: &'a EventBus,
-    pub receiver: channel::Receiver<gofer_models::Event>,
+    pub receiver: channel::Receiver<Event>,
 }
 
 impl Drop for Subscription<'_> {
@@ -52,9 +52,8 @@ impl Drop for Subscription<'_> {
 /// A mapping of each event kind to the subscription id and sender end of the channel.
 /// When publishing events we need just a lookup by event kind, but when removing
 /// an event channel we need to be able to lookup by event kind and subscription id.
-type EventChannelMap = ShardedLock<
-    HashMap<mem::Discriminant<EventKind>, HashMap<String, channel::Sender<gofer_models::Event>>>,
->;
+type EventChannelMap =
+    ShardedLock<HashMap<mem::Discriminant<EventKind>, HashMap<String, channel::Sender<Event>>>>;
 
 /// The event bus is a central handler for all things related to events with the application.
 /// It allows the caller to listen to and emit events.
@@ -98,10 +97,7 @@ impl EventBus {
     /// get you a subscription to all namespaces.
     ///
     /// Additionally the subscription return type automatically drops it's subscription upon drop/loss of scope.
-    pub async fn subscribe(
-        &self,
-        kind: gofer_models::EventKind,
-    ) -> Result<Subscription<'_>, EventError> {
+    pub async fn subscribe(&self, kind: EventKind) -> Result<Subscription<'_>, EventError> {
         let mut event_channel_map = match self.event_channel_map.write() {
             Ok(v) => v,
             Err(e) => {
@@ -114,7 +110,7 @@ impl EventBus {
             .entry(mem::discriminant(&kind))
             .or_insert_with(HashMap::new);
 
-        let (sender, receiver) = channel::unbounded::<gofer_models::Event>();
+        let (sender, receiver) = channel::unbounded::<Event>();
         let new_subscription = Subscription {
             id: nanoid!(10),
             kind,
@@ -129,8 +125,8 @@ impl EventBus {
 
     /// Allows caller to emit a new event to the eventbus. Returns the resulting
     /// event once it has been successfully published.
-    pub async fn publish(&self, kind: gofer_models::EventKind) -> Option<gofer_models::Event> {
-        let mut new_event = gofer_models::Event::new(kind.clone());
+    pub async fn publish(&self, kind: EventKind) -> Option<Event> {
+        let mut new_event = Event::new(kind.clone());
 
         let id = match self.storage.create_event(&new_event).await {
             Ok(id) => id,
@@ -164,9 +160,7 @@ impl EventBus {
             }
         }
 
-        if let Some(any_event_subs) =
-            event_channel_map.get(&mem::discriminant(&gofer_models::EventKind::Any))
-        {
+        if let Some(any_event_subs) = event_channel_map.get(&mem::discriminant(&EventKind::Any)) {
             for (_, send_channel) in any_event_subs.iter() {
                 match send_channel.send(new_event.clone()) {
                     Ok(v) => v,
@@ -214,7 +208,7 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), Stora
     }
 }
 
-fn is_past_cut_date(event: &gofer_models::Event, limit: u64) -> bool {
+fn is_past_cut_date(event: &Event, limit: u64) -> bool {
     let now = epoch();
     let limit = Duration::from_secs(limit).as_millis();
     let expiry_time = (now as u128) - limit;

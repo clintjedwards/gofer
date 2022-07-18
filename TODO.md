@@ -179,3 +179,5 @@ prefixed with >2
 
 - Bar user from having to care about sensitivity It shouldn't show up anywhere user can see it unless they list env vars.
 - Make sure to go over the database and encrypt the places where we should.
+- Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values.
+- Go over imported types and extract them to use at the top of document. to much gofer_models:::::::

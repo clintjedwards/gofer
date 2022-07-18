@@ -1,4 +1,4 @@
-use crate::{RunStatus, TaskRunStatus};
+use crate::{run::RunStatus, task_run::TaskRunStatus};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};
 

@@ -2,7 +2,7 @@ use std::{ops::Deref, str::FromStr};
 
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::TriggerRegistration;
+use gofer_models::trigger::{TriggerRegistration, TriggerStatus};
 use sqlx::{sqlite::SqliteRow, Row};
 
 impl Db {
@@ -44,7 +44,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: gofer_models::TriggerStatus::from_str(row.get("status"))
+            status: TriggerStatus::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),
@@ -128,7 +128,7 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
             created: row.get::<i64, _>("created") as u64,
-            status: gofer_models::TriggerStatus::from_str(row.get("status"))
+            status: TriggerStatus::from_str(row.get("status"))
                 .map_err(|_| StorageError::Parse {
                     value: row.get("status"),
                     column: "status".to_string(),

@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::Namespace;
+use gofer_models::namespace::Namespace;
 use sqlx::{sqlite::SqliteRow, Row};
 
 impl Db {

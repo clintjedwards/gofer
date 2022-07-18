@@ -28,7 +28,7 @@ impl Api {
     /// 4) Launches the thread that collects container logs and outputs it into stdout.
     async fn start_trigger(
         &self,
-        settings: &gofer_models::TriggerRegistration,
+        settings: &gofer_models::trigger::TriggerRegistration,
     ) -> Result<TriggerInfo> {
         let config = self.conf.clone();
         let tls_cert = config.triggers.tls_cert.clone();
@@ -127,13 +127,13 @@ impl Api {
 
             self.triggers.insert(
                 trigger.name.clone(),
-                gofer_models::Trigger {
+                gofer_models::trigger::Trigger {
                     registration: trigger.clone(),
                     url: Some(trigger_info.url.clone()),
                     scheduler_id: trigger_info.scheduler_id.clone(),
                     started: epoch(),
-                    state: gofer_models::TriggerState::Running,
-                    status: gofer_models::TriggerStatus::Enabled,
+                    state: gofer_models::trigger::TriggerState::Running,
+                    status: gofer_models::trigger::TriggerStatus::Enabled,
                     documentation: {
                         if !trigger_info.documentation.is_empty() {
                             Some(trigger_info.documentation.clone())

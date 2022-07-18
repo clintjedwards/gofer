@@ -1,20 +1,11 @@
-mod event;
-mod namespace;
-mod notifier;
-mod pipeline;
-mod run;
-mod task;
-mod task_run;
-mod trigger;
-
-pub use self::event::*;
-pub use self::namespace::*;
-pub use self::notifier::*;
-pub use self::pipeline::*;
-pub use self::run::*;
-pub use self::task::*;
-pub use self::task_run::*;
-pub use self::trigger::*;
+pub mod event;
+pub mod namespace;
+pub mod notifier;
+pub mod pipeline;
+pub mod run;
+pub mod task;
+pub mod task_run;
+pub mod trigger;
 
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

@@ -21,6 +21,22 @@ use tower::{steer::Steer, ServiceExt};
 const BUILD_SEMVER: &str = env!("BUILD_SEMVER");
 const BUILD_COMMIT: &str = env!("BUILD_COMMIT");
 
+pub fn fmt_secret_key(namespace: &str, pipeline: &str, key: &str) -> String {
+    return format!("{}_{}_{}", namespace, pipeline, key);
+}
+
+pub fn fmt_pipeline_object_key(namespace: &str, pipeline: &str, key: &str) -> String {
+    return format!("{}_{}_{}", namespace, pipeline, key);
+}
+
+pub fn fmt_run_object_key(namespace: &str, pipeline: &str, run: u64, key: &str) -> String {
+    return format!("{}_{}_{}_{}", namespace, pipeline, run, key);
+}
+
+pub fn fmt_task_container_id(namespace: &str, pipeline: &str, run: &str, task_run: &str) -> String {
+    return format!("{}_{}_{}_{}", namespace, pipeline, run, task_run);
+}
+
 pub fn epoch() -> u64 {
     let current_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -77,12 +93,12 @@ pub struct Api {
     /// An in-memory map of currently registered and started triggers.
     /// This is necessary due to triggers being based on containers and their state needing to be constantly
     /// updated and maintained.
-    triggers: DashMap<String, gofer_models::Trigger>,
+    triggers: DashMap<String, gofer_models::trigger::Trigger>,
 
     /// An in-memory map of currently registered notifiers. These notifiers are registered on startup
     /// and launched as needed at the end of a user's pipeline run. Gofer refers to this cache as a way
     /// to quickly look up which container is needed to be launched.
-    notifiers: DashMap<String, gofer_models::Notifier>,
+    notifiers: DashMap<String, gofer_models::notifier::Notifier>,
 }
 
 impl Api {
@@ -125,7 +141,7 @@ impl Api {
         const DEFAULT_NAMESPACE_DESCRIPTION: &str =
             "The default namespace when no other namespace is specified.";
 
-        let default_namespace = gofer_models::Namespace::new(
+        let default_namespace = gofer_models::namespace::Namespace::new(
             DEFAULT_NAMESPACE_ID,
             DEFAULT_NAMESPACE_NAME,
             DEFAULT_NAMESPACE_DESCRIPTION,
@@ -134,7 +150,7 @@ impl Api {
         match self.storage.create_namespace(&default_namespace).await {
             Ok(_) => {
                 self.event_bus
-                    .publish(gofer_models::EventKind::CreatedNamespace {
+                    .publish(gofer_models::event::EventKind::CreatedNamespace {
                         namespace_id: DEFAULT_NAMESPACE_ID.to_string(),
                     })
                     .await;
