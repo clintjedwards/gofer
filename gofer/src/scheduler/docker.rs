@@ -150,6 +150,10 @@ impl Scheduler for Docker {
             container_config.entrypoint = Some(req.entrypoint);
         }
 
+        if !req.command.is_empty() {
+            container_config.cmd = Some(req.command);
+        }
+
         // In order to properly set up a container such that we can talk to it we need several things:
         // 1) We need to expose the port that the container is listening on. We've hardcoded this in the
         // sdk to be tcp/port 8080.

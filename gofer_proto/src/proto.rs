@@ -216,6 +216,8 @@ pub struct Task {
     pub variables: ::prost::alloc::vec::Vec<Variable>,
     #[prost(string, repeated, tag="7")]
     pub entrypoint: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag="8")]
+    pub command: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `Task`.
 pub mod task {
@@ -266,6 +268,8 @@ pub struct TaskConfig {
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     #[prost(string, repeated, tag="7")]
     pub entrypoint: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag="8")]
+    pub command: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `TaskConfig`.
 pub mod task_config {

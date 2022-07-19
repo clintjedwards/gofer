@@ -201,7 +201,7 @@ impl From<StoreInfo> for gofer_proto::RunStoreInfo {
 
 /// A run is one or more tasks being executed on behalf of some trigger.
 /// Run is a third level unit containing tasks and being contained in a pipeline.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Run {
     /// Identifier for the namespace that this run belongs to.
     pub namespace: String,
@@ -250,6 +250,18 @@ impl Run {
             variables,
             store_info: None,
         }
+    }
+
+    pub fn set_finished_abnormal(&mut self, status: Status, failure: FailureInfo) {
+        self.state = State::Complete;
+        self.status = status;
+        self.failure_info = Some(failure);
+        self.ended = epoch();
+    }
+    pub fn set_finished(&mut self) {
+        self.state = State::Complete;
+        self.status = Status::Successful;
+        self.ended = epoch();
     }
 }
 

@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     depends_on    TEXT NOT NULL,
     variables     TEXT NOT NULL,
     entrypoint    TEXT,
+    command       TEXT,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, id)

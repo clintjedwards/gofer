@@ -22,6 +22,6 @@ and keeping the Gofer pipeline configurations from becoming a mess.`).
 			[]sdk.Task{
 				*sdk.NewTask("simple_task", "ubuntu:latest").
 					WithDescription("This task simply prints our hello-world message and exists!").
-					WithEntrypoint([]string{"/bin/bash", "echo", "Hello from Gofer"}),
+					WithCommand([]string{"echo", "Hello from Gofer"}),
 			}).Finish()
 }

@@ -56,3 +56,4 @@ gofer_sdk = { path = "../gofer_sdk/rust" }
 [dev-dependencies]
 rand = "0.8.5"
 defer-lite = "1.0.0"
+pretty_assertions = "1.2.1"

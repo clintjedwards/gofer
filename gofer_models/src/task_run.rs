@@ -41,7 +41,7 @@ impl Default for Status {
     }
 }
 
-#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FailureKind {
     /// Failure type is unknown, should never be in this state.
     Unknown,
@@ -58,7 +58,7 @@ pub enum FailureKind {
 }
 
 /// A description of the error the task run encountered as part of being executed.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Failure {
     /// The type of error that has occurred. Can be anything from user error to scheduler error.
     pub kind: FailureKind,
@@ -69,7 +69,7 @@ pub struct Failure {
 /// A task run is a specific execution of a task/container.
 /// It represents a 4th level unit in the hierarchy:
 /// namespace -> pipeline -> run -> taskrun
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TaskRun {
     /// Unique identifier for namespace.
     pub namespace: String,

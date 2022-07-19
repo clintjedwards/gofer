@@ -92,6 +92,7 @@ impl Api {
                 always_pull: true,
                 enable_networking: true,
                 entrypoint: vec![],
+                command: vec![],
             })
             .await?;
 

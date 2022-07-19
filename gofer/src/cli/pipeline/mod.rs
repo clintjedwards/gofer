@@ -33,10 +33,19 @@ pub enum PipelineCommands {
     },
 
     /// Detail pipeline by id.
-    Get { id: String },
+    Get {
+        /// Pipeline Identifier.
+        id: String },
 
     /// Start executing a pipeline.
-    Run { id: String, variables: Vec<String> },
+    Run {
+        /// Pipeline Identifier.
+        id: String,
+
+        /// Optional environment variables to pass to your run.
+        #[clap(short, long, name = "KEY=VALUE")]
+        variables: Vec<String>
+    },
 
     /// Update a new pipeline.
     ///
@@ -49,5 +58,8 @@ pub enum PipelineCommands {
     },
 
     /// Delete pipeline by id.
-    Delete { id: String },
+    Delete {
+        /// Pipeline Identifier.
+        id: String
+    },
 }

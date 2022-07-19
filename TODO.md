@@ -181,4 +181,9 @@ prefixed with >2
 - Make sure to go over the database and encrypt the places where we should.
 - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values.
 - Go over imported types and extract them to use at the top of document. to much gofer_models:::::::
-- TODO(clintjedwards): Go throught he gofer_models file and unstutter what you can.
+- look through my unwrap_or_else calls; I might have misunderstood how to early exit
+- wait_task_run_finish might not play well with cancellations; need to investigate.
+- It is possible to have a race condition with the current state of how updating an object works. If two
+  things want to update a run, there is a chance between calls that the object will be changed. We need to properly
+  implement patches instead of puts.
+- Wrap publish calls in tokio::spawn.

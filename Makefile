@@ -4,6 +4,10 @@ build-protos:
 	 --go-grpc_out=gofer_sdk/go/proto --go-grpc_opt=paths=source_relative \
 	 gofer_proto/*.proto
 
+test:
+	cargo test
+	cd ./gofer_sdk/go && go test ./...
+
 ## run-website: build website js and run dev server
 run-website:
 	npm --prefix ./website start

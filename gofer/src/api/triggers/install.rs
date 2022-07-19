@@ -122,6 +122,7 @@ impl Api {
                 always_pull: true,
                 enable_networking: false,
                 entrypoint: vec!["./trigger".into(), "installer".into()],
+                command: vec![],
             })
             .await
             .map_err(|e| Status::internal(format!("could not start container: {}", e)))?;

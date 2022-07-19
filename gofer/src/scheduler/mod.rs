@@ -101,8 +101,10 @@ pub struct StartContainerRequest {
     pub always_pull: bool,
     /// Only needed by triggers; spin the container up with networking, so that Gofer can connect to it.
     pub enable_networking: bool,
-    /// Replaces the container's entrypoint with a custom one.
+    /// Replaces container's entrypoint with a custom one.
     pub entrypoint: Vec<String>,
+    /// Replaces container's cmd instruction with a custom one.
+    pub command: Vec<String>,
 }
 
 #[derive(Debug)]

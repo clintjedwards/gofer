@@ -27,6 +27,7 @@ type Task struct {
 	DependsOn    map[string]RequiredParentStatus `json:"depends_on"`
 	Variables    map[string]string               `json:"variables"`
 	Entrypoint   []string                        `json:"entrypoint"`
+	Command      []string                        `json:"command"`
 }
 
 func NewTask(id, image string) *Task {
@@ -84,6 +85,11 @@ func (t *Task) WithVariables(variables map[string]string) *Task {
 
 func (t *Task) WithEntrypoint(entrypoint []string) *Task {
 	t.Entrypoint = entrypoint
+	return t
+}
+
+func (t *Task) WithCommand(command []string) *Task {
+	t.Command = command
 	return t
 }
 

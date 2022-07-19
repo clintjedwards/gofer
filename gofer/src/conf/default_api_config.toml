@@ -12,7 +12,8 @@ encryption_key = "changemechangemechangemechangeme"
 event_prune_interval = 604800 # How often to clear out old events past the retention date (in seconds)
 event_retention = 7889238     # At what age should events be pruned (in seconds)
 run_parallelism_limit = 0     # The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited
-run_log_expiry = 20           # The total amount of runs before logs of the oldest run will be deleted.
+task_run_log_expiry = 20      # The total amount of runs before logs of the oldest run will be deleted.
+task_run_logs_dir = "/tmp"
 
 [server]
 url = "127.0.0.1:8080"
@@ -34,15 +35,17 @@ tls_cert = ""
 tls_key = ""
 
 [object_store]
-engine = "Embedded" # possible values: ["Embedded"]
+engine = "Embedded"        # possible values: ["Embedded"]
+pipeline_object_limit = 10
+run_object_expiry = 20
 
 [object_store.embedded]
 path = "/tmp/gofer-object-store"
 
-[secert_store]
+[secret_store]
 engine = "Embedded" # possible values: ["Embedded"]
 
-[secert_store.embedded]
+[secret_store.embedded]
 path = "/tmp/gofer-secret-store"
 # Throughout Gofer we encrypt sensitive keys to keep them safe. This encryption key is reponsible
 # for facilitating that. It MUST be 32 characters long and cannot be changed for any reason once

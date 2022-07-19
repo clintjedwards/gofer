@@ -17,9 +17,9 @@ Ideally, these tasks are custom containers built with the purpose of being run w
 particular workflow. Allowing you to keep the logic code closer to the actual object that uses it
 and keeping the Gofer pipeline configurations from becoming a mess."#)
         .tasks(vec![
-            Task::new("simple_task", "ubuntu::latest")
+            Task::new("simple_task", "ubuntu:latest")
                 .description("This task simply prints our hello-world message and exists!")
-                .entrypoint(vec!["/bin/bash".to_string(), "echo".to_string(), "Hello from Gofer!".to_string()])
+                .command(vec!["echo", "Hello from Gofer!"])
         ])
         .finish().unwrap();
 }

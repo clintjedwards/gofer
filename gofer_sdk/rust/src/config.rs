@@ -312,6 +312,7 @@ pub struct Task {
     pub depends_on: HashMap<String, RequiredParentStatus>,
     pub variables: HashMap<String, String>,
     pub entrypoint: Vec<String>,
+    pub command: Vec<String>,
 }
 
 impl Task {
@@ -324,6 +325,7 @@ impl Task {
             depends_on: HashMap::new(),
             variables: HashMap::new(),
             entrypoint: Vec::new(),
+            command: Vec::new(),
         }
     }
 
@@ -360,13 +362,22 @@ impl Task {
         self
     }
 
-    pub fn variables(mut self, variables: HashMap<String, String>) -> Self {
+    pub fn variables(mut self, variables: HashMap<&str, &str>) -> Self {
+        let variables: HashMap<String, String> = variables
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect();
         self.variables.extend(variables);
         self
     }
 
-    pub fn entrypoint(mut self, entrypoint: Vec<String>) -> Self {
-        self.entrypoint = entrypoint;
+    pub fn entrypoint(mut self, entrypoint: Vec<&str>) -> Self {
+        self.entrypoint = entrypoint.into_iter().map(|s| s.to_string()).collect();
+        self
+    }
+
+    pub fn command(mut self, command: Vec<&str>) -> Self {
+        self.command = command.into_iter().map(|s| s.to_string()).collect();
         self
     }
 }
@@ -394,6 +405,7 @@ impl From<gofer_proto::TaskConfig> for Task {
                 .collect(),
             variables: p.variables,
             entrypoint: p.entrypoint,
+            command: p.command,
         }
     }
 }
@@ -417,6 +429,7 @@ impl From<Task> for gofer_proto::TaskConfig {
                 .collect(),
             variables: p.variables,
             entrypoint: p.entrypoint,
+            command: p.command,
         }
     }
 }

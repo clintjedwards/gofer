@@ -38,7 +38,10 @@ pub struct General {
     pub run_parallelism_limit: u64,
 
     /// The total amount of runs before logs of the oldest run will be deleted.
-    pub run_log_expiry: u64,
+    pub task_run_log_expiry: u64,
+
+    /// Directory to store task run log files.
+    pub task_run_logs_dir: String,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
@@ -129,6 +132,7 @@ mod tests {
     use crate::{object_store, scheduler, secret_store};
     use config;
     use std::env::{remove_var, set_var};
+    use pretty_assertions::assert_eq;
 
     #[test]
     /// Test that the default api config is properly parsed from the configuration file.
@@ -150,11 +154,12 @@ mod tests {
             general: General {
                 dev_mode: true,
                 log_level: "debug".to_string(),
-                encryption_key: "default".to_string(),
+                encryption_key: "changemechangemechangemechangeme".to_string(),
                 event_prune_interval: 604800,
                 event_retention: 7889238,
                 run_parallelism_limit: 0,
-                run_log_expiry: 20,
+                task_run_log_expiry: 20,
+                task_run_logs_dir: "/tmp".to_string(),
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
@@ -174,14 +179,16 @@ mod tests {
             object_store: ObjectStore {
                 engine: object_store::Engine::Embedded,
                 embedded: Some(EmbeddedObjectStore {
-                    ..Default::default()
+                    path: "/tmp/gofer-object-store".to_string(),
                 }),
-                ..Default::default()
+                pipeline_object_limit: 10,
+                run_object_expiry: 20,
             },
             secret_store: SecretStore {
                 engine: secret_store::Engine::Embedded,
                 embedded: Some(EmbeddedSecretStore {
-                    ..Default::default()
+                    path: "/tmp/gofer-secret-store".to_string(),
+                    encryption_key: "changemechangemechangemechangeme".to_string(),
                 }),
             },
         };
@@ -211,16 +218,18 @@ mod tests {
             general: General {
                 dev_mode: true,
                 log_level: "debug".to_string(),
-                encryption_key: "default".to_string(),
+                encryption_key: "changemechangemechangemechangeme".to_string(),
                 event_prune_interval: 604800,
                 event_retention: 7889238,
                 run_parallelism_limit: 0,
-                run_log_expiry: 20,
+                task_run_log_expiry: 20,
+                task_run_logs_dir: "/tmp".to_string(),
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
                 storage_path: "/tmp/gofer.db".to_string(),
-                ..Default::default()
+                tls_cert: LOCALHOST_CRT.to_string(),
+                tls_key: LOCALHOST_KEY.to_string(),
             },
             scheduler: Scheduler {
                 engine: scheduler::Engine::Docker,
@@ -237,14 +246,16 @@ mod tests {
             object_store: ObjectStore {
                 engine: object_store::Engine::Embedded,
                 embedded: Some(EmbeddedObjectStore {
-                    ..Default::default()
+                    path: "/tmp/gofer-object-store".to_string(),
                 }),
-                ..Default::default()
+                pipeline_object_limit: 10,
+                run_object_expiry: 20,
             },
             secret_store: SecretStore {
                 engine: secret_store::Engine::Embedded,
                 embedded: Some(EmbeddedSecretStore {
-                    ..Default::default()
+                    path: "/tmp/gofer-secret-store".to_string(),
+                    encryption_key: "changemechangemechangemechangeme".to_string(),
                 }),
             },
         };

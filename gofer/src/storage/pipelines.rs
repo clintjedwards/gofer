@@ -112,7 +112,7 @@ impl Db {
             let tasks = sqlx::query(
                 r#"
             SELECT id, description, image, registry_auth, depends_on,
-            variables, entrypoint
+            variables, entrypoint, command
             FROM tasks
             WHERE namespace = ? AND pipeline = ?;
                 "#,
@@ -142,6 +142,10 @@ impl Db {
                 entrypoint: {
                     let entrypoint = row.get::<String, _>("entrypoint");
                     serde_json::from_str(&entrypoint).unwrap()
+                },
+                command: {
+                    let command = row.get::<String, _>("command");
+                    serde_json::from_str(&command).unwrap()
                 },
             })
             .fetch_all(&mut tx)
@@ -272,8 +276,8 @@ impl Db {
             sqlx::query(
                 r#"
             INSERT INTO tasks (namespace, pipeline, id, description, image, registry_auth,
-                depends_on, variables, entrypoint)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                depends_on, variables, entrypoint, command)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 "#,
             )
             .bind(&pipeline.namespace)
@@ -291,6 +295,7 @@ impl Db {
             .bind(serde_json::to_string(&task.depends_on).unwrap())
             .bind(serde_json::to_string(&task.variables).unwrap())
             .bind(serde_json::to_string(&task.entrypoint).unwrap())
+            .bind(serde_json::to_string(&task.command).unwrap())
             .execute(&mut tx)
             .map_err(|e| match e {
                 sqlx::Error::Database(database_err) => {
@@ -468,7 +473,7 @@ impl Db {
         let tasks = sqlx::query(
             r#"
         SELECT namespace, pipeline, id, description, image, registry_auth, depends_on,
-        variables, entrypoint
+        variables, entrypoint, command
         FROM tasks
         WHERE namespace = ? AND pipeline = ?;
             "#,
@@ -498,6 +503,10 @@ impl Db {
             entrypoint: {
                 let entrypoint = row.get::<String, _>("entrypoint");
                 serde_json::from_str(&entrypoint).unwrap()
+            },
+            command: {
+                let command = row.get::<String, _>("command");
+                serde_json::from_str(&command).unwrap()
             },
         })
         .fetch_all(&mut tx)
@@ -760,8 +769,8 @@ impl Db {
             sqlx::query(
                 r#"
             INSERT INTO tasks (namespace, pipeline, id, description, image, registry_auth,
-                depends_on, variables, entrypoint)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                depends_on, variables, entrypoint, command)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 "#,
             )
             .bind(&pipeline.id)
@@ -779,6 +788,7 @@ impl Db {
             .bind(serde_json::to_string(&task.depends_on).unwrap())
             .bind(serde_json::to_string(&task.variables).unwrap())
             .bind(serde_json::to_string(&task.entrypoint).unwrap())
+            .bind(serde_json::to_string(&task.command).unwrap())
             .execute(&mut tx)
             .map_err(|e| match e {
                 sqlx::Error::Database(database_err) => {

@@ -145,6 +145,7 @@ message Task {
   map<string, RequiredParentStatus> depends_on = 5;
   repeated Variable variables = 6;
   repeated string entrypoint = 7;
+  repeated string command = 8;
 }
 
 message PipelineTriggerSettings {
@@ -175,6 +176,7 @@ message TaskConfig {
   map<string, RequiredParentStatus> depends_on = 5;
   map<string, string> variables = 6;
   repeated string entrypoint = 7;
+  repeated string command = 8;
 }
 
 message PipelineTriggerConfig {

@@ -165,22 +165,30 @@ impl Api {
 
         new_run.id = id;
 
-        self.event_bus
-            .publish(event::Kind::StartedRun {
-                namespace_id: new_run.namespace.clone(),
-                pipeline_id: new_run.pipeline.clone(),
-                run_id: new_run.id,
-            })
-            .await;
+        let event_self = self.clone();
+        let event_namespace = new_run.namespace.clone();
+        let event_pipeline = new_run.pipeline.clone();
+        let event_run = new_run.id;
 
-        tokio::spawn({
-            self.handle_run_object_expiry(new_run.namespace.clone(), new_run.pipeline.clone())
+        tokio::spawn(async move {
+            event_self.event_bus.publish(event::Kind::StartedRun{
+                namespace_id: event_namespace,
+                pipeline_id: event_pipeline,
+                run_id: event_run,
+            }).await
         });
 
-        // TODO!(clintjedwards): Handle run log expiry
-        tokio::spawn(utils::handle_run_log_expiry());
+        tokio::spawn(
+            self.clone()
+                .handle_run_object_expiry(new_run.namespace.clone(), new_run.pipeline.clone()),
+        );
 
-        // executeTaskTree
+        tokio::spawn(
+            self.clone()
+                .handle_run_log_expiry(new_run.namespace.clone(), new_run.pipeline.clone()),
+        );
+
+        tokio::spawn(self.execute_task_tree(new_run.clone()));
 
         Ok(Response::new(RunPipelineResponse {
             run: Some(new_run.into()),

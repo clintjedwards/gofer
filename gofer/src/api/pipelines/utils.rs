@@ -1,14 +1,18 @@
 use crate::api::{
-    fmt_pipeline_object_key, fmt_run_object_key, fmt_secret_key, fmt_task_container_id, Api,
+    fmt_pipeline_object_key, fmt_run_object_key, fmt_secret_key, fmt_task_container_id,
+    fmt_task_run_log_path, Api,
 };
 use crate::scheduler;
 use anyhow::Result;
-use gofer_models::{event, task, task_run};
+use dashmap::DashMap;
+use futures::StreamExt;
+use gofer_models::{event, run, task, task_run};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
 use slog_scope::{debug, error};
 use std::collections::HashMap;
 use std::sync::Arc;
 use strum::{Display, EnumString};
+use tokio::io::AsyncWriteExt;
 
 /// Gofer allows users to enter special interpolation strings such that
 /// special functionality is substituted when Gofer reads these strings
@@ -72,19 +76,21 @@ impl Api {
 
     pub async fn launch_task_run(
         self: Arc<Self>,
-        namespace: String,
-        pipeline: String,
         run: gofer_models::run::Run,
         task: gofer_models::task::Task,
-        mut status_map: StatusMap,
+        status_map: Arc<StatusMap>,
     ) {
-        let mut new_task_run =
-            gofer_models::task_run::TaskRun::new(&namespace, &pipeline, run.id, task.clone());
+        let mut new_task_run = gofer_models::task_run::TaskRun::new(
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            task.clone(),
+        );
 
         self.event_bus
             .publish(gofer_models::event::Kind::StartedTaskRun {
-                namespace_id: namespace.clone(),
-                pipeline_id: pipeline.clone(),
+                namespace_id: run.namespace.clone(),
+                pipeline_id: run.pipeline.clone(),
                 run_id: run.id,
                 task_run_id: task.id.clone(),
             })
@@ -109,7 +115,7 @@ impl Api {
                 "GOFER_PIPELINE_ID".to_string(),
                 gofer_models::Variable {
                     key: "GOFER_PIPELINE_ID".to_string(),
-                    value: pipeline.clone(),
+                    value: run.pipeline.clone(),
                     owner: gofer_models::VariableOwner::System,
                     sensitivity: gofer_models::VariableSensitivity::Public,
                 },
@@ -227,8 +233,8 @@ impl Api {
 
             self.event_bus
                 .publish(gofer_models::event::Kind::CompletedTaskRun {
-                    namespace_id: namespace.clone(),
-                    pipeline_id: pipeline.clone(),
+                    namespace_id: run.namespace.clone(),
+                    pipeline_id: run.pipeline.clone(),
                     run_id: run.id,
                     task_run_id: task.id.clone(),
                     status: new_task_run.status.clone(),
@@ -247,7 +253,12 @@ impl Api {
         // with the correct var.
         if let Err(e) = self
             .clone()
-            .interpolate_vars(namespace.clone(), pipeline.clone(), run.id, &mut env_vars)
+            .interpolate_vars(
+                run.namespace.clone(),
+                run.pipeline.clone(),
+                run.id,
+                &mut env_vars,
+            )
             .await
         {
             new_task_run.set_finished_abnormal(
@@ -274,8 +285,8 @@ impl Api {
 
             self.event_bus
                 .publish(gofer_models::event::Kind::CompletedTaskRun {
-                    namespace_id: namespace.clone(),
-                    pipeline_id: pipeline.clone(),
+                    namespace_id: run.namespace.clone(),
+                    pipeline_id: run.pipeline.clone(),
                     run_id: run.id,
                     task_run_id: task.id.clone(),
                     status: new_task_run.status.clone(),
@@ -290,15 +301,17 @@ impl Api {
             .map(|variable| (variable.key, variable.value))
             .collect();
 
-        let resp = match self
+        let container_name = fmt_task_container_id(
+            &run.namespace,
+            &run.pipeline,
+            &run.id.to_string(),
+            &new_task_run.id,
+        );
+
+        if let Err(e) = self
             .scheduler
             .start_container(scheduler::StartContainerRequest {
-                name: fmt_task_container_id(
-                    &namespace,
-                    &pipeline,
-                    &run.id.to_string(),
-                    &new_task_run.id,
-                ),
+                name: container_name.clone(),
                 image: new_task_run.task.image.clone(),
                 variables: env_vars,
                 registry_auth: {
@@ -317,45 +330,43 @@ impl Api {
                 always_pull: false,
                 enable_networking: false,
                 entrypoint: new_task_run.task.entrypoint.clone(),
+                command: new_task_run.task.command.clone(),
             })
             .await
         {
-            Ok(resp) => resp,
-            Err(e) => {
-                new_task_run.set_finished_abnormal(
-                    task_run::Status::Failed,
-                    task_run::Failure {
-                        kind: task_run::FailureKind::SchedulerError,
-                        description: format!(
-                            "task could not be run due to inability to be scheduled; {}",
-                            e
-                        ),
-                    },
-                    None,
-                );
+            new_task_run.set_finished_abnormal(
+                task_run::Status::Failed,
+                task_run::Failure {
+                    kind: task_run::FailureKind::SchedulerError,
+                    description: format!(
+                        "task could not be run due to inability to be scheduled; {}",
+                        e
+                    ),
+                },
+                None,
+            );
 
-                if let Err(e) = self.storage.update_task_run(&new_task_run).await {
-                    error!("could not update task run"; "error" => format!("{:?}", e));
-                    return;
-                }
-
-                status_map.insert(
-                    new_task_run.task.id.clone(),
-                    (new_task_run.status.clone(), new_task_run.state.clone()),
-                );
-
-                self.event_bus
-                    .publish(event::Kind::CompletedTaskRun {
-                        namespace_id: namespace.clone(),
-                        pipeline_id: pipeline.clone(),
-                        run_id: run.id,
-                        task_run_id: task.id.clone(),
-                        status: new_task_run.status.clone(),
-                    })
-                    .await;
-
+            if let Err(e) = self.storage.update_task_run(&new_task_run).await {
+                error!("could not update task run"; "error" => format!("{:?}", e));
                 return;
             }
+
+            status_map.insert(
+                new_task_run.task.id.clone(),
+                (new_task_run.status.clone(), new_task_run.state.clone()),
+            );
+
+            self.event_bus
+                .publish(event::Kind::CompletedTaskRun {
+                    namespace_id: run.namespace.clone(),
+                    pipeline_id: run.pipeline.clone(),
+                    run_id: run.id,
+                    task_run_id: task.id.clone(),
+                    status: new_task_run.status.clone(),
+                })
+                .await;
+
+            return;
         };
 
         new_task_run.state = task_run::State::Running;
@@ -371,8 +382,44 @@ impl Api {
         );
 
         // Block until task-run status can be logged
+        if self
+            .clone()
+            .monitor_task_run(container_name, &mut new_task_run)
+            .await
+            .is_err()
+        {
+            status_map.insert(
+                new_task_run.task.id.clone(),
+                (new_task_run.status.clone(), new_task_run.state.clone()),
+            );
 
-        todo!();
+            self.event_bus
+                .publish(event::Kind::CompletedTaskRun {
+                    namespace_id: run.namespace.clone(),
+                    pipeline_id: run.pipeline.clone(),
+                    run_id: run.id,
+                    task_run_id: task.id.clone(),
+                    status: new_task_run.status.clone(),
+                })
+                .await;
+
+            return;
+        };
+
+        status_map.insert(
+            new_task_run.task.id.clone(),
+            (new_task_run.status.clone(), new_task_run.state.clone()),
+        );
+
+        self.event_bus
+            .publish(event::Kind::CompletedTaskRun {
+                namespace_id: run.namespace.clone(),
+                pipeline_id: run.pipeline.clone(),
+                run_id: run.id,
+                task_run_id: task.id.clone(),
+                status: new_task_run.status.clone(),
+            })
+            .await;
     }
 
     /// Tracks state and log progress of a task_run. It automatically updates the provided task-run
@@ -380,22 +427,169 @@ impl Api {
     /// reached a terminal state.
     pub async fn monitor_task_run(
         self: Arc<Self>,
-        container_name: &str,
+        container_name: String,
+        task_run: &mut task_run::TaskRun,
+    ) -> Result<()> {
+        tokio::spawn(
+            self.clone()
+                .handle_log_updates(container_name.clone(), task_run.clone()),
+        );
+
+        if let Err(e) = self
+            .clone()
+            .wait_task_run_finish(container_name, task_run)
+            .await
+        {
+            error!("could not get state for container update";
+                    "task_run" => format!("{:?}", task_run.clone()), "error" => format!("{:?}", e));
+            return Err(anyhow::anyhow!("{:?}", e));
+        }
+
+        if let Err(e) = self.storage.update_task_run(task_run).await {
+            error!("could not update task run"; "error" => format!("{:?}", e));
+            return Err(anyhow::anyhow!("{:?}", e));
+        }
+
+        Ok(())
+    }
+
+    pub async fn handle_log_updates(
+        self: Arc<Self>,
+        container_name: String,
         task_run: task_run::TaskRun,
     ) {
+        let mut log_stream = self.scheduler.get_logs(scheduler::GetLogsRequest {
+            name: container_name,
+        });
+
+        let log_path = fmt_task_run_log_path(&self.conf.general.task_run_logs_dir, &task_run);
+
+        let mut log_file = match tokio::fs::File::create(&log_path).await {
+            Ok(log_file) => log_file,
+            Err(e) => {
+                error!("could not open task run log file for writing"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
+        while let Some(log) = log_stream.next().await {
+            let log = match log {
+                Ok(log) => log,
+                Err(e) => {
+                    error!("encountered error while writing log file";
+                            "file_path" => log_path, "error" => format!("{:?}", e));
+                    return;
+                }
+            };
+            match log {
+                scheduler::Log::Unknown => {
+                    error!("encountered error while writing log file; log line unknown but should be stdout/stderr";
+                            "file_path" => log_path);
+                    return;
+                }
+                scheduler::Log::Stderr(log) | scheduler::Log::Stdout(log) => {
+                    if let Err(e) = log_file.write_all(&log).await {
+                        error!("encountered error while writing log file;";
+                                "file_path" => log_path, "error" => format!("{:?}", e));
+                        return;
+                    };
+                }
+            }
+        }
+    }
+
+    pub async fn wait_task_run_finish(
+        self: Arc<Self>,
+        container_name: String,
+        task_run: &mut task_run::TaskRun,
+    ) -> Result<()> {
+        loop {
+            let resp = match self
+                .scheduler
+                .get_state(scheduler::GetStateRequest {
+                    name: container_name.clone(),
+                })
+                .await
+            {
+                Ok(resp) => resp,
+                Err(e) => {
+                    task_run.set_finished_abnormal(
+                        task_run::Status::Unknown,
+                        task_run::Failure {
+                            kind: task_run::FailureKind::SchedulerError,
+                            description: format!(
+                                "Could not query the scheduler for task run state; {}.",
+                                e
+                            ),
+                        },
+                        None,
+                    );
+                    return Err(anyhow::anyhow!(format!("{:?}", e)));
+                }
+            };
+
+            match resp.state {
+                scheduler::ContainerState::Unknown => {
+                    task_run.set_finished_abnormal(
+                        task_run::Status::Unknown,
+                        task_run::Failure {
+                            kind: task_run::FailureKind::SchedulerError,
+                            description: "An unknown error has occurred on the scheduler level;
+                                This should never happen."
+                                .to_string(),
+                        },
+                        resp.exit_code,
+                    );
+                    return Ok(());
+                }
+                scheduler::ContainerState::Running
+                | scheduler::ContainerState::Restarting
+                | scheduler::ContainerState::Paused => {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue;
+                }
+                scheduler::ContainerState::Exited => {
+                    if let Some(exit_code) = resp.exit_code {
+                        if exit_code == 0 {
+                            task_run.set_finished();
+                            return Ok(());
+                        }
+
+                        task_run.set_finished_abnormal(
+                            task_run::Status::Failed,
+                            task_run::Failure {
+                                kind: task_run::FailureKind::AbnormalExit,
+                                description: "Task run exited with abnormal exit code.".to_string(),
+                            },
+                            Some(exit_code),
+                        );
+
+                        return Ok(());
+                    }
+
+                    task_run.set_finished_abnormal(
+                        task_run::Status::Unknown,
+                        task_run::Failure {
+                            kind: task_run::FailureKind::AbnormalExit,
+                            description: "Task run exited without an exit code.".to_string(),
+                        },
+                        None,
+                    );
+
+                    return Ok(());
+                }
+            }
+        }
     }
 
     /// Removes run level object_store objects once a run is past it's expiry threshold.
-    pub async fn handle_run_object_expiry(
-        self: Arc<Self>,
-        namespace_id: String,
-        pipeline_id: String,
-    ) {
+    pub async fn handle_run_object_expiry(self: Arc<Self>, namespace: String, pipeline: String) {
         let limit = self.conf.object_store.run_object_expiry;
 
+        // We ask for the limit of runs plus one extra.
         let runs = match self
             .storage
-            .list_runs(0, 0, &namespace_id, &pipeline_id)
+            .list_runs(0, limit + 1, &namespace, &pipeline)
             .await
         {
             Ok(runs) => runs,
@@ -405,51 +599,63 @@ impl Api {
             }
         };
 
-        if runs.len() < limit.try_into().unwrap() {
+        // If there aren't enough runs to reach the limit there is nothing to remove.
+        if limit > (runs.len() as u64) {
             return;
         }
 
-        for mut run in runs.into_iter().rev() {
-            if run.state != gofer_models::run::State::Complete {
-                continue;
-            };
+        if runs.last().is_none() {
+            return;
+        }
 
-            if run.store_info.is_none() {
-                break;
-            };
+        let mut expired_run = runs.last().unwrap().to_owned();
 
-            let mut store_info = run.store_info.unwrap();
+        // If the run is still in progress wait for it to be done.
+        while expired_run.state != run::State::Complete {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
-            if store_info.is_expired {
-                break;
-            };
-
-            for object_key in &store_info.keys {
-                match self.object_store.delete_object(object_key).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!("could not delete run object for expiry processing"; "error" => format!("{:?}", e))
-                    }
-                }
-            }
-
-            store_info.is_expired = true;
-
-            run.store_info = Some(store_info.clone());
-            match self.storage.update_run(&run).await {
-                Ok(_) => {}
+            expired_run = match self
+                .storage
+                .get_run(&namespace, &pipeline, expired_run.id)
+                .await
+            {
+                Ok(run) => run,
                 Err(e) => {
-                    error!("could not not update run for expiry processing"; "error" => format!("{:?}", e))
+                    error!("could not get run while performing run object expiry");
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue;
                 }
-            }
-
-            debug!("old run objects removed";
-                "run_age_limit" => limit,
-                "run_id" => run.id,
-                "removed_objects" => format!("{:?}", store_info.keys),
-            );
-            return;
+            };
         }
+
+        if expired_run.store_info.is_none() {
+            return;
+        };
+
+        let mut store_info = expired_run.store_info.clone().unwrap();
+
+        if store_info.is_expired {
+            return;
+        };
+
+        for object_key in &store_info.keys {
+            if let Err(e) = self.object_store.delete_object(object_key).await {
+                error!("could not delete run object for expiry processing"; "error" => format!("{:?}", e));
+            }
+        }
+
+        store_info.is_expired = true;
+
+        expired_run.store_info = Some(store_info.clone());
+        if let Err(e) = self.storage.update_run(&expired_run).await {
+            error!("could not not update run for expiry processing"; "error" => format!("{:?}", e));
+        }
+
+        debug!("old run objects removed";
+            "run_age_limit" => limit,
+            "run_id" => expired_run.id,
+            "removed_objects" => format!("{:?}", store_info.keys),
+        );
     }
 
     pub async fn interpolate_vars(
@@ -527,7 +733,7 @@ impl Api {
         Ok(())
     }
 
-    pub async fn execute_task_tree(self: Arc<Self>, run: gofer_models::run::Run) {
+    pub async fn execute_task_tree(self: Arc<Self>, run: run::Run) {
         let pipeline = match self
             .storage
             .get_pipeline(&run.namespace, &run.pipeline)
@@ -544,7 +750,211 @@ impl Api {
 
         // TODO(clintjedwards): include notifiers here.
 
-        for task in pipeline.tasks {}
+        let status_map: Arc<dashmap::DashMap<String, (task_run::Status, task_run::State)>> =
+            Arc::new(DashMap::default());
+
+        for task in pipeline.tasks.values() {
+            tokio::spawn(self.clone().launch_task_run(
+                run.clone(),
+                task.clone(),
+                status_map.clone(),
+            ));
+        }
+
+        self.monitor_run_status(pipeline.tasks.len().try_into().unwrap(), run, status_map)
+            .await;
+    }
+
+    /// Monitors all task run statuses and determines the final run status based on all
+    /// finished task runs. It will block until all task runs have finished.
+    pub async fn monitor_run_status(
+        self: Arc<Self>,
+        tasks_num: u64,
+        mut run: run::Run,
+        status_map: Arc<StatusMap>,
+    ) {
+        run.state = run::State::Running;
+
+        if let Err(e) = self.storage.update_run(&run).await {
+            error!("could not not update run during run monitoring"; "error" => format!("{:?}", e));
+            return;
+        }
+
+        // Make sure all are complete.
+        'outer: loop {
+            if status_map.len() as u64 != tasks_num {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                continue;
+            }
+
+            for item in status_map.iter() {
+                let (_, state) = item.value();
+                if state != &task_run::State::Complete {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue 'outer;
+                }
+            }
+
+            break;
+        }
+
+        let mut all_successful = true;
+
+        for item in status_map.iter() {
+            let (status, _) = item.value();
+            match status {
+                task_run::Status::Unknown | task_run::Status::Failed => {
+                    run.set_finished_abnormal(
+                        run::Status::Failed,
+                        run::FailureInfo {
+                            reason: run::FailureReason::AbnormalExit,
+                            description: "One or more task runs failed during execution"
+                                .to_string(),
+                        },
+                    );
+                    all_successful = false;
+                    break;
+                }
+                task_run::Status::Successful => continue,
+                task_run::Status::Cancelled => {
+                    run.set_finished_abnormal(
+                        run::Status::Cancelled,
+                        run::FailureInfo {
+                            reason: run::FailureReason::AbnormalExit,
+                            description: "One or more task runs were cancelled during execution"
+                                .to_string(),
+                        },
+                    );
+                    all_successful = false;
+                    break;
+                }
+                task_run::Status::Skipped => continue,
+            }
+        }
+
+        if all_successful {
+            run.set_finished();
+        }
+
+        if let Err(e) = self.storage.update_run(&run).await {
+            error!("could not not update run during run monitoring"; "error" => format!("{:?}", e));
+            return;
+        }
+
+        self.event_bus
+            .publish(event::Kind::CompletedRun {
+                namespace_id: run.namespace.clone(),
+                pipeline_id: run.pipeline.clone(),
+                run_id: run.id,
+                status: run.status,
+            })
+            .await;
+    }
+
+    pub async fn handle_run_log_expiry(self: Arc<Self>, namespace: String, pipeline: String) {
+        let limit = self.conf.general.task_run_log_expiry;
+
+        // We ask for the limit of runs plus one extra.
+        let runs = match self
+            .storage
+            .list_runs(0, limit, &namespace, &pipeline)
+            .await
+        {
+            Ok(runs) => runs,
+            Err(e) => {
+                error!("could not get runs for run log expiry processing"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
+        // If there aren't enough runs to reach the limit there is nothing to remove.
+        if limit > (runs.len() as u64) {
+            return;
+        }
+
+        if runs.last().is_none() {
+            return;
+        }
+
+        let mut expired_run = runs.last().unwrap().to_owned();
+
+        // If the run is still in progress wait for it to be done.
+        while expired_run.state != run::State::Complete {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+            expired_run = match self
+                .storage
+                .get_run(&namespace, &pipeline, expired_run.id)
+                .await
+            {
+                Ok(run) => run,
+                Err(e) => {
+                    error!("could not get run while performing run log expiry");
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue;
+                }
+            };
+        }
+
+        let mut task_runs = vec![];
+
+        'outer: loop {
+            task_runs = match self
+                .storage
+                .list_task_runs(0, 0, &namespace, &pipeline, expired_run.id)
+                .await
+            {
+                Ok(task_runs) => task_runs,
+                Err(e) => {
+                    error!("could not get task run while performing run log expiry");
+                    continue;
+                }
+            };
+
+            for task_run in &task_runs {
+                if task_run.state != task_run::State::Complete {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue 'outer;
+                }
+            }
+
+            break;
+        }
+
+        let mut removed_files = vec![];
+
+        for task_run in &mut task_runs {
+            if task_run.logs_expired || task_run.logs_removed {
+                continue;
+            }
+
+            let log_file_path =
+                fmt_task_run_log_path(&self.conf.general.task_run_logs_dir, &task_run);
+
+            if let Err(e) = tokio::fs::remove_file(&log_file_path).await {
+                error!("io error while deleting log file";
+                        "path" => log_file_path, "error" => format!("{:?}", e));
+                continue;
+            };
+
+            task_run.logs_expired = true;
+            task_run.logs_removed = true;
+
+            if let Err(e) = self.storage.update_task_run(&task_run).await {
+                error!("could not update task run while removing log files";
+                        "task run id" => task_run.id.clone(), "error" => format!("{:?}", e));
+                continue;
+            }
+
+            removed_files.push(log_file_path);
+        }
+
+        debug!("old run logs removed";
+            "log_age_limit" => limit,
+            "run_id" => expired_run.id,
+            "removed_files" => format!("{:?}", removed_files),
+        );
+        return;
     }
 }
 
@@ -639,10 +1049,6 @@ fn task_dependencies_satisfied(
     }
 
     Ok(())
-}
-
-pub async fn handle_run_log_expiry() {
-    debug!("handle run log expiry not implemented");
 }
 
 pub fn map_to_variables(
