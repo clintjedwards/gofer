@@ -1,3 +1,4 @@
+mod fmt;
 mod gofer_impl;
 mod namespaces;
 mod pipelines;
@@ -9,7 +10,7 @@ mod validate;
 use crate::{conf, events, frontend, object_store, scheduler, secret_store, storage};
 use anyhow::anyhow;
 use dashmap::DashMap;
-use gofer_models::{event::Kind, namespace, notifier, task_run, trigger};
+use gofer_models::{event::Kind, namespace, notifier, trigger};
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
@@ -26,32 +27,10 @@ const BUILD_COMMIT: &str = env!("BUILD_COMMIT");
 /// It denotes that no further logs will be written. This is to provide the functionality for downstream
 /// applications to follow log files and not also have to monitor the container for state to know when
 /// logs will no longer be printed.
+///
 /// If this did not exist, downstream applications would have no idea the difference between a file
 /// that was still pending log_lines and a file that was at it's final resting state.
 const GOFER_EOF: &str = "GOFER_EOF";
-
-pub fn fmt_task_run_log_path(log_dir: &str, task_run: &task_run::TaskRun) -> String {
-    return format!(
-        "{}/{}_{}_{}_{}",
-        log_dir, &task_run.namespace, task_run.pipeline, task_run.run, task_run.id
-    );
-}
-
-pub fn fmt_secret_key(namespace: &str, pipeline: &str, key: &str) -> String {
-    return format!("{}_{}_{}", namespace, pipeline, key);
-}
-
-pub fn fmt_pipeline_object_key(namespace: &str, pipeline: &str, key: &str) -> String {
-    return format!("{}_{}_{}", namespace, pipeline, key);
-}
-
-pub fn fmt_run_object_key(namespace: &str, pipeline: &str, run: u64, key: &str) -> String {
-    return format!("{}_{}_{}_{}", namespace, pipeline, run, key);
-}
-
-pub fn fmt_task_container_id(namespace: &str, pipeline: &str, run: &str, task_run: &str) -> String {
-    return format!("{}_{}_{}_{}", namespace, pipeline, run, task_run);
-}
 
 pub fn epoch() -> u64 {
     let current_epoch = SystemTime::now()

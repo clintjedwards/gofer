@@ -360,8 +360,9 @@ pub mod task_run {
     pub enum TaskRunState {
         UnknownState = 0,
         Processing = 1,
-        Running = 2,
-        Complete = 3,
+        Waiting = 2,
+        Running = 3,
+        Complete = 4,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]

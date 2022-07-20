@@ -10,6 +10,8 @@ pub enum State {
     Unknown,
     /// Task run is going through pre-scheduling verification and prep.
     Processing,
+    /// Task run is waiting on parents task runs to finish.
+    Waiting,
     /// Task run is currently running has reported by the scheduler.
     Running,
     /// Task run has completed.

@@ -1,4 +1,3 @@
-use crate::api::Api;
 use futures::Stream;
 use gofer_proto::{gofer_server::Gofer, *};
 use std::{ops::Deref, pin::Pin};
@@ -30,7 +29,7 @@ impl Gofer for ApiWrapper {
         request: Request<CreateNamespaceRequest>,
     ) -> Result<Response<CreateNamespaceResponse>, Status> {
         let args = request.into_inner();
-        self.create_namespace_handler(args).await
+        self.deref().clone().create_namespace_handler(args).await
     }
 
     async fn get_namespace(
@@ -54,7 +53,7 @@ impl Gofer for ApiWrapper {
         request: Request<DeleteNamespaceRequest>,
     ) -> Result<Response<DeleteNamespaceResponse>, Status> {
         let args = request.into_inner();
-        self.delete_namespace_handler(args).await
+        self.deref().clone().delete_namespace_handler(args).await
     }
 
     async fn list_pipelines(
@@ -70,7 +69,7 @@ impl Gofer for ApiWrapper {
         request: Request<CreatePipelineRequest>,
     ) -> Result<Response<CreatePipelineResponse>, Status> {
         let args = request.into_inner();
-        self.create_pipeline_handler(args).await
+        self.deref().clone().create_pipeline_handler(args).await
     }
 
     async fn get_pipeline(
@@ -118,7 +117,7 @@ impl Gofer for ApiWrapper {
         request: Request<DeletePipelineRequest>,
     ) -> Result<Response<DeletePipelineResponse>, Status> {
         let args = request.into_inner();
-        self.delete_pipeline_handler(args).await
+        self.deref().clone().delete_pipeline_handler(args).await
     }
 
     async fn get_run(

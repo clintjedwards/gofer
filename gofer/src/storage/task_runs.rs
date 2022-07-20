@@ -279,14 +279,7 @@ impl Db {
         Ok(task_run)
     }
 
-    pub async fn update_task_run_state(
-        &self,
-        namespace: &str,
-        pipeline: &str,
-        run: u64,
-        id: &str,
-        state: State,
-    ) -> Result<(), StorageError> {
+    pub async fn update_task_run_state(&self, task_run: &TaskRun) -> Result<(), StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -300,11 +293,11 @@ impl Db {
         WHERE namespace = ? AND pipeline = ? AND Run = ? AND id = ?;
             "#,
         )
-        .bind(state.to_string())
-        .bind(namespace)
-        .bind(pipeline)
-        .bind(run as i64)
-        .bind(id)
+        .bind(&task_run.state.to_string())
+        .bind(&task_run.namespace)
+        .bind(&task_run.pipeline)
+        .bind(task_run.run as i64)
+        .bind(&task_run.id)
         .execute(&mut conn)
         .map_ok(|_| ())
         .map_err(|e| match e {
@@ -316,14 +309,7 @@ impl Db {
         Ok(())
     }
 
-    pub async fn update_task_run_status(
-        &self,
-        namespace: &str,
-        pipeline: &str,
-        run: u64,
-        id: &str,
-        status: Status,
-    ) -> Result<(), StorageError> {
+    pub async fn update_task_run_status(&self, task_run: &TaskRun) -> Result<(), StorageError> {
         let mut conn = self
             .pool
             .acquire()
@@ -337,11 +323,11 @@ impl Db {
         WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;
             "#,
         )
-        .bind(status.to_string())
-        .bind(namespace)
-        .bind(pipeline)
-        .bind(run as i64)
-        .bind(id)
+        .bind(&task_run.status.to_string())
+        .bind(&task_run.namespace)
+        .bind(&task_run.pipeline)
+        .bind(task_run.run as i64)
+        .bind(&task_run.id)
         .execute(&mut conn)
         .map_ok(|_| ())
         .map_err(|e| match e {

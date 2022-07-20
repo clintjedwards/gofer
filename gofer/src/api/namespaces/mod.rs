@@ -1,10 +1,12 @@
 use crate::api::{epoch, validate, Api};
 use crate::storage;
+use gofer_models::{event, namespace};
 use gofer_proto::{
     CreateNamespaceRequest, CreateNamespaceResponse, DeleteNamespaceRequest,
     DeleteNamespaceResponse, GetNamespaceRequest, GetNamespaceResponse, ListNamespacesRequest,
     ListNamespacesResponse, Namespace, UpdateNamespaceRequest, UpdateNamespaceResponse,
 };
+use std::sync::Arc;
 use tonic::{Response, Status};
 
 impl Api {
@@ -24,14 +26,13 @@ impl Api {
     }
 
     pub async fn create_namespace_handler(
-        &self,
+        self: Arc<Self>,
         args: CreateNamespaceRequest,
     ) -> Result<Response<CreateNamespaceResponse>, Status> {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
         validate::arg("name", args.name.clone(), vec![validate::not_empty_str])?;
 
-        let new_namespace =
-            gofer_models::namespace::Namespace::new(&args.id, &args.name, &args.description);
+        let new_namespace = namespace::Namespace::new(&args.id, &args.name, &args.description);
 
         self.storage
             .create_namespace(&new_namespace)
@@ -44,11 +45,14 @@ impl Api {
                 _ => Status::internal(e.to_string()),
             })?;
 
-        self.event_bus
-            .publish(gofer_models::event::Kind::CreatedNamespace {
-                namespace_id: new_namespace.id.clone(),
-            })
-            .await;
+        let namespace_id = new_namespace.id.clone();
+
+        tokio::spawn(async move {
+            self.event_bus
+                .publish(event::Kind::CreatedNamespace { namespace_id })
+                .await;
+        });
+
         Ok(Response::new(CreateNamespaceResponse {
             namespace: Some(new_namespace.into()),
         }))
@@ -84,7 +88,7 @@ impl Api {
         validate::arg("name", args.name.clone(), vec![validate::not_empty_str])?;
 
         self.storage
-            .update_namespace(&gofer_models::namespace::Namespace {
+            .update_namespace(&namespace::Namespace {
                 id: args.id.clone(),
                 name: args.name.clone(),
                 description: args.description.clone(),
@@ -103,7 +107,7 @@ impl Api {
     }
 
     pub async fn delete_namespace_handler(
-        &self,
+        self: Arc<Self>,
         args: DeleteNamespaceRequest,
     ) -> Result<Response<DeleteNamespaceResponse>, Status> {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
@@ -118,11 +122,13 @@ impl Api {
                 _ => Status::internal(e.to_string()),
             })?;
 
-        self.event_bus
-            .publish(gofer_models::event::Kind::DeletedNamespace {
-                namespace_id: args.id.clone(),
-            })
-            .await;
+        let namespace_id = args.id.clone();
+
+        tokio::spawn(async move {
+            self.event_bus
+                .publish(event::Kind::DeletedNamespace { namespace_id })
+                .await;
+        });
 
         Ok(Response::new(DeleteNamespaceResponse {}))
     }

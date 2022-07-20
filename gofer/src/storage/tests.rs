@@ -323,15 +323,11 @@ async fn crud_task_runs() {
 
     assert_eq!(task_run, test_task_run);
 
+    test_task_run.state = task_run::State::Processing;
+
     harness
         .db
-        .update_task_run_state(
-            &test_task_run.namespace,
-            &test_task_run.pipeline,
-            test_task_run.run,
-            &test_task_run.id,
-            task_run::State::Processing,
-        )
+        .update_task_run_state(&test_task_run)
         .await
         .unwrap();
 
@@ -348,15 +344,11 @@ async fn crud_task_runs() {
 
     assert_eq!(task_run.state, task_run::State::Processing);
 
+    test_task_run.status = task_run::Status::Failed;
+
     harness
         .db
-        .update_task_run_status(
-            &test_task_run.namespace,
-            &test_task_run.pipeline,
-            test_task_run.run,
-            &test_task_run.id,
-            task_run::Status::Failed,
-        )
+        .update_task_run_status(&test_task_run)
         .await
         .unwrap();
 

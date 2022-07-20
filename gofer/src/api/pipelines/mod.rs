@@ -1,18 +1,39 @@
-mod utils;
+mod run_pipeline_handler;
 
 use crate::api::{validate, Api};
 use crate::storage;
-use gofer_models::{event, pipeline, run};
-use gofer_models::{VariableOwner, VariableSensitivity};
+use gofer_models::{event, pipeline};
+use gofer_models::{Variable, VariableOwner, VariableSensitivity};
 use gofer_proto::{
     CreatePipelineRequest, CreatePipelineResponse, DeletePipelineRequest, DeletePipelineResponse,
     DisablePipelineRequest, DisablePipelineResponse, EnablePipelineRequest, EnablePipelineResponse,
     GetPipelineRequest, GetPipelineResponse, ListPipelinesRequest, ListPipelinesResponse, Pipeline,
-    RunPipelineRequest, RunPipelineResponse, UpdatePipelineRequest, UpdatePipelineResponse,
+    UpdatePipelineRequest, UpdatePipelineResponse,
 };
-use slog_scope::debug;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tonic::{Response, Status};
+
+/// Converts a HashMap of variables(usually supplied by the user) into a Vec of type Variable that
+/// can be used throughout Gofer.
+pub fn variables_to_vec(
+    map: HashMap<String, String>,
+    owner: VariableOwner,
+    sensitivity: VariableSensitivity,
+) -> Vec<Variable> {
+    let mut variables = vec![];
+
+    for (key, value) in map {
+        variables.push(Variable {
+            key,
+            value,
+            owner: owner.clone(),
+            sensitivity: sensitivity.clone(),
+        })
+    }
+
+    variables
+}
 
 impl Api {
     pub async fn list_pipelines_handler(
@@ -37,7 +58,7 @@ impl Api {
     }
 
     pub async fn create_pipeline_handler(
-        &self,
+        self: Arc<Self>,
         args: CreatePipelineRequest,
     ) -> Result<Response<CreatePipelineResponse>, Status> {
         validate::arg(
@@ -69,12 +90,17 @@ impl Api {
                 _ => Status::internal(e.to_string()),
             })?;
 
-        self.event_bus
-            .publish(event::Kind::CreatedPipeline {
-                namespace_id: new_pipeline.namespace.clone(),
-                pipeline_id: new_pipeline.id.clone(),
-            })
-            .await;
+        let namespace_id = new_pipeline.namespace.clone();
+        let pipeline_id = new_pipeline.id.clone();
+
+        tokio::spawn(async move {
+            self.event_bus
+                .publish(event::Kind::CreatedPipeline {
+                    namespace_id,
+                    pipeline_id,
+                })
+                .await;
+        });
 
         Ok(Response::new(CreatePipelineResponse {
             pipeline: Some(new_pipeline.into()),
@@ -106,93 +132,6 @@ impl Api {
                 }
                 _ => Status::internal(e.to_string()),
             })
-    }
-
-    pub async fn run_pipeline_handler(
-        self: Arc<Self>,
-        args: RunPipelineRequest,
-    ) -> Result<Response<RunPipelineResponse>, Status> {
-        validate::arg(
-            "namespace_id",
-            args.namespace_id.clone(),
-            vec![validate::is_valid_identifier, validate::not_empty_str],
-        )?;
-        validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
-
-        let pipeline = self
-            .storage
-            .get_pipeline(&args.namespace_id, &args.id)
-            .await
-            .map_err(|e| match e {
-                storage::StorageError::NotFound => {
-                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
-                }
-                _ => Status::internal(e.to_string()),
-            })?;
-
-        if pipeline.state != pipeline::State::Active {
-            return Err(Status::failed_precondition(
-                "could not create run; pipeline is not active",
-            ));
-        }
-
-        while self
-            .parallelism_limit_exceeded(&pipeline.namespace, &pipeline.id, pipeline.parallelism)
-            .await
-        {
-            debug!("parallelism limit exceeded; waiting for runs to end before launching new run"; "limit" => pipeline.parallelism);
-        }
-
-        let mut new_run = run::Run::new(
-            &pipeline.namespace,
-            &pipeline.id,
-            run::TriggerInfo {
-                name: "manual".to_string(),
-                label: "via_api".to_string(),
-            },
-            utils::map_to_variables(
-                args.variables,
-                VariableOwner::User,
-                VariableSensitivity::Public,
-            ),
-        );
-
-        let id = self
-            .storage
-            .create_run(&new_run)
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
-
-        new_run.id = id;
-
-        let event_self = self.clone();
-        let event_namespace = new_run.namespace.clone();
-        let event_pipeline = new_run.pipeline.clone();
-        let event_run = new_run.id;
-
-        tokio::spawn(async move {
-            event_self.event_bus.publish(event::Kind::StartedRun{
-                namespace_id: event_namespace,
-                pipeline_id: event_pipeline,
-                run_id: event_run,
-            }).await
-        });
-
-        tokio::spawn(
-            self.clone()
-                .handle_run_object_expiry(new_run.namespace.clone(), new_run.pipeline.clone()),
-        );
-
-        tokio::spawn(
-            self.clone()
-                .handle_run_log_expiry(new_run.namespace.clone(), new_run.pipeline.clone()),
-        );
-
-        tokio::spawn(self.execute_task_tree(new_run.clone()));
-
-        Ok(Response::new(RunPipelineResponse {
-            run: Some(new_run.into()),
-        }))
     }
 
     pub async fn enable_pipeline_handler(
@@ -282,7 +221,7 @@ impl Api {
     }
 
     pub async fn delete_pipeline_handler(
-        &self,
+        self: Arc<Self>,
         args: DeletePipelineRequest,
     ) -> Result<Response<DeletePipelineResponse>, Status> {
         validate::arg(
@@ -302,12 +241,14 @@ impl Api {
                 _ => Status::internal(e.to_string()),
             })?;
 
-        self.event_bus
-            .publish(event::Kind::DeletedPipeline {
-                namespace_id: args.namespace_id.clone(),
-                pipeline_id: args.id.clone(),
-            })
-            .await;
+        tokio::spawn(async move {
+            self.event_bus
+                .publish(event::Kind::DeletedPipeline {
+                    namespace_id: args.namespace_id.clone(),
+                    pipeline_id: args.id.clone(),
+                })
+                .await;
+        });
 
         Ok(Response::new(DeletePipelineResponse {}))
     }
