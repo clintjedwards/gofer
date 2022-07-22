@@ -80,20 +80,12 @@ impl Gofer for ApiWrapper {
         self.get_pipeline_handler(args).await
     }
 
-    async fn run_pipeline(
-        &self,
-        request: Request<RunPipelineRequest>,
-    ) -> Result<Response<RunPipelineResponse>, Status> {
-        let args = request.into_inner();
-        self.deref().clone().run_pipeline_handler(args).await
-    }
-
     async fn enable_pipeline(
         &self,
         request: Request<EnablePipelineRequest>,
     ) -> Result<Response<EnablePipelineResponse>, Status> {
         let args = request.into_inner();
-        self.enable_pipeline_handler(args).await
+        self.deref().clone().enable_pipeline_handler(args).await
     }
 
     async fn disable_pipeline(
@@ -101,7 +93,7 @@ impl Gofer for ApiWrapper {
         request: Request<DisablePipelineRequest>,
     ) -> Result<Response<DisablePipelineResponse>, Status> {
         let args = request.into_inner();
-        self.disable_pipeline_handler(args).await
+        self.deref().clone().disable_pipeline_handler(args).await
     }
 
     async fn update_pipeline(
@@ -134,6 +126,14 @@ impl Gofer for ApiWrapper {
     ) -> Result<Response<ListRunsResponse>, Status> {
         let args = request.into_inner();
         self.list_runs_handler(args).await
+    }
+
+    async fn start_run(
+        &self,
+        request: Request<StartRunRequest>,
+    ) -> Result<Response<StartRunResponse>, Status> {
+        let args = request.into_inner();
+        self.deref().clone().start_run_handler(args).await
     }
 
     async fn retry_run(

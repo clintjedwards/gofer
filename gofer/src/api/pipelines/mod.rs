@@ -1,5 +1,3 @@
-mod run_pipeline_handler;
-
 use crate::api::{validate, Api};
 use crate::storage;
 use gofer_models::{event, pipeline};
@@ -135,7 +133,7 @@ impl Api {
     }
 
     pub async fn enable_pipeline_handler(
-        &self,
+        self: Arc<Self>,
         args: EnablePipelineRequest,
     ) -> Result<Response<EnablePipelineResponse>, Status> {
         validate::arg(
@@ -155,11 +153,20 @@ impl Api {
                 _ => Status::internal(e.to_string()),
             })?;
 
+        tokio::spawn(async move {
+            self.event_bus
+                .publish(event::Kind::EnabledPipeline {
+                    namespace_id: args.namespace_id.clone(),
+                    pipeline_id: args.id.clone(),
+                })
+                .await;
+        });
+
         Ok(Response::new(EnablePipelineResponse {}))
     }
 
     pub async fn disable_pipeline_handler(
-        &self,
+        self: Arc<Self>,
         args: DisablePipelineRequest,
     ) -> Result<Response<DisablePipelineResponse>, Status> {
         validate::arg(
@@ -178,6 +185,15 @@ impl Api {
                 }
                 _ => Status::internal(e.to_string()),
             })?;
+
+        tokio::spawn(async move {
+            self.event_bus
+                .publish(event::Kind::DeletedPipeline {
+                    namespace_id: args.namespace_id.clone(),
+                    pipeline_id: args.id.clone(),
+                })
+                .await;
+        });
 
         Ok(Response::new(DisablePipelineResponse {}))
     }

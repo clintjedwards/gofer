@@ -12,17 +12,17 @@ impl CliHarness {
             process::exit(1);
         });
 
-        let request = tonic::Request::new(gofer_proto::RunPipelineRequest {
+        let request = tonic::Request::new(gofer_proto::StartRunRequest {
             namespace_id: self
                 .config
                 .namespace
                 .clone()
                 .unwrap_or_else(|| DEFAULT_NAMESPACE.to_string()),
-            id: id.to_string(),
+            pipeline_id: id.to_string(),
             variables: vars,
         });
         let response = client
-            .run_pipeline(request)
+            .start_run(request)
             .await
             .unwrap_or_else(|e| {
                 eprintln!("Command failed; {}", e);

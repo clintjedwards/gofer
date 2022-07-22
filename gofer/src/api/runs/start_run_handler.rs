@@ -1,13 +1,12 @@
 use super::variables_to_vec;
-use crate::api::Api;
-use crate::api::{fmt, validate};
+use crate::api::{fmt, validate, Api, GOFER_EOF};
 use crate::{scheduler, storage};
 use anyhow::Result;
 use dashmap::DashMap;
 use futures::StreamExt;
 use gofer_models::{event, pipeline, run, task, task_run};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
-use gofer_proto::{RunPipelineRequest, RunPipelineResponse};
+use gofer_proto::{StartRunRequest, StartRunResponse};
 use slog_scope::{debug, error};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -487,6 +486,7 @@ impl Api {
                     return;
                 }
             };
+
             match log {
                 scheduler::Log::Unknown => {
                     error!("encountered error while writing log file; log line unknown but should be stdout/stderr";
@@ -501,6 +501,11 @@ impl Api {
                     };
                 }
             }
+        }
+
+        if let Err(e) = log_file.write_all(GOFER_EOF.as_bytes()).await {
+            error!("encountered error while writing log file;";
+            "file_path" => log_path, "error" => format!("{:?}", e));
         }
     }
 
@@ -1064,26 +1069,31 @@ impl Api {
             .await;
     }
 
-    pub async fn run_pipeline_handler(
+    pub async fn start_run_handler(
         self: Arc<Self>,
-        args: RunPipelineRequest,
-    ) -> Result<Response<RunPipelineResponse>, Status> {
+        args: StartRunRequest,
+    ) -> Result<Response<StartRunResponse>, Status> {
         validate::arg(
             "namespace_id",
             args.namespace_id.clone(),
             vec![validate::is_valid_identifier, validate::not_empty_str],
         )?;
-        validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
+        validate::arg(
+            "pipeline_id",
+            args.pipeline_id.clone(),
+            vec![validate::is_valid_identifier],
+        )?;
 
         // Make sure the pipeline is ready to take new runs.
         let pipeline = self
             .storage
-            .get_pipeline(&args.namespace_id, &args.id)
+            .get_pipeline(&args.namespace_id, &args.pipeline_id)
             .await
             .map_err(|e| match e {
-                storage::StorageError::NotFound => {
-                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
-                }
+                storage::StorageError::NotFound => Status::not_found(format!(
+                    "pipeline with id '{}' does not exist",
+                    &args.pipeline_id
+                )),
                 _ => Status::internal(e.to_string()),
             })?;
 
@@ -1152,7 +1162,7 @@ impl Api {
         // Finally, launch the thread that will launch all the task runs for a job.
         tokio::spawn(self.execute_task_tree(new_run.clone()));
 
-        Ok(Response::new(RunPipelineResponse {
+        Ok(Response::new(StartRunResponse {
             run: Some(new_run.into()),
         }))
     }

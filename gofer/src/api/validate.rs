@@ -44,3 +44,11 @@ pub fn not_empty_str(s: String) -> Result<(), String> {
 
     Ok(())
 }
+
+pub fn not_zero_num(n: u64) -> Result<(), String> {
+    if n == 0 {
+        return Err("cannot be zero".to_string());
+    }
+
+    Ok(())
+}

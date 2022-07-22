@@ -188,3 +188,4 @@ prefixed with >2
   implement patches instead of puts.
 - Wrap publish calls in tokio::spawn.
 - We poll for if runs/task_runs are finished but there should be some way to use the event bus to have instant feedback.
+- In the CLI put a 'pipeline run' and a 'run start' that both just call the same endpoint.

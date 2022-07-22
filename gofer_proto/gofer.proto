@@ -45,9 +45,6 @@ service Gofer {
   // creation.
   rpc ListPipelines(ListPipelinesRequest) returns (ListPipelinesResponse);
 
-  // RunPipeline executes a single run of this pipeline.
-  rpc RunPipeline(RunPipelineRequest) returns (RunPipelineResponse);
-
   // EnablePipeline allows a pipeline to execute runs by allowing it to receive
   // trigger events. See DisablePipeline to prevent a pipeline from executing
   // any more runs.
@@ -86,6 +83,9 @@ service Gofer {
   // ListRuns returns a list of all runs by Pipeline ID. Pagination can be
   // controlled via the offset and limit parameters of the request.
   rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+
+  // StartRun executes a single run of a particular pipeline.
+  rpc StartRun(StartRunRequest) returns (StartRunResponse);
 
   // RetryRun simply takes the vars and settings from a previous run and re-uses
   // those to launch a new run. Useful for if you want the exact settings from a
