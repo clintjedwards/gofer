@@ -154,20 +154,16 @@ impl Api {
             DEFAULT_NAMESPACE_DESCRIPTION,
         );
 
-        match self.storage.create_namespace(&default_namespace).await {
-            Ok(_) => {
-                self.event_bus
-                    .publish(Kind::CreatedNamespace {
-                        namespace_id: DEFAULT_NAMESPACE_ID.to_string(),
-                    })
-                    .await;
-                Ok(())
+        let mut conn = self.storage.conn().await?;
+
+        if let Err(e) = storage::namespaces::insert(&mut conn, &default_namespace).await {
+            match e {
+                storage::StorageError::Exists => return Ok(()),
+                _ => return Err(e),
             }
-            Err(e) => match e {
-                storage::StorageError::Exists => Ok(()),
-                _ => Err(e),
-            },
-        }
+        };
+
+        Ok(())
     }
 
     /// Start a TLS enabled, multiplexed, grpc/http server.

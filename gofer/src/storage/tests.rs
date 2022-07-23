@@ -1,8 +1,9 @@
-use std::collections::HashMap;
-
 use super::*;
+use super::{namespaces, pipelines, runs};
 use gofer_models::*;
+use pretty_assertions::assert_eq;
 use rand::prelude::*;
+use std::{collections::HashMap, ops::Deref};
 
 struct TestHarness {
     db: Db,
@@ -21,6 +22,14 @@ impl TestHarness {
     }
 }
 
+impl Deref for TestHarness {
+    type Target = Db;
+
+    fn deref(&self) -> &Self::Target {
+        &self.db
+    }
+}
+
 impl Drop for TestHarness {
     fn drop(&mut self) {
         std::fs::remove_file(&self.storage_path).unwrap();
@@ -33,6 +42,7 @@ impl Drop for TestHarness {
 /// Basic CRUD can be accomplished for namespaces.
 async fn crud_namespaces() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
 
     let new_namespace = namespace::Namespace::new(
         "test_namespace",
@@ -40,36 +50,37 @@ async fn crud_namespaces() {
         "a namespace example for integration testing",
     );
 
-    harness.db.create_namespace(&new_namespace).await.unwrap();
-    let namespaces = harness.db.list_namespaces(0, 0).await.unwrap();
+    namespaces::insert(&mut conn, &new_namespace).await.unwrap();
+    let namespaces = namespaces::list(&mut conn, 0, 0).await.unwrap();
 
     assert_eq!(namespaces.len(), 1);
     assert_eq!(namespaces[0], new_namespace);
 
-    let namespace = harness.db.get_namespace(&new_namespace.id).await.unwrap();
+    let namespace = namespaces::get(&mut conn, &new_namespace.id).await.unwrap();
     assert_eq!(namespace, new_namespace);
 
     let mut updated_namespace = new_namespace.clone();
     updated_namespace.name = "Test Namespace Updated".to_string();
 
-    harness
-        .db
-        .update_namespace(&updated_namespace)
+    namespaces::update(
+        &mut conn,
+        namespaces::UpdatableFields {
+            id: new_namespace.id.clone(),
+            name: Some(updated_namespace.name.clone()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let namespace = namespaces::get(&mut conn, &new_namespace.id).await.unwrap();
+    assert_eq!(namespace.name, updated_namespace.name);
+
+    namespaces::delete(&mut conn, &new_namespace.id)
         .await
         .unwrap();
 
-    let namespace = harness.db.get_namespace(&new_namespace.id).await.unwrap();
-    assert_eq!(namespace, updated_namespace);
-
-    harness
-        .db
-        .delete_namespace(&new_namespace.id)
-        .await
-        .unwrap();
-
-    let namespace = harness
-        .db
-        .get_namespace(&new_namespace.id)
+    let namespace = namespaces::get(&mut conn, &new_namespace.id)
         .await
         .unwrap_err();
 
@@ -80,15 +91,18 @@ async fn crud_namespaces() {
 /// Basic CRUD can be accomplished for pipelines.
 async fn crud_pipelines() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
 
     let test_namespace =
         namespace::Namespace::new("test_namespace", "Test Namespace", "Test Description");
-    harness.db.create_namespace(&test_namespace).await.unwrap();
+    namespaces::insert(&mut conn, &test_namespace)
+        .await
+        .unwrap();
 
     let test_pipeline_config = gofer_sdk::config::Pipeline::new("test_pipeline", "Test Pipeline");
     let mut test_pipeline = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_config);
 
-    harness.db.create_pipeline(&test_pipeline).await.unwrap();
+    pipelines::insert(&mut conn, &test_pipeline).await.unwrap();
 
     let test_pipeline_full_config =
         gofer_sdk::config::Pipeline::new("test_pipeline_full", "Test Pipeline")
@@ -108,15 +122,11 @@ async fn crud_pipelines() {
             )]);
     let test_pipeline_full = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_full_config);
 
-    harness
-        .db
-        .create_pipeline(&test_pipeline_full)
+    pipelines::insert(&mut conn, &test_pipeline_full)
         .await
         .unwrap();
 
-    let pipelines = harness
-        .db
-        .list_pipelines(0, 0, &test_namespace.id)
+    let pipelines = pipelines::list(&mut conn, 0, 0, &test_namespace.id)
         .await
         .unwrap();
 
@@ -124,9 +134,7 @@ async fn crud_pipelines() {
     assert_eq!(pipelines[0], test_pipeline);
     assert_eq!(pipelines[1], test_pipeline_full);
 
-    let pipeline = harness
-        .db
-        .get_pipeline(&test_namespace.id, &test_pipeline.id)
+    let pipeline = pipelines::get(&mut conn, &test_namespace.id, &test_pipeline.id)
         .await
         .unwrap();
 
@@ -134,24 +142,28 @@ async fn crud_pipelines() {
 
     test_pipeline.name = "Test Pipeline Updated".to_string();
 
-    harness.db.update_pipeline(&test_pipeline).await.unwrap();
+    pipelines::update(
+        &mut conn,
+        pipelines::UpdatableFields {
+            namespace_id: test_pipeline.namespace.clone(),
+            id: test_pipeline.id.clone(),
+            name: Some(test_pipeline.name.clone()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
 
-    let pipeline = harness
-        .db
-        .get_pipeline(&test_namespace.id, &test_pipeline.id)
+    let pipeline = pipelines::get(&mut conn, &test_namespace.id, &test_pipeline.id)
         .await
         .unwrap();
-    assert_eq!(pipeline, test_pipeline);
+    assert_eq!(pipeline.name, test_pipeline.name);
 
-    harness
-        .db
-        .delete_pipeline(&test_namespace.id, &test_pipeline.id)
+    pipelines::delete(&mut conn, &test_namespace.id, &test_pipeline.id)
         .await
         .unwrap();
 
-    let pipeline = harness
-        .db
-        .get_pipeline(&test_namespace.id, &test_pipeline.id)
+    let pipeline = pipelines::get(&mut conn, &test_namespace.id, &test_pipeline.id)
         .await
         .unwrap_err();
 
@@ -162,15 +174,18 @@ async fn crud_pipelines() {
 /// Basic CRUD can be accomplished for runs.
 async fn crud_runs() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
 
     let test_namespace =
         namespace::Namespace::new("test_namespace", "Test Namespace", "Test Description");
-    harness.db.create_namespace(&test_namespace).await.unwrap();
+    namespaces::insert(&mut conn, &test_namespace)
+        .await
+        .unwrap();
 
     let test_pipeline_config = gofer_sdk::config::Pipeline::new("test_pipeline", "Test Pipeline");
     let test_pipeline = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_config);
 
-    harness.db.create_pipeline(&test_pipeline).await.unwrap();
+    pipelines::insert(&mut conn, &test_pipeline).await.unwrap();
 
     let mut test_run = run::Run::new(
         &test_namespace.id,
@@ -196,9 +211,7 @@ async fn crud_runs() {
     );
     harness.db.create_run(&test_run_2).await.unwrap();
 
-    let runs = harness
-        .db
-        .list_runs(0, 0, &test_namespace.id, &test_pipeline.id)
+    let runs = runs::list_runs(&mut conn, 0, 0, &test_namespace.id, &test_pipeline.id)
         .await
         .unwrap();
 
@@ -247,10 +260,13 @@ async fn crud_runs() {
 /// Basic CRUD can be accomplished for task runs.
 async fn crud_task_runs() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
 
     let test_namespace =
         namespace::Namespace::new("test_namespace", "Test Namespace", "Test Description");
-    harness.db.create_namespace(&test_namespace).await.unwrap();
+    namespaces::insert(&mut conn, &test_namespace)
+        .await
+        .unwrap();
 
     let test_pipeline_config = gofer_sdk::config::Pipeline::new("test_pipeline", "Test Pipeline");
     let mut test_pipeline = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_config);
@@ -262,7 +278,7 @@ async fn crud_task_runs() {
         .tasks
         .insert("test_task".to_string(), test_task.clone());
 
-    harness.db.create_pipeline(&test_pipeline).await.unwrap();
+    pipelines::insert(&mut conn, &test_pipeline).await.unwrap();
 
     let test_run = run::Run::new(
         &test_namespace.id,

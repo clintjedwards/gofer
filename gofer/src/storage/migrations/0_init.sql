@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS pipelines (
     created     INTEGER NOT NULL,
     modified    INTEGER NOT NULL,
     state       TEXT    NOT NULL,
-    store_keys  TEXT    NOT NULL,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, id)
 ) STRICT;
@@ -112,6 +111,10 @@ CREATE TABLE IF NOT EXISTS notifier_registrations (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS object_store_run_keys(
+    id TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS object_store_pipeline_keys(
     id TEXT NOT NULL
 ) STRICT;
 

@@ -1,4 +1,4 @@
-use crate::api::{epoch, validate, Api};
+use crate::api::{validate, Api};
 use crate::storage;
 use gofer_models::{event, namespace};
 use gofer_proto::{
@@ -6,7 +6,7 @@ use gofer_proto::{
     DeleteNamespaceResponse, GetNamespaceRequest, GetNamespaceResponse, ListNamespacesRequest,
     ListNamespacesResponse, Namespace, UpdateNamespaceRequest, UpdateNamespaceResponse,
 };
-use std::sync::Arc;
+use std::{ops::Not, sync::Arc};
 use tonic::{Response, Status};
 
 impl Api {
@@ -14,8 +14,13 @@ impl Api {
         &self,
         args: ListNamespacesRequest,
     ) -> Result<Response<ListNamespacesResponse>, Status> {
-        self.storage
-            .list_namespaces(args.offset, args.limit)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::namespaces::list(&mut conn, args.offset, args.limit)
             .await
             .map(|namespaces| {
                 Response::new(ListNamespacesResponse {
@@ -34,8 +39,13 @@ impl Api {
 
         let new_namespace = namespace::Namespace::new(&args.id, &args.name, &args.description);
 
-        self.storage
-            .create_namespace(&new_namespace)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::namespaces::insert(&mut conn, &new_namespace)
             .await
             .map_err(|e| match e {
                 storage::StorageError::Exists => Status::already_exists(format!(
@@ -64,8 +74,13 @@ impl Api {
     ) -> Result<Response<GetNamespaceResponse>, Status> {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
-        self.storage
-            .get_namespace(&args.id)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::namespaces::get(&mut conn, &args.id)
             .await
             .map(|namespace| {
                 Response::new(GetNamespaceResponse {
@@ -85,23 +100,28 @@ impl Api {
         args: UpdateNamespaceRequest,
     ) -> Result<Response<UpdateNamespaceResponse>, Status> {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
-        validate::arg("name", args.name.clone(), vec![validate::not_empty_str])?;
 
-        self.storage
-            .update_namespace(&namespace::Namespace {
-                id: args.id.clone(),
-                name: args.name.clone(),
-                description: args.description.clone(),
-                created: 0,
-                modified: epoch(),
-            })
+        let mut conn = self
+            .storage
+            .conn()
             .await
-            .map_err(|e| match e {
-                storage::StorageError::NotFound => {
-                    Status::not_found(format!("namespace with id '{}' does not exist", &args.id))
-                }
-                _ => Status::internal(e.to_string()),
-            })?;
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::namespaces::update(
+            &mut conn,
+            storage::namespaces::UpdatableFields {
+                id: args.id.clone(),
+                name: args.name.is_empty().not().then(|| args.name),
+                description: args.description.is_empty().not().then(|| args.description),
+            },
+        )
+        .await
+        .map_err(|e| match e {
+            storage::StorageError::NotFound => {
+                Status::not_found(format!("namespace with id '{}' does not exist", &args.id))
+            }
+            _ => Status::internal(e.to_string()),
+        })?;
 
         Ok(Response::new(UpdateNamespaceResponse {}))
     }
@@ -112,8 +132,13 @@ impl Api {
     ) -> Result<Response<DeleteNamespaceResponse>, Status> {
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
-        self.storage
-            .delete_namespace(&args.id)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::namespaces::delete(&mut conn, &args.id)
             .await
             .map_err(|e| match e {
                 storage::StorageError::NotFound => {

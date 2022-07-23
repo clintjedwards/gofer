@@ -245,10 +245,12 @@ impl Api {
             limit = self.conf.general.run_parallelism_limit
         }
 
-        let runs = match self
-            .storage
-            .list_runs(0, 0, namespace_id, pipeline_id)
-            .await
+        let mut conn = match self.storage.conn().await {
+            Ok(conn) => conn,
+            Err(_) => return true,
+        };
+
+        let runs = match storage::runs::list_runs(&mut conn, 0, 0, namespace_id, pipeline_id).await
         {
             Ok(runs) => runs,
             Err(_) => return true,
@@ -272,10 +274,16 @@ impl Api {
     pub async fn handle_run_object_expiry(self: Arc<Self>, namespace: String, pipeline: String) {
         let limit = self.conf.object_store.run_object_expiry;
 
+        let mut conn = match self.storage.conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not get runs for run expiry processing"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
         // We ask for the limit of runs plus one extra.
-        let runs = match self
-            .storage
-            .list_runs(0, limit + 1, &namespace, &pipeline)
+        let runs = match storage::runs::list_runs(&mut conn, 0, limit + 1, &namespace, &pipeline)
             .await
         {
             Ok(runs) => runs,
@@ -356,11 +364,16 @@ impl Api {
     pub async fn handle_run_log_expiry(self: Arc<Self>, namespace: String, pipeline: String) {
         let limit = self.conf.general.task_run_log_expiry;
 
+        let mut conn = match self.storage.conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not get runs for run log expiry processing"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
         // We ask for the limit of runs plus one extra.
-        let runs = match self
-            .storage
-            .list_runs(0, limit, &namespace, &pipeline)
-            .await
+        let runs = match storage::runs::list_runs(&mut conn, 0, limit, &namespace, &pipeline).await
         {
             Ok(runs) => runs,
             Err(e) => {
@@ -1038,10 +1051,20 @@ impl Api {
     /// Creates all child task_runs for a given run. After creating all task runs it then
     /// blocks and monitors the run until it is finished.
     pub async fn execute_task_tree(self: Arc<Self>, run: run::Run) {
-        let pipeline = match self
+        let mut conn = match self
             .storage
-            .get_pipeline(&run.namespace, &run.pipeline)
+            .conn()
             .await
+            .map_err(|e| Status::internal(e.to_string()))
+        {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not get pipeline in order to run task tree"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
+        let pipeline = match storage::pipelines::get(&mut conn, &run.namespace, &run.pipeline).await
         {
             Ok(pipeline) => pipeline,
             Err(e) => {
@@ -1084,10 +1107,22 @@ impl Api {
             vec![validate::is_valid_identifier],
         )?;
 
-        // Make sure the pipeline is ready to take new runs.
-        let pipeline = self
+        let mut conn = match self
             .storage
-            .get_pipeline(&args.namespace_id, &args.pipeline_id)
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))
+        {
+            Ok(conn) => conn,
+            Err(_) => {
+                return Err(Status::internal(
+                    "could not create run; could not connect to db.",
+                ));
+            }
+        };
+
+        // Make sure the pipeline is ready to take new runs.
+        let pipeline = storage::pipelines::get(&mut conn, &args.namespace_id, &args.pipeline_id)
             .await
             .map_err(|e| match e {
                 storage::StorageError::NotFound => Status::not_found(format!(

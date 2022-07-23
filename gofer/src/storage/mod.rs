@@ -1,22 +1,32 @@
-mod events;
-mod namespaces;
-mod notifier_registrations;
-mod pipelines;
-mod runs;
-mod task_runs;
-mod trigger_registrations;
+pub mod events;
+pub mod namespaces;
+pub mod notifier_registrations;
+pub mod pipelines;
+pub mod runs;
+pub mod task_runs;
+pub mod trigger_registrations;
 
 #[cfg(test)]
 mod tests;
 
-use sqlx::{migrate, Pool, Sqlite, SqlitePool};
-use std::{error::Error, fmt, fs::File, io, path::Path};
+use sqlx::{migrate, pool::PoolConnection, Pool, Sqlite, SqlitePool};
+use std::{
+    error::Error,
+    fmt,
+    fs::File,
+    io,
+    path::Path,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 /// The maximum amount of rows that can be returned by any single query.
 const MAX_ROW_LIMIT: u64 = 200;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum StorageError {
+    #[error("could not establish connection to database")]
+    Connection(String),
+
     #[error("requested entity not found")]
     NotFound,
 
@@ -90,4 +100,20 @@ impl Db {
             pool: connection_pool,
         })
     }
+
+    pub async fn conn(&self) -> Result<PoolConnection<Sqlite>, StorageError> {
+        self.pool
+            .acquire()
+            .await
+            .map_err(|e| StorageError::Connection(format!("{:?}", e)))
+    }
+}
+
+pub fn epoch() -> u64 {
+    let current_epoch = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+
+    u64::try_from(current_epoch).unwrap()
 }

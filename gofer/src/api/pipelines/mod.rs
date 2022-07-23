@@ -8,30 +8,8 @@ use gofer_proto::{
     GetPipelineRequest, GetPipelineResponse, ListPipelinesRequest, ListPipelinesResponse, Pipeline,
     UpdatePipelineRequest, UpdatePipelineResponse,
 };
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{ops::Not, sync::Arc};
 use tonic::{Response, Status};
-
-/// Converts a HashMap of variables(usually supplied by the user) into a Vec of type Variable that
-/// can be used throughout Gofer.
-pub fn variables_to_vec(
-    map: HashMap<String, String>,
-    owner: VariableOwner,
-    sensitivity: VariableSensitivity,
-) -> Vec<Variable> {
-    let mut variables = vec![];
-
-    for (key, value) in map {
-        variables.push(Variable {
-            key,
-            value,
-            owner: owner.clone(),
-            sensitivity: sensitivity.clone(),
-        })
-    }
-
-    variables
-}
 
 impl Api {
     pub async fn list_pipelines_handler(
@@ -44,15 +22,25 @@ impl Api {
             vec![validate::is_valid_identifier, validate::not_empty_str],
         )?;
 
-        self.storage
-            .list_pipelines(args.offset as u64, args.limit as u64, &args.namespace_id)
+        let mut conn = self
+            .storage
+            .conn()
             .await
-            .map(|pipelines| {
-                Response::new(ListPipelinesResponse {
-                    pipelines: pipelines.into_iter().map(Pipeline::from).collect(),
-                })
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::pipelines::list(
+            &mut conn,
+            args.offset as u64,
+            args.limit as u64,
+            &args.namespace_id,
+        )
+        .await
+        .map(|pipelines| {
+            Response::new(ListPipelinesResponse {
+                pipelines: pipelines.into_iter().map(Pipeline::from).collect(),
             })
-            .map_err(|e| Status::internal(e.to_string()))
+        })
+        .map_err(|e| Status::internal(e.to_string()))
     }
 
     pub async fn create_pipeline_handler(
@@ -77,8 +65,13 @@ impl Api {
         let new_pipeline =
             pipeline::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
-        self.storage
-            .create_pipeline(&new_pipeline)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::pipelines::insert(&mut conn, &new_pipeline)
             .await
             .map_err(|e| match e {
                 storage::StorageError::Exists => Status::already_exists(format!(
@@ -116,8 +109,13 @@ impl Api {
         )?;
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
-        self.storage
-            .get_pipeline(&args.namespace_id, &args.id)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::pipelines::get(&mut conn, &args.namespace_id, &args.id)
             .await
             .map(|pipeline| {
                 Response::new(GetPipelineResponse {
@@ -143,15 +141,28 @@ impl Api {
         )?;
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
-        self.storage
-            .update_pipeline_state(&args.namespace_id, &args.id, pipeline::State::Active)
+        let mut conn = self
+            .storage
+            .conn()
             .await
-            .map_err(|e| match e {
-                storage::StorageError::NotFound => {
-                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
-                }
-                _ => Status::internal(e.to_string()),
-            })?;
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::pipelines::update(
+            &mut conn,
+            storage::pipelines::UpdatableFields {
+                namespace_id: args.namespace_id.clone(),
+                id: args.id.clone(),
+                state: Some(pipeline::State::Active),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| match e {
+            storage::StorageError::NotFound => {
+                Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
+            }
+            _ => Status::internal(e.to_string()),
+        })?;
 
         tokio::spawn(async move {
             self.event_bus
@@ -176,15 +187,28 @@ impl Api {
         )?;
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
-        self.storage
-            .update_pipeline_state(&args.namespace_id, &args.id, pipeline::State::Disabled)
+        let mut conn = self
+            .storage
+            .conn()
             .await
-            .map_err(|e| match e {
-                storage::StorageError::NotFound => {
-                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
-                }
-                _ => Status::internal(e.to_string()),
-            })?;
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::pipelines::update(
+            &mut conn,
+            storage::pipelines::UpdatableFields {
+                namespace_id: args.namespace_id.clone(),
+                id: args.id.clone(),
+                state: Some(pipeline::State::Disabled),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| match e {
+            storage::StorageError::NotFound => {
+                Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
+            }
+            _ => Status::internal(e.to_string()),
+        })?;
 
         tokio::spawn(async move {
             self.event_bus
@@ -220,16 +244,43 @@ impl Api {
         let new_pipeline =
             pipeline::Pipeline::new(&args.namespace_id, pipeline_config.to_owned().into());
 
-        self.storage
-            .update_pipeline(&new_pipeline)
+        let mut conn = self
+            .storage
+            .conn()
             .await
-            .map_err(|e| match e {
-                storage::StorageError::NotFound => Status::not_found(format!(
-                    "pipeline with id '{}' does not exist",
-                    &new_pipeline.id
-                )),
-                _ => Status::internal(e.to_string()),
-            })?;
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::pipelines::update(
+            &mut conn,
+            storage::pipelines::UpdatableFields {
+                namespace_id: args.namespace_id.clone(),
+                id: new_pipeline.id.clone(),
+                name: new_pipeline
+                    .name
+                    .is_empty()
+                    .not()
+                    .then(|| new_pipeline.name.clone()),
+                description: new_pipeline
+                    .description
+                    .is_empty()
+                    .not()
+                    .then(|| new_pipeline.description.clone()),
+                parallelism: new_pipeline
+                    .parallelism
+                    .eq(&0)
+                    .not()
+                    .then(|| new_pipeline.parallelism.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| match e {
+            storage::StorageError::NotFound => Status::not_found(format!(
+                "pipeline with id '{}' does not exist",
+                &new_pipeline.id
+            )),
+            _ => Status::internal(e.to_string()),
+        })?;
 
         Ok(Response::new(UpdatePipelineResponse {
             pipeline: Some(new_pipeline.into()),
@@ -247,8 +298,13 @@ impl Api {
         )?;
         validate::arg("id", args.id.clone(), vec![validate::is_valid_identifier])?;
 
-        self.storage
-            .delete_pipeline(&args.namespace_id, &args.id)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::pipelines::delete(&mut conn, &args.namespace_id, &args.id)
             .await
             .map_err(|e| match e {
                 storage::StorageError::NotFound => {

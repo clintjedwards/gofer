@@ -85,20 +85,26 @@ impl Api {
             vec![validate::is_valid_identifier, validate::not_empty_str],
         )?;
 
-        self.storage
-            .list_runs(
-                args.offset as u64,
-                args.limit as u64,
-                &args.namespace_id,
-                &args.pipeline_id,
-            )
+        let mut conn = self
+            .storage
+            .conn()
             .await
-            .map(|runs| {
-                Response::new(ListRunsResponse {
-                    runs: runs.into_iter().map(Run::from).collect(),
-                })
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::runs::list_runs(
+            &mut conn,
+            args.offset as u64,
+            args.limit as u64,
+            &args.namespace_id,
+            &args.pipeline_id,
+        )
+        .await
+        .map(|runs| {
+            Response::new(ListRunsResponse {
+                runs: runs.into_iter().map(Run::from).collect(),
             })
-            .map_err(|e| Status::internal(e.to_string()))
+        })
+        .map_err(|e| Status::internal(e.to_string()))
     }
 
     pub async fn retry_run_handler(

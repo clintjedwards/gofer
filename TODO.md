@@ -189,3 +189,6 @@ prefixed with >2
 - Wrap publish calls in tokio::spawn.
 - We poll for if runs/task_runs are finished but there should be some way to use the event bus to have instant feedback.
 - In the CLI put a 'pipeline run' and a 'run start' that both just call the same endpoint.
+- Search through the code base for Nones to find places where we used an if instead of .then()
+- Consider changing notifier to something that means more of "something that gets run last". Notifiers might not actually
+  notify, they might be used to just do something else externally.

@@ -1,518 +1,188 @@
-use std::{collections::HashMap, ops::Deref};
-
-use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
+use crate::storage::{epoch, runs};
+use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::{pipeline, run, task};
-use sqlx::{sqlite::SqliteRow, Acquire, Row};
-use std::str::FromStr;
+use gofer_models::{pipeline, task};
+use sqlx::{sqlite::SqliteRow, Acquire, QueryBuilder, Row, Sqlite, SqliteConnection};
+use std::{collections::HashMap, ops::Deref};
+use std::{ops::Not, str::FromStr};
 
-impl Db {
-    /// Return all pipeline for a given namespace; limited to 200 rows per response.
-    pub async fn list_pipelines(
-        &self,
-        offset: u64,
-        limit: u64,
-        namespace: &str,
-    ) -> Result<Vec<pipeline::Pipeline>, StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
+#[derive(Debug, Default)]
+pub struct UpdatableFields {
+    pub namespace_id: String,
+    pub id: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub parallelism: Option<u64>,
+    pub state: Option<pipeline::State>,
+}
 
-        let mut tx = conn
-            .begin()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
+pub async fn list_tasks(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<Vec<task::Task>, StorageError> {
+    sqlx::query(
+        r#"
+SELECT id, description, image, registry_auth, depends_on, variables, entrypoint, command
+FROM tasks
+WHERE namespace = ? AND pipeline = ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .map(|row: SqliteRow| task::Task {
+        id: row.get("id"),
+        description: row.get("description"),
+        image: row.get("image"),
+        registry_auth: {
+            let registry_auth = row.get::<String, _>("registry_auth");
+            registry_auth
+                .is_empty()
+                .not()
+                .then(|| serde_json::from_str(&registry_auth).unwrap())
+        },
+        depends_on: {
+            let depends_on = row.get::<String, _>("depends_on");
+            serde_json::from_str(&depends_on).unwrap()
+        },
+        variables: {
+            let variables = row.get::<String, _>("variables");
+            serde_json::from_str(&variables).unwrap()
+        },
+        entrypoint: {
+            let entrypoint = row.get::<String, _>("entrypoint");
+            serde_json::from_str(&entrypoint).unwrap()
+        },
+        command: {
+            let command = row.get::<String, _>("command");
+            serde_json::from_str(&command).unwrap()
+        },
+    })
+    .fetch_all(conn)
+    .map_err(|e| StorageError::Unknown(e.to_string()))
+    .await
+}
 
-        let mut limit = limit;
+pub async fn list_trigger_settings(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<Vec<pipeline::TriggerSettings>, StorageError> {
+    sqlx::query(
+        r#"
+SELECT kind, label, settings, error
+FROM pipeline_trigger_settings
+WHERE namespace = ? AND pipeline = ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .map(|row: SqliteRow| pipeline::TriggerSettings {
+        name: row.get("kind"),
+        label: row.get("label"),
+        settings: {
+            let value = row.get::<String, _>("settings");
+            serde_json::from_str(&value).unwrap()
+        },
+        error: row.get("error"),
+    })
+    .fetch_all(conn)
+    .map_err(|e| StorageError::Unknown(e.to_string()))
+    .await
+}
 
-        if limit == 0 || limit > MAX_ROW_LIMIT {
-            limit = MAX_ROW_LIMIT;
-        }
+pub async fn list_notifier_settings(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<Vec<pipeline::NotifierSettings>, StorageError> {
+    sqlx::query(
+        r#"
+SELECT kind, label, settings, error
+FROM pipeline_notifier_settings
+WHERE namespace = ? AND pipeline = ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .map(|row: SqliteRow| pipeline::NotifierSettings {
+        name: row.get("kind"),
+        label: row.get("label"),
+        settings: {
+            let value = row.get::<String, _>("settings");
+            serde_json::from_str(&value).unwrap()
+        },
+        error: row.get("error"),
+    })
+    .fetch_all(conn)
+    .map_err(|e| StorageError::Unknown(e.to_string()))
+    .await
+}
 
-        // First we need to get the general pipeline information.
-        let mut pipelines = sqlx::query(
-            r#"
-        SELECT namespace, id, name, description, parallelism, created, modified, state, store_keys
-        FROM pipelines
-        WHERE namespace = ?
-        ORDER BY created
-        LIMIT ?
-        OFFSET ?;
-            "#,
-        )
-        .bind(namespace)
-        .bind(limit as i64)
-        .bind(offset as i64)
-        .map(|row: SqliteRow| pipeline::Pipeline {
-            namespace: row.get("namespace"),
-            id: row.get("id"),
-            name: row.get("name"),
-            description: row.get("description"),
-            last_run_id: 0,
-            last_run_time: 0,
-            parallelism: row.get::<i64, _>("parallelism") as u64,
-            created: row.get::<i64, _>("created") as u64,
-            modified: row.get::<i64, _>("modified") as u64,
-            state: pipeline::State::from_str(row.get("state"))
-                .map_err(|_| StorageError::Parse {
-                    value: row.get("state"),
-                    column: "state".to_string(),
-                    err: "could not parse value into pipeline state enum".to_string(),
-                })
-                .unwrap(),
-            tasks: HashMap::new(),
-            triggers: HashMap::new(),
-            notifiers: HashMap::new(),
-            store_keys: {
-                let keys = row.get::<String, _>("store_keys");
-                serde_json::from_str(&keys).unwrap()
-            },
-        })
-        .fetch_all(&mut tx)
+/// Return all pipeline for a given namespace; limited to 200 rows per response.
+pub async fn list(
+    conn: &mut SqliteConnection,
+    offset: u64,
+    limit: u64,
+    namespace_id: &str,
+) -> Result<Vec<pipeline::Pipeline>, StorageError> {
+    let mut tx = conn
+        .begin()
         .map_err(|e| StorageError::Unknown(e.to_string()))
         .await?;
 
-        // Then we need to populate it with information from sister tables.
-        for pipeline in &mut pipelines {
-            struct Run {
-                id: u64,
-                started: u64,
-            }
+    let mut limit = limit;
 
-            let last_run = match sqlx::query(
-                r#"
-            SELECT id, started
-            FROM runs
-            WHERE namespace = ? AND pipeline = ?
-            ORDER BY started DESC
-            LIMIT 1;
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .map(|row: SqliteRow| Run {
-                id: row.get::<i64, _>("id") as u64,
-                started: row.get::<i64, _>("started") as u64,
-            })
-            .fetch_one(&mut tx)
-            .await
-            {
-                Ok(last_run) => last_run,
-                Err(storage_err) => match storage_err {
-                    sqlx::Error::RowNotFound => Run { id: 0, started: 0 },
-                    _ => panic!("{}", storage_err.to_string()),
-                },
-            };
-
-            pipeline.last_run_id = last_run.id;
-            pipeline.last_run_time = last_run.started;
-
-            let tasks = sqlx::query(
-                r#"
-            SELECT id, description, image, registry_auth, depends_on,
-            variables, entrypoint, command
-            FROM tasks
-            WHERE namespace = ? AND pipeline = ?;
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .map(|row: SqliteRow| task::Task {
-                id: row.get("id"),
-                description: row.get("description"),
-                image: row.get("image"),
-                registry_auth: {
-                    let registry_auth = row.get::<String, _>("registry_auth");
-                    if registry_auth.is_empty() {
-                        None
-                    } else {
-                        serde_json::from_str(&registry_auth).unwrap()
-                    }
-                },
-                depends_on: {
-                    let depends_on = row.get::<String, _>("depends_on");
-                    serde_json::from_str(&depends_on).unwrap()
-                },
-                variables: {
-                    let variables = row.get::<String, _>("variables");
-                    serde_json::from_str(&variables).unwrap()
-                },
-                entrypoint: {
-                    let entrypoint = row.get::<String, _>("entrypoint");
-                    serde_json::from_str(&entrypoint).unwrap()
-                },
-                command: {
-                    let command = row.get::<String, _>("command");
-                    serde_json::from_str(&command).unwrap()
-                },
-            })
-            .fetch_all(&mut tx)
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await
-            .unwrap();
-
-            let tasks = tasks
-                .into_iter()
-                .map(|value| (value.id.clone(), value))
-                .collect();
-
-            pipeline.tasks = tasks;
-
-            let triggers = sqlx::query(
-                r#"
-            SELECT kind, label, settings, error
-            FROM pipeline_trigger_settings
-            WHERE namespace = ? AND pipeline = ?;
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .map(|row: SqliteRow| pipeline::TriggerSettings {
-                name: row.get("kind"),
-                label: row.get("label"),
-                settings: {
-                    let value = row.get::<String, _>("settings");
-                    serde_json::from_str(&value).unwrap()
-                },
-                error: row.get("error"),
-            })
-            .fetch_all(&mut tx)
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await
-            .unwrap();
-
-            let triggers = triggers
-                .into_iter()
-                .map(|value| (value.label.clone(), value))
-                .collect();
-
-            pipeline.triggers = triggers;
-
-            let notifiers = sqlx::query(
-                r#"
-            SELECT kind, label, settings, error
-            FROM pipeline_notifier_settings
-            WHERE namespace = ? AND pipeline = ?;
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .map(|row: SqliteRow| pipeline::NotifierSettings {
-                name: row.get("kind"),
-                label: row.get("label"),
-                settings: {
-                    let value = row.get::<String, _>("settings");
-                    serde_json::from_str(&value).unwrap()
-                },
-                error: row.get("error"),
-            })
-            .fetch_all(&mut tx)
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await
-            .unwrap();
-
-            let notifiers = notifiers
-                .into_iter()
-                .map(|value| (value.label.clone(), value))
-                .collect();
-
-            pipeline.notifiers = notifiers;
-        }
-
-        tx.commit()
-            .await
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .unwrap();
-
-        Ok(pipelines)
+    if limit == 0 || limit > MAX_ROW_LIMIT {
+        limit = MAX_ROW_LIMIT;
     }
 
-    /// Create a new pipeline.
-    pub async fn create_pipeline(&self, pipeline: &pipeline::Pipeline) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let mut tx = conn
-            .begin()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        sqlx::query(
-            r#"
-        INSERT INTO pipelines (namespace, id, name, description, parallelism, state,
-            created, modified, store_keys)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-            "#,
-        )
-        .bind(&pipeline.namespace)
-        .bind(&pipeline.id)
-        .bind(&pipeline.name)
-        .bind(&pipeline.description)
-        .bind(pipeline.parallelism as i64)
-        .bind(pipeline.state.to_string())
-        .bind(pipeline.created as i64)
-        .bind(pipeline.modified as i64)
-        .bind(serde_json::to_string(&pipeline.store_keys).unwrap())
-        .execute(&mut tx)
-        .map_err(|e| match e {
-            sqlx::Error::Database(database_err) => {
-                if let Some(err_code) = database_err.code() {
-                    if err_code.deref() == SqliteErrors::Constraint.value() {
-                        return StorageError::Exists;
-                    }
-                }
-                return StorageError::Unknown(database_err.message().to_string());
-            }
-            _ => StorageError::Unknown("".to_string()),
-        })
-        .await?;
-
-        for task in pipeline.tasks.values() {
-            sqlx::query(
-                r#"
-            INSERT INTO tasks (namespace, pipeline, id, description, image, registry_auth,
-                depends_on, variables, entrypoint, command)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(&task.id)
-            .bind(&task.description)
-            .bind(&task.image)
-            .bind({
-                if task.registry_auth.is_none() {
-                    None
-                } else {
-                    Some(serde_json::to_string(&task.registry_auth).unwrap())
-                }
+    // First we need to get the general pipeline information.
+    let mut pipelines = sqlx::query(
+        r#"
+SELECT namespace, id, name, description, parallelism, created, modified, state
+FROM pipelines
+WHERE namespace = ?
+ORDER BY created
+LIMIT ?
+OFFSET ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(limit as i64)
+    .bind(offset as i64)
+    .map(|row: SqliteRow| pipeline::Pipeline {
+        namespace: row.get("namespace"),
+        id: row.get("id"),
+        name: row.get("name"),
+        description: row.get("description"),
+        last_run_id: 0,
+        last_run_time: 0,
+        parallelism: row.get::<i64, _>("parallelism") as u64,
+        created: row.get::<i64, _>("created") as u64,
+        modified: row.get::<i64, _>("modified") as u64,
+        state: pipeline::State::from_str(row.get("state"))
+            .map_err(|_| StorageError::Parse {
+                value: row.get("state"),
+                column: "state".to_string(),
+                err: "could not parse value into pipeline state enum".to_string(),
             })
-            .bind(serde_json::to_string(&task.depends_on).unwrap())
-            .bind(serde_json::to_string(&task.variables).unwrap())
-            .bind(serde_json::to_string(&task.entrypoint).unwrap())
-            .bind(serde_json::to_string(&task.command).unwrap())
-            .execute(&mut tx)
-            .map_err(|e| match e {
-                sqlx::Error::Database(database_err) => {
-                    if let Some(err_code) = database_err.code() {
-                        if err_code.deref() == SqliteErrors::Constraint.value() {
-                            return StorageError::Exists;
-                        }
-                    }
-                    return StorageError::Unknown(database_err.message().to_string());
-                }
-                _ => StorageError::Unknown("".to_string()),
-            })
-            .await?;
+            .unwrap(),
+        tasks: HashMap::new(),
+        triggers: HashMap::new(),
+        notifiers: HashMap::new(),
+        store_keys: vec![],
+    })
+    .fetch_all(&mut tx)
+    .map_err(|e| StorageError::Unknown(e.to_string()))
+    .await?;
+
+    // Then we need to populate it with information from sister tables.
+    for pipeline in &mut pipelines {
+        let last_run = runs::list_runs(&mut tx, 0, 1, namespace_id, &pipeline.id).await?;
+
+        if !last_run.is_empty() {
+            pipeline.last_run_id = last_run[0].id;
+            pipeline.last_run_time = last_run[0].started;
         }
 
-        for settings in pipeline.triggers.values() {
-            sqlx::query(
-                r#"
-            INSERT INTO pipeline_trigger_settings (namespace, pipeline, kind, label, settings, error)
-            VALUES (?, ?, ?, ?, ?, ?);
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(&settings.name)
-            .bind(&settings.label)
-            .bind(serde_json::to_string(&settings.settings).unwrap())
-            .bind(&settings.error)
-            .execute(&mut tx)
-            .map_err(|e| match e {
-                sqlx::Error::Database(database_err) => {
-                    if let Some(err_code) = database_err.code() {
-                        if err_code.deref() == SqliteErrors::Constraint.value() {
-                            return StorageError::Exists;
-                        }
-                    }
-                    return StorageError::Unknown(database_err.message().to_string());
-                }
-                _ => StorageError::Unknown("".to_string()),
-            })
-            .await?;
-        }
-
-        for settings in pipeline.notifiers.values() {
-            sqlx::query(
-                r#"
-            INSERT INTO pipeline_notifier_settings (namespace, pipeline, kind, label, settings, error)
-            VALUES (?, ?, ?, ?, ?, ?);
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(&settings.name)
-            .bind(&settings.label)
-            .bind(serde_json::to_string(&settings.settings).unwrap())
-            .bind(&settings.error)
-            .execute(&mut tx)
-            .map_err(|e| match e {
-                sqlx::Error::Database(database_err) => {
-                    if let Some(err_code) = database_err.code() {
-                        if err_code.deref() == SqliteErrors::Constraint.value() {
-                            return StorageError::Exists;
-                        }
-                    }
-                    return StorageError::Unknown(database_err.message().to_string());
-                }
-                _ => StorageError::Unknown("".to_string()),
-            })
-            .await?;
-        }
-
-        tx.commit()
-            .await
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .unwrap();
-
-        Ok(())
-    }
-
-    /// Get details on a specific pipeline.
-    pub async fn get_pipeline(
-        &self,
-        namespace: &str,
-        id: &str,
-    ) -> Result<pipeline::Pipeline, StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let mut tx = conn
-            .begin()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let mut pipeline = sqlx::query(
-            r#"
-            SELECT namespace, id, name, description, parallelism, created, modified, state, store_keys
-            FROM pipelines
-            WHERE namespace = ? AND id = ?
-            ORDER BY id
-            LIMIT 1;
-                "#,
-        )
-        .bind(namespace)
-        .bind(id)
-        .map(|row: SqliteRow|
-            pipeline::Pipeline {
-            namespace: row.get("namespace"),
-            id: row.get("id"),
-            name: row.get("name"),
-            description: row.get("description"),
-            last_run_id: 0,
-            last_run_time: 0,
-            parallelism: row.get::<i64, _>("parallelism") as u64,
-            created: row.get::<i64, _>("created") as u64,
-            modified: row.get::<i64, _>("modified") as u64,
-            state: pipeline::State::from_str(row.get("state"))
-                .map_err(|_| {
-                    StorageError::Parse {
-                    value: row.get("state"),
-                    column: "state".to_string(),
-                    err: "could not parse value into pipeline state enum".to_string(),
-                }})
-                .unwrap(),
-            tasks: HashMap::new(),
-            triggers: HashMap::new(),
-            notifiers: HashMap::new(),
-            store_keys: {
-                let keys = row.get::<String, _>("store_keys");
-                serde_json::from_str(&keys).unwrap()
-            },
-        })
-        .fetch_one(&mut tx)
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
-        .await?;
-
-        struct Run {
-            id: u64,
-            started: u64,
-        }
-
-        let last_run = match sqlx::query(
-            r#"
-        SELECT id, started
-        FROM runs
-        WHERE namespace = ? AND pipeline = ?
-        ORDER BY started DESC
-        LIMIT 1;
-            "#,
-        )
-        .bind(&pipeline.namespace)
-        .bind(&pipeline.id)
-        .map(|row: SqliteRow| Run {
-            id: row.get::<i64, _>("id") as u64,
-            started: row.get::<i64, _>("started") as u64,
-        })
-        .fetch_one(&mut tx)
-        .await
-        {
-            Ok(last_run) => last_run,
-            Err(storage_err) => match storage_err {
-                sqlx::Error::RowNotFound => Run { id: 0, started: 0 },
-                _ => panic!("{}", storage_err.to_string()),
-            },
-        };
-
-        pipeline.last_run_id = last_run.id;
-        pipeline.last_run_time = last_run.started;
-
-        let tasks = sqlx::query(
-            r#"
-        SELECT namespace, pipeline, id, description, image, registry_auth, depends_on,
-        variables, entrypoint, command
-        FROM tasks
-        WHERE namespace = ? AND pipeline = ?;
-            "#,
-        )
-        .bind(&pipeline.namespace)
-        .bind(&pipeline.id)
-        .map(|row: SqliteRow| task::Task {
-            id: row.get("id"),
-            description: row.get("description"),
-            image: row.get("image"),
-            registry_auth: {
-                let registry_auth = row.get::<String, _>("registry_auth");
-                if registry_auth.is_empty() {
-                    None
-                } else {
-                    serde_json::from_str(&registry_auth).unwrap()
-                }
-            },
-            depends_on: {
-                let depends_on = row.get::<String, _>("depends_on");
-                serde_json::from_str(&depends_on).unwrap()
-            },
-            variables: {
-                let variables = row.get::<String, _>("variables");
-                serde_json::from_str(&variables).unwrap()
-            },
-            entrypoint: {
-                let entrypoint = row.get::<String, _>("entrypoint");
-                serde_json::from_str(&entrypoint).unwrap()
-            },
-            command: {
-                let command = row.get::<String, _>("command");
-                serde_json::from_str(&command).unwrap()
-            },
-        })
-        .fetch_all(&mut tx)
-        .map_err(|e| StorageError::Unknown(e.to_string()))
-        .await
-        .unwrap();
+        let tasks = list_tasks(&mut tx, namespace_id, &pipeline.id).await?;
 
         let tasks = tasks
             .into_iter()
@@ -521,406 +191,436 @@ impl Db {
 
         pipeline.tasks = tasks;
 
-        let triggers = sqlx::query(
-            r#"
-        SELECT kind, label, settings, error
-        FROM pipeline_trigger_settings
-        WHERE namespace = ? AND pipeline = ?;
-            "#,
-        )
-        .bind(&pipeline.namespace)
-        .bind(&pipeline.id)
-        .map(|row: SqliteRow| pipeline::TriggerSettings {
-            name: row.get("kind"),
-            label: row.get("label"),
-            settings: {
-                let value = row.get::<String, _>("settings");
-                serde_json::from_str(&value).unwrap()
-            },
-            error: row.get("error"),
-        })
-        .fetch_all(&mut tx)
-        .map_err(|e| StorageError::Unknown(e.to_string()))
-        .await
-        .unwrap();
+        let triggers = list_trigger_settings(&mut tx, namespace_id, &pipeline.id).await?;
 
-        let triggers = triggers
+        pipeline.triggers = triggers
             .into_iter()
             .map(|value| (value.label.clone(), value))
             .collect();
 
-        pipeline.triggers = triggers;
+        let notifiers = list_notifier_settings(&mut tx, namespace_id, &pipeline.id).await?;
 
-        let notifiers = sqlx::query(
-            r#"
-        SELECT kind, label, settings, error
-        FROM pipeline_notifier_settings
-        WHERE namespace = ? AND pipeline = ?;
-            "#,
-        )
-        .bind(&pipeline.namespace)
-        .bind(&pipeline.id)
-        .map(|row: SqliteRow| pipeline::NotifierSettings {
-            name: row.get("kind"),
-            label: row.get("label"),
-            settings: {
-                let value = row.get::<String, _>("settings");
-                serde_json::from_str(&value).unwrap()
-            },
-            error: row.get("error"),
-        })
-        .fetch_all(&mut tx)
-        .map_err(|e| StorageError::Unknown(e.to_string()))
-        .await
-        .unwrap();
-
-        let notifiers = notifiers
+        pipeline.notifiers = notifiers
             .into_iter()
             .map(|value| (value.label.clone(), value))
             .collect();
-
-        pipeline.notifiers = notifiers;
-
-        tx.commit()
-            .await
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .unwrap();
-
-        Ok(pipeline)
     }
 
-    pub async fn update_pipeline_state(
-        &self,
-        namespace: &str,
-        id: &str,
-        state: pipeline::State,
-    ) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let mut tx = conn
-            .begin()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let pipeline = sqlx::query(
-            r#"
-                SELECT namespace, id, name, description, parallelism, created, modified, state
-                FROM pipelines
-                WHERE namespace = ? AND id = ?
-                ORDER BY id
-                LIMIT 1;
-            "#,
-        )
-        .bind(namespace)
-        .bind(id)
-        .map(|row: SqliteRow| pipeline::Pipeline {
-            namespace: row.get("namespace"),
-            id: row.get("id"),
-            name: row.get("name"),
-            description: row.get("description"),
-            last_run_id: 0,
-            last_run_time: 0,
-            parallelism: row.get::<i64, _>("parallelism") as u64,
-            created: row.get::<i64, _>("created") as u64,
-            modified: row.get::<i64, _>("modified") as u64,
-            state: pipeline::State::from_str(row.get("state"))
-                .map_err(|_| StorageError::Parse {
-                    value: row.get("state"),
-                    column: "state".to_string(),
-                    err: "could not parse value into pipeline state enum".to_string(),
-                })
-                .unwrap(),
-            tasks: HashMap::new(),
-            triggers: HashMap::new(),
-            notifiers: HashMap::new(),
-            store_keys: {
-                let keys = row.get::<String, _>("store_keys");
-                serde_json::from_str(&keys).unwrap()
-            },
-        })
-        .fetch_one(&mut tx)
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
-        .await?;
-
-        struct Run {
-            state: run::State,
-        }
-
-        let last_run: Option<Run> = match sqlx::query(
-            r#"
-        SELECT state
-        FROM runs
-        WHERE namespace = ? AND pipeline = ?
-        ORDER BY started DESC
-        LIMIT 1;
-            "#,
-        )
-        .bind(&pipeline.namespace)
-        .bind(&pipeline.id)
-        .map(|row: SqliteRow| Run {
-            state: run::State::from_str(&row.get::<String, _>("state")).unwrap(),
-        })
-        .fetch_one(&mut tx)
+    tx.commit()
         .await
-        {
-            Ok(last_run) => Some(last_run),
-            Err(storage_err) => match storage_err {
-                sqlx::Error::RowNotFound => None,
-                _ => panic!("{}", storage_err.to_string()),
-            },
-        };
+        .map_err(|e| StorageError::Unknown(e.to_string()))?;
 
-        if let Some(last_run) = last_run {
-            if last_run.state != run::State::Complete {
-                return Err(StorageError::FailedPrecondition);
+    Ok(pipelines)
+}
+
+pub async fn insert_task(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    task: &task::Task,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+INSERT INTO tasks (namespace, pipeline, id, description, image, registry_auth,
+    depends_on, variables, entrypoint, command)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .bind(&task.id)
+    .bind(&task.description)
+    .bind(&task.image)
+    .bind(
+        task.registry_auth
+            .is_none()
+            .not()
+            .then(|| Some(serde_json::to_string(&task.registry_auth).unwrap())),
+    )
+    .bind(serde_json::to_string(&task.depends_on).unwrap())
+    .bind(serde_json::to_string(&task.variables).unwrap())
+    .bind(serde_json::to_string(&task.entrypoint).unwrap())
+    .bind(serde_json::to_string(&task.command).unwrap())
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::Database(database_err) => {
+            if let Some(err_code) = database_err.code() {
+                if err_code.deref() == SqliteErrors::Constraint.value() {
+                    return StorageError::Exists;
+                }
             }
+            return StorageError::Unknown(database_err.message().to_string());
         }
+        _ => StorageError::Unknown("".to_string()),
+    })
+    .await
+}
 
-        sqlx::query(
-            r#"
-        UPDATE pipelines
-        SET name = ?, description = ?, parallelism = ?, state = ?, modified = ?, store_keys = ?
-        WHERE namespace = ? AND id = ?;
-            "#,
-        )
-        .bind(&pipeline.name)
-        .bind(&pipeline.description)
-        .bind(pipeline.parallelism as i64)
-        .bind(state.to_string())
-        .bind(pipeline.modified as i64)
-        .bind(serde_json::to_string(&pipeline.store_keys).unwrap())
-        .execute(&mut tx)
-        .map_ok(|_| ())
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
+pub async fn insert_trigger_settings(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    settings: &pipeline::TriggerSettings,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+INSERT INTO pipeline_trigger_settings (namespace, pipeline, kind, label, settings, error) VALUES (?, ?, ?, ?, ?, ?);"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .bind(&settings.name)
+    .bind(&settings.label)
+    .bind(serde_json::to_string(&settings.settings).unwrap())
+    .bind(&settings.error)
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::Database(database_err) => {
+            if let Some(err_code) = database_err.code() {
+                if err_code.deref() == SqliteErrors::Constraint.value() {
+                    return StorageError::Exists;
+                }
+            }
+            return StorageError::Unknown(database_err.message().to_string());
+        }
+        _ => StorageError::Unknown("".to_string()),
+    })
+    .await
+}
+
+pub async fn insert_notifier_settings(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    settings: &pipeline::NotifierSettings,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+INSERT INTO pipeline_notifier_settings (namespace, pipeline, kind, label, settings, error) VALUES (?, ?, ?, ?, ?, ?);"#,
+    )
+    .bind(&namespace_id)
+    .bind(&pipeline_id)
+    .bind(&settings.name)
+    .bind(&settings.label)
+    .bind(serde_json::to_string(&settings.settings).unwrap())
+    .bind(&settings.error)
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::Database(database_err) => {
+            if let Some(err_code) = database_err.code() {
+                if err_code.deref() == SqliteErrors::Constraint.value() {
+                    return StorageError::Exists;
+                }
+            }
+            return StorageError::Unknown(database_err.message().to_string());
+        }
+        _ => StorageError::Unknown("".to_string()),
+    })
+    .await
+}
+
+/// Insert a new pipeline.
+pub async fn insert(
+    conn: &mut SqliteConnection,
+    pipeline: &pipeline::Pipeline,
+) -> Result<(), StorageError> {
+    let mut tx = conn
+        .begin()
+        .map_err(|e| StorageError::Unknown(e.to_string()))
         .await?;
 
-        tx.commit()
-            .await
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .unwrap();
+    sqlx::query(
+        r#"
+INSERT INTO pipelines (namespace, id, name, description, parallelism, state,
+    created, modified)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);"#,
+    )
+    .bind(&pipeline.namespace)
+    .bind(&pipeline.id)
+    .bind(&pipeline.name)
+    .bind(&pipeline.description)
+    .bind(pipeline.parallelism as i64)
+    .bind(pipeline.state.to_string())
+    .bind(pipeline.created as i64)
+    .bind(pipeline.modified as i64)
+    .execute(&mut tx)
+    .map_err(|e| match e {
+        sqlx::Error::Database(database_err) => {
+            if let Some(err_code) = database_err.code() {
+                if err_code.deref() == SqliteErrors::Constraint.value() {
+                    return StorageError::Exists;
+                }
+            }
+            return StorageError::Unknown(database_err.message().to_string());
+        }
+        _ => StorageError::Unknown("".to_string()),
+    })
+    .await?;
 
-        Ok(())
+    for task in pipeline.tasks.values() {
+        insert_task(&mut tx, &pipeline.namespace, &pipeline.id, task).await?;
     }
 
-    /// Update a specific pipeline.
-    pub async fn update_pipeline(&self, pipeline: &pipeline::Pipeline) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let mut tx = conn
-            .begin()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        sqlx::query(
-            r#"
-        UPDATE pipelines
-        SET name = ?, description = ?, parallelism = ?, state = ?, modified = ?, store_keys = ?
-        WHERE namespace = ? AND id = ?;
-            "#,
-        )
-        .bind(&pipeline.name)
-        .bind(&pipeline.description)
-        .bind(pipeline.parallelism as i64)
-        .bind(pipeline.state.to_string())
-        .bind(pipeline.modified as i64)
-        .bind(serde_json::to_string(&pipeline.store_keys).unwrap())
-        .bind(&pipeline.namespace)
-        .bind(&pipeline.id)
-        .execute(&mut tx)
-        .map_ok(|_| ())
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
-        .await?;
-
-        for (id, task) in &pipeline.tasks {
-            sqlx::query(
-                r#"
-            DELETE FROM tasks
-            WHERE namespace = ? AND pipeline = ? AND id = ?;
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(id)
-            .execute(&mut tx)
-            .map_ok(|_| ())
-            .map_err(|e| match e {
-                sqlx::Error::RowNotFound => StorageError::NotFound,
-                _ => StorageError::Unknown(e.to_string()),
-            })
-            .await?;
-
-            sqlx::query(
-                r#"
-            INSERT INTO tasks (namespace, pipeline, id, description, image, registry_auth,
-                depends_on, variables, entrypoint, command)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                "#,
-            )
-            .bind(&pipeline.id)
-            .bind(&pipeline.namespace)
-            .bind(&task.id)
-            .bind(&task.description)
-            .bind(&task.image)
-            .bind({
-                if task.registry_auth.is_none() {
-                    None
-                } else {
-                    Some(serde_json::to_string(&task.registry_auth).unwrap())
-                }
-            })
-            .bind(serde_json::to_string(&task.depends_on).unwrap())
-            .bind(serde_json::to_string(&task.variables).unwrap())
-            .bind(serde_json::to_string(&task.entrypoint).unwrap())
-            .bind(serde_json::to_string(&task.command).unwrap())
-            .execute(&mut tx)
-            .map_err(|e| match e {
-                sqlx::Error::Database(database_err) => {
-                    if let Some(err_code) = database_err.code() {
-                        if err_code.deref() == SqliteErrors::Constraint.value() {
-                            return StorageError::Exists;
-                        }
-                    }
-                    return StorageError::Unknown(database_err.message().to_string());
-                }
-                _ => StorageError::Unknown("".to_string()),
-            })
-            .await?;
-        }
-
-        for settings in pipeline.triggers.values() {
-            sqlx::query(
-                r#"
-            DELETE FROM pipeline_trigger_settings
-            WHERE namespace = ? AND pipeline = ? AND label = ?;
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(&settings.label)
-            .execute(&mut tx)
-            .map_ok(|_| ())
-            .map_err(|e| match e {
-                sqlx::Error::RowNotFound => StorageError::NotFound,
-                _ => StorageError::Unknown(e.to_string()),
-            })
-            .await?;
-
-            sqlx::query(
-                r#"
-            INSERT INTO pipeline_trigger_settings (namespace, pipeline, kind, label, settings, error)
-            VALUES (?, ?, ?, ?, ?, ?);
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(&settings.name)
-            .bind(&settings.label)
-            .bind(&settings.error)
-            .execute(&mut tx)
-            .map_err(|e| match e {
-                sqlx::Error::Database(database_err) => {
-                    if let Some(err_code) = database_err.code() {
-                        if err_code.deref() == SqliteErrors::Constraint.value() {
-                            return StorageError::Exists;
-                        }
-                    }
-                    return StorageError::Unknown(database_err.message().to_string());
-                }
-                _ => StorageError::Unknown("".to_string()),
-            })
-            .await?;
-        }
-
-        for settings in pipeline.notifiers.values() {
-            sqlx::query(
-                r#"
-            DELETE FROM pipeline_notifier_settings
-            WHERE namespace = ? AND pipeline = ? AND label = ?;
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(&settings.label)
-            .execute(&mut tx)
-            .map_ok(|_| ())
-            .map_err(|e| match e {
-                sqlx::Error::RowNotFound => StorageError::NotFound,
-                _ => StorageError::Unknown(e.to_string()),
-            })
-            .await?;
-
-            sqlx::query(
-                r#"
-            INSERT INTO pipeline_notifier_settings (namespace, pipeline, kind, label, settings, error)
-            VALUES (?, ?, ?, ?, ?, ?);
-                "#,
-            )
-            .bind(&pipeline.namespace)
-            .bind(&pipeline.id)
-            .bind(&settings.name)
-            .bind(&settings.label)
-            .bind(&settings.error)
-            .execute(&mut tx)
-            .map_err(|e| match e {
-                sqlx::Error::Database(database_err) => {
-                    if let Some(err_code) = database_err.code() {
-                        if err_code.deref() == SqliteErrors::Constraint.value() {
-                            return StorageError::Exists;
-                        }
-                    }
-                    return StorageError::Unknown(database_err.message().to_string());
-                }
-                _ => StorageError::Unknown("".to_string()),
-            })
-            .await?;
-        }
-
-        tx.commit()
-            .await
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .unwrap();
-
-        Ok(())
+    for settings in pipeline.triggers.values() {
+        insert_trigger_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
     }
 
-    pub async fn delete_pipeline(&self, namespace: &str, id: &str) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
+    for settings in pipeline.notifiers.values() {
+        insert_notifier_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
+    }
 
-        sqlx::query(
-            r#"
-        DELETE FROM pipelines
-        WHERE namespace = ? AND id = ?;
-            "#,
-        )
-        .bind(namespace)
-        .bind(id)
-        .execute(&mut conn)
-        .map_ok(|_| ())
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
+    tx.commit()
         .await
+        .map_err(|e| StorageError::Unknown(e.to_string()))
+}
+
+/// Get details on a specific pipeline.
+pub async fn get(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<pipeline::Pipeline, StorageError> {
+    let mut tx = conn
+        .begin()
+        .map_err(|e| StorageError::Unknown(e.to_string()))
+        .await?;
+
+    let mut pipeline = sqlx::query(
+        r#"
+SELECT namespace, id, name, description, parallelism, created, modified, state
+FROM pipelines
+WHERE namespace = ? AND id = ?
+ORDER BY id
+LIMIT 1;"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .map(|row: SqliteRow| pipeline::Pipeline {
+        namespace: row.get("namespace"),
+        id: row.get("id"),
+        name: row.get("name"),
+        description: row.get("description"),
+        last_run_id: 0,
+        last_run_time: 0,
+        parallelism: row.get::<i64, _>("parallelism") as u64,
+        created: row.get::<i64, _>("created") as u64,
+        modified: row.get::<i64, _>("modified") as u64,
+        state: pipeline::State::from_str(row.get("state"))
+            .map_err(|_| StorageError::Parse {
+                value: row.get("state"),
+                column: "state".to_string(),
+                err: "could not parse value into pipeline state enum".to_string(),
+            })
+            .unwrap(),
+        tasks: HashMap::new(),
+        triggers: HashMap::new(),
+        notifiers: HashMap::new(),
+        store_keys: vec![],
+    })
+    .fetch_one(&mut tx)
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => StorageError::NotFound,
+        _ => StorageError::Unknown(e.to_string()),
+    })
+    .await?;
+
+    let last_run = runs::list_runs(&mut tx, 0, 1, namespace_id, pipeline_id).await?;
+
+    if !last_run.is_empty() {
+        pipeline.last_run_id = last_run[0].id;
+        pipeline.last_run_time = last_run[0].started;
     }
+
+    let tasks = list_tasks(&mut tx, namespace_id, pipeline_id).await?;
+    pipeline.tasks = tasks
+        .into_iter()
+        .map(|value| (value.id.clone(), value))
+        .collect();
+
+    let triggers = list_trigger_settings(&mut tx, namespace_id, pipeline_id).await?;
+    pipeline.triggers = triggers
+        .into_iter()
+        .map(|value| (value.label.clone(), value))
+        .collect();
+
+    let notifiers = list_notifier_settings(&mut tx, namespace_id, pipeline_id).await?;
+    pipeline.notifiers = notifiers
+        .into_iter()
+        .map(|value| (value.label.clone(), value))
+        .collect();
+
+    tx.commit()
+        .await
+        .map_err(|e| StorageError::Unknown(e.to_string()))?;
+
+    Ok(pipeline)
+}
+
+pub async fn delete_task(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    task_id: &str,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+DELETE FROM tasks
+WHERE namespace = ? AND pipeline = ? AND id = ?;"#,
+    )
+    .bind(&namespace_id)
+    .bind(&pipeline_id)
+    .bind(task_id)
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => StorageError::NotFound,
+        _ => StorageError::Unknown(e.to_string()),
+    })
+    .await
+}
+
+pub async fn delete_trigger_settings(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    label: &str,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+DELETE FROM pipeline_trigger_settings
+WHERE namespace = ? AND pipeline = ? AND label = ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .bind(label)
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => StorageError::NotFound,
+        _ => StorageError::Unknown(e.to_string()),
+    })
+    .await
+}
+
+pub async fn delete_notifier_settings(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    label: &str,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+DELETE FROM pipeline_notifier_settings
+WHERE namespace = ? AND pipeline = ? AND label = ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .bind(label)
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => StorageError::NotFound,
+        _ => StorageError::Unknown(e.to_string()),
+    })
+    .await
+}
+
+/// Update a specific pipeline.
+pub async fn update(
+    conn: &mut SqliteConnection,
+    fields: UpdatableFields,
+) -> Result<(), StorageError> {
+    let mut tx = conn
+        .begin()
+        .map_err(|e| StorageError::Unknown(e.to_string()))
+        .await?;
+
+    let pipeline = get(&mut tx, &fields.namespace_id, &fields.id).await?;
+
+    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE pipelines SET "#);
+
+    if let Some(name) = fields.name {
+        update_query.push("name = ");
+        update_query.push_bind(name);
+        update_query.push(", ");
+    }
+
+    if let Some(description) = fields.description {
+        update_query.push("description = ");
+        update_query.push_bind(description);
+        update_query.push(", ");
+    }
+
+    if let Some(parallelism) = fields.parallelism {
+        update_query.push("parallelism = ");
+        update_query.push_bind(parallelism as i64);
+        update_query.push(", ");
+    }
+
+    if let Some(state) = fields.state {
+        update_query.push("state = ");
+        update_query.push_bind(state.to_string());
+        update_query.push(", ");
+    }
+
+    update_query.push("modified = ");
+    update_query.push_bind(epoch() as i64);
+
+    update_query.push(" WHERE id = ");
+    update_query.push_bind(fields.id);
+    update_query.push(";");
+
+    let update_query = update_query.build();
+
+    update_query
+        .execute(&mut tx)
+        .map_ok(|_| ())
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => StorageError::NotFound,
+            _ => StorageError::Unknown(e.to_string()),
+        })
+        .await?;
+
+    for task in pipeline.tasks.values() {
+        delete_task(&mut tx, &pipeline.namespace, &pipeline.id, &task.id).await?;
+        insert_task(&mut tx, &pipeline.namespace, &pipeline.id, task).await?;
+    }
+
+    for settings in pipeline.triggers.values() {
+        delete_trigger_settings(&mut tx, &pipeline.namespace, &pipeline.id, &settings.label)
+            .await?;
+        insert_trigger_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
+    }
+
+    for settings in pipeline.notifiers.values() {
+        delete_notifier_settings(&mut tx, &pipeline.namespace, &pipeline.id, &settings.label)
+            .await?;
+        insert_notifier_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| StorageError::Unknown(e.to_string()))
+}
+
+pub async fn delete(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    id: &str,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+DELETE FROM pipelines
+WHERE namespace = ? AND id = ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(id)
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => StorageError::NotFound,
+        _ => StorageError::Unknown(e.to_string()),
+    })
+    .await
 }
