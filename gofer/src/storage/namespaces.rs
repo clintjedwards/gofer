@@ -1,14 +1,14 @@
-use crate::storage::{epoch, SqliteErrors, StorageError, MAX_ROW_LIMIT};
+use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
 use gofer_models::namespace::Namespace;
-use sqlx::{sqlite::SqliteRow, QueryBuilder, Row, Sqlite, SqliteConnection};
+use sqlx::{sqlite::SqliteRow, Execute, QueryBuilder, Row, Sqlite, SqliteConnection};
 use std::ops::Deref;
 
 #[derive(Debug, Default)]
 pub struct UpdatableFields {
-    pub id: String,
     pub name: Option<String>,
     pub description: Option<String>,
+    pub modified: Option<u64>,
 }
 
 /// Return all namespaces; limited to 200 rows in any one response.
@@ -101,27 +101,38 @@ WHERE id = ?;"#,
 /// Update a specific namespace.
 pub async fn update(
     conn: &mut SqliteConnection,
+    id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
     let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE namespaces SET "#);
 
+    let mut updated_fields_total = 0;
+
     if let Some(name) = fields.name {
         update_query.push("name = ");
         update_query.push_bind(name);
-        update_query.push(", ");
+        updated_fields_total += 1;
     }
 
     if let Some(description) = fields.description {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
         update_query.push("description = ");
         update_query.push_bind(description);
-        update_query.push(", ");
+        updated_fields_total += 1;
     }
 
-    update_query.push("modified = ");
-    update_query.push_bind(epoch() as i64);
+    if let Some(modified) = fields.modified {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("modified = ");
+        update_query.push_bind(modified as i64);
+    }
 
     update_query.push(" WHERE id = ");
-    update_query.push_bind(fields.id);
+    update_query.push_bind(id);
     update_query.push(";");
 
     let update_query = update_query.build();

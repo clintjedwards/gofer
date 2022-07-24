@@ -60,7 +60,6 @@ CREATE TABLE IF NOT EXISTS runs (
     state        TEXT    NOT NULL,
     status       TEXT    NOT NULL,
     failure_info TEXT,
-    task_runs    TEXT    NOT NULL,
     trigger      TEXT    NOT NULL,
     variables    TEXT    NOT NULL,
     store_info   TEXT,

@@ -64,8 +64,8 @@ async fn crud_namespaces() {
 
     namespaces::update(
         &mut conn,
+        &new_namespace.id,
         namespaces::UpdatableFields {
-            id: new_namespace.id.clone(),
             name: Some(updated_namespace.name.clone()),
             ..Default::default()
         },
@@ -74,7 +74,7 @@ async fn crud_namespaces() {
     .unwrap();
 
     let namespace = namespaces::get(&mut conn, &new_namespace.id).await.unwrap();
-    assert_eq!(namespace.name, updated_namespace.name);
+    assert_eq!(namespace, updated_namespace);
 
     namespaces::delete(&mut conn, &new_namespace.id)
         .await
@@ -144,9 +144,9 @@ async fn crud_pipelines() {
 
     pipelines::update(
         &mut conn,
+        &test_pipeline.namespace,
+        &test_pipeline.id,
         pipelines::UpdatableFields {
-            namespace_id: test_pipeline.namespace.clone(),
-            id: test_pipeline.id.clone(),
             name: Some(test_pipeline.name.clone()),
             ..Default::default()
         },
@@ -157,7 +157,7 @@ async fn crud_pipelines() {
     let pipeline = pipelines::get(&mut conn, &test_namespace.id, &test_pipeline.id)
         .await
         .unwrap();
-    assert_eq!(pipeline.name, test_pipeline.name);
+    assert_eq!(pipeline, test_pipeline);
 
     pipelines::delete(&mut conn, &test_namespace.id, &test_pipeline.id)
         .await
@@ -198,7 +198,7 @@ async fn crud_runs() {
     );
     // We list runs in descend order so we need to seed intentionally such that we get the correct order.
     test_run.started = 0;
-    harness.db.create_run(&test_run).await.unwrap();
+    runs::insert(&mut conn, &test_run).await.unwrap();
 
     let mut test_run_2 = run::Run::new(
         &test_namespace.id,
@@ -209,9 +209,9 @@ async fn crud_runs() {
         },
         vec![],
     );
-    harness.db.create_run(&test_run_2).await.unwrap();
+    runs::insert(&mut conn, &test_run_2).await.unwrap();
 
-    let runs = runs::list_runs(&mut conn, 0, 0, &test_namespace.id, &test_pipeline.id)
+    let runs = runs::list(&mut conn, 0, 0, &test_namespace.id, &test_pipeline.id)
         .await
         .unwrap();
 
@@ -222,36 +222,59 @@ async fn crud_runs() {
     assert_eq!(runs[0], test_run_2);
     assert_eq!(runs[1], test_run);
 
-    let run = harness
-        .db
-        .get_run(&test_namespace.id, &test_pipeline.id, test_run.id)
-        .await
-        .unwrap();
+    let run = runs::get(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(run, test_run);
 
     test_run.state = run::State::Complete;
 
-    harness.db.update_run(&test_run).await.unwrap();
+    runs::update(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+        runs::UpdatableFields {
+            state: Some(run::State::Complete),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
 
-    let run = harness
-        .db
-        .get_run(&test_namespace.id, &test_pipeline.id, test_run.id)
-        .await
-        .unwrap();
+    let run = runs::get(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+    )
+    .await
+    .unwrap();
     assert_eq!(run, test_run);
 
-    harness
-        .db
-        .delete_run(&test_namespace.id, &test_pipeline.id, test_run.id)
-        .await
-        .unwrap();
+    runs::delete(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+    )
+    .await
+    .unwrap();
 
-    let run = harness
-        .db
-        .get_run(&test_namespace.id, &test_pipeline.id, test_run.id)
-        .await
-        .unwrap_err();
+    let run = runs::get(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+    )
+    .await
+    .unwrap_err();
 
     assert_eq!(run, StorageError::NotFound);
 }
@@ -290,7 +313,7 @@ async fn crud_task_runs() {
         vec![],
     );
 
-    harness.db.create_run(&test_run).await.unwrap();
+    runs::insert(&mut conn, &test_run).await.unwrap();
 
     let mut test_task_run = task_run::TaskRun::new(
         &test_namespace.id,

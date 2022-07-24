@@ -1,4 +1,4 @@
-use crate::api::{validate, Api};
+use crate::api::{epoch, validate, Api};
 use crate::storage;
 use gofer_models::{event, pipeline};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
@@ -149,9 +149,9 @@ impl Api {
 
         storage::pipelines::update(
             &mut conn,
+            &args.namespace_id,
+            &args.id,
             storage::pipelines::UpdatableFields {
-                namespace_id: args.namespace_id.clone(),
-                id: args.id.clone(),
                 state: Some(pipeline::State::Active),
                 ..Default::default()
             },
@@ -195,9 +195,9 @@ impl Api {
 
         storage::pipelines::update(
             &mut conn,
+            &args.namespace_id,
+            &args.id,
             storage::pipelines::UpdatableFields {
-                namespace_id: args.namespace_id.clone(),
-                id: args.id.clone(),
                 state: Some(pipeline::State::Disabled),
                 ..Default::default()
             },
@@ -252,9 +252,9 @@ impl Api {
 
         storage::pipelines::update(
             &mut conn,
+            &args.namespace_id,
+            &new_pipeline.id,
             storage::pipelines::UpdatableFields {
-                namespace_id: args.namespace_id.clone(),
-                id: new_pipeline.id.clone(),
                 name: new_pipeline
                     .name
                     .is_empty()
@@ -269,7 +269,8 @@ impl Api {
                     .parallelism
                     .eq(&0)
                     .not()
-                    .then(|| new_pipeline.parallelism.clone()),
+                    .then(|| new_pipeline.parallelism),
+                modified: Some(epoch()),
                 ..Default::default()
             },
         )

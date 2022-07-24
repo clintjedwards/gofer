@@ -1,18 +1,17 @@
-use crate::storage::{epoch, runs};
+use crate::storage::runs;
 use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
 use gofer_models::{pipeline, task};
-use sqlx::{sqlite::SqliteRow, Acquire, QueryBuilder, Row, Sqlite, SqliteConnection};
+use sqlx::{sqlite::SqliteRow, Acquire, Execute, QueryBuilder, Row, Sqlite, SqliteConnection};
 use std::{collections::HashMap, ops::Deref};
 use std::{ops::Not, str::FromStr};
 
 #[derive(Debug, Default)]
 pub struct UpdatableFields {
-    pub namespace_id: String,
-    pub id: String,
     pub name: Option<String>,
     pub description: Option<String>,
     pub parallelism: Option<u64>,
+    pub modified: Option<u64>,
     pub state: Option<pipeline::State>,
 }
 
@@ -175,7 +174,7 @@ OFFSET ?;"#,
 
     // Then we need to populate it with information from sister tables.
     for pipeline in &mut pipelines {
-        let last_run = runs::list_runs(&mut tx, 0, 1, namespace_id, &pipeline.id).await?;
+        let last_run = runs::list(&mut tx, 0, 1, namespace_id, &pipeline.id).await?;
 
         if !last_run.is_empty() {
             pipeline.last_run_id = last_run[0].id;
@@ -425,7 +424,7 @@ LIMIT 1;"#,
     })
     .await?;
 
-    let last_run = runs::list_runs(&mut tx, 0, 1, namespace_id, pipeline_id).await?;
+    let last_run = runs::list(&mut tx, 0, 1, namespace_id, pipeline_id).await?;
 
     if !last_run.is_empty() {
         pipeline.last_run_id = last_run[0].id;
@@ -529,6 +528,8 @@ WHERE namespace = ? AND pipeline = ? AND label = ?;"#,
 /// Update a specific pipeline.
 pub async fn update(
     conn: &mut SqliteConnection,
+    namespace_id: &str,
+    id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
     let mut tx = conn
@@ -536,39 +537,58 @@ pub async fn update(
         .map_err(|e| StorageError::Unknown(e.to_string()))
         .await?;
 
-    let pipeline = get(&mut tx, &fields.namespace_id, &fields.id).await?;
+    let pipeline = get(&mut tx, namespace_id, id).await?;
 
     let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE pipelines SET "#);
+
+    let mut updated_fields_total = 0;
 
     if let Some(name) = fields.name {
         update_query.push("name = ");
         update_query.push_bind(name);
-        update_query.push(", ");
+        updated_fields_total += 1;
     }
 
     if let Some(description) = fields.description {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
         update_query.push("description = ");
         update_query.push_bind(description);
-        update_query.push(", ");
+        updated_fields_total += 1;
     }
 
     if let Some(parallelism) = fields.parallelism {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
         update_query.push("parallelism = ");
         update_query.push_bind(parallelism as i64);
-        update_query.push(", ");
+        updated_fields_total += 1;
     }
 
     if let Some(state) = fields.state {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
         update_query.push("state = ");
         update_query.push_bind(state.to_string());
-        update_query.push(", ");
+        updated_fields_total += 1;
     }
 
-    update_query.push("modified = ");
-    update_query.push_bind(epoch() as i64);
+    if let Some(modified) = fields.modified {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("modified = ");
+        update_query.push_bind(modified.to_string());
+    }
 
-    update_query.push(" WHERE id = ");
-    update_query.push_bind(fields.id);
+    update_query.push(" WHERE namespace = ");
+    update_query.push_bind(namespace_id);
+
+    update_query.push(" AND id = ");
+    update_query.push_bind(id);
     update_query.push(";");
 
     let update_query = update_query.build();
@@ -607,7 +627,7 @@ pub async fn update(
 pub async fn delete(
     conn: &mut SqliteConnection,
     namespace_id: &str,
-    id: &str,
+    pipeline_id: &str,
 ) -> Result<(), StorageError> {
     sqlx::query(
         r#"
@@ -615,7 +635,7 @@ DELETE FROM pipelines
 WHERE namespace = ? AND id = ?;"#,
     )
     .bind(namespace_id)
-    .bind(id)
+    .bind(pipeline_id)
     .execute(conn)
     .map_ok(|_| ())
     .map_err(|e| match e {

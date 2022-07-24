@@ -128,7 +128,7 @@
 - Cleanup by replacing \* imports and using local imports for long packages
 - Possibly make the comfy-tables crate respect NO_COLOR
 - Take a look at all the places we unwrap and clean up if needed.
-- Reflection doesn't work. TLS doesn't work in dev.
+- GRPC Reflection doesn't work. TLS doesn't work in dev.
 - Create a namespace set command that allows the user to switch between namespaces and save it in their configuration file (CLI).
 - Document/Comment all sdk libraries.
 - We can potentially auto detect languages by looking for auto language structure.
@@ -192,3 +192,4 @@ prefixed with >2
 - Search through the code base for Nones to find places where we used an if instead of .then()
 - Consider changing notifier to something that means more of "something that gets run last". Notifiers might not actually
   notify, they might be used to just do something else externally.
+- There is a bug in update pipelines where if you set your pipeline parrallesim to anything but 0 and then try to set it back to 0 it probably wont update.

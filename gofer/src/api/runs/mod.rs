@@ -54,8 +54,13 @@ impl Api {
             return Err(Status::failed_precondition("must include target run id"));
         }
 
-        self.storage
-            .get_run(&args.namespace_id, &args.pipeline_id, args.id)
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::runs::get(&mut conn, &args.namespace_id, &args.pipeline_id, args.id)
             .await
             .map(|run| {
                 Response::new(GetRunResponse {
@@ -91,7 +96,7 @@ impl Api {
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        storage::runs::list_runs(
+        storage::runs::list(
             &mut conn,
             args.offset as u64,
             args.limit as u64,
@@ -123,16 +128,25 @@ impl Api {
         )?;
         validate::arg("run_id", args.run_id, vec![validate::not_zero_num])?;
 
-        let run = self
+        let mut conn = self
             .storage
-            .get_run(&args.namespace_id, &args.pipeline_id, args.run_id)
+            .conn()
             .await
-            .map_err(|e| match e {
-                storage::StorageError::NotFound => {
-                    Status::not_found(format!("run with id '{}' does not exist", &args.run_id))
-                }
-                _ => Status::internal(e.to_string()),
-            })?;
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        let run = storage::runs::get(
+            &mut conn,
+            &args.namespace_id,
+            &args.pipeline_id,
+            args.run_id,
+        )
+        .await
+        .map_err(|e| match e {
+            storage::StorageError::NotFound => {
+                Status::not_found(format!("run with id '{}' does not exist", &args.run_id))
+            }
+            _ => Status::internal(e.to_string()),
+        })?;
 
         let resp = self
             .start_run_handler(StartRunRequest {
@@ -166,16 +180,25 @@ impl Api {
         )?;
         validate::arg("run_id", args.run_id, vec![validate::not_zero_num])?;
 
-        let run = self
+        let mut conn = self
             .storage
-            .get_run(&args.namespace_id, &args.pipeline_id, args.run_id)
+            .conn()
             .await
-            .map_err(|e| match e {
-                storage::StorageError::NotFound => {
-                    Status::not_found(format!("run with id '{}' does not exist", &args.run_id))
-                }
-                _ => Status::internal(e.to_string()),
-            })?;
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        let run = storage::runs::get(
+            &mut conn,
+            &args.namespace_id,
+            &args.pipeline_id,
+            args.run_id,
+        )
+        .await
+        .map_err(|e| match e {
+            storage::StorageError::NotFound => {
+                Status::not_found(format!("run with id '{}' does not exist", &args.run_id))
+            }
+            _ => Status::internal(e.to_string()),
+        })?;
 
         //TODO(clintjedwards): cancel run function
         //self.cancel_run();

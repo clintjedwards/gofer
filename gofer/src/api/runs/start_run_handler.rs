@@ -8,6 +8,7 @@ use gofer_models::{event, pipeline, run, task, task_run};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
 use gofer_proto::{StartRunRequest, StartRunResponse};
 use slog_scope::{debug, error};
+use sqlx::Acquire;
 use std::collections::HashMap;
 use std::sync::Arc;
 use strum::{Display, EnumString};
@@ -250,8 +251,7 @@ impl Api {
             Err(_) => return true,
         };
 
-        let runs = match storage::runs::list_runs(&mut conn, 0, 0, namespace_id, pipeline_id).await
-        {
+        let runs = match storage::runs::list(&mut conn, 0, 0, namespace_id, pipeline_id).await {
             Ok(runs) => runs,
             Err(_) => return true,
         };
@@ -283,9 +283,7 @@ impl Api {
         };
 
         // We ask for the limit of runs plus one extra.
-        let runs = match storage::runs::list_runs(&mut conn, 0, limit + 1, &namespace, &pipeline)
-            .await
-        {
+        let runs = match storage::runs::list(&mut conn, 0, limit + 1, &namespace, &pipeline).await {
             Ok(runs) => runs,
             Err(e) => {
                 error!("could not get runs for run expiry processing"; "error" => format!("{:?}", e));
@@ -308,15 +306,25 @@ impl Api {
         while expired_run.state != run::State::Complete {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
-            expired_run = match self
+            let mut conn = match self
                 .storage
-                .get_run(&namespace, &pipeline, expired_run.id)
+                .conn()
+                .await
+                .map_err(|e| Status::internal(e.to_string()))
+            {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("could not get run while performing run object expiry"; "error" => format!("{:?}", e));
+                    continue;
+                }
+            };
+
+            expired_run = match storage::runs::get(&mut conn, &namespace, &pipeline, expired_run.id)
                 .await
             {
                 Ok(run) => run,
                 Err(e) => {
                     error!("could not get run while performing run object expiry"; "error" => format!("{:?}", e));
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     continue;
                 }
             };
@@ -349,8 +357,32 @@ impl Api {
 
         store_info.is_expired = true;
 
+        let mut conn = match self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))
+        {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not delete run object for expiry processing"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
         expired_run.store_info = Some(store_info.clone());
-        if let Err(e) = self.storage.update_run(&expired_run).await {
+        if let Err(e) = storage::runs::update(
+            &mut conn,
+            &expired_run.namespace,
+            &expired_run.pipeline,
+            expired_run.id,
+            storage::runs::UpdatableFields {
+                store_info: Some(store_info.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not not update run for expiry processing"; "error" => format!("{:?}", e));
         }
 
@@ -373,8 +405,7 @@ impl Api {
         };
 
         // We ask for the limit of runs plus one extra.
-        let runs = match storage::runs::list_runs(&mut conn, 0, limit, &namespace, &pipeline).await
-        {
+        let runs = match storage::runs::list(&mut conn, 0, limit, &namespace, &pipeline).await {
             Ok(runs) => runs,
             Err(e) => {
                 error!("could not get runs for run log expiry processing"; "error" => format!("{:?}", e));
@@ -397,15 +428,25 @@ impl Api {
         while expired_run.state != run::State::Complete {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
-            expired_run = match self
+            let mut conn = match self
                 .storage
-                .get_run(&namespace, &pipeline, expired_run.id)
+                .conn()
+                .await
+                .map_err(|e| Status::internal(e.to_string()))
+            {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("could not get run while performing run log expiry"; "error" => format!("{:?}", e));
+                    continue;
+                }
+            };
+
+            expired_run = match storage::runs::get(&mut conn, &namespace, &pipeline, expired_run.id)
                 .await
             {
                 Ok(run) => run,
                 Err(e) => {
                     error!("could not get run while performing run log expiry"; "error" => format!("{:?}", e));
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     continue;
                 }
             };
@@ -641,7 +682,31 @@ impl Api {
     ) {
         run.state = run::State::Running;
 
-        if let Err(e) = self.storage.update_run(&run).await {
+        let mut conn = match self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))
+        {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not not update run during run monitoring"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
+        if let Err(e) = storage::runs::update(
+            &mut conn,
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            storage::runs::UpdatableFields {
+                state: Some(run::State::Running),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not not update run during run monitoring"; "error" => format!("{:?}", e));
             return;
         }
@@ -702,7 +767,19 @@ impl Api {
             run.set_finished();
         }
 
-        if let Err(e) = self.storage.update_run(&run).await {
+        if let Err(e) = storage::runs::update(
+            &mut conn,
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            storage::runs::UpdatableFields {
+                state: Some(run.state.clone()),
+                status: Some(run.status.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not not update run during run monitoring"; "error" => format!("{:?}", e));
             return;
         }
@@ -1107,22 +1184,19 @@ impl Api {
             vec![validate::is_valid_identifier],
         )?;
 
-        let mut conn = match self
+        let mut conn = self
             .storage
             .conn()
             .await
-            .map_err(|e| Status::internal(e.to_string()))
-        {
-            Ok(conn) => conn,
-            Err(_) => {
-                return Err(Status::internal(
-                    "could not create run; could not connect to db.",
-                ));
-            }
-        };
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        let mut tx = conn
+            .begin()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
 
         // Make sure the pipeline is ready to take new runs.
-        let pipeline = storage::pipelines::get(&mut conn, &args.namespace_id, &args.pipeline_id)
+        let pipeline = storage::pipelines::get(&mut tx, &args.namespace_id, &args.pipeline_id)
             .await
             .map_err(|e| match e {
                 storage::StorageError::NotFound => Status::not_found(format!(
@@ -1160,13 +1234,15 @@ impl Api {
             ),
         );
 
-        let id = self
-            .storage
-            .create_run(&new_run)
+        let id = storage::runs::insert(&mut tx, &new_run)
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
         new_run.id = id;
+
+        tx.commit()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
 
         // Publish that the run has started.
         let event_self = self.clone();

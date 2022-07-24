@@ -10,14 +10,7 @@ pub mod trigger_registrations;
 mod tests;
 
 use sqlx::{migrate, pool::PoolConnection, Pool, Sqlite, SqlitePool};
-use std::{
-    error::Error,
-    fmt,
-    fs::File,
-    io,
-    path::Path,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{error::Error, fmt, fs::File, io, path::Path};
 
 /// The maximum amount of rows that can be returned by any single query.
 const MAX_ROW_LIMIT: u64 = 200;
@@ -107,13 +100,4 @@ impl Db {
             .await
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))
     }
-}
-
-pub fn epoch() -> u64 {
-    let current_epoch = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
-
-    u64::try_from(current_epoch).unwrap()
 }

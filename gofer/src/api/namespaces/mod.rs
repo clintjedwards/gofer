@@ -1,4 +1,4 @@
-use crate::api::{validate, Api};
+use crate::api::{epoch, validate, Api};
 use crate::storage;
 use gofer_models::{event, namespace};
 use gofer_proto::{
@@ -109,10 +109,11 @@ impl Api {
 
         storage::namespaces::update(
             &mut conn,
+            &args.id,
             storage::namespaces::UpdatableFields {
-                id: args.id.clone(),
                 name: args.name.is_empty().not().then(|| args.name),
                 description: args.description.is_empty().not().then(|| args.description),
+                modified: Some(epoch()),
             },
         )
         .await
