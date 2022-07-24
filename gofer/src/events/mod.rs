@@ -2,13 +2,16 @@
 mod tests;
 
 use crate::storage::{self, StorageError};
-use crossbeam::{channel};
+use crossbeam::channel;
 use dashmap::DashMap;
 use gofer_models::event::{Event, Kind};
 use nanoid::nanoid;
 use slog_scope::{debug, error, info};
-use std::{time::{Duration, SystemTime, UNIX_EPOCH}, ops::Deref};
-use std::{mem};
+use std::mem;
+use std::{
+    ops::Deref,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EventError {
@@ -34,7 +37,11 @@ pub struct Subscription<'a> {
 
 impl Drop for Subscription<'_> {
     fn drop(&mut self) {
-        if let Some(subscription_map) = self.event_bus.event_channel_map.get_mut(&mem::discriminant(&self.kind)) {
+        if let Some(subscription_map) = self
+            .event_bus
+            .event_channel_map
+            .get_mut(&mem::discriminant(&self.kind))
+        {
             let subscription_map = subscription_map.value();
             let send_channel = subscription_map.remove(&self.id);
 
@@ -94,7 +101,8 @@ impl EventBus {
     ///
     /// Additionally the subscription return type automatically drops it's subscription upon drop/loss of scope.
     pub async fn subscribe(&self, kind: Kind) -> Result<Subscription<'_>, EventError> {
-        let subscription_map = self.event_channel_map
+        let subscription_map = self
+            .event_channel_map
             .entry(mem::discriminant(&kind))
             .or_insert_with(DashMap::new);
 
@@ -116,7 +124,15 @@ impl EventBus {
     pub async fn publish(&self, kind: Kind) -> Option<Event> {
         let mut new_event = Event::new(kind.clone());
 
-        let id = match self.storage.create_event(&new_event).await {
+        let mut conn = match self.storage.conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
+                return None;
+            }
+        };
+
+        let id = match storage::events::insert(&mut conn, &new_event).await {
             Ok(id) => id,
             Err(e) => {
                 error!("could not publish event"; "event" => new_event.kind.to_string(), "error" => e.to_string());
@@ -162,8 +178,16 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), Stora
     let mut offset = 0;
     let mut total_pruned = 0;
 
+    let mut conn = match storage.conn().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!("could not prune events; connection error");
+            return Err(e);
+        }
+    };
+
     loop {
-        let events = storage.list_events(offset, 50, false).await?;
+        let events = storage::events::list(&mut conn, offset, 50, false).await?;
 
         for event in &events {
             if is_past_cut_date(event, retention) {
@@ -174,7 +198,7 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), Stora
 
                 total_pruned += 1;
 
-                storage.delete_event(event.id).await?;
+                storage::events::delete(&mut conn, event.id).await?;
             }
         }
 

@@ -2,7 +2,7 @@ use crate::storage::runs;
 use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
 use gofer_models::{pipeline, task};
-use sqlx::{sqlite::SqliteRow, Acquire, Execute, QueryBuilder, Row, Sqlite, SqliteConnection};
+use sqlx::{sqlite::SqliteRow, Acquire, QueryBuilder, Row, Sqlite, SqliteConnection};
 use std::{collections::HashMap, ops::Deref};
 use std::{ops::Not, str::FromStr};
 

@@ -1,47 +1,54 @@
-use std::ops::Deref;
+use std::ops::{Deref, Not};
 
-use crate::storage::{Db, SqliteErrors, StorageError, MAX_ROW_LIMIT};
+use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::task_run::{State, Status, TaskRun};
-use sqlx::{sqlite::SqliteRow, Acquire, Row};
+use gofer_models::task_run::{Failure, State, Status, TaskRun};
+use gofer_models::Variable;
+use sqlx::{sqlite::SqliteRow, QueryBuilder, Row, Sqlite, SqliteConnection};
 use std::str::FromStr;
 
-impl Db {
-    /// Return all task_run for a given namespace/pipeline/run; limited to 200 rows per response.
-    pub async fn list_task_runs(
-        &self,
-        offset: u64,
-        limit: u64,
-        namespace: &str,
-        pipeline: &str,
-        run: u64,
-    ) -> Result<Vec<TaskRun>, StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
+#[derive(Debug, Default)]
+pub struct UpdatableFields {
+    pub started: Option<u64>,
+    pub ended: Option<u64>,
+    pub exit_code: Option<u64>,
+    pub failure: Option<Failure>,
+    pub logs_expired: Option<bool>,
+    pub logs_removed: Option<bool>,
+    pub state: Option<State>,
+    pub status: Option<Status>,
+    pub scheduler_id: Option<String>,
+    pub variables: Option<Vec<Variable>>,
+}
 
-        let mut limit = limit;
+/// Return all task_run for a given namespace/pipeline/run; limited to 200 rows per response.
+pub async fn list(
+    conn: &mut SqliteConnection,
+    offset: u64,
+    limit: u64,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: u64,
+) -> Result<Vec<TaskRun>, StorageError> {
+    let mut limit = limit;
 
-        if limit == 0 || limit > MAX_ROW_LIMIT {
-            limit = MAX_ROW_LIMIT;
-        }
+    if limit == 0 || limit > MAX_ROW_LIMIT {
+        limit = MAX_ROW_LIMIT;
+    }
 
-        // First we need to get the general task_run information.
-        let task_runs = sqlx::query(
+    // First we need to get the general task_run information.
+    let task_runs = sqlx::query(
             r#"
-        SELECT namespace, pipeline, run, id, task, created, started, ended, exit_code, failure,
-        logs_expired, logs_removed, state, status, scheduler_id, variables
-        FROM task_runs
-        WHERE namespace = ? AND pipeline = ? AND run = ?
-        LIMIT ?
-        OFFSET ?;
-            "#,
+SELECT namespace, pipeline, run, id, task, created, started, ended, exit_code, failure,
+logs_expired, logs_removed, state, status, scheduler_id, variables
+FROM task_runs
+WHERE namespace = ? AND pipeline = ? AND run = ?
+LIMIT ?
+OFFSET ?;"#,
         )
-        .bind(namespace)
-        .bind(pipeline)
-        .bind(run as i64)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(run_id as i64)
         .bind(limit as i64)
         .bind(offset as i64)
         .map(|row: SqliteRow| TaskRun {
@@ -59,11 +66,7 @@ impl Db {
             exit_code: row.get("exit_code"),
             failure: {
                 let failure = row.get::<String, _>("failure");
-                if failure.is_empty() {
-                    None
-                } else {
-                    serde_json::from_str(&failure).unwrap()
-                }
+                failure.is_empty().not().then(|| serde_json::from_str(&failure).unwrap())
             },
             logs_expired: {
                 let logs_expired = match row.get::<i64, _>("logs_expired") {
@@ -101,116 +104,91 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
         })
-        .fetch_all(&mut conn)
+        .fetch_all(conn)
         .map_err(|e| StorageError::Unknown(e.to_string()))
         .await?;
 
-        Ok(task_runs)
-    }
+    Ok(task_runs)
+}
 
-    /// Create a new task_run.
-    pub async fn create_task_run(&self, task_run: &TaskRun) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
+/// Insert a new task_run.
+pub async fn insert(conn: &mut SqliteConnection, task_run: &TaskRun) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+INSERT INTO task_runs (namespace, pipeline, run, id, task, created, started, ended,
+    exit_code, failure, logs_expired, logs_removed, state, status, scheduler_id, variables)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"#,
+    )
+    .bind(&task_run.namespace)
+    .bind(&task_run.pipeline)
+    .bind(task_run.run as i64)
+    .bind(&task_run.id)
+    .bind(serde_json::to_string(&task_run.task).unwrap())
+    .bind(task_run.created as i64)
+    .bind(task_run.started as i64)
+    .bind(task_run.ended as i64)
+    .bind(task_run.exit_code)
+    .bind(
+        task_run
+            .failure
+            .is_none()
+            .not()
+            .then(|| serde_json::to_string(&task_run.failure).unwrap()),
+    )
+    .bind({
+        let task_run_bool: i32 = match task_run.logs_expired {
+            false => 0,
+            true => 1,
+        };
 
-        let mut tx = conn
-            .begin()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
+        task_run_bool
+    })
+    .bind({
+        let task_run_bool: i32 = match task_run.logs_removed {
+            false => 0,
+            true => 1,
+        };
 
-        sqlx::query(
-            r#"
-        INSERT INTO task_runs (namespace, pipeline, run, id, task, created, started, ended,
-            exit_code, failure, logs_expired, logs_removed, state, status, scheduler_id, variables)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-            "#,
-        )
-        .bind(&task_run.namespace)
-        .bind(&task_run.pipeline)
-        .bind(task_run.run as i64)
-        .bind(&task_run.id)
-        .bind(serde_json::to_string(&task_run.task).unwrap())
-        .bind(task_run.created as i64)
-        .bind(task_run.started as i64)
-        .bind(task_run.ended as i64)
-        .bind(task_run.exit_code)
-        .bind({
-            if task_run.failure.is_none() {
-                None
-            } else {
-                Some(serde_json::to_string(&task_run.failure).unwrap())
-            }
-        })
-        .bind({
-            let task_run_bool: i32 = match task_run.logs_expired {
-                false => 0,
-                true => 1,
-            };
-
-            task_run_bool
-        })
-        .bind({
-            let task_run_bool: i32 = match task_run.logs_removed {
-                false => 0,
-                true => 1,
-            };
-
-            task_run_bool
-        })
-        .bind(task_run.state.to_string())
-        .bind(task_run.status.to_string())
-        .bind(&task_run.scheduler_id)
-        .bind(serde_json::to_string(&task_run.variables).unwrap())
-        .execute(&mut tx)
-        .map_err(|e| match e {
-            sqlx::Error::Database(database_err) => {
-                if let Some(err_code) = database_err.code() {
-                    if err_code.deref() == SqliteErrors::Constraint.value() {
-                        return StorageError::Exists;
-                    }
+        task_run_bool
+    })
+    .bind(task_run.state.to_string())
+    .bind(task_run.status.to_string())
+    .bind(&task_run.scheduler_id)
+    .bind(serde_json::to_string(&task_run.variables).unwrap())
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::Database(database_err) => {
+            if let Some(err_code) = database_err.code() {
+                if err_code.deref() == SqliteErrors::Constraint.value() {
+                    return StorageError::Exists;
                 }
-                return StorageError::Unknown(database_err.message().to_string());
             }
-            _ => StorageError::Unknown("".to_string()),
-        })
-        .await?;
+            return StorageError::Unknown(database_err.message().to_string());
+        }
+        _ => StorageError::Unknown("".to_string()),
+    })
+    .await
+}
 
-        tx.commit()
-            .await
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .unwrap();
-
-        Ok(())
-    }
-
-    /// Get details on a specific task_run.
-    pub async fn get_task_run(
-        &self,
-        namespace: &str,
-        pipeline: &str,
-        run: u64,
-        id: &str,
-    ) -> Result<TaskRun, StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        let task_run = sqlx::query(
+/// Get details on a specific task_run.
+pub async fn get(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: u64,
+    id: &str,
+) -> Result<TaskRun, StorageError> {
+    let task_run = sqlx::query(
             r#"
-        SELECT namespace, pipeline, run, id, task, created, started, ended, exit_code, failure,
-        logs_expired, logs_removed, state, status, scheduler_id, variables
-        FROM task_runs
-        WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;
-            "#,
+SELECT namespace, pipeline, run, id, task, created, started, ended, exit_code, failure,
+logs_expired, logs_removed, state, status, scheduler_id, variables
+FROM task_runs
+WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;"#,
         )
-        .bind(namespace)
-        .bind(pipeline)
-        .bind(run as i64)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(run_id as i64)
         .bind(id)
         .map(|row: SqliteRow| TaskRun {
             namespace: row.get("namespace"),
@@ -227,11 +205,7 @@ impl Db {
             exit_code: row.get("exit_code"),
             failure: {
                 let failure = row.get::<String, _>("failure");
-                if failure.is_empty() {
-                    None
-                } else {
-                    serde_json::from_str(&failure).unwrap()
-                }
+                failure.is_empty().not().then(||serde_json::from_str(&failure).unwrap())
             },
             logs_expired: {
                 let logs_expired = match row.get::<i64, _>("logs_expired") {
@@ -269,127 +243,142 @@ impl Db {
                 serde_json::from_str(&variables_json).unwrap()
             },
         })
-        .fetch_one(&mut conn)
+        .fetch_one(conn)
         .map_err(|e| match e {
             sqlx::Error::RowNotFound => StorageError::NotFound,
             _ => StorageError::Unknown(e.to_string()),
         })
         .await?;
 
-        Ok(task_run)
+    Ok(task_run)
+}
+
+/// Update a specific task_run.
+pub async fn update(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: u64,
+    id: &str,
+    fields: UpdatableFields,
+) -> Result<(), StorageError> {
+    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE task_runs SET "#);
+
+    let mut updated_fields_total = 0;
+
+    if let Some(started) = fields.started {
+        update_query.push("started = ");
+        update_query.push_bind(started as i64);
+        updated_fields_total += 1;
     }
 
-    pub async fn update_task_run_state(&self, task_run: &TaskRun) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        sqlx::query(
-            r#"
-        UPDATE task_runs
-        SET state = ?
-        WHERE namespace = ? AND pipeline = ? AND Run = ? AND id = ?;
-            "#,
-        )
-        .bind(&task_run.state.to_string())
-        .bind(&task_run.namespace)
-        .bind(&task_run.pipeline)
-        .bind(task_run.run as i64)
-        .bind(&task_run.id)
-        .execute(&mut conn)
-        .map_ok(|_| ())
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
-        .await?;
-
-        Ok(())
+    if let Some(ended) = fields.ended {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("ended = ");
+        update_query.push_bind(ended as i64);
+        updated_fields_total += 1;
     }
 
-    pub async fn update_task_run_status(&self, task_run: &TaskRun) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        sqlx::query(
-            r#"
-        UPDATE task_runs
-        SET status = ?
-        WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;
-            "#,
-        )
-        .bind(&task_run.status.to_string())
-        .bind(&task_run.namespace)
-        .bind(&task_run.pipeline)
-        .bind(task_run.run as i64)
-        .bind(&task_run.id)
-        .execute(&mut conn)
-        .map_ok(|_| ())
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
-        .await?;
-
-        Ok(())
+    if let Some(exit_code) = fields.exit_code {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("exit_code = ");
+        update_query.push_bind(exit_code as i64);
+        updated_fields_total += 1;
     }
 
-    /// Update a specific task_run.
-    pub async fn update_task_run(&self, task_run: &TaskRun) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
+    if let Some(failure) = fields.failure {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("failure = ");
+        update_query.push_bind(serde_json::to_string(&failure).unwrap());
+        updated_fields_total += 1;
+    }
 
-        sqlx::query(
-            r#"
-        UPDATE task_runs
-        SET started = ?, ended = ?, exit_code = ?, failure = ?, logs_expired = ?, logs_removed = ?,
-        state = ?, status = ?, scheduler_id = ?, variables = ?
-        WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;
-            "#,
-        )
-        .bind(task_run.started as i64)
-        .bind(task_run.ended as i64)
-        .bind(task_run.exit_code)
-        .bind({
-            if task_run.failure.is_none() {
-                None
-            } else {
-                Some(serde_json::to_string(&task_run.failure).unwrap())
+    if let Some(logs_expired) = fields.logs_expired {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("logs_expired = ");
+        update_query.push_bind::<i64>({
+            match logs_expired {
+                false => 0,
+                true => 1,
             }
-        })
-        .bind({
-            let task_run_bool: i32 = match task_run.logs_expired {
+        });
+        updated_fields_total += 1;
+    }
+
+    if let Some(logs_removed) = fields.logs_removed {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("logs_removed = ");
+        update_query.push_bind::<i64>({
+            match logs_removed {
                 false => 0,
                 true => 1,
-            };
+            }
+        });
+        updated_fields_total += 1;
+    }
 
-            task_run_bool
-        })
-        .bind({
-            let task_run_bool: i32 = match task_run.logs_removed {
-                false => 0,
-                true => 1,
-            };
+    if let Some(state) = fields.state {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("state = ");
+        update_query.push_bind(state.to_string());
+        updated_fields_total += 1;
+    }
 
-            task_run_bool
-        })
-        .bind(task_run.state.to_string())
-        .bind(task_run.status.to_string())
-        .bind(&task_run.scheduler_id)
-        .bind(serde_json::to_string(&task_run.variables).unwrap())
-        .bind(&task_run.namespace)
-        .bind(&task_run.pipeline)
-        .bind(task_run.run as i64)
-        .bind(&task_run.id)
-        .execute(&mut conn)
+    if let Some(status) = fields.status {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("status = ");
+        update_query.push_bind(status.to_string());
+        updated_fields_total += 1;
+    }
+
+    if let Some(scheduler_id) = fields.scheduler_id {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("scheduler_id = ");
+        update_query.push_bind(scheduler_id);
+        updated_fields_total += 1;
+    }
+
+    if let Some(variables) = fields.variables {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("variables = ");
+        update_query.push_bind(serde_json::to_string(&variables).unwrap());
+    }
+
+    update_query.push(" WHERE namespace = ");
+    update_query.push_bind(namespace_id);
+
+    update_query.push(" AND pipeline = ");
+    update_query.push_bind(pipeline_id);
+
+    update_query.push(" AND run = ");
+    update_query.push_bind(run_id as i64);
+
+    update_query.push(" AND id = ");
+    update_query.push_bind(id);
+    update_query.push(";");
+
+    let update_query = update_query.build();
+
+    update_query
+        .execute(conn)
         .map_ok(|_| ())
         .map_err(|e| match e {
             sqlx::Error::RowNotFound => StorageError::NotFound,
@@ -397,38 +386,30 @@ impl Db {
         })
         .await?;
 
-        Ok(())
-    }
+    Ok(())
+}
 
-    pub async fn delete_task_run(
-        &self,
-        namespace: &str,
-        pipeline: &str,
-        run: u64,
-        id: &str,
-    ) -> Result<(), StorageError> {
-        let mut conn = self
-            .pool
-            .acquire()
-            .map_err(|e| StorageError::Unknown(e.to_string()))
-            .await?;
-
-        sqlx::query(
-            r#"
-        DELETE FROM task_runs
-        WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;
-            "#,
-        )
-        .bind(namespace)
-        .bind(pipeline)
-        .bind(run as i64)
-        .bind(id)
-        .execute(&mut conn)
-        .map_ok(|_| ())
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => StorageError::NotFound,
-            _ => StorageError::Unknown(e.to_string()),
-        })
-        .await
-    }
+pub async fn delete(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: u64,
+    id: &str,
+) -> Result<(), StorageError> {
+    sqlx::query(
+        r#"
+DELETE FROM task_runs
+WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;"#,
+    )
+    .bind(namespace_id)
+    .bind(pipeline_id)
+    .bind(run_id as i64)
+    .bind(id)
+    .execute(conn)
+    .map_ok(|_| ())
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => StorageError::NotFound,
+        _ => StorageError::Unknown(e.to_string()),
+    })
+    .await
 }

@@ -19,6 +19,14 @@ impl TestHarness {
     }
 }
 
+impl Deref for TestHarness {
+    type Target = Db;
+
+    fn deref(&self) -> &Self::Target {
+        &self.db
+    }
+}
+
 impl Drop for TestHarness {
     fn drop(&mut self) {
         std::fs::remove_file(&self.storage_path).unwrap();
@@ -30,6 +38,7 @@ impl Drop for TestHarness {
 #[tokio::test]
 async fn publish() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.db.conn().await.unwrap();
     let event_bus = EventBus::new(harness.db.clone(), 5, 5000);
 
     let new_event = event_bus
@@ -41,7 +50,7 @@ async fn publish() {
 
     assert_eq!(new_event.id, 1);
 
-    let retrieved_event = harness.db.get_event(new_event.id).await.unwrap();
+    let retrieved_event = storage::events::get(&mut conn, new_event.id).await.unwrap();
 
     assert_eq!(new_event, retrieved_event);
 }
@@ -117,6 +126,7 @@ async fn correctly_prune_events() {
     use Kind::{CreatedNamespace, CreatedPipeline};
 
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
     let event_bus = EventBus::new(harness.db.clone(), 1, 5000);
 
     event_bus
@@ -154,12 +164,12 @@ async fn correctly_prune_events() {
         .await
         .unwrap();
 
-    let events = harness.db.list_events(0, 0, false).await.unwrap();
+    let events = storage::events::list(&mut conn, 0, 0, false).await.unwrap();
     assert_eq!(events.len(), 2);
 
-    let event = harness.db.get_event(1).await.unwrap_err();
+    let event = storage::events::get(&mut conn, 1).await.unwrap_err();
     assert_eq!(event, StorageError::NotFound);
 
-    let event = harness.db.get_event(3).await.unwrap();
+    let event = storage::events::get(&mut conn, 3).await.unwrap();
     assert_eq!(event_three, event);
 }

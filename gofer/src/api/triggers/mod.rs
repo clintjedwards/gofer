@@ -1,7 +1,7 @@
 mod install;
 
 use crate::api::{epoch, get_tls_client_config, Api};
-use crate::scheduler;
+use crate::{scheduler, storage};
 use anyhow::{anyhow, Result};
 use gofer_proto::{
     trigger_service_client::TriggerServiceClient, TriggerInfoRequest, TriggerInfoResponse,
@@ -115,7 +115,18 @@ impl Api {
     }
 
     pub async fn start_triggers(&self) -> Result<()> {
-        let registrations = self.storage.list_trigger_registrations(0, 0).await?;
+        let mut conn = match self.storage.conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not start trigger"; "error" => format!("{:?}", e));
+                return Err(anyhow!(
+                    "could not start trigger; connection error; {:?}",
+                    e
+                ));
+            }
+        };
+
+        let registrations = storage::trigger_registrations::list(&mut conn, 0, 0).await?;
 
         for trigger in registrations {
             let trigger_info = match self.start_trigger(&trigger).await {

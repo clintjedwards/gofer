@@ -8,7 +8,7 @@ use gofer_models::{event, pipeline, run, task, task_run};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
 use gofer_proto::{StartRunRequest, StartRunResponse};
 use slog_scope::{debug, error};
-use sqlx::Acquire;
+use sqlx::{Acquire, SqliteConnection};
 use std::collections::HashMap;
 use std::sync::Arc;
 use strum::{Display, EnumString};
@@ -455,10 +455,15 @@ impl Api {
         let mut task_runs: Vec<task_run::TaskRun>;
 
         'outer: loop {
-            task_runs = match self
-                .storage
-                .list_task_runs(0, 0, &namespace, &pipeline, expired_run.id)
-                .await
+            task_runs = match storage::task_runs::list(
+                &mut conn,
+                0,
+                0,
+                &namespace,
+                &pipeline,
+                expired_run.id,
+            )
+            .await
             {
                 Ok(task_runs) => task_runs,
                 Err(e) => {
@@ -496,7 +501,20 @@ impl Api {
             task_run.logs_expired = true;
             task_run.logs_removed = true;
 
-            if let Err(e) = self.storage.update_task_run(task_run).await {
+            if let Err(e) = storage::task_runs::update(
+                &mut conn,
+                &namespace,
+                &pipeline,
+                expired_run.id,
+                &task_run.id,
+                storage::task_runs::UpdatableFields {
+                    logs_expired: Some(true),
+                    logs_removed: Some(true),
+                    ..Default::default()
+                },
+            )
+            .await
+            {
                 error!("could not update task run while removing log files";
                         "task run id" => task_run.id.clone(), "error" => format!("{:?}", e));
                 continue;
@@ -873,11 +891,24 @@ impl Api {
 
     pub async fn mark_task_run_complete(
         self: Arc<Self>,
+        conn: &mut SqliteConnection,
         run: &run::Run,
         task_run: &task_run::TaskRun,
         status_map: &StatusMap,
     ) {
-        if let Err(e) = self.storage.update_task_run(task_run).await {
+        if let Err(e) = storage::task_runs::update(
+            conn,
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            &task_run.id,
+            storage::task_runs::UpdatableFields {
+                state: Some(task_run::State::Complete),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not update task run"; "error" => format!("{:?}", e));
             return;
         }
@@ -914,6 +945,19 @@ impl Api {
         task: task::Task,
         status_map: Arc<StatusMap>,
     ) {
+        let mut conn = match self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))
+        {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("could not launch task; database connection error"; "error" => format!("{:?}", e));
+                return;
+            }
+        };
+
         let mut new_task_run =
             task_run::TaskRun::new(&run.namespace, &run.pipeline, run.id, task.clone());
 
@@ -938,7 +982,7 @@ impl Api {
 
         // Update the task run state in the database/status map.
         new_task_run.state = task_run::State::Processing;
-        if let Err(e) = self.storage.create_task_run(&new_task_run).await {
+        if let Err(e) = storage::task_runs::insert(&mut conn, &new_task_run).await {
             error!("could not add task run to storage"; "error" => format!("{:?}", e));
             return;
         }
@@ -951,7 +995,19 @@ impl Api {
         // Determine the task run's final variable set and pass them in.
         new_task_run.variables = combine_variables(&run, &task);
 
-        if let Err(e) = self.storage.update_task_run(&new_task_run).await {
+        if let Err(e) = storage::task_runs::update(
+            &mut conn,
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            &new_task_run.id,
+            storage::task_runs::UpdatableFields {
+                variables: Some(new_task_run.variables.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not update task run"; "error" => format!("{:?}", e));
             return;
         }
@@ -960,7 +1016,19 @@ impl Api {
         // finish running.
 
         new_task_run.state = task_run::State::Waiting;
-        if let Err(e) = self.storage.update_task_run_state(&new_task_run).await {
+        if let Err(e) = storage::task_runs::update(
+            &mut conn,
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            &new_task_run.id,
+            storage::task_runs::UpdatableFields {
+                state: Some(new_task_run.state.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not update task run"; "error" => format!("{:?}", e));
         }
 
@@ -970,7 +1038,19 @@ impl Api {
         }
 
         new_task_run.state = task_run::State::Processing;
-        if let Err(e) = self.storage.update_task_run_state(&new_task_run).await {
+        if let Err(e) = storage::task_runs::update(
+            &mut conn,
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            &new_task_run.id,
+            storage::task_runs::UpdatableFields {
+                state: Some(new_task_run.state.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not update task run"; "error" => format!("{:?}", e));
         }
 
@@ -986,7 +1066,20 @@ impl Api {
                 None,
             );
 
-            if let Err(e) = self.storage.update_task_run(&new_task_run).await {
+            if let Err(e) = storage::task_runs::update(
+                &mut conn,
+                &run.namespace,
+                &run.pipeline,
+                run.id,
+                &new_task_run.id,
+                storage::task_runs::UpdatableFields {
+                    status: Some(new_task_run.status.clone()),
+                    failure: new_task_run.failure.clone(),
+                    ..Default::default()
+                },
+            )
+            .await
+            {
                 error!("could not update task run"; "error" => format!("{:?}", e));
                 return;
             }
@@ -1045,7 +1138,7 @@ impl Api {
                     None,
                 );
 
-            self.mark_task_run_complete(&run, &new_task_run, &status_map)
+            self.mark_task_run_complete(&mut conn, &run, &new_task_run, &status_map)
                 .await;
             return;
         };
@@ -1100,13 +1193,25 @@ impl Api {
                 None,
             );
 
-            self.mark_task_run_complete(&run, &new_task_run, &status_map)
+            self.mark_task_run_complete(&mut conn, &run, &new_task_run, &status_map)
                 .await;
             return;
         };
 
         new_task_run.state = task_run::State::Running;
-        if let Err(e) = self.storage.update_task_run_state(&new_task_run).await {
+        if let Err(e) = storage::task_runs::update(
+            &mut conn,
+            &run.namespace,
+            &run.pipeline,
+            run.id,
+            &new_task_run.id,
+            storage::task_runs::UpdatableFields {
+                state: Some(new_task_run.state.clone()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
             error!("could not update task run"; "error" => format!("{:?}", e));
             return;
         }
@@ -1121,7 +1226,7 @@ impl Api {
             .monitor_task_run(container_name, &mut new_task_run)
             .await;
 
-        self.mark_task_run_complete(&run, &new_task_run, &status_map)
+        self.mark_task_run_complete(&mut conn, &run, &new_task_run, &status_map)
             .await;
     }
 

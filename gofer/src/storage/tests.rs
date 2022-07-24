@@ -1,5 +1,4 @@
 use super::*;
-use super::{namespaces, pipelines, runs};
 use gofer_models::*;
 use pretty_assertions::assert_eq;
 use rand::prelude::*;
@@ -322,109 +321,80 @@ async fn crud_task_runs() {
         test_task,
     );
 
-    harness.db.create_task_run(&test_task_run).await.unwrap();
+    task_runs::insert(&mut conn, &test_task_run).await.unwrap();
 
-    let task_runs = harness
-        .db
-        .list_task_runs(0, 0, &test_namespace.id, &test_pipeline.id, test_run.id)
-        .await
-        .unwrap();
+    let task_runs = task_runs::list(
+        &mut conn,
+        0,
+        0,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(task_runs.len(), 1);
     assert_eq!(task_runs[0], test_task_run);
 
-    let task_run = harness
-        .db
-        .get_task_run(
-            &test_namespace.id,
-            &test_pipeline.id,
-            test_run.id,
-            &test_task_run.id,
-        )
-        .await
-        .unwrap();
+    let task_run = task_runs::get(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+        &test_task_run.id,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(task_run, test_task_run);
 
     test_task_run.state = task_run::State::Complete;
-    harness.db.update_task_run(&test_task_run).await.unwrap();
+    task_runs::update(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+        &test_task_run.id,
+        task_runs::UpdatableFields {
+            state: Some(task_run::State::Complete),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
 
-    let task_run = harness
-        .db
-        .get_task_run(
-            &test_namespace.id,
-            &test_pipeline.id,
-            test_run.id,
-            &test_task_run.id,
-        )
-        .await
-        .unwrap();
+    let task_run = task_runs::get(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+        &test_task_run.id,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(task_run, test_task_run);
 
-    test_task_run.state = task_run::State::Processing;
+    task_runs::delete(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+        &test_task_run.id,
+    )
+    .await
+    .unwrap();
 
-    harness
-        .db
-        .update_task_run_state(&test_task_run)
-        .await
-        .unwrap();
-
-    let task_run = harness
-        .db
-        .get_task_run(
-            &test_namespace.id,
-            &test_pipeline.id,
-            test_run.id,
-            &test_task_run.id,
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(task_run.state, task_run::State::Processing);
-
-    test_task_run.status = task_run::Status::Failed;
-
-    harness
-        .db
-        .update_task_run_status(&test_task_run)
-        .await
-        .unwrap();
-
-    let task_run = harness
-        .db
-        .get_task_run(
-            &test_namespace.id,
-            &test_pipeline.id,
-            test_run.id,
-            &test_task_run.id,
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(task_run.status, task_run::Status::Failed);
-
-    harness
-        .db
-        .delete_task_run(
-            &test_namespace.id,
-            &test_pipeline.id,
-            test_run.id,
-            &test_task_run.id,
-        )
-        .await
-        .unwrap();
-
-    let task_run = harness
-        .db
-        .get_task_run(
-            &test_namespace.id,
-            &test_pipeline.id,
-            test_run.id,
-            &test_task_run.id,
-        )
-        .await
-        .unwrap_err();
+    let task_run = task_runs::get(
+        &mut conn,
+        &test_namespace.id,
+        &test_pipeline.id,
+        test_run.id,
+        &test_task_run.id,
+    )
+    .await
+    .unwrap_err();
 
     assert_eq!(task_run, StorageError::NotFound);
 }
@@ -433,6 +403,7 @@ async fn crud_task_runs() {
 /// Basic CRUD can be accomplished for events.
 async fn crud_events() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
 
     let mut test_event_one = event::Event::new(event::Kind::CreatedNamespace {
         namespace_id: "test_namespace".to_string(),
@@ -441,8 +412,8 @@ async fn crud_events() {
         namespace_id: "test_namespace".to_string(),
         pipeline_id: "test_pipeline".to_string(),
     });
-    let id_one = harness.db.create_event(&test_event_one).await.unwrap();
-    let id_two = harness.db.create_event(&test_event_two).await.unwrap();
+    let id_one = events::insert(&mut conn, &test_event_one).await.unwrap();
+    let id_two = events::insert(&mut conn, &test_event_two).await.unwrap();
 
     assert_eq!(id_one, 1);
     assert_eq!(id_two, 2);
@@ -450,17 +421,17 @@ async fn crud_events() {
     test_event_one.id = id_one;
     test_event_two.id = id_two;
 
-    let events = harness.db.list_events(0, 0, true).await.unwrap();
+    let events = events::list(&mut conn, 0, 0, true).await.unwrap();
 
     assert_eq!(events.len(), 2);
     assert_eq!(events[0], test_event_two);
     assert_eq!(events[1], test_event_one);
 
-    let event = harness.db.get_event(2).await.unwrap();
+    let event = events::get(&mut conn, 2).await.unwrap();
     assert_eq!(event, test_event_two);
 
-    harness.db.delete_event(1).await.unwrap();
-    let event = harness.db.get_event(1).await.unwrap_err();
+    events::delete(&mut conn, 1).await.unwrap();
+    let event = events::get(&mut conn, 1).await.unwrap_err();
 
     assert_eq!(event, StorageError::NotFound);
 }
@@ -469,6 +440,7 @@ async fn crud_events() {
 /// Basic CRUD can be accomplished for trigger_registrations.
 async fn crud_trigger_registrations() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
 
     let test_trigger_registration = trigger::Registration {
         name: "test_trigger".to_string(),
@@ -480,32 +452,24 @@ async fn crud_trigger_registrations() {
         status: trigger::Status::Enabled,
     };
 
-    harness
-        .db
-        .create_trigger_registration(&test_trigger_registration)
+    trigger_registrations::insert(&mut conn, &test_trigger_registration)
         .await
         .unwrap();
 
-    let triggers = harness.db.list_trigger_registrations(0, 0).await.unwrap();
+    let triggers = trigger_registrations::list(&mut conn, 0, 0).await.unwrap();
 
     assert_eq!(triggers.len(), 1);
     assert_eq!(triggers[0], test_trigger_registration);
 
-    let trigger = harness
-        .db
-        .get_trigger_registration("test_trigger")
+    let trigger = trigger_registrations::get(&mut conn, "test_trigger")
         .await
         .unwrap();
     assert_eq!(trigger, test_trigger_registration);
 
-    harness
-        .db
-        .delete_trigger_registration("test_trigger")
+    trigger_registrations::delete(&mut conn, "test_trigger")
         .await
         .unwrap();
-    let trigger = harness
-        .db
-        .get_trigger_registration("test_trigger")
+    let trigger = trigger_registrations::get(&mut conn, "test_trigger")
         .await
         .unwrap_err();
 
@@ -516,6 +480,7 @@ async fn crud_trigger_registrations() {
 /// Basic CRUD can be accomplished for notifier_registrations.
 async fn crud_notifier_registrations() {
     let harness = TestHarness::new().await;
+    let mut conn = harness.conn().await.unwrap();
 
     let test_notifier_registration = notifier::Registration {
         name: "test_notifier".to_string(),
@@ -527,32 +492,24 @@ async fn crud_notifier_registrations() {
         status: notifier::Status::Enabled,
     };
 
-    harness
-        .db
-        .create_notifier_registration(&test_notifier_registration)
+    notifier_registrations::insert(&mut conn, &test_notifier_registration)
         .await
         .unwrap();
 
-    let notifiers = harness.db.list_notifier_registrations(0, 0).await.unwrap();
+    let notifiers = notifier_registrations::list(&mut conn, 0, 0).await.unwrap();
 
     assert_eq!(notifiers.len(), 1);
     assert_eq!(notifiers[0], test_notifier_registration);
 
-    let notifier = harness
-        .db
-        .get_notifier_registration("test_notifier")
+    let notifier = notifier_registrations::get(&mut conn, "test_notifier")
         .await
         .unwrap();
     assert_eq!(notifier, test_notifier_registration);
 
-    harness
-        .db
-        .delete_notifier_registration("test_notifier")
+    notifier_registrations::delete(&mut conn, "test_notifier")
         .await
         .unwrap();
-    let notifier = harness
-        .db
-        .get_notifier_registration("test_notifier")
+    let notifier = notifier_registrations::get(&mut conn, "test_notifier")
         .await
         .unwrap_err();
 

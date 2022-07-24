@@ -34,8 +34,13 @@ impl Api {
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        self.storage
-            .create_trigger_registration(&args.clone().into())
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        storage::trigger_registrations::insert(&mut conn, &args.clone().into())
             .await
             .map_err(|e| match e {
                 storage::StorageError::Exists => Status::already_exists(format!(
