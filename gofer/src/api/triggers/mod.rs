@@ -5,10 +5,12 @@ use crate::{scheduler, storage};
 use anyhow::{anyhow, Result};
 use gofer_proto::{
     trigger_service_client::TriggerServiceClient, TriggerInfoRequest, TriggerInfoResponse,
+    TriggerShutdownRequest,
 };
 use nanoid::nanoid;
 use slog_scope::{debug, error, info};
 use std::collections::HashMap;
+use tonic::{metadata::MetadataValue, transport::Channel, Request};
 
 pub struct TriggerInfo {
     pub scheduler_id: Option<String>,
@@ -163,6 +165,59 @@ impl Api {
         Ok(())
     }
 
+    /// Attempt to stop a trigger by name. Attempts to perform a graceful shutdown by calling the trigger's
+    /// shutdown method.
+    pub async fn stop_trigger(&self, name: &str) -> Result<()> {
+        let trigger = match self.triggers.get(name) {
+            Some(trigger) => trigger,
+            None => return Err(anyhow::anyhow!("trigger does not exist")),
+        };
+
+        let url = match &trigger.url {
+            Some(url) => url,
+            None => return Err(anyhow::anyhow!("trigger has no url")),
+        };
+
+        let key = match &trigger.key {
+            Some(key) => key,
+            None => return Err(anyhow::anyhow!("trigger has no auth key")),
+        };
+
+        let tls_config = get_tls_client_config(url, self.conf.triggers.tls_ca.clone())?;
+        let channel = Channel::from_shared(url.clone())?
+            .tls_config(tls_config.clone())?
+            .connect()
+            .await?;
+
+        let token: MetadataValue<_> = format!("Bearer {}", key).parse()?;
+
+        let mut client =
+            TriggerServiceClient::with_interceptor(channel, move |mut req: Request<()>| {
+                req.metadata_mut().insert("authorization", token.clone());
+                Ok(req)
+            });
+
+        let request = tonic::Request::new(TriggerShutdownRequest {});
+        if let Err(e) = client.shutdown(request).await {
+            return Err(anyhow!("failed to call shutdown on trigger; {:?}", e));
+        }
+
+        self.triggers.remove(name);
+
+        Ok(())
+    }
+
+    /// Sends a shutdown request for each trigger Gofer knows about.
+    pub async fn stop_all_triggers(&self) {
+        for entry in &self.triggers {
+            let name = entry.key();
+            if let Err(e) = self.stop_trigger(name).await {
+                error!("could not stop trigger; {}", e);
+                continue;
+            }
+        }
+    }
+
     /// Check that the trigger's container has started and check that we can send the trigger the initial info packet.
     /// Returns when trigger is in state running and a successful info request has been made.
     /// attempts_limit allows the caller to set how many times they would like to retry.
@@ -173,8 +228,6 @@ impl Api {
         trigger_key: &str,
         attempts_limit: u8,
     ) -> Result<TriggerInfoResponse> {
-        use tonic::{metadata::MetadataValue, transport::Channel, Request};
-
         loop {
             let resp = self
                 .scheduler

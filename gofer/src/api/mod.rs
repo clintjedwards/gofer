@@ -9,14 +9,15 @@ mod validate;
 
 use crate::{conf, events, frontend, object_store, scheduler, secret_store, storage};
 use anyhow::anyhow;
+use axum_server::Handle;
 use dashmap::DashMap;
 use gofer_models::{event::Kind, namespace, notifier, trigger};
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
-use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{ops::Deref, str::FromStr};
+use std::{ops::Deref, str::FromStr, sync::Arc};
+use tokio_util::sync::CancellationToken;
 use tonic::transport::{Certificate, ClientTlsConfig, Uri};
 use tower::{steer::Steer, ServiceExt};
 
@@ -77,6 +78,9 @@ impl Deref for ApiWrapper {
 
 #[derive(Debug)]
 pub struct Api {
+    /// Used to cancel downstream threads on shutdown.
+    shutdown: CancellationToken,
+
     /// Various configurations needed by the api
     conf: conf::api::Config,
 
@@ -111,6 +115,7 @@ pub struct Api {
 impl Api {
     /// Create a new instance of API with all services started.
     pub async fn start(conf: conf::api::Config) {
+        let shutdown = CancellationToken::new();
         let storage = storage::Db::new(&conf.server.storage_path).await.unwrap();
         let scheduler = scheduler::init_scheduler(&conf.scheduler).await.unwrap();
         let object_store = object_store::init_object_store(&conf.object_store)
@@ -126,6 +131,7 @@ impl Api {
         ));
 
         let api = Api {
+            shutdown,
             conf,
             storage,
             scheduler,
@@ -136,9 +142,38 @@ impl Api {
             notifiers: DashMap::new(),
         };
 
+        let api = Arc::new(api);
+
         api.create_default_namespace().await.unwrap();
         api.start_triggers().await.unwrap();
-        api.start_service().await;
+
+        // Launch a thread that waits for ctrl-c and runs cleanup.
+        let server_handle = axum_server::Handle::new();
+        let server_cancel_handle = server_handle.clone();
+        let handle_api = api.clone();
+        tokio::spawn(async move { handle_api.handle_shutdown(server_cancel_handle).await });
+
+        api.start_service(server_handle).await;
+    }
+
+    pub async fn handle_shutdown(&self, server_handle: Handle) {
+        match tokio::signal::ctrl_c().await {
+            Ok(()) => {}
+            Err(err) => {
+                eprintln!("Unable to listen for shutdown signal: {}", err);
+            }
+        }
+
+        // Send graceful stop to all triggers.
+        self.stop_all_triggers().await;
+
+        // Send cancel to all downstream threads.
+        self.shutdown.cancel();
+
+        // Shutdown the GRPC/HTTP service.
+        server_handle.graceful_shutdown(Some(tokio::time::Duration::from_secs(
+            self.conf.server.shutdown_timeout,
+        )));
     }
 
     /// Gofer starts with a default namespace that all users have access to.
@@ -166,8 +201,8 @@ impl Api {
         Ok(())
     }
 
-    /// Start a TLS enabled, multiplexed, grpc/http server.
-    async fn start_service(self) {
+    /// Start a TLS enabled, multiplexed, grpc/http server. Blocks until receives a ctrl-c.
+    async fn start_service(self: Arc<Self>, handle: Handle) {
         let config = self.conf.clone();
         let cert = config.server.tls_cert.clone().into_bytes();
         let key = config.server.tls_key.clone().into_bytes();
@@ -178,14 +213,14 @@ impl Api {
             .boxed_clone();
 
         let grpc = tonic::transport::Server::builder()
-            .add_service(GoferServer::new(ApiWrapper(Arc::new(self))))
+            .add_service(GoferServer::new(ApiWrapper(self)))
             .into_service()
             .map_response(|r| r.map(axum::body::boxed))
             .boxed_clone();
 
         let http_grpc = Steer::new(
             vec![http, grpc],
-            |req: &http::Request<hyper::Body>, _svcs: &[_]| {
+            |req: &'_ http::Request<hyper::Body>, _svcs: &'_ [_]| {
                 if req.headers().get(CONTENT_TYPE).map(|v| v.as_bytes())
                     != Some(b"application/grpc")
                 {
@@ -207,9 +242,12 @@ impl Api {
         info!("Started multiplexed, TLS enabled, grpc/http service"; "url" => config.server.url.clone());
 
         axum_server::bind_rustls(config.server.url.parse().unwrap(), tls_config)
+            .handle(handle)
             .addr_incoming_config(tcp_settings)
             .serve(tower::make::Shared::new(http_grpc))
             .await
             .expect("server exited unexpectedly");
+
+        info!("Gracefully shutdown grpc/http service");
     }
 }

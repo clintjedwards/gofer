@@ -17,6 +17,7 @@ task_run_logs_dir = "/tmp"
 
 [server]
 url = "127.0.0.1:8080"
+shutdown_timeout = 15          # How many seconds to wait for the server to gracefully shutdown.
 storage_path = "/tmp/gofer.db"
 tls_cert = ""
 tls_key = ""

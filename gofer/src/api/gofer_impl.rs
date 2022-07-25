@@ -140,7 +140,8 @@ impl Gofer for ApiWrapper {
         &self,
         request: Request<RetryRunRequest>,
     ) -> Result<Response<RetryRunResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.deref().clone().retry_run_handler(args).await
     }
 
     async fn cancel_run(

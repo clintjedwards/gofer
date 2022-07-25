@@ -191,3 +191,4 @@ prefixed with >2
 - There is a bug in update pipelines where if you set your pipeline parrallesim to anything but 0 and then try to set it back to 0 it probably wont update.
 - Change task_run failure object and maybe run failure object to say instead status_reason. This makes it so we can describe
   to the user complex status and they aren't specifically resereved for failures.
+- Do handle shit.

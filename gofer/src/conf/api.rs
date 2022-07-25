@@ -47,6 +47,9 @@ pub struct General {
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
 pub struct Server {
     pub url: String,
+
+    /// How many seconds to wait for the server to gracefully shutdown.
+    pub shutdown_timeout: u64,
     pub storage_path: String,
     pub tls_cert: String,
     pub tls_key: String,
@@ -131,8 +134,8 @@ mod tests {
     use crate::conf::{Kind, LOCALHOST_CA, LOCALHOST_CRT, LOCALHOST_KEY};
     use crate::{object_store, scheduler, secret_store};
     use config;
-    use std::env::{remove_var, set_var};
     use pretty_assertions::assert_eq;
+    use std::env::{remove_var, set_var};
 
     #[test]
     /// Test that the default api config is properly parsed from the configuration file.
@@ -164,6 +167,7 @@ mod tests {
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
                 storage_path: "/tmp/gofer.db".to_string(),
+                shutdown_timeout: 15,
                 ..Default::default()
             },
             scheduler: Scheduler {
@@ -227,6 +231,7 @@ mod tests {
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
+                shutdown_timeout: 15,
                 storage_path: "/tmp/gofer.db".to_string(),
                 tls_cert: LOCALHOST_CRT.to_string(),
                 tls_key: LOCALHOST_KEY.to_string(),
