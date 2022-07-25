@@ -344,6 +344,12 @@ impl Api {
             _ => Status::internal(e.to_string()),
         })?;
 
+        // Call stop container on every task_run that we know of.
+        // wait for their respective task_run monitors to mark the tasks as complete.
+        // Go in and correct the task run status as Cancelled instead of whatever it says.
+
+        // Hope that the run monitor does what it's supposed to.
+
         //TODO(clintjedwards): cancel run function
         //self.cancel_run();
 

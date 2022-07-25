@@ -44,8 +44,8 @@ impl Default for Status {
 }
 
 #[derive(Debug, Clone, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
-pub enum FailureKind {
-    /// Failure type is unknown, should never be in this state.
+pub enum Reason {
+    /// Gofer has no idea how the task run got into this state.
     Unknown,
     /// A non-zero exit code has been received.
     AbnormalExit,
@@ -59,12 +59,12 @@ pub enum FailureKind {
     Orphaned,
 }
 
-/// A description of the error the task run encountered as part of being executed.
+/// A description of the current status of a task run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Failure {
-    /// The type of error that has occurred. Can be anything from user error to scheduler error.
-    pub kind: FailureKind,
-    /// A short description of the incident to help the user understand how to proceed.
+pub struct StatusReason {
+    /// The kind of reason for the current status.
+    pub kind: Reason,
+    /// A short description of the reason.
     pub description: String,
 }
 
@@ -91,8 +91,6 @@ pub struct TaskRun {
     pub ended: u64,
     /// The exit code of the task run.
     pub exit_code: Option<u8>,
-    /// In the event of a failure provides extra information.
-    pub failure: Option<Failure>,
     /// If the logs have past their predefined retention time.
     pub logs_expired: bool,
     /// If the logs have been removed due to user request or automatic action based on expiry time.
@@ -101,6 +99,8 @@ pub struct TaskRun {
     pub state: State,
     /// Upon completion of the task run, the status it has completed with.
     pub status: Status,
+    /// Extra information about the current status.
+    pub status_reason: Option<StatusReason>,
     /// Identifier used by the scheduler to identify this specific task run container.
     /// This is provided by the scheduler at the time of scheduling.
     pub scheduler_id: Option<String>,
@@ -120,7 +120,7 @@ impl TaskRun {
             started: 0,
             ended: 0,
             exit_code: None,
-            failure: None,
+            status_reason: None,
             logs_expired: false,
             logs_removed: false,
             state: State::Processing,

@@ -153,12 +153,6 @@
 - Config is near completion we just have to fix: https://github.com/YushiOMOTE/econf/issues/11
 - Subscribe in the event system should ideally take an enum without the caller having to specify what is inside
   the enum. (what is inside gets thrown away anyway). Is there an easy way to do this?
-- TLS needs more time spent.
-
-  - We need to figure out how to pass a file path,
-  - It would be great if we could get untrusted certs to work, so we don't have to be in two different modes for
-    dev and prod.
-
 - If a trigger by the same name is already installed, we should refuse to install another.
   - Maybe have a force function in the CLI to say "hey, if you want we'll uninstall this for you".
 - Implement collect logs for triggers.
@@ -189,6 +183,3 @@ prefixed with >2
 - Consider changing notifier to something that means more of "something that gets run last". Notifiers might not actually
   notify, they might be used to just do something else externally.
 - There is a bug in update pipelines where if you set your pipeline parrallesim to anything but 0 and then try to set it back to 0 it probably wont update.
-- Change task_run failure object and maybe run failure object to say instead status_reason. This makes it so we can describe
-  to the user complex status and they aren't specifically resereved for failures.
-- Do handle shit.

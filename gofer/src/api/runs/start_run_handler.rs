@@ -78,7 +78,7 @@ impl RunStateMachine {
         id: &str,
         code: Option<u8>,
         status: task_run::Status,
-        failure: Option<task_run::Failure>,
+        failure: Option<task_run::StatusReason>,
     ) {
         // Update the task run's status inside the map first.
         self.task_runs.alter(id, |_, mut task_run| {
@@ -145,7 +145,7 @@ impl RunStateMachine {
     }
 
     /// Mark a run object as finished.
-    pub async fn set_run_finished(&self, status: run::Status, failure: Option<run::FailureInfo>) {
+    pub async fn set_run_finished(&self, status: run::Status, failure: Option<run::StatusReason>) {
         let mut conn = match self.api.storage.conn().await {
             Ok(conn) => conn,
             Err(e) => {
@@ -347,8 +347,8 @@ impl RunStateMachine {
                 task_run::Status::Unknown | task_run::Status::Failed => {
                     self.set_run_finished(
                         run::Status::Failed,
-                        Some(run::FailureInfo {
-                            reason: run::FailureReason::AbnormalExit,
+                        Some(run::StatusReason {
+                            reason: run::Reason::AbnormalExit,
                             description: "One or more task runs failed during execution"
                                 .to_string(),
                         }),
@@ -360,8 +360,8 @@ impl RunStateMachine {
                 task_run::Status::Cancelled => {
                     self.set_run_finished(
                         run::Status::Cancelled,
-                        Some(run::FailureInfo {
-                            reason: run::FailureReason::AbnormalExit,
+                        Some(run::StatusReason {
+                            reason: run::Reason::AbnormalExit,
                             description: "One or more task runs were cancelled during execution"
                                 .to_string(),
                         }),
@@ -392,8 +392,8 @@ impl RunStateMachine {
                         &id,
                         None,
                         task_run::Status::Unknown,
-                        Some(task_run::Failure {
-                            kind: task_run::FailureKind::SchedulerError,
+                        Some(task_run::StatusReason {
+                            kind: task_run::Reason::SchedulerError,
                             description: format!(
                                 "Could not query the scheduler for task run state; {}.",
                                 e
@@ -411,8 +411,8 @@ impl RunStateMachine {
                         &id,
                         resp.exit_code,
                         task_run::Status::Unknown,
-                        Some(task_run::Failure {
-                            kind: task_run::FailureKind::SchedulerError,
+                        Some(task_run::StatusReason {
+                            kind: task_run::Reason::SchedulerError,
                             description: "An unknown error has occurred on the scheduler level;
                                 This should never happen."
                                 .to_string(),
@@ -444,8 +444,8 @@ impl RunStateMachine {
                             &id,
                             Some(exit_code),
                             task_run::Status::Failed,
-                            Some(task_run::Failure {
-                                kind: task_run::FailureKind::AbnormalExit,
+                            Some(task_run::StatusReason {
+                                kind: task_run::Reason::AbnormalExit,
                                 description: "Task run exited with abnormal exit code.".to_string(),
                             }),
                         )
@@ -458,8 +458,8 @@ impl RunStateMachine {
                         &id,
                         None,
                         task_run::Status::Unknown,
-                        Some(task_run::Failure {
-                            kind: task_run::FailureKind::AbnormalExit,
+                        Some(task_run::StatusReason {
+                            kind: task_run::Reason::AbnormalExit,
                             description: "Task run exited without an exit code.".to_string(),
                         }),
                     )
@@ -981,8 +981,8 @@ impl RunStateMachine {
                 &new_task_run.id,
                 None,
                 task_run::Status::Skipped,
-                Some(task_run::Failure {
-                    kind: task_run::FailureKind::FailedPrecondition,
+                Some(task_run::StatusReason {
+                    kind: task_run::Reason::FailedPrecondition,
                     description: format!("task could not be run due to unmet dependencies; {}", e),
                 }),
             )
@@ -1004,8 +1004,8 @@ impl RunStateMachine {
         if let Err(e) = self.interpolate_vars(&mut env_vars).await {
             self.set_task_run_finished(&new_task_run.id, None,
                 task_run::Status::Failed,
-                Some(task_run::Failure {
-                        kind: task_run::FailureKind::FailedPrecondition,
+                Some(task_run::StatusReason {
+                        kind: task_run::Reason::FailedPrecondition,
                         description: format!(
                             "task could not be run due to inability to retrieve interpolated variables; {}",
                             e
@@ -1059,8 +1059,8 @@ impl RunStateMachine {
                 &new_task_run.id,
                 None,
                 task_run::Status::Failed,
-                Some(task_run::Failure {
-                    kind: task_run::FailureKind::SchedulerError,
+                Some(task_run::StatusReason {
+                    kind: task_run::Reason::SchedulerError,
                     description: format!(
                         "task could not be run due to inability to be scheduled; {}",
                         e
@@ -1074,7 +1074,7 @@ impl RunStateMachine {
         self.set_task_run_state(&mut conn, &new_task_run, task_run::State::Running)
             .await;
 
-        // Block until task-run status can be logged
+        // Block until task_run is finished and log results.
         self.monitor_task_run(container_name, new_task_run.id).await;
     }
 }

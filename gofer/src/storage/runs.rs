@@ -1,6 +1,6 @@
 use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::run::{FailureInfo, Run, State, Status, StoreInfo};
+use gofer_models::run::{Run, State, Status, StatusReason, StoreInfo};
 use gofer_models::Variable;
 use sqlx::{sqlite::SqliteRow, Acquire, QueryBuilder, Row, Sqlite, SqliteConnection};
 use std::ops::{Deref, Not};
@@ -11,7 +11,7 @@ pub struct UpdatableFields {
     pub ended: Option<u64>,
     pub state: Option<State>,
     pub status: Option<Status>,
-    pub failure_info: Option<FailureInfo>,
+    pub failure_info: Option<StatusReason>,
     pub variables: Option<Vec<Variable>>,
     pub store_info: Option<StoreInfo>,
 }
@@ -64,7 +64,7 @@ OFFSET ?;"#,
                 err: "could not parse value into run status enum".to_string(),
             })
             .unwrap(),
-        failure_info: {
+        status_reason: {
             let failure_info = row.get::<String, _>("failure_info");
             failure_info
                 .is_empty()
@@ -124,10 +124,10 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"#,
     .bind(run.state.to_string())
     .bind(run.status.to_string())
     .bind(
-        run.failure_info
+        run.status_reason
             .is_none()
             .not()
-            .then(|| serde_json::to_string(&run.failure_info).unwrap()),
+            .then(|| serde_json::to_string(&run.status_reason).unwrap()),
     )
     .bind(serde_json::to_string(&run.trigger).unwrap())
     .bind(serde_json::to_string(&run.variables).unwrap())
@@ -194,7 +194,7 @@ WHERE namespace = ? AND pipeline = ? AND id = ?;"#,
                 err: "could not parse value into run status enum".to_string(),
             })
             .unwrap(),
-        failure_info: {
+        status_reason: {
             let failure_info = row.get::<String, _>("failure_info");
             failure_info
                 .is_empty()

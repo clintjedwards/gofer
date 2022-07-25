@@ -130,7 +130,7 @@ pub struct Run {
     #[prost(enumeration="run::RunStatus", tag="7")]
     pub status: i32,
     #[prost(message, optional, tag="8")]
-    pub failure_info: ::core::option::Option<RunFailureInfo>,
+    pub status_reason: ::core::option::Option<RunStatusReason>,
     #[prost(string, repeated, tag="9")]
     pub task_runs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(message, optional, tag="10")]
@@ -160,17 +160,17 @@ pub mod run {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RunFailureInfo {
-    #[prost(enumeration="run_failure_info::RunFailureReason", tag="1")]
+pub struct RunStatusReason {
+    #[prost(enumeration="run_status_reason::RunStatusReason", tag="1")]
     pub reason: i32,
     #[prost(string, tag="2")]
     pub description: ::prost::alloc::string::String,
 }
-/// Nested message and enum types in `RunFailureInfo`.
-pub mod run_failure_info {
+/// Nested message and enum types in `RunStatusReason`.
+pub mod run_status_reason {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum RunFailureReason {
+    pub enum RunStatusReason {
         Unknown = 0,
         AbnormalExit = 1,
         SchedulerError = 2,
@@ -301,14 +301,14 @@ pub struct PipelineNotifierConfig {
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TaskRunFailure {
-    #[prost(enumeration="task_run_failure::Kind", tag="1")]
+pub struct TaskRunStatusReason {
+    #[prost(enumeration="task_run_status_reason::Kind", tag="1")]
     pub kind: i32,
     #[prost(string, tag="2")]
     pub description: ::prost::alloc::string::String,
 }
-/// Nested message and enum types in `TaskRunFailure`.
-pub mod task_run_failure {
+/// Nested message and enum types in `TaskRunStatusReason`.
+pub mod task_run_status_reason {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Kind {
@@ -329,7 +329,7 @@ pub struct TaskRun {
     #[prost(uint64, tag="3")]
     pub exit_code: u64,
     #[prost(message, optional, tag="4")]
-    pub failure: ::core::option::Option<TaskRunFailure>,
+    pub status_reason: ::core::option::Option<TaskRunStatusReason>,
     #[prost(string, tag="5")]
     pub id: ::prost::alloc::string::String,
     #[prost(bool, tag="6")]

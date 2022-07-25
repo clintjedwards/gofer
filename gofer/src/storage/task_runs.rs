@@ -2,7 +2,7 @@ use std::ops::{Deref, Not};
 
 use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::task_run::{Failure, State, Status, TaskRun};
+use gofer_models::task_run::{State, Status, StatusReason, TaskRun};
 use gofer_models::Variable;
 use sqlx::{sqlite::SqliteRow, QueryBuilder, Row, Sqlite, SqliteConnection};
 use std::str::FromStr;
@@ -12,7 +12,7 @@ pub struct UpdatableFields {
     pub started: Option<u64>,
     pub ended: Option<u64>,
     pub exit_code: Option<u8>,
-    pub failure: Option<Failure>,
+    pub failure: Option<StatusReason>,
     pub logs_expired: Option<bool>,
     pub logs_removed: Option<bool>,
     pub state: Option<State>,
@@ -64,7 +64,7 @@ OFFSET ?;"#,
             started: row.get::<i64, _>("started") as u64,
             ended: row.get::<i64, _>("ended") as u64,
             exit_code: row.get("exit_code"),
-            failure: {
+            status_reason: {
                 let failure = row.get::<String, _>("failure");
                 failure.is_empty().not().then(|| serde_json::from_str(&failure).unwrap())
             },
@@ -130,10 +130,10 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"#,
     .bind(task_run.exit_code)
     .bind(
         task_run
-            .failure
+            .status_reason
             .is_none()
             .not()
-            .then(|| serde_json::to_string(&task_run.failure).unwrap()),
+            .then(|| serde_json::to_string(&task_run.status_reason).unwrap()),
     )
     .bind({
         let task_run_bool: i32 = match task_run.logs_expired {
@@ -203,7 +203,7 @@ WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;"#,
             started: row.get::<i64, _>("started") as u64,
             ended: row.get::<i64, _>("ended") as u64,
             exit_code: row.get("exit_code"),
-            failure: {
+            status_reason: {
                 let failure = row.get::<String, _>("failure");
                 failure.is_empty().not().then(||serde_json::from_str(&failure).unwrap())
             },

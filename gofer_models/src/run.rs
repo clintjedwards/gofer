@@ -1,4 +1,6 @@
 use super::{epoch, Variable};
+use gofer_proto::run::{RunState, RunStatus};
+use gofer_proto::run_status_reason::RunStatusReason;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 
@@ -18,24 +20,24 @@ pub enum State {
     Complete,
 }
 
-impl From<gofer_proto::run::RunState> for State {
-    fn from(r: gofer_proto::run::RunState) -> Self {
+impl From<RunState> for State {
+    fn from(r: RunState) -> Self {
         match r {
-            gofer_proto::run::RunState::Unknown => State::Unknown,
-            gofer_proto::run::RunState::Pending => State::Pending,
-            gofer_proto::run::RunState::Running => State::Running,
-            gofer_proto::run::RunState::Complete => State::Complete,
+            RunState::Unknown => State::Unknown,
+            RunState::Pending => State::Pending,
+            RunState::Running => State::Running,
+            RunState::Complete => State::Complete,
         }
     }
 }
 
-impl From<State> for gofer_proto::run::RunState {
+impl From<State> for RunState {
     fn from(r: State) -> Self {
         match r {
-            State::Unknown => gofer_proto::run::RunState::Unknown,
-            State::Pending => gofer_proto::run::RunState::Pending,
-            State::Running => gofer_proto::run::RunState::Running,
-            State::Complete => gofer_proto::run::RunState::Complete,
+            State::Unknown => RunState::Unknown,
+            State::Pending => RunState::Pending,
+            State::Running => RunState::Running,
+            State::Complete => RunState::Complete,
         }
     }
 }
@@ -60,32 +62,32 @@ impl Default for Status {
     }
 }
 
-impl From<gofer_proto::run::RunStatus> for Status {
-    fn from(r: gofer_proto::run::RunStatus) -> Self {
+impl From<RunStatus> for Status {
+    fn from(r: RunStatus) -> Self {
         match r {
-            gofer_proto::run::RunStatus::Unknown => Status::Unknown,
-            gofer_proto::run::RunStatus::Successful => Status::Successful,
-            gofer_proto::run::RunStatus::Failed => Status::Failed,
-            gofer_proto::run::RunStatus::Cancelled => Status::Cancelled,
+            RunStatus::Unknown => Status::Unknown,
+            RunStatus::Successful => Status::Successful,
+            RunStatus::Failed => Status::Failed,
+            RunStatus::Cancelled => Status::Cancelled,
         }
     }
 }
 
-impl From<Status> for gofer_proto::run::RunStatus {
+impl From<Status> for RunStatus {
     fn from(r: Status) -> Self {
         match r {
-            Status::Unknown => gofer_proto::run::RunStatus::Unknown,
-            Status::Successful => gofer_proto::run::RunStatus::Successful,
-            Status::Failed => gofer_proto::run::RunStatus::Failed,
-            Status::Cancelled => gofer_proto::run::RunStatus::Cancelled,
+            Status::Unknown => RunStatus::Unknown,
+            Status::Successful => RunStatus::Successful,
+            Status::Failed => RunStatus::Failed,
+            Status::Cancelled => RunStatus::Cancelled,
         }
     }
 }
 
-/// Explains in more detail why a particular run might have failed.
+/// Explains in more detail why a particular run might have the status that it does.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum FailureReason {
-    /// Could not determine failure reason for current run. Should never happen.
+pub enum Reason {
+    /// Gofer has no idea who the run got into this state.
     Unknown,
     /// While executing the run one or more tasks exited with an abnormal exit code.
     AbnormalExit,
@@ -99,65 +101,45 @@ pub enum FailureReason {
     AdminCancelled,
 }
 
-impl From<gofer_proto::run_failure_info::RunFailureReason> for FailureReason {
-    fn from(r: gofer_proto::run_failure_info::RunFailureReason) -> Self {
+impl From<RunStatusReason> for Reason {
+    fn from(r: RunStatusReason) -> Self {
         match r {
-            gofer_proto::run_failure_info::RunFailureReason::Unknown => FailureReason::Unknown,
-            gofer_proto::run_failure_info::RunFailureReason::AbnormalExit => {
-                FailureReason::AbnormalExit
-            }
-            gofer_proto::run_failure_info::RunFailureReason::SchedulerError => {
-                FailureReason::SchedulerError
-            }
-            gofer_proto::run_failure_info::RunFailureReason::FailedPrecondition => {
-                FailureReason::FailedPrecondition
-            }
-            gofer_proto::run_failure_info::RunFailureReason::UserCancelled => {
-                FailureReason::UserCancelled
-            }
-            gofer_proto::run_failure_info::RunFailureReason::AdminCancelled => {
-                FailureReason::AdminCancelled
-            }
+            RunStatusReason::Unknown => Reason::Unknown,
+            RunStatusReason::AbnormalExit => Reason::AbnormalExit,
+            RunStatusReason::SchedulerError => Reason::SchedulerError,
+            RunStatusReason::FailedPrecondition => Reason::FailedPrecondition,
+            RunStatusReason::UserCancelled => Reason::UserCancelled,
+            RunStatusReason::AdminCancelled => Reason::AdminCancelled,
         }
     }
 }
 
-impl From<FailureReason> for gofer_proto::run_failure_info::RunFailureReason {
-    fn from(r: FailureReason) -> Self {
+impl From<Reason> for RunStatusReason {
+    fn from(r: Reason) -> Self {
         match r {
-            FailureReason::Unknown => gofer_proto::run_failure_info::RunFailureReason::Unknown,
-            FailureReason::AbnormalExit => {
-                gofer_proto::run_failure_info::RunFailureReason::AbnormalExit
-            }
-            FailureReason::SchedulerError => {
-                gofer_proto::run_failure_info::RunFailureReason::SchedulerError
-            }
-            FailureReason::FailedPrecondition => {
-                gofer_proto::run_failure_info::RunFailureReason::FailedPrecondition
-            }
-            FailureReason::UserCancelled => {
-                gofer_proto::run_failure_info::RunFailureReason::UserCancelled
-            }
-            FailureReason::AdminCancelled => {
-                gofer_proto::run_failure_info::RunFailureReason::AdminCancelled
-            }
+            Reason::Unknown => RunStatusReason::Unknown,
+            Reason::AbnormalExit => RunStatusReason::AbnormalExit,
+            Reason::SchedulerError => RunStatusReason::SchedulerError,
+            Reason::FailedPrecondition => RunStatusReason::FailedPrecondition,
+            Reason::UserCancelled => RunStatusReason::UserCancelled,
+            Reason::AdminCancelled => RunStatusReason::AdminCancelled,
         }
     }
 }
 
-/// Information about a run's failure. Does not get populated before a run is finished.
+/// More information about a run's status.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct FailureInfo {
+pub struct StatusReason {
     /// Why the run might have failed.
-    pub reason: FailureReason,
+    pub reason: Reason,
     /// A more exact description on what happened.
     pub description: String,
 }
 
-impl From<FailureInfo> for gofer_proto::RunFailureInfo {
-    fn from(r: FailureInfo) -> Self {
+impl From<StatusReason> for gofer_proto::RunStatusReason {
+    fn from(r: StatusReason) -> Self {
         Self {
-            reason: gofer_proto::run_failure_info::RunFailureReason::from(r.reason) as i32,
+            reason: RunStatusReason::from(r.reason) as i32,
             description: r.description,
         }
     }
@@ -218,8 +200,8 @@ pub struct Run {
     pub state: State,
     /// Used to describe the final outcome of the run (success/fail).
     pub status: Status,
-    /// On a failed run, contains more information about the run's status.
-    pub failure_info: Option<FailureInfo>,
+    /// Contains more information about a run's current status.
+    pub status_reason: Option<StatusReason>,
     /// The unique identifier for each task run.
     pub task_runs: Vec<String>,
     /// Information about which trigger was responsible for the run's execution.
@@ -245,7 +227,7 @@ impl Run {
             ended: 0,
             state: State::Pending,
             status: Status::Unknown,
-            failure_info: None,
+            status_reason: None,
             task_runs: vec![],
             trigger,
             variables,
@@ -262,9 +244,9 @@ impl From<Run> for gofer_proto::Run {
             id: r.id,
             started: r.started,
             ended: r.ended,
-            state: gofer_proto::run::RunState::from(r.state) as i32,
-            status: gofer_proto::run::RunStatus::from(r.status) as i32,
-            failure_info: r.failure_info.map(|fi| fi.into()),
+            state: RunState::from(r.state) as i32,
+            status: RunStatus::from(r.status) as i32,
+            status_reason: r.status_reason.map(|fi| fi.into()),
             task_runs: r.task_runs,
             trigger: Some(r.trigger.into()),
             variables: r.variables.into_iter().map(|value| value.into()).collect(),

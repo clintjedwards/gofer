@@ -97,23 +97,23 @@ message Run {
     CANCELLED = 3;
   }
   RunStatus status = 7;
-  RunFailureInfo failure_info = 8;
+  RunStatusReason status_reason = 8;
   repeated string task_runs = 9;
   RunTriggerInfo trigger = 10;
   repeated Variable variables = 11;
   RunStoreInfo store_info = 12;
 }
 
-message RunFailureInfo {
-  enum RunFailureReason {
-    RUN_FAILURE_REASON_UNKNOWN = 0;
+message RunStatusReason {
+  enum RunStatusReason {
+    RUN_STATUS_REASON_UNKNOWN = 0;
     ABNORMAL_EXIT = 1;
     SCHEDULER_ERROR = 2;
     FAILED_PRECONDITION = 3;
     USER_CANCELLED = 4;
     ADMIN_CANCELLED = 5;
   }
-  RunFailureReason reason = 1;
+  RunStatusReason reason = 1;
   string description = 2;
 }
 
@@ -191,7 +191,7 @@ message PipelineNotifierConfig {
   map<string, string> settings = 3;
 }
 
-message TaskRunFailure {
+message TaskRunStatusReason {
   enum Kind {
     UNKNOWN = 0;
     ABNORMAL_EXIT = 1;
@@ -208,7 +208,7 @@ message TaskRun {
   uint64 created = 1;
   uint64 ended = 2;
   uint64 exit_code = 3;
-  TaskRunFailure failure = 4;
+  TaskRunStatusReason status_reason = 4;
   string id = 5;
   bool logs_expired = 6;
   bool logs_removed = 7;
