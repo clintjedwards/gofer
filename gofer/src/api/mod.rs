@@ -11,7 +11,7 @@ use crate::{conf, events, frontend, object_store, scheduler, secret_store, stora
 use anyhow::anyhow;
 use axum_server::Handle;
 use dashmap::DashMap;
-use gofer_models::{event::Kind, namespace, notifier, trigger};
+use gofer_models::{namespace, notifier, trigger};
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
@@ -145,7 +145,7 @@ impl Api {
         let api = Arc::new(api);
 
         api.create_default_namespace().await.unwrap();
-        api.start_triggers().await.unwrap();
+        api.clone().start_triggers().await.unwrap();
 
         // Launch a thread that waits for ctrl-c and runs cleanup.
         let server_handle = axum_server::Handle::new();

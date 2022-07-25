@@ -135,12 +135,8 @@
 - We can also just straight up read from things like json/toml since it all compiles back to json anyway.
 - Fix this regression: {{- if not (len $trigger.Events) 0 }} recent events:{{- end }} in pipeline get
 - Fix events for all cli stuff.
-- We should be more detailed on some of the parameters in proto, instead of 'id' use 'pipeline_id'
 - In our integration testing for storage, test that cascading deletes works
 - Separate store_keys into it's own table
-- Reevaluate if we need docker-cancellations
-- We can make an env package that doesn't suck.
-- Map will preserve a None type if it is still there, go back and look over the database package and fix what might be.
 - Purely for recovering lost containers, we can usually query the engine to ask it what time this container
   stopped and started. This way we can have more accurate running times instead of just leaving it as whenever
   the server restarted.
@@ -165,7 +161,6 @@
 -- When we instll/uninstall triggers the first line should be which trigger we're setting up. and query lines should be
 prefixed with >2
 
-- The gofer sdk installationInstructions doesn't modify self. So you have to remember to assign it to yourself.
 - Switch gofer-containers to point to the main branch and not rust rewrite
 - trigger-install cli cmd should force the user to chose either use -i or -v. Even if that means -v must be empty
 - Add an example of entrypoint/command running a multi-line script
@@ -176,8 +171,6 @@ prefixed with >2
 - Go over imported types and extract them to use at the top of document. to much gofer_models:::::::
 - look through my unwrap_or_else calls; I might have misunderstood how to early exit
 - wait_task_run_finish might not play well with cancellations; need to investigate.
-- Currently we poll memory to see if there are changes to the task_runs status. Instead of doing this we could push
-  updates.
 - In the CLI put a 'pipeline run' and a 'run start' that both just call the same endpoint.
 - Search through the code base for Nones to find places where we used an if instead of .then()
 - Consider changing notifier to something that means more of "something that gets run last". Notifiers might not actually

@@ -1,15 +1,18 @@
 mod install;
 
+use crate::api::fmt;
 use crate::api::{epoch, get_tls_client_config, Api};
 use crate::{scheduler, storage};
 use anyhow::{anyhow, Result};
+use futures::StreamExt;
+use gofer_models::trigger::Trigger;
 use gofer_proto::{
     trigger_service_client::TriggerServiceClient, TriggerInfoRequest, TriggerInfoResponse,
     TriggerShutdownRequest,
 };
 use nanoid::nanoid;
 use slog_scope::{debug, error, info};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use tonic::{metadata::MetadataValue, transport::Channel, Request};
 
 pub struct TriggerInfo {
@@ -73,12 +76,12 @@ impl Api {
 
         // This is the name we use to identify our container to the scheduler. We need it to be unique
         // potentially among ALL other containers running on the system.
-        let fmtted_container_name = format!("trigger_{}", settings.name);
+        let container_name = fmt::trigger_container_name(&settings.name);
 
         let resp = self
             .scheduler
             .start_container(scheduler::StartContainerRequest {
-                name: fmtted_container_name.clone(),
+                name: container_name.clone(),
                 image: settings.image.clone(),
                 variables: gofer_variables,
                 registry_auth: {
@@ -105,7 +108,7 @@ impl Api {
         })?;
 
         let info = self
-            .healthcheck_trigger(&fmtted_container_name, url, &trigger_key, 30)
+            .healthcheck_trigger(&container_name, url, &trigger_key, 30)
             .await?;
 
         Ok(TriggerInfo {
@@ -116,7 +119,7 @@ impl Api {
         })
     }
 
-    pub async fn start_triggers(&self) -> Result<()> {
+    pub async fn start_triggers(self: Arc<Self>) -> Result<()> {
         let mut conn = match self.storage.conn().await {
             Ok(conn) => conn,
             Err(e) => {
@@ -159,6 +162,14 @@ impl Api {
                 },
             );
 
+            let self_clone = self.clone();
+            let trigger_name = trigger.name.clone();
+            tokio::spawn(async move {
+                self_clone
+                    .echo_logs_to_console(fmt::trigger_container_name(&trigger_name))
+                    .await
+            });
+
             info!("Started trigger"; "name" => trigger.name, "image" => trigger.image, "url" => trigger_info.url);
         }
 
@@ -167,12 +178,7 @@ impl Api {
 
     /// Attempt to stop a trigger by name. Attempts to perform a graceful shutdown by calling the trigger's
     /// shutdown method.
-    pub async fn stop_trigger(&self, name: &str) -> Result<()> {
-        let trigger = match self.triggers.get(name) {
-            Some(trigger) => trigger,
-            None => return Err(anyhow::anyhow!("trigger does not exist")),
-        };
-
+    pub async fn stop_trigger(&self, trigger: &Trigger) -> Result<()> {
         let url = match &trigger.url {
             Some(url) => url,
             None => return Err(anyhow::anyhow!("trigger has no url")),
@@ -202,20 +208,19 @@ impl Api {
             return Err(anyhow!("failed to call shutdown on trigger; {:?}", e));
         }
 
-        self.triggers.remove(name);
-
         Ok(())
     }
 
     /// Sends a shutdown request for each trigger Gofer knows about.
     pub async fn stop_all_triggers(&self) {
         for entry in &self.triggers {
-            let name = entry.key();
-            if let Err(e) = self.stop_trigger(name).await {
+            if let Err(e) = self.stop_trigger(entry.value()).await {
                 error!("could not stop trigger; {}", e);
                 continue;
             }
         }
+
+        self.triggers.clear()
     }
 
     /// Check that the trigger's container has started and check that we can send the trigger the initial info packet.
@@ -284,6 +289,36 @@ impl Api {
                     continue;
                 }
             };
+        }
+    }
+
+    /// Take a container and print the logs to stdout. Used to allow triggers to print into server logs.
+    pub async fn echo_logs_to_console(&self, container_name: String) {
+        let mut log_stream = self.scheduler.get_logs(scheduler::GetLogsRequest {
+            name: container_name,
+        });
+
+        while let Some(log) = log_stream.next().await {
+            let log = match log {
+                Ok(log) => log,
+                Err(e) => {
+                    error!("encountered error while echoing log file to console"; "error" => format!("{:?}", e));
+                    return;
+                }
+            };
+
+            match log {
+                scheduler::Log::Unknown => {
+                    error!("encountered error while echoing log file to console; log line unknown but should be stdout/stderr");
+                    return;
+                }
+                scheduler::Log::Stderr(log) => {
+                    error!("{}", String::from_utf8_lossy(&log))
+                }
+                scheduler::Log::Stdout(log) => {
+                    debug!("{}", String::from_utf8_lossy(&log))
+                }
+            }
         }
     }
 }

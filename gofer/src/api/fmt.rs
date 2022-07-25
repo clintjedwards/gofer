@@ -22,3 +22,7 @@ pub fn run_object_key(namespace: &str, pipeline: &str, run: u64, key: &str) -> S
 pub fn task_container_id(namespace: &str, pipeline: &str, run: u64, task_run: &str) -> String {
     return format!("{}_{}_{}_{}", namespace, pipeline, run, task_run);
 }
+
+pub fn trigger_container_name(name: &str) -> String {
+    return format!("trigger_{}", name);
+}
