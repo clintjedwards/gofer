@@ -174,23 +174,20 @@ prefixed with >2
 - The gofer sdk installationInstructions doesn't modify self. So you have to remember to assign it to yourself.
 - Switch gofer-containers to point to the main branch and not rust rewrite
 - trigger-install cli cmd should force the user to chose either use -i or -v. Even if that means -v must be empty
-- Add an example of entrypoint running a script
+- Add an example of entrypoint/command running a multi-line script
 - It is possible if you have more than 200 runs going at the same time and your parrallesim limit goes over that amount. We wont correctly calculate it. Because we take the lazy route out and just grab the last 200 runs.
-
 - Bar user from having to care about sensitivity It shouldn't show up anywhere user can see it unless they list env vars.
-- Make sure to go over the database and encrypt the places where we should.
-- Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values.
+- Make sure to go over the database and encrypt the data in places where we should.
+- Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
 - Go over imported types and extract them to use at the top of document. to much gofer_models:::::::
 - look through my unwrap_or_else calls; I might have misunderstood how to early exit
 - wait_task_run_finish might not play well with cancellations; need to investigate.
-- It is possible to have a race condition with the current state of how updating an object works. If two
-  things want to update a run, there is a chance between calls that the object will be changed. We need to properly
-  implement patches instead of puts.
-- Wrap publish calls in tokio::spawn.
-- We poll for if runs/task_runs are finished but there should be some way to use the event bus to have instant feedback.
+- Currently we poll memory to see if there are changes to the task_runs status. Instead of doing this we could push
+  updates.
 - In the CLI put a 'pipeline run' and a 'run start' that both just call the same endpoint.
 - Search through the code base for Nones to find places where we used an if instead of .then()
 - Consider changing notifier to something that means more of "something that gets run last". Notifiers might not actually
   notify, they might be used to just do something else externally.
 - There is a bug in update pipelines where if you set your pipeline parrallesim to anything but 0 and then try to set it back to 0 it probably wont update.
-- Walk through the execute task tree thing and make sure there sin't any storage race conditions since the refactor.
+- Change task_run failure object and maybe run failure object to say instead status_reason. This makes it so we can describe
+  to the user complex status and they aren't specifically resereved for failures.

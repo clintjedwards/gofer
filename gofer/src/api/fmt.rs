@@ -19,6 +19,6 @@ pub fn run_object_key(namespace: &str, pipeline: &str, run: u64, key: &str) -> S
     return format!("{}_{}_{}_{}", namespace, pipeline, run, key);
 }
 
-pub fn task_container_id(namespace: &str, pipeline: &str, run: &str, task_run: &str) -> String {
+pub fn task_container_id(namespace: &str, pipeline: &str, run: u64, task_run: &str) -> String {
     return format!("{}_{}_{}_{}", namespace, pipeline, run, task_run);
 }

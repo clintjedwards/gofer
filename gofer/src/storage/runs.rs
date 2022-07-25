@@ -229,9 +229,7 @@ WHERE namespace = ? AND pipeline = ? AND id = ?;"#,
 /// Update a specific run.
 pub async fn update(
     conn: &mut SqliteConnection,
-    namespace_id: &str,
-    pipeline_id: &str,
-    id: u64,
+    run: &Run,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
     let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE runs SET "#);
@@ -289,13 +287,13 @@ pub async fn update(
     }
 
     update_query.push(" WHERE namespace = ");
-    update_query.push_bind(namespace_id);
+    update_query.push_bind(&run.namespace);
 
     update_query.push(" AND pipeline = ");
-    update_query.push_bind(pipeline_id);
+    update_query.push_bind(&run.pipeline);
 
     update_query.push(" AND id = ");
-    update_query.push_bind(id as i64);
+    update_query.push_bind(run.id as i64);
     update_query.push(";");
 
     let update_query = update_query.build();

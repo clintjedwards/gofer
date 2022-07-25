@@ -129,21 +129,4 @@ impl TaskRun {
             variables: vec![],
         }
     }
-
-    /// Mark a task object as finished, but failed in some way.
-    pub fn set_finished_abnormal(&mut self, status: Status, failure: Failure, code: Option<u8>) {
-        self.exit_code = code;
-        self.status = status;
-        self.state = State::Complete;
-        self.ended = epoch();
-        self.failure = Some(failure);
-    }
-
-    /// Mark a task object as finished successfully.
-    pub fn set_finished(&mut self) {
-        self.exit_code = Some(0);
-        self.status = Status::Successful;
-        self.ended = epoch();
-        self.state = State::Complete;
-    }
 }

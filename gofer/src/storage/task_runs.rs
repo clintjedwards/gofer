@@ -11,7 +11,7 @@ use std::str::FromStr;
 pub struct UpdatableFields {
     pub started: Option<u64>,
     pub ended: Option<u64>,
-    pub exit_code: Option<u64>,
+    pub exit_code: Option<u8>,
     pub failure: Option<Failure>,
     pub logs_expired: Option<bool>,
     pub logs_removed: Option<bool>,
@@ -256,10 +256,7 @@ WHERE namespace = ? AND pipeline = ? AND run = ? AND id = ?;"#,
 /// Update a specific task_run.
 pub async fn update(
     conn: &mut SqliteConnection,
-    namespace_id: &str,
-    pipeline_id: &str,
-    run_id: u64,
-    id: &str,
+    task_run: &TaskRun,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
     let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE task_runs SET "#);
@@ -363,16 +360,16 @@ pub async fn update(
     }
 
     update_query.push(" WHERE namespace = ");
-    update_query.push_bind(namespace_id);
+    update_query.push_bind(&task_run.namespace);
 
     update_query.push(" AND pipeline = ");
-    update_query.push_bind(pipeline_id);
+    update_query.push_bind(&task_run.pipeline);
 
     update_query.push(" AND run = ");
-    update_query.push_bind(run_id as i64);
+    update_query.push_bind(task_run.run as i64);
 
     update_query.push(" AND id = ");
-    update_query.push_bind(id);
+    update_query.push_bind(&task_run.id);
     update_query.push(";");
 
     let update_query = update_query.build();

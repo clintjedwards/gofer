@@ -236,9 +236,7 @@ async fn crud_runs() {
 
     runs::update(
         &mut conn,
-        &test_namespace.id,
-        &test_pipeline.id,
-        test_run.id,
+        &run,
         runs::UpdatableFields {
             state: Some(run::State::Complete),
             ..Default::default()
@@ -352,10 +350,7 @@ async fn crud_task_runs() {
     test_task_run.state = task_run::State::Complete;
     task_runs::update(
         &mut conn,
-        &test_namespace.id,
-        &test_pipeline.id,
-        test_run.id,
-        &test_task_run.id,
+        &task_run,
         task_runs::UpdatableFields {
             state: Some(task_run::State::Complete),
             ..Default::default()

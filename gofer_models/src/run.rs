@@ -8,8 +8,9 @@ use strum::{Display, EnumString};
 pub enum State {
     /// Could not determine current state of the run. Should never happen.
     Unknown,
-    /// Before a run is sent to a scheduler it must complete various steps like
-    /// validation checking, this state represents that step.
+    /// Before the tasks in a run is sent to a scheduler it must complete various steps like
+    /// validation checking. This state represents that step where the run and task_runs are
+    /// pre-checked.
     Pending,
     /// The run is currently being executed on the scheduler.
     Running,
@@ -250,18 +251,6 @@ impl Run {
             variables,
             store_info: None,
         }
-    }
-
-    pub fn set_finished_abnormal(&mut self, status: Status, failure: FailureInfo) {
-        self.state = State::Complete;
-        self.status = status;
-        self.failure_info = Some(failure);
-        self.ended = epoch();
-    }
-    pub fn set_finished(&mut self) {
-        self.state = State::Complete;
-        self.status = Status::Successful;
-        self.ended = epoch();
     }
 }
 

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use strum::{Display, EnumString};
 
 /// The current state of the pipeline. Pipelines can be disabled to stop execution.
-#[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
 pub enum State {
     /// The state of the pipeline is unknown. This should never happen.
     Unknown,
@@ -37,7 +37,7 @@ impl From<State> for gofer_proto::pipeline::PipelineState {
 
 /// A collection of logically grouped tasks. A task is a unit of work wrapped in a docker container.
 /// Pipeline is a secondary level unit being contained within namespaces and containing runs.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pipeline {
     /// Unique identifier for the namespace that this pipeline belongs to.
     pub namespace: String,
@@ -141,7 +141,7 @@ impl Pipeline {
 /// values back to that trigger for certain functionality. Since triggers keep no
 /// permanent state, these settings are kept here so that when triggers are restarted
 /// they can be restored with proper settings.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TriggerSettings {
     /// A global unique identifier for the trigger type.
     pub name: String,
@@ -212,7 +212,7 @@ impl From<gofer_sdk::config::PipelineTriggerConfig> for TriggerSettings {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NotifierSettings {
     /// A global unique identifier for the notifier type.
     pub name: String,
