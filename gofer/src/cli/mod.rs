@@ -152,7 +152,7 @@ pub async fn init() {
                                 ['trace', 'debug', 'info', 'warning', 'error', 'critical']",
                                 );
                         let _guard = init_logging(severity);
-                        cli.service_start(parsed_config).await;
+                        cli.service_start(*parsed_config).await;
                     } else {
                         panic!("Incorrect configuration file received trying to start api")
                     }

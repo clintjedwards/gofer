@@ -12,9 +12,10 @@ const LOCALHOST_CA: &str = include_str!("./localhost.ca");
 const LOCALHOST_CRT: &str = include_str!("./localhost.crt");
 const LOCALHOST_KEY: &str = include_str!("./localhost.key");
 
-/// The configuration type.
+/// The configuration type. We box the API enum since it takes up
+/// significantly more space than the CLI enum.
 pub enum Kind {
-    Api(api::Config),
+    Api(Box<api::Config>),
     Cli(cli::Config),
 }
 
@@ -48,7 +49,7 @@ impl Kind {
     ///
     /// `new_api_config::parse("/home/myfile.toml")`
     pub fn new_api_config() -> Self {
-        Self::Api(api::Config::default())
+        Self::Api(Box::new(api::Config::default()))
     }
 
     /// Instantiates an empty cli config. Use `parse` to populate.
@@ -92,7 +93,7 @@ impl Kind {
                 let mut parsed_config = econf::load(parsed_config, "GOFER");
                 parsed_config.inject_localhost_dev_certs();
 
-                Ok(Kind::Api(parsed_config))
+                Ok(Kind::Api(Box::new(parsed_config)))
             }
             Kind::Cli(_) => {
                 let config_src = config_src_builder.build()?;
