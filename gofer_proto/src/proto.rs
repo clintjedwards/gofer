@@ -302,8 +302,8 @@ pub struct PipelineNotifierConfig {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TaskRunStatusReason {
-    #[prost(enumeration="task_run_status_reason::Kind", tag="1")]
-    pub kind: i32,
+    #[prost(enumeration="task_run_status_reason::Reason", tag="1")]
+    pub reason: i32,
     #[prost(string, tag="2")]
     pub description: ::prost::alloc::string::String,
 }
@@ -311,7 +311,7 @@ pub struct TaskRunStatusReason {
 pub mod task_run_status_reason {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum Kind {
+    pub enum Reason {
         Unknown = 0,
         AbnormalExit = 1,
         SchedulerError = 2,
@@ -352,6 +352,8 @@ pub struct TaskRun {
     pub status: i32,
     #[prost(message, optional, tag="15")]
     pub task: ::core::option::Option<Task>,
+    #[prost(message, repeated, tag="16")]
+    pub variables: ::prost::alloc::vec::Vec<Variable>,
 }
 /// Nested message and enum types in `TaskRun`.
 pub mod task_run {

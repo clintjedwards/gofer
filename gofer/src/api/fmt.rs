@@ -23,6 +23,6 @@ pub fn task_container_id(namespace: &str, pipeline: &str, run: u64, task_run: &s
     return format!("{}_{}_{}_{}", namespace, pipeline, run, task_run);
 }
 
-pub fn trigger_container_name(name: &str) -> String {
+pub fn trigger_container_id(name: &str) -> String {
     return format!("trigger_{}", name);
 }

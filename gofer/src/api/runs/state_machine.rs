@@ -393,7 +393,7 @@ impl RunStateMachine {
                         None,
                         task_run::Status::Unknown,
                         Some(task_run::StatusReason {
-                            kind: task_run::Reason::SchedulerError,
+                            reason: task_run::Reason::SchedulerError,
                             description: format!(
                                 "Could not query the scheduler for task run state; {}.",
                                 e
@@ -412,7 +412,7 @@ impl RunStateMachine {
                         resp.exit_code,
                         task_run::Status::Unknown,
                         Some(task_run::StatusReason {
-                            kind: task_run::Reason::SchedulerError,
+                            reason: task_run::Reason::SchedulerError,
                             description: "An unknown error has occurred on the scheduler level;
                                 This should never happen."
                                 .to_string(),
@@ -445,7 +445,7 @@ impl RunStateMachine {
                             Some(exit_code),
                             task_run::Status::Failed,
                             Some(task_run::StatusReason {
-                                kind: task_run::Reason::AbnormalExit,
+                                reason: task_run::Reason::AbnormalExit,
                                 description: "Task run exited with abnormal exit code.".to_string(),
                             }),
                         )
@@ -459,7 +459,7 @@ impl RunStateMachine {
                         None,
                         task_run::Status::Unknown,
                         Some(task_run::StatusReason {
-                            kind: task_run::Reason::AbnormalExit,
+                            reason: task_run::Reason::AbnormalExit,
                             description: "Task run exited without an exit code.".to_string(),
                         }),
                     )
@@ -982,7 +982,7 @@ impl RunStateMachine {
                 None,
                 task_run::Status::Skipped,
                 Some(task_run::StatusReason {
-                    kind: task_run::Reason::FailedPrecondition,
+                    reason: task_run::Reason::FailedPrecondition,
                     description: format!("task could not be run due to unmet dependencies; {}", e),
                 }),
             )
@@ -1005,7 +1005,7 @@ impl RunStateMachine {
             self.set_task_run_finished(&new_task_run.id, None,
                 task_run::Status::Failed,
                 Some(task_run::StatusReason {
-                        kind: task_run::Reason::FailedPrecondition,
+                        reason: task_run::Reason::FailedPrecondition,
                         description: format!(
                             "task could not be run due to inability to retrieve interpolated variables; {}",
                             e
@@ -1060,7 +1060,7 @@ impl RunStateMachine {
                 None,
                 task_run::Status::Failed,
                 Some(task_run::StatusReason {
-                    kind: task_run::Reason::SchedulerError,
+                    reason: task_run::Reason::SchedulerError,
                     description: format!(
                         "task could not be run due to inability to be scheduled; {}",
                         e

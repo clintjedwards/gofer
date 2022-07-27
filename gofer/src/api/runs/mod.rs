@@ -1,10 +1,9 @@
-mod cancel_run_handler;
-mod start_run_handler;
+mod state_machine;
 
-use crate::api::{validate, Api};
-use crate::storage;
+use crate::api::{fmt, validate, Api};
+use crate::{scheduler, storage};
 use anyhow::Result;
-use gofer_models::{event, pipeline, run, task};
+use gofer_models::{event, pipeline, run, task, task_run};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
 use gofer_proto::{
     CancelAllRunsRequest, CancelAllRunsResponse, CancelRunRequest, CancelRunResponse,
@@ -13,7 +12,7 @@ use gofer_proto::{
 };
 use slog_scope::debug;
 use sqlx::Acquire;
-use start_run_handler::RunStateMachine;
+use state_machine::RunStateMachine;
 use std::{collections::HashMap, sync::Arc};
 use strum::{Display, EnumString};
 use tonic::{Response, Status};
@@ -179,6 +178,67 @@ pub fn combine_variables(run: &run::Run, task: &task::Task) -> Vec<Variable> {
 }
 
 impl Api {
+    pub async fn cancel_run(
+        &self,
+        namespace_id: String,
+        pipeline_id: String,
+        run_id: u64,
+    ) -> Result<()> {
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        let task_runs =
+            storage::task_runs::list(&mut conn, 0, 0, &namespace_id, &pipeline_id, run_id).await?;
+
+        let mut timeout = self.conf.general.task_run_stop_timeout;
+        if timeout == 0 {
+            timeout = 604800
+        }
+
+        let mut cancelled_task_runs: Vec<task_run::TaskRun> = vec![];
+
+        for task_run in task_runs {
+            if self
+                .cancel_task_run(&namespace_id, &pipeline_id, run_id, &task_run.id, timeout)
+                .await
+                .is_ok()
+            {
+                cancelled_task_runs.push(task_run)
+            }
+        }
+
+        // wait for the run to be marked complete due to the failures in task_runs.
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            let run = storage::runs::get(&mut conn, &namespace_id, &pipeline_id, run_id).await?;
+
+            if run.state != run::State::Complete {
+                continue;
+            }
+
+            for task_run in cancelled_task_runs {
+                let _ = storage::task_runs::update(
+                    &mut conn,
+                    &task_run,
+                    storage::task_runs::UpdatableFields {
+                        status: Some(task_run::Status::Cancelled),
+                        ..Default::default()
+                    },
+                )
+                .await;
+            }
+
+            break;
+        }
+
+        Ok(())
+    }
+}
+
+impl Api {
     pub async fn get_run_handler(
         &self,
         args: GetRunRequest,
@@ -309,7 +369,7 @@ impl Api {
         }))
     }
     pub async fn cancel_run_handler(
-        &self,
+        self: Arc<Self>,
         args: CancelRunRequest,
     ) -> Result<Response<CancelRunResponse>, Status> {
         validate::arg(
@@ -324,38 +384,63 @@ impl Api {
         )?;
         validate::arg("run_id", args.run_id, vec![validate::not_zero_num])?;
 
+        tokio::spawn(async move {
+            self.cancel_run(
+                args.namespace_id.clone(),
+                args.pipeline_id.clone(),
+                args.run_id,
+            )
+            .await
+        });
+
+        Ok(Response::new(CancelRunResponse {}))
+    }
+    pub async fn cancel_all_runs_handler(
+        self: Arc<Self>,
+        args: CancelAllRunsRequest,
+    ) -> Result<Response<CancelAllRunsResponse>, Status> {
+        validate::arg(
+            "namespace_id",
+            args.namespace_id.clone(),
+            vec![validate::is_valid_identifier, validate::not_empty_str],
+        )?;
+        validate::arg(
+            "pipeline_id",
+            args.pipeline_id.clone(),
+            vec![validate::is_valid_identifier, validate::not_empty_str],
+        )?;
+
         let mut conn = self
             .storage
             .conn()
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        let run = storage::runs::get(
-            &mut conn,
-            &args.namespace_id,
-            &args.pipeline_id,
-            args.run_id,
-        )
-        .await
-        .map_err(|e| match e {
-            storage::StorageError::NotFound => {
-                Status::not_found(format!("run with id '{}' does not exist", &args.run_id))
-            }
-            _ => Status::internal(e.to_string()),
-        })?;
+        let run = storage::runs::list(&mut conn, 0, 0, &args.namespace_id, &args.pipeline_id)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+        let runs_in_progress: Vec<run::Run> = run
+            .into_iter()
+            .filter(|run| run.state != run::State::Complete)
+            .collect();
 
-        // Call stop container on every task_run that we know of.
-        // wait for their respective task_run monitors to mark the tasks as complete.
-        // Go in and correct the task run status as Cancelled instead of whatever it says.
+        for run in &runs_in_progress {
+            let self_clone = self.clone();
+            let namespace_id = args.namespace_id.clone();
+            let pipeline_id = args.pipeline_id.clone();
+            let run_id = run.id;
 
-        // Hope that the run monitor does what it's supposed to.
+            tokio::spawn(async move {
+                self_clone
+                    .cancel_run(namespace_id, pipeline_id, run_id)
+                    .await
+            });
+        }
 
-        //TODO(clintjedwards): cancel run function
-        //self.cancel_run();
-
-        unimplemented!()
+        Ok(Response::new(CancelAllRunsResponse {
+            runs: runs_in_progress.into_iter().map(|run| run.id).collect(),
+        }))
     }
-    pub async fn cancel_all_runs() {}
 
     pub async fn start_run_handler(
         self: Arc<Self>,

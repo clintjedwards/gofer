@@ -176,3 +176,4 @@ prefixed with >2
 - Consider changing notifier to something that means more of "something that gets run last". Notifiers might not actually
   notify, they might be used to just do something else externally.
 - There is a bug in update pipelines where if you set your pipeline parrallesim to anything but 0 and then try to set it back to 0 it probably wont update.
+- When passing things back to the client in task_Runs and runs make sure to filter the system vars.

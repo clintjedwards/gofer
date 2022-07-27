@@ -148,35 +148,40 @@ impl Gofer for ApiWrapper {
         &self,
         request: Request<CancelRunRequest>,
     ) -> Result<Response<CancelRunResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.deref().clone().cancel_run_handler(args).await
     }
 
     async fn cancel_all_runs(
         &self,
         request: Request<CancelAllRunsRequest>,
     ) -> Result<Response<CancelAllRunsResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.deref().clone().cancel_all_runs_handler(args).await
     }
 
     async fn get_task_run(
         &self,
         request: Request<GetTaskRunRequest>,
     ) -> Result<Response<GetTaskRunResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.get_task_run_handler(args).await
     }
 
     async fn list_task_runs(
         &self,
         request: Request<ListTaskRunsRequest>,
     ) -> Result<Response<ListTaskRunsResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.list_task_runs_handler(args).await
     }
 
     async fn cancel_task_run(
         &self,
         request: Request<CancelTaskRunRequest>,
     ) -> Result<Response<CancelTaskRunResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.cancel_task_run_handler(args).await
     }
 
     type GetTaskRunLogsStream =
@@ -186,14 +191,16 @@ impl Gofer for ApiWrapper {
         &self,
         request: Request<GetTaskRunLogsRequest>,
     ) -> Result<Response<Self::GetTaskRunLogsStream>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.deref().clone().get_task_run_logs_handler(args).await
     }
 
     async fn delete_task_run_logs(
         &self,
         request: Request<DeleteTaskRunLogsRequest>,
     ) -> Result<Response<DeleteTaskRunLogsResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.delete_task_run_logs_handler(args).await
     }
 
     async fn get_trigger(

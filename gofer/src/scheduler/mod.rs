@@ -164,7 +164,7 @@ pub trait Scheduler: Debug {
         req: StartContainerRequest,
     ) -> Result<StartContainerResponse, SchedulerError>;
 
-    /// Kill a container with an associated timeout if the container does not response to graceful shutdown.
+    /// Kill a container with an associated timeout if the container does not respond to graceful shutdown.
     async fn stop_container(&self, req: StopContainerRequest) -> Result<(), SchedulerError>;
 
     /// Get the current state of container and potential exit code.

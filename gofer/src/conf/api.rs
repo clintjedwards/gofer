@@ -42,6 +42,13 @@ pub struct General {
 
     /// Directory to store task run log files.
     pub task_run_logs_dir: String,
+
+    /// Time in seconds the scheduler will wait for a normal user container(not-trigger containers)
+    /// to stop. When the timeout is reached the container will be forcefully terminated.
+    /// You can you use a timeout of 0 to convey that no timeout should be specified and the
+    /// scheduler should wait however long it takes the container to respond to the terminal signal.
+    /// This is usually passed to the scheduler when a request to cancel a task run is being made.
+    pub task_run_stop_timeout: u64,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq, LoadEnv)]
@@ -163,6 +170,7 @@ mod tests {
                 run_parallelism_limit: 0,
                 task_run_log_expiry: 20,
                 task_run_logs_dir: "/tmp".to_string(),
+                task_run_stop_timeout: 15,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),
@@ -228,6 +236,7 @@ mod tests {
                 run_parallelism_limit: 0,
                 task_run_log_expiry: 20,
                 task_run_logs_dir: "/tmp".to_string(),
+                task_run_stop_timeout: 15,
             },
             server: Server {
                 url: "127.0.0.1:8080".to_string(),

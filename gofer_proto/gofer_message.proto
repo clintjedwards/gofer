@@ -192,7 +192,7 @@ message PipelineNotifierConfig {
 }
 
 message TaskRunStatusReason {
-  enum Kind {
+  enum Reason {
     UNKNOWN = 0;
     ABNORMAL_EXIT = 1;
     SCHEDULER_ERROR = 2;
@@ -200,7 +200,7 @@ message TaskRunStatusReason {
     CANCELLED = 4;
     ORPHANED = 5;
   }
-  Kind kind = 1;
+  Reason reason = 1;
   string description = 2;
 }
 
@@ -234,6 +234,7 @@ message TaskRun {
   }
   TaskRunStatus status = 14;
   Task task = 15;
+  repeated Variable variables = 16;
 }
 
 message Trigger {

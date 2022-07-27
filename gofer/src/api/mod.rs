@@ -4,6 +4,7 @@ mod namespaces;
 mod pipelines;
 mod runs;
 mod system;
+mod task_runs;
 mod triggers;
 mod validate;
 

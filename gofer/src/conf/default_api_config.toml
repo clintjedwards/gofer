@@ -4,20 +4,43 @@
 # convenient features for development. Usually turned on along side log_level=debug.
 dev_mode = true
 log_level = "debug"
+
 # Throughout Gofer we encrypt sensitive keys to keep them safe. This encryption key is reponsible
 # for facilitating that. It MUST be 32 characters long and cannot be changed for any reason once
 # it is set or else all data will be lost.
 encryption_key = "changemechangemechangemechangeme"
+
 # Events are only kept for a finite amount of time
-event_prune_interval = 604800 # How often to clear out old events past the retention date (in seconds)
-event_retention = 7889238     # At what age should events be pruned (in seconds)
-run_parallelism_limit = 0     # The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited
-task_run_log_expiry = 20      # The total amount of runs before logs of the oldest run will be deleted.
+# How often to clear out old events past the retention date (in seconds)
+event_prune_interval = 604800
+
+# At what age should events be pruned (in seconds)
+event_retention = 7889238
+
+# The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited
+run_parallelism_limit = 0
+
+# The total amount of runs before logs of the oldest run will be deleted.
+task_run_log_expiry = 20
+
+# Which directory to store task_run logs.
 task_run_logs_dir = "/tmp"
 
+# Time in seconds the scheduler will wait for a normal user container(not-trigger containers)
+# to stop. When the timeout is reached the container will be forcefully terminated.
+# You can you use a timeout of 0 to convey that no timeout should be specified and the
+# scheduler should wait however long it takes the container to respond to the terminal signal.
+# This is usually passed to the scheduler when a request to cancel a task run is being made.
+task_run_stop_timeout = 15
+
 [server]
+# Which URL to bind the server to.
 url = "127.0.0.1:8080"
-shutdown_timeout = 15          # How many seconds to wait for the server to gracefully shutdown.
+
+# How many seconds to wait for the server to gracefully shutdown.
+shutdown_timeout = 15
+
+# Where to put Gofer's database.
 storage_path = "/tmp/gofer.db"
 tls_cert = ""
 tls_key = ""

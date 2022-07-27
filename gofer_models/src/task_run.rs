@@ -1,4 +1,6 @@
 use super::{epoch, task::Task, Variable};
+use gofer_proto::task_run::{TaskRunState, TaskRunStatus};
+use gofer_proto::task_run_status_reason;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 
@@ -16,6 +18,18 @@ pub enum State {
     Running,
     /// Task run has completed.
     Complete,
+}
+
+impl From<State> for TaskRunState {
+    fn from(r: State) -> Self {
+        match r {
+            State::Unknown => TaskRunState::UnknownState,
+            State::Processing => TaskRunState::Processing,
+            State::Waiting => TaskRunState::Waiting,
+            State::Running => TaskRunState::Running,
+            State::Complete => TaskRunState::Complete,
+        }
+    }
 }
 
 /// Since task runs are basically an abstraction over containers, this tells us
@@ -43,6 +57,18 @@ impl Default for Status {
     }
 }
 
+impl From<Status> for TaskRunStatus {
+    fn from(r: Status) -> Self {
+        match r {
+            Status::Unknown => TaskRunStatus::UnknownStatus,
+            Status::Successful => TaskRunStatus::Successful,
+            Status::Failed => TaskRunStatus::Failed,
+            Status::Cancelled => TaskRunStatus::Cancelled,
+            Status::Skipped => TaskRunStatus::Skipped,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Reason {
     /// Gofer has no idea how the task run got into this state.
@@ -59,13 +85,35 @@ pub enum Reason {
     Orphaned,
 }
 
+impl From<Reason> for task_run_status_reason::Reason {
+    fn from(r: Reason) -> Self {
+        match r {
+            Reason::Unknown => task_run_status_reason::Reason::Unknown,
+            Reason::AbnormalExit => task_run_status_reason::Reason::AbnormalExit,
+            Reason::SchedulerError => task_run_status_reason::Reason::SchedulerError,
+            Reason::FailedPrecondition => task_run_status_reason::Reason::FailedPrecondition,
+            Reason::Cancelled => task_run_status_reason::Reason::Cancelled,
+            Reason::Orphaned => task_run_status_reason::Reason::Orphaned,
+        }
+    }
+}
+
 /// A description of the current status of a task run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StatusReason {
     /// The kind of reason for the current status.
-    pub kind: Reason,
+    pub reason: Reason,
     /// A short description of the reason.
     pub description: String,
+}
+
+impl From<StatusReason> for gofer_proto::TaskRunStatusReason {
+    fn from(r: StatusReason) -> Self {
+        Self {
+            reason: task_run_status_reason::Reason::from(r.reason) as i32,
+            description: r.description,
+        }
+    }
 }
 
 /// A task run is a specific execution of a task/container.
@@ -127,6 +175,29 @@ impl TaskRun {
             status: Status::Unknown,
             scheduler_id: None,
             variables: vec![],
+        }
+    }
+}
+
+impl From<TaskRun> for gofer_proto::TaskRun {
+    fn from(r: TaskRun) -> Self {
+        Self {
+            namespace_id: r.namespace,
+            pipeline_id: r.pipeline,
+            run_id: r.run,
+            id: r.id,
+            task: Some(r.task.into()),
+            created: r.created,
+            started: r.started,
+            ended: r.ended,
+            exit_code: r.exit_code.unwrap_or_default() as u64,
+            status_reason: r.status_reason.map(|r| r.into()),
+            logs_expired: r.logs_expired,
+            logs_removed: r.logs_removed,
+            state: TaskRunState::from(r.state) as i32,
+            status: TaskRunStatus::from(r.status) as i32,
+            scheduler_id: r.scheduler_id.unwrap_or_default(),
+            variables: r.variables.into_iter().map(|value| value.into()).collect(),
         }
     }
 }
