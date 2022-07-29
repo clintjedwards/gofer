@@ -207,14 +207,16 @@ impl Gofer for ApiWrapper {
         &self,
         request: Request<GetTriggerRequest>,
     ) -> Result<Response<GetTriggerResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.get_trigger_handler(args).await
     }
 
     async fn list_triggers(
         &self,
         request: Request<ListTriggersRequest>,
     ) -> Result<Response<ListTriggersResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.list_triggers_handler(args).await
     }
 
     async fn install_trigger(
@@ -229,21 +231,24 @@ impl Gofer for ApiWrapper {
         &self,
         request: Request<UninstallTriggerRequest>,
     ) -> Result<Response<UninstallTriggerResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.uninstall_trigger_handler(args).await
     }
 
     async fn enable_trigger(
         &self,
         request: Request<EnableTriggerRequest>,
     ) -> Result<Response<EnableTriggerResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.enable_trigger_handler(args).await
     }
 
     async fn disable_trigger(
         &self,
         request: Request<DisableTriggerRequest>,
     ) -> Result<Response<DisableTriggerResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.disable_trigger_handler(args).await
     }
 
     async fn get_trigger_install_instructions(
@@ -254,45 +259,45 @@ impl Gofer for ApiWrapper {
         self.get_trigger_install_instructions_handler(args).await
     }
 
-    async fn get_notifier(
+    async fn get_gofer_task(
         &self,
-        request: Request<GetNotifierRequest>,
-    ) -> Result<Response<GetNotifierResponse>, Status> {
+        request: Request<GetGoferTaskRequest>,
+    ) -> Result<Response<GetGoferTaskResponse>, Status> {
         todo!()
     }
 
-    async fn list_notifiers(
+    async fn list_gofer_tasks(
         &self,
-        request: Request<ListNotifiersRequest>,
-    ) -> Result<Response<ListNotifiersResponse>, Status> {
+        request: Request<ListGoferTasksRequest>,
+    ) -> Result<Response<ListGoferTasksResponse>, Status> {
         todo!()
     }
 
-    async fn install_notifier(
+    async fn install_gofer_task(
         &self,
-        request: Request<InstallNotifierRequest>,
-    ) -> Result<Response<InstallNotifierResponse>, Status> {
+        request: Request<InstallGoferTaskRequest>,
+    ) -> Result<Response<InstallGoferTaskResponse>, Status> {
         todo!()
     }
 
-    async fn uninstall_notifier(
+    async fn uninstall_gofer_task(
         &self,
-        request: Request<UninstallNotifierRequest>,
-    ) -> Result<Response<UninstallNotifierResponse>, Status> {
+        request: Request<UninstallGoferTaskRequest>,
+    ) -> Result<Response<UninstallGoferTaskResponse>, Status> {
         todo!()
     }
 
-    async fn enable_notifier(
+    async fn enable_gofer_task(
         &self,
-        request: Request<EnableNotifierRequest>,
-    ) -> Result<Response<EnableNotifierResponse>, Status> {
+        request: Request<EnableGoferTaskRequest>,
+    ) -> Result<Response<EnableGoferTaskResponse>, Status> {
         todo!()
     }
 
-    async fn disable_notifier(
+    async fn disable_gofer_task(
         &self,
-        request: Request<DisableNotifierRequest>,
-    ) -> Result<Response<DisableNotifierResponse>, Status> {
+        request: Request<DisableGoferTaskRequest>,
+    ) -> Result<Response<DisableGoferTaskResponse>, Status> {
         todo!()
     }
 }

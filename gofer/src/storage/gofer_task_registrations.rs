@@ -1,6 +1,6 @@
 use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
-use gofer_models::notifier::{Registration, Status};
+use gofer_models::gofer_task::{Registration, Status};
 use sqlx::{sqlite::SqliteRow, QueryBuilder, Row, Sqlite, SqliteConnection};
 use std::ops::Deref;
 use std::str::FromStr;

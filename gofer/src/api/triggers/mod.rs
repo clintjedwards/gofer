@@ -7,8 +7,10 @@ use crate::{
 use futures::stream::StreamExt;
 use gofer_models::{event, trigger};
 use gofer_proto::{
-    GetTriggerInstallInstructionsRequest, GetTriggerInstallInstructionsResponse,
-    InstallTriggerRequest, InstallTriggerResponse,
+    DisableTriggerRequest, DisableTriggerResponse, EnableTriggerRequest, EnableTriggerResponse,
+    GetTriggerInstallInstructionsRequest, GetTriggerInstallInstructionsResponse, GetTriggerRequest,
+    GetTriggerResponse, InstallTriggerRequest, InstallTriggerResponse, ListTriggersRequest,
+    ListTriggersResponse, UninstallTriggerRequest, UninstallTriggerResponse,
 };
 use nanoid::nanoid;
 use slog_scope::info;
@@ -167,5 +169,161 @@ impl Api {
         Ok(Response::new(GetTriggerInstallInstructionsResponse {
             instructions: last_line,
         }))
+    }
+
+    pub async fn get_trigger_handler(
+        &self,
+        args: GetTriggerRequest,
+    ) -> Result<Response<GetTriggerResponse>, Status> {
+        validate::arg(
+            "name",
+            args.name.clone(),
+            vec![validate::is_valid_identifier, validate::not_empty_str],
+        )?;
+
+        match self.triggers.get(&args.name) {
+            Some(entry) => {
+                let trigger = entry.value();
+                Ok(Response::new(GetTriggerResponse {
+                    trigger: Some(trigger.clone().into()),
+                }))
+            }
+            None => Err(Status::failed_precondition("trigger does not exist")),
+        }
+    }
+
+    pub async fn list_triggers_handler(
+        &self,
+        args: ListTriggersRequest,
+    ) -> Result<Response<ListTriggersResponse>, Status> {
+        let triggers: Vec<gofer_proto::Trigger> = self
+            .triggers
+            .iter()
+            .map(|trigger| trigger.value().clone().into())
+            .collect();
+
+        Ok(Response::new(ListTriggersResponse { triggers }))
+    }
+
+    pub async fn uninstall_trigger_handler(
+        &self,
+        args: UninstallTriggerRequest,
+    ) -> Result<Response<UninstallTriggerResponse>, Status> {
+        validate::arg(
+            "name",
+            args.name.clone(),
+            vec![validate::is_valid_identifier, validate::not_empty_str],
+        )?;
+
+        // We create an inner scope here so we don't deadlock on the remove call
+        // because we have a reference into the map.
+        {
+            let trigger = match self.triggers.get(&args.name) {
+                Some(trigger) => trigger,
+                None => return Err(Status::failed_precondition("trigger does not exist")),
+            };
+            let trigger = trigger.value();
+
+            if let Err(e) = self.stop_trigger(trigger).await {
+                return Err(Status::internal(format!("could not stop trigger; {:?}", e)));
+            };
+        }
+
+        self.triggers.remove(&args.name);
+
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        if let Err(e) = storage::trigger_registrations::delete(&mut conn, &args.name).await {
+            return Err(Status::internal(format!(
+                "could not remove trigger registration {:?}",
+                e
+            )));
+        };
+
+        Ok(Response::new(UninstallTriggerResponse {}))
+    }
+
+    pub async fn enable_trigger_handler(
+        &self,
+        args: EnableTriggerRequest,
+    ) -> Result<Response<EnableTriggerResponse>, Status> {
+        validate::arg(
+            "name",
+            args.name.clone(),
+            vec![validate::is_valid_identifier, validate::not_empty_str],
+        )?;
+
+        self.triggers.alter(&args.name, |_, mut value| {
+            value.status = trigger::Status::Enabled;
+            value
+        });
+
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        if let Err(e) = storage::trigger_registrations::update(
+            &mut conn,
+            &args.name,
+            storage::trigger_registrations::UpdatableFields {
+                status: Some(trigger::Status::Enabled),
+                ..Default::default()
+            },
+        )
+        .await
+        {
+            return Err(Status::internal(format!(
+                "could not update trigger registration status; {:?}",
+                e
+            )));
+        };
+
+        Ok(Response::new(EnableTriggerResponse {}))
+    }
+
+    pub async fn disable_trigger_handler(
+        &self,
+        args: DisableTriggerRequest,
+    ) -> Result<Response<DisableTriggerResponse>, Status> {
+        validate::arg(
+            "name",
+            args.name.clone(),
+            vec![validate::is_valid_identifier, validate::not_empty_str],
+        )?;
+
+        self.triggers.alter(&args.name, |_, mut value| {
+            value.status = trigger::Status::Disabled;
+            value
+        });
+
+        let mut conn = self
+            .storage
+            .conn()
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        if let Err(e) = storage::trigger_registrations::update(
+            &mut conn,
+            &args.name,
+            storage::trigger_registrations::UpdatableFields {
+                status: Some(trigger::Status::Disabled),
+                ..Default::default()
+            },
+        )
+        .await
+        {
+            return Err(Status::internal(format!(
+                "could not update trigger registration status; {:?}",
+                e
+            )));
+        };
+
+        Ok(Response::new(DisableTriggerResponse {}))
     }
 }

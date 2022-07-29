@@ -20,8 +20,8 @@ pub struct Pipeline {
     pub tasks: Vec<Task>,
     /// A mapping of pipeline owned triggers to their settings.
     pub triggers: Vec<PipelineTriggerConfig>,
-    /// A mapping of pipeline owned notifiers to their settings.
-    pub notifiers: Vec<PipelineNotifierConfig>,
+    /// A mapping of pipeline owned gofertasks to their settings.
+    pub gofer_tasks: Vec<PipelineGoferTaskConfig>,
 }
 
 impl From<gofer_proto::PipelineConfig> for Pipeline {
@@ -39,7 +39,11 @@ impl From<gofer_proto::PipelineConfig> for Pipeline {
             parallelism: p.parallelism,
             tasks: p.tasks.into_iter().map(|value| value.into()).collect(),
             triggers: p.triggers.into_iter().map(|value| value.into()).collect(),
-            notifiers: p.notifiers.into_iter().map(|value| value.into()).collect(),
+            gofer_tasks: p
+                .gofer_tasks
+                .into_iter()
+                .map(|value| value.into())
+                .collect(),
         }
     }
 }
@@ -53,7 +57,11 @@ impl From<Pipeline> for gofer_proto::PipelineConfig {
             parallelism: p.parallelism,
             tasks: p.tasks.into_iter().map(|value| value.into()).collect(),
             triggers: p.triggers.into_iter().map(|value| value.into()).collect(),
-            notifiers: p.notifiers.into_iter().map(|value| value.into()).collect(),
+            gofer_tasks: p
+                .gofer_tasks
+                .into_iter()
+                .map(|value| value.into())
+                .collect(),
         }
     }
 }
@@ -67,7 +75,7 @@ impl Pipeline {
             parallelism: 0,
             tasks: Vec::new(),
             triggers: Vec::new(),
-            notifiers: Vec::new(),
+            gofer_tasks: Vec::new(),
         }
     }
 
@@ -82,8 +90,8 @@ impl Pipeline {
             trigger.validate()?;
         }
 
-        for notifier in &self.notifiers {
-            notifier.validate()?;
+        for gofer_task in &self.gofer_tasks {
+            gofer_task.validate()?;
         }
 
         Ok(())
@@ -109,8 +117,8 @@ impl Pipeline {
         self
     }
 
-    pub fn notifiers(mut self, notifiers: Vec<PipelineNotifierConfig>) -> Self {
-        self.notifiers = notifiers;
+    pub fn gofer_tasks(mut self, gofer_tasks: Vec<PipelineGoferTaskConfig>) -> Self {
+        self.gofer_tasks = gofer_tasks;
         self
     }
 
@@ -134,7 +142,7 @@ pub struct PipelineTriggerConfig {
     /// A global unique identifier for the trigger type.
     pub name: String,
     /// A user defined identifier for the trigger so that a pipeline with
-    /// multiple notifiers can be differentiated.
+    /// multiple gofertasks can be differentiated.
     pub label: String,
     /// The settings for pertaining to that specific trigger.
     pub settings: HashMap<String, String>,
@@ -182,19 +190,19 @@ impl From<PipelineTriggerConfig> for gofer_proto::PipelineTriggerConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub struct PipelineNotifierConfig {
-    /// A global unique identifier for the notifier type.
+pub struct PipelineGoferTaskConfig {
+    /// A global unique identifier for the gofertask type.
     pub name: String,
-    /// A user defined identifier for the notifier so that a pipeline with
-    /// multiple notifiers can be differentiated.
+    /// A user defined identifier for the gofertask so that a pipeline with
+    /// multiple gofertasks can be differentiated.
     pub label: String,
-    /// The settings for pertaining to that specific notifier.
+    /// The settings for pertaining to that specific gofertask.
     pub settings: HashMap<String, String>,
 }
 
-impl PipelineNotifierConfig {
+impl PipelineGoferTaskConfig {
     pub fn new(name: &str, label: &str) -> Self {
-        PipelineNotifierConfig {
+        PipelineGoferTaskConfig {
             name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
@@ -212,9 +220,9 @@ impl PipelineNotifierConfig {
     }
 }
 
-impl From<gofer_proto::PipelineNotifierConfig> for PipelineNotifierConfig {
-    fn from(p: gofer_proto::PipelineNotifierConfig) -> Self {
-        PipelineNotifierConfig {
+impl From<gofer_proto::PipelineGoferTaskConfig> for PipelineGoferTaskConfig {
+    fn from(p: gofer_proto::PipelineGoferTaskConfig) -> Self {
+        PipelineGoferTaskConfig {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -222,9 +230,9 @@ impl From<gofer_proto::PipelineNotifierConfig> for PipelineNotifierConfig {
     }
 }
 
-impl From<PipelineNotifierConfig> for gofer_proto::PipelineNotifierConfig {
-    fn from(p: PipelineNotifierConfig) -> Self {
-        gofer_proto::PipelineNotifierConfig {
+impl From<PipelineGoferTaskConfig> for gofer_proto::PipelineGoferTaskConfig {
+    fn from(p: PipelineGoferTaskConfig) -> Self {
+        gofer_proto::PipelineGoferTaskConfig {
             name: p.name,
             label: p.label,
             settings: p.settings,

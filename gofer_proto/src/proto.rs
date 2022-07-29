@@ -82,7 +82,7 @@ pub struct Pipeline {
     #[prost(map="string, message", tag="12")]
     pub triggers: ::std::collections::HashMap<::prost::alloc::string::String, PipelineTriggerSettings>,
     #[prost(map="string, message", tag="13")]
-    pub notifiers: ::std::collections::HashMap<::prost::alloc::string::String, PipelineNotifierSettings>,
+    pub gofer_tasks: ::std::collections::HashMap<::prost::alloc::string::String, PipelineGoferTaskSettings>,
     #[prost(string, repeated, tag="14")]
     pub store_keys: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -111,7 +111,7 @@ pub struct PipelineConfig {
     #[prost(message, repeated, tag="6")]
     pub triggers: ::prost::alloc::vec::Vec<PipelineTriggerConfig>,
     #[prost(message, repeated, tag="7")]
-    pub notifiers: ::prost::alloc::vec::Vec<PipelineNotifierConfig>,
+    pub gofer_tasks: ::prost::alloc::vec::Vec<PipelineGoferTaskConfig>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Run {
@@ -242,7 +242,7 @@ pub struct PipelineTriggerSettings {
     pub error: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PipelineNotifierSettings {
+pub struct PipelineGoferTaskSettings {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -292,7 +292,7 @@ pub struct PipelineTriggerConfig {
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PipelineNotifierConfig {
+pub struct PipelineGoferTaskConfig {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -441,28 +441,28 @@ pub mod trigger_registration {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Notifier {
+pub struct GoferTask {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub image: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
     pub documentation: ::prost::alloc::string::String,
-    #[prost(enumeration="notifier::NotifierStatus", tag="4")]
+    #[prost(enumeration="gofer_task::Status", tag="4")]
     pub status: i32,
 }
-/// Nested message and enum types in `Notifier`.
-pub mod notifier {
+/// Nested message and enum types in `GoferTask`.
+pub mod gofer_task {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum NotifierStatus {
-        UnknownStatus = 0,
+    pub enum Status {
+        Unknown = 0,
         Enabled = 1,
         Disabled = 2,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NotifierRegistration {
+pub struct GoferTaskRegistration {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -475,15 +475,15 @@ pub struct NotifierRegistration {
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     #[prost(uint64, tag="6")]
     pub created: u64,
-    #[prost(enumeration="notifier_registration::NotifierStatus", tag="7")]
+    #[prost(enumeration="gofer_task_registration::Status", tag="7")]
     pub status: i32,
 }
-/// Nested message and enum types in `NotifierRegistration`.
-pub mod notifier_registration {
+/// Nested message and enum types in `GoferTaskRegistration`.
+pub mod gofer_task_registration {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum NotifierStatus {
-        UnknownStatus = 0,
+    pub enum Status {
+        Unknown = 0,
         Enabled = 1,
         Disabled = 2,
     }
@@ -954,29 +954,29 @@ pub struct GetTriggerInstallInstructionsResponse {
     #[prost(string, tag="1")]
     pub instructions: ::prost::alloc::string::String,
 }
-////////////// Notifier Transport Models //////////////
+////////////// GoferTask Transport Models //////////////
 
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetNotifierRequest {
-    /// The unique name/kind for a particular notifier
+pub struct GetGoferTaskRequest {
+    /// The unique name/kind for a particular gofertask
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetNotifierResponse {
+pub struct GetGoferTaskResponse {
     #[prost(message, optional, tag="1")]
-    pub notifier: ::core::option::Option<Notifier>,
+    pub gofer_task: ::core::option::Option<GoferTask>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListNotifiersRequest {
+pub struct ListGoferTasksRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListNotifiersResponse {
+pub struct ListGoferTasksResponse {
     #[prost(message, repeated, tag="1")]
-    pub notifiers: ::prost::alloc::vec::Vec<Notifier>,
+    pub gofer_tasks: ::prost::alloc::vec::Vec<GoferTask>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InstallNotifierRequest {
+pub struct InstallGoferTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -989,31 +989,31 @@ pub struct InstallNotifierRequest {
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InstallNotifierResponse {
+pub struct InstallGoferTaskResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UninstallNotifierRequest {
+pub struct UninstallGoferTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UninstallNotifierResponse {
+pub struct UninstallGoferTaskResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EnableNotifierRequest {
+pub struct EnableGoferTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EnableNotifierResponse {
+pub struct EnableGoferTaskResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DisableNotifierRequest {
+pub struct DisableGoferTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DisableNotifierResponse {
+pub struct DisableGoferTaskResponse {
 }
 ////////////// Trigger Service Transport Models //////////////
 
@@ -1821,11 +1821,11 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// GetNotifier returns details about a specific notifier.
-        pub async fn get_notifier(
+        /// GetGoferTask returns details about a specific gofertask.
+        pub async fn get_gofer_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetNotifierRequest>,
-        ) -> Result<tonic::Response<super::GetNotifierResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::GetGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::GetGoferTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1836,14 +1836,14 @@ pub mod gofer_client {
                     )
                 })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetNotifier");
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetGoferTask");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// ListNotifiers lists all notifiers currently registered within gofer.
-        pub async fn list_notifiers(
+        /// ListGoferTasks lists all gofertasks currently registered within gofer.
+        pub async fn list_gofer_tasks(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListNotifiersRequest>,
-        ) -> Result<tonic::Response<super::ListNotifiersResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::ListGoferTasksRequest>,
+        ) -> Result<tonic::Response<super::ListGoferTasksResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1855,15 +1855,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/ListNotifiers",
+                "/proto.Gofer/ListGoferTasks",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// InstallNotifier attempts to install a new notifier.
-        pub async fn install_notifier(
+        /// InstallGoferTask attempts to install a new gofertask.
+        pub async fn install_gofer_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::InstallNotifierRequest>,
-        ) -> Result<tonic::Response<super::InstallNotifierResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::InstallGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::InstallGoferTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1875,15 +1875,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/InstallNotifier",
+                "/proto.Gofer/InstallGoferTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// UninstallNotifier attempts to uninstall a notifier.
-        pub async fn uninstall_notifier(
+        /// UninstallGoferTask attempts to uninstall a gofertask.
+        pub async fn uninstall_gofer_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::UninstallNotifierRequest>,
-        ) -> Result<tonic::Response<super::UninstallNotifierResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::UninstallGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::UninstallGoferTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1895,15 +1895,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/UninstallNotifier",
+                "/proto.Gofer/UninstallGoferTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// EnableNotifier attempts to enable a new notifier.
-        pub async fn enable_notifier(
+        /// EnableGoferTask attempts to enable a new gofertask.
+        pub async fn enable_gofer_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::EnableNotifierRequest>,
-        ) -> Result<tonic::Response<super::EnableNotifierResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::EnableGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::EnableGoferTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1915,15 +1915,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/EnableNotifier",
+                "/proto.Gofer/EnableGoferTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// DisableNotifier attempts to disable a new notifier.
-        pub async fn disable_notifier(
+        /// DisableGoferTask attempts to disable a new gofertask.
+        pub async fn disable_gofer_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::DisableNotifierRequest>,
-        ) -> Result<tonic::Response<super::DisableNotifierResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::DisableGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::DisableGoferTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1935,7 +1935,7 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/DisableNotifier",
+                "/proto.Gofer/DisableGoferTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
@@ -2338,36 +2338,36 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DisableTriggerRequest>,
         ) -> Result<tonic::Response<super::DisableTriggerResponse>, tonic::Status>;
-        /// GetNotifier returns details about a specific notifier.
-        async fn get_notifier(
+        /// GetGoferTask returns details about a specific gofertask.
+        async fn get_gofer_task(
             &self,
-            request: tonic::Request<super::GetNotifierRequest>,
-        ) -> Result<tonic::Response<super::GetNotifierResponse>, tonic::Status>;
-        /// ListNotifiers lists all notifiers currently registered within gofer.
-        async fn list_notifiers(
+            request: tonic::Request<super::GetGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::GetGoferTaskResponse>, tonic::Status>;
+        /// ListGoferTasks lists all gofertasks currently registered within gofer.
+        async fn list_gofer_tasks(
             &self,
-            request: tonic::Request<super::ListNotifiersRequest>,
-        ) -> Result<tonic::Response<super::ListNotifiersResponse>, tonic::Status>;
-        /// InstallNotifier attempts to install a new notifier.
-        async fn install_notifier(
+            request: tonic::Request<super::ListGoferTasksRequest>,
+        ) -> Result<tonic::Response<super::ListGoferTasksResponse>, tonic::Status>;
+        /// InstallGoferTask attempts to install a new gofertask.
+        async fn install_gofer_task(
             &self,
-            request: tonic::Request<super::InstallNotifierRequest>,
-        ) -> Result<tonic::Response<super::InstallNotifierResponse>, tonic::Status>;
-        /// UninstallNotifier attempts to uninstall a notifier.
-        async fn uninstall_notifier(
+            request: tonic::Request<super::InstallGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::InstallGoferTaskResponse>, tonic::Status>;
+        /// UninstallGoferTask attempts to uninstall a gofertask.
+        async fn uninstall_gofer_task(
             &self,
-            request: tonic::Request<super::UninstallNotifierRequest>,
-        ) -> Result<tonic::Response<super::UninstallNotifierResponse>, tonic::Status>;
-        /// EnableNotifier attempts to enable a new notifier.
-        async fn enable_notifier(
+            request: tonic::Request<super::UninstallGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::UninstallGoferTaskResponse>, tonic::Status>;
+        /// EnableGoferTask attempts to enable a new gofertask.
+        async fn enable_gofer_task(
             &self,
-            request: tonic::Request<super::EnableNotifierRequest>,
-        ) -> Result<tonic::Response<super::EnableNotifierResponse>, tonic::Status>;
-        /// DisableNotifier attempts to disable a new notifier.
-        async fn disable_notifier(
+            request: tonic::Request<super::EnableGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::EnableGoferTaskResponse>, tonic::Status>;
+        /// DisableGoferTask attempts to disable a new gofertask.
+        async fn disable_gofer_task(
             &self,
-            request: tonic::Request<super::DisableNotifierRequest>,
-        ) -> Result<tonic::Response<super::DisableNotifierResponse>, tonic::Status>;
+            request: tonic::Request<super::DisableGoferTaskRequest>,
+        ) -> Result<tonic::Response<super::DisableGoferTaskResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct GoferServer<T: Gofer> {
@@ -3632,23 +3632,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/GetNotifier" => {
+                "/proto.Gofer/GetGoferTask" => {
                     #[allow(non_camel_case_types)]
-                    struct GetNotifierSvc<T: Gofer>(pub Arc<T>);
-                    impl<T: Gofer> tonic::server::UnaryService<super::GetNotifierRequest>
-                    for GetNotifierSvc<T> {
-                        type Response = super::GetNotifierResponse;
+                    struct GetGoferTaskSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::GetGoferTaskRequest>
+                    for GetGoferTaskSvc<T> {
+                        type Response = super::GetGoferTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetNotifierRequest>,
+                            request: tonic::Request<super::GetGoferTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).get_notifier(request).await
+                                (*inner).get_gofer_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3658,7 +3660,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = GetNotifierSvc(inner);
+                        let method = GetGoferTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3670,25 +3672,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/ListNotifiers" => {
+                "/proto.Gofer/ListGoferTasks" => {
                     #[allow(non_camel_case_types)]
-                    struct ListNotifiersSvc<T: Gofer>(pub Arc<T>);
+                    struct ListGoferTasksSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::ListNotifiersRequest>
-                    for ListNotifiersSvc<T> {
-                        type Response = super::ListNotifiersResponse;
+                    > tonic::server::UnaryService<super::ListGoferTasksRequest>
+                    for ListGoferTasksSvc<T> {
+                        type Response = super::ListGoferTasksResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListNotifiersRequest>,
+                            request: tonic::Request<super::ListGoferTasksRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).list_notifiers(request).await
+                                (*inner).list_gofer_tasks(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3698,7 +3700,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = ListNotifiersSvc(inner);
+                        let method = ListGoferTasksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3710,25 +3712,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/InstallNotifier" => {
+                "/proto.Gofer/InstallGoferTask" => {
                     #[allow(non_camel_case_types)]
-                    struct InstallNotifierSvc<T: Gofer>(pub Arc<T>);
+                    struct InstallGoferTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::InstallNotifierRequest>
-                    for InstallNotifierSvc<T> {
-                        type Response = super::InstallNotifierResponse;
+                    > tonic::server::UnaryService<super::InstallGoferTaskRequest>
+                    for InstallGoferTaskSvc<T> {
+                        type Response = super::InstallGoferTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::InstallNotifierRequest>,
+                            request: tonic::Request<super::InstallGoferTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).install_notifier(request).await
+                                (*inner).install_gofer_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3738,7 +3740,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = InstallNotifierSvc(inner);
+                        let method = InstallGoferTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3750,25 +3752,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/UninstallNotifier" => {
+                "/proto.Gofer/UninstallGoferTask" => {
                     #[allow(non_camel_case_types)]
-                    struct UninstallNotifierSvc<T: Gofer>(pub Arc<T>);
+                    struct UninstallGoferTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::UninstallNotifierRequest>
-                    for UninstallNotifierSvc<T> {
-                        type Response = super::UninstallNotifierResponse;
+                    > tonic::server::UnaryService<super::UninstallGoferTaskRequest>
+                    for UninstallGoferTaskSvc<T> {
+                        type Response = super::UninstallGoferTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::UninstallNotifierRequest>,
+                            request: tonic::Request<super::UninstallGoferTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).uninstall_notifier(request).await
+                                (*inner).uninstall_gofer_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3778,7 +3780,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = UninstallNotifierSvc(inner);
+                        let method = UninstallGoferTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3790,25 +3792,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/EnableNotifier" => {
+                "/proto.Gofer/EnableGoferTask" => {
                     #[allow(non_camel_case_types)]
-                    struct EnableNotifierSvc<T: Gofer>(pub Arc<T>);
+                    struct EnableGoferTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::EnableNotifierRequest>
-                    for EnableNotifierSvc<T> {
-                        type Response = super::EnableNotifierResponse;
+                    > tonic::server::UnaryService<super::EnableGoferTaskRequest>
+                    for EnableGoferTaskSvc<T> {
+                        type Response = super::EnableGoferTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::EnableNotifierRequest>,
+                            request: tonic::Request<super::EnableGoferTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).enable_notifier(request).await
+                                (*inner).enable_gofer_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3818,7 +3820,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = EnableNotifierSvc(inner);
+                        let method = EnableGoferTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3830,25 +3832,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/DisableNotifier" => {
+                "/proto.Gofer/DisableGoferTask" => {
                     #[allow(non_camel_case_types)]
-                    struct DisableNotifierSvc<T: Gofer>(pub Arc<T>);
+                    struct DisableGoferTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::DisableNotifierRequest>
-                    for DisableNotifierSvc<T> {
-                        type Response = super::DisableNotifierResponse;
+                    > tonic::server::UnaryService<super::DisableGoferTaskRequest>
+                    for DisableGoferTaskSvc<T> {
+                        type Response = super::DisableGoferTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::DisableNotifierRequest>,
+                            request: tonic::Request<super::DisableGoferTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).disable_notifier(request).await
+                                (*inner).disable_gofer_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3858,7 +3860,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DisableNotifierSvc(inner);
+                        let method = DisableGoferTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

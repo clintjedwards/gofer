@@ -164,29 +164,31 @@ service Gofer {
   // DisableTrigger attempts to disable a new trigger.
   rpc DisableTrigger(DisableTriggerRequest) returns (DisableTriggerResponse);
 
-  ////////////// Notifier RPCs //////////////
+  ////////////// GoferTask RPCs //////////////
   //
-  // A notifier is a provided way to notify external systems about the
-  // completion of a run.
+  // A Gofertask is a Gofer provided task that can be set up in advanced to make
+  // some action easier for a particular user. For example posting to Slack.
 
-  // GetNotifier returns details about a specific notifier.
-  rpc GetNotifier(GetNotifierRequest) returns (GetNotifierResponse);
+  // GetGoferTask returns details about a specific gofertask.
+  rpc GetGoferTask(GetGoferTaskRequest) returns (GetGoferTaskResponse);
 
-  // ListNotifiers lists all notifiers currently registered within gofer.
-  rpc ListNotifiers(ListNotifiersRequest) returns (ListNotifiersResponse);
+  // ListGoferTasks lists all gofertasks currently registered within gofer.
+  rpc ListGoferTasks(ListGoferTasksRequest) returns (ListGoferTasksResponse);
 
-  // InstallNotifier attempts to install a new notifier.
-  rpc InstallNotifier(InstallNotifierRequest) returns (InstallNotifierResponse);
+  // InstallGoferTask attempts to install a new gofertask.
+  rpc InstallGoferTask(InstallGoferTaskRequest)
+      returns (InstallGoferTaskResponse);
 
-  // UninstallNotifier attempts to uninstall a notifier.
-  rpc UninstallNotifier(UninstallNotifierRequest)
-      returns (UninstallNotifierResponse);
+  // UninstallGoferTask attempts to uninstall a gofertask.
+  rpc UninstallGoferTask(UninstallGoferTaskRequest)
+      returns (UninstallGoferTaskResponse);
 
-  // EnableNotifier attempts to enable a new notifier.
-  rpc EnableNotifier(EnableNotifierRequest) returns (EnableNotifierResponse);
+  // EnableGoferTask attempts to enable a new gofertask.
+  rpc EnableGoferTask(EnableGoferTaskRequest) returns (EnableGoferTaskResponse);
 
-  // DisableNotifier attempts to disable a new notifier.
-  rpc DisableNotifier(DisableNotifierRequest) returns (DisableNotifierResponse);
+  // DisableGoferTask attempts to disable a new gofertask.
+  rpc DisableGoferTask(DisableGoferTaskRequest)
+      returns (DisableGoferTaskResponse);
 }
 
 service TriggerService {

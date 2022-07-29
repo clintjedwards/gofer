@@ -113,18 +113,18 @@ type GoferClient interface {
 	EnableTrigger(ctx context.Context, in *EnableTriggerRequest, opts ...grpc.CallOption) (*EnableTriggerResponse, error)
 	// DisableTrigger attempts to disable a new trigger.
 	DisableTrigger(ctx context.Context, in *DisableTriggerRequest, opts ...grpc.CallOption) (*DisableTriggerResponse, error)
-	// GetNotifier returns details about a specific notifier.
-	GetNotifier(ctx context.Context, in *GetNotifierRequest, opts ...grpc.CallOption) (*GetNotifierResponse, error)
-	// ListNotifiers lists all notifiers currently registered within gofer.
-	ListNotifiers(ctx context.Context, in *ListNotifiersRequest, opts ...grpc.CallOption) (*ListNotifiersResponse, error)
-	// InstallNotifier attempts to install a new notifier.
-	InstallNotifier(ctx context.Context, in *InstallNotifierRequest, opts ...grpc.CallOption) (*InstallNotifierResponse, error)
-	// UninstallNotifier attempts to uninstall a notifier.
-	UninstallNotifier(ctx context.Context, in *UninstallNotifierRequest, opts ...grpc.CallOption) (*UninstallNotifierResponse, error)
-	// EnableNotifier attempts to enable a new notifier.
-	EnableNotifier(ctx context.Context, in *EnableNotifierRequest, opts ...grpc.CallOption) (*EnableNotifierResponse, error)
-	// DisableNotifier attempts to disable a new notifier.
-	DisableNotifier(ctx context.Context, in *DisableNotifierRequest, opts ...grpc.CallOption) (*DisableNotifierResponse, error)
+	// GetGoferTask returns details about a specific gofertask.
+	GetGoferTask(ctx context.Context, in *GetGoferTaskRequest, opts ...grpc.CallOption) (*GetGoferTaskResponse, error)
+	// ListGoferTasks lists all gofertasks currently registered within gofer.
+	ListGoferTasks(ctx context.Context, in *ListGoferTasksRequest, opts ...grpc.CallOption) (*ListGoferTasksResponse, error)
+	// InstallGoferTask attempts to install a new gofertask.
+	InstallGoferTask(ctx context.Context, in *InstallGoferTaskRequest, opts ...grpc.CallOption) (*InstallGoferTaskResponse, error)
+	// UninstallGoferTask attempts to uninstall a gofertask.
+	UninstallGoferTask(ctx context.Context, in *UninstallGoferTaskRequest, opts ...grpc.CallOption) (*UninstallGoferTaskResponse, error)
+	// EnableGoferTask attempts to enable a new gofertask.
+	EnableGoferTask(ctx context.Context, in *EnableGoferTaskRequest, opts ...grpc.CallOption) (*EnableGoferTaskResponse, error)
+	// DisableGoferTask attempts to disable a new gofertask.
+	DisableGoferTask(ctx context.Context, in *DisableGoferTaskRequest, opts ...grpc.CallOption) (*DisableGoferTaskResponse, error)
 }
 
 type goferClient struct {
@@ -437,54 +437,54 @@ func (c *goferClient) DisableTrigger(ctx context.Context, in *DisableTriggerRequ
 	return out, nil
 }
 
-func (c *goferClient) GetNotifier(ctx context.Context, in *GetNotifierRequest, opts ...grpc.CallOption) (*GetNotifierResponse, error) {
-	out := new(GetNotifierResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/GetNotifier", in, out, opts...)
+func (c *goferClient) GetGoferTask(ctx context.Context, in *GetGoferTaskRequest, opts ...grpc.CallOption) (*GetGoferTaskResponse, error) {
+	out := new(GetGoferTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/GetGoferTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) ListNotifiers(ctx context.Context, in *ListNotifiersRequest, opts ...grpc.CallOption) (*ListNotifiersResponse, error) {
-	out := new(ListNotifiersResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/ListNotifiers", in, out, opts...)
+func (c *goferClient) ListGoferTasks(ctx context.Context, in *ListGoferTasksRequest, opts ...grpc.CallOption) (*ListGoferTasksResponse, error) {
+	out := new(ListGoferTasksResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListGoferTasks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) InstallNotifier(ctx context.Context, in *InstallNotifierRequest, opts ...grpc.CallOption) (*InstallNotifierResponse, error) {
-	out := new(InstallNotifierResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/InstallNotifier", in, out, opts...)
+func (c *goferClient) InstallGoferTask(ctx context.Context, in *InstallGoferTaskRequest, opts ...grpc.CallOption) (*InstallGoferTaskResponse, error) {
+	out := new(InstallGoferTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/InstallGoferTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) UninstallNotifier(ctx context.Context, in *UninstallNotifierRequest, opts ...grpc.CallOption) (*UninstallNotifierResponse, error) {
-	out := new(UninstallNotifierResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/UninstallNotifier", in, out, opts...)
+func (c *goferClient) UninstallGoferTask(ctx context.Context, in *UninstallGoferTaskRequest, opts ...grpc.CallOption) (*UninstallGoferTaskResponse, error) {
+	out := new(UninstallGoferTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/UninstallGoferTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) EnableNotifier(ctx context.Context, in *EnableNotifierRequest, opts ...grpc.CallOption) (*EnableNotifierResponse, error) {
-	out := new(EnableNotifierResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/EnableNotifier", in, out, opts...)
+func (c *goferClient) EnableGoferTask(ctx context.Context, in *EnableGoferTaskRequest, opts ...grpc.CallOption) (*EnableGoferTaskResponse, error) {
+	out := new(EnableGoferTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/EnableGoferTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) DisableNotifier(ctx context.Context, in *DisableNotifierRequest, opts ...grpc.CallOption) (*DisableNotifierResponse, error) {
-	out := new(DisableNotifierResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/DisableNotifier", in, out, opts...)
+func (c *goferClient) DisableGoferTask(ctx context.Context, in *DisableGoferTaskRequest, opts ...grpc.CallOption) (*DisableGoferTaskResponse, error) {
+	out := new(DisableGoferTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/DisableGoferTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -586,18 +586,18 @@ type GoferServer interface {
 	EnableTrigger(context.Context, *EnableTriggerRequest) (*EnableTriggerResponse, error)
 	// DisableTrigger attempts to disable a new trigger.
 	DisableTrigger(context.Context, *DisableTriggerRequest) (*DisableTriggerResponse, error)
-	// GetNotifier returns details about a specific notifier.
-	GetNotifier(context.Context, *GetNotifierRequest) (*GetNotifierResponse, error)
-	// ListNotifiers lists all notifiers currently registered within gofer.
-	ListNotifiers(context.Context, *ListNotifiersRequest) (*ListNotifiersResponse, error)
-	// InstallNotifier attempts to install a new notifier.
-	InstallNotifier(context.Context, *InstallNotifierRequest) (*InstallNotifierResponse, error)
-	// UninstallNotifier attempts to uninstall a notifier.
-	UninstallNotifier(context.Context, *UninstallNotifierRequest) (*UninstallNotifierResponse, error)
-	// EnableNotifier attempts to enable a new notifier.
-	EnableNotifier(context.Context, *EnableNotifierRequest) (*EnableNotifierResponse, error)
-	// DisableNotifier attempts to disable a new notifier.
-	DisableNotifier(context.Context, *DisableNotifierRequest) (*DisableNotifierResponse, error)
+	// GetGoferTask returns details about a specific gofertask.
+	GetGoferTask(context.Context, *GetGoferTaskRequest) (*GetGoferTaskResponse, error)
+	// ListGoferTasks lists all gofertasks currently registered within gofer.
+	ListGoferTasks(context.Context, *ListGoferTasksRequest) (*ListGoferTasksResponse, error)
+	// InstallGoferTask attempts to install a new gofertask.
+	InstallGoferTask(context.Context, *InstallGoferTaskRequest) (*InstallGoferTaskResponse, error)
+	// UninstallGoferTask attempts to uninstall a gofertask.
+	UninstallGoferTask(context.Context, *UninstallGoferTaskRequest) (*UninstallGoferTaskResponse, error)
+	// EnableGoferTask attempts to enable a new gofertask.
+	EnableGoferTask(context.Context, *EnableGoferTaskRequest) (*EnableGoferTaskResponse, error)
+	// DisableGoferTask attempts to disable a new gofertask.
+	DisableGoferTask(context.Context, *DisableGoferTaskRequest) (*DisableGoferTaskResponse, error)
 	mustEmbedUnimplementedGoferServer()
 }
 
@@ -698,23 +698,23 @@ func (UnimplementedGoferServer) EnableTrigger(context.Context, *EnableTriggerReq
 func (UnimplementedGoferServer) DisableTrigger(context.Context, *DisableTriggerRequest) (*DisableTriggerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DisableTrigger not implemented")
 }
-func (UnimplementedGoferServer) GetNotifier(context.Context, *GetNotifierRequest) (*GetNotifierResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetNotifier not implemented")
+func (UnimplementedGoferServer) GetGoferTask(context.Context, *GetGoferTaskRequest) (*GetGoferTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGoferTask not implemented")
 }
-func (UnimplementedGoferServer) ListNotifiers(context.Context, *ListNotifiersRequest) (*ListNotifiersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListNotifiers not implemented")
+func (UnimplementedGoferServer) ListGoferTasks(context.Context, *ListGoferTasksRequest) (*ListGoferTasksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListGoferTasks not implemented")
 }
-func (UnimplementedGoferServer) InstallNotifier(context.Context, *InstallNotifierRequest) (*InstallNotifierResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InstallNotifier not implemented")
+func (UnimplementedGoferServer) InstallGoferTask(context.Context, *InstallGoferTaskRequest) (*InstallGoferTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallGoferTask not implemented")
 }
-func (UnimplementedGoferServer) UninstallNotifier(context.Context, *UninstallNotifierRequest) (*UninstallNotifierResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UninstallNotifier not implemented")
+func (UnimplementedGoferServer) UninstallGoferTask(context.Context, *UninstallGoferTaskRequest) (*UninstallGoferTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UninstallGoferTask not implemented")
 }
-func (UnimplementedGoferServer) EnableNotifier(context.Context, *EnableNotifierRequest) (*EnableNotifierResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EnableNotifier not implemented")
+func (UnimplementedGoferServer) EnableGoferTask(context.Context, *EnableGoferTaskRequest) (*EnableGoferTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnableGoferTask not implemented")
 }
-func (UnimplementedGoferServer) DisableNotifier(context.Context, *DisableNotifierRequest) (*DisableNotifierResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DisableNotifier not implemented")
+func (UnimplementedGoferServer) DisableGoferTask(context.Context, *DisableGoferTaskRequest) (*DisableGoferTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DisableGoferTask not implemented")
 }
 func (UnimplementedGoferServer) mustEmbedUnimplementedGoferServer() {}
 
@@ -1290,110 +1290,110 @@ func _Gofer_DisableTrigger_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_GetNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetNotifierRequest)
+func _Gofer_GetGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGoferTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).GetNotifier(ctx, in)
+		return srv.(GoferServer).GetGoferTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/GetNotifier",
+		FullMethod: "/proto.Gofer/GetGoferTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).GetNotifier(ctx, req.(*GetNotifierRequest))
+		return srv.(GoferServer).GetGoferTask(ctx, req.(*GetGoferTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_ListNotifiers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListNotifiersRequest)
+func _Gofer_ListGoferTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGoferTasksRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).ListNotifiers(ctx, in)
+		return srv.(GoferServer).ListGoferTasks(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/ListNotifiers",
+		FullMethod: "/proto.Gofer/ListGoferTasks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).ListNotifiers(ctx, req.(*ListNotifiersRequest))
+		return srv.(GoferServer).ListGoferTasks(ctx, req.(*ListGoferTasksRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_InstallNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InstallNotifierRequest)
+func _Gofer_InstallGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallGoferTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).InstallNotifier(ctx, in)
+		return srv.(GoferServer).InstallGoferTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/InstallNotifier",
+		FullMethod: "/proto.Gofer/InstallGoferTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).InstallNotifier(ctx, req.(*InstallNotifierRequest))
+		return srv.(GoferServer).InstallGoferTask(ctx, req.(*InstallGoferTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_UninstallNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UninstallNotifierRequest)
+func _Gofer_UninstallGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UninstallGoferTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).UninstallNotifier(ctx, in)
+		return srv.(GoferServer).UninstallGoferTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/UninstallNotifier",
+		FullMethod: "/proto.Gofer/UninstallGoferTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).UninstallNotifier(ctx, req.(*UninstallNotifierRequest))
+		return srv.(GoferServer).UninstallGoferTask(ctx, req.(*UninstallGoferTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_EnableNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EnableNotifierRequest)
+func _Gofer_EnableGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableGoferTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).EnableNotifier(ctx, in)
+		return srv.(GoferServer).EnableGoferTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/EnableNotifier",
+		FullMethod: "/proto.Gofer/EnableGoferTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).EnableNotifier(ctx, req.(*EnableNotifierRequest))
+		return srv.(GoferServer).EnableGoferTask(ctx, req.(*EnableGoferTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_DisableNotifier_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DisableNotifierRequest)
+func _Gofer_DisableGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableGoferTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).DisableNotifier(ctx, in)
+		return srv.(GoferServer).DisableGoferTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/DisableNotifier",
+		FullMethod: "/proto.Gofer/DisableGoferTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).DisableNotifier(ctx, req.(*DisableNotifierRequest))
+		return srv.(GoferServer).DisableGoferTask(ctx, req.(*DisableGoferTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1526,28 +1526,28 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_DisableTrigger_Handler,
 		},
 		{
-			MethodName: "GetNotifier",
-			Handler:    _Gofer_GetNotifier_Handler,
+			MethodName: "GetGoferTask",
+			Handler:    _Gofer_GetGoferTask_Handler,
 		},
 		{
-			MethodName: "ListNotifiers",
-			Handler:    _Gofer_ListNotifiers_Handler,
+			MethodName: "ListGoferTasks",
+			Handler:    _Gofer_ListGoferTasks_Handler,
 		},
 		{
-			MethodName: "InstallNotifier",
-			Handler:    _Gofer_InstallNotifier_Handler,
+			MethodName: "InstallGoferTask",
+			Handler:    _Gofer_InstallGoferTask_Handler,
 		},
 		{
-			MethodName: "UninstallNotifier",
-			Handler:    _Gofer_UninstallNotifier_Handler,
+			MethodName: "UninstallGoferTask",
+			Handler:    _Gofer_UninstallGoferTask_Handler,
 		},
 		{
-			MethodName: "EnableNotifier",
-			Handler:    _Gofer_EnableNotifier_Handler,
+			MethodName: "EnableGoferTask",
+			Handler:    _Gofer_EnableGoferTask_Handler,
 		},
 		{
-			MethodName: "DisableNotifier",
-			Handler:    _Gofer_DisableNotifier_Handler,
+			MethodName: "DisableGoferTask",
+			Handler:    _Gofer_DisableGoferTask_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

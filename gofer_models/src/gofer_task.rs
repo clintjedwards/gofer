@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum::{Display, EnumString};
 
-/// Notifiers can be enabled and disabled.
+/// GoferTasks can be enabled and disabled.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Status {
     /// Cannot determine status, should never be in this status.
@@ -14,11 +14,11 @@ pub enum Status {
     Disabled,
 }
 
-/// The in-memory representation of a notifier.
+/// The in-memory representation of a gofer_task.
 #[derive(Debug, Clone)]
-pub struct Notifier {
-    /// User given custom name for a notifier, allowing multiple notifiers of the same image to be used with different
-    /// configurations. Must be unique among other notifiers.
+pub struct GoferTask {
+    /// User given custom name for a gofer_task, allowing multiple gofer_tasks of the same image to be used with different
+    /// configurations. Must be unique among other gofer_tasks.
     pub name: String,
     pub image: String, // The docker image string.
     pub registry_auth: Option<super::RegistryAuth>,
@@ -26,8 +26,8 @@ pub struct Notifier {
     pub documentation: Option<String>,
 }
 
-/// When installing a new notifier, we allow the notifier installer to pass a bunch of settings that
-/// allow us to customize notifier containers on startup.
+/// When installing a new gofer_task, we allow the gofer_task installer to pass a bunch of settings that
+/// allow us to customize gofer_task containers on startup.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Registration {
     pub name: String,
@@ -39,8 +39,8 @@ pub struct Registration {
     pub status: Status,
 }
 
-impl From<gofer_proto::InstallNotifierRequest> for Registration {
-    fn from(v: gofer_proto::InstallNotifierRequest) -> Self {
+impl From<gofer_proto::InstallGoferTaskRequest> for Registration {
+    fn from(v: gofer_proto::InstallGoferTaskRequest) -> Self {
         Self {
             name: v.name,
             image: v.image,

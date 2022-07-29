@@ -88,20 +88,20 @@ WHERE namespace = ? AND pipeline = ?;"#,
     .await
 }
 
-pub async fn list_notifier_settings(
+pub async fn list_gofer_task_settings(
     conn: &mut SqliteConnection,
     namespace_id: &str,
     pipeline_id: &str,
-) -> Result<Vec<pipeline::NotifierSettings>, StorageError> {
+) -> Result<Vec<pipeline::GoferTaskSettings>, StorageError> {
     sqlx::query(
         r#"
 SELECT kind, label, settings, error
-FROM pipeline_notifier_settings
+FROM pipeline_gofer_task_settings
 WHERE namespace = ? AND pipeline = ?;"#,
     )
     .bind(namespace_id)
     .bind(pipeline_id)
-    .map(|row: SqliteRow| pipeline::NotifierSettings {
+    .map(|row: SqliteRow| pipeline::GoferTaskSettings {
         name: row.get("kind"),
         label: row.get("label"),
         settings: {
@@ -165,7 +165,7 @@ OFFSET ?;"#,
             .unwrap(),
         tasks: HashMap::new(),
         triggers: HashMap::new(),
-        notifiers: HashMap::new(),
+        gofer_tasks: HashMap::new(),
         store_keys: vec![],
     })
     .fetch_all(&mut tx)
@@ -197,9 +197,9 @@ OFFSET ?;"#,
             .map(|value| (value.label.clone(), value))
             .collect();
 
-        let notifiers = list_notifier_settings(&mut tx, namespace_id, &pipeline.id).await?;
+        let gofer_tasks = list_gofer_task_settings(&mut tx, namespace_id, &pipeline.id).await?;
 
-        pipeline.notifiers = notifiers
+        pipeline.gofer_tasks = gofer_tasks
             .into_iter()
             .map(|value| (value.label.clone(), value))
             .collect();
@@ -287,15 +287,15 @@ INSERT INTO pipeline_trigger_settings (namespace, pipeline, kind, label, setting
     .await
 }
 
-pub async fn insert_notifier_settings(
+pub async fn insert_gofer_task_settings(
     conn: &mut SqliteConnection,
     namespace_id: &str,
     pipeline_id: &str,
-    settings: &pipeline::NotifierSettings,
+    settings: &pipeline::GoferTaskSettings,
 ) -> Result<(), StorageError> {
     sqlx::query(
         r#"
-INSERT INTO pipeline_notifier_settings (namespace, pipeline, kind, label, settings, error) VALUES (?, ?, ?, ?, ?, ?);"#,
+INSERT INTO pipeline_gofer_task_settings (namespace, pipeline, kind, label, settings, error) VALUES (?, ?, ?, ?, ?, ?);"#,
     )
     .bind(&namespace_id)
     .bind(&pipeline_id)
@@ -365,8 +365,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?);"#,
         insert_trigger_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
     }
 
-    for settings in pipeline.notifiers.values() {
-        insert_notifier_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
+    for settings in pipeline.gofer_tasks.values() {
+        insert_gofer_task_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
     }
 
     tx.commit()
@@ -414,7 +414,7 @@ LIMIT 1;"#,
             .unwrap(),
         tasks: HashMap::new(),
         triggers: HashMap::new(),
-        notifiers: HashMap::new(),
+        gofer_tasks: HashMap::new(),
         store_keys: vec![],
     })
     .fetch_one(&mut tx)
@@ -443,8 +443,8 @@ LIMIT 1;"#,
         .map(|value| (value.label.clone(), value))
         .collect();
 
-    let notifiers = list_notifier_settings(&mut tx, namespace_id, pipeline_id).await?;
-    pipeline.notifiers = notifiers
+    let gofer_tasks = list_gofer_task_settings(&mut tx, namespace_id, pipeline_id).await?;
+    pipeline.gofer_tasks = gofer_tasks
         .into_iter()
         .map(|value| (value.label.clone(), value))
         .collect();
@@ -502,7 +502,7 @@ WHERE namespace = ? AND pipeline = ? AND label = ?;"#,
     .await
 }
 
-pub async fn delete_notifier_settings(
+pub async fn delete_gofer_task_settings(
     conn: &mut SqliteConnection,
     namespace_id: &str,
     pipeline_id: &str,
@@ -510,7 +510,7 @@ pub async fn delete_notifier_settings(
 ) -> Result<(), StorageError> {
     sqlx::query(
         r#"
-DELETE FROM pipeline_notifier_settings
+DELETE FROM pipeline_gofer_task_settings
 WHERE namespace = ? AND pipeline = ? AND label = ?;"#,
     )
     .bind(namespace_id)
@@ -613,10 +613,10 @@ pub async fn update(
         insert_trigger_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
     }
 
-    for settings in pipeline.notifiers.values() {
-        delete_notifier_settings(&mut tx, &pipeline.namespace, &pipeline.id, &settings.label)
+    for settings in pipeline.gofer_tasks.values() {
+        delete_gofer_task_settings(&mut tx, &pipeline.namespace, &pipeline.id, &settings.label)
             .await?;
-        insert_notifier_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
+        insert_gofer_task_settings(&mut tx, &pipeline.namespace, &pipeline.id, settings).await?;
     }
 
     tx.commit()

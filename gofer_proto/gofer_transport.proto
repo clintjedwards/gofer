@@ -253,33 +253,33 @@ message GetTriggerInstallInstructionsRequest {
 }
 message GetTriggerInstallInstructionsResponse { string instructions = 1; }
 
-////////////// Notifier Transport Models //////////////
+////////////// GoferTask Transport Models //////////////
 
-message GetNotifierRequest {
-  string name = 1; // The unique name/kind for a particular notifier
+message GetGoferTaskRequest {
+  string name = 1; // The unique name/kind for a particular gofertask
 }
-message GetNotifierResponse { Notifier notifier = 1; }
+message GetGoferTaskResponse { GoferTask gofer_task = 1; }
 
-message ListNotifiersRequest {}
-message ListNotifiersResponse { repeated Notifier notifiers = 1; }
+message ListGoferTasksRequest {}
+message ListGoferTasksResponse { repeated GoferTask gofer_tasks = 1; }
 
-message InstallNotifierRequest {
+message InstallGoferTaskRequest {
   string name = 1;
   string image = 2;
   string user = 3;
   string pass = 4;
   map<string, string> variables = 5;
 }
-message InstallNotifierResponse {}
+message InstallGoferTaskResponse {}
 
-message UninstallNotifierRequest { string name = 1; }
-message UninstallNotifierResponse {}
+message UninstallGoferTaskRequest { string name = 1; }
+message UninstallGoferTaskResponse {}
 
-message EnableNotifierRequest { string name = 1; }
-message EnableNotifierResponse {}
+message EnableGoferTaskRequest { string name = 1; }
+message EnableGoferTaskResponse {}
 
-message DisableNotifierRequest { string name = 1; }
-message DisableNotifierResponse {}
+message DisableGoferTaskRequest { string name = 1; }
+message DisableGoferTaskResponse {}
 
 ////////////// Trigger Service Transport Models //////////////
 
@@ -354,5 +354,3 @@ message TriggerShutdownResponse {}
 
 message TriggerExternalEventRequest { bytes payload = 1; }
 message TriggerExternalEventResponse {}
-
-// message TriggerConfigResponse { map<string, string> config = 1; }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use gofer_proto::trigger::{TriggerState, TriggerStatus};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 
@@ -31,13 +32,24 @@ pub enum State {
     Exited,
 }
 
-impl From<gofer_proto::trigger::TriggerState> for State {
-    fn from(r: gofer_proto::trigger::TriggerState) -> Self {
+impl From<TriggerState> for State {
+    fn from(r: TriggerState) -> Self {
         match r {
-            gofer_proto::trigger::TriggerState::UnknownState => State::Unknown,
-            gofer_proto::trigger::TriggerState::Processing => State::Processing,
-            gofer_proto::trigger::TriggerState::Running => State::Running,
-            gofer_proto::trigger::TriggerState::Exited => State::Exited,
+            TriggerState::UnknownState => State::Unknown,
+            TriggerState::Processing => State::Processing,
+            TriggerState::Running => State::Running,
+            TriggerState::Exited => State::Exited,
+        }
+    }
+}
+
+impl From<State> for TriggerState {
+    fn from(r: State) -> Self {
+        match r {
+            State::Unknown => TriggerState::UnknownState,
+            State::Processing => TriggerState::Processing,
+            State::Running => TriggerState::Running,
+            State::Exited => TriggerState::Exited,
         }
     }
 }
@@ -52,6 +64,26 @@ pub enum Status {
     /// Not available to be used by pipelines, either through lack of installation or
     /// being disabled by an admin.
     Disabled,
+}
+
+impl From<TriggerStatus> for Status {
+    fn from(r: TriggerStatus) -> Self {
+        match r {
+            TriggerStatus::UnknownStatus => Status::Unknown,
+            TriggerStatus::Enabled => Status::Enabled,
+            TriggerStatus::Disabled => Status::Disabled,
+        }
+    }
+}
+
+impl From<Status> for TriggerStatus {
+    fn from(r: Status) -> Self {
+        match r {
+            Status::Unknown => TriggerStatus::UnknownStatus,
+            Status::Enabled => TriggerStatus::Enabled,
+            Status::Disabled => TriggerStatus::Disabled,
+        }
+    }
 }
 
 /// The in-memory representation of a trigger, because triggers are somewhat ephemeral, many of the items listed
@@ -73,6 +105,21 @@ pub struct Trigger {
     /// On every request the Gofer service passes this key so that it is impossible for other service to contact
     /// and manipulate triggers directly.
     pub key: Option<String>,
+}
+
+impl From<Trigger> for gofer_proto::Trigger {
+    fn from(ns: Trigger) -> Self {
+        gofer_proto::Trigger {
+            image: ns.registration.image,
+            name: ns.registration.name,
+            url: ns.url.unwrap_or_default(),
+            scheduler_id: ns.scheduler_id.unwrap_or_default(),
+            started: ns.started,
+            state: gofer_proto::trigger::TriggerState::from(ns.state) as i32,
+            status: gofer_proto::trigger::TriggerStatus::from(ns.status) as i32,
+            documentation: ns.documentation.unwrap_or_default(),
+        }
+    }
 }
 
 /// When installing a new trigger, we allow the trigger installer to pass a bunch of settings that

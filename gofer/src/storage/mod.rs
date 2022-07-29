@@ -1,6 +1,6 @@
 pub mod events;
+pub mod gofer_task_registrations;
 pub mod namespaces;
-pub mod notifier_registrations;
 pub mod pipelines;
 pub mod runs;
 pub mod task_runs;

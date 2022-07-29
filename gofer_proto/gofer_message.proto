@@ -63,7 +63,7 @@ message Pipeline {
   PipelineState state = 10;
   map<string, Task> tasks = 11;
   map<string, PipelineTriggerSettings> triggers = 12;
-  map<string, PipelineNotifierSettings> notifiers = 13;
+  map<string, PipelineGoferTaskSettings> gofer_tasks = 13;
   repeated string store_keys = 14;
 }
 
@@ -74,7 +74,7 @@ message PipelineConfig {
   uint64 parallelism = 4;
   repeated TaskConfig tasks = 5;
   repeated PipelineTriggerConfig triggers = 6;
-  repeated PipelineNotifierConfig notifiers = 7;
+  repeated PipelineGoferTaskConfig gofer_tasks = 7;
 }
 
 message Run {
@@ -155,7 +155,7 @@ message PipelineTriggerSettings {
   string error = 4;
 }
 
-message PipelineNotifierSettings {
+message PipelineGoferTaskSettings {
   string name = 1;
   string label = 2;
   map<string, string> settings = 3;
@@ -185,7 +185,7 @@ message PipelineTriggerConfig {
   map<string, string> settings = 3;
 }
 
-message PipelineNotifierConfig {
+message PipelineGoferTaskConfig {
   string name = 1;
   string label = 2;
   map<string, string> settings = 3;
@@ -274,29 +274,29 @@ message TriggerRegistration {
   TriggerStatus status = 7;
 }
 
-message Notifier {
+message GoferTask {
   string name = 1;
   string image = 2;
   string documentation = 3;
-  enum NotifierStatus {
-    UNKNOWN_STATUS = 0;
+  enum Status {
+    UNKNOWN = 0;
     ENABLED = 1;
     DISABLED = 2;
   }
-  NotifierStatus status = 4;
+  Status status = 4;
 }
 
-message NotifierRegistration {
+message GoferTaskRegistration {
   string name = 1;
   string image = 2;
   string user = 3;
   string pass = 4;
   map<string, string> variables = 5;
   uint64 created = 6;
-  enum NotifierStatus {
-    UNKNOWN_STATUS = 0;
+  enum Status {
+    UNKNOWN = 0;
     ENABLED = 1;
     DISABLED = 2;
   }
-  NotifierStatus status = 7;
+  Status status = 7;
 }

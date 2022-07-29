@@ -12,7 +12,7 @@ use crate::{conf, events, frontend, object_store, scheduler, secret_store, stora
 use anyhow::anyhow;
 use axum_server::Handle;
 use dashmap::DashMap;
-use gofer_models::{namespace, notifier, trigger};
+use gofer_models::{gofer_task, namespace, trigger};
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
@@ -107,10 +107,10 @@ pub struct Api {
     /// updated and maintained.
     triggers: DashMap<String, trigger::Trigger>,
 
-    /// An in-memory map of currently registered notifiers. These notifiers are registered on startup
-    /// and launched as needed at the end of a user's pipeline run. Gofer refers to this cache as a way
+    /// An in-memory map of currently registered gofer_tasks. These gofertasks are registered on startup
+    /// and launched as requested in the user's pipeline run. Gofer refers to this cache as a way
     /// to quickly look up which container is needed to be launched.
-    notifiers: DashMap<String, notifier::Notifier>,
+    gofer_tasks: DashMap<String, gofer_task::GoferTask>,
 }
 
 impl Api {
@@ -140,7 +140,7 @@ impl Api {
             secret_store,
             event_bus,
             triggers: DashMap::new(),
-            notifiers: DashMap::new(),
+            gofer_tasks: DashMap::new(),
         };
 
         let api = Arc::new(api);

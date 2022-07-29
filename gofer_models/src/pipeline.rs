@@ -65,8 +65,8 @@ pub struct Pipeline {
     pub tasks: HashMap<String, Task>,
     /// A mapping of pipeline owned triggers to their settings.
     pub triggers: HashMap<String, TriggerSettings>,
-    /// A mapping of pipeline owned notifiers to their settings.
-    pub notifiers: HashMap<String, NotifierSettings>,
+    /// A mapping of pipeline owned gofer_tasks to their settings.
+    pub gofer_tasks: HashMap<String, GoferTaskSettings>,
     /// A listing pipeline owned keys that are stored in Gofer's object store.
     pub store_keys: Vec<String>,
 }
@@ -94,8 +94,8 @@ impl From<Pipeline> for gofer_proto::Pipeline {
                 .into_iter()
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
-            notifiers: p
-                .notifiers
+            gofer_tasks: p
+                .gofer_tasks
                 .into_iter()
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
@@ -127,10 +127,10 @@ impl Pipeline {
                 .into_iter()
                 .map(|trigger| (trigger.label.clone(), trigger.into()))
                 .collect(),
-            notifiers: config
-                .notifiers
+            gofer_tasks: config
+                .gofer_tasks
                 .into_iter()
-                .map(|notifier| (notifier.label.clone(), notifier.into()))
+                .map(|gofer_task| (gofer_task.label.clone(), gofer_task.into()))
                 .collect(),
             store_keys: vec![],
         }
@@ -146,7 +146,7 @@ pub struct TriggerSettings {
     /// A global unique identifier for the trigger type.
     pub name: String,
     /// A user defined identifier for the trigger so that a pipeline with
-    /// multiple notifiers can be differentiated.
+    /// multiple gofer_tasks can be differentiated.
     pub label: String,
     /// The settings for pertaining to that specific trigger.
     pub settings: HashMap<String, String>,
@@ -213,21 +213,21 @@ impl From<gofer_sdk::config::PipelineTriggerConfig> for TriggerSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct NotifierSettings {
-    /// A global unique identifier for the notifier type.
+pub struct GoferTaskSettings {
+    /// A global unique identifier for the gofer_task type.
     pub name: String,
-    /// A user defined identifier for the notifier so that a pipeline with
-    /// multiple notifiers can be differentiated.
+    /// A user defined identifier for the gofer_task so that a pipeline with
+    /// multiple gofer_tasks can be differentiated.
     pub label: String,
-    /// The settings for pertaining to that specific notifier.
+    /// The settings for pertaining to that specific gofer_task.
     pub settings: HashMap<String, String>,
-    /// If the notifier could not be set up for the pipeline we return an error on why that might be.
+    /// If the gofer_task could not be set up for the pipeline we return an error on why that might be.
     pub error: Option<String>,
 }
 
-impl NotifierSettings {
+impl GoferTaskSettings {
     pub fn new(name: &str, label: &str) -> Self {
-        NotifierSettings {
+        GoferTaskSettings {
             name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
@@ -241,9 +241,9 @@ impl NotifierSettings {
     }
 }
 
-impl From<gofer_proto::PipelineNotifierSettings> for NotifierSettings {
-    fn from(p: gofer_proto::PipelineNotifierSettings) -> Self {
-        NotifierSettings {
+impl From<gofer_proto::PipelineGoferTaskSettings> for GoferTaskSettings {
+    fn from(p: gofer_proto::PipelineGoferTaskSettings) -> Self {
+        GoferTaskSettings {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -258,9 +258,9 @@ impl From<gofer_proto::PipelineNotifierSettings> for NotifierSettings {
     }
 }
 
-impl From<NotifierSettings> for gofer_proto::PipelineNotifierSettings {
-    fn from(p: NotifierSettings) -> Self {
-        gofer_proto::PipelineNotifierSettings {
+impl From<GoferTaskSettings> for gofer_proto::PipelineGoferTaskSettings {
+    fn from(p: GoferTaskSettings) -> Self {
+        gofer_proto::PipelineGoferTaskSettings {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -272,8 +272,8 @@ impl From<NotifierSettings> for gofer_proto::PipelineNotifierSettings {
     }
 }
 
-impl From<gofer_sdk::config::PipelineNotifierConfig> for NotifierSettings {
-    fn from(p: gofer_sdk::config::PipelineNotifierConfig) -> Self {
+impl From<gofer_sdk::config::PipelineGoferTaskConfig> for GoferTaskSettings {
+    fn from(p: gofer_sdk::config::PipelineGoferTaskConfig) -> Self {
         Self {
             name: p.name,
             label: p.label,

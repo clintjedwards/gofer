@@ -29,7 +29,7 @@
 - Implement the feature allowing people to ssh into their containers and allow maintainers to turn that off.
 - Offer canary type deployments for these. Allow the user to easily rollback pipeline configuration. Allow measuring failure rate and auto-rollback.
 - Offer the ability to run two different versions of a container at the same time so that people can slowly roll out new jobs in a safe fashion. (green blue/canary)
-  - You can all the different versions "revision"
+- You can all the different versions "revision"
 - This can possibly be done in the run step by specifying a different image name than is currently set to run.
 - DeleteNamespace should abandon all pipelines. Technically if you know the namespace name you're still allowed to run jobs.
 - For security reasons we probably need to narrow the amount of places you can import remote files from. Because we need to hide any auth information if included.
@@ -174,6 +174,10 @@ prefixed with >2
 - In the CLI put a 'pipeline run' and a 'run start' that both just call the same endpoint.
 - Search through the code base for Nones to find places where we used an if instead of .then()
 - Consider changing notifier to something that means more of "something that gets run last". Notifiers might not actually
-  notify, they might be used to just do something else externally.
+  notify, they might be used to just do something else externally. Prefab? allow add_prefab and register prefab. Prefabs are just tasks that gofer registers to the system before.
 - There is a bug in update pipelines where if you set your pipeline parrallesim to anything but 0 and then try to set it back to 0 it probably wont update.
 - When passing things back to the client in task_Runs and runs make sure to filter the system vars.
+- Move protobuf enums into the things they affect
+- In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
+- We still have to write pipeline validation for dag structures and makeing sure all IDs in depends on actually
+  exists. To this end we should go over every endpoint and make sure we aren't missing anything the Go version had.

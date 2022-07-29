@@ -1,6 +1,6 @@
 pub mod event;
+pub mod gofer_task;
 pub mod namespace;
-pub mod notifier;
 pub mod pipeline;
 pub mod run;
 pub mod task;
