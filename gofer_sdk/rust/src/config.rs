@@ -20,8 +20,8 @@ pub struct Pipeline {
     pub tasks: Vec<Task>,
     /// A mapping of pipeline owned triggers to their settings.
     pub triggers: Vec<PipelineTriggerConfig>,
-    /// A mapping of pipeline owned gofertasks to their settings.
-    pub gofer_tasks: Vec<PipelineGoferTaskConfig>,
+    /// A mapping of pipeline owned commontasks to their settings.
+    pub common_tasks: Vec<PipelineCommonTaskConfig>,
 }
 
 impl From<gofer_proto::PipelineConfig> for Pipeline {
@@ -39,8 +39,8 @@ impl From<gofer_proto::PipelineConfig> for Pipeline {
             parallelism: p.parallelism,
             tasks: p.tasks.into_iter().map(|value| value.into()).collect(),
             triggers: p.triggers.into_iter().map(|value| value.into()).collect(),
-            gofer_tasks: p
-                .gofer_tasks
+            common_tasks: p
+                .common_tasks
                 .into_iter()
                 .map(|value| value.into())
                 .collect(),
@@ -57,8 +57,8 @@ impl From<Pipeline> for gofer_proto::PipelineConfig {
             parallelism: p.parallelism,
             tasks: p.tasks.into_iter().map(|value| value.into()).collect(),
             triggers: p.triggers.into_iter().map(|value| value.into()).collect(),
-            gofer_tasks: p
-                .gofer_tasks
+            common_tasks: p
+                .common_tasks
                 .into_iter()
                 .map(|value| value.into())
                 .collect(),
@@ -75,7 +75,7 @@ impl Pipeline {
             parallelism: 0,
             tasks: Vec::new(),
             triggers: Vec::new(),
-            gofer_tasks: Vec::new(),
+            common_tasks: Vec::new(),
         }
     }
 
@@ -90,8 +90,8 @@ impl Pipeline {
             trigger.validate()?;
         }
 
-        for gofer_task in &self.gofer_tasks {
-            gofer_task.validate()?;
+        for common_task in &self.common_tasks {
+            common_task.validate()?;
         }
 
         Ok(())
@@ -117,8 +117,8 @@ impl Pipeline {
         self
     }
 
-    pub fn gofer_tasks(mut self, gofer_tasks: Vec<PipelineGoferTaskConfig>) -> Self {
-        self.gofer_tasks = gofer_tasks;
+    pub fn common_tasks(mut self, common_tasks: Vec<PipelineCommonTaskConfig>) -> Self {
+        self.common_tasks = common_tasks;
         self
     }
 
@@ -142,7 +142,7 @@ pub struct PipelineTriggerConfig {
     /// A global unique identifier for the trigger type.
     pub name: String,
     /// A user defined identifier for the trigger so that a pipeline with
-    /// multiple gofertasks can be differentiated.
+    /// multiple commontasks can be differentiated.
     pub label: String,
     /// The settings for pertaining to that specific trigger.
     pub settings: HashMap<String, String>,
@@ -190,19 +190,19 @@ impl From<PipelineTriggerConfig> for gofer_proto::PipelineTriggerConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub struct PipelineGoferTaskConfig {
-    /// A global unique identifier for the gofertask type.
+pub struct PipelineCommonTaskConfig {
+    /// A global unique identifier for the commontask type.
     pub name: String,
-    /// A user defined identifier for the gofertask so that a pipeline with
-    /// multiple gofertasks can be differentiated.
+    /// A user defined identifier for the commontask so that a pipeline with
+    /// multiple commontasks can be differentiated.
     pub label: String,
-    /// The settings for pertaining to that specific gofertask.
+    /// The settings for pertaining to that specific commontask.
     pub settings: HashMap<String, String>,
 }
 
-impl PipelineGoferTaskConfig {
+impl PipelineCommonTaskConfig {
     pub fn new(name: &str, label: &str) -> Self {
-        PipelineGoferTaskConfig {
+        PipelineCommonTaskConfig {
             name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
@@ -220,9 +220,9 @@ impl PipelineGoferTaskConfig {
     }
 }
 
-impl From<gofer_proto::PipelineGoferTaskConfig> for PipelineGoferTaskConfig {
-    fn from(p: gofer_proto::PipelineGoferTaskConfig) -> Self {
-        PipelineGoferTaskConfig {
+impl From<gofer_proto::PipelineCommonTaskConfig> for PipelineCommonTaskConfig {
+    fn from(p: gofer_proto::PipelineCommonTaskConfig) -> Self {
+        PipelineCommonTaskConfig {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -230,9 +230,9 @@ impl From<gofer_proto::PipelineGoferTaskConfig> for PipelineGoferTaskConfig {
     }
 }
 
-impl From<PipelineGoferTaskConfig> for gofer_proto::PipelineGoferTaskConfig {
-    fn from(p: PipelineGoferTaskConfig) -> Self {
-        gofer_proto::PipelineGoferTaskConfig {
+impl From<PipelineCommonTaskConfig> for gofer_proto::PipelineCommonTaskConfig {
+    fn from(p: PipelineCommonTaskConfig) -> Self {
+        gofer_proto::PipelineCommonTaskConfig {
             name: p.name,
             label: p.label,
             settings: p.settings,

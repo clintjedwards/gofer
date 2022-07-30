@@ -253,33 +253,33 @@ message GetTriggerInstallInstructionsRequest {
 }
 message GetTriggerInstallInstructionsResponse { string instructions = 1; }
 
-////////////// GoferTask Transport Models //////////////
+////////////// CommonTask Transport Models //////////////
 
-message GetGoferTaskRequest {
-  string name = 1; // The unique name/kind for a particular gofertask
+message GetCommonTaskRequest {
+  string name = 1; // The unique name/kind for a particular commontask
 }
-message GetGoferTaskResponse { GoferTask gofer_task = 1; }
+message GetCommonTaskResponse { CommonTask common_task = 1; }
 
-message ListGoferTasksRequest {}
-message ListGoferTasksResponse { repeated GoferTask gofer_tasks = 1; }
+message ListCommonTasksRequest {}
+message ListCommonTasksResponse { repeated CommonTask common_tasks = 1; }
 
-message InstallGoferTaskRequest {
+message InstallCommonTaskRequest {
   string name = 1;
   string image = 2;
   string user = 3;
   string pass = 4;
   map<string, string> variables = 5;
 }
-message InstallGoferTaskResponse {}
+message InstallCommonTaskResponse {}
 
-message UninstallGoferTaskRequest { string name = 1; }
-message UninstallGoferTaskResponse {}
+message UninstallCommonTaskRequest { string name = 1; }
+message UninstallCommonTaskResponse {}
 
-message EnableGoferTaskRequest { string name = 1; }
-message EnableGoferTaskResponse {}
+message EnableCommonTaskRequest { string name = 1; }
+message EnableCommonTaskResponse {}
 
-message DisableGoferTaskRequest { string name = 1; }
-message DisableGoferTaskResponse {}
+message DisableCommonTaskRequest { string name = 1; }
+message DisableCommonTaskResponse {}
 
 ////////////// Trigger Service Transport Models //////////////
 

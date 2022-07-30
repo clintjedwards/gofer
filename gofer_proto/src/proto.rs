@@ -82,7 +82,7 @@ pub struct Pipeline {
     #[prost(map="string, message", tag="12")]
     pub triggers: ::std::collections::HashMap<::prost::alloc::string::String, PipelineTriggerSettings>,
     #[prost(map="string, message", tag="13")]
-    pub gofer_tasks: ::std::collections::HashMap<::prost::alloc::string::String, PipelineGoferTaskSettings>,
+    pub common_tasks: ::std::collections::HashMap<::prost::alloc::string::String, PipelineCommonTaskSettings>,
     #[prost(string, repeated, tag="14")]
     pub store_keys: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -111,7 +111,7 @@ pub struct PipelineConfig {
     #[prost(message, repeated, tag="6")]
     pub triggers: ::prost::alloc::vec::Vec<PipelineTriggerConfig>,
     #[prost(message, repeated, tag="7")]
-    pub gofer_tasks: ::prost::alloc::vec::Vec<PipelineGoferTaskConfig>,
+    pub common_tasks: ::prost::alloc::vec::Vec<PipelineCommonTaskConfig>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Run {
@@ -242,7 +242,7 @@ pub struct PipelineTriggerSettings {
     pub error: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PipelineGoferTaskSettings {
+pub struct PipelineCommonTaskSettings {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -292,7 +292,7 @@ pub struct PipelineTriggerConfig {
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PipelineGoferTaskConfig {
+pub struct PipelineCommonTaskConfig {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -441,18 +441,18 @@ pub mod trigger_registration {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GoferTask {
+pub struct CommonTask {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub image: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
     pub documentation: ::prost::alloc::string::String,
-    #[prost(enumeration="gofer_task::Status", tag="4")]
+    #[prost(enumeration="common_task::Status", tag="4")]
     pub status: i32,
 }
-/// Nested message and enum types in `GoferTask`.
-pub mod gofer_task {
+/// Nested message and enum types in `CommonTask`.
+pub mod common_task {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Status {
@@ -462,7 +462,7 @@ pub mod gofer_task {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GoferTaskRegistration {
+pub struct CommonTaskRegistration {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -475,11 +475,11 @@ pub struct GoferTaskRegistration {
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     #[prost(uint64, tag="6")]
     pub created: u64,
-    #[prost(enumeration="gofer_task_registration::Status", tag="7")]
+    #[prost(enumeration="common_task_registration::Status", tag="7")]
     pub status: i32,
 }
-/// Nested message and enum types in `GoferTaskRegistration`.
-pub mod gofer_task_registration {
+/// Nested message and enum types in `CommonTaskRegistration`.
+pub mod common_task_registration {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Status {
@@ -954,29 +954,29 @@ pub struct GetTriggerInstallInstructionsResponse {
     #[prost(string, tag="1")]
     pub instructions: ::prost::alloc::string::String,
 }
-////////////// GoferTask Transport Models //////////////
+////////////// CommonTask Transport Models //////////////
 
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetGoferTaskRequest {
-    /// The unique name/kind for a particular gofertask
+pub struct GetCommonTaskRequest {
+    /// The unique name/kind for a particular commontask
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetGoferTaskResponse {
+pub struct GetCommonTaskResponse {
     #[prost(message, optional, tag="1")]
-    pub gofer_task: ::core::option::Option<GoferTask>,
+    pub common_task: ::core::option::Option<CommonTask>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListGoferTasksRequest {
+pub struct ListCommonTasksRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListGoferTasksResponse {
+pub struct ListCommonTasksResponse {
     #[prost(message, repeated, tag="1")]
-    pub gofer_tasks: ::prost::alloc::vec::Vec<GoferTask>,
+    pub common_tasks: ::prost::alloc::vec::Vec<CommonTask>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InstallGoferTaskRequest {
+pub struct InstallCommonTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -989,31 +989,31 @@ pub struct InstallGoferTaskRequest {
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InstallGoferTaskResponse {
+pub struct InstallCommonTaskResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UninstallGoferTaskRequest {
+pub struct UninstallCommonTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UninstallGoferTaskResponse {
+pub struct UninstallCommonTaskResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EnableGoferTaskRequest {
+pub struct EnableCommonTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EnableGoferTaskResponse {
+pub struct EnableCommonTaskResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DisableGoferTaskRequest {
+pub struct DisableCommonTaskRequest {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DisableGoferTaskResponse {
+pub struct DisableCommonTaskResponse {
 }
 ////////////// Trigger Service Transport Models //////////////
 
@@ -1821,29 +1821,11 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// GetGoferTask returns details about a specific gofertask.
-        pub async fn get_gofer_task(
+        /// GetCommonTask returns details about a specific commontask.
+        pub async fn get_common_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::GetGoferTaskResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetGoferTask");
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// ListGoferTasks lists all gofertasks currently registered within gofer.
-        pub async fn list_gofer_tasks(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListGoferTasksRequest>,
-        ) -> Result<tonic::Response<super::ListGoferTasksResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::GetCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::GetCommonTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1855,15 +1837,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/ListGoferTasks",
+                "/proto.Gofer/GetCommonTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// InstallGoferTask attempts to install a new gofertask.
-        pub async fn install_gofer_task(
+        /// ListCommonTasks lists all common tasks currently registered within gofer.
+        pub async fn list_common_tasks(
             &mut self,
-            request: impl tonic::IntoRequest<super::InstallGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::InstallGoferTaskResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::ListCommonTasksRequest>,
+        ) -> Result<tonic::Response<super::ListCommonTasksResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1875,15 +1857,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/InstallGoferTask",
+                "/proto.Gofer/ListCommonTasks",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// UninstallGoferTask attempts to uninstall a gofertask.
-        pub async fn uninstall_gofer_task(
+        /// InstallCommonTask attempts to install a new common task.
+        pub async fn install_common_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::UninstallGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::UninstallGoferTaskResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::InstallCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::InstallCommonTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1895,15 +1877,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/UninstallGoferTask",
+                "/proto.Gofer/InstallCommonTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// EnableGoferTask attempts to enable a new gofertask.
-        pub async fn enable_gofer_task(
+        /// UninstallCommonTask attempts to uninstall a common task.
+        pub async fn uninstall_common_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::EnableGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::EnableGoferTaskResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::UninstallCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::UninstallCommonTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1915,15 +1897,15 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/EnableGoferTask",
+                "/proto.Gofer/UninstallCommonTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// DisableGoferTask attempts to disable a new gofertask.
-        pub async fn disable_gofer_task(
+        /// EnableCommonTask attempts to enable a new common task.
+        pub async fn enable_common_task(
             &mut self,
-            request: impl tonic::IntoRequest<super::DisableGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::DisableGoferTaskResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::EnableCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::EnableCommonTaskResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1935,7 +1917,27 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/DisableGoferTask",
+                "/proto.Gofer/EnableCommonTask",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// DisableCommonTask attempts to disable a new common task.
+        pub async fn disable_common_task(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DisableCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::DisableCommonTaskResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/DisableCommonTask",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
@@ -2338,36 +2340,36 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DisableTriggerRequest>,
         ) -> Result<tonic::Response<super::DisableTriggerResponse>, tonic::Status>;
-        /// GetGoferTask returns details about a specific gofertask.
-        async fn get_gofer_task(
+        /// GetCommonTask returns details about a specific commontask.
+        async fn get_common_task(
             &self,
-            request: tonic::Request<super::GetGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::GetGoferTaskResponse>, tonic::Status>;
-        /// ListGoferTasks lists all gofertasks currently registered within gofer.
-        async fn list_gofer_tasks(
+            request: tonic::Request<super::GetCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::GetCommonTaskResponse>, tonic::Status>;
+        /// ListCommonTasks lists all common tasks currently registered within gofer.
+        async fn list_common_tasks(
             &self,
-            request: tonic::Request<super::ListGoferTasksRequest>,
-        ) -> Result<tonic::Response<super::ListGoferTasksResponse>, tonic::Status>;
-        /// InstallGoferTask attempts to install a new gofertask.
-        async fn install_gofer_task(
+            request: tonic::Request<super::ListCommonTasksRequest>,
+        ) -> Result<tonic::Response<super::ListCommonTasksResponse>, tonic::Status>;
+        /// InstallCommonTask attempts to install a new common task.
+        async fn install_common_task(
             &self,
-            request: tonic::Request<super::InstallGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::InstallGoferTaskResponse>, tonic::Status>;
-        /// UninstallGoferTask attempts to uninstall a gofertask.
-        async fn uninstall_gofer_task(
+            request: tonic::Request<super::InstallCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::InstallCommonTaskResponse>, tonic::Status>;
+        /// UninstallCommonTask attempts to uninstall a common task.
+        async fn uninstall_common_task(
             &self,
-            request: tonic::Request<super::UninstallGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::UninstallGoferTaskResponse>, tonic::Status>;
-        /// EnableGoferTask attempts to enable a new gofertask.
-        async fn enable_gofer_task(
+            request: tonic::Request<super::UninstallCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::UninstallCommonTaskResponse>, tonic::Status>;
+        /// EnableCommonTask attempts to enable a new common task.
+        async fn enable_common_task(
             &self,
-            request: tonic::Request<super::EnableGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::EnableGoferTaskResponse>, tonic::Status>;
-        /// DisableGoferTask attempts to disable a new gofertask.
-        async fn disable_gofer_task(
+            request: tonic::Request<super::EnableCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::EnableCommonTaskResponse>, tonic::Status>;
+        /// DisableCommonTask attempts to disable a new common task.
+        async fn disable_common_task(
             &self,
-            request: tonic::Request<super::DisableGoferTaskRequest>,
-        ) -> Result<tonic::Response<super::DisableGoferTaskResponse>, tonic::Status>;
+            request: tonic::Request<super::DisableCommonTaskRequest>,
+        ) -> Result<tonic::Response<super::DisableCommonTaskResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct GoferServer<T: Gofer> {
@@ -3632,25 +3634,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/GetGoferTask" => {
+                "/proto.Gofer/GetCommonTask" => {
                     #[allow(non_camel_case_types)]
-                    struct GetGoferTaskSvc<T: Gofer>(pub Arc<T>);
+                    struct GetCommonTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::GetGoferTaskRequest>
-                    for GetGoferTaskSvc<T> {
-                        type Response = super::GetGoferTaskResponse;
+                    > tonic::server::UnaryService<super::GetCommonTaskRequest>
+                    for GetCommonTaskSvc<T> {
+                        type Response = super::GetCommonTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetGoferTaskRequest>,
+                            request: tonic::Request<super::GetCommonTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).get_gofer_task(request).await
+                                (*inner).get_common_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3660,7 +3662,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = GetGoferTaskSvc(inner);
+                        let method = GetCommonTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3672,25 +3674,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/ListGoferTasks" => {
+                "/proto.Gofer/ListCommonTasks" => {
                     #[allow(non_camel_case_types)]
-                    struct ListGoferTasksSvc<T: Gofer>(pub Arc<T>);
+                    struct ListCommonTasksSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::ListGoferTasksRequest>
-                    for ListGoferTasksSvc<T> {
-                        type Response = super::ListGoferTasksResponse;
+                    > tonic::server::UnaryService<super::ListCommonTasksRequest>
+                    for ListCommonTasksSvc<T> {
+                        type Response = super::ListCommonTasksResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListGoferTasksRequest>,
+                            request: tonic::Request<super::ListCommonTasksRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).list_gofer_tasks(request).await
+                                (*inner).list_common_tasks(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3700,7 +3702,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = ListGoferTasksSvc(inner);
+                        let method = ListCommonTasksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3712,25 +3714,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/InstallGoferTask" => {
+                "/proto.Gofer/InstallCommonTask" => {
                     #[allow(non_camel_case_types)]
-                    struct InstallGoferTaskSvc<T: Gofer>(pub Arc<T>);
+                    struct InstallCommonTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::InstallGoferTaskRequest>
-                    for InstallGoferTaskSvc<T> {
-                        type Response = super::InstallGoferTaskResponse;
+                    > tonic::server::UnaryService<super::InstallCommonTaskRequest>
+                    for InstallCommonTaskSvc<T> {
+                        type Response = super::InstallCommonTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::InstallGoferTaskRequest>,
+                            request: tonic::Request<super::InstallCommonTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).install_gofer_task(request).await
+                                (*inner).install_common_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3740,7 +3742,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = InstallGoferTaskSvc(inner);
+                        let method = InstallCommonTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3752,25 +3754,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/UninstallGoferTask" => {
+                "/proto.Gofer/UninstallCommonTask" => {
                     #[allow(non_camel_case_types)]
-                    struct UninstallGoferTaskSvc<T: Gofer>(pub Arc<T>);
+                    struct UninstallCommonTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::UninstallGoferTaskRequest>
-                    for UninstallGoferTaskSvc<T> {
-                        type Response = super::UninstallGoferTaskResponse;
+                    > tonic::server::UnaryService<super::UninstallCommonTaskRequest>
+                    for UninstallCommonTaskSvc<T> {
+                        type Response = super::UninstallCommonTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::UninstallGoferTaskRequest>,
+                            request: tonic::Request<super::UninstallCommonTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).uninstall_gofer_task(request).await
+                                (*inner).uninstall_common_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3780,7 +3782,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = UninstallGoferTaskSvc(inner);
+                        let method = UninstallCommonTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3792,25 +3794,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/EnableGoferTask" => {
+                "/proto.Gofer/EnableCommonTask" => {
                     #[allow(non_camel_case_types)]
-                    struct EnableGoferTaskSvc<T: Gofer>(pub Arc<T>);
+                    struct EnableCommonTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::EnableGoferTaskRequest>
-                    for EnableGoferTaskSvc<T> {
-                        type Response = super::EnableGoferTaskResponse;
+                    > tonic::server::UnaryService<super::EnableCommonTaskRequest>
+                    for EnableCommonTaskSvc<T> {
+                        type Response = super::EnableCommonTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::EnableGoferTaskRequest>,
+                            request: tonic::Request<super::EnableCommonTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).enable_gofer_task(request).await
+                                (*inner).enable_common_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3820,7 +3822,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = EnableGoferTaskSvc(inner);
+                        let method = EnableCommonTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3832,25 +3834,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/DisableGoferTask" => {
+                "/proto.Gofer/DisableCommonTask" => {
                     #[allow(non_camel_case_types)]
-                    struct DisableGoferTaskSvc<T: Gofer>(pub Arc<T>);
+                    struct DisableCommonTaskSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::DisableGoferTaskRequest>
-                    for DisableGoferTaskSvc<T> {
-                        type Response = super::DisableGoferTaskResponse;
+                    > tonic::server::UnaryService<super::DisableCommonTaskRequest>
+                    for DisableCommonTaskSvc<T> {
+                        type Response = super::DisableCommonTaskResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::DisableGoferTaskRequest>,
+                            request: tonic::Request<super::DisableCommonTaskRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).disable_gofer_task(request).await
+                                (*inner).disable_common_task(request).await
                             };
                             Box::pin(fut)
                         }
@@ -3860,7 +3862,7 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DisableGoferTaskSvc(inner);
+                        let method = DisableCommonTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

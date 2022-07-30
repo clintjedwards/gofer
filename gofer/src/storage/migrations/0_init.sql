@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS pipeline_trigger_settings (
     PRIMARY KEY (namespace, pipeline, label)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS pipeline_gofer_task_settings (
+CREATE TABLE IF NOT EXISTS pipeline_common_task_settings (
     namespace TEXT NOT NULL,
     pipeline  TEXT NOT NULL,
     kind      TEXT NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS trigger_registrations (
     PRIMARY KEY (name)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS gofer_task_registrations (
+CREATE TABLE IF NOT EXISTS common_task_registrations (
     name      TEXT    NOT NULL,
     image     TEXT    NOT NULL,
     user      TEXT,

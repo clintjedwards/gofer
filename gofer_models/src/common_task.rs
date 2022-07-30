@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum::{Display, EnumString};
 
-/// GoferTasks can be enabled and disabled.
+/// CommonTasks can be enabled and disabled.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Status {
     /// Cannot determine status, should never be in this status.
@@ -14,11 +14,11 @@ pub enum Status {
     Disabled,
 }
 
-/// The in-memory representation of a gofer_task.
+/// The in-memory representation of a common task.
 #[derive(Debug, Clone)]
-pub struct GoferTask {
-    /// User given custom name for a gofer_task, allowing multiple gofer_tasks of the same image to be used with different
-    /// configurations. Must be unique among other gofer_tasks.
+pub struct CommonTask {
+    /// User given custom name for a common task, allowing multiple common tasks of the same image to be used with different
+    /// configurations. Must be unique among other common_tasks.
     pub name: String,
     pub image: String, // The docker image string.
     pub registry_auth: Option<super::RegistryAuth>,
@@ -26,8 +26,8 @@ pub struct GoferTask {
     pub documentation: Option<String>,
 }
 
-/// When installing a new gofer_task, we allow the gofer_task installer to pass a bunch of settings that
-/// allow us to customize gofer_task containers on startup.
+/// When installing a new common task, we allow the common task installer to pass a bunch of settings that
+/// allow us to customize common task containers on startup.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Registration {
     pub name: String,
@@ -39,8 +39,8 @@ pub struct Registration {
     pub status: Status,
 }
 
-impl From<gofer_proto::InstallGoferTaskRequest> for Registration {
-    fn from(v: gofer_proto::InstallGoferTaskRequest) -> Self {
+impl From<gofer_proto::InstallCommonTaskRequest> for Registration {
+    fn from(v: gofer_proto::InstallCommonTaskRequest) -> Self {
         Self {
             name: v.name,
             image: v.image,

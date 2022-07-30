@@ -65,8 +65,8 @@ pub struct Pipeline {
     pub tasks: HashMap<String, Task>,
     /// A mapping of pipeline owned triggers to their settings.
     pub triggers: HashMap<String, TriggerSettings>,
-    /// A mapping of pipeline owned gofer_tasks to their settings.
-    pub gofer_tasks: HashMap<String, GoferTaskSettings>,
+    /// A mapping of pipeline owned common_tasks to their settings.
+    pub common_tasks: HashMap<String, CommonTaskSettings>,
     /// A listing pipeline owned keys that are stored in Gofer's object store.
     pub store_keys: Vec<String>,
 }
@@ -94,8 +94,8 @@ impl From<Pipeline> for gofer_proto::Pipeline {
                 .into_iter()
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
-            gofer_tasks: p
-                .gofer_tasks
+            common_tasks: p
+                .common_tasks
                 .into_iter()
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
@@ -127,10 +127,10 @@ impl Pipeline {
                 .into_iter()
                 .map(|trigger| (trigger.label.clone(), trigger.into()))
                 .collect(),
-            gofer_tasks: config
-                .gofer_tasks
+            common_tasks: config
+                .common_tasks
                 .into_iter()
-                .map(|gofer_task| (gofer_task.label.clone(), gofer_task.into()))
+                .map(|common_task| (common_task.label.clone(), common_task.into()))
                 .collect(),
             store_keys: vec![],
         }
@@ -146,7 +146,7 @@ pub struct TriggerSettings {
     /// A global unique identifier for the trigger type.
     pub name: String,
     /// A user defined identifier for the trigger so that a pipeline with
-    /// multiple gofer_tasks can be differentiated.
+    /// multiple common tasks can be differentiated.
     pub label: String,
     /// The settings for pertaining to that specific trigger.
     pub settings: HashMap<String, String>,
@@ -213,21 +213,21 @@ impl From<gofer_sdk::config::PipelineTriggerConfig> for TriggerSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct GoferTaskSettings {
-    /// A global unique identifier for the gofer_task type.
+pub struct CommonTaskSettings {
+    /// A global unique identifier for the common_task type.
     pub name: String,
-    /// A user defined identifier for the gofer_task so that a pipeline with
-    /// multiple gofer_tasks can be differentiated.
+    /// A user defined identifier for the common_task so that a pipeline with
+    /// multiple common_tasks can be differentiated.
     pub label: String,
-    /// The settings for pertaining to that specific gofer_task.
+    /// The settings for pertaining to that specific common_task.
     pub settings: HashMap<String, String>,
-    /// If the gofer_task could not be set up for the pipeline we return an error on why that might be.
+    /// If the common_task could not be set up for the pipeline we return an error on why that might be.
     pub error: Option<String>,
 }
 
-impl GoferTaskSettings {
+impl CommonTaskSettings {
     pub fn new(name: &str, label: &str) -> Self {
-        GoferTaskSettings {
+        CommonTaskSettings {
             name: name.to_string(),
             label: label.to_string(),
             settings: HashMap::new(),
@@ -241,9 +241,9 @@ impl GoferTaskSettings {
     }
 }
 
-impl From<gofer_proto::PipelineGoferTaskSettings> for GoferTaskSettings {
-    fn from(p: gofer_proto::PipelineGoferTaskSettings) -> Self {
-        GoferTaskSettings {
+impl From<gofer_proto::PipelineCommonTaskSettings> for CommonTaskSettings {
+    fn from(p: gofer_proto::PipelineCommonTaskSettings) -> Self {
+        CommonTaskSettings {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -258,9 +258,9 @@ impl From<gofer_proto::PipelineGoferTaskSettings> for GoferTaskSettings {
     }
 }
 
-impl From<GoferTaskSettings> for gofer_proto::PipelineGoferTaskSettings {
-    fn from(p: GoferTaskSettings) -> Self {
-        gofer_proto::PipelineGoferTaskSettings {
+impl From<CommonTaskSettings> for gofer_proto::PipelineCommonTaskSettings {
+    fn from(p: CommonTaskSettings) -> Self {
+        gofer_proto::PipelineCommonTaskSettings {
             name: p.name,
             label: p.label,
             settings: p.settings,
@@ -272,8 +272,8 @@ impl From<GoferTaskSettings> for gofer_proto::PipelineGoferTaskSettings {
     }
 }
 
-impl From<gofer_sdk::config::PipelineGoferTaskConfig> for GoferTaskSettings {
-    fn from(p: gofer_sdk::config::PipelineGoferTaskConfig) -> Self {
+impl From<gofer_sdk::config::PipelineCommonTaskConfig> for CommonTaskSettings {
+    fn from(p: gofer_sdk::config::PipelineCommonTaskConfig) -> Self {
         Self {
             name: p.name,
             label: p.label,

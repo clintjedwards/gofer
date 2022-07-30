@@ -115,9 +115,9 @@ async fn crud_pipelines() {
                 "test_trigger",
                 "test_trigger",
             )])
-            .gofer_tasks(vec![gofer_sdk::config::PipelineGoferTaskConfig::new(
-                "test_gofer_task",
-                "test_gofer_task",
+            .common_tasks(vec![gofer_sdk::config::PipelineCommonTaskConfig::new(
+                "test_common_task",
+                "test_common_task",
             )]);
     let test_pipeline_full = pipeline::Pipeline::new(&test_namespace.id, test_pipeline_full_config);
 
@@ -472,43 +472,43 @@ async fn crud_trigger_registrations() {
 }
 
 #[tokio::test]
-/// Basic CRUD can be accomplished for gofer_task_registrations.
-async fn crud_gofer_task_registrations() {
+/// Basic CRUD can be accomplished for common_task_registrations.
+async fn crud_common_task_registrations() {
     let harness = TestHarness::new().await;
     let mut conn = harness.conn().await.unwrap();
 
-    let test_gofer_task_registration = gofer_task::Registration {
-        name: "test_gofer_task".to_string(),
+    let test_common_task_registration = common_task::Registration {
+        name: "test_common_task".to_string(),
         image: "docker/test".to_string(),
         user: None,
         pass: None,
         variables: HashMap::new(),
         created: 0,
-        status: gofer_task::Status::Enabled,
+        status: common_task::Status::Enabled,
     };
 
-    gofer_task_registrations::insert(&mut conn, &test_gofer_task_registration)
+    common_task_registrations::insert(&mut conn, &test_common_task_registration)
         .await
         .unwrap();
 
-    let gofer_tasks = gofer_task_registrations::list(&mut conn, 0, 0)
+    let common_tasks = common_task_registrations::list(&mut conn, 0, 0)
         .await
         .unwrap();
 
-    assert_eq!(gofer_tasks.len(), 1);
-    assert_eq!(gofer_tasks[0], test_gofer_task_registration);
+    assert_eq!(common_tasks.len(), 1);
+    assert_eq!(common_tasks[0], test_common_task_registration);
 
-    let gofer_task = gofer_task_registrations::get(&mut conn, "test_gofer_task")
+    let common_task = common_task_registrations::get(&mut conn, "test_common_task")
         .await
         .unwrap();
-    assert_eq!(gofer_task, test_gofer_task_registration);
+    assert_eq!(common_task, test_common_task_registration);
 
-    gofer_task_registrations::delete(&mut conn, "test_gofer_task")
+    common_task_registrations::delete(&mut conn, "test_common_task")
         .await
         .unwrap();
-    let gofer_task = gofer_task_registrations::get(&mut conn, "test_gofer_task")
+    let common_task = common_task_registrations::get(&mut conn, "test_common_task")
         .await
         .unwrap_err();
 
-    assert_eq!(gofer_task, StorageError::NotFound);
+    assert_eq!(common_task, StorageError::NotFound);
 }

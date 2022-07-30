@@ -1,5 +1,5 @@
+pub mod common_task_registrations;
 pub mod events;
-pub mod gofer_task_registrations;
 pub mod namespaces;
 pub mod pipelines;
 pub mod runs;

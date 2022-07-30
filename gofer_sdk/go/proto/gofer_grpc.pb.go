@@ -113,18 +113,18 @@ type GoferClient interface {
 	EnableTrigger(ctx context.Context, in *EnableTriggerRequest, opts ...grpc.CallOption) (*EnableTriggerResponse, error)
 	// DisableTrigger attempts to disable a new trigger.
 	DisableTrigger(ctx context.Context, in *DisableTriggerRequest, opts ...grpc.CallOption) (*DisableTriggerResponse, error)
-	// GetGoferTask returns details about a specific gofertask.
-	GetGoferTask(ctx context.Context, in *GetGoferTaskRequest, opts ...grpc.CallOption) (*GetGoferTaskResponse, error)
-	// ListGoferTasks lists all gofertasks currently registered within gofer.
-	ListGoferTasks(ctx context.Context, in *ListGoferTasksRequest, opts ...grpc.CallOption) (*ListGoferTasksResponse, error)
-	// InstallGoferTask attempts to install a new gofertask.
-	InstallGoferTask(ctx context.Context, in *InstallGoferTaskRequest, opts ...grpc.CallOption) (*InstallGoferTaskResponse, error)
-	// UninstallGoferTask attempts to uninstall a gofertask.
-	UninstallGoferTask(ctx context.Context, in *UninstallGoferTaskRequest, opts ...grpc.CallOption) (*UninstallGoferTaskResponse, error)
-	// EnableGoferTask attempts to enable a new gofertask.
-	EnableGoferTask(ctx context.Context, in *EnableGoferTaskRequest, opts ...grpc.CallOption) (*EnableGoferTaskResponse, error)
-	// DisableGoferTask attempts to disable a new gofertask.
-	DisableGoferTask(ctx context.Context, in *DisableGoferTaskRequest, opts ...grpc.CallOption) (*DisableGoferTaskResponse, error)
+	// GetCommonTask returns details about a specific commontask.
+	GetCommonTask(ctx context.Context, in *GetCommonTaskRequest, opts ...grpc.CallOption) (*GetCommonTaskResponse, error)
+	// ListCommonTasks lists all common tasks currently registered within gofer.
+	ListCommonTasks(ctx context.Context, in *ListCommonTasksRequest, opts ...grpc.CallOption) (*ListCommonTasksResponse, error)
+	// InstallCommonTask attempts to install a new common task.
+	InstallCommonTask(ctx context.Context, in *InstallCommonTaskRequest, opts ...grpc.CallOption) (*InstallCommonTaskResponse, error)
+	// UninstallCommonTask attempts to uninstall a common task.
+	UninstallCommonTask(ctx context.Context, in *UninstallCommonTaskRequest, opts ...grpc.CallOption) (*UninstallCommonTaskResponse, error)
+	// EnableCommonTask attempts to enable a new common task.
+	EnableCommonTask(ctx context.Context, in *EnableCommonTaskRequest, opts ...grpc.CallOption) (*EnableCommonTaskResponse, error)
+	// DisableCommonTask attempts to disable a new common task.
+	DisableCommonTask(ctx context.Context, in *DisableCommonTaskRequest, opts ...grpc.CallOption) (*DisableCommonTaskResponse, error)
 }
 
 type goferClient struct {
@@ -437,54 +437,54 @@ func (c *goferClient) DisableTrigger(ctx context.Context, in *DisableTriggerRequ
 	return out, nil
 }
 
-func (c *goferClient) GetGoferTask(ctx context.Context, in *GetGoferTaskRequest, opts ...grpc.CallOption) (*GetGoferTaskResponse, error) {
-	out := new(GetGoferTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/GetGoferTask", in, out, opts...)
+func (c *goferClient) GetCommonTask(ctx context.Context, in *GetCommonTaskRequest, opts ...grpc.CallOption) (*GetCommonTaskResponse, error) {
+	out := new(GetCommonTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/GetCommonTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) ListGoferTasks(ctx context.Context, in *ListGoferTasksRequest, opts ...grpc.CallOption) (*ListGoferTasksResponse, error) {
-	out := new(ListGoferTasksResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/ListGoferTasks", in, out, opts...)
+func (c *goferClient) ListCommonTasks(ctx context.Context, in *ListCommonTasksRequest, opts ...grpc.CallOption) (*ListCommonTasksResponse, error) {
+	out := new(ListCommonTasksResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListCommonTasks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) InstallGoferTask(ctx context.Context, in *InstallGoferTaskRequest, opts ...grpc.CallOption) (*InstallGoferTaskResponse, error) {
-	out := new(InstallGoferTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/InstallGoferTask", in, out, opts...)
+func (c *goferClient) InstallCommonTask(ctx context.Context, in *InstallCommonTaskRequest, opts ...grpc.CallOption) (*InstallCommonTaskResponse, error) {
+	out := new(InstallCommonTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/InstallCommonTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) UninstallGoferTask(ctx context.Context, in *UninstallGoferTaskRequest, opts ...grpc.CallOption) (*UninstallGoferTaskResponse, error) {
-	out := new(UninstallGoferTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/UninstallGoferTask", in, out, opts...)
+func (c *goferClient) UninstallCommonTask(ctx context.Context, in *UninstallCommonTaskRequest, opts ...grpc.CallOption) (*UninstallCommonTaskResponse, error) {
+	out := new(UninstallCommonTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/UninstallCommonTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) EnableGoferTask(ctx context.Context, in *EnableGoferTaskRequest, opts ...grpc.CallOption) (*EnableGoferTaskResponse, error) {
-	out := new(EnableGoferTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/EnableGoferTask", in, out, opts...)
+func (c *goferClient) EnableCommonTask(ctx context.Context, in *EnableCommonTaskRequest, opts ...grpc.CallOption) (*EnableCommonTaskResponse, error) {
+	out := new(EnableCommonTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/EnableCommonTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) DisableGoferTask(ctx context.Context, in *DisableGoferTaskRequest, opts ...grpc.CallOption) (*DisableGoferTaskResponse, error) {
-	out := new(DisableGoferTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/DisableGoferTask", in, out, opts...)
+func (c *goferClient) DisableCommonTask(ctx context.Context, in *DisableCommonTaskRequest, opts ...grpc.CallOption) (*DisableCommonTaskResponse, error) {
+	out := new(DisableCommonTaskResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/DisableCommonTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -586,18 +586,18 @@ type GoferServer interface {
 	EnableTrigger(context.Context, *EnableTriggerRequest) (*EnableTriggerResponse, error)
 	// DisableTrigger attempts to disable a new trigger.
 	DisableTrigger(context.Context, *DisableTriggerRequest) (*DisableTriggerResponse, error)
-	// GetGoferTask returns details about a specific gofertask.
-	GetGoferTask(context.Context, *GetGoferTaskRequest) (*GetGoferTaskResponse, error)
-	// ListGoferTasks lists all gofertasks currently registered within gofer.
-	ListGoferTasks(context.Context, *ListGoferTasksRequest) (*ListGoferTasksResponse, error)
-	// InstallGoferTask attempts to install a new gofertask.
-	InstallGoferTask(context.Context, *InstallGoferTaskRequest) (*InstallGoferTaskResponse, error)
-	// UninstallGoferTask attempts to uninstall a gofertask.
-	UninstallGoferTask(context.Context, *UninstallGoferTaskRequest) (*UninstallGoferTaskResponse, error)
-	// EnableGoferTask attempts to enable a new gofertask.
-	EnableGoferTask(context.Context, *EnableGoferTaskRequest) (*EnableGoferTaskResponse, error)
-	// DisableGoferTask attempts to disable a new gofertask.
-	DisableGoferTask(context.Context, *DisableGoferTaskRequest) (*DisableGoferTaskResponse, error)
+	// GetCommonTask returns details about a specific commontask.
+	GetCommonTask(context.Context, *GetCommonTaskRequest) (*GetCommonTaskResponse, error)
+	// ListCommonTasks lists all common tasks currently registered within gofer.
+	ListCommonTasks(context.Context, *ListCommonTasksRequest) (*ListCommonTasksResponse, error)
+	// InstallCommonTask attempts to install a new common task.
+	InstallCommonTask(context.Context, *InstallCommonTaskRequest) (*InstallCommonTaskResponse, error)
+	// UninstallCommonTask attempts to uninstall a common task.
+	UninstallCommonTask(context.Context, *UninstallCommonTaskRequest) (*UninstallCommonTaskResponse, error)
+	// EnableCommonTask attempts to enable a new common task.
+	EnableCommonTask(context.Context, *EnableCommonTaskRequest) (*EnableCommonTaskResponse, error)
+	// DisableCommonTask attempts to disable a new common task.
+	DisableCommonTask(context.Context, *DisableCommonTaskRequest) (*DisableCommonTaskResponse, error)
 	mustEmbedUnimplementedGoferServer()
 }
 
@@ -698,23 +698,23 @@ func (UnimplementedGoferServer) EnableTrigger(context.Context, *EnableTriggerReq
 func (UnimplementedGoferServer) DisableTrigger(context.Context, *DisableTriggerRequest) (*DisableTriggerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DisableTrigger not implemented")
 }
-func (UnimplementedGoferServer) GetGoferTask(context.Context, *GetGoferTaskRequest) (*GetGoferTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGoferTask not implemented")
+func (UnimplementedGoferServer) GetCommonTask(context.Context, *GetCommonTaskRequest) (*GetCommonTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCommonTask not implemented")
 }
-func (UnimplementedGoferServer) ListGoferTasks(context.Context, *ListGoferTasksRequest) (*ListGoferTasksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListGoferTasks not implemented")
+func (UnimplementedGoferServer) ListCommonTasks(context.Context, *ListCommonTasksRequest) (*ListCommonTasksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListCommonTasks not implemented")
 }
-func (UnimplementedGoferServer) InstallGoferTask(context.Context, *InstallGoferTaskRequest) (*InstallGoferTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InstallGoferTask not implemented")
+func (UnimplementedGoferServer) InstallCommonTask(context.Context, *InstallCommonTaskRequest) (*InstallCommonTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallCommonTask not implemented")
 }
-func (UnimplementedGoferServer) UninstallGoferTask(context.Context, *UninstallGoferTaskRequest) (*UninstallGoferTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UninstallGoferTask not implemented")
+func (UnimplementedGoferServer) UninstallCommonTask(context.Context, *UninstallCommonTaskRequest) (*UninstallCommonTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UninstallCommonTask not implemented")
 }
-func (UnimplementedGoferServer) EnableGoferTask(context.Context, *EnableGoferTaskRequest) (*EnableGoferTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EnableGoferTask not implemented")
+func (UnimplementedGoferServer) EnableCommonTask(context.Context, *EnableCommonTaskRequest) (*EnableCommonTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnableCommonTask not implemented")
 }
-func (UnimplementedGoferServer) DisableGoferTask(context.Context, *DisableGoferTaskRequest) (*DisableGoferTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DisableGoferTask not implemented")
+func (UnimplementedGoferServer) DisableCommonTask(context.Context, *DisableCommonTaskRequest) (*DisableCommonTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DisableCommonTask not implemented")
 }
 func (UnimplementedGoferServer) mustEmbedUnimplementedGoferServer() {}
 
@@ -1290,110 +1290,110 @@ func _Gofer_DisableTrigger_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_GetGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGoferTaskRequest)
+func _Gofer_GetCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCommonTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).GetGoferTask(ctx, in)
+		return srv.(GoferServer).GetCommonTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/GetGoferTask",
+		FullMethod: "/proto.Gofer/GetCommonTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).GetGoferTask(ctx, req.(*GetGoferTaskRequest))
+		return srv.(GoferServer).GetCommonTask(ctx, req.(*GetCommonTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_ListGoferTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListGoferTasksRequest)
+func _Gofer_ListCommonTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCommonTasksRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).ListGoferTasks(ctx, in)
+		return srv.(GoferServer).ListCommonTasks(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/ListGoferTasks",
+		FullMethod: "/proto.Gofer/ListCommonTasks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).ListGoferTasks(ctx, req.(*ListGoferTasksRequest))
+		return srv.(GoferServer).ListCommonTasks(ctx, req.(*ListCommonTasksRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_InstallGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InstallGoferTaskRequest)
+func _Gofer_InstallCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallCommonTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).InstallGoferTask(ctx, in)
+		return srv.(GoferServer).InstallCommonTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/InstallGoferTask",
+		FullMethod: "/proto.Gofer/InstallCommonTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).InstallGoferTask(ctx, req.(*InstallGoferTaskRequest))
+		return srv.(GoferServer).InstallCommonTask(ctx, req.(*InstallCommonTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_UninstallGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UninstallGoferTaskRequest)
+func _Gofer_UninstallCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UninstallCommonTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).UninstallGoferTask(ctx, in)
+		return srv.(GoferServer).UninstallCommonTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/UninstallGoferTask",
+		FullMethod: "/proto.Gofer/UninstallCommonTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).UninstallGoferTask(ctx, req.(*UninstallGoferTaskRequest))
+		return srv.(GoferServer).UninstallCommonTask(ctx, req.(*UninstallCommonTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_EnableGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EnableGoferTaskRequest)
+func _Gofer_EnableCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableCommonTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).EnableGoferTask(ctx, in)
+		return srv.(GoferServer).EnableCommonTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/EnableGoferTask",
+		FullMethod: "/proto.Gofer/EnableCommonTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).EnableGoferTask(ctx, req.(*EnableGoferTaskRequest))
+		return srv.(GoferServer).EnableCommonTask(ctx, req.(*EnableCommonTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_DisableGoferTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DisableGoferTaskRequest)
+func _Gofer_DisableCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableCommonTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).DisableGoferTask(ctx, in)
+		return srv.(GoferServer).DisableCommonTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/DisableGoferTask",
+		FullMethod: "/proto.Gofer/DisableCommonTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).DisableGoferTask(ctx, req.(*DisableGoferTaskRequest))
+		return srv.(GoferServer).DisableCommonTask(ctx, req.(*DisableCommonTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1526,28 +1526,28 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_DisableTrigger_Handler,
 		},
 		{
-			MethodName: "GetGoferTask",
-			Handler:    _Gofer_GetGoferTask_Handler,
+			MethodName: "GetCommonTask",
+			Handler:    _Gofer_GetCommonTask_Handler,
 		},
 		{
-			MethodName: "ListGoferTasks",
-			Handler:    _Gofer_ListGoferTasks_Handler,
+			MethodName: "ListCommonTasks",
+			Handler:    _Gofer_ListCommonTasks_Handler,
 		},
 		{
-			MethodName: "InstallGoferTask",
-			Handler:    _Gofer_InstallGoferTask_Handler,
+			MethodName: "InstallCommonTask",
+			Handler:    _Gofer_InstallCommonTask_Handler,
 		},
 		{
-			MethodName: "UninstallGoferTask",
-			Handler:    _Gofer_UninstallGoferTask_Handler,
+			MethodName: "UninstallCommonTask",
+			Handler:    _Gofer_UninstallCommonTask_Handler,
 		},
 		{
-			MethodName: "EnableGoferTask",
-			Handler:    _Gofer_EnableGoferTask_Handler,
+			MethodName: "EnableCommonTask",
+			Handler:    _Gofer_EnableCommonTask_Handler,
 		},
 		{
-			MethodName: "DisableGoferTask",
-			Handler:    _Gofer_DisableGoferTask_Handler,
+			MethodName: "DisableCommonTask",
+			Handler:    _Gofer_DisableCommonTask_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

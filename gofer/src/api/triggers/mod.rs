@@ -194,7 +194,7 @@ impl Api {
 
     pub async fn list_triggers_handler(
         &self,
-        args: ListTriggersRequest,
+        _: ListTriggersRequest,
     ) -> Result<Response<ListTriggersResponse>, Status> {
         let triggers: Vec<gofer_proto::Trigger> = self
             .triggers

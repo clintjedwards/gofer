@@ -164,31 +164,33 @@ service Gofer {
   // DisableTrigger attempts to disable a new trigger.
   rpc DisableTrigger(DisableTriggerRequest) returns (DisableTriggerResponse);
 
-  ////////////// GoferTask RPCs //////////////
+  ////////////// CommonTask RPCs //////////////
   //
-  // A Gofertask is a Gofer provided task that can be set up in advanced to make
-  // some action easier for a particular user. For example posting to Slack.
+  // A CommonTask is a Gofer provided task that can be set up in advanced to
+  // make some action easier for a particular user. For example posting to
+  // Slack.
 
-  // GetGoferTask returns details about a specific gofertask.
-  rpc GetGoferTask(GetGoferTaskRequest) returns (GetGoferTaskResponse);
+  // GetCommonTask returns details about a specific commontask.
+  rpc GetCommonTask(GetCommonTaskRequest) returns (GetCommonTaskResponse);
 
-  // ListGoferTasks lists all gofertasks currently registered within gofer.
-  rpc ListGoferTasks(ListGoferTasksRequest) returns (ListGoferTasksResponse);
+  // ListCommonTasks lists all common tasks currently registered within gofer.
+  rpc ListCommonTasks(ListCommonTasksRequest) returns (ListCommonTasksResponse);
 
-  // InstallGoferTask attempts to install a new gofertask.
-  rpc InstallGoferTask(InstallGoferTaskRequest)
-      returns (InstallGoferTaskResponse);
+  // InstallCommonTask attempts to install a new common task.
+  rpc InstallCommonTask(InstallCommonTaskRequest)
+      returns (InstallCommonTaskResponse);
 
-  // UninstallGoferTask attempts to uninstall a gofertask.
-  rpc UninstallGoferTask(UninstallGoferTaskRequest)
-      returns (UninstallGoferTaskResponse);
+  // UninstallCommonTask attempts to uninstall a common task.
+  rpc UninstallCommonTask(UninstallCommonTaskRequest)
+      returns (UninstallCommonTaskResponse);
 
-  // EnableGoferTask attempts to enable a new gofertask.
-  rpc EnableGoferTask(EnableGoferTaskRequest) returns (EnableGoferTaskResponse);
+  // EnableCommonTask attempts to enable a new common task.
+  rpc EnableCommonTask(EnableCommonTaskRequest)
+      returns (EnableCommonTaskResponse);
 
-  // DisableGoferTask attempts to disable a new gofertask.
-  rpc DisableGoferTask(DisableGoferTaskRequest)
-      returns (DisableGoferTaskResponse);
+  // DisableCommonTask attempts to disable a new common task.
+  rpc DisableCommonTask(DisableCommonTaskRequest)
+      returns (DisableCommonTaskResponse);
 }
 
 service TriggerService {

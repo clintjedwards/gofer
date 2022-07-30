@@ -259,45 +259,45 @@ impl Gofer for ApiWrapper {
         self.get_trigger_install_instructions_handler(args).await
     }
 
-    async fn get_gofer_task(
+    async fn get_common_task(
         &self,
-        request: Request<GetGoferTaskRequest>,
-    ) -> Result<Response<GetGoferTaskResponse>, Status> {
+        request: Request<GetCommonTaskRequest>,
+    ) -> Result<Response<GetCommonTaskResponse>, Status> {
         todo!()
     }
 
-    async fn list_gofer_tasks(
+    async fn list_common_tasks(
         &self,
-        request: Request<ListGoferTasksRequest>,
-    ) -> Result<Response<ListGoferTasksResponse>, Status> {
+        request: Request<ListCommonTasksRequest>,
+    ) -> Result<Response<ListCommonTasksResponse>, Status> {
         todo!()
     }
 
-    async fn install_gofer_task(
+    async fn install_common_task(
         &self,
-        request: Request<InstallGoferTaskRequest>,
-    ) -> Result<Response<InstallGoferTaskResponse>, Status> {
+        request: Request<InstallCommonTaskRequest>,
+    ) -> Result<Response<InstallCommonTaskResponse>, Status> {
         todo!()
     }
 
-    async fn uninstall_gofer_task(
+    async fn uninstall_common_task(
         &self,
-        request: Request<UninstallGoferTaskRequest>,
-    ) -> Result<Response<UninstallGoferTaskResponse>, Status> {
+        request: Request<UninstallCommonTaskRequest>,
+    ) -> Result<Response<UninstallCommonTaskResponse>, Status> {
         todo!()
     }
 
-    async fn enable_gofer_task(
+    async fn enable_common_task(
         &self,
-        request: Request<EnableGoferTaskRequest>,
-    ) -> Result<Response<EnableGoferTaskResponse>, Status> {
+        request: Request<EnableCommonTaskRequest>,
+    ) -> Result<Response<EnableCommonTaskResponse>, Status> {
         todo!()
     }
 
-    async fn disable_gofer_task(
+    async fn disable_common_task(
         &self,
-        request: Request<DisableGoferTaskRequest>,
-    ) -> Result<Response<DisableGoferTaskResponse>, Status> {
+        request: Request<DisableCommonTaskRequest>,
+    ) -> Result<Response<DisableCommonTaskResponse>, Status> {
         todo!()
     }
 }
