@@ -1,3 +1,5 @@
+mod common_tasks;
+mod event_handlers;
 mod fmt;
 mod gofer_impl;
 mod namespaces;
@@ -12,7 +14,7 @@ use crate::{conf, events, frontend, object_store, scheduler, secret_store, stora
 use anyhow::anyhow;
 use axum_server::Handle;
 use dashmap::DashMap;
-use gofer_models::{common_task, namespace, trigger};
+use gofer_models::{common_task, event, namespace, trigger};
 use gofer_proto::gofer_server::GoferServer;
 use http::header::CONTENT_TYPE;
 use slog_scope::info;
@@ -198,6 +200,12 @@ impl Api {
                 _ => return Err(e),
             }
         };
+
+        self.event_bus
+            .publish(event::Kind::CreatedNamespace {
+                namespace_id: DEFAULT_NAMESPACE_ID.to_string(),
+            })
+            .await;
 
         Ok(())
     }

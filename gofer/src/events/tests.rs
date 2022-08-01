@@ -1,6 +1,7 @@
 use super::*;
 use crate::storage::Db;
 use rand::prelude::*;
+use std::ops::Deref;
 
 struct TestHarness {
     db: Db,
@@ -62,9 +63,7 @@ async fn subscribe_one() {
     let event_bus = EventBus::new(harness.db.clone(), 5, 5000);
 
     let subscription = event_bus
-        .subscribe(Kind::CreatedNamespace {
-            namespace_id: "".to_string(),
-        })
+        .subscribe(KindDiscriminant::CreatedNamespace)
         .await
         .unwrap();
 
@@ -96,7 +95,7 @@ async fn subscribe_any() {
     let harness = TestHarness::new().await;
     let event_bus = EventBus::new(harness.db.clone(), 5, 5000);
 
-    let subscription = event_bus.subscribe(Kind::Any).await.unwrap();
+    let subscription = event_bus.subscribe(KindDiscriminant::Any).await.unwrap();
 
     let new_event_one = event_bus
         .publish(Kind::CreatedNamespace {

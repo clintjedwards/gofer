@@ -145,6 +145,17 @@ impl From<StatusReason> for gofer_proto::RunStatusReason {
     }
 }
 
+impl From<gofer_proto::RunStatusReason> for StatusReason {
+    fn from(r: gofer_proto::RunStatusReason) -> Self {
+        Self {
+            reason: gofer_proto::run_status_reason::RunStatusReason::from_i32(r.reason)
+                .unwrap()
+                .into(),
+            description: r.description,
+        }
+    }
+}
+
 /// Information about which trigger was responsible for the run's execution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TriggerInfo {
@@ -164,6 +175,15 @@ impl From<TriggerInfo> for gofer_proto::RunTriggerInfo {
     }
 }
 
+impl From<gofer_proto::RunTriggerInfo> for TriggerInfo {
+    fn from(r: gofer_proto::RunTriggerInfo) -> Self {
+        Self {
+            name: r.name,
+            label: r.label,
+        }
+    }
+}
+
 /// Information about the run's store keys as they pertain to Gofer's object store.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StoreInfo {
@@ -175,6 +195,15 @@ pub struct StoreInfo {
 
 impl From<StoreInfo> for gofer_proto::RunStoreInfo {
     fn from(r: StoreInfo) -> Self {
+        Self {
+            is_expired: r.is_expired,
+            keys: r.keys,
+        }
+    }
+}
+
+impl From<gofer_proto::RunStoreInfo> for StoreInfo {
+    fn from(r: gofer_proto::RunStoreInfo) -> Self {
         Self {
             is_expired: r.is_expired,
             keys: r.keys,
@@ -249,6 +278,29 @@ impl From<Run> for gofer_proto::Run {
             status_reason: r.status_reason.map(|fi| fi.into()),
             task_runs: r.task_runs,
             trigger: Some(r.trigger.into()),
+            variables: r.variables.into_iter().map(|value| value.into()).collect(),
+            store_info: r.store_info.map(|si| si.into()),
+        }
+    }
+}
+
+impl From<gofer_proto::Run> for Run {
+    fn from(r: gofer_proto::Run) -> Self {
+        Self {
+            namespace: r.namespace,
+            pipeline: r.pipeline,
+            id: r.id,
+            started: r.started,
+            ended: r.ended,
+            state: gofer_proto::run::RunState::from_i32(r.state)
+                .unwrap()
+                .into(),
+            status: gofer_proto::run::RunStatus::from_i32(r.status)
+                .unwrap()
+                .into(),
+            status_reason: r.status_reason.map(|fi| fi.into()),
+            task_runs: r.task_runs,
+            trigger: r.trigger.unwrap().into(),
             variables: r.variables.into_iter().map(|value| value.into()).collect(),
             store_info: r.store_info.map(|si| si.into()),
         }

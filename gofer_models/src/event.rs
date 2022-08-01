@@ -1,8 +1,21 @@
 use crate::{run, task_run};
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumIter, EnumString};
+use strum::{Display, EnumDiscriminants, EnumIter, EnumString};
 
-#[derive(Debug, PartialEq, Eq, EnumIter, EnumString, Display, Serialize, Deserialize, Clone)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    EnumIter,
+    EnumString,
+    EnumDiscriminants,
+    Display,
+    Serialize,
+    Deserialize,
+    Clone,
+)]
+#[strum_discriminants(derive(EnumString, Display, Hash))]
+#[strum_discriminants(name(KindDiscriminant))]
 pub enum Kind {
     /// The Any kind is a special event kind that denotes the caller wants to listen for any event.
     /// It should not be used as a normal event type(for example do not publish anything with it).
@@ -116,6 +129,17 @@ impl Event {
             id: 0,
             kind,
             emitted: super::epoch(),
+        }
+    }
+}
+
+impl From<Event> for gofer_proto::Event {
+    fn from(r: Event) -> Self {
+        Self {
+            id: r.id,
+            kind: KindDiscriminant::from(&r.kind).to_string(),
+            details: serde_json::to_string(&r.kind).unwrap(),
+            emitted: r.emitted,
         }
     }
 }

@@ -300,4 +300,20 @@ impl Gofer for ApiWrapper {
     ) -> Result<Response<DisableCommonTaskResponse>, Status> {
         todo!()
     }
+
+    async fn get_event(
+        &self,
+        request: Request<GetEventRequest>,
+    ) -> Result<Response<GetEventResponse>, Status> {
+        todo!()
+    }
+
+    type ListEventsStream = Pin<Box<dyn Stream<Item = Result<ListEventsResponse, Status>> + Send>>;
+
+    async fn list_events(
+        &self,
+        request: Request<ListEventsRequest>,
+    ) -> Result<Response<Self::ListEventsStream>, Status> {
+        todo!()
+    }
 }

@@ -21,7 +21,8 @@ impl From<gofer_proto::Trigger> for Data {
                 gofer_models::trigger::State::from(state).to_string()
             },
             image: v.image,
-            started: super::super::humanize_duration(v.started as i64),
+            started: super::super::humanize_relative_duration(v.started)
+                .unwrap_or_else(|| "Never".to_string()),
             url: v.url,
             documentation: v.documentation,
         }

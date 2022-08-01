@@ -4,14 +4,10 @@ mod tests;
 use crate::storage::{self, StorageError};
 use crossbeam::channel;
 use dashmap::DashMap;
-use gofer_models::event::{Event, Kind};
+use gofer_models::event::{Event, Kind, KindDiscriminant};
 use nanoid::nanoid;
 use slog_scope::{debug, error, info};
-use std::mem;
-use std::{
-    ops::Deref,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EventError {
@@ -30,18 +26,14 @@ pub enum EventError {
 
 pub struct Subscription<'a> {
     id: String,
-    kind: Kind,
+    kind: KindDiscriminant,
     event_bus: &'a EventBus,
     pub receiver: channel::Receiver<Event>,
 }
 
 impl Drop for Subscription<'_> {
     fn drop(&mut self) {
-        if let Some(subscription_map) = self
-            .event_bus
-            .event_channel_map
-            .get_mut(&mem::discriminant(&self.kind))
-        {
+        if let Some(subscription_map) = self.event_bus.event_channel_map.get_mut(&self.kind) {
             let subscription_map = subscription_map.value();
             let send_channel = subscription_map.remove(&self.id);
 
@@ -55,7 +47,7 @@ impl Drop for Subscription<'_> {
 /// A mapping of each event kind to the subscription id and sender end of the channel.
 /// When publishing events we need just a lookup by event kind, but when removing
 /// an event channel we need to be able to lookup by event kind and subscription id.
-type EventChannelMap = DashMap<mem::Discriminant<Kind>, DashMap<String, channel::Sender<Event>>>;
+type EventChannelMap = DashMap<KindDiscriminant, DashMap<String, channel::Sender<Event>>>;
 
 /// The event bus is a central handler for all things related to events with the application.
 /// It allows the caller to listen to and emit events.
@@ -91,19 +83,11 @@ impl EventBus {
     }
 
     /// Returns a channel receiver end which can be used to listen to events.
-    /// Unfortunately, the API for this function requires that the EventKind struct fields
-    /// are populated (you can use blank fields) even though they are thrown away.
-    /// Passing fields to the EventKind you wish to subscribe to DOES NOT filter which
-    /// events you receive back.
-    ///
-    /// For example specifying the namespace_id for a CreateNamespace event will get still
-    /// get you a subscription to all namespaces.
-    ///
-    /// Additionally the subscription return type automatically drops it's subscription upon drop/loss of scope.
-    pub async fn subscribe(&self, kind: Kind) -> Result<Subscription<'_>, EventError> {
+    /// The subscription return type automatically drops it's subscription upon drop/loss of scope.
+    pub async fn subscribe(&self, kind: KindDiscriminant) -> Result<Subscription<'_>, EventError> {
         let subscription_map = self
             .event_channel_map
-            .entry(mem::discriminant(&kind))
+            .entry(kind)
             .or_insert_with(DashMap::new);
 
         let (sender, receiver) = channel::unbounded::<Event>();
@@ -144,7 +128,8 @@ impl EventBus {
 
         new_event.id = id;
 
-        if let Some(specific_event_subs) = self.event_channel_map.get(&mem::discriminant(&kind)) {
+        if let Some(specific_event_subs) = self.event_channel_map.get(&KindDiscriminant::from(kind))
+        {
             for item in specific_event_subs.iter() {
                 let send_channel = item.value();
                 match send_channel.send(new_event.clone()) {
@@ -157,7 +142,7 @@ impl EventBus {
             }
         }
 
-        if let Some(any_event_subs) = self.event_channel_map.get(&mem::discriminant(&Kind::Any)) {
+        if let Some(any_event_subs) = self.event_channel_map.get(&KindDiscriminant::Any) {
             for item in any_event_subs.iter() {
                 let send_channel = item.value();
                 match send_channel.send(new_event.clone()) {

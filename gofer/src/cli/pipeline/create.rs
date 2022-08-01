@@ -7,8 +7,8 @@ use std::{path::PathBuf, process};
 
 impl CliHarness {
     /// The ability to create and manage pipelines is a huge selling point for Gofer.
-    /// In the pursuit of making this as easy as possible we allow the user to use rust
-    /// as a way to generate and manage their pipeline configurations. For that to work
+    /// In the pursuit of making this as easy as possible we allow the use of Rust
+    /// and Go as a way to generate and manage their pipeline configurations. For that to work
     /// though we have to be able to compile and run programs which implement the sdk and
     /// then collect the output.
     pub async fn pipeline_create(&self, path: &str) {

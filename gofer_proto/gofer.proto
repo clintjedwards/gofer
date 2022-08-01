@@ -164,9 +164,9 @@ service Gofer {
   // DisableTrigger attempts to disable a new trigger.
   rpc DisableTrigger(DisableTriggerRequest) returns (DisableTriggerResponse);
 
-  ////////////// CommonTask RPCs //////////////
+  ////////////// Common Task RPCs //////////////
   //
-  // A CommonTask is a Gofer provided task that can be set up in advanced to
+  // A Common Task is a Gofer provided task that can be set up in advanced to
   // make some action easier for a particular user. For example posting to
   // Slack.
 
@@ -191,6 +191,18 @@ service Gofer {
   // DisableCommonTask attempts to disable a new common task.
   rpc DisableCommonTask(DisableCommonTaskRequest)
       returns (DisableCommonTaskResponse);
+
+  ////////////// Event RPCs //////////////
+  //
+  // Gofer emits events for actions that happen within it's purview. You can use
+  // the event api to get a list of all events or request specific events.
+
+  // GetEvent returns the details of a single event.
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+
+  // ListEvents returns a streaming list of all events, ordered by
+  // oldest to newest.
+  rpc ListEvents(ListEventsRequest) returns (stream ListEventsResponse);
 }
 
 service TriggerService {

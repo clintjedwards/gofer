@@ -47,10 +47,6 @@ pub struct Pipeline {
     pub name: String,
     /// Short description of what the pipeline is used for.
     pub description: String,
-    /// The identifier for the last run that the pipeline executed.
-    pub last_run_id: u64,
-    /// The time in epoch milli that the last run started. 0 indicates that this was never run.
-    pub last_run_time: u64,
     /// Controls how many runs can be active at any single time. 0 indicates unbounded with respect to bounds
     /// enforced by Gofer.
     pub parallelism: u64,
@@ -78,12 +74,43 @@ impl From<Pipeline> for gofer_proto::Pipeline {
             id: p.id,
             name: p.name,
             description: p.description,
-            last_run_id: p.last_run_id,
-            last_run_time: p.last_run_time,
             parallelism: p.parallelism,
             created: p.created,
             modified: p.modified,
             state: gofer_proto::pipeline::PipelineState::from(p.state) as i32,
+            tasks: p
+                .tasks
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
+            triggers: p
+                .triggers
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
+            common_tasks: p
+                .common_tasks
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
+            store_keys: p.store_keys,
+        }
+    }
+}
+
+impl From<gofer_proto::Pipeline> for Pipeline {
+    fn from(p: gofer_proto::Pipeline) -> Self {
+        Self {
+            namespace: p.namespace,
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            parallelism: p.parallelism,
+            created: p.created,
+            modified: p.modified,
+            state: gofer_proto::pipeline::PipelineState::from_i32(p.state)
+                .unwrap()
+                .into(),
             tasks: p
                 .tasks
                 .into_iter()
@@ -111,8 +138,6 @@ impl Pipeline {
             id: config.id,
             name: config.name,
             description: config.description.unwrap_or_default(),
-            last_run_id: 0,
-            last_run_time: 0,
             parallelism: config.parallelism,
             created: epoch(),
             modified: epoch(),

@@ -50,21 +50,19 @@ message Pipeline {
   string id = 2;
   string name = 3;
   string description = 4;
-  uint64 last_run_id = 5;
-  uint64 last_run_time = 6;
-  uint64 parallelism = 7;
-  uint64 created = 8;
-  uint64 modified = 9;
+  uint64 parallelism = 5;
+  uint64 created = 6;
+  uint64 modified = 7;
   enum PipelineState {
     PIPELINE_STATE_UNKNOWN = 0;
     ACTIVE = 1;
     DISABLED = 2;
   }
-  PipelineState state = 10;
-  map<string, Task> tasks = 11;
-  map<string, PipelineTriggerSettings> triggers = 12;
-  map<string, PipelineCommonTaskSettings> common_tasks = 13;
-  repeated string store_keys = 14;
+  PipelineState state = 8;
+  map<string, Task> tasks = 9;
+  map<string, PipelineTriggerSettings> triggers = 10;
+  map<string, PipelineCommonTaskSettings> common_tasks = 11;
+  repeated string store_keys = 12;
 }
 
 message PipelineConfig {
@@ -299,4 +297,11 @@ message CommonTaskRegistration {
     DISABLED = 2;
   }
   Status status = 7;
+}
+
+message Event {
+  uint64 id = 1;
+  string kind = 2;    // What type of event
+  string details = 3; // Json output of the event
+  uint64 emitted = 4;
 }

@@ -305,6 +305,15 @@ impl Api {
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
+        storage::pipelines::get(&mut conn, &args.namespace_id, &args.id)
+            .await
+            .map_err(|e| match e {
+                storage::StorageError::NotFound => {
+                    Status::not_found(format!("pipeline with id '{}' does not exist", &args.id))
+                }
+                _ => Status::internal(e.to_string()),
+            })?;
+
         storage::pipelines::delete(&mut conn, &args.namespace_id, &args.id)
             .await
             .map_err(|e| match e {

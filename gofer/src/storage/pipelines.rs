@@ -1,4 +1,3 @@
-use crate::storage::runs;
 use crate::storage::{SqliteErrors, StorageError, MAX_ROW_LIMIT};
 use futures::TryFutureExt;
 use gofer_models::{pipeline, task};
@@ -151,8 +150,6 @@ OFFSET ?;"#,
         id: row.get("id"),
         name: row.get("name"),
         description: row.get("description"),
-        last_run_id: 0,
-        last_run_time: 0,
         parallelism: row.get::<i64, _>("parallelism") as u64,
         created: row.get::<i64, _>("created") as u64,
         modified: row.get::<i64, _>("modified") as u64,
@@ -174,13 +171,6 @@ OFFSET ?;"#,
 
     // Then we need to populate it with information from sister tables.
     for pipeline in &mut pipelines {
-        let last_run = runs::list(&mut tx, 0, 1, namespace_id, &pipeline.id).await?;
-
-        if !last_run.is_empty() {
-            pipeline.last_run_id = last_run[0].id;
-            pipeline.last_run_time = last_run[0].started;
-        }
-
         let tasks = list_tasks(&mut tx, namespace_id, &pipeline.id).await?;
 
         let tasks = tasks
@@ -400,8 +390,6 @@ LIMIT 1;"#,
         id: row.get("id"),
         name: row.get("name"),
         description: row.get("description"),
-        last_run_id: 0,
-        last_run_time: 0,
         parallelism: row.get::<i64, _>("parallelism") as u64,
         created: row.get::<i64, _>("created") as u64,
         modified: row.get::<i64, _>("modified") as u64,
@@ -423,13 +411,6 @@ LIMIT 1;"#,
         _ => StorageError::Unknown(e.to_string()),
     })
     .await?;
-
-    let last_run = runs::list(&mut tx, 0, 1, namespace_id, pipeline_id).await?;
-
-    if !last_run.is_empty() {
-        pipeline.last_run_id = last_run[0].id;
-        pipeline.last_run_time = last_run[0].started;
-    }
 
     let tasks = list_tasks(&mut tx, namespace_id, pipeline_id).await?;
     pipeline.tasks = tasks

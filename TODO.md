@@ -181,3 +181,7 @@ prefixed with >2
 - In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
 - We still have to write pipeline validation for dag structures and makeing sure all IDs in depends on actually
   exists. To this end we should go over every endpoint and make sure we aren't missing anything the Go version had.
+- Remember to pass back common tasks in the pipeline get call to the client for the cli.
+- Instead of log - look into tracing; even the log own library says we should.
+- Implement from for both proto -> model and model -> proto.
+- Use Mdbook for documentation.

@@ -122,6 +122,35 @@ impl From<Trigger> for gofer_proto::Trigger {
     }
 }
 
+impl From<gofer_proto::Trigger> for Trigger {
+    fn from(ns: gofer_proto::Trigger) -> Self {
+        Trigger {
+            registration: Registration {
+                name: ns.name,
+                image: ns.image,
+                user: None,
+                pass: None,
+                variables: HashMap::new(),
+                created: 0,
+                status: gofer_proto::trigger::TriggerStatus::from_i32(ns.status)
+                    .unwrap()
+                    .into(),
+            },
+            key: None,
+            url: Some(ns.url),
+            scheduler_id: Some(ns.scheduler_id),
+            started: ns.started,
+            state: gofer_proto::trigger::TriggerState::from_i32(ns.state)
+                .unwrap()
+                .into(),
+            status: gofer_proto::trigger::TriggerStatus::from_i32(ns.status)
+                .unwrap()
+                .into(),
+            documentation: Some(ns.documentation),
+        }
+    }
+}
+
 /// When installing a new trigger, we allow the trigger installer to pass a bunch of settings that
 /// allow us to go get that trigger on future startups.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

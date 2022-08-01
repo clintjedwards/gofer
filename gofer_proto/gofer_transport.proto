@@ -281,6 +281,13 @@ message EnableCommonTaskResponse {}
 message DisableCommonTaskRequest { string name = 1; }
 message DisableCommonTaskResponse {}
 
+message GetCommonTaskInstallInstructionsRequest {
+  string image = 1;
+  string user = 2;
+  string pass = 3;
+}
+message GetCommonTaskInstallInstructionsResponse { string instructions = 1; }
+
 ////////////// Trigger Service Transport Models //////////////
 
 message TriggerWatchRequest {}
@@ -354,3 +361,17 @@ message TriggerShutdownResponse {}
 
 message TriggerExternalEventRequest { bytes payload = 1; }
 message TriggerExternalEventResponse {}
+
+////////////// Events Transport Models //////////////
+
+message GetEventRequest { uint64 id = 1; } // Event ID
+message GetEventResponse { Event event = 1; }
+
+message ListEventsRequest {
+  // defaults to false; meaning oldest to newest events by default.
+  bool reverse = 1;
+  // Tell Gofer to continually stream new events instead of closing the stream
+  // after it gets to the end.
+  bool follow = 2;
+}
+message ListEventsResponse { Event event = 1; }

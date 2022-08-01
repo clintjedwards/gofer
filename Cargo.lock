@@ -1057,6 +1057,7 @@ dependencies = [
  "gofer_proto",
  "gofer_sdk",
  "serde",
+ "serde_json",
  "strum 0.24.0",
 ]
 

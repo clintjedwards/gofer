@@ -66,24 +66,20 @@ pub struct Pipeline {
     #[prost(string, tag="4")]
     pub description: ::prost::alloc::string::String,
     #[prost(uint64, tag="5")]
-    pub last_run_id: u64,
-    #[prost(uint64, tag="6")]
-    pub last_run_time: u64,
-    #[prost(uint64, tag="7")]
     pub parallelism: u64,
-    #[prost(uint64, tag="8")]
+    #[prost(uint64, tag="6")]
     pub created: u64,
-    #[prost(uint64, tag="9")]
+    #[prost(uint64, tag="7")]
     pub modified: u64,
-    #[prost(enumeration="pipeline::PipelineState", tag="10")]
+    #[prost(enumeration="pipeline::PipelineState", tag="8")]
     pub state: i32,
-    #[prost(map="string, message", tag="11")]
+    #[prost(map="string, message", tag="9")]
     pub tasks: ::std::collections::HashMap<::prost::alloc::string::String, Task>,
-    #[prost(map="string, message", tag="12")]
+    #[prost(map="string, message", tag="10")]
     pub triggers: ::std::collections::HashMap<::prost::alloc::string::String, PipelineTriggerSettings>,
-    #[prost(map="string, message", tag="13")]
+    #[prost(map="string, message", tag="11")]
     pub common_tasks: ::std::collections::HashMap<::prost::alloc::string::String, PipelineCommonTaskSettings>,
-    #[prost(string, repeated, tag="14")]
+    #[prost(string, repeated, tag="12")]
     pub store_keys: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `Pipeline`.
@@ -487,6 +483,19 @@ pub mod common_task_registration {
         Enabled = 1,
         Disabled = 2,
     }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Event {
+    #[prost(uint64, tag="1")]
+    pub id: u64,
+    /// What type of event
+    #[prost(string, tag="2")]
+    pub kind: ::prost::alloc::string::String,
+    /// Json output of the event
+    #[prost(string, tag="3")]
+    pub details: ::prost::alloc::string::String,
+    #[prost(uint64, tag="4")]
+    pub emitted: u64,
 }
 ////////////// System Transport Models //////////////
 
@@ -1015,6 +1024,20 @@ pub struct DisableCommonTaskRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DisableCommonTaskResponse {
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetCommonTaskInstallInstructionsRequest {
+    #[prost(string, tag="1")]
+    pub image: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub user: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub pass: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetCommonTaskInstallInstructionsResponse {
+    #[prost(string, tag="1")]
+    pub instructions: ::prost::alloc::string::String,
+}
 ////////////// Trigger Service Transport Models //////////////
 
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1123,6 +1146,33 @@ pub struct TriggerExternalEventRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TriggerExternalEventResponse {
+}
+////////////// Events Transport Models //////////////
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetEventRequest {
+    #[prost(uint64, tag="1")]
+    pub id: u64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetEventResponse {
+    #[prost(message, optional, tag="1")]
+    pub event: ::core::option::Option<Event>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListEventsRequest {
+    /// defaults to false; meaning oldest to newest events by default.
+    #[prost(bool, tag="1")]
+    pub reverse: bool,
+    /// Tell Gofer to continually stream new events instead of closing the stream
+    /// after it gets to the end.
+    #[prost(bool, tag="2")]
+    pub follow: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListEventsResponse {
+    #[prost(message, optional, tag="1")]
+    pub event: ::core::option::Option<Event>,
 }
 /// Generated client implementations.
 pub mod gofer_client {
@@ -1941,6 +1991,46 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// GetEvent returns the details of a single event.
+        pub async fn get_event(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetEventRequest>,
+        ) -> Result<tonic::Response<super::GetEventResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetEvent");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// ListEvents returns a streaming list of all events, ordered by
+        /// oldest to newest.
+        pub async fn list_events(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListEventsRequest>,
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::ListEventsResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/ListEvents");
+            self.inner.server_streaming(request.into_request(), path, codec).await
+        }
     }
 }
 /// Generated client implementations.
@@ -2370,6 +2460,23 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DisableCommonTaskRequest>,
         ) -> Result<tonic::Response<super::DisableCommonTaskResponse>, tonic::Status>;
+        /// GetEvent returns the details of a single event.
+        async fn get_event(
+            &self,
+            request: tonic::Request<super::GetEventRequest>,
+        ) -> Result<tonic::Response<super::GetEventResponse>, tonic::Status>;
+        ///Server streaming response type for the ListEvents method.
+        type ListEventsStream: futures_core::Stream<
+                Item = Result<super::ListEventsResponse, tonic::Status>,
+            >
+            + Send
+            + 'static;
+        /// ListEvents returns a streaming list of all events, ordered by
+        /// oldest to newest.
+        async fn list_events(
+            &self,
+            request: tonic::Request<super::ListEventsRequest>,
+        ) -> Result<tonic::Response<Self::ListEventsStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct GoferServer<T: Gofer> {
@@ -3870,6 +3977,81 @@ pub mod gofer_server {
                                 send_compression_encodings,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/GetEvent" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetEventSvc<T: Gofer>(pub Arc<T>);
+                    impl<T: Gofer> tonic::server::UnaryService<super::GetEventRequest>
+                    for GetEventSvc<T> {
+                        type Response = super::GetEventResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetEventRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).get_event(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetEventSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/ListEvents" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListEventsSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::ServerStreamingService<super::ListEventsRequest>
+                    for ListEventsSvc<T> {
+                        type Response = super::ListEventsResponse;
+                        type ResponseStream = T::ListEventsStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListEventsRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).list_events(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListEventsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

@@ -1,5 +1,5 @@
 use super::CliHarness;
-use crate::cli::humanize_duration;
+use crate::cli::humanize_relative_duration;
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
@@ -96,7 +96,10 @@ impl CliHarness {
                 Cell::new(namespace.id).fg(Color::Green),
                 Cell::new(namespace.name),
                 Cell::new(namespace.description),
-                Cell::new(humanize_duration(namespace.created as i64)),
+                Cell::new(
+                    humanize_relative_duration(namespace.created)
+                        .unwrap_or_else(|| "Unknown".to_string()),
+                ),
             ]);
         }
 
@@ -157,7 +160,7 @@ impl CliHarness {
   {}",
             namespace.id.green(),
             namespace.name,
-            humanize_duration(namespace.created as i64),
+            humanize_relative_duration(namespace.created).unwrap_or_else(|| "Unknown".to_string()),
             namespace.description
         );
     }

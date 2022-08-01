@@ -1,12 +1,13 @@
 use super::super::CliHarness;
-use crate::cli::{humanize_duration, DEFAULT_NAMESPACE};
+use crate::cli::{humanize_relative_duration, DEFAULT_NAMESPACE};
+use colored::Colorize;
 use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
 use std::process;
 
 impl CliHarness {
     pub async fn pipeline_list(&self) {
         let mut client = self.connect().await.unwrap_or_else(|e| {
-            eprintln!("Command failed; {}", e);
+            eprintln!("{} Command failed; {}", "x".red(), e);
             process::exit(1);
         });
 
@@ -23,7 +24,7 @@ impl CliHarness {
             .list_pipelines(request)
             .await
             .unwrap_or_else(|e| {
-                eprintln!("Command failed; {}", e);
+                eprintln!("{} Command failed; {}", "x".red(), e);
                 process::exit(1);
             })
             .into_inner();
@@ -54,17 +55,48 @@ impl CliHarness {
             ]);
 
         for pipeline in response.pipelines {
+            let request = tonic::Request::new(gofer_proto::ListRunsRequest {
+                namespace_id: self
+                    .config
+                    .namespace
+                    .clone()
+                    .unwrap_or_else(|| DEFAULT_NAMESPACE.to_string()),
+                pipeline_id: pipeline.id.clone(),
+                offset: 0,
+                limit: 1,
+            });
+
+            let response = client
+                .list_runs(request)
+                .await
+                .unwrap_or_else(|e| {
+                    eprintln!("{} Command failed; {}", "x".red(), e);
+                    process::exit(1);
+                })
+                .into_inner();
+
+            let last_run_time = match response.runs.get(0) {
+                Some(last_run) => last_run.started,
+                None => 0,
+            };
+
             table.add_row(vec![
                 Cell::new(pipeline.id).fg(Color::Green),
                 Cell::new(pipeline.name),
                 Cell::new(pipeline.description),
-                Cell::new(humanize_duration(pipeline.last_run_time as i64)),
+                Cell::new(
+                    humanize_relative_duration(last_run_time)
+                        .unwrap_or_else(|| "Never".to_string()),
+                ),
                 Cell::new({
                     let state =
                         gofer_proto::pipeline::PipelineState::from_i32(pipeline.state).unwrap();
                     gofer_models::pipeline::State::from(state).to_string()
                 }),
-                Cell::new(humanize_duration(pipeline.created as i64)),
+                Cell::new(
+                    humanize_relative_duration(pipeline.created)
+                        .unwrap_or_else(|| "Unknown".to_string()),
+                ),
             ]);
         }
 
