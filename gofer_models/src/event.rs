@@ -14,8 +14,17 @@ use strum::{Display, EnumDiscriminants, EnumIter, EnumString};
     Deserialize,
     Clone,
 )]
+// KindDiscriminant is a strum derive that allows us to mention which enum variant we want
+// without having to define the entire enum.
+// For example: We might have a function which just wants to filter on events :: sub(event)
+// Instead of determining which enum we want by giving the whole enum including the data
+// like so: `sub(CreatedNamespace{...})` instead we can use the KindDiscriminant to give
+// just the variant like so: `sub(CreatedNamespace)`.
 #[strum_discriminants(derive(EnumString, Display, Hash))]
 #[strum_discriminants(name(KindDiscriminant))]
+#[strum_discriminants(strum(serialize_all = "snake_case"))]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum Kind {
     /// The Any kind is a special event kind that denotes the caller wants to listen for any event.
     /// It should not be used as a normal event type(for example do not publish anything with it).

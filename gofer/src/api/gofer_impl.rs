@@ -305,7 +305,8 @@ impl Gofer for ApiWrapper {
         &self,
         request: Request<GetEventRequest>,
     ) -> Result<Response<GetEventResponse>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.get_event_handler(args).await
     }
 
     type ListEventsStream = Pin<Box<dyn Stream<Item = Result<ListEventsResponse, Status>> + Send>>;

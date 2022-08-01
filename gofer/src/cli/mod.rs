@@ -91,6 +91,9 @@ enum Commands {
 
     /// Manages trigger related commands.
     Trigger(trigger::TriggerSubcommands),
+
+    /// List and get information about Gofer events.
+    Event(event::EventSubcommands),
 }
 
 fn init_logging(severity: Severity) -> slog_scope::GlobalLoggerGuard {
@@ -247,6 +250,14 @@ pub async fn init() {
                 }
                 trigger::TriggerCommands::List => cli.trigger_list().await,
 
+                _ => todo!(),
+            }
+        }
+        Commands::Event(event) => {
+            let event_cmds = event.command;
+
+            match event_cmds {
+                event::EventCommands::Get { id } => cli.event_get(id).await,
                 _ => todo!(),
             }
         }
