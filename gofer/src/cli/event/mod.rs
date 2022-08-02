@@ -1,6 +1,8 @@
 use clap::{Args, Subcommand};
 use colored::Colorize;
+use futures::{stream::Stream, TryStreamExt};
 use std::process;
+use tokio_stream::StreamExt;
 
 use super::CliHarness;
 
@@ -18,9 +20,9 @@ pub enum EventCommands {
         id: u64,
     },
 
-    /// List all events; default from oldest event to newest.
+    /// List all events; defaults from oldest event to newest.
     List {
-        /// Sort events from newest to oldest.
+        /// Change the order of events to newest first instead of oldest first (reverse chronological order).
         #[clap(short, long)]
         reverse: bool,
 
@@ -48,10 +50,48 @@ impl CliHarness {
             .into_inner();
 
         let event = response.event.unwrap();
-        dbg!(event);
+        dbg!(event); //TODO(clintjedwards): Make this pretty
     }
 
-    pub async fn event_list(&self) {
-        todo!()
+    pub async fn event_list(&self, reverse: bool, follow: bool) {
+        if reverse && follow {
+            eprintln!(
+                "{} Command failed; flags 'reverse' and 'follow' cannot both be true",
+                "x".red(),
+            );
+            process::exit(1);
+        }
+
+        let mut client = self.connect().await.unwrap_or_else(|e| {
+            eprintln!("{} Command failed; {}", "x".red(), e);
+            process::exit(1);
+        });
+
+        let request = tonic::Request::new(gofer_proto::ListEventsRequest { reverse, follow });
+        let mut response = client
+            .list_events(request)
+            .await
+            .unwrap_or_else(|e| {
+                eprintln!("{} Command failed; {}", "x".red(), e.message());
+                process::exit(1);
+            })
+            .into_inner();
+
+        loop {
+            let msg = match response.message().await {
+                Ok(msg) => msg,
+                Err(e) => {
+                    eprintln!("{} Command failed; {}", "x".red(), e.message());
+                    process::exit(1);
+                }
+            };
+
+            let msg = match msg {
+                Some(msg) => msg,
+                None => return,
+            };
+
+            println!("{:#?}", msg.event.unwrap());
+        }
     }
 }

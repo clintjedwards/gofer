@@ -315,6 +315,7 @@ impl Gofer for ApiWrapper {
         &self,
         request: Request<ListEventsRequest>,
     ) -> Result<Response<Self::ListEventsStream>, Status> {
-        todo!()
+        let args = request.into_inner();
+        self.deref().clone().list_events_handler(args).await
     }
 }

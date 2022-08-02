@@ -258,7 +258,9 @@ pub async fn init() {
 
             match event_cmds {
                 event::EventCommands::Get { id } => cli.event_get(id).await,
-                _ => todo!(),
+                event::EventCommands::List { reverse, follow } => {
+                    cli.event_list(reverse, follow).await
+                }
             }
         }
     }

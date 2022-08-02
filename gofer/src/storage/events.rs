@@ -5,7 +5,7 @@ use sqlx::{sqlite::SqliteRow, Row, SqliteConnection};
 use std::ops::Deref;
 
 /// Return all events; limited to 200 rows in any one response.
-/// The reverse parameter allows the sorting the events in reverse chronological order.
+/// The reverse parameter allows the sorting the events in reverse chronological order (newest event first).
 pub async fn list(
     conn: &mut SqliteConnection,
     offset: u64,
