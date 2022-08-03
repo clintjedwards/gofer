@@ -147,7 +147,7 @@ impl Api {
         }
 
         //TODO(clintjedwards): We need to enable this to be cancelled by both the client
-        // and the server shutdown. Currently it doesn't not.
+        // and the server shutdown. Currently it doesn't not and hangs the server.
         dbg!("we exited because the client exited here");
     }
 }

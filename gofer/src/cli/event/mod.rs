@@ -49,8 +49,7 @@ impl CliHarness {
             })
             .into_inner();
 
-        let event = response.event.unwrap();
-        dbg!(event); //TODO(clintjedwards): Make this pretty
+        println!("{:#?}", response.event.unwrap()); //TODO(clintjedwards): Make this pretty
     }
 
     pub async fn event_list(&self, reverse: bool, follow: bool) {
@@ -91,7 +90,7 @@ impl CliHarness {
                 None => return,
             };
 
-            println!("{:#?}", msg.event.unwrap());
+            println!("{:?}", msg.event.unwrap());
         }
     }
 }

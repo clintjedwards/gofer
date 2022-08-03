@@ -29,6 +29,11 @@ impl CliHarness {
             })
             .into_inner();
 
+        if response.pipelines.is_empty() {
+            println!("No pipelines found.");
+            return;
+        }
+
         let mut table = comfy_table::Table::new();
         table
             .load_preset(ASCII_MARKDOWN)
@@ -54,7 +59,7 @@ impl CliHarness {
                     .fg(Color::Blue),
             ]);
 
-        for pipeline in response.pipelines {
+        for mut pipeline in response.pipelines {
             let request = tonic::Request::new(gofer_proto::ListRunsRequest {
                 namespace_id: self
                     .config
@@ -83,7 +88,10 @@ impl CliHarness {
             table.add_row(vec![
                 Cell::new(pipeline.id).fg(Color::Green),
                 Cell::new(pipeline.name),
-                Cell::new(pipeline.description),
+                Cell::new({
+                    pipeline.description.truncate(60);
+                    pipeline.description
+                }),
                 Cell::new(
                     humanize_relative_duration(last_run_time)
                         .unwrap_or_else(|| "Never".to_string()),

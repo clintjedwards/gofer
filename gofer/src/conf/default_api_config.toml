@@ -49,7 +49,7 @@ tls_key = ""
 engine = "Docker" # possible values: ["Docker"]
 
 [scheduler.docker]
-prune = true
+prune = false
 prune_interval = 604800
 
 [triggers]

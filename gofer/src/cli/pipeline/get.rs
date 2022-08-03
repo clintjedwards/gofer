@@ -3,6 +3,7 @@ use crate::cli::{
     epoch, humanize_absolute_duration, humanize_relative_duration, DEFAULT_NAMESPACE,
 };
 use colored::Colorize;
+use futures::StreamExt;
 use std::process;
 
 #[derive(Debug, serde::Serialize)]
@@ -61,7 +62,7 @@ fn print_pipeline_template(data: Data) {
 
 📦 Recent Runs
   {{- for run in recent_runs}}
-  • {run.id} :: {run.started} by trigger {run.trigger_name} ({run.trigger_kind}) :: {run.lasted} :: {run.state}
+  • #{run.id}: {run.started} by trigger {run.trigger_label} ({run.trigger_name}) :: {run.state} {run.lasted} :: {run.status}
   {{- endfor}}
 {{- endif}}
 {{- if tasks }}
@@ -207,6 +208,29 @@ impl CliHarness {
                     process::exit(1);
                 })
                 .into_inner();
+
+            let mut response = response.take(100);
+            let mut events = vec![];
+
+            while let Some(resp) = response.next().await {
+                //TODO(we need to be able to translate events back into objects):
+                let event = match resp {
+                    Ok(resp) => resp.event.unwrap(),
+                    Err(e) => {
+                        eprintln!(
+                            "{} Could not collect all events; {}",
+                            "x".red(),
+                            e.message()
+                        );
+                        break;
+                    }
+                };
+
+                events.push(EventData {
+                    processed: event.emitted.to_string(),
+                    details: event.details,
+                })
+            }
 
             triggers.push(TriggerData {
                 label: trigger_settings.label.clone(),

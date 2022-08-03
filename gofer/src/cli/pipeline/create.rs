@@ -1,4 +1,5 @@
 use super::super::CliHarness;
+use super::*;
 use crate::cli::{Spinner, DEFAULT_NAMESPACE};
 use colored::Colorize;
 use indicatif::ProgressBar;
@@ -26,22 +27,31 @@ impl CliHarness {
         });
         let full_path = full_path.to_string_lossy();
 
+        // We need to detect which compiler we need to use by examining
+        // the file extensions within the path given.
+        let language = detect_language(&full_path).unwrap_or_else(|e| {
+            spinner.finish_and_error(&format!(
+                "Could not determine pipeline language for '{}'; {:?}",
+                parsed_path.to_string_lossy(),
+                e
+            ));
+        });
+
         // Spawn the relevant binary to build the configuration and collect
         // the output.
         // The stderr we use as status markers since they mostly stem from
         // the build tool's debug output.
         // The stdout we use as the final output and attempt to parse that.
-        let mut cmd = process::Command::new("cargo")
-            .args(["run", &format!("--manifest-path={full_path}/Cargo.toml")])
-            .stderr(process::Stdio::piped())
-            .stdout(process::Stdio::piped())
-            .spawn()
-            .unwrap_or_else(|e| {
-                spinner.finish_and_error(&format!(
-                    "Could not run build command for target config '{}'; {:?}",
-                    full_path, e
-                ));
-            });
+        let cmd = match language {
+            PipelineLanguage::Golang => go_build_cmd(&full_path),
+            PipelineLanguage::Rust => rust_build_cmd(&full_path),
+        };
+        let mut cmd = cmd.unwrap_or_else(|e| {
+            spinner.finish_and_error(&format!(
+                "Could not run build command for target config '{}'; {:?}",
+                full_path, e
+            ));
+        });
 
         // Print out the stderr as status markers
         let stderr = cmd.stderr.take().unwrap();
@@ -81,9 +91,16 @@ impl CliHarness {
                 spinner.println(format!("  {}", line))
             }
 
-            let helper_cargo_cmd = format!("cargo run --manifest-path {path}/Cargo.toml").cyan();
-            spinner.println(format!("...\nView full error output: {helper_cargo_cmd}"));
-
+            match language {
+                PipelineLanguage::Rust => spinner.println(format!(
+                    "...\nView full error output: {}",
+                    rust_helper_cmd(&parsed_path.to_string_lossy()).cyan()
+                )),
+                PipelineLanguage::Golang => spinner.println(format!(
+                    "...\nView full error output: {}",
+                    go_helper_cmd(&parsed_path.to_string_lossy()).cyan()
+                )),
+            }
             spinner.finish_and_clear();
             process::exit(1);
         }

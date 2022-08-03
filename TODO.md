@@ -184,4 +184,6 @@ prefixed with >2
 - Remember to pass back common tasks in the pipeline get call to the client for the cli.
 - Instead of log - look into tracing; even the log own library says we should.
 - Implement from for both proto -> model and model -> proto.
+- Fix list-events to close the thread when a client is no longer connected or at least have a timeout.
+  Look into other threads and make sure they operate the same way.
 - Use Mdbook for documentation.
