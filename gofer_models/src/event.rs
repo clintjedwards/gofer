@@ -71,6 +71,12 @@ pub enum Kind {
     },
 
     // Task run events
+    CreatedTaskRun {
+        namespace_id: String,
+        pipeline_id: String,
+        run_id: u64,
+        task_run_id: String,
+    },
     StartedTaskRun {
         namespace_id: String,
         pipeline_id: String,

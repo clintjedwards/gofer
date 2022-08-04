@@ -327,10 +327,10 @@ impl RunStateMachine {
 
         // We loop over the task_runs to make sure all are complete.
         'outer: loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             for item in &self.task_runs {
                 let task_run = item.value();
                 if task_run.state != task_run::State::Complete {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     continue 'outer;
                 }
             }
@@ -746,6 +746,8 @@ impl RunStateMachine {
 
         let log_path = fmt::task_run_log_path(&self.api.conf.general.task_run_logs_dir, &task_run);
 
+        drop(task_run);
+
         let mut log_file = match tokio::fs::File::create(&log_path).await {
             Ok(log_file) => log_file,
             Err(e) => {
@@ -934,7 +936,7 @@ impl RunStateMachine {
             self_clone
                 .api
                 .event_bus
-                .publish(event::Kind::StartedTaskRun {
+                .publish(event::Kind::CreatedTaskRun {
                     namespace_id,
                     pipeline_id,
                     run_id,
@@ -1071,8 +1073,47 @@ impl RunStateMachine {
             return;
         };
 
-        self.set_task_run_state(&mut conn, &new_task_run, task_run::State::Running)
-            .await;
+        if let Err(e) = storage::task_runs::update(
+            &mut conn,
+            &new_task_run,
+            storage::task_runs::UpdatableFields {
+                state: Some(task_run::State::Running),
+                started: Some(epoch()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
+            error!("could not add task run to storage"; "error" => format!("{:?}", e));
+            return;
+        }
+
+        // Alert the event bus that a new task run is being started.
+        let self_clone = self.clone();
+        let namespace_id = self.pipeline.namespace.to_string();
+        let pipeline_id = self.pipeline.id.to_string();
+        let run_id = self.run.id;
+        let task_run_id = task.id.clone();
+
+        tokio::spawn(async move {
+            self_clone
+                .api
+                .event_bus
+                .publish(event::Kind::StartedTaskRun {
+                    namespace_id,
+                    pipeline_id,
+                    run_id,
+                    task_run_id,
+                })
+                .await;
+        });
+
+        // Update the task run's status inside the map first.
+        self.task_runs.alter(&new_task_run.id, |_, mut task_run| {
+            task_run.state = task_run::State::Running;
+
+            task_run
+        });
 
         // Block until task_run is finished and log results.
         self.monitor_task_run(container_name, new_task_run.id).await;

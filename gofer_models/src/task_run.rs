@@ -32,6 +32,18 @@ impl From<State> for TaskRunState {
     }
 }
 
+impl From<TaskRunState> for State {
+    fn from(r: TaskRunState) -> Self {
+        match r {
+            TaskRunState::UnknownState => State::Unknown,
+            TaskRunState::Processing => State::Processing,
+            TaskRunState::Waiting => State::Waiting,
+            TaskRunState::Running => State::Running,
+            TaskRunState::Complete => State::Complete,
+        }
+    }
+}
+
 /// Since task runs are basically an abstraction over containers, this tells us
 /// which status the container is in upon completion.
 #[derive(Debug, Display, EnumString, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -69,6 +81,18 @@ impl From<Status> for TaskRunStatus {
     }
 }
 
+impl From<TaskRunStatus> for Status {
+    fn from(r: TaskRunStatus) -> Self {
+        match r {
+            TaskRunStatus::UnknownStatus => Status::Unknown,
+            TaskRunStatus::Successful => Status::Successful,
+            TaskRunStatus::Failed => Status::Failed,
+            TaskRunStatus::Cancelled => Status::Cancelled,
+            TaskRunStatus::Skipped => Status::Skipped,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Display, EnumString, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Reason {
     /// Gofer has no idea how the task run got into this state.
@@ -98,6 +122,19 @@ impl From<Reason> for task_run_status_reason::Reason {
     }
 }
 
+impl From<task_run_status_reason::Reason> for Reason {
+    fn from(r: task_run_status_reason::Reason) -> Self {
+        match r {
+            task_run_status_reason::Reason::Unknown => Reason::Unknown,
+            task_run_status_reason::Reason::AbnormalExit => Reason::AbnormalExit,
+            task_run_status_reason::Reason::SchedulerError => Reason::SchedulerError,
+            task_run_status_reason::Reason::FailedPrecondition => Reason::FailedPrecondition,
+            task_run_status_reason::Reason::Cancelled => Reason::Cancelled,
+            task_run_status_reason::Reason::Orphaned => Reason::Orphaned,
+        }
+    }
+}
+
 /// A description of the current status of a task run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StatusReason {
@@ -111,6 +148,17 @@ impl From<StatusReason> for gofer_proto::TaskRunStatusReason {
     fn from(r: StatusReason) -> Self {
         Self {
             reason: task_run_status_reason::Reason::from(r.reason) as i32,
+            description: r.description,
+        }
+    }
+}
+
+impl From<gofer_proto::TaskRunStatusReason> for StatusReason {
+    fn from(r: gofer_proto::TaskRunStatusReason) -> Self {
+        Self {
+            reason: gofer_proto::task_run_status_reason::Reason::from_i32(r.reason)
+                .unwrap()
+                .into(),
             description: r.description,
         }
     }
@@ -198,6 +246,33 @@ impl From<TaskRun> for gofer_proto::TaskRun {
             status: TaskRunStatus::from(r.status) as i32,
             scheduler_id: r.scheduler_id.unwrap_or_default(),
             variables: r.variables.into_iter().map(|value| value.into()).collect(),
+        }
+    }
+}
+
+impl From<gofer_proto::TaskRun> for TaskRun {
+    fn from(r: gofer_proto::TaskRun) -> Self {
+        Self {
+            namespace: r.namespace_id,
+            pipeline: r.pipeline_id,
+            run: r.run_id,
+            id: r.id,
+            task: r.task.unwrap().into(),
+            created: r.created,
+            started: r.started,
+            ended: r.ended,
+            exit_code: Some(r.exit_code as u8),
+            status_reason: r.status_reason.map(|s| s.into()),
+            logs_expired: r.logs_expired,
+            logs_removed: r.logs_removed,
+            state: gofer_proto::task_run::TaskRunState::from_i32(r.state)
+                .unwrap()
+                .into(),
+            status: gofer_proto::task_run::TaskRunStatus::from_i32(r.status)
+                .unwrap()
+                .into(),
+            scheduler_id: Some(r.scheduler_id),
+            variables: r.variables.into_iter().map(|v| v.into()).collect(),
         }
     }
 }

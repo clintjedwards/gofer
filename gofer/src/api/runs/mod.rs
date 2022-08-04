@@ -1,7 +1,7 @@
 mod state_machine;
 
-use crate::api::{fmt, validate, Api};
-use crate::{scheduler, storage};
+use crate::api::{validate, Api};
+use crate::storage;
 use anyhow::Result;
 use gofer_models::{event, pipeline, run, task, task_run};
 use gofer_models::{Variable, VariableOwner, VariableSensitivity};
@@ -493,7 +493,7 @@ impl Api {
             &pipeline.id,
             run::TriggerInfo {
                 name: "manual".to_string(),
-                label: "via_api".to_string(),
+                label: "api".to_string(),
             },
             variables_to_vec(
                 args.variables,

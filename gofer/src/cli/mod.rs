@@ -1,6 +1,7 @@
 mod event;
 mod namespace;
 mod pipeline;
+mod run;
 mod service;
 mod spinner;
 mod trigger;
@@ -88,6 +89,9 @@ enum Commands {
 
     /// Manages pipeline related commands.
     Pipeline(pipeline::PipelineSubcommands),
+
+    /// Managers run related commands.
+    Run(run::RunSubcommands),
 
     /// Manages trigger related commands.
     Trigger(trigger::TriggerSubcommands),
@@ -233,6 +237,11 @@ pub async fn init() {
                 pipeline::PipelineCommands::Delete { id } => cli.pipeline_delete(&id).await,
             }
         }
+        Commands::Run(run) => match run.command {
+            run::RunCommands::Get { pipeline_id, id } => cli.run_get(pipeline_id, id).await,
+            run::RunCommands::List { pipeline_id } => cli.run_list(pipeline_id).await,
+            _ => todo!(),
+        },
         Commands::Trigger(trigger) => {
             let trigger_cmds = trigger.command;
 
