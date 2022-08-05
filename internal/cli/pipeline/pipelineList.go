@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
-	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/proto"
-	"github.com/fatih/color"
+	cliFmt "github.com/clintjedwards/gofer/internal/cli/format"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
@@ -73,32 +74,29 @@ func pipelineList(cmd *cobra.Command, _ []string) error {
 	}
 
 	data := [][]string{}
-	for _, pipeline := range resp.Pipelines {
-		triggerList := []string{}
-		for _, trigger := range pipeline.Triggers {
-			triggerStr := fmt.Sprintf("%s(%s)", trigger.Label, color.YellowString(trigger.Kind))
-			if trigger.State == proto.PipelineTriggerConfig_DISABLED {
-				c := color.New(color.Faint)
-				triggerStr = c.Sprintf("%s", triggerStr)
-			}
-			triggerList = append(triggerList, triggerStr)
+	for _, pipelineProto := range resp.Pipelines {
+		pipeline := models.Pipeline{}
+		pipeline.FromProto(pipelineProto)
+
+		recentRuns := recentRuns(ctx, client, pipeline.Namespace, pipeline.ID, 5)
+		recentRunsHealth := []models.RunStatus{}
+		for _, run := range recentRuns {
+			recentRunsHealth = append(recentRunsHealth, run.Status)
 		}
 
-		recentRunIDs := getLastNIDs(5, pipeline.LastRunId)
-		recentRuns, _ := recentRuns(client, pipeline.Id, recentRunIDs)
-		recentRunsHealth := []string{}
-		for _, run := range recentRuns {
-			recentRunsHealth = append(recentRunsHealth, run.State.String())
+		var lastRunTime int64 = 0
+		if len(recentRuns) != 0 {
+			lastRun := recentRuns[len(recentRuns)-1]
+			lastRunTime = lastRun.Ended
 		}
 
 		data = append(data, []string{
-			pipeline.Id,
+			pipeline.ID,
 			pipeline.Name,
-			cliformat.PipelineState(pipeline.State.String()),
-			cliformat.Health(recentRunsHealth, false),
-			cliformat.UnixMilli(pipeline.Created, "Never", cl.State.Config.Detail),
-			cliformat.UnixMilli(pipeline.LastRunTime, "None", cl.State.Config.Detail),
-			cliformat.SliceJoin(triggerList, "None"),
+			cliFmt.ColorizePipelineState(cliFmt.NormalizeEnumValue(pipeline.State, "Unknown")),
+			cliFmt.Health(recentRunsHealth, false),
+			cliFmt.UnixMilli(pipeline.Created, "Never", cl.State.Config.Detail),
+			cliFmt.UnixMilli(lastRunTime, "None", cl.State.Config.Detail),
 		})
 	}
 
@@ -110,11 +108,34 @@ func pipelineList(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+func recentRuns(ctx context.Context, client proto.GoferClient, namespace, pipeline string, limit int64) []models.Run {
+	resp, err := client.ListRuns(ctx, &proto.ListRunsRequest{
+		Offset:      0,
+		Limit:       limit,
+		NamespaceId: namespace,
+		PipelineId:  pipeline,
+	})
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get recent runs: %v", err))
+		return nil
+	}
+
+	runs := []models.Run{}
+
+	for _, protoRun := range resp.Runs {
+		run := models.Run{}
+		run.FromProto(protoRun)
+		runs = append(runs, run)
+	}
+
+	return runs
+}
+
 func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"ID", "Name", "State", "Health", "Created", "Last Run", "Triggers"})
+	table.SetHeader([]string{"ID", "Name", "State", "Health", "Created", "Last Run"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)
@@ -133,11 +154,9 @@ func formatTable(data [][]string, color bool) string {
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
 		)
 		table.SetColumnColor(
 			tablewriter.Color(tablewriter.FgYellowColor),
-			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),

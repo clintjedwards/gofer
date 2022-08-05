@@ -1,29 +1,16 @@
 package eventbus
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/internal/storage/bolt"
+	"github.com/clintjedwards/gofer/models"
 )
 
-func mustOpenDB() storage.Engine {
-	path := tempfile()
-	db, err := bolt.New(path, 1000)
-	if err != nil {
-		panic(err)
-	}
-
-	return &db
-}
-
-func tempfile() string {
-	f, err := ioutil.TempFile("", "bolt-")
+func tempFile() string {
+	f, err := os.CreateTemp("", "gofer-test-")
 	if err != nil {
 		panic(err)
 	}
@@ -37,141 +24,177 @@ func tempfile() string {
 }
 
 func TestPublish(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Second*5, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	newEvent := models.NewEventStartedRun(models.Run{})
+	id := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace",
+	})
 
-	eb.Publish(newEvent)
-
-	storedEvent, err := eb.Get(newEvent.GetID())
+	storedEvent, err := eb.Get(id)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if storedEvent.GetID() != newEvent.GetID() {
+	if storedEvent.ID != id {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			storedEvent.GetID(), newEvent.GetID())
+			storedEvent.ID, id)
 	}
 }
 
 func TestSubscribe(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Minute*5, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sub, err := eb.Subscribe(models.StartedRunEvent)
+	sub, err := eb.Subscribe(models.EventKindCreatedNamespace)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eb.Publish(models.NewEventStartedRun(models.Run{}))
-	eb.Publish(models.NewEventStartedRun(models.Run{}))
-	thirdEvent := models.NewEventStartedRun(models.Run{})
-	eb.Publish(thirdEvent)
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_1",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_2",
+	})
+	thirdEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_3",
+	})
 
 	<-sub.Events
 	<-sub.Events
 	three := <-sub.Events
-	if three.GetID() != thirdEvent.GetID() {
+	if three.ID != thirdEventID {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			three.GetID(), thirdEvent.GetID())
+			three.ID, thirdEventID)
 	}
 }
 
 func TestUnsubscribe(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Minute*5, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sub, err := eb.Subscribe(models.StartedRunEvent)
+	sub, err := eb.Subscribe(models.EventKindCreatedNamespace)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eb.Publish(models.NewEventStartedRun(models.Run{}))
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_1",
+	})
 
 	eb.Unsubscribe(sub)
 
-	if len(eb.subscribers[models.StartedRunEvent]) != 0 {
-		t.Error("Unsubscribe not successful")
-		fmt.Println(eb.subscribers[models.StartedRunEvent])
+	if len(eb.subscribers[models.EventKindCreatedNamespace]) != 0 {
+		t.Errorf("Unsubscribe not successful: %+v", eb.subscribers[models.EventKindCreatedNamespace])
 	}
 }
 
 func TestGetAll(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Second*5, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	firstEvent := models.NewEventStartedRun(models.Run{})
-	secondEvent := models.NewEventStartedRun(models.Run{})
-	thirdEvent := models.NewEventStartedRun(models.Run{})
-	fourthEvent := models.NewEventStartedRun(models.Run{})
-	fifthEvent := models.NewEventStartedRun(models.Run{})
-
-	eb.Publish(firstEvent)
-	eb.Publish(secondEvent)
-	eb.Publish(thirdEvent)
-	eb.Publish(fourthEvent)
-	eb.Publish(fifthEvent)
+	firstEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_1",
+	})
+	secondEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_2",
+	})
+	thirdEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_3",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_4",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_5",
+	})
 
 	events := eb.GetAll(false)
 	event1 := <-events
 	event2 := <-events
 	event3 := <-events
 
-	if event1.GetID() != firstEvent.GetID() {
+	if event1.ID != firstEventID {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			event1.GetID(), firstEvent.GetID())
+			event1.ID, firstEventID)
 	}
 
-	if event2.GetID() != secondEvent.GetID() {
+	if event2.ID != secondEventID {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			event2.GetID(), secondEvent.GetID())
+			event2.ID, secondEventID)
 	}
 
-	if event3.GetID() != thirdEvent.GetID() {
+	if event3.ID != thirdEventID {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			event3.GetID(), thirdEvent.GetID())
+			event3.ID, thirdEventID)
 	}
 }
 
 func TestGetAllOffset(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Second*5, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eventList := []models.Event{}
+	eventIDsList := []int64{}
 	for i := 0; i < 20; i++ {
-		newEvent := models.NewEventStartedRun(models.Run{})
-		eb.Publish(newEvent)
-		eventList = append(eventList, newEvent)
+		id := eb.Publish(models.EventCreatedNamespace{
+			NamespaceID: "test_namespace",
+		})
+		eventIDsList = append(eventIDsList, id)
 	}
 
 	events := eb.GetAll(false)
 
 	count := 0
 	for event := range events {
-		if event.GetID() != eventList[count].GetID() {
+		if event.ID != eventIDsList[count] {
 			t.Errorf("published event id and new event id do no match; published %d; new %d",
-				event.GetID(), eventList[count].GetID())
+				event.ID, eventIDsList[count])
 		}
 
 		count++
@@ -179,68 +202,83 @@ func TestGetAllOffset(t *testing.T) {
 }
 
 func TestGetAllReverse(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Second*5, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	firstEvent := models.NewEventStartedRun(models.Run{})
-	secondEvent := models.NewEventStartedRun(models.Run{})
-	thirdEvent := models.NewEventStartedRun(models.Run{})
-	fourthEvent := models.NewEventStartedRun(models.Run{})
-	fifthEvent := models.NewEventStartedRun(models.Run{})
-
-	eb.Publish(firstEvent)
-	eb.Publish(secondEvent)
-	eb.Publish(thirdEvent)
-	eb.Publish(fourthEvent)
-	eb.Publish(fifthEvent)
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_1",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_2",
+	})
+	thirdEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_3",
+	})
+	fourthEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_4",
+	})
+	fifthEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_5",
+	})
 
 	events := eb.GetAll(true)
 	event1 := <-events
 	event2 := <-events
 	event3 := <-events
 
-	if event1.GetID() != fifthEvent.GetID() {
+	if event1.ID != fifthEventID {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			event1.GetID(), firstEvent.GetID())
+			event1.ID, fifthEventID)
 	}
 
-	if event2.GetID() != fourthEvent.GetID() {
+	if event2.ID != fourthEventID {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			event2.GetID(), secondEvent.GetID())
+			event2.ID, fourthEventID)
 	}
 
-	if event3.GetID() != thirdEvent.GetID() {
+	if event3.ID != thirdEventID {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			event3.GetID(), thirdEvent.GetID())
+			event3.ID, thirdEventID)
 	}
 }
 
 func TestGetAllReverseOffset(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Second*5, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eventList := []models.Event{}
+	eventIDsList := []int64{}
 	for i := 0; i < 20; i++ {
-		newEvent := models.NewEventStartedRun(models.Run{})
-		eb.Publish(newEvent)
-		eventList = append(eventList, newEvent)
+		id := eb.Publish(models.EventCreatedNamespace{
+			NamespaceID: "test_namespace_5",
+		})
+		eventIDsList = append(eventIDsList, id)
 	}
 
 	events := eb.GetAll(true)
 
 	count := 19
 	for event := range events {
-		if event.GetID() != eventList[count].GetID() {
+		if event.ID != eventIDsList[count] {
 			t.Errorf("published event id and new event id do no match; published %d; new %d",
-				event.GetID(), eventList[count].GetID())
+				event.ID, eventIDsList[count])
 		}
 
 		count--
@@ -248,44 +286,53 @@ func TestGetAllReverseOffset(t *testing.T) {
 }
 
 func TestPruneEvents(t *testing.T) {
-	db := mustOpenDB()
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
 	eb, err := New(db, time.Millisecond*1, time.Minute*5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	firstEvent := models.NewEventStartedRun(models.Run{})
-	secondEvent := models.NewEventStartedRun(models.Run{})
-	thirdEvent := models.NewEventStartedRun(models.Run{})
-
-	eb.Publish(firstEvent)
-	eb.Publish(secondEvent)
-	eb.Publish(thirdEvent)
+	id1 := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_1",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_2",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_3",
+	})
 
 	time.Sleep(time.Millisecond * 10)
 
 	eb.pruneEvents()
 
-	fourthEvent := models.NewEventStartedRun(models.Run{})
-	fifthEvent := models.NewEventStartedRun(models.Run{})
-	eb.Publish(fourthEvent)
-	eb.Publish(fifthEvent)
+	id4 := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_4",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_5",
+	})
 
-	storedEvent, err := eb.Get(fourthEvent.GetID())
+	storedEvent, err := eb.Get(id4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if storedEvent.GetID() != fourthEvent.GetID() {
+	if storedEvent.ID != id4 {
 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-			storedEvent.GetID(), fourthEvent.GetID())
+			storedEvent.ID, id4)
 	}
 
-	storedEvent, err = eb.Get(firstEvent.GetID())
+	storedEvent, err = eb.Get(id1)
 	if err != ErrEventNotFound {
 		t.Errorf("first event exists, when it should have been pruned; published %d; new %d",
-			storedEvent.GetID(), fourthEvent.GetID())
+			storedEvent.ID, id1)
 		return
 	}
 }

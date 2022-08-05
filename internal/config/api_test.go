@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -37,11 +36,8 @@ func TestAPISampleFromFile(t *testing.T) {
 		},
 
 		Database: &Database{
-			Engine:          "bolt",
 			MaxResultsLimit: 100,
-			BoltDB: &BoltDB{
-				Path: "/tmp/gofer.db",
-			},
+			Path:            "/tmp/gofer.db",
 		},
 
 		ObjectStore: &ObjectStore{
@@ -141,11 +137,8 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		},
 
 		Database: &Database{
-			Engine:          "bolt",
 			MaxResultsLimit: 1000,
-			BoltDB: &BoltDB{
-				Path: "/tmp/gofer.db",
-			},
+			Path:            "/tmp/gofer.db",
 		},
 
 		ObjectStore: &ObjectStore{
@@ -190,64 +183,6 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 			HealthcheckIntervalHCL: "30s",
 			TLSCertPath:            "./test",
 			TLSKeyPath:             "./localhost.key",
-		},
-	}
-
-	diff := cmp.Diff(expected, hclconf)
-	if diff != "" {
-		t.Errorf("result is different than expected(-want +got):\n%s", diff)
-	}
-}
-
-func TestSetTriggersViaEnv(t *testing.T) {
-	trigger := `[{"kind": "cron","image": "docker.io/library/hello-world:latest","user": "test","pass": "pass",`
-	trigger += `"env_vars": {"envvar1": "hello"},"secrets": {"secretone": "weow"}}]`
-
-	// First check that the above is even valid json.
-	err := json.Unmarshal([]byte(trigger), &[]map[string]interface{}{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_ = os.Setenv("GOFER_TRIGGERS_REGISTERED_TRIGGERS", string(trigger))
-	defer os.Unsetenv("GOFER_TRIGGERS_REGISTERED_TRIGGERS")
-
-	hclconf := API{}
-	err = hclconf.FromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := API{
-		ExternalEventsAPI: &ExternalEventsAPI{},
-		Database: &Database{
-			BoltDB: &BoltDB{},
-		},
-		ObjectStore: &ObjectStore{
-			BoltDB: &BoltDB{},
-		},
-		SecretStore: &SecretStore{
-			BoltDB: &BoltDBSecret{},
-		},
-		Scheduler: &Scheduler{
-			Docker: &Docker{},
-		},
-		Server: &Server{},
-		Triggers: &Triggers{
-			RegisteredTriggers: []Trigger{
-				{
-					Kind:  "cron",
-					Image: "docker.io/library/hello-world:latest",
-					User:  "test",
-					Pass:  "pass",
-					EnvVars: map[string]string{
-						"envvar1": "hello",
-					},
-					Secrets: map[string]string{
-						"secretone": "weow",
-					},
-				},
-			},
 		},
 	}
 

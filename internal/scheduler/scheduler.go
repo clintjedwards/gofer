@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
+	"github.com/clintjedwards/gofer/models"
 )
 
 type EngineType string
@@ -17,24 +17,31 @@ const (
 	EngineDocker EngineType = "docker"
 )
 
+type ContainerState string
+
+const (
+	ContainerStateUnknown ContainerState = "UNKNOWN" // The state of the run is unknown.
+	// Before the tasks in a run is sent to a scheduler it must complete various steps like
+	// validation checking. This state represents that step where the run and task_runs are
+	// pre-checked.
+	ContainerStateRunning    ContainerState = "RUNNING" // Currently running.
+	ContainerStatePaused     ContainerState = "PAUSED"  // Container is paused.
+	ContainerStateRestarting ContainerState = "RESTARTING"
+	ContainerStateExited     ContainerState = "EXITED"    // All tasks have been resolved and the run is no longer being executed.
+	ContainerStateCancelled  ContainerState = "CANCELLED" // Task was cancelled by request.
+)
+
 // ErrNoSuchContainer is returned when a container requested could not be located on the scheduler.
 var ErrNoSuchContainer = errors.New("scheduler: entity not found")
 
 // ErrNoSuchImage is returned when the requested container image could not be pulled.
 var ErrNoSuchImage = errors.New("scheduler: docker image not found")
 
-type Exec struct {
-	Shell  string // The shell in which to run the script under.
-	Script string // List of commands to run in entrypoint of container.
-}
-
 type StartContainerRequest struct {
-	ID        string            // The schedulerID of the container
-	ImageName string            // The docker image repository endpoint of the container; tag can be included.
-	EnvVars   map[string]string // Environment variables to be passed to the container
-
-	RegistryUser string // Username for auth registry
-	RegistryPass string // Password for auth registry
+	ID           string               // Unique identifier for the container.
+	ImageName    string               // The docker image repository endpoint of the container; tag can be included.
+	EnvVars      map[string]string    // Environment variables to be passed to the container
+	RegistryAuth *models.RegistryAuth // User/Pass for auth registry
 
 	// Even if the container exists attempt to pull from repository. This is useful if your containers
 	// don't use proper tagging or versioning.
@@ -42,7 +49,8 @@ type StartContainerRequest struct {
 
 	// Networking is used to communicate to the container via RPC. This is only needed by triggers.
 	EnableNetworking bool
-	Exec             Exec
+	Entrypoint       []string
+	Command          []string
 }
 
 type StartContainerResponse struct {
@@ -60,8 +68,8 @@ type GetStateRequest struct {
 }
 
 type GetStateResponse struct {
-	ExitCode int
-	State    models.ContainerState
+	ExitCode int64
+	State    ContainerState
 }
 
 type GetLogsRequest struct {

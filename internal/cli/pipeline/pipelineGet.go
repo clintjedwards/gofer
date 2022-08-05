@@ -3,16 +3,19 @@ package pipeline
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/internal/models"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
@@ -56,7 +59,10 @@ func pipelineGet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	output, err := formatPipeline(client, resp.Pipeline, cl.State.Config.Detail)
+	pipeline := models.Pipeline{}
+	pipeline.FromProto(resp.Pipeline)
+
+	output, err := formatPipeline(ctx, client, &pipeline, cl.State.Config.Detail)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not render pipeline: %v", err))
 		cl.State.Fmt.Finish()
@@ -69,40 +75,7 @@ func pipelineGet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// gets last N IDs for sequential id'd resources
-func getLastNIDs(n int, last int64) []int64 {
-	lastIDs := []int64{}
-
-	count := 0
-	for i := last; i > 0; i-- {
-		if count == n {
-			break
-		}
-
-		lastIDs = append(lastIDs, i)
-		count++
-	}
-
-	return lastIDs
-}
-
-func recentRuns(client proto.GoferClient, pipeline string, runs []int64) ([]*proto.Run, error) {
-	if len(runs) == 0 {
-		return []*proto.Run{}, nil
-	}
-
-	resp, err := client.BatchGetRuns(context.Background(), &proto.BatchGetRunsRequest{
-		PipelineId: pipeline,
-		Ids:        runs,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Runs, err
-}
-
-func recentEvents(client proto.GoferClient, namespace, pipeline, trigger string, limit int) ([]models.EventResolvedTrigger, error) {
+func recentEvents(client proto.GoferClient, namespace, pipeline, triggerLabel string, limit int) ([]models.Event, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -113,7 +86,7 @@ func recentEvents(client proto.GoferClient, namespace, pipeline, trigger string,
 		return nil, err
 	}
 
-	events := []models.EventResolvedTrigger{}
+	events := []models.Event{}
 
 	count := 0
 	for count < limit {
@@ -125,21 +98,30 @@ func recentEvents(client proto.GoferClient, namespace, pipeline, trigger string,
 			return nil, err
 		}
 
-		event, ok := response.Event.(*proto.ListEventsResponse_ResolvedTriggerEvent)
-		if !ok {
+		if !strings.EqualFold(response.Event.Kind, string(models.EventKindResolvedTriggerEvent)) {
 			continue
 		}
 
-		if event.ResolvedTriggerEvent.Namespace != namespace ||
-			event.ResolvedTriggerEvent.Pipeline != pipeline ||
-			event.ResolvedTriggerEvent.Label != trigger {
+		details := models.EventResolvedTriggerEvent{}
+		err = json.Unmarshal([]byte(response.Event.Details), &details)
+		if err != nil {
+			return nil, err
+		}
+
+		if details.NamespaceID != namespace ||
+			details.PipelineID != pipeline ||
+			details.Label != triggerLabel {
 			continue
 		}
 
-		concreteEvent := &models.EventResolvedTrigger{}
-		concreteEvent.FromProto(event.ResolvedTriggerEvent)
+		concreteEvent := models.Event{
+			ID:      response.Event.Id,
+			Kind:    models.EventKind(response.Event.Kind),
+			Details: details,
+			Emitted: response.Event.Emitted,
+		}
 
-		events = append(events, *concreteEvent)
+		events = append(events, concreteEvent)
 		count++
 	}
 
@@ -155,20 +137,19 @@ type data struct {
 	Tasks       []taskData
 	Health      string
 	Triggers    []triggerData
-	Objects     string
 	Created     string
 	LastRun     string
-	Location    string
 }
 
 type runData struct {
-	ID          string
-	Started     string
-	Lasted      string
-	StatePrefix string
-	State       string
-	TriggerName string
-	TriggerKind string
+	ID           string
+	Started      string
+	Lasted       string
+	Status       string
+	StatePrefix  string
+	State        string
+	TriggerLabel string
+	TriggerName  string
 }
 
 type taskData struct {
@@ -183,65 +164,66 @@ type eventData struct {
 }
 
 type triggerData struct {
-	Label  string
-	Kind   string
-	Events []eventData
-	Config map[string]string
-	State  string
+	Label    string
+	Name     string
+	Events   []eventData
+	Settings map[string]string
+	State    string
 }
 
-func formatStatePrefix(state string) string {
-	if state == proto.Run_RUNNING.String() {
+func formatStatePrefix(state models.RunState) string {
+	if state == models.RunStateRunning {
 		return "Running for"
 	}
 
 	return "Lasted"
 }
 
-func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail bool) (string, error) {
-	recentRunIDs := getLastNIDs(5, pipeline.LastRunId)
-	recentRuns, err := recentRuns(client, pipeline.Id, recentRunIDs)
-	if err != nil {
-		return "", fmt.Errorf("could not get run data: %v", err)
-	}
-
+func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *models.Pipeline, detail bool) (string, error) {
+	recentRuns := recentRuns(ctx, client, pipeline.Namespace, pipeline.ID, 5)
 	recentRunList := []runData{}
-	recentRunHealth := []string{}
+	recentRunHealth := []models.RunStatus{}
 	for _, run := range recentRuns {
 		recentRunList = append(recentRunList, runData{
-			ID:          color.BlueString("Run #" + strconv.Itoa(int(run.Id))),
-			Started:     format.UnixMilli(run.Started, "Not yet", detail),
-			Lasted:      format.Duration(run.Started, run.Ended),
-			State:       format.RunState(run.State.String()),
-			StatePrefix: formatStatePrefix(run.State.String()),
-			TriggerName: color.CyanString(run.TriggerName),
-			TriggerKind: color.YellowString(run.TriggerKind),
+			ID:           color.BlueString("Run #" + strconv.Itoa(int(run.ID))),
+			Started:      format.UnixMilli(run.Started, "Not yet", detail),
+			Lasted:       format.Duration(run.Started, run.Ended),
+			Status:       format.ColorizeRunStatus(format.NormalizeEnumValue(run.Status, "Unknown")),
+			State:        format.ColorizeRunState(format.NormalizeEnumValue(run.State, "Unknown")),
+			StatePrefix:  formatStatePrefix(run.State),
+			TriggerLabel: color.CyanString(run.Trigger.Label),
+			TriggerName:  color.YellowString(run.Trigger.Name),
 		})
 
-		recentRunHealth = append(recentRunHealth, run.State.String())
+		recentRunHealth = append(recentRunHealth, run.Status)
 	}
 
 	triggerDataList := []triggerData{}
 	for _, trigger := range pipeline.Triggers {
-		recentEvents, err := recentEvents(client, pipeline.Namespace, pipeline.Id, trigger.Label, 5)
+		recentEvents, err := recentEvents(client, pipeline.Namespace, pipeline.ID, trigger.Label, 5)
 		if err != nil {
 			return "", fmt.Errorf("could not get event data: %v", err)
 		}
 
 		eventDataList := []eventData{}
 		for _, event := range recentEvents {
+			details := ""
+			evtDetail, ok := event.Details.(models.EventResolvedTriggerEvent)
+			if ok {
+				details = evtDetail.Result.Details
+			}
+
 			eventDataList = append(eventDataList, eventData{
 				Processed: format.UnixMilli(event.Emitted, "Never", detail),
-				Details:   event.Result.Details,
+				Details:   details,
 			})
 		}
 
 		triggerDataList = append(triggerDataList, triggerData{
-			Label:  color.BlueString(trigger.Label),
-			Kind:   color.YellowString(trigger.Kind),
-			Events: eventDataList,
-			Config: trigger.Config,
-			State:  format.PipelineTriggerConfigState(trigger.State.String()),
+			Label:    color.BlueString(trigger.Label),
+			Name:     color.YellowString(trigger.Name),
+			Events:   eventDataList,
+			Settings: trigger.Settings,
 		})
 	}
 
@@ -250,7 +232,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 	tasks := []taskData{}
 	for _, task := range pipeline.Tasks {
 		tasks = append(tasks, taskData{
-			Name:      color.BlueString(task.Id),
+			Name:      color.BlueString(task.ID),
 			DependsOn: format.Dependencies(task.DependsOn),
 			NumItems:  len(task.DependsOn), // This is purely for sorting purposes
 		})
@@ -258,19 +240,23 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 
 	sort.Slice(tasks, func(i, j int) bool { return tasks[i].NumItems < tasks[j].NumItems })
 
+	var lastRunTime int64 = 0
+	if len(recentRuns) != 0 {
+		lastRun := recentRuns[len(recentRuns)-1]
+		lastRunTime = lastRun.Ended
+	}
+
 	data := data{
-		ID:          color.BlueString(pipeline.Id),
+		ID:          color.BlueString(pipeline.ID),
 		Name:        pipeline.Name,
-		State:       format.PipelineState(pipeline.State.String()),
+		State:       format.ColorizePipelineState(format.NormalizeEnumValue(pipeline.State, "Unknown")),
 		Description: pipeline.Description,
 		RecentRuns:  recentRunList,
 		Triggers:    triggerDataList,
 		Health:      format.Health(recentRunHealth, true),
-		Objects:     format.SliceJoin(pipeline.Objects, "None"),
 		Tasks:       tasks,
 		Created:     format.UnixMilli(pipeline.Created, "Never", detail),
-		LastRun:     format.UnixMilli(pipeline.LastRunTime, "Never", detail),
-		Location:    pipeline.Location,
+		LastRun:     format.UnixMilli(lastRunTime, "Never", detail),
 	}
 
 	const formatTmpl = `[{{.ID}}] {{.Name}} :: {{.State}}
@@ -280,7 +266,7 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
 
   📦 Recent Runs
     {{- range $run := .RecentRuns}}
-    • {{ $run.ID }} :: {{ $run.Started }} by trigger {{$run.TriggerName}} ({{$run.TriggerKind}}) :: {{ $run.StatePrefix }} {{ $run.Lasted }} :: {{ $run.State }}
+    • {{ $run.ID }} :: {{ $run.Started }} by trigger {{$run.TriggerLabel}} ({{$run.TriggerName}}) :: {{ $run.StatePrefix }} {{ $run.Lasted }} :: {{ $run.State }}
     {{- end}}
   {{- end}}
   {{- if .Tasks }}
@@ -296,26 +282,16 @@ func formatPipeline(client proto.GoferClient, pipeline *proto.Pipeline, detail b
     {{- end -}}
   {{- end}}
 
-  {{- if .Objects}}
-
-  ☁︎ Objects: [{{ .Objects }}]
-  {{- end}}
-
   {{- if .Triggers }}
 
   🗘 Attached Triggers:
     {{- range $trigger := .Triggers}}
-    ⟳ [{{ $trigger.State }}] {{ $trigger.Label }} ({{ $trigger.Kind }}) {{- if ne (len $trigger.Events) 0 }} recent events:{{- end }}
+    ⟳ [{{ $trigger.State }}] {{ $trigger.Label }} ({{ $trigger.Name }}) {{- if ne (len $trigger.Events) 0 }} recent events:{{- end }}
       {{- range $event := $trigger.Events }}
       + {{$event.Processed}} | {{$event.Details}}
 	  {{- end}}
     {{- end}}
   {{- end}}
-
-{{- if .Location }}
-
-  ☍ Config Location: {{.Location}}
-{{- end}}
 
 Created {{.Created}} | Last Run {{.LastRun}} | Health {{.Health}}`
 

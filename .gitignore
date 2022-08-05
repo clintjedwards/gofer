@@ -8,8 +8,12 @@
 .env
 -docker/.env
 
+#rust build dir
+target/
+
 #frontend
 node_modules/
 dist/*
 -dist/.gitkeep
 main.js
+

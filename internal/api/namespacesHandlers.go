@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,7 +19,7 @@ func (api *API) GetNamespace(ctx context.Context, request *proto.GetNamespaceReq
 		return &proto.GetNamespaceResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	namespace, err := api.storage.GetNamespace(storage.GetNamespaceRequest{ID: request.Id})
+	namespace, err := api.db.GetNamespace(request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetNamespaceResponse{}, status.Error(codes.FailedPrecondition, "namespace not found")
@@ -31,7 +32,7 @@ func (api *API) GetNamespace(ctx context.Context, request *proto.GetNamespaceReq
 }
 
 func (api *API) ListNamespaces(ctx context.Context, request *proto.ListNamespacesRequest) (*proto.ListNamespacesResponse, error) {
-	namespaces, err := api.storage.GetAllNamespaces(storage.GetAllNamespacesRequest{Offset: int(request.Offset), Limit: int(request.Limit)})
+	namespaces, err := api.db.ListNamespaces(int(request.Offset), int(request.Limit))
 	if err != nil {
 		log.Error().Err(err).Msg("could not get namespaces")
 		return &proto.ListNamespacesResponse{}, status.Error(codes.Internal, "failed to retrieve namespaces from database")
@@ -62,14 +63,15 @@ func (api *API) CreateNamespace(ctx context.Context, request *proto.CreateNamesp
 
 	newNamespace := models.NewNamespace(request.Id, request.Name, request.Description)
 
-	err := api.storage.AddNamespace(storage.AddNamespaceRequest{
-		Namespace: newNamespace,
-	})
+	err := api.db.InsertNamespace(newNamespace)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Info().Interface("namespace", newNamespace).Msg("created new namespace")
+	go api.events.Publish(models.EventCreatedNamespace{
+		NamespaceID: newNamespace.ID,
+	})
+
 	return &proto.CreateNamespaceResponse{
 		Namespace: newNamespace.ToProto(),
 	}, nil
@@ -84,9 +86,11 @@ func (api *API) UpdateNamespace(ctx context.Context, request *proto.UpdateNamesp
 		return &proto.UpdateNamespaceResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	// Get the old namespace first so that we can store the old values that we need before inserting
-	// the new values from the content buffer.
-	updatedNamespace, err := api.storage.GetNamespace(storage.GetNamespaceRequest{ID: request.Id})
+	err := api.db.UpdateNamespace(request.Id, storage.UpdatableNamespaceFields{
+		Name:        &request.Name,
+		Description: &request.Description,
+		Modified:    ptr(time.Now().UnixMilli()),
+	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.UpdateNamespaceResponse{}, status.Error(codes.FailedPrecondition, "could not find namespace")
@@ -94,21 +98,8 @@ func (api *API) UpdateNamespace(ctx context.Context, request *proto.UpdateNamesp
 		return &proto.UpdateNamespaceResponse{}, err
 	}
 
-	updatedNamespace.Name = request.Name
-	updatedNamespace.Description = request.Description
-
-	err = api.storage.UpdateNamespace(storage.UpdateNamespaceRequest{Namespace: updatedNamespace})
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.UpdateNamespaceResponse{}, status.Error(codes.FailedPrecondition, "could not find namespace")
-		}
-		return &proto.UpdateNamespaceResponse{}, err
-	}
-
-	log.Info().Interface("namespace", updatedNamespace).Msg("updated namespace")
-	return &proto.UpdateNamespaceResponse{
-		Namespace: updatedNamespace.ToProto(),
-	}, nil
+	log.Info().Interface("namespace", request.Id).Msg("updated namespace")
+	return &proto.UpdateNamespaceResponse{}, nil
 }
 
 func (api *API) DeleteNamespace(ctx context.Context, request *proto.DeleteNamespaceRequest) (*proto.DeleteNamespaceResponse, error) {
@@ -120,7 +111,7 @@ func (api *API) DeleteNamespace(ctx context.Context, request *proto.DeleteNamesp
 		return &proto.DeleteNamespaceResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	updatedNamespace, err := api.storage.GetNamespace(storage.GetNamespaceRequest{ID: request.Id})
+	err := api.db.DeleteNamespace(request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DeleteNamespaceResponse{}, status.Error(codes.FailedPrecondition, "could not find namespace")
@@ -128,16 +119,9 @@ func (api *API) DeleteNamespace(ctx context.Context, request *proto.DeleteNamesp
 		return &proto.DeleteNamespaceResponse{}, err
 	}
 
-	updatedNamespace.Deleted = time.Now().UnixMilli()
+	go api.events.Publish(models.EventDeletedNamespace{
+		NamespaceID: request.Id,
+	})
 
-	err = api.storage.UpdateNamespace(storage.UpdateNamespaceRequest{Namespace: updatedNamespace})
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.DeleteNamespaceResponse{}, status.Error(codes.FailedPrecondition, "could not find namespace")
-		}
-		return &proto.DeleteNamespaceResponse{}, err
-	}
-
-	log.Info().Interface("namespace", updatedNamespace).Msg("deleted namespace")
 	return &proto.DeleteNamespaceResponse{}, nil
 }

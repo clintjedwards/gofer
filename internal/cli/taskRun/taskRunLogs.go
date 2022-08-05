@@ -7,7 +7,8 @@ import (
 	"strconv"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
-	"github.com/clintjedwards/gofer/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/spf13/cobra"
 )
 

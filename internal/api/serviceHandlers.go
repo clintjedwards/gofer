@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,11 +18,9 @@ func (api *API) GetSystemInfo(context context.Context, request *proto.GetSystemI
 	version, commit := parseVersion(appVersion)
 
 	return &proto.GetSystemInfoResponse{
-		Commit:                  commit,
-		DevmodeEnabled:          api.config.Server.DevMode,
-		FrontendEnabled:         false,
-		Version:                 version,
-		IgnorePipelineRunEvents: api.ignorePipelineRunEvents.Load(),
+		Commit:         commit,
+		DevModeEnabled: api.config.Server.DevMode,
+		Semver:         version,
 	}, nil
 }
 
@@ -30,7 +29,10 @@ func (api *API) ToggleEventIngress(ctx context.Context, request *proto.ToggleEve
 		return &proto.ToggleEventIngressResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
-	api.ignorePipelineRunEvents.Store(api.ignorePipelineRunEvents.Toggle())
+	if !api.ignorePipelineRunEvents.CompareAndSwap(false, true) {
+		api.ignorePipelineRunEvents.Store(false)
+	}
+
 	log.Info().Bool("ignore_pipeline_run_events", api.ignorePipelineRunEvents.Load()).Msg("toggled event ingress")
 	return &proto.ToggleEventIngressResponse{
 		Value: api.ignorePipelineRunEvents.Load(),
@@ -67,7 +69,7 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 	token, hash := api.createNewAPIToken()
 
 	for _, namespace := range request.Namespaces {
-		_, err := api.storage.GetNamespace(storage.GetNamespaceRequest{ID: namespace})
+		_, err := api.db.GetNamespace(namespace)
 		if err != nil {
 			if errors.Is(err, storage.ErrEntityNotFound) {
 				return &proto.CreateTokenResponse{},
@@ -80,9 +82,7 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 
 	newToken := models.NewToken(hash, models.TokenKind(request.Kind.String()), request.Namespaces, request.Metadata)
 
-	err := api.storage.AddToken(storage.AddTokenRequest{
-		Token: newToken,
-	})
+	err := api.db.InsertToken(newToken)
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.CreateTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)
@@ -100,9 +100,7 @@ func (api *API) GetToken(ctx context.Context, request *proto.GetTokenRequest) (*
 	}
 
 	hash := getHash(request.Token)
-	token, err := api.storage.GetToken(storage.GetTokenRequest{
-		Hash: hash,
-	})
+	token, err := api.db.GetToken(hash)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetTokenResponse{}, status.Error(codes.FailedPrecondition, "token not found")
@@ -126,9 +124,7 @@ func (api *API) DeleteToken(ctx context.Context, request *proto.DeleteTokenReque
 	}
 
 	hash := getHash(request.Token)
-	err := api.storage.DeleteToken(storage.DeleteTokenRequest{
-		Hash: hash,
-	})
+	err := api.db.DeleteToken(hash)
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.DeleteTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)
@@ -138,9 +134,7 @@ func (api *API) DeleteToken(ctx context.Context, request *proto.DeleteTokenReque
 }
 
 func (api *API) BootstrapToken(ctx context.Context, request *proto.BootstrapTokenRequest) (*proto.BootstrapTokenResponse, error) {
-	tokens, err := api.storage.GetAllTokens(storage.GetAllTokensRequest{
-		Limit: 1,
-	})
+	tokens, err := api.db.ListTokens(0, 1)
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.BootstrapTokenResponse{}, status.Errorf(codes.Internal, "could not create bootstrap token: %v", err)
@@ -155,9 +149,7 @@ func (api *API) BootstrapToken(ctx context.Context, request *proto.BootstrapToke
 		"bootstrap_token": "true",
 	})
 
-	err = api.storage.AddToken(storage.AddTokenRequest{
-		Token: newToken,
-	})
+	err = api.db.InsertToken(newToken)
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.BootstrapTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)

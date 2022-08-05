@@ -2,10 +2,56 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "github.com/clintjedwards/gofer/proto";
+option go_package = "github.com/clintjedwards/gofer/proto/go";
 
-import "gofer_message_events.proto";
 import "gofer_message.proto";
+
+////////////// System Transport Models //////////////
+
+message GetSystemInfoRequest {}
+message GetSystemInfoResponse {
+  string commit = 1;
+  bool dev_mode_enabled = 2;
+  string semver = 3;
+}
+
+message RepairOrphanRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+}
+message RepairOrphanResponse {}
+
+message ToggleEventIngressRequest {}
+message ToggleEventIngressResponse {
+  // The current value for the boolean that controls event ingress.
+  bool value = 1;
+}
+
+message CreateTokenRequest {
+  enum Kind {
+    UNKNOWN = 0;
+    MANAGEMENT = 1;
+    CLIENT = 2;
+  }
+  Kind kind = 1;
+  repeated string namespaces = 2;
+  map<string, string> metadata = 3;
+}
+message CreateTokenResponse {
+  Token details = 1;
+  string token = 2;
+}
+
+message BootstrapTokenRequest {}
+message BootstrapTokenResponse {
+  Token details = 1;
+  string token = 2;
+}
+message GetTokenRequest { string token = 1; }
+message GetTokenResponse { Token details = 1; }
+message DeleteTokenRequest { string token = 1; }
+message DeleteTokenResponse {}
 
 ////////////// Namespace Transport Models //////////////
 
@@ -24,13 +70,7 @@ message ListNamespacesRequest {
   int64 limit = 2;
 }
 
-message ListNamespacesResponse {
-  repeated Namespace namespaces = 1;
-
-  // offset is a pagination parameter that defines where to start when counting
-  // the list of objects to return.
-  int64 offset = 2;
-}
+message ListNamespacesResponse { repeated Namespace namespaces = 1; }
 
 message CreateNamespaceRequest {
   string id = 1;
@@ -44,7 +84,7 @@ message UpdateNamespaceRequest {
   string name = 2;
   string description = 3;
 }
-message UpdateNamespaceResponse { Namespace namespace = 1; }
+message UpdateNamespaceResponse {}
 
 message DeleteNamespaceRequest {
   string id = 1; // Unique identifier
@@ -69,13 +109,7 @@ message ListPipelinesRequest {
   int64 limit = 2;
   string namespace_id = 3; // Unique namespace identifier
 }
-message ListPipelinesResponse {
-  repeated Pipeline pipelines = 1;
-
-  // offset is a pagination parameter that defines where to start when counting
-  // the list of pipelines to return.
-  int64 offset = 2;
-}
+message ListPipelinesResponse { repeated Pipeline pipelines = 1; }
 
 message DisablePipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
@@ -89,77 +123,23 @@ message EnablePipelineRequest {
 }
 message EnablePipelineResponse {}
 
-message CreatePipelineRawRequest {
-  // Gofer pipeline config file byte string.
-  bytes content = 1;
-
-  // path is a metadata parameter to where the pipeline file might be stored.
-  // For example: for a command line application using this endpoint, the path
-  // here might be the path of the pipeline file on the user's machine.
-  // For a foreign API using this endpoint, the path could be something related
-  // to endpoint responsible for creating the pipeline file.
-  // This parameter is not used for anything particularly important and only
-  // used for documentation purposes for the user.
-  string path = 2;
-}
-message CreatePipelineRawResponse { Pipeline pipeline = 1; }
-
-message CreatePipelineByURLRequest {
-  // url represents the remote location where the pipeline configuration file
-  // exists. This parameter takes urls in the form of hashicorp's
-  // go-getter(https://github.com/hashicorp/go-getter#general-all-protocols).
-  // This means that is supports a wide array of possibilities for remote
-  // locations.
-  // The most common use case is simply pointing to a file or folder within
-  // remote source control:
-  //    folder: `"github.com/clintjedwards/gofer.git//gofer"`
-  //    file: `"github.com/clintjedwards/gofer.git//gofer.hcl"`
-  string url = 1;
-}
-message CreatePipelineByURLResponse { Pipeline pipeline = 1; }
-
-message UpdatePipelineRawRequest {
+message CreatePipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
-
-  string id = 2; // Unique identifier
-
-  // Gofer pipeline config file byte string.
-  bytes content = 3;
-
-  // path is a metadata parameter to where the pipeline file might be stored.
-  // For example: for a command line application using this endpoint, the path
-  // here might be the path of the pipeline file on the user's machine.
-  // For a foreign API using this endpoint, the path could be something related
-  // to endpoint responsible for creating the pipeline file.
-  // This parameter is not used for anything particularly important and only
-  // used for documentation purposes for the user.
-  string path = 4;
+  PipelineConfig pipeline_config = 2;
 }
-message UpdatePipelineRawResponse { Pipeline pipeline = 1; }
+message CreatePipelineResponse { Pipeline pipeline = 1; }
 
-message UpdatePipelineByURLRequest {
+message UpdatePipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
-
-  string id = 2; // Unique namespace identifier
-
-  // url represents the remote location where the pipeline configuration file
-  // exists. This parameter takes urls in the form of hashicorp's
-  // go-getter(https://github.com/hashicorp/go-getter#general-all-protocols).
-  // This means that is supports a wide array of possibilities for remote
-  // locations.
-  // The most common use case is simply pointing to a file or folder within
-  // remote source control:
-  //    folder: `"github.com/clintjedwards/gofer.git//gofer"`
-  //    file: `"github.com/clintjedwards/gofer.git//gofer.hcl"`
-  string url = 3;
+  PipelineConfig pipeline_config = 2;
 }
-message UpdatePipelineByURLResponse { Pipeline pipeline = 1; }
+message UpdatePipelineResponse { Pipeline pipeline = 1; }
 
-message AbandonPipelineRequest {
+message DeletePipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
   string id = 2;           // Pipeline ID
 }
-message AbandonPipelineResponse {}
+message DeletePipelineResponse {}
 
 ////////////// Runs Transport Models //////////////
 
@@ -194,29 +174,23 @@ message StartRunRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
 
-  // Only is an array of tasks which will run exclusively for this particular
-  // run. Tasks still carry relevant dependencies. Run will return an error if
-  // the dependencies of a task is also not met in the list of tasks included in
-  // only.
-  repeated string only = 3;
-
   // variables allows for the replacement of task environment variables, it
   // overrides all other environment variables if there is a name collision.
-  map<string, string> variables = 4;
+  map<string, string> variables = 3;
 }
 message StartRunResponse { Run run = 1; }
 
 message RetryRunRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
-  int64 id = 3; // Run ID
+  int64 run_id = 3; // Run ID
 }
 message RetryRunResponse { Run run = 1; }
 
 message CancelRunRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
-  int64 id = 3; // Run ID
+  int64 run_id = 3; // Run ID
 
   // force will cause Gofer to hard kill any outstanding task run containers.
   // Usually this means that the container receives a SIGKILL.
@@ -292,31 +266,145 @@ message GetTriggerResponse { Trigger trigger = 1; }
 message ListTriggersRequest {}
 message ListTriggersResponse { repeated Trigger triggers = 1; }
 
+message InstallTriggerRequest {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+}
+message InstallTriggerResponse {}
+
+message UninstallTriggerRequest { string name = 1; }
+message UninstallTriggerResponse {}
+
+message EnableTriggerRequest { string name = 1; }
+message EnableTriggerResponse {}
+
+message DisableTriggerRequest { string name = 1; }
+message DisableTriggerResponse {}
+
+message GetTriggerInstallInstructionsRequest {
+  string image = 1;
+  string user = 2;
+  string pass = 3;
+}
+message GetTriggerInstallInstructionsResponse { string instructions = 1; }
+
+////////////// CommonTask Transport Models //////////////
+
+message GetCommonTaskRequest {
+  string name = 1; // The unique name/kind for a particular commontask
+}
+message GetCommonTaskResponse { CommonTask common_task = 1; }
+
+message ListCommonTasksRequest {}
+message ListCommonTasksResponse { repeated CommonTask common_tasks = 1; }
+
+message InstallCommonTaskRequest {
+  string name = 1;
+  string image = 2;
+  string user = 3;
+  string pass = 4;
+  map<string, string> variables = 5;
+  string documentation = 6;
+}
+message InstallCommonTaskResponse {}
+
+message UninstallCommonTaskRequest { string name = 1; }
+message UninstallCommonTaskResponse {}
+
+message EnableCommonTaskRequest { string name = 1; }
+message EnableCommonTaskResponse {}
+
+message DisableCommonTaskRequest { string name = 1; }
+message DisableCommonTaskResponse {}
+
+message GetCommonTaskInstallInstructionsRequest {
+  string image = 1;
+  string user = 2;
+  string pass = 3;
+}
+message GetCommonTaskInstallInstructionsResponse { string instructions = 1; }
+
+////////////// Trigger Service Transport Models //////////////
+
+message TriggerWatchRequest {}
+message TriggerWatchResponse {
+  // The trigger can choose to give extra details about the specific trigger
+  // event result in the form of a string description.
+  string details = 1;
+
+  // Unique identifier for namespace.
+  string namespace_id = 2;
+
+  // Unique identifier for pipeline.
+  string pipeline_id = 3;
+
+  // Unique id of trigger instance.
+  string pipeline_trigger_label = 4;
+
+  enum Result {
+    UNKNOWN = 0;
+    SUCCESS = 1;
+    FAILURE = 2;
+    SKIPPED = 3;
+  }
+  Result result = 5;
+
+  // Metadata is passed to the tasks as extra environment variables.
+  map<string, string> metadata = 6;
+}
+
+message TriggerInfoRequest {}
+message TriggerInfoResponse {
+  // kind corresponds a unique trigger identifier, this is passed as a envvar
+  // via the main process(and as such can be left empty), as the main process
+  // container the configuration for which trigger "kind" corresponds to which
+  // trigger container.
+  string name = 1;
+
+  // Triggers are allowed to provide a link to more extensive documentation on
+  // how to use and configure them.
+  string documentation = 2;
+
+  // A listing of all registered pipelines in the format: <namespace>/<pipeline>
+  repeated string registered = 3;
+}
+
+message TriggerSubscribeRequest {
+  string namespace_id = 1; // unique identifier for associated namespace
+  string pipeline_id = 2;  // unique identifier for associated pipeline
+  string pipeline_trigger_label = 3; // pipeline specific subscription id
+
+  // pipelines are allowed to pass a configuration to triggers denoting what
+  // specific settings they might like for a specific trigger. The acceptable
+  // values of this config map is defined by the triggers and should be
+  // mentioned in documentation.
+  //
+  // Additionally, the trigger should verify config settings and pass back an
+  // error when it does not meet requirements.
+  map<string, string> config = 4;
+}
+message TriggerSubscribeResponse {}
+
+message TriggerUnsubscribeRequest {
+  string namespace_id = 1; // unique identifier for associated namespace
+  string pipeline_id = 2;  // unique identifier for associated pipeline
+  string pipeline_trigger_label = 3; // pipeline specific subscription id
+}
+message TriggerUnsubscribeResponse {}
+
+message TriggerShutdownRequest {}
+message TriggerShutdownResponse {}
+
+message TriggerExternalEventRequest { bytes payload = 1; }
+message TriggerExternalEventResponse {}
+
 ////////////// Events Transport Models //////////////
 
 message GetEventRequest { int64 id = 1; } // Event ID
-message GetEventResponse {
-  EventType kind = 1;
-  oneof event {
-    EventCreatedNamespace created_namespace_event = 2;
-
-    EventDisabledPipeline disabled_pipeline_event = 5;
-    EventEnabledPipeline enabled_pipeline_event = 6;
-    EventCreatedPipeline created_pipeline_event = 7;
-    EventAbandonedPipeline abandoned_pipeline_event = 8;
-
-    EventStartedRun started_run_event = 10;
-    EventCompletedRun completed_run_event = 11;
-
-    EventStartedTaskRun started_task_run_event = 15;
-    EventScheduledTaskRun scheduled_task_run_event = 16;
-    EventCompletedTaskRun completed_task_run_event = 17;
-
-    EventFiredTrigger fired_trigger_event = 20;
-    EventProcessedTrigger processed_trigger_event = 21;
-    EventResolvedTrigger resolved_trigger_event = 22;
-  }
-}
+message GetEventResponse { Event event = 1; }
 
 message ListEventsRequest {
   // defaults to false; meaning oldest to newest events by default.
@@ -325,28 +413,7 @@ message ListEventsRequest {
   // after it gets to the end.
   bool follow = 2;
 }
-message ListEventsResponse {
-  EventType kind = 1;
-  oneof event {
-    EventCreatedNamespace created_namespace_event = 2;
-
-    EventDisabledPipeline disabled_pipeline_event = 5;
-    EventEnabledPipeline enabled_pipeline_event = 6;
-    EventCreatedPipeline created_pipeline_event = 7;
-    EventAbandonedPipeline abandoned_pipeline_event = 8;
-
-    EventStartedRun started_run_event = 10;
-    EventCompletedRun completed_run_event = 11;
-
-    EventStartedTaskRun started_task_run_event = 15;
-    EventScheduledTaskRun scheduled_task_run_event = 16;
-    EventCompletedTaskRun completed_task_run_event = 17;
-
-    EventFiredTrigger fired_trigger_event = 20;
-    EventProcessedTrigger processed_trigger_event = 21;
-    EventResolvedTrigger resolved_trigger_event = 22;
-  }
-}
+message ListEventsResponse { Event event = 1; }
 
 ////////////// Object store Transport Models //////////////
 
@@ -448,50 +515,3 @@ message DeleteSecretRequest {
   string key = 3;
 }
 message DeleteSecretResponse {}
-
-message GetSystemInfoRequest {}
-message GetSystemInfoResponse {
-  string commit = 1;
-  bool devmode_enabled = 2;
-  bool frontend_enabled = 3;
-  string version = 4;
-  bool ignore_pipeline_run_events = 5;
-}
-
-message RepairOrphanRequest {
-  string namespace_id = 1; // Unique namespace identifier
-  string pipeline_id = 2;
-  int64 run_id = 3;
-}
-message RepairOrphanResponse {}
-
-message ToggleEventIngressRequest {}
-message ToggleEventIngressResponse {
-  // The current value for the boolean that controls event ingress.
-  bool value = 1;
-}
-
-message CreateTokenRequest {
-  enum Kind {
-    UNKNOWN = 0;
-    MANAGEMENT = 1;
-    CLIENT = 2;
-  }
-  Kind kind = 1;
-  repeated string namespaces = 2;
-  map<string, string> metadata = 3;
-}
-message CreateTokenResponse {
-  Token details = 1;
-  string token = 2;
-}
-
-message BootstrapTokenRequest {}
-message BootstrapTokenResponse {
-  Token details = 1;
-  string token = 2;
-}
-message GetTokenRequest { string token = 1; }
-message GetTokenResponse { Token details = 1; }
-message DeleteTokenRequest { string token = 1; }
-message DeleteTokenResponse {}

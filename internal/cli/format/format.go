@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/models"
+
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"golang.org/x/text/cases"
@@ -29,18 +29,18 @@ func UnixMilli(unix int64, zeroMsg string, detail bool) string {
 	return fmt.Sprintf("%s (%s)", realTime, relativeTime)
 }
 
-func PipelineState(state string) string {
-	if state == string(proto.Pipeline_UNKNOWN) {
-		return "Never Run"
-	}
-
-	// Because of how colorizing a string works we need to
-	// do the manipulations on case first or else it will not work.
+// Takes a string enum and turns them into title case. If the value is unknown we turn it into
+// a string of your choosing.
+func NormalizeEnumValue[s ~string](value s, unknownString string) string {
 	toTitle := cases.Title(language.AmericanEnglish)
 	toLower := cases.Lower(language.AmericanEnglish)
-	state = toTitle.String(toLower.String(state))
+	state := toTitle.String(toLower.String(string(value)))
 
-	return colorizePipelineState(state)
+	if state == "Unknown" {
+		return unknownString
+	}
+
+	return state
 }
 
 // Duration returns a humanized duration time for two epoch milli second times.
@@ -63,135 +63,108 @@ func Duration(start, end int64) string {
 	return "~" + duration.Truncate(truncate).String()
 }
 
-func colorizePipelineState(state string) string {
+func ColorizePipelineState(state string) string {
 	switch strings.ToUpper(state) {
-	case proto.Pipeline_UNKNOWN.String():
+	case string(models.PipelineStateUnknown):
 		return color.RedString(state)
-	case proto.Pipeline_ACTIVE.String():
+	case string(models.PipelineStateActive):
 		return color.GreenString(state)
-	case proto.Pipeline_DISABLED.String():
+	case string(models.PipelineStateDisabled):
 		return color.YellowString(state)
 	default:
 		return state
 	}
 }
 
-func RunState(state string) string {
-	if state == string(proto.Run_UNKNOWN) {
-		return "Not Run"
-	}
-
-	// Because of how colorizing a string works we need to
-	// do the manipulations on case first or else it will not work.
-	toTitle := cases.Title(language.AmericanEnglish)
-	toLower := cases.Lower(language.AmericanEnglish)
-	state = toTitle.String(toLower.String(state))
-	return colorizeRunState(state)
-}
-
-func colorizeRunState(state string) string {
+func ColorizeRunState(state string) string {
 	switch strings.ToUpper(state) {
-	case proto.Run_UNKNOWN.String():
+	case string(models.RunStateUnknown):
 		return color.RedString(state)
-	case proto.Run_PROCESSING.String():
+	case string(models.RunStatePending):
 		return color.YellowString(state)
-	case proto.Run_RUNNING.String():
+	case string(models.RunStateRunning):
 		return color.YellowString(state)
-	case proto.Run_FAILED.String():
-		return color.RedString(state)
-	case proto.Run_SUCCESS.String():
-		return color.GreenString(state)
-	case proto.Run_WAITING.String():
-		return color.BlueString(state)
-	default:
-		return state
-	}
-}
-
-func TaskRunState(state string) string {
-	if state == string(proto.TaskRun_UNKNOWN) {
-		return "Not Run"
-	}
-
-	// Because of how colorizing a string works we need to
-	// do the manipulations on case first or else it will not work.
-	toTitle := cases.Title(language.AmericanEnglish)
-	toLower := cases.Lower(language.AmericanEnglish)
-	state = toTitle.String(toLower.String(state))
-	return colorizeTaskRunState(state)
-}
-
-func colorizeTaskRunState(state string) string {
-	switch strings.ToUpper(state) {
-	case proto.TaskRun_UNKNOWN.String():
-		return color.RedString(state)
-	case proto.TaskRun_FAILED.String():
-		return color.RedString(state)
-	case proto.TaskRun_PROCESSING.String():
-		return color.YellowString(state)
-	case proto.TaskRun_RUNNING.String():
-		return color.YellowString(state)
-	case proto.TaskRun_SUCCESS.String():
+	case string(models.RunStateComplete):
 		return color.GreenString(state)
 	default:
 		return state
 	}
 }
 
-func TriggerState(state string) string {
-	if state == string(proto.Trigger_UNKNOWN) {
-		return "Not Run"
+func ColorizeRunStatus(status string) string {
+	switch strings.ToUpper(status) {
+	case string(models.RunStatusUnknown):
+		return color.RedString(status)
+	case string(models.RunStatusSuccessful):
+		return color.GreenString(status)
+	case string(models.RunStatusFailed):
+		return color.RedString(status)
+	case string(models.RunStatusCancelled):
+		return status
+	default:
+		return status
 	}
-
-	// Because of how colorizing a string works we need to
-	// do the manipulations on case first or else it will not work.
-	toTitle := cases.Title(language.AmericanEnglish)
-	toLower := cases.Lower(language.AmericanEnglish)
-	state = toTitle.String(toLower.String(state))
-
-	return colorizeTriggerState(state)
 }
 
-func colorizeTriggerState(state string) string {
+func ColorizeTaskRunState(state string) string {
 	switch strings.ToUpper(state) {
-	case proto.Trigger_UNKNOWN.String():
+	case string(models.TaskRunStateUnknown):
 		return color.RedString(state)
-	case proto.Trigger_FAILED.String():
-		return color.RedString(state)
-	case proto.Trigger_PROCESSING.String():
+	case string(models.TaskRunStateProcessing):
 		return color.YellowString(state)
-	case proto.Trigger_RUNNING.String():
-		return color.GreenString(state)
-	case proto.Trigger_SUCCESS.String():
+	case string(models.TaskRunStateWaiting):
+		return color.YellowString(state)
+	case string(models.TaskRunStateRunning):
+		return color.YellowString(state)
+	case string(models.TaskRunStateComplete):
 		return color.GreenString(state)
 	default:
 		return state
 	}
 }
 
-func PipelineTriggerConfigState(state string) string {
-	if state == string(proto.PipelineTriggerConfig_UNKNOWN) {
-		return "Unknown"
+func ColorizeTaskRunStatus(status string) string {
+	switch strings.ToUpper(status) {
+	case string(models.TaskRunStatusUnknown):
+		return color.RedString(status)
+	case string(models.TaskRunStatusSuccessful):
+		return color.GreenString(status)
+	case string(models.TaskRunStatusFailed):
+		return color.RedString(status)
+	case string(models.TaskRunStatusCancelled):
+		return status
+	case string(models.TaskRunStatusSkipped):
+		return status
+	default:
+		return status
 	}
-
-	// Because of how colorizing a string works we need to
-	// do the manipulations on case first or else it will not work.
-	toTitle := cases.Title(language.AmericanEnglish)
-	toLower := cases.Lower(language.AmericanEnglish)
-	state = toTitle.String(toLower.String(state))
-	return colorizePipelineTriggerConfigState(state)
 }
 
-func colorizePipelineTriggerConfigState(state string) string {
+func ColorizeTriggerState(state string) string {
 	switch strings.ToUpper(state) {
-	case proto.PipelineTriggerConfig_UNKNOWN.String():
+	case string(models.TriggerStateUnknown):
 		return color.RedString(state)
-	case proto.PipelineTriggerConfig_ACTIVE.String():
-		return color.GreenString(state)
-	case proto.PipelineTriggerConfig_DISABLED.String():
+	case string(models.TriggerStateProcessing):
 		return color.YellowString(state)
+	case string(models.TriggerStateRunning):
+		return color.GreenString(state)
+	case string(models.TriggerStateExited):
+		return color.RedString(state)
 	default:
 		return state
+	}
+}
+
+func ColorizeTriggerStatus(status string) string {
+	switch strings.ToUpper(status) {
+	case string(models.TriggerStatusUnknown):
+		return color.RedString(status)
+	case string(models.TriggerStatusEnabled):
+		return color.GreenString(status)
+	case string(models.TriggerStatusDisabled):
+		return color.YellowString(status)
+	default:
+		return status
 	}
 }
 
@@ -203,14 +176,14 @@ func SliceJoin(slice []string, msg string) string {
 	return strings.Join(slice, ", ")
 }
 
-func Health(states []string, emoji bool) string {
+func Health(states []models.RunStatus, emoji bool) string {
 	failed := 0
 	passed := 0
 	for _, state := range states {
 		switch state {
-		case string(models.RunFailed):
+		case models.RunStatusFailed:
 			failed++
-		case string(models.RunUnknown):
+		case models.RunStatusUnknown:
 			failed++
 		default:
 			passed++
@@ -240,7 +213,7 @@ func Health(states []string, emoji bool) string {
 	return color.GreenString(healthString + "Good")
 }
 
-func Dependencies(dependencies map[string]proto.TaskRequiredParentState) []string {
+func Dependencies(dependencies map[string]models.RequiredParentStatus) []string {
 	result := []string{}
 	any := []string{}
 	successful := []string{}
@@ -248,13 +221,13 @@ func Dependencies(dependencies map[string]proto.TaskRequiredParentState) []strin
 
 	for name, state := range dependencies {
 		switch state {
-		case proto.TaskRequiredParentState_ANY:
+		case models.RequiredParentStatusAny:
 			any = append(any, name)
-		case proto.TaskRequiredParentState_SUCCESSFUL:
+		case models.RequiredParentStatusSuccess:
 			successful = append(successful, name)
-		case proto.TaskRequiredParentState_FAILURE:
+		case models.RequiredParentStatusFailure:
 			failure = append(failure, name)
-		case proto.TaskRequiredParentState_UNKNOWN:
+		case models.RequiredParentStatusUnknown:
 		}
 	}
 

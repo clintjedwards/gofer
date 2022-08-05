@@ -3,12 +3,13 @@ package api
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
+	sdk "github.com/clintjedwards/gofer/sdk/go"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,7 +24,7 @@ func (api *API) GetPipeline(ctx context.Context, request *proto.GetPipelineReque
 		request.NamespaceId = determineNamespace(ctx)
 	}
 
-	pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{NamespaceID: request.NamespaceId, ID: request.Id})
+	pipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetPipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
@@ -48,7 +49,7 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 		return &proto.DisablePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	currentPipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{NamespaceID: request.NamespaceId, ID: request.Id})
+	currentPipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DisablePipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
@@ -57,18 +58,14 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 		return &proto.DisablePipelineResponse{}, status.Errorf(codes.Internal, "could not get pipeline %q", request.Id)
 	}
 
-	if currentPipeline.State == models.PipelineStateAbandoned {
-		return &proto.DisablePipelineResponse{}, status.Error(codes.FailedPrecondition, "cannot change the state of an abandoned pipeline")
-	}
-
 	if currentPipeline.State == models.PipelineStateDisabled {
 		return &proto.DisablePipelineResponse{}, nil
 	}
 
-	currentPipeline.State = models.PipelineStateDisabled
-	currentPipeline.Updated = time.Now().UnixMilli()
-
-	err = api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
+	err = api.db.UpdatePipeline(request.NamespaceId, request.Id, storage.UpdatablePipelineFields{
+		State:    ptr(models.PipelineStateDisabled),
+		Modified: ptr(time.Now().UnixMilli()),
+	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DisablePipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
@@ -77,7 +74,10 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 		return &proto.DisablePipelineResponse{}, status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
 	}
 
-	api.events.Publish(models.NewEventDisabledPipeline(*currentPipeline))
+	go api.events.Publish(models.EventDisabledPipeline{
+		NamespaceID: request.NamespaceId,
+		PipelineID:  request.Id,
+	})
 
 	return &proto.DisablePipelineResponse{}, nil
 }
@@ -95,10 +95,7 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 		return &proto.EnablePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	currentPipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{
-		NamespaceID: request.NamespaceId,
-		ID:          request.Id,
-	})
+	currentPipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.EnablePipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
@@ -107,19 +104,14 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 		return &proto.EnablePipelineResponse{}, status.Errorf(codes.Internal, "could not get pipeline %q", request.Id)
 	}
 
-	if currentPipeline.State == models.PipelineStateAbandoned {
-		return &proto.EnablePipelineResponse{}, status.Error(codes.FailedPrecondition,
-			"cannot change the state of an abandoned pipeline")
-	}
-
 	if currentPipeline.State == models.PipelineStateActive {
 		return &proto.EnablePipelineResponse{}, nil
 	}
 
-	currentPipeline.State = models.PipelineStateActive
-	currentPipeline.Updated = time.Now().UnixMilli()
-
-	err = api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: currentPipeline})
+	err = api.db.UpdatePipeline(request.NamespaceId, request.Id, storage.UpdatablePipelineFields{
+		State:    ptr(models.PipelineStateActive),
+		Modified: ptr(time.Now().UnixMilli()),
+	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.EnablePipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
@@ -129,7 +121,10 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 			status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
 	}
 
-	api.events.Publish(models.NewEventEnabledPipeline(*currentPipeline))
+	go api.events.Publish(models.EventEnabledPipeline{
+		NamespaceID: request.NamespaceId,
+		PipelineID:  request.Id,
+	})
 
 	return &proto.EnablePipelineResponse{}, nil
 }
@@ -139,11 +134,7 @@ func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesR
 		request.NamespaceId = determineNamespace(ctx)
 	}
 
-	pipelines, err := api.storage.GetAllPipelines(storage.GetAllPipelinesRequest{
-		NamespaceID: request.NamespaceId,
-		Offset:      int(request.Offset),
-		Limit:       int(request.Limit),
-	})
+	pipelines, err := api.db.ListPipelines(int(request.Offset), int(request.Limit), request.NamespaceId)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get pipelines")
 		return &proto.ListPipelinesResponse{}, status.Error(codes.Internal, "failed to retrieve pipelines from database")
@@ -159,263 +150,188 @@ func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesR
 	}, nil
 }
 
-func (api *API) CreatePipelineRaw(ctx context.Context, request *proto.CreatePipelineRawRequest) (*proto.CreatePipelineRawResponse, error) {
-	if len(request.Content) == 0 {
-		return &proto.CreatePipelineRawResponse{},
-			status.Error(codes.FailedPrecondition, "content not found (byte length 0); please upload a valid pipeline config file.")
+func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelineRequest) (*proto.CreatePipelineResponse, error) {
+	if request.NamespaceId == "" {
+		request.NamespaceId = determineNamespace(ctx)
 	}
 
-	hclConfig := models.HCLPipelineConfig{}
-	err := hclConfig.FromBytes(request.Content, request.Path)
+	if request.PipelineConfig == nil {
+		return &proto.CreatePipelineResponse{},
+			status.Error(codes.FailedPrecondition, "pipeline configuration required but not found")
+	}
+
+	if !hasAccess(ctx, request.NamespaceId) {
+		return &proto.CreatePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
+	}
+
+	config := sdk.Pipeline{}
+	config.FromProto(request.PipelineConfig)
+
+	newPipeline := models.NewPipeline(request.NamespaceId, &config)
+
+	// TODO(clintjedwards): We need to validate a user passed pipeline
+	err := api.configTriggersIsValid(newPipeline.Triggers)
 	if err != nil {
-		return &proto.CreatePipelineRawResponse{},
-			status.Errorf(codes.FailedPrecondition, "could not parse config file; %v", err)
+		return &proto.CreatePipelineResponse{},
+			status.Error(codes.FailedPrecondition, err.Error())
 	}
 
-	if hclConfig.Namespace == "" {
-		hclConfig.Namespace = namespaceDefaultID
-	}
-
-	if !hasAccess(ctx, hclConfig.Namespace) {
-		return &proto.CreatePipelineRawResponse{}, status.Error(codes.PermissionDenied, "access denied")
-	}
-
-	err = hclConfig.Validate()
-	if err != nil {
-		return &proto.CreatePipelineRawResponse{},
-			status.Errorf(codes.FailedPrecondition, "config file validation errors; %v", err)
-	}
-
-	config, err := models.FromHCL(&hclConfig)
-	if err != nil {
-		return &proto.CreatePipelineRawResponse{},
-			status.Errorf(codes.FailedPrecondition, "could not parse config file; %v", err)
-	}
-
-	newPipeline, err := api.createPipeline(request.Path, config)
+	err = api.db.InsertPipeline(newPipeline)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
-			log.Debug().Err(err).Msg("pipeline id conflict")
-			return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.AlreadyExists,
-				"pipeline id already exists; please try again.")
+			return &proto.CreatePipelineResponse{},
+				status.Error(codes.AlreadyExists, "pipeline already exists")
 		}
-		if errors.Is(err, ErrTriggerNotFound) {
-			return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition,
-				"could not create pipeline; %v;", err)
-		}
-		if errors.Is(err, ErrPipelineConfigNotValid) {
-			return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition,
-				"pipeline creation encountered errors due to configuration; the pipeline has been created, but put into"+
-					" disabled mode. please fix the configuration and then run 'pipeline update'; %v;", err)
-		}
-		return &proto.CreatePipelineRawResponse{}, status.Errorf(codes.Internal, "could not create pipeline: %v", err)
+
+		return &proto.CreatePipelineResponse{},
+			status.Error(codes.Internal, "could not insert pipeline")
 	}
 
-	log.Info().Interface("pipeline", newPipeline).Msg("created new pipeline")
-	return &proto.CreatePipelineRawResponse{
+	successfulSubscriptions, err := api.subscribeTriggers(newPipeline.Namespace, newPipeline.ID, config.Triggers)
+	if err != nil {
+		// Rollback successful subscriptions
+		triggersToUnsubscribe := map[string]string{}
+		for _, subscription := range successfulSubscriptions {
+			triggersToUnsubscribe[subscription.Label] = subscription.Name
+		}
+
+		_ = api.unsubscribeTriggers(newPipeline.Namespace, newPipeline.ID, triggersToUnsubscribe)
+		storageErr := api.db.DeletePipeline(newPipeline.Namespace, newPipeline.ID)
+		if storageErr != nil {
+			log.Error().Err(err).Msg("could not delete pipeline while trying to rollback subscriptions")
+		}
+		return &proto.CreatePipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "could not successfully register all subscriptions; %v", err)
+	}
+
+	go api.events.Publish(models.EventCreatedPipeline{
+		NamespaceID: newPipeline.Namespace,
+		PipelineID:  newPipeline.ID,
+	})
+
+	return &proto.CreatePipelineResponse{
 		Pipeline: newPipeline.ToProto(),
 	}, nil
 }
 
-func (api *API) CreatePipelineByURL(ctx context.Context, request *proto.CreatePipelineByURLRequest) (*proto.CreatePipelineByURLResponse, error) {
-	if request.Url == "" {
-		return &proto.CreatePipelineByURLResponse{}, status.Error(codes.FailedPrecondition, "config url required")
-	}
-
-	hclConfig, err := api.processConfigurationByURL(request.Url)
-	if err != nil {
-		return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition,
-			"could not parse config file; %v", err)
-	}
-
-	if hclConfig.Namespace == "" {
-		hclConfig.Namespace = namespaceDefaultID
-	}
-
-	if !hasAccess(ctx, hclConfig.Namespace) {
-		return &proto.CreatePipelineByURLResponse{}, status.Error(codes.PermissionDenied, "access denied")
-	}
-
-	err = hclConfig.Validate()
-	if err != nil {
-		return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition,
-			"config file validate errors; %v", err)
-	}
-
-	config, err := models.FromHCL(hclConfig)
-	if err != nil {
-		return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition,
-			"could not parse config file; %v", err)
-	}
-
-	newPipeline, err := api.createPipeline(request.Url, config)
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityExists) {
-			log.Debug().Err(err).Msg("pipeline id conflict")
-			return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.AlreadyExists,
-				"pipeline id already exists; please try again.")
-		}
-		if errors.Is(err, ErrTriggerNotFound) {
-			return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition,
-				"could not create pipeline; %v;", err)
-		}
-		if errors.Is(err, ErrPipelineConfigNotValid) {
-			return &proto.CreatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition,
-				"pipeline creation encountered errors due to configuration; the pipeline has been created, but put into"+
-					" disabled mode. please fix the configuration and then run 'pipeline update'; %v;", err)
-		}
-		return &proto.CreatePipelineByURLResponse{}, status.Error(codes.Internal, "could not create pipeline")
-	}
-
-	log.Info().Interface("pipeline", newPipeline).Msg("created new pipeline")
-	return &proto.CreatePipelineByURLResponse{
-		Pipeline: newPipeline.ToProto(),
-	}, nil
-}
-
-func (api *API) UpdatePipelineRaw(ctx context.Context, request *proto.UpdatePipelineRawRequest) (*proto.UpdatePipelineRawResponse, error) {
-	if request.Id == "" {
-		return &proto.UpdatePipelineRawResponse{}, status.Error(codes.FailedPrecondition, "id required")
-	}
-
+func (api *API) UpdatePipeline(ctx context.Context, request *proto.UpdatePipelineRequest) (*proto.UpdatePipelineResponse, error) {
 	if request.NamespaceId == "" {
 		request.NamespaceId = determineNamespace(ctx)
 	}
 
 	if !hasAccess(ctx, request.NamespaceId) {
-		return &proto.UpdatePipelineRawResponse{}, status.Error(codes.PermissionDenied, "access denied")
+		return &proto.UpdatePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	if len(request.Content) == 0 {
-		return &proto.UpdatePipelineRawResponse{}, status.Error(codes.FailedPrecondition, "content required")
+	if request.PipelineConfig == nil {
+		return &proto.UpdatePipelineResponse{}, status.Error(codes.FailedPrecondition, "content required")
 	}
 
-	hclConfig := models.HCLPipelineConfig{}
-	err := hclConfig.FromBytes(request.Content, request.Path)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse config file; %w", err)
-	}
+	config := sdk.Pipeline{}
+	config.FromProto(request.PipelineConfig)
 
-	updatedPipeline, err := api.updatePipeline(request.Path, request.NamespaceId, request.Id, &hclConfig)
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.UpdatePipelineRawResponse{}, status.Errorf(codes.NotFound, "pipeline with id %q does not exist;", request.Id)
-		}
-		if errors.Is(err, ErrPipelineActive) {
-			return &proto.UpdatePipelineRawResponse{}, status.Error(codes.FailedPrecondition, "pipeline must be in state 'disabled' before running update;")
-		}
-		if errors.Is(err, ErrPipelineAbandoned) {
-			return &proto.UpdatePipelineRawResponse{}, status.Error(codes.FailedPrecondition, "pipeline cannot be abandoned")
-		}
-		if errors.Is(err, ErrPipelineRunsInProgress) {
-			return &proto.UpdatePipelineRawResponse{}, status.Error(codes.FailedPrecondition, "pipeline must have no in progress runs before running update;")
-		}
-		if errors.Is(err, ErrTriggerNotFound) {
-			return &proto.UpdatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
-		}
-		if errors.Is(err, ErrPipelineConfigNotValid) {
-			return &proto.UpdatePipelineRawResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
-		}
-		return &proto.UpdatePipelineRawResponse{}, status.Errorf(codes.Internal, "could not update pipeline; %v", err)
-	}
+	updatedPipeline := models.NewPipeline(request.NamespaceId, &config)
 
-	log.Info().Interface("pipeline", updatedPipeline).Msg("updated pipeline")
-	return &proto.UpdatePipelineRawResponse{
-		Pipeline: updatedPipeline.ToProto(),
-	}, nil
-}
-
-func (api *API) UpdatePipelineByURL(ctx context.Context, request *proto.UpdatePipelineByURLRequest) (*proto.UpdatePipelineByURLResponse, error) {
-	if request.Id == "" {
-		return &proto.UpdatePipelineByURLResponse{}, status.Error(codes.FailedPrecondition, "id required")
-	}
-
-	if request.Url == "" {
-		return &proto.UpdatePipelineByURLResponse{}, status.Error(codes.FailedPrecondition, "url required")
-	}
-
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
-	}
-
-	if !hasAccess(ctx, request.NamespaceId) {
-		return &proto.UpdatePipelineByURLResponse{}, status.Error(codes.PermissionDenied, "access denied")
-	}
-
-	hclConfig, err := api.processConfigurationByURL(request.Url)
-	if err != nil {
-		return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition, "could not parse config file; %v", err)
-	}
-
-	updatedPipeline, err := api.updatePipeline(request.Url, request.NamespaceId, request.Id, hclConfig)
+	currentPipeline, err := api.db.GetPipeline(nil, request.NamespaceId, updatedPipeline.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.NotFound, "pipeline with id %q does not exist", request.Id)
-		}
-		if errors.Is(err, ErrPipelineActive) {
-			return &proto.UpdatePipelineByURLResponse{}, status.Error(codes.FailedPrecondition, "pipeline must be in state 'disabled' before running update")
-		}
-		if errors.Is(err, ErrPipelineAbandoned) {
-			return &proto.UpdatePipelineByURLResponse{}, status.Error(codes.FailedPrecondition, "pipeline cannot be abandoned")
-		}
-		if errors.Is(err, ErrPipelineRunsInProgress) {
-			return &proto.UpdatePipelineByURLResponse{}, status.Error(codes.FailedPrecondition, "pipeline must have no in progress runs before running update")
-		}
-		if errors.Is(err, ErrTriggerNotFound) {
-			return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
-		}
-		if errors.Is(err, ErrPipelineConfigNotValid) {
-			return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.FailedPrecondition, "could not update pipeline; %v", err)
-		}
-		return &proto.UpdatePipelineByURLResponse{}, status.Errorf(codes.Internal, "could not update pipeline; %v", err)
-	}
-
-	log.Info().Interface("pipeline", updatedPipeline).Msg("updated pipeline")
-	return &proto.UpdatePipelineByURLResponse{
-		Pipeline: updatedPipeline.ToProto(),
-	}, nil
-}
-
-func (api *API) AbandonPipeline(ctx context.Context, request *proto.AbandonPipelineRequest) (*proto.AbandonPipelineResponse, error) {
-	if request.Id == "" {
-		return &proto.AbandonPipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
-	}
-
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
-	}
-
-	if !hasAccess(ctx, request.NamespaceId) {
-		return &proto.AbandonPipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
-	}
-
-	pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{NamespaceID: request.NamespaceId, ID: request.Id})
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.AbandonPipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
+			return &proto.UpdatePipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
 		}
 		log.Error().Err(err).Msg("could not get pipeline")
-		return &proto.AbandonPipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
+		return &proto.UpdatePipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
 	}
 
-	err = api.unsubscribeAllTriggers(pipeline)
+	oldTriggers := map[string]string{}
+	for _, trigger := range currentPipeline.Triggers {
+		oldTriggers[trigger.Label] = trigger.Name
+	}
+
+	err = api.unsubscribeTriggers(request.NamespaceId, updatedPipeline.ID, oldTriggers)
+	if err != nil {
+		log.Error().Err(err).Str("pipeline", currentPipeline.ID).Msg("could not unsubscribe triggers")
+		return &proto.UpdatePipelineResponse{}, status.Error(codes.Internal, "could not unsubscribe triggers")
+	}
+
+	successfulSubscriptions, err := api.subscribeTriggers(updatedPipeline.Namespace, updatedPipeline.ID, config.Triggers)
+	if err != nil {
+		// Rollback successful subscriptions
+		triggersToUnsubscribe := map[string]string{}
+		for _, subscription := range successfulSubscriptions {
+			triggersToUnsubscribe[subscription.Label] = subscription.Name
+		}
+
+		_ = api.unsubscribeTriggers(updatedPipeline.Namespace, updatedPipeline.ID, triggersToUnsubscribe)
+		storageErr := api.db.DeletePipeline(updatedPipeline.Namespace, updatedPipeline.ID)
+		if storageErr != nil {
+			log.Error().Err(err).Msg("could not delete pipeline while trying to rollback subscriptions")
+		}
+		return &proto.UpdatePipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "could not successfully register all subscriptions; %v", err)
+	}
+
+	err = api.db.UpdatePipeline(request.NamespaceId, config.ID, storage.UpdatablePipelineFields{
+		Name:        &updatedPipeline.Name,
+		Description: &updatedPipeline.Description,
+		Parallelism: &updatedPipeline.Parallelism,
+		Modified:    ptr(time.Now().UnixMilli()),
+		Tasks:       &updatedPipeline.Tasks,
+		Triggers:    &updatedPipeline.Triggers,
+		CommonTasks: &updatedPipeline.CommonTasks,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	pipeline.State = models.PipelineStateAbandoned
-	pipeline.Updated = time.Now().UnixMilli()
+	return &proto.UpdatePipelineResponse{
+		Pipeline: updatedPipeline.ToProto(),
+	}, nil
+}
 
-	err = api.storage.UpdatePipeline(storage.UpdatePipelineRequest{Pipeline: pipeline})
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.AbandonPipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
-		}
-		log.Error().Err(err).Str("id", request.Id).Msg("could not abandon pipeline")
-		return &proto.AbandonPipelineResponse{}, status.Errorf(codes.Internal, "could not abandon pipeline: %q", request.Id)
+func (api *API) DeletePipeline(ctx context.Context, request *proto.DeletePipelineRequest) (*proto.DeletePipelineResponse, error) {
+	if request.Id == "" {
+		return &proto.DeletePipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	api.events.Publish(models.NewEventAbandonedPipeline(*pipeline))
+	if request.NamespaceId == "" {
+		request.NamespaceId = determineNamespace(ctx)
+	}
 
-	return &proto.AbandonPipelineResponse{}, nil
+	if !hasAccess(ctx, request.NamespaceId) {
+		return &proto.DeletePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
+	}
+
+	pipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
+	if err != nil {
+		if errors.Is(err, storage.ErrEntityNotFound) {
+			return &proto.DeletePipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
+		}
+		log.Error().Err(err).Msg("could not get pipeline")
+		return &proto.DeletePipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
+	}
+
+	triggers := map[string]string{}
+	for _, triggerSetting := range pipeline.Triggers {
+		triggers[triggerSetting.Label] = triggerSetting.Name
+	}
+
+	err = api.unsubscribeTriggers(pipeline.Namespace, pipeline.ID, triggers)
+	if err != nil {
+		log.Error().Err(err).Interface("pipeline", pipeline).Msg("could not unsubscribe all triggers from pipeline")
+	}
+
+	err = api.db.DeletePipeline(request.NamespaceId, request.Id)
+	if err != nil {
+		if errors.Is(err, storage.ErrEntityNotFound) {
+			return &proto.DeletePipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
+		}
+		log.Error().Err(err).Msg("could not get pipeline")
+		return &proto.DeletePipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
+	}
+
+	go api.events.Publish(models.EventDeletedPipeline{
+		NamespaceID: pipeline.Namespace,
+		PipelineID:  pipeline.ID,
+	})
+
+	return &proto.DeletePipelineResponse{}, nil
 }

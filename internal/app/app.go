@@ -14,7 +14,6 @@ import (
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	boltsecret "github.com/clintjedwards/gofer/internal/secretStore/bolt"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/internal/storage/bolt"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,7 +28,8 @@ func StartServices(config *config.API) {
 		log.Fatal().Err(err).Msg("could not init storage")
 	}
 
-	log.Info().Str("engine", config.Database.Engine).Msg("storage engine initialized")
+	log.Info().Str("path", config.Database.Path).Int("max_results_limit", config.Database.MaxResultsLimit).
+		Msg("storage initialized")
 
 	newScheduler, err := initScheduler(config.Scheduler)
 	if err != nil {
@@ -64,18 +64,8 @@ func StartServices(config *config.API) {
 }
 
 // initStorage creates a storage object with the appropriate engine
-func initStorage(config *config.Database) (storage.Engine, error) {
-	switch storage.EngineType(config.Engine) {
-	case storage.StorageEngineBoltDB:
-		boltStorageEngine, err := bolt.New(config.BoltDB.Path, config.MaxResultsLimit)
-		if err != nil {
-			return nil, err
-		}
-
-		return &boltStorageEngine, nil
-	default:
-		return nil, fmt.Errorf("storage backend %q not implemented", config.Engine)
-	}
+func initStorage(config *config.Database) (storage.DB, error) {
+	return storage.New(config.Path, config.MaxResultsLimit)
 }
 
 func initObjectStore(config *config.ObjectStore) (objectstore.Engine, error) {

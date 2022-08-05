@@ -1,0 +1,11 @@
+[package]
+name = "gofer_proto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = "0.10.0"
+tonic = { version = "0.7.2", features = ["tls", "transport", "tls-roots"] }
+
+[build-dependencies]
+tonic-build = "0.7.2"

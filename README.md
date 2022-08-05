@@ -7,6 +7,7 @@
 [![godoc for clintjedwards/gofer][godoc-badge]][godoc-url]
 [![goreportcard for clintjedwards/gofer][goreport-badge]][goreport-url]
 [![docs site][website-badge]][website-url]
+[![project status][project-status]][project-status]
 
 Gofer is a simple, opinionated, cloud-native, container-focused, continuous thing do-er.
 
@@ -100,3 +101,4 @@ This software is provided as-is. It's a hobby project, done in my free time, and
 [canarying-url]: https://sre.google/workbook/canarying-releases/
 [releases-url]: https://github.com/clintjedwards/gofer/releases
 [12factor-url]: https://12factor.net/
+[project-status]: https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square

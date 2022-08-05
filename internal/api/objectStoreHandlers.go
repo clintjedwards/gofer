@@ -6,7 +6,8 @@ import (
 	"fmt"
 
 	objectstore "github.com/clintjedwards/gofer/internal/objectStore"
-	"github.com/clintjedwards/gofer/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -82,7 +83,7 @@ func (api *API) GetRunObject(ctx context.Context, request *proto.GetRunObjectReq
 		return &proto.GetRunObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	content, err := api.objectStore.GetObject(runObjectKey(request.NamespaceId, request.PipelineId, request.Key, request.RunId))
+	content, err := api.objectStore.GetObject(runObjectKey(request.NamespaceId, request.PipelineId, request.RunId, request.Key))
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +102,7 @@ func (api *API) PutRunObject(ctx context.Context, request *proto.PutRunObjectReq
 		return &proto.PutRunObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	err := api.addRunObject(request.NamespaceId,
-		request.PipelineId, request.Key, request.RunId, request.Content, request.Force)
+	err := api.objectStore.PutObject(runObjectKey(request.NamespaceId, request.PipelineId, request.RunId, request.Key), request.Content, request.Force)
 	if err != nil {
 		if errors.Is(err, objectstore.ErrEntityExists) {
 			return &proto.PutRunObjectResponse{}, status.Error(codes.FailedPrecondition,
@@ -125,7 +125,7 @@ func (api *API) DeleteRunObject(ctx context.Context, request *proto.DeleteRunObj
 		return &proto.DeleteRunObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	err := api.objectStore.DeleteObject(runObjectKey(request.NamespaceId, request.PipelineId, request.Key, request.RunId))
+	err := api.objectStore.DeleteObject(runObjectKey(request.NamespaceId, request.PipelineId, request.RunId, request.Key))
 	if err != nil {
 		return nil, err
 	}

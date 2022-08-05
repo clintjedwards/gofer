@@ -1,135 +1,136 @@
 package run
 
-import (
-	"context"
-	"fmt"
-	"strconv"
-	"strings"
+// import (
+// 	"context"
+// 	"fmt"
+// 	"strconv"
+// 	"strings"
 
-	"github.com/clintjedwards/gofer/internal/cli/cl"
-	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/proto"
-	"github.com/fatih/color"
-	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-)
+// 	"github.com/clintjedwards/gofer/internal/cli/cl"
+// 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
+// 	proto "github.com/clintjedwards/gofer/proto/go"
 
-var cmdRunList = &cobra.Command{
-	Use:   "list <pipeline_id>",
-	Short: "List all runs",
-	Long: `List all runs.
+// 	"github.com/fatih/color"
+// 	"github.com/olekukonko/tablewriter"
+// 	"github.com/spf13/cobra"
+// 	"google.golang.org/grpc/metadata"
+// )
 
-A short listing of all currently started runs.`,
-	Example: `$ gofer run list simple_test_pipeline`,
-	RunE:    runList,
-	Args:    cobra.ExactArgs(1),
-}
+// var cmdRunList = &cobra.Command{
+// 	Use:   "list <pipeline_id>",
+// 	Short: "List all runs",
+// 	Long: `List all runs.
 
-func init() {
-	cmdRunList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
-	CmdRun.AddCommand(cmdRunList)
-}
+// A short listing of all currently started runs.`,
+// 	Example: `$ gofer run list simple_test_pipeline`,
+// 	RunE:    runList,
+// 	Args:    cobra.ExactArgs(1),
+// }
 
-func runList(cmd *cobra.Command, args []string) error {
-	pipelineID := args[0]
+// func init() {
+// 	cmdRunList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
+// 	CmdRun.AddCommand(cmdRunList)
+// }
 
-	cl.State.Fmt.Print("Retrieving runs")
+// func runList(cmd *cobra.Command, args []string) error {
+// 	pipelineID := args[0]
 
-	limit, err := cmd.Flags().GetInt("limit")
-	if err != nil {
-		cl.State.Fmt.PrintErr(err)
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	cl.State.Fmt.Print("Retrieving runs")
 
-	conn, err := cl.State.Connect()
-	if err != nil {
-		cl.State.Fmt.PrintErr(err)
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	limit, err := cmd.Flags().GetInt("limit")
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(err)
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	client := proto.NewGoferClient(conn)
+// 	conn, err := cl.State.Connect()
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(err)
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
+// 	client := proto.NewGoferClient(conn)
 
-	resp, err := client.ListRuns(ctx, &proto.ListRunsRequest{
-		NamespaceId: cl.State.Config.Namespace,
-		PipelineId:  pipelineID,
-		Limit:       int64(limit),
-	})
-	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not list runs: %v", err))
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
+// 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-	if len(resp.Runs) == 0 {
-		cl.State.Fmt.Println(fmt.Sprintf("No runs found for pipeline %s", pipelineID))
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	resp, err := client.ListRuns(ctx, &proto.ListRunsRequest{
+// 		NamespaceId: cl.State.Config.Namespace,
+// 		PipelineId:  pipelineID,
+// 		Limit:       int64(limit),
+// 	})
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not list runs: %v", err))
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	data := [][]string{}
-	for _, run := range resp.Runs {
-		id := strconv.Itoa(int(run.Id))
+// 	if len(resp.Runs) == 0 {
+// 		cl.State.Fmt.Println(fmt.Sprintf("No runs found for pipeline %s", pipelineID))
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-		data = append(data, []string{
-			id,
-			cliformat.UnixMilli(run.Started, "Not yet", cl.State.Config.Detail),
-			cliformat.UnixMilli(run.Ended, "Still running", cl.State.Config.Detail),
-			cliformat.Duration(run.Started, run.Ended),
-			cliformat.RunState(run.State.String()),
-			fmt.Sprintf("%s(%s)", run.TriggerName, color.YellowString(run.TriggerKind)),
-		})
-	}
+// 	data := [][]string{}
+// 	for _, run := range resp.Runs {
+// 		id := strconv.Itoa(int(run.Id))
 
-	table := formatTable(data, !cl.State.Config.NoColor)
+// 		data = append(data, []string{
+// 			id,
+// 			cliformat.UnixMilli(run.Started, "Not yet", cl.State.Config.Detail),
+// 			cliformat.UnixMilli(run.Ended, "Still running", cl.State.Config.Detail),
+// 			cliformat.Duration(run.Started, run.Ended),
+// 			cliformat.RunState(run.State.String()),
+// 			fmt.Sprintf("%s(%s)", run.TriggerName, color.YellowString(run.TriggerKind)),
+// 		})
+// 	}
 
-	cl.State.Fmt.Println(fmt.Sprintf("  Runs for pipeline %s\n\n%s", color.BlueString(pipelineID), table))
-	cl.State.Fmt.Finish()
+// 	table := formatTable(data, !cl.State.Config.NoColor)
 
-	return nil
-}
+// 	cl.State.Fmt.Println(fmt.Sprintf("  Runs for pipeline %s\n\n%s", color.BlueString(pipelineID), table))
+// 	cl.State.Fmt.Finish()
 
-func formatTable(data [][]string, color bool) string {
-	tableString := &strings.Builder{}
-	table := tablewriter.NewWriter(tableString)
+// 	return nil
+// }
 
-	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "Result", "Triggered By"})
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderLine(true)
-	table.SetBorder(false)
-	table.SetAutoFormatHeaders(false)
-	table.SetRowSeparator("―")
-	table.SetRowLine(false)
-	table.SetColumnSeparator("")
-	table.SetCenterSeparator("")
+// func formatTable(data [][]string, color bool) string {
+// 	tableString := &strings.Builder{}
+// 	table := tablewriter.NewWriter(tableString)
 
-	if color {
-		table.SetHeaderColor(
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-		)
-		table.SetColumnColor(
-			tablewriter.Color(tablewriter.FgYellowColor),
-			tablewriter.Color(0),
-			tablewriter.Color(0),
-			tablewriter.Color(0),
-			tablewriter.Color(0),
-			tablewriter.Color(0),
-		)
-	}
+// 	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "Result", "Triggered By"})
+// 	table.SetAlignment(tablewriter.ALIGN_LEFT)
+// 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+// 	table.SetHeaderLine(true)
+// 	table.SetBorder(false)
+// 	table.SetAutoFormatHeaders(false)
+// 	table.SetRowSeparator("―")
+// 	table.SetRowLine(false)
+// 	table.SetColumnSeparator("")
+// 	table.SetCenterSeparator("")
 
-	table.AppendBulk(data)
+// 	if color {
+// 		table.SetHeaderColor(
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 		)
+// 		table.SetColumnColor(
+// 			tablewriter.Color(tablewriter.FgYellowColor),
+// 			tablewriter.Color(0),
+// 			tablewriter.Color(0),
+// 			tablewriter.Color(0),
+// 			tablewriter.Color(0),
+// 			tablewriter.Color(0),
+// 		)
+// 	}
 
-	table.Render()
-	return tableString.String()
-}
+// 	table.AppendBulk(data)
+
+// 	table.Render()
+// 	return tableString.String()
+// }

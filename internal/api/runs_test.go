@@ -18,25 +18,50 @@ func TestMergeMaps(t *testing.T) {
 	}
 }
 
-func TestParseInterpolationSyntax(t *testing.T) {
+func TestParseInterpolationSyntaxKnownGood(t *testing.T) {
 	tests := map[string]struct {
-		kind     string
+		kind     InterpolationKind
 		value    string
 		expected string
 	}{
-		"secret":         {kind: "secret", value: "secret{{example}}", expected: "example"},
-		"pipeline":       {kind: "pipeline", value: "pipeline{{example}}", expected: "example"},
-		"run":            {kind: "run", value: "run{{example}}", expected: "example"},
-		"incorrect_kind": {kind: "secret", value: "run{{example}}", expected: ""},
-		"normal_value":   {kind: "secret", value: "normal_value", expected: ""},
+		"secret":   {kind: InterpolationKindSecret, value: "secret{{example}}", expected: "example"},
+		"pipeline": {kind: InterpolationKindPipeline, value: "pipeline{{example}}", expected: "example"},
+		"run":      {kind: InterpolationKindRun, value: "run{{example}}", expected: "example"},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := parseInterpolationSyntax(test.kind, test.value)
+			result, err := parseInterpolationSyntax(test.kind, test.value)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if result != test.expected {
 				t.Errorf("incorrect interpolation result; want %s got %s", test.expected, result)
+			}
+		})
+	}
+}
+
+func TestParseInterpolationSyntaxKnownBad(t *testing.T) {
+	tests := map[string]struct {
+		kind     InterpolationKind
+		value    string
+		expected string
+	}{
+		"incorrect_kind": {kind: InterpolationKindSecret, value: "run{{example}}", expected: ""},
+		"normal_value":   {kind: InterpolationKindSecret, value: "normal_value", expected: ""},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := parseInterpolationSyntax(test.kind, test.value)
+			if err == nil {
+				t.Fatalf("test %q should have returned an err but instead returned a successful value (%q)", name, result)
+			}
+
+			if result != test.expected {
+				t.Fatalf("incorrect interpolation result; want %s got %s", test.expected, result)
 			}
 		})
 	}

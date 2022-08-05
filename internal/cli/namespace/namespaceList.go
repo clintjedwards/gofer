@@ -7,7 +7,8 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"

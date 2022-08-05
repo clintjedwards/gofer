@@ -3,7 +3,8 @@ package api
 import (
 	"context"
 
-	"github.com/clintjedwards/gofer/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

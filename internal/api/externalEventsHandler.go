@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
-	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
@@ -18,7 +19,7 @@ import (
 func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	triggerKind := vars["trigger"]
-	trigger, exists := api.triggers[triggerKind]
+	trigger, exists := api.triggers.Get(triggerKind)
 	if !exists {
 		sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("trigger %q does not exist", triggerKind))
 		return
@@ -39,10 +40,10 @@ func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) 
 	}
 	defer conn.Close()
 
-	client := sdkProto.NewTriggerClient(conn)
+	client := proto.NewTriggerServiceClient(conn)
 
-	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
-	_, err = client.ExternalEvent(ctx, &sdkProto.ExternalEventRequest{
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*trigger.Key))
+	_, err = client.ExternalEvent(ctx, &proto.TriggerExternalEventRequest{
 		Payload: serializedRequest.Bytes(),
 	})
 	if err != nil {

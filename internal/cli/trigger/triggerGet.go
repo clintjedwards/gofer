@@ -1,93 +1,94 @@
 package trigger
 
-import (
-	"bytes"
-	"context"
-	"fmt"
-	"text/template"
+// import (
+// 	"bytes"
+// 	"context"
+// 	"fmt"
+// 	"text/template"
 
-	"github.com/clintjedwards/gofer/internal/cli/cl"
-	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/proto"
-	"github.com/fatih/color"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-)
+// 	"github.com/clintjedwards/gofer/internal/cli/cl"
+// 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
+// 	proto "github.com/clintjedwards/gofer/proto/go"
 
-var cmdTriggerGet = &cobra.Command{
-	Use:     "get <name>",
-	Short:   "Get a specific trigger by name.",
-	Example: `$ gofer trigger get cron`,
-	RunE:    triggerGet,
-	Args:    cobra.ExactArgs(1),
-}
+// 	"github.com/fatih/color"
+// 	"github.com/spf13/cobra"
+// 	"google.golang.org/grpc/metadata"
+// )
 
-func init() {
-	CmdTrigger.AddCommand(cmdTriggerGet)
-}
+// var cmdTriggerGet = &cobra.Command{
+// 	Use:     "get <name>",
+// 	Short:   "Get a specific trigger by name.",
+// 	Example: `$ gofer trigger get cron`,
+// 	RunE:    triggerGet,
+// 	Args:    cobra.ExactArgs(1),
+// }
 
-func triggerGet(_ *cobra.Command, args []string) error {
-	name := args[0]
+// func init() {
+// 	CmdTrigger.AddCommand(cmdTriggerGet)
+// }
 
-	cl.State.Fmt.Print("Retrieving trigger")
+// func triggerGet(_ *cobra.Command, args []string) error {
+// 	name := args[0]
 
-	conn, err := cl.State.Connect()
-	if err != nil {
-		cl.State.Fmt.PrintErr(err)
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	cl.State.Fmt.Print("Retrieving trigger")
 
-	client := proto.NewGoferClient(conn)
+// 	conn, err := cl.State.Connect()
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(err)
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	resp, err := client.GetTrigger(ctx, &proto.GetTriggerRequest{
-		Name: name,
-	})
-	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get trigger: %v", err))
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	client := proto.NewGoferClient(conn)
 
-	cl.State.Fmt.Println(formatTriggerInfo(triggerInfo{
-		Kind:          color.YellowString(resp.Trigger.Kind),
-		State:         cliformat.TriggerState(resp.Trigger.State.String()),
-		Started:       cliformat.UnixMilli(resp.Trigger.Started, "Not yet", cl.State.Config.Detail),
-		URL:           resp.Trigger.Url,
-		Documentation: resp.Trigger.Documentation,
-	}))
-	cl.State.Fmt.Finish()
+// 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
+// 	ctx := metadata.NewOutgoingContext(context.Background(), md)
+// 	resp, err := client.GetTrigger(ctx, &proto.GetTriggerRequest{
+// 		Name: name,
+// 	})
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get trigger: %v", err))
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	return nil
-}
+// 	cl.State.Fmt.Println(formatTriggerInfo(triggerInfo{
+// 		Kind:          color.YellowString(resp.Trigger.Kind),
+// 		State:         cliformat.TriggerState(resp.Trigger.State.String()),
+// 		Started:       cliformat.UnixMilli(resp.Trigger.Started, "Not yet", cl.State.Config.Detail),
+// 		URL:           resp.Trigger.Url,
+// 		Documentation: resp.Trigger.Documentation,
+// 	}))
+// 	cl.State.Fmt.Finish()
 
-type triggerInfo struct {
-	Kind          string
-	URL           string
-	Started       string
-	State         string
-	Documentation string
-}
+// 	return nil
+// }
 
-func formatTriggerInfo(ti triggerInfo) string {
-	const formatTmpl = `Trigger "{{.Kind}}" :: {{.State}}
+// type triggerInfo struct {
+// 	Kind          string
+// 	URL           string
+// 	Started       string
+// 	State         string
+// 	Documentation string
+// }
 
-Started {{.Started}}
+// func formatTriggerInfo(ti triggerInfo) string {
+// 	const formatTmpl = `Trigger "{{.Kind}}" :: {{.State}}
 
-Endpoint: {{.URL}}
+// Started {{.Started}}
 
-{{- if .Documentation }}
+// Endpoint: {{.URL}}
 
-Documentation: {{.Documentation}}
-{{- else}}
+// {{- if .Documentation }}
 
-No Documentation found
-{{- end}}`
+// Documentation: {{.Documentation}}
+// {{- else}}
 
-	var tpl bytes.Buffer
-	t := template.Must(template.New("tmp").Parse(formatTmpl))
-	_ = t.Execute(&tpl, ti)
-	return tpl.String()
-}
+// No Documentation found
+// {{- end}}`
+
+// 	var tpl bytes.Buffer
+// 	t := template.Must(template.New("tmp").Parse(formatTmpl))
+// 	_ = t.Execute(&tpl, ti)
+// 	return tpl.String()
+// }

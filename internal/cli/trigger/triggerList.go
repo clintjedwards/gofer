@@ -1,100 +1,101 @@
 package trigger
 
-import (
-	"context"
-	"fmt"
-	"strings"
+// import (
+// 	"context"
+// 	"fmt"
+// 	"strings"
 
-	"github.com/clintjedwards/gofer/internal/cli/cl"
-	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/proto"
-	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-)
+// 	"github.com/clintjedwards/gofer/internal/cli/cl"
+// 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
+// 	proto "github.com/clintjedwards/gofer/proto/go"
 
-var cmdTriggerList = &cobra.Command{
-	Use:     "list",
-	Short:   "List all triggers",
-	Example: `$ gofer trigger list`,
-	RunE:    triggerList,
-}
+// 	"github.com/olekukonko/tablewriter"
+// 	"github.com/spf13/cobra"
+// 	"google.golang.org/grpc/metadata"
+// )
 
-func init() {
-	CmdTrigger.AddCommand(cmdTriggerList)
-}
+// var cmdTriggerList = &cobra.Command{
+// 	Use:     "list",
+// 	Short:   "List all triggers",
+// 	Example: `$ gofer trigger list`,
+// 	RunE:    triggerList,
+// }
 
-func triggerList(_ *cobra.Command, _ []string) error {
-	cl.State.Fmt.Print("Retrieving triggers")
+// func init() {
+// 	CmdTrigger.AddCommand(cmdTriggerList)
+// }
 
-	conn, err := cl.State.Connect()
-	if err != nil {
-		cl.State.Fmt.PrintErr(err)
-		cl.State.Fmt.Finish()
-		return err
-	}
+// func triggerList(_ *cobra.Command, _ []string) error {
+// 	cl.State.Fmt.Print("Retrieving triggers")
 
-	client := proto.NewGoferClient(conn)
+// 	conn, err := cl.State.Connect()
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(err)
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	resp, err := client.ListTriggers(ctx, &proto.ListTriggersRequest{})
-	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not list triggers: %v", err))
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	client := proto.NewGoferClient(conn)
 
-	data := [][]string{}
-	for _, trigger := range resp.Triggers {
-		data = append(data, []string{
-			trigger.Kind,
-			trigger.Url,
-			cliformat.TriggerState(trigger.State.String()),
-			trigger.Documentation,
-		})
-	}
+// 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
+// 	ctx := metadata.NewOutgoingContext(context.Background(), md)
+// 	resp, err := client.ListTriggers(ctx, &proto.ListTriggersRequest{})
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not list triggers: %v", err))
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	table := formatTable(data, true)
+// 	data := [][]string{}
+// 	for _, trigger := range resp.Triggers {
+// 		data = append(data, []string{
+// 			trigger.Kind,
+// 			trigger.Url,
+// 			cliformat.TriggerState(trigger.State.String()),
+// 			trigger.Documentation,
+// 		})
+// 	}
 
-	cl.State.Fmt.Println(table)
-	cl.State.Fmt.Finish()
+// 	table := formatTable(data, true)
 
-	return nil
-}
+// 	cl.State.Fmt.Println(table)
+// 	cl.State.Fmt.Finish()
 
-func formatTable(data [][]string, color bool) string {
-	tableString := &strings.Builder{}
-	table := tablewriter.NewWriter(tableString)
+// 	return nil
+// }
 
-	table.SetHeader([]string{"ID", "URL", "State", "Documentation Link"})
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderLine(true)
-	table.SetBorder(false)
-	table.SetAutoFormatHeaders(false)
-	table.SetRowSeparator("―")
-	table.SetRowLine(false)
-	table.SetColumnSeparator("")
-	table.SetCenterSeparator("")
+// func formatTable(data [][]string, color bool) string {
+// 	tableString := &strings.Builder{}
+// 	table := tablewriter.NewWriter(tableString)
 
-	if color {
-		table.SetHeaderColor(
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
-		)
-		table.SetColumnColor(
-			tablewriter.Color(tablewriter.FgYellowColor),
-			tablewriter.Color(0),
-			tablewriter.Color(0),
-			tablewriter.Color(0),
-		)
-	}
+// 	table.SetHeader([]string{"ID", "URL", "State", "Documentation Link"})
+// 	table.SetAlignment(tablewriter.ALIGN_LEFT)
+// 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+// 	table.SetHeaderLine(true)
+// 	table.SetBorder(false)
+// 	table.SetAutoFormatHeaders(false)
+// 	table.SetRowSeparator("―")
+// 	table.SetRowLine(false)
+// 	table.SetColumnSeparator("")
+// 	table.SetCenterSeparator("")
 
-	table.AppendBulk(data)
+// 	if color {
+// 		table.SetHeaderColor(
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 			tablewriter.Color(tablewriter.FgBlueColor),
+// 		)
+// 		table.SetColumnColor(
+// 			tablewriter.Color(tablewriter.FgYellowColor),
+// 			tablewriter.Color(0),
+// 			tablewriter.Color(0),
+// 			tablewriter.Color(0),
+// 		)
+// 	}
 
-	table.Render()
-	return tableString.String()
-}
+// 	table.AppendBulk(data)
+
+// 	table.Render()
+// 	return tableString.String()
+// }

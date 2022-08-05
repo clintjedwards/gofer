@@ -16,11 +16,8 @@ build: check-path-included check-semver-included build-protos
 
 ## build-protos: build protobufs
 build-protos:
-	protoc --go_out=. --go_opt=paths=source_relative \
-	 --go-grpc_out=. --go-grpc_opt=paths=source_relative \
-	 sdk/proto/*.proto
-	protoc --proto_path=proto --go_out=proto --go_opt=paths=source_relative \
-	 --go-grpc_out=proto --go-grpc_opt=paths=source_relative \
+	protoc --proto_path=proto --go_out=proto/go --go_opt=paths=source_relative \
+	 --go-grpc_out=proto/go --go-grpc_opt=paths=source_relative \
 	 proto/*.proto
 
 ## run: build application and run server

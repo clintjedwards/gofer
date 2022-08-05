@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -94,30 +93,12 @@ func New(prune bool, pruneInterval time.Duration) (Orchestrator, error) {
 	}, nil
 }
 
-func commandsToEntrypoint(rawCommands []string) []string {
-	entrypoint := []string{}
-
-	for _, command := range rawCommands {
-		if len(entrypoint) != 0 {
-			entrypoint = append(entrypoint, "&&")
-		}
-		splitCommand := strings.Split(command, " ")
-		entrypoint = append(entrypoint, splitCommand...)
-	}
-
-	for _, c := range entrypoint {
-		fmt.Printf("%q ", c)
-	}
-
-	return entrypoint
-}
-
 func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (scheduler.StartContainerResponse, error) {
 	ctx := context.Background()
 
 	var dockerRegistryAuth string
-	if req.RegistryUser != "" {
-		authString := fmt.Sprintf("%s:%s", req.RegistryUser, req.RegistryPass)
+	if req.RegistryAuth != nil {
+		authString := fmt.Sprintf("%s:%s", req.RegistryAuth.User, req.RegistryAuth.Pass)
 		dockerRegistryAuth = base64.StdEncoding.EncodeToString([]byte(authString))
 	}
 
@@ -164,13 +145,8 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 	}
 
 	// If the user has passed in commands we replace the entrypoint with those commands.
-	if req.Exec.Shell != "" {
-		rawScript, err := base64.StdEncoding.DecodeString(req.Exec.Script)
-		if err != nil {
-			return scheduler.StartContainerResponse{}, err
-		}
-		containerConfig.Entrypoint = []string{req.Exec.Shell, "-c", string(rawScript)}
-	}
+	containerConfig.Entrypoint = req.Entrypoint
+	containerConfig.Cmd = req.Command
 
 	hostConfig := &container.HostConfig{}
 
@@ -259,13 +235,13 @@ func (orch *Orchestrator) GetState(gs scheduler.GetStateRequest) (scheduler.GetS
 		if strings.Contains(err.Error(), "No such container") {
 			return scheduler.GetStateResponse{
 				ExitCode: 0,
-				State:    models.ContainerStateUnknown,
+				State:    scheduler.ContainerStateUnknown,
 			}, scheduler.ErrNoSuchContainer
 		}
 
 		return scheduler.GetStateResponse{
 			ExitCode: 0,
-			State:    models.ContainerStateUnknown,
+			State:    scheduler.ContainerStateUnknown,
 		}, err
 	}
 
@@ -275,7 +251,7 @@ func (orch *Orchestrator) GetState(gs scheduler.GetStateRequest) (scheduler.GetS
 	case "running":
 		return scheduler.GetStateResponse{
 			ExitCode: 0,
-			State:    models.ContainerStateRunning,
+			State:    scheduler.ContainerStateRunning,
 		}, nil
 	case "exited":
 		orch.cancellations.Lock()
@@ -283,28 +259,21 @@ func (orch *Orchestrator) GetState(gs scheduler.GetStateRequest) (scheduler.GetS
 		_, wasCancelled := orch.cancellations.cancelled[gs.SchedulerID]
 		if wasCancelled {
 			return scheduler.GetStateResponse{
-				ExitCode: containerInfo.State.ExitCode,
-				State:    models.ContainerStateCancelled,
+				ExitCode: int64(containerInfo.State.ExitCode),
+				State:    scheduler.ContainerStateCancelled,
 			}, nil
 		}
 		delete(orch.cancellations.cancelled, gs.SchedulerID)
 
-		if containerInfo.State.ExitCode == 0 {
-			return scheduler.GetStateResponse{
-				ExitCode: containerInfo.State.ExitCode,
-				State:    models.ContainerStateSuccess,
-			}, nil
-		}
-
 		return scheduler.GetStateResponse{
-			ExitCode: containerInfo.State.ExitCode,
-			State:    models.ContainerStateFailed,
+			ExitCode: int64(containerInfo.State.ExitCode),
+			State:    scheduler.ContainerStateExited,
 		}, nil
 	default:
 		log.Debug().Str("state", containerInfo.State.Status).Msg("abnormal container state")
 		return scheduler.GetStateResponse{
 			ExitCode: 0,
-			State:    models.ContainerStateUnknown,
+			State:    scheduler.ContainerStateUnknown,
 		}, nil
 	}
 }

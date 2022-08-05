@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
-	"github.com/clintjedwards/gofer/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
@@ -65,7 +66,7 @@ func namespaceUpdate(cmd *cobra.Command, args []string) error {
 		description = n.Namespace.Description
 	}
 
-	resp, err := client.UpdateNamespace(context.Background(), &proto.UpdateNamespaceRequest{
+	_, err = client.UpdateNamespace(context.Background(), &proto.UpdateNamespaceRequest{
 		Id:          id,
 		Name:        name,
 		Description: description,
@@ -76,7 +77,7 @@ func namespaceUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cl.State.Fmt.PrintSuccess(fmt.Sprintf("Updated namespace: [%s] %q", resp.Namespace.Id, resp.Namespace.Name))
+	cl.State.Fmt.PrintSuccess(fmt.Sprintf("Updated namespace: [%s] %q", n.Namespace.Id, n.Namespace.Name))
 	cl.State.Fmt.Finish()
 	return nil
 }

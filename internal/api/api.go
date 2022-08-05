@@ -11,18 +11,19 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/eventbus"
-	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/internal/syncmap"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -31,7 +32,6 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -39,15 +39,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 var (
 	// ErrPipelineNotActive is returned when a request is made against a pipeline that is not in the active state.
 	ErrPipelineNotActive = errors.New("api: pipeline is not in state 'active'")
 
 	// ErrPipelineActive is returned when a request is made against a pipeline in the active state.
 	ErrPipelineActive = errors.New("api: pipeline is in state 'active'")
-
-	// ErrPipelineAbandoned is returned when a request is made against a pipeline in the abandoned state.
-	ErrPipelineAbandoned = errors.New("api: pipeline is in state 'abandoned'")
 
 	// ErrPipelineRunsInProgress is returned when a request is made against a pipeline with currently in progress runs.
 	ErrPipelineRunsInProgress = errors.New("api: pipeline has runs which are still in progress")
@@ -77,7 +78,7 @@ type API struct {
 
 	// Storage represents the main backend storage implementation. Gofer stores most of its critical state information
 	// using this storage mechanism.
-	storage storage.Engine
+	db storage.DB
 
 	// Scheduler is the mechanism in which Gofer uses to run its individual containers. It leverages that backend
 	// scheduler to do most of the work on running the user's task runs(docker containers).
@@ -91,10 +92,16 @@ type API struct {
 	// files with secrets.
 	secretStore secretStore.Engine
 
+	// TODO(clintjedwards): replace this syncmap with an actually good version once generics catches up.
 	// Triggers is an in-memory map of currently registered triggers. These triggers are registered on startup and
 	// launched as long running containers via the scheduler. Gofer refers to this cache as a way to communicate
 	// quickly with the containers and their potentially changing endpoints.
-	triggers map[string]*models.Trigger
+	triggers syncmap.Syncmap[string, *models.Trigger]
+
+	// commonTasks is an in-memory map of the currently registered commonTasks. These commonTasks are registered on startup
+	// and launched as needed at a user's request. Gofer refers to this cache as a way to quickly look
+	// up which container is needed to be launched.
+	commonTasks syncmap.Syncmap[string, *models.CommonTask]
 
 	// ignorePipelineRunEvents controls if pipelines can trigger runs globally. If this is set to false the entire Gofer
 	// service will not schedule new runs.
@@ -115,7 +122,9 @@ type API struct {
 }
 
 // NewAPI creates a new instance of the main Gofer API service.
-func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engine, objectStore objectStore.Engine, secretStore secretStore.Engine) (*API, error) {
+func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, objectStore objectStore.Engine,
+	secretStore secretStore.Engine,
+) (*API, error) {
 	eventbus, err := eventbus.New(storage, config.EventLogRetention, config.PruneEventsInterval)
 	if err != nil {
 		return nil, fmt.Errorf("could not init event bus: %w", err)
@@ -123,29 +132,29 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	var ignorePipelineRunEvents atomic.Bool
+	ignorePipelineRunEvents.Store(config.IgnorePipelineRunEvents)
+
 	newAPI := &API{
 		context: &CancelContext{
 			ctx:    ctx,
 			cancel: cancel,
 		},
 		config:                  config,
-		storage:                 storage,
+		db:                      storage,
 		events:                  eventbus,
 		scheduler:               scheduler,
 		objectStore:             objectStore,
 		secretStore:             secretStore,
-		ignorePipelineRunEvents: atomic.NewBool(config.IgnorePipelineRunEvents),
-		triggers:                map[string]*models.Trigger{},
+		ignorePipelineRunEvents: &ignorePipelineRunEvents,
+		triggers:                syncmap.New[string, *models.Trigger](),
+		commonTasks:             syncmap.New[string, *models.CommonTask](),
 	}
 
 	err = newAPI.createDefaultNamespace()
 	if err != nil {
 		return nil, fmt.Errorf("could not create default namespace: %w", err)
 	}
-
-	// findOrphans is a repair method that picks up where the gofer service left off if it was shutdown while
-	// a run was currently in progress.
-	go newAPI.findOrphans()
 
 	err = newAPI.startTriggers()
 	if err != nil {
@@ -157,6 +166,10 @@ func NewAPI(config *config.API, storage storage.Engine, scheduler scheduler.Engi
 		newAPI.cleanup()
 		return nil, fmt.Errorf("could not restore trigger subscriptions: %w", err)
 	}
+
+	// findOrphans is a repair method that picks up where the gofer service left off if it was shutdown while
+	// a run was currently in progress.
+	go newAPI.findOrphans()
 
 	// These two functions are responsible for gofer's trigger event loop system. The first launches goroutines that
 	// consumes events from triggers and the latter processes them into pipeline runs.
@@ -268,9 +281,7 @@ func wrapGRPCServer(config *config.API, grpcServer *grpc.Server) *http.Server {
 // Gofer starts with a default namespace that all users have access to.
 func (api *API) createDefaultNamespace() error {
 	namespace := models.NewNamespace(namespaceDefaultID, namespaceDefaultName, "default namespace")
-	err := api.storage.AddNamespace(storage.AddNamespaceRequest{
-		Namespace: namespace,
-	})
+	err := api.db.InsertNamespace(namespace)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return nil
@@ -279,7 +290,9 @@ func (api *API) createDefaultNamespace() error {
 		return err
 	}
 
-	api.events.Publish(models.NewEventCreatedNamespace(*namespace))
+	api.events.Publish(models.EventCreatedNamespace{
+		NamespaceID: namespace.ID,
+	})
 
 	return nil
 }
@@ -293,11 +306,11 @@ func (api *API) createDefaultNamespace() error {
 // did not get an opportunity to finish tracking.
 //
 // It then asks the scheduler for the last status of the container and appropriately either:
-//   * If the run is unfinished: Attach the goroutine responsible for monitoring said run.
-//   * If the container/task run is still running: Attach state watcher goroutine, truncate logs, attach new log watcher.
-//   * If the container is in a finished state: Remove from run cache -> update container state -> clear out logs
+//   - If the run is unfinished: Attach the goroutine responsible for monitoring said run.
+//   - If the container/task run is still running: Attach state watcher goroutine, truncate logs, attach new log watcher.
+//   - If the container is in a finished state: Remove from run cache -> update container state -> clear out logs
 //     -> update logs with new logs.
-//   * If the scheduler has no record of this container ever running then assume the state is unknown.
+//   - If the scheduler has no record of this container ever running then assume the state is unknown.
 func (api *API) findOrphans() {
 	type orphankey struct {
 		namespace string
@@ -311,8 +324,14 @@ func (api *API) findOrphans() {
 
 	// Search events for any orphan runs.
 	for event := range events {
-		switch evt := event.(type) {
-		case *models.EventStartedRun:
+		switch event.Kind {
+		case models.EventKindStartedRun:
+			evt, ok := event.Details.(models.EventStartedRun)
+			if !ok {
+				log.Error().Interface("event", event).Msg("could not decode event into correct type")
+				continue
+			}
+
 			_, exists := orphanedRuns[orphankey{
 				namespace: evt.NamespaceID,
 				pipeline:  evt.PipelineID,
@@ -327,7 +346,13 @@ func (api *API) findOrphans() {
 				}] = struct{}{}
 			}
 
-		case *models.EventCompletedRun:
+		case models.EventKindCompletedRun:
+			evt, ok := event.Details.(models.EventCompletedRun)
+			if !ok {
+				log.Error().Interface("event", event).Msg("could not decode event into correct type")
+				continue
+			}
+
 			_, exists := orphanedRuns[orphankey{
 				namespace: evt.NamespaceID,
 				pipeline:  evt.PipelineID,
@@ -358,39 +383,35 @@ func (api *API) findOrphans() {
 
 // repairOrphanRun allows gofer to repair runs that are orphaned from a bug of sudden shutdown.
 //
-//   * If the run is unfinished: Attach the goroutine responsible for monitoring said run.
-//   * If the container/task run is still running: Attach state watcher goroutine, truncate logs, attach new log watcher.
-//   * If the container is in a finished state: Remove from run cache -> update container state -> clear out logs
+//   - If the run is unfinished: Attach the goroutine responsible for monitoring said run.
+//   - If the container/task run is still running: Attach state watcher goroutine, truncate logs, attach new log watcher.
+//   - If the container is in a finished state: Remove from run cache -> update container state -> clear out logs
 //     -> update logs with new logs.
-//   * If the scheduler has no record of this container ever running then assume the state is unknown.
-func (api *API) repairOrphanRun(namespace, pipeline string, runID int64) error {
-	run, err := api.storage.GetRun(storage.GetRunRequest{
-		NamespaceID: namespace,
-		PipelineID:  pipeline,
-		ID:          runID,
-	})
+//   - If the scheduler has no record of this container ever running then assume the state is unknown.
+func (api *API) repairOrphanRun(namespace, pipelineID string, runID int64) error {
+	pipeline, err := api.db.GetPipeline(nil, namespace, pipelineID)
 	if err != nil {
 		return err
 	}
 
-	var taskStatusMap sync.Map
+	run, err := api.db.GetRun(namespace, pipelineID, runID)
+	if err != nil {
+		return err
+	}
+
+	runStateMachine := NewRunStateMachine(&pipeline, &run)
 
 	// For each run we also need to handle the individual task runs.
 	for _, taskrunID := range run.TaskRuns {
-		taskrun, err := api.storage.GetTaskRun(storage.GetTaskRunRequest{
-			NamespaceID: run.NamespaceID,
-			PipelineID:  run.PipelineID,
-			RunID:       run.ID,
-			ID:          taskrunID,
-		})
+		taskrun, err := api.db.GetTaskRun(run.Namespace, run.Pipeline, run.ID, taskrunID)
 		if err != nil {
-			log.Error().Err(err).Str("pipeline", run.PipelineID).Int64("run", run.ID).
+			log.Error().Err(err).Str("pipeline", run.Pipeline).Int64("run", run.ID).
 				Msg("could not get run status for repair orphan")
 			continue
 		}
 
-		if taskrun.IsComplete() {
-			taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
+		if taskrun.State == models.TaskRunStateComplete {
+			runStateMachine.TaskRuns.Set(taskrun.Task.ID, taskrun)
 			continue
 		}
 
@@ -401,52 +422,43 @@ func (api *API) repairOrphanRun(namespace, pipeline string, runID int64) error {
 		//     its dependencies have finished.
 		// The absence of a schedulerID is only a problem if the container was marked as running.
 		// If this is the case the container is lost and we just mark it as "unknown".
-		if taskrun.SchedulerID == "" && taskrun.State == models.ContainerStateRunning {
-			taskrun.SetFinishedAbnormal(models.ContainerStateUnknown, models.TaskRunFailure{
-				Kind:        models.TaskRunFailureKindOrphaned,
+		if taskrun.SchedulerID == nil && taskrun.State == models.TaskRunStateRunning {
+			err = runStateMachine.setTaskRunFinished(taskrun.ID, nil, models.TaskRunStatusUnknown, &models.TaskRunStatusReason{
+				Reason:      models.TaskRunStatusReasonKindOrphaned,
 				Description: "could not find schedulerID for taskrun during recovery.",
-			}, 1)
-
-			taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
-
-			err = api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
+			})
 			if err != nil {
 				log.Error().Err(err).Str("task", taskrun.ID).
-					Str("pipeline", taskrun.PipelineID).
-					Int64("run", taskrun.RunID).Msg("could not update task run state due to storage err")
+					Str("pipeline", taskrun.Pipeline).
+					Int64("run", taskrun.Run).Msg("error setting task run finished")
 			}
+
 			continue
 		}
 
 		// If the taskrun was waiting to be scheduled then it will not have a schedulerID yet. As such we
 		// need to make sure it gets scheduled as normal.
-		if taskrun.State == models.ContainerStateWaiting || taskrun.State == models.ContainerStateProcessing {
-			go api.reviveLostTaskRun(&taskStatusMap, taskrun)
+		if taskrun.State == models.TaskRunStateWaiting || taskrun.State == models.TaskRunStateProcessing {
+			go runStateMachine.launchTaskRun(taskrun.Task)
+			// go api.reviveLostTaskRun(&taskStatusMap, &taskrun) TODO(clintjedwards): Did I fuck this up?
 			continue
 		}
 
 		// If it is unfinished and just need to be tracked then we just add log/state trackers onto it.
-		go api.handleLogUpdates(taskrun.SchedulerID, taskrun)
+		go runStateMachine.handleLogUpdates(*taskrun.SchedulerID, taskrun.ID)
 		go func() {
-			err = api.waitTaskRunFinish(taskrun.SchedulerID, taskrun)
+			err = runStateMachine.waitTaskRunFinish(*taskrun.SchedulerID, taskrun.ID)
 			if err != nil {
 				log.Error().Err(err).Str("task", taskrun.ID).
-					Str("pipeline", taskrun.PipelineID).
-					Int64("run", taskrun.RunID).Msg("could not get state for container update")
-			}
-			taskStatusMap.Store(taskrun.Task.ID, taskrun.State)
-			err = api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskrun})
-			if err != nil {
-				log.Error().Err(err).Str("task", taskrun.ID).
-					Str("pipeline", taskrun.PipelineID).
-					Int64("run", taskrun.RunID).Msg("could not update task run state due to storage err")
+					Str("pipeline", taskrun.Pipeline).
+					Int64("run", taskrun.Run).Msg("could not get state for container update")
 			}
 		}()
 	}
 
 	// If run is unfinished then we need to launch a goroutine to track its state.
-	if !run.IsComplete() {
-		go api.monitorRunStatus(run.NamespaceID, run.PipelineID, run.ID, &taskStatusMap) //nolint:errcheck
+	if run.State != models.RunStateComplete {
+		go runStateMachine.waitRunFinish()
 	}
 
 	return nil

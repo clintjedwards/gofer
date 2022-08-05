@@ -9,7 +9,8 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/fatih/color"
 	"github.com/fatih/structs"
 	"github.com/spf13/cobra"

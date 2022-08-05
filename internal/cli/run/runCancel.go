@@ -1,70 +1,71 @@
 package run
 
-import (
-	"context"
-	"fmt"
-	"strconv"
+// import (
+// 	"context"
+// 	"fmt"
+// 	"strconv"
 
-	"github.com/clintjedwards/gofer/internal/cli/cl"
-	"github.com/clintjedwards/gofer/proto"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-)
+// 	"github.com/clintjedwards/gofer/internal/cli/cl"
+// 	proto "github.com/clintjedwards/gofer/proto/go"
 
-var cmdRunCancel = &cobra.Command{
-	Use:     "cancel <pipeline> <id>",
-	Short:   "Cancel a run in progress",
-	Example: `$ gofer run cancel simple_test_pipeline 3`,
-	RunE:    runCancel,
-	Args:    cobra.ExactArgs(2),
-}
+// 	"github.com/spf13/cobra"
+// 	"google.golang.org/grpc/metadata"
+// )
 
-func init() {
-	cmdRunCancel.Flags().BoolP("force", "f", false, "Stop run and child taskrun containers immediately (SIGKILL)")
-	CmdRun.AddCommand(cmdRunCancel)
-}
+// var cmdRunCancel = &cobra.Command{
+// 	Use:     "cancel <pipeline> <id>",
+// 	Short:   "Cancel a run in progress",
+// 	Example: `$ gofer run cancel simple_test_pipeline 3`,
+// 	RunE:    runCancel,
+// 	Args:    cobra.ExactArgs(2),
+// }
 
-func runCancel(cmd *cobra.Command, args []string) error {
-	pipelineID := args[0]
-	idRaw := args[1]
-	id, err := strconv.Atoi(idRaw)
-	if err != nil {
-		return err
-	}
+// func init() {
+// 	cmdRunCancel.Flags().BoolP("force", "f", false, "Stop run and child taskrun containers immediately (SIGKILL)")
+// 	CmdRun.AddCommand(cmdRunCancel)
+// }
 
-	force, err := cmd.Flags().GetBool("force")
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
+// func runCancel(cmd *cobra.Command, args []string) error {
+// 	pipelineID := args[0]
+// 	idRaw := args[1]
+// 	id, err := strconv.Atoi(idRaw)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	cl.State.Fmt.Print("Cancelling run")
+// 	force, err := cmd.Flags().GetBool("force")
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return err
+// 	}
 
-	conn, err := cl.State.Connect()
-	if err != nil {
-		cl.State.Fmt.PrintErr(err)
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	cl.State.Fmt.Print("Cancelling run")
 
-	client := proto.NewGoferClient(conn)
+// 	conn, err := cl.State.Connect()
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(err)
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	_, err = client.CancelRun(ctx, &proto.CancelRunRequest{
-		NamespaceId: cl.State.Config.Namespace,
-		Id:          int64(id),
-		PipelineId:  pipelineID,
-		Force:       force,
-	})
-	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not cancel run: %v", err))
-		cl.State.Fmt.Finish()
-		return err
-	}
+// 	client := proto.NewGoferClient(conn)
 
-	cl.State.Fmt.PrintSuccess("canceled run")
-	cl.State.Fmt.Finish()
+// 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
+// 	ctx := metadata.NewOutgoingContext(context.Background(), md)
+// 	_, err = client.CancelRun(ctx, &proto.CancelRunRequest{
+// 		NamespaceId: cl.State.Config.Namespace,
+// 		Id:          int64(id),
+// 		PipelineId:  pipelineID,
+// 		Force:       force,
+// 	})
+// 	if err != nil {
+// 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not cancel run: %v", err))
+// 		cl.State.Fmt.Finish()
+// 		return err
+// 	}
 
-	return nil
-}
+// 	cl.State.Fmt.PrintSuccess("canceled run")
+// 	cl.State.Fmt.Finish()
+
+// 	return nil
+// }

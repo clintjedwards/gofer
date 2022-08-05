@@ -3,7 +3,7 @@ package api
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	_ "embed"
 )
@@ -59,12 +59,12 @@ func (api *API) getTLSFromFile(certPath, keyPath string) (cert, key []byte, err 
 		return nil, nil, fmt.Errorf("TLS cert and key cannot be empty")
 	}
 
-	cert, err = ioutil.ReadFile(certPath)
+	cert, err = os.ReadFile(certPath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	key, err = ioutil.ReadFile(keyPath)
+	key, err = os.ReadFile(keyPath)
 	if err != nil {
 		return nil, nil, err
 	}

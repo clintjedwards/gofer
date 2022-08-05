@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -14,6 +13,9 @@ import (
 type API struct {
 	// Controls the ability to trigger runs. This setting can be toggled while the server is running.
 	IgnorePipelineRunEvents bool `split_words:"true" hcl:"ignore_pipeline_run_events,optional"`
+
+	/// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
+	RunParallelismLimit int `split_words:"true" hcl:"run_parallelism_limit,optional"`
 
 	// Controls how long Gofer will hold onto events before discarding them. This is important factor in disk space
 	// and memory footprint.
@@ -68,6 +70,7 @@ type API struct {
 func DefaultAPIConfig() *API {
 	return &API{
 		IgnorePipelineRunEvents: false,
+		RunParallelismLimit:     200,
 		EventLogRetention:       mustParseDuration("4380h"), // 4380 hours is roughly 6 months.
 		PruneEventsInterval:     mustParseDuration("3h"),
 		Host:                    "localhost:8080",
@@ -139,55 +142,13 @@ type Triggers struct {
 
 	// TLSKeyPath is the file path of the trigger TLS key.
 	TLSKeyPath string `split_words:"true" hcl:"tls_key_path,optional"`
-
-	// RegisteredTriggers represents the triggers that Gofer will attempt to startup with.
-	RegisteredTriggers RegisteredTriggers `split_words:"true" hcl:"registered_triggers,block"`
 }
 
 func DefaultTriggersConfig() *Triggers {
 	return &Triggers{
 		StopTimeout:         mustParseDuration("5m"),
 		HealthcheckInterval: mustParseDuration("30s"),
-		RegisteredTriggers:  []Trigger{},
 	}
-}
-
-// Trigger represents the settings for all triggers within Gofer.
-type Trigger struct {
-	// The name for a trigger this should be alphanumerical and can't contain spaces.
-	Kind string `json:"kind" hcl:"kind,label"`
-
-	// The docker repository and image name of the trigger: Ex. docker.io/library/hello-world:latest
-	Image string `json:"image" hcl:"image"`
-
-	// The user id for the docker repository; if needed.
-	User string `json:"user" hcl:"user,optional"`
-
-	// The password for the docker repository; if needed.
-	Pass string `json:"pass" hcl:"pass,optional"`
-
-	// Environment variables to pass to the trigger container. This is used to pass runtime settings to the container.
-	EnvVars map[string]string `json:"env_vars" hcl:"env_vars,optional"`
-
-	// Secrets to pass to the trigger container. The way secrets are passed depends on the scheduler.
-	Secrets map[string]string `json:"secrets" hcl:"secrets,optional"`
-}
-
-// RegisteredTrigger represents the list of triggers that Gofer will attempt to startup with and use.
-type RegisteredTriggers []Trigger
-
-// Set is a method that implements the ability for envconfig to unfurl a trigger mentioned as an environment variable.
-// Basically the trigger is just wrapped up as a json blurb and set will unwrap it into the proper struct.
-func (t *RegisteredTriggers) Set(value string) error {
-	triggers := []Trigger{}
-
-	err := json.Unmarshal([]byte(value), &triggers)
-	if err != nil {
-		return err
-	}
-
-	*t = RegisteredTriggers(triggers)
-	return nil
 }
 
 // Frontend represents configuration for frontend basecoat
@@ -207,27 +168,6 @@ func DefaultExternalEventsAPIConfig() *ExternalEventsAPI {
 	return &ExternalEventsAPI{
 		Enable: true,
 		Host:   "localhost:8081",
-	}
-}
-
-func defaultTriggers(devmode bool) []Trigger {
-	duration := "5m"
-	if devmode {
-		duration = "1m"
-	}
-
-	return []Trigger{
-		{
-			Kind:  "cron",
-			Image: "ghcr.io/clintjedwards/gofer-containers/trigger_cron:latest",
-		},
-		{
-			Kind:  "interval",
-			Image: "ghcr.io/clintjedwards/gofer-containers/trigger_interval:latest",
-			EnvVars: map[string]string{
-				"GOFER_TRIGGER_INTERVAL_MIN_DURATION": duration,
-			},
-		},
 	}
 }
 
@@ -335,9 +275,6 @@ func InitAPIConfig(userDefinedPath string) (*API, error) {
 		return nil, err
 	}
 
-	// Always append default triggers
-	config.Triggers.RegisteredTriggers = append(config.Triggers.RegisteredTriggers, defaultTriggers(config.Server.DevMode)...)
-
 	err = config.validate()
 	if err != nil {
 		return nil, err
@@ -370,4 +307,9 @@ func PrintAPIEnvs() error {
 	fmt.Println("GOFER_CONFIG_PATH")
 
 	return nil
+}
+
+// BoltDB: https://pkg.go.dev/go.etcd.io/bbolt
+type BoltDB struct {
+	Path string `hcl:"path,optional"` // file path for database file
 }

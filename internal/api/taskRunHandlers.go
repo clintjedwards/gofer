@@ -6,7 +6,9 @@ import (
 	"os"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/nxadm/tail"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
@@ -22,12 +24,7 @@ func (api *API) GetTaskRun(ctx context.Context, request *proto.GetTaskRunRequest
 		request.NamespaceId = determineNamespace(ctx)
 	}
 
-	taskRun, err := api.storage.GetTaskRun(storage.GetTaskRunRequest{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.PipelineId,
-		RunID:       request.RunId,
-		ID:          request.Id,
-	})
+	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetTaskRunResponse{}, status.Error(codes.FailedPrecondition, "task run not found")
@@ -48,11 +45,7 @@ func (api *API) ListTaskRuns(ctx context.Context, request *proto.ListTaskRunsReq
 		request.NamespaceId = determineNamespace(ctx)
 	}
 
-	taskRuns, err := api.storage.GetAllTaskRuns(storage.GetAllTaskRunsRequest{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.PipelineId,
-		RunID:       request.RunId,
-	})
+	taskRuns, err := api.db.ListTaskRuns(0, 0, request.NamespaceId, request.PipelineId, request.RunId)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get task runs")
 		return &proto.ListTaskRunsResponse{}, status.Error(codes.Internal, "failed to retrieve runs from database")
@@ -89,12 +82,7 @@ func (api *API) CancelTaskRun(ctx context.Context, request *proto.CancelTaskRunR
 		return &proto.CancelTaskRunResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	taskRun, err := api.storage.GetTaskRun(storage.GetTaskRunRequest{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.PipelineId,
-		RunID:       request.RunId,
-		ID:          request.Id,
-	})
+	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.CancelTaskRunResponse{}, status.Error(codes.FailedPrecondition, "task run not found")
@@ -103,7 +91,7 @@ func (api *API) CancelTaskRun(ctx context.Context, request *proto.CancelTaskRunR
 		return &proto.CancelTaskRunResponse{}, status.Error(codes.Internal, "failed to retrieve task run from database")
 	}
 
-	err = api.cancelTaskRun(taskRun, request.Force)
+	err = api.cancelTaskRun(&taskRun, request.Force)
 	if err != nil {
 		return &proto.CancelTaskRunResponse{}, status.Error(codes.Internal, "could not cancel container")
 	}
@@ -128,12 +116,7 @@ func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream prot
 		request.NamespaceId = determineNamespace(stream.Context())
 	}
 
-	taskRun, err := api.storage.GetTaskRun(storage.GetTaskRunRequest{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.PipelineId,
-		RunID:       request.RunId,
-		ID:          request.Id,
-	})
+	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return status.Error(codes.FailedPrecondition, "task run not found")
@@ -150,10 +133,13 @@ func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream prot
 		return status.Error(codes.FailedPrecondition, "task run logs have been removed and are no longer available.")
 	}
 
-	file, err := tail.TailFile(api.taskRunLogFilePath(taskRun), tail.Config{Follow: true, Logger: tail.DiscardingLogger})
+	logFilePath := taskRunLogFilePath(api.config.TaskRunLogsDir,
+		request.NamespaceId, request.PipelineId, request.RunId, request.Id)
+
+	file, err := tail.TailFile(logFilePath, tail.Config{Follow: true, Logger: tail.DiscardingLogger})
 	if err != nil {
 		log.Error().Err(err).
-			Str("pipeline", taskRun.PipelineID).Int64("run", taskRun.RunID).
+			Str("pipeline", taskRun.Pipeline).Int64("run", taskRun.Run).
 			Str("task", taskRun.ID).Msg("error opening task run log file")
 		return status.Errorf(codes.Internal, "error opening task run log file: %v", err)
 	}
@@ -184,7 +170,7 @@ func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream prot
 			})
 			if err != nil {
 				log.Error().Err(err).Int("line_number", int(line.Num)).
-					Str("pipeline", taskRun.PipelineID).Int64("run", taskRun.RunID).
+					Str("pipeline", taskRun.Pipeline).Int64("run", taskRun.Run).
 					Str("task", taskRun.ID).Msg("error sending log stream to client")
 				return status.Errorf(codes.Internal, "error sending log stream: %v", err)
 			}
@@ -213,12 +199,7 @@ func (api *API) DeleteTaskRunLogs(ctx context.Context, request *proto.DeleteTask
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	taskRun, err := api.storage.GetTaskRun(storage.GetTaskRunRequest{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.PipelineId,
-		RunID:       request.RunId,
-		ID:          request.Id,
-	})
+	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.FailedPrecondition, "task run not found")
@@ -227,17 +208,23 @@ func (api *API) DeleteTaskRunLogs(ctx context.Context, request *proto.DeleteTask
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.Internal, "failed to retrieve task run from database")
 	}
 
-	if !taskRun.IsComplete() {
+	if taskRun.State != models.TaskRunStateComplete {
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.FailedPrecondition, "can not delete logs for a task currently in progress")
 	}
 
 	taskRun.LogsRemoved = true
-	err = os.Remove(api.taskRunLogFilePath(taskRun))
+
+	logFilePath := taskRunLogFilePath(api.config.TaskRunLogsDir, taskRun.Namespace,
+		taskRun.Pipeline, taskRun.Run, taskRun.ID)
+
+	err = os.Remove(logFilePath)
 	if err != nil {
 		return &proto.DeleteTaskRunLogsResponse{}, status.Errorf(codes.Internal, "could not remove task run log file: %v", err)
 	}
 
-	err = api.storage.UpdateTaskRun(storage.UpdateTaskRunRequest{TaskRun: taskRun})
+	err = api.db.UpdateTaskRun(&taskRun, storage.UpdatableTaskRunFields{
+		LogsRemoved: ptr(true),
+	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.FailedPrecondition, "task run not found")

@@ -8,7 +8,9 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/proto"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
@@ -53,7 +55,10 @@ func namespaceGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output, err := formatNamespace(resp.Namespace, detail)
+	namespace := models.Namespace{}
+	namespace.FromProto(resp.Namespace)
+
+	output, err := formatNamespace(&namespace, detail)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not render namespace: %v", err))
 		cl.State.Fmt.Finish()
@@ -73,22 +78,16 @@ type data struct {
 	Deleted     string
 }
 
-func formatNamespace(namespace *proto.Namespace, detail bool) (string, error) {
+func formatNamespace(namespace *models.Namespace, detail bool) (string, error) {
 	data := data{
-		ID:          color.BlueString(namespace.Id),
+		ID:          color.BlueString(namespace.ID),
 		Name:        namespace.Name,
 		Description: namespace.Description,
 		Created:     cliformat.UnixMilli(namespace.Created, "Never", detail),
 	}
 
-	if namespace.Deleted != 0 {
-		data.Deleted = color.RedString("%s (%s)", "Deleted",
-			cliformat.UnixMilli(namespace.Deleted, "", detail))
-	}
-
-	const formatTmpl = `[{{.ID}}] {{.Name}} :: Created {{.Created}} {{if .Deleted}}:: {{.Deleted}}{{- end}}
-
-  {{.Description}}`
+	const formatTmpl = `[{{.ID}}] {{.Name}} :: Created {{.Created}}
+	{{.Description}}`
 
 	var tpl bytes.Buffer
 	t := template.Must(template.New("tmp").Parse(formatTmpl))

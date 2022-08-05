@@ -5,17 +5,16 @@ import (
 	"fmt"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
-	"github.com/clintjedwards/gofer/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
 
 var cmdNamespaceDelete = &cobra.Command{
-	Use:   "delete <id>",
-	Short: "Delete namespace",
-	Long: `Delete namespace.
-
-Namespaces can only be deleted if all pipelines are abandoned.`,
+	Use:     "delete <id>",
+	Short:   "Delete namespace",
+	Long:    `Delete namespace.`,
 	Example: `$ gofer namespace delete my_namespace`,
 	RunE:    namespaceDelete,
 	Args:    cobra.ExactArgs(1),

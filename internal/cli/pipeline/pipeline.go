@@ -4,6 +4,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type configLanguage string
+
+const (
+	configLanguageRust   configLanguage = "RUST"
+	configLanguageGolang configLanguage = "GOLANG"
+)
+
 var CmdPipeline = &cobra.Command{
 	Use:   "pipeline",
 	Short: "Manage pipelines",

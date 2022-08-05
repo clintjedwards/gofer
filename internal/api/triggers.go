@@ -8,18 +8,136 @@ import (
 	"os"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
-	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
+	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
-const TRIGGERCONTAINERIDFORMAT = "trigger_%s" // trigger_<triggerKind>
+func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key string) error {
+	triggerKey := generateToken(32)
+
+	// We need to first populate the triggers with their required environment variables.
+	// Order is important here maps later in the list will overwrite earlier maps.
+	// We first include the Gofer defined environment variables and then the operator configured environment
+	// variables.
+	systemTriggerVars := []models.Variable{
+		{
+			Key:    "GOFER_TRIGGER_TLS_CERT",
+			Value:  cert,
+			Source: models.VariableSourceSystem,
+		},
+		{
+			Key:    "GOFER_TRIGGER_TLS_KEY",
+			Value:  key,
+			Source: models.VariableSourceSystem,
+		},
+		{
+			Key:    "GOFER_TRIGGER_NAME",
+			Value:  trigger.Name,
+			Source: models.VariableSourceSystem,
+		},
+		{
+			Key:    "GOFER_TRIGGER_LOG_LEVEL",
+			Value:  api.config.LogLevel,
+			Source: models.VariableSourceSystem,
+		},
+		{
+			Key:    "GOFER_TRIGGER_KEY",
+			Value:  triggerKey,
+			Source: models.VariableSourceSystem,
+		},
+	}
+
+	log.Info().Str("name", trigger.Name).Msg("starting trigger")
+
+	systemTriggerVarsMap := convertVarsToMap(systemTriggerVars)
+	triggerVarsMap := convertVarsToMap(trigger.Variables)
+	envVars := mergeMaps(systemTriggerVarsMap, triggerVarsMap)
+
+	sc := scheduler.StartContainerRequest{
+		ID:               triggerContainerID(trigger.Name),
+		ImageName:        trigger.Image,
+		EnvVars:          envVars,
+		RegistryAuth:     trigger.RegistryAuth,
+		EnableNetworking: true,
+	}
+
+	resp, err := api.scheduler.StartContainer(sc)
+	if err != nil {
+		log.Error().Err(err).Str("trigger", trigger.Name).Msg("could not start trigger")
+		return err
+	}
+
+	var info *proto.TriggerInfoResponse
+
+	// For some reason I can't get GRPC's retry to properly handle this, so instead we resort to a simple for loop.
+	//
+	// There is a race condition where we schedule the container, but the actual container application might not
+	// have gotten a chance to start before we issue a query.
+	// So instead of baking in some arbitrary sleep time between these two actions instead we retry
+	// until we get a good state.
+	attempts := 0
+	for {
+		if attempts >= 30 {
+			log.Error().Msg("maximum amount of attempts reached for starting trigger; could not connect to trigger")
+			return fmt.Errorf("could not connect to trigger; maximum amount of attempts reached")
+		}
+
+		conn, err := grpcDial(resp.URL)
+		if err != nil {
+			log.Debug().Err(err).Str("trigger", trigger.Name).Msg("could not connect to trigger")
+			time.Sleep(time.Millisecond * 300)
+			attempts++
+			continue
+		}
+
+		client := proto.NewTriggerServiceClient(conn)
+
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(triggerKey))
+
+		info, err = client.Info(ctx, &proto.TriggerInfoRequest{})
+		if err != nil {
+			if status.Code(err) == codes.Canceled {
+				return nil
+			}
+
+			conn.Close()
+			log.Debug().Err(err).Msg("failed to communicate with trigger startup")
+			time.Sleep(time.Millisecond * 300)
+			attempts++
+			continue
+		}
+
+		conn.Close()
+		break
+	}
+
+	// Add the trigger to the in-memory registry so we can refer to its variable network location later.
+	api.triggers.Set(trigger.Name, &models.Trigger{
+		Registration:  trigger,
+		URL:           resp.URL,
+		SchedulerID:   resp.SchedulerID,
+		Started:       time.Now().UnixMilli(),
+		State:         models.TriggerStateRunning,
+		Documentation: info.Documentation,
+		Key:           &triggerKey,
+	})
+
+	log.Info().
+		Str("kind", trigger.Name).
+		Str("id", resp.SchedulerID).
+		Str("url", resp.URL).Msg("started trigger")
+
+	go api.collectLogs(resp.SchedulerID)
+
+	return nil
+}
 
 // startTriggers attempts to start each trigger from config on the provided scheduler. Once scheduled it then collects
 // the initial trigger information so it can check for connectivity and store the network location.
@@ -30,164 +148,39 @@ func (api *API) startTriggers() error {
 		return err
 	}
 
-	triggerKey := generateToken(32)
-
-	for _, trigger := range api.config.Triggers.RegisteredTriggers {
-		// We need to first populate the triggers with their required environment variables.
-		// Order is important here maps later in the list will overwrite earlier maps.
-		// We first include the Gofer defined environment variables and then the operator configured environment
-		// variables.
-		envVars := mergeMaps(map[string]string{
-			"GOFER_TRIGGER_TLS_CERT":  string(cert),
-			"GOFER_TRIGGER_TLS_KEY":   string(key),
-			"GOFER_TRIGGER_KIND":      trigger.Kind,
-			"GOFER_TRIGGER_LOG_LEVEL": api.config.LogLevel,
-			"GOFER_TRIGGER_KEY":       triggerKey,
-		}, trigger.EnvVars)
-
-		log.Info().Str("name", trigger.Kind).Msg("starting trigger")
-		sc := scheduler.StartContainerRequest{
-			ID:               fmt.Sprintf(TRIGGERCONTAINERIDFORMAT, trigger.Kind),
-			ImageName:        trigger.Image,
-			EnvVars:          envVars,
-			RegistryUser:     trigger.User,
-			RegistryPass:     trigger.Pass,
-			EnableNetworking: true,
-		}
-
-		resp, err := api.scheduler.StartContainer(sc)
-		if err != nil {
-			log.Error().Err(err).Str("trigger", trigger.Kind).Msg("could not start trigger")
-			return err
-		}
-
-		var info *sdkProto.InfoResponse
-
-		// For some reason I can't get GRPC's retry to properly handle this, so instead we resort to a simple for loop.
-		//
-		// There is a race condition where we schedule the container, but the actual container application might not
-		// have gotten a chance to start before we issue a query.
-		// So instead of baking in some arbitrary sleep time between these two actions instead we retry
-		// until we get a good state.
-		attempts := 0
-		for {
-			if attempts >= 30 {
-				log.Error().Msg("maximum amount of attempts reached for starting trigger; could not connect to trigger")
-				return fmt.Errorf("could not connect to trigger; maximum amount of attempts reached")
-			}
-
-			conn, err := grpcDial(resp.URL)
-			if err != nil {
-				log.Debug().Err(err).Str("trigger", trigger.Kind).Msg("could not connect to trigger")
-				time.Sleep(time.Millisecond * 300)
-				attempts++
-				continue
-			}
-
-			client := sdkProto.NewTriggerClient(conn)
-
-			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(triggerKey))
-
-			info, err = client.Info(ctx, &sdkProto.InfoRequest{})
-			if err != nil {
-				if status.Code(err) == codes.Canceled {
-					return nil
-				}
-
-				conn.Close()
-				log.Debug().Err(err).Msg("failed to communicate with trigger startup")
-				time.Sleep(time.Millisecond * 300)
-				attempts++
-				continue
-			}
-
-			conn.Close()
-			break
-		}
-
-		// Add the trigger to the in-memory registry so we can refer to its variable network location later.
-		api.triggers[trigger.Kind] = &models.Trigger{
-			Key:           triggerKey,
-			Kind:          trigger.Kind,
-			URL:           resp.URL,
-			SchedulerID:   resp.SchedulerID,
-			Started:       time.Now().UnixMilli(),
-			State:         models.ContainerStateRunning,
-			Documentation: info.Documentation,
-		}
-
-		log.Info().
-			Str("kind", trigger.Kind).
-			Str("id", resp.SchedulerID).
-			Str("url", resp.URL).Msg("started trigger")
-
-		go api.collectLogs(resp.SchedulerID)
+	registeredTriggers, err := api.db.ListTriggerRegistrations(0, 0)
+	if err != nil {
+		return err
 	}
 
-	go api.monitorTriggers(api.context.ctx)
+	for _, trigger := range registeredTriggers {
+		err := api.startTrigger(trigger, string(cert), string(key))
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-// monitorTriggers periodically healthchecks registered Gofer triggers and updates their status.
-// This allows Gofer to not only report the connectivity between the service and the triggers
-// but alert admins when triggers aren't connected properly.
-func (api *API) monitorTriggers(ctx context.Context) {
-	// Since we'll be constantly pinging the triggers create a pool of connections that we can reuse.
-	connectionPool := map[string]*grpc.ClientConn{}
-	for _, trigger := range api.triggers {
-		conn, err := grpcDial(trigger.URL)
-		if err != nil {
-			log.Debug().Str("trigger", trigger.Kind).Err(err).Msg("healthcheck failed; could not connect to trigger")
-			api.triggers[trigger.Kind].State = models.ContainerStateFailed
-			continue
-		}
-		connectionPool[trigger.Kind] = conn
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Debug().Msg("cleaning up healthcheck connections")
-			for _, conn := range connectionPool {
-				conn.Close()
-			}
-			return
-		case <-time.After(api.config.Triggers.HealthcheckInterval):
-			for triggerKind, conn := range connectionPool {
-				client := sdkProto.NewTriggerClient(conn)
-
-				ctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+string(api.triggers[triggerKind].Key))
-				_, err := client.Info(ctx, &sdkProto.InfoRequest{})
-				if err != nil {
-					if status.Code(err) == codes.Canceled {
-						return
-					}
-
-					api.triggers[triggerKind].State = models.ContainerStateFailed
-					log.Debug().Err(err).Msg("healthcheck failed")
-					continue
-				}
-
-				api.triggers[triggerKind].State = models.ContainerStateRunning
-			}
-		}
-	}
-}
-
 // stopTriggers sends a shutdown request to each trigger, initiating a graceful shutdown for each one.
 func (api *API) stopTriggers() {
-	for _, trigger := range api.triggers {
+	for _, triggerKey := range api.triggers.Keys() {
+		trigger, exists := api.triggers.Get(triggerKey)
+		if !exists {
+			continue
+		}
+
 		conn, err := grpcDial(trigger.URL)
 		if err != nil {
 			continue
 		}
 		defer conn.Close()
 
-		client := sdkProto.NewTriggerClient(conn)
+		client := proto.NewTriggerServiceClient(conn)
 
-		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
-		_, err = client.Shutdown(ctx, &sdkProto.ShutdownRequest{})
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*trigger.Key))
+		_, err = client.Shutdown(ctx, &proto.TriggerShutdownRequest{})
 		if err != nil {
 			continue
 		}
@@ -206,18 +199,22 @@ func (api *API) restoreTriggerSubscriptions() error {
 
 	for _, pipeline := range pipelines {
 		for label, subscription := range pipeline.Triggers {
-			trigger, exists := api.triggers[subscription.Kind]
+			trigger, exists := api.triggers.Get(subscription.Name)
 			if !exists {
-				pipeline.State = models.PipelineStateDisabled
-				subscription.State = models.PipelineTriggerStateDisabled
-				pipeline.Triggers[subscription.Label] = subscription
-				storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
-					Pipeline: pipeline,
+				storageErr := api.db.UpdatePipeline(pipeline.Namespace, pipeline.ID, storage.UpdatablePipelineFields{
+					State: ptr(models.PipelineStateDisabled),
+					Errors: &[]models.PipelineError{
+						{
+							Kind: models.PipelineErrorKindTriggerSubscriptionFailure,
+							Description: fmt.Sprintf("Could not restore trigger subscription for trigger %s(%s); Trigger does not exist in Gofer's registered triggers.",
+								label, trigger.Registration.Name),
+						},
+					},
 				})
 				if storageErr != nil {
 					log.Error().Err(storageErr).Msg("could not update pipeline")
 				}
-				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_kind", subscription.Kind).
+				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_name", subscription.Name).
 					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
 					Msg("could not restore subscription; trigger requested does not exist within Gofer service")
 				continue
@@ -230,83 +227,100 @@ func (api *API) restoreTriggerSubscriptions() error {
 			}
 			defer conn.Close()
 
-			client := sdkProto.NewTriggerClient(conn)
+			client := proto.NewTriggerServiceClient(conn)
 
-			config, err := api.interpolateVars(pipeline.Namespace, pipeline.ID, subscription.Config)
+			convertedSettings := convertVarsToSlice(subscription.Settings, models.VariableSourcePipelineConfig)
+			config, err := api.interpolateVars(pipeline.Namespace, pipeline.ID, nil, convertedSettings)
 			if err != nil {
-				pipeline.State = models.PipelineStateDisabled
-				subscription.State = models.PipelineTriggerStateDisabled
-				pipeline.Triggers[subscription.Label] = subscription
-				storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
-					Pipeline: pipeline,
+				storageErr := api.db.UpdatePipeline(pipeline.Namespace, pipeline.ID, storage.UpdatablePipelineFields{
+					State: ptr(models.PipelineStateDisabled),
+					Errors: &[]models.PipelineError{
+						{
+							Kind: models.PipelineErrorKindTriggerSubscriptionFailure,
+							Description: fmt.Sprintf("Could not restore trigger subscription for trigger %s(%s); Could not find appropriate secret in secret store for key.",
+								label, trigger.Registration.Name),
+						},
+					},
 				})
 				if storageErr != nil {
 					log.Error().Err(storageErr).Msg("could not update pipeline")
 				}
-				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_kind", subscription.Kind).
+				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_name", subscription.Name).
 					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
-					Msg("could not restore subscription; could not find appropriate secrets")
+					Msg("could not restore subscription; trigger requested does not exist within Gofer service")
 				continue
 			}
 
-			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(trigger.Key))
-			_, err = client.Subscribe(ctx, &sdkProto.SubscribeRequest{
+			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*trigger.Key))
+			_, err = client.Subscribe(ctx, &proto.TriggerSubscribeRequest{
 				NamespaceId:          pipeline.Namespace,
 				PipelineTriggerLabel: label,
 				PipelineId:           pipeline.ID,
-				Config:               config,
+				Config:               convertVarsToMap(config),
 			})
 			if err != nil {
-				pipeline.State = models.PipelineStateDisabled
-				subscription.State = models.PipelineTriggerStateDisabled
-				pipeline.Triggers[subscription.Label] = subscription
-				storageErr := api.storage.UpdatePipeline(storage.UpdatePipelineRequest{
-					Pipeline: pipeline,
+				storageErr := api.db.UpdatePipeline(pipeline.Namespace, pipeline.ID, storage.UpdatablePipelineFields{
+					State: ptr(models.PipelineStateDisabled),
+					Errors: &[]models.PipelineError{
+						{
+							Kind: models.PipelineErrorKindTriggerSubscriptionFailure,
+							Description: fmt.Sprintf("Could not restore trigger subscription for trigger %s(%s); Could not subscribe to trigger %v.",
+								label, trigger.Registration.Name, err),
+						},
+					},
 				})
 				if storageErr != nil {
 					log.Error().Err(storageErr).Msg("could not update pipeline")
 				}
-				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_kind", subscription.Kind).
+				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_name", subscription.Name).
 					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
-					Msg("could not restore subscription; error contacting trigger")
+					Msg("could not restore subscription; failed to contact trigger subscription endpoint")
 				continue
 			}
 
 			log.Debug().Str("pipeline", pipeline.ID).Str("trigger_label", subscription.Label).
-				Str("trigger_kind", trigger.Kind).Msg("restored subscription")
+				Str("trigger_name", trigger.Registration.Name).Msg("restored subscription")
 		}
 	}
 
 	return nil
 }
 
+// TODO(clintjedwards): change to watchFor
 // checkForTriggerEvents spawns a goroutine for every trigger that is responsible for collecting the trigger events
-// on that trigger. The "Check" method for receiving events from a trigger is a blocking RPC, so each
+// on that trigger. The "Watch" method for receiving events from a trigger is a blocking RPC, so each
 // go routine essentially blocks until they receive an event and then immediately pushes it into the receiving channel.
 func (api *API) checkForTriggerEvents(ctx context.Context) {
-	for id, trigger := range api.triggers {
-		go func(id string, trigger models.Trigger) {
+	for _, triggerKey := range api.triggers.Keys() {
+		trigger, exists := api.triggers.Get(triggerKey)
+		if !exists {
+			continue
+		}
+
+		go func(name string, trigger models.Trigger) {
 			conn, err := grpcDial(trigger.URL)
 			if err != nil {
-				log.Error().Err(err).Str("trigger", id).Msg("could not connect to trigger")
+				log.Error().Err(err).Str("trigger", name).Msg("could not connect to trigger")
 			}
 			defer conn.Close()
 
-			client := sdkProto.NewTriggerClient(conn)
+			client := proto.NewTriggerServiceClient(conn)
 
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					ctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+string(trigger.Key))
-					resp, err := client.Check(ctx, &sdkProto.CheckRequest{})
+					ctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+string(*trigger.Key))
+					resp, err := client.Watch(ctx, &proto.TriggerWatchRequest{})
 					if err != nil {
 						if status.Code(err) == codes.Canceled {
 							return
 						}
 
-						log.Error().Err(err).Str("trigger", id).Msg("could not connect to trigger")
+						log.Error().Err(err).Str("trigger", name).Msg("could not connect to trigger")
+						trigger.State = models.TriggerStateUnknown
+						api.triggers.Set(*trigger.Key, &trigger)
 						time.Sleep(time.Second * 5) // Don't DOS ourselves if we can't connect
 						continue
 					}
@@ -318,107 +332,153 @@ func (api *API) checkForTriggerEvents(ctx context.Context) {
 						continue
 					}
 
-					log.Debug().Str("trigger", id).Interface("response", resp).Msg("new trigger event found")
+					log.Debug().Str("trigger", name).Interface("response", resp).Msg("new trigger event found")
 
 					result := models.TriggerResult{
 						Details: resp.Details,
-						State:   models.TriggerResultState(resp.Result.String()),
+						Status:  models.TriggerResultStatus(resp.Result.String()),
 					}
 
-					api.events.Publish(models.NewEventFiredTrigger(resp.NamespaceId,
-						resp.PipelineId,
-						resp.PipelineTriggerLabel,
-						result,
-						resp.Metadata))
+					go api.events.Publish(models.EventFiredTriggerEvent{
+						NamespaceID: resp.NamespaceId,
+						PipelineID:  resp.PipelineId,
+						Name:        trigger.Registration.Name,
+						Label:       resp.PipelineTriggerLabel,
+						Result:      result,
+						Metadata:    resp.Metadata,
+					})
 				}
 			}
-		}(id, *trigger)
+		}(triggerKey, *trigger)
 	}
+}
+
+func (api *API) resolveFiredTriggerEvent(evt *models.EventFiredTriggerEvent, result models.TriggerResult, metadata map[string]string) {
+	go api.events.Publish(models.EventResolvedTriggerEvent{
+		NamespaceID: evt.NamespaceID,
+		PipelineID:  evt.PipelineID,
+		Name:        evt.Name,
+		Label:       evt.Label,
+		Result:      result,
+		Metadata:    metadata,
+	})
+}
+
+func (api *API) processTriggerEvent(event *models.EventFiredTriggerEvent) {
+	go api.events.Publish(models.EventProcessedTriggerEvent{
+		NamespaceID: event.NamespaceID,
+		PipelineID:  event.PipelineID,
+		Name:        event.Name,
+		Label:       event.Label,
+	})
+
+	// If the trigger event status != success then we should log that and skip it.
+	if event.Result.Status != models.TriggerResultStateSuccess {
+		api.resolveFiredTriggerEvent(event, event.Result, map[string]string{})
+		return
+	}
+
+	// If the pipeline isn't accepting any new runs we skip the trigger event.
+	if api.ignorePipelineRunEvents.Load() {
+		log.Debug().Msg("skipped event due to IgnorePipelineRunEvents set to false")
+
+		api.resolveFiredTriggerEvent(event, models.TriggerResult{
+			Details: "API not accepting new events; This is due to operator controlled setting 'IgnorePipelineRunEvents'.",
+			Status:  models.TriggerResultStateSkipped,
+		}, map[string]string{})
+		return
+	}
+
+	pipeline, err := api.db.GetPipeline(nil, event.NamespaceID, event.PipelineID)
+	if err != nil {
+		if errors.Is(err, storage.ErrEntityNotFound) {
+			log.Error().Err(err).Msg("Pipeline not found")
+			api.resolveFiredTriggerEvent(event, models.TriggerResult{
+				Details: "Could not process trigger event; pipeline not found.",
+				Status:  models.TriggerResultStateFailure,
+			}, map[string]string{})
+			return
+		}
+
+		api.resolveFiredTriggerEvent(event, models.TriggerResult{
+			Details: fmt.Sprintf("Internal error; %v", err),
+			Status:  models.TriggerResultStateFailure,
+		}, map[string]string{})
+		log.Error().Err(err).Msg("could not process trigger event")
+		return
+	}
+
+	triggerSubscription, exists := pipeline.Triggers[event.Label]
+	if !exists {
+		log.Error().Str("trigger_label", event.Label).
+			Msg("could not process trigger event; could not find trigger label within pipeline")
+		api.resolveFiredTriggerEvent(event, models.TriggerResult{
+			Details: "Trigger subscription no longer found in pipeline config.",
+			Status:  models.TriggerResultStateFailure,
+		}, map[string]string{})
+		return
+	}
+
+	if pipeline.State != models.PipelineStateActive {
+		log.Debug().Str("trigger_label", event.Label).
+			Msg("skipped trigger event; pipeline is not active.")
+		api.resolveFiredTriggerEvent(event, models.TriggerResult{
+			Details: "Pipeline is not active",
+			Status:  models.TriggerResultStateSkipped,
+		}, map[string]string{})
+		return
+	}
+
+	// Create the new run and retrieve it's ID.
+	newRun := models.NewRun(pipeline.Namespace, pipeline.ID, models.TriggerInfo{
+		Name:  triggerSubscription.Name,
+		Label: triggerSubscription.Label,
+	}, convertVarsToSlice(event.Metadata, models.VariableSourceTrigger))
+
+	runID, err := api.db.InsertRun(newRun)
+	if err != nil {
+		log.Error().Err(err).Msg("could not insert pipeline into db")
+		api.resolveFiredTriggerEvent(event, models.TriggerResult{
+			Details: fmt.Sprintf("Internal error; %v", err),
+			Status:  models.TriggerResultStateFailure,
+		}, map[string]string{})
+		return
+	}
+
+	newRun.ID = runID
+
+	runStateMachine := NewRunStateMachine(&pipeline, newRun)
+
+	// Make sure the pipeline is ready for a new run.
+	for runStateMachine.parallelismLimitExceeded() {
+		log.Debug().Int64("run", newRun.ID).Int64("limit", pipeline.Parallelism).
+			Msg("parallelism limit exceeded; waiting for runs to end before launching new run")
+		time.Sleep(time.Second * 1)
+	}
+
+	// Finally, launch the thread that will launch all the task runs for a job.
+	go runStateMachine.executeTaskTree()
+
+	api.resolveFiredTriggerEvent(event, event.Result, event.Metadata)
 }
 
 // processTriggerEvents listens to and consumes all events from the TriggerEventReceived channel and starts the
 // appropriate pipeline.
 func (api *API) processTriggerEvents() error {
 	// Subscribe to all fired trigger events so we can watch for them.
-	subscription, err := api.events.Subscribe(models.FiredTriggerEvent)
+	subscription, err := api.events.Subscribe(models.EventKindFiredTriggerEvent)
 	if err != nil {
 		return fmt.Errorf("could not subscribe to trigger events: %w", err)
 	}
 	defer api.events.Unsubscribe(subscription)
 
 	for eventRaw := range subscription.Events {
-		event, ok := eventRaw.(*models.EventFiredTrigger)
+		event, ok := eventRaw.Details.(*models.EventFiredTriggerEvent)
 		if !ok {
 			continue
 		}
 
-		result := models.TriggerResult{
-			Details: event.Result.Details,
-			State:   event.Result.State,
-		}
-
-		api.events.Publish(models.NewEventProcessedTrigger(event.Namespace,
-			event.Pipeline,
-			event.Label,
-			result,
-			event.TriggerMetadata))
-
-		// If the trigger event state != success then we should log that and skip it.
-		if event.Result.State != models.TriggerResultStateSuccess {
-			api.events.Publish(models.NewEventResolvedTrigger(event.Namespace, event.Pipeline, event.Label,
-				result,
-				event.TriggerMetadata))
-			return nil
-		}
-
-		if !api.ignorePipelineRunEvents.Load() {
-			pipeline, err := api.storage.GetPipeline(storage.GetPipelineRequest{
-				NamespaceID: event.Namespace,
-				ID:          event.Pipeline,
-			})
-			if err != nil {
-				if errors.Is(err, storage.ErrEntityNotFound) {
-					log.Error().Err(err).Msg("could not process trigger event; pipeline not found")
-					continue
-				}
-
-				log.Error().Err(err).Msg("could not process trigger event")
-				continue
-			}
-
-			triggerSubscription, exists := pipeline.Triggers[event.Label]
-			if !exists {
-				log.Error().Str("trigger_label", event.Label).
-					Msg("could not process trigger event; could not find trigger label within pipeline")
-			}
-
-			_, err = api.createNewRun(pipeline.Namespace, pipeline.ID, triggerSubscription.Kind,
-				event.Label, map[string]struct{}{}, event.TriggerMetadata)
-			if err != nil {
-				if errors.Is(err, ErrPipelineNotActive) {
-					log.Debug().Str("namespace", pipeline.Namespace).Str("pipeline", pipeline.ID).
-						Str("trigger", triggerSubscription.Kind).Msg("pipeline trigger run skipped because it is not active")
-					continue
-				}
-
-				log.Error().Err(err).Msg("could not create run from trigger event")
-				continue
-			}
-
-			api.events.Publish(models.NewEventResolvedTrigger(event.Namespace, event.Pipeline, event.Label,
-				result,
-				event.TriggerMetadata))
-		} else {
-			result = models.TriggerResult{
-				Details: "API not accepting new events; This is due to operator controlled setting 'IgnorePipelineRunEvents'.",
-				State:   models.TriggerResultStateSkipped,
-			}
-			log.Debug().Msg("skipped event due to IgnorePipelineRunEvents set to false")
-
-			api.events.Publish(models.NewEventResolvedTrigger(event.Namespace, event.Pipeline, event.Label,
-				result,
-				event.TriggerMetadata))
-		}
+		go api.processTriggerEvent(event)
 	}
 
 	return nil
