@@ -309,12 +309,12 @@ func (orch *Orchestrator) GetLogs(gl scheduler.GetLogsRequest) (io.Reader, error
 	}
 
 	go func() {
-		byteCount, err := stdcopy.StdCopy(demuxw, demuxw, out)
+		_, err := stdcopy.StdCopy(demuxw, demuxw, out)
 		if err != nil {
 			log.Error().Err(err).Msg("docker: could not demultiplex/parse log stream")
 		}
 		demuxw.Close()
-		log.Debug().Int64("bytes written", byteCount).Msg("docker: finished demultiplexing")
+		// log.Debug().Int64("bytes written", byteCount).Msg("docker: finished demultiplexing")
 	}()
 
 	return demuxr, nil

@@ -266,7 +266,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 
   📦 Recent Runs
     {{- range $run := .RecentRuns}}
-    • {{ $run.ID }} :: {{ $run.Started }} by trigger {{$run.TriggerLabel}} ({{$run.TriggerName}}) :: {{ $run.StatePrefix }} {{ $run.Lasted }} :: {{ $run.State }}
+    • {{ $run.ID }} :: {{ $run.Started }} by {{$run.TriggerLabel}} ({{$run.TriggerName}}) :: {{ $run.StatePrefix }} {{ $run.Lasted }} :: {{ $run.State }}
     {{- end}}
   {{- end}}
   {{- if .Tasks }}

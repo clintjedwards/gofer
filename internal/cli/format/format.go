@@ -58,9 +58,12 @@ func Duration(start, end int64) string {
 
 	duration := endTime.Sub(startTime)
 
-	truncate := 1 * time.Second
+	if duration > time.Second {
+		truncate := 1 * time.Second
+		return "~" + duration.Truncate(truncate).String()
+	}
 
-	return "~" + duration.Truncate(truncate).String()
+	return "~" + duration.String()
 }
 
 func ColorizePipelineState(state string) string {
