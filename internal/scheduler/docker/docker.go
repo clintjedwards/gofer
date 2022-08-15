@@ -145,8 +145,13 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 	}
 
 	// If the user has passed in commands we replace the entrypoint with those commands.
-	containerConfig.Entrypoint = req.Entrypoint
-	containerConfig.Cmd = req.Command
+	if req.Entrypoint != nil {
+		containerConfig.Entrypoint = *req.Entrypoint
+	}
+
+	if req.Command != nil {
+		containerConfig.Cmd = *req.Command
+	}
 
 	hostConfig := &container.HostConfig{}
 

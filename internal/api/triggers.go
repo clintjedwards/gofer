@@ -447,12 +447,10 @@ func (api *API) processTriggerEvent(event *models.EventFiredTriggerEvent) {
 
 	newRun.ID = runID
 
-	runStateMachine := NewRunStateMachine(&pipeline, newRun)
+	runStateMachine := api.newRunStateMachine(&pipeline, newRun)
 
 	// Make sure the pipeline is ready for a new run.
 	for runStateMachine.parallelismLimitExceeded() {
-		log.Debug().Int64("run", newRun.ID).Int64("limit", pipeline.Parallelism).
-			Msg("parallelism limit exceeded; waiting for runs to end before launching new run")
 		time.Sleep(time.Second * 1)
 	}
 

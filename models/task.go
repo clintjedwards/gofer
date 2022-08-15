@@ -39,8 +39,8 @@ type Task struct {
 	RegistryAuth *RegistryAuth                   `json:"registry_auth"`
 	DependsOn    map[string]RequiredParentStatus `json:"depends_on"`
 	Variables    []Variable                      `json:"variables"`
-	Entrypoint   []string                        `json:"entrypoint"`
-	Command      []string                        `json:"command"`
+	Entrypoint   *[]string                       `json:"entrypoint"`
+	Command      *[]string                       `json:"command"`
 }
 
 func (r *Task) ToProto() *proto.Task {
@@ -54,14 +54,24 @@ func (r *Task) ToProto() *proto.Task {
 		variables = append(variables, v.ToProto())
 	}
 
+	entrypoint := []string{}
+	if r.Entrypoint != nil {
+		entrypoint = *r.Entrypoint
+	}
+
+	command := []string{}
+	if r.Command != nil {
+		command = *r.Command
+	}
+
 	return &proto.Task{
 		Id:          r.ID,
 		Description: r.Description,
 		Image:       r.Image,
 		DependsOn:   dependsOn,
 		Variables:   variables,
-		Entrypoint:  r.Entrypoint,
-		Command:     r.Command,
+		Entrypoint:  entrypoint,
+		Command:     command,
 	}
 }
 
@@ -78,13 +88,23 @@ func (r *Task) FromProto(t *proto.Task) {
 		variables = append(variables, variable)
 	}
 
+	var entrypoint *[]string = nil
+	if len(t.Entrypoint) != 0 {
+		entrypoint = &t.Entrypoint
+	}
+
+	var command *[]string = nil
+	if len(t.Command) != 0 {
+		command = &t.Command
+	}
+
 	r.ID = t.Id
 	r.Description = t.Description
 	r.Image = t.Image
 	r.DependsOn = dependsOn
 	r.Variables = variables
-	r.Entrypoint = t.Entrypoint
-	r.Command = t.Command
+	r.Entrypoint = entrypoint
+	r.Command = command
 }
 
 func FromTaskConfig(t *sdk.Task) Task {

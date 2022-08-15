@@ -46,8 +46,8 @@ type Task struct {
 	RegistryAuth *RegistryAuth                   `json:"registry_auth"`
 	DependsOn    map[string]RequiredParentStatus `json:"depends_on"`
 	Variables    map[string]string               `json:"variables"`
-	Entrypoint   []string                        `json:"entrypoint"`
-	Command      []string                        `json:"command"`
+	Entrypoint   *[]string                       `json:"entrypoint"`
+	Command      *[]string                       `json:"command"`
 }
 
 func NewTask(id, image string) *Task {
@@ -58,7 +58,6 @@ func NewTask(id, image string) *Task {
 		RegistryAuth: nil,
 		DependsOn:    make(map[string]RequiredParentStatus),
 		Variables:    make(map[string]string),
-		Entrypoint:   []string{},
 	}
 }
 
@@ -69,9 +68,20 @@ func (t *Task) FromProto(proto *proto.TaskConfig) {
 		ra.FromProto(proto.RegistryAuth)
 		registryAuth = &ra
 	}
+
 	dependsOn := map[string]RequiredParentStatus{}
 	for id, status := range proto.DependsOn {
 		dependsOn[id] = RequiredParentStatus(status)
+	}
+
+	var entrypoint *[]string = nil
+	if len(proto.Entrypoint) != 0 {
+		entrypoint = &proto.Entrypoint
+	}
+
+	var command *[]string = nil
+	if len(proto.Command) != 0 {
+		command = &proto.Command
 	}
 
 	t.ID = proto.Id
@@ -80,7 +90,8 @@ func (t *Task) FromProto(proto *proto.TaskConfig) {
 	t.RegistryAuth = registryAuth
 	t.DependsOn = dependsOn
 	t.Variables = proto.Variables
-	t.Entrypoint = proto.Entrypoint
+	t.Entrypoint = entrypoint
+	t.Command = command
 }
 
 func (t *Task) validate() error {
@@ -125,12 +136,12 @@ func (t *Task) WithVariables(variables map[string]string) *Task {
 }
 
 func (t *Task) WithEntrypoint(entrypoint []string) *Task {
-	t.Entrypoint = entrypoint
+	t.Entrypoint = &entrypoint
 	return t
 }
 
 func (t *Task) WithCommand(command []string) *Task {
-	t.Command = command
+	t.Command = &command
 	return t
 }
 

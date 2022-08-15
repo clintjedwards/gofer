@@ -137,6 +137,7 @@ func (db *DB) GetCommonTaskRegistration(name string) (models.CommonTaskRegistrat
 
 	var registryAuth *models.RegistryAuth = nil
 	if registryAuthJSON.Valid {
+		registryAuth = &models.RegistryAuth{}
 		err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
 		if err != nil {
 			return models.CommonTaskRegistration{}, fmt.Errorf("database error occurred; could not decode object; %v", err)

@@ -51,6 +51,7 @@ func (db *DB) ListTriggerRegistrations(offset, limit int) ([]models.TriggerRegis
 
 		var registryAuth *models.RegistryAuth = nil
 		if registryAuthJSON.Valid {
+			registryAuth = &models.RegistryAuth{}
 			err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
 			if err != nil {
 				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
@@ -133,6 +134,7 @@ func (db *DB) GetTriggerRegistration(name string) (models.TriggerRegistration, e
 
 	var registryAuth *models.RegistryAuth = nil
 	if registryAuthJSON.Valid {
+		registryAuth = &models.RegistryAuth{}
 		err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
 		if err != nil {
 			return models.TriggerRegistration{}, fmt.Errorf("database error occurred; could not decode object; %v", err)

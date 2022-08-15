@@ -60,7 +60,7 @@ func (api *API) GetCommonTaskInstallInstructions(ctx context.Context, request *p
 		RegistryAuth:     registryAuth,
 		AlwaysPull:       true,
 		EnableNetworking: false,
-		Entrypoint:       []string{"./commontask", "installer"},
+		Entrypoint:       &[]string{"./commontask", "installer"},
 	}
 
 	resp, err := api.scheduler.StartContainer(sc)

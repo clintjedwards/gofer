@@ -49,8 +49,8 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 		var registryAuthJSON sql.NullString
 		var dependsOnJSON string
 		var variablesJSON string
-		var entrypointJSON string
-		var commandJSON string
+		var entrypointJSON sql.NullString
+		var commandJSON sql.NullString
 
 		err = rows.Scan(&id, &description, &image, &registryAuthJSON, &dependsOnJSON, &variablesJSON, &entrypointJSON, &commandJSON)
 		if err != nil {
@@ -59,6 +59,7 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 
 		var registryAuth *models.RegistryAuth = nil
 		if registryAuthJSON.Valid {
+			registryAuth = &models.RegistryAuth{}
 			err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
 			if err != nil {
 				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
@@ -77,16 +78,22 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 			return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
 		}
 
-		entrypoint := []string{}
-		err = json.Unmarshal([]byte(entrypointJSON), &entrypoint)
-		if err != nil {
-			return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
+		var entrypoint *[]string = nil
+		if entrypointJSON.Valid {
+			entrypoint = &[]string{}
+			err = json.Unmarshal([]byte(entrypointJSON.String), &entrypoint)
+			if err != nil {
+				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
+			}
 		}
 
-		command := []string{}
-		err = json.Unmarshal([]byte(commandJSON), &command)
-		if err != nil {
-			return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
+		var command *[]string = nil
+		if commandJSON.Valid {
+			command = &[]string{}
+			err = json.Unmarshal([]byte(commandJSON.String), &command)
+			if err != nil {
+				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
+			}
 		}
 
 		tasks = append(tasks, models.Task{

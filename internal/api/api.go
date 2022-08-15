@@ -326,7 +326,7 @@ func (api *API) findOrphans() {
 	for event := range events {
 		switch event.Kind {
 		case models.EventKindStartedRun:
-			evt, ok := event.Details.(models.EventStartedRun)
+			evt, ok := event.Details.(*models.EventStartedRun)
 			if !ok {
 				log.Error().Interface("event", event).Msg("could not decode event into correct type")
 				continue
@@ -347,7 +347,7 @@ func (api *API) findOrphans() {
 			}
 
 		case models.EventKindCompletedRun:
-			evt, ok := event.Details.(models.EventCompletedRun)
+			evt, ok := event.Details.(*models.EventCompletedRun)
 			if !ok {
 				log.Error().Interface("event", event).Msg("could not decode event into correct type")
 				continue
@@ -399,7 +399,7 @@ func (api *API) repairOrphanRun(namespace, pipelineID string, runID int64) error
 		return err
 	}
 
-	runStateMachine := NewRunStateMachine(&pipeline, &run)
+	runStateMachine := api.newRunStateMachine(&pipeline, &run)
 
 	// For each run we also need to handle the individual task runs.
 	for _, taskrunID := range run.TaskRuns {

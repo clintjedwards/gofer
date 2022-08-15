@@ -49,8 +49,8 @@ type StartContainerRequest struct {
 
 	// Networking is used to communicate to the container via RPC. This is only needed by triggers.
 	EnableNetworking bool
-	Entrypoint       []string
-	Command          []string
+	Entrypoint       *[]string
+	Command          *[]string
 }
 
 type StartContainerResponse struct {

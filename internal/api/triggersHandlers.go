@@ -100,7 +100,7 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 		RegistryAuth:     registryAuth,
 		AlwaysPull:       true,
 		EnableNetworking: false,
-		Entrypoint:       []string{"./trigger", "installer"},
+		Entrypoint:       &[]string{"./trigger", "installer"},
 	}
 
 	resp, err := api.scheduler.StartContainer(sc)

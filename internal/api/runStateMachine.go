@@ -23,11 +23,12 @@ type RunStateMachine struct {
 	StopRuns *atomic.Bool // Used to stop the progression of a run
 }
 
-func NewRunStateMachine(pipeline *models.Pipeline, run *models.Run) *RunStateMachine {
+func (api *API) newRunStateMachine(pipeline *models.Pipeline, run *models.Run) *RunStateMachine {
 	var stopRuns atomic.Bool
 	stopRuns.Store(false)
 
 	return &RunStateMachine{
+		API:      api,
 		Pipeline: pipeline,
 		Run:      run,
 		TaskRuns: syncmap.New[string, models.TaskRun](),
@@ -150,6 +151,10 @@ func (r *RunStateMachine) parallelismLimitExceeded() bool {
 		limit = int64(r.API.config.RunParallelismLimit)
 	}
 
+	if limit == 0 {
+		return false
+	}
+
 	runs, err := r.API.db.ListRuns(nil, 0, 0, r.Pipeline.Namespace, r.Pipeline.ID)
 	if err != nil {
 		return true
@@ -161,6 +166,12 @@ func (r *RunStateMachine) parallelismLimitExceeded() bool {
 		if run.State != models.RunStateComplete {
 			runsInProgress++
 		}
+	}
+
+	if runsInProgress >= limit {
+		log.Debug().Int64("run_id", r.Run.ID).Int64("limit", limit).
+			Int64("currently_in_progress", runsInProgress).
+			Msg("parallelism limit exceeded; waiting for runs to end before launching new run")
 	}
 
 	return runsInProgress >= limit

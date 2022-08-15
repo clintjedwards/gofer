@@ -124,6 +124,11 @@ func (r *Run) ToProto() *proto.Run {
 		variables = append(variables, variable.ToProto())
 	}
 
+	var statusReason *proto.RunStatusReason = nil
+	if r.StatusReason != nil {
+		statusReason = r.StatusReason.ToProto()
+	}
+
 	return &proto.Run{
 		Namespace:           r.Namespace,
 		Pipeline:            r.Pipeline,
@@ -132,7 +137,7 @@ func (r *Run) ToProto() *proto.Run {
 		Ended:               r.Ended,
 		State:               proto.Run_RunState(proto.Run_RunState_value[string(r.State)]),
 		Status:              proto.Run_RunStatus(proto.Run_RunStatus_value[string(r.State)]),
-		StatusReason:        r.StatusReason.ToProto(),
+		StatusReason:        statusReason,
 		TaskRuns:            r.TaskRuns,
 		Trigger:             r.Trigger.ToProto(),
 		Variables:           variables,
@@ -141,8 +146,12 @@ func (r *Run) ToProto() *proto.Run {
 }
 
 func (r *Run) FromProto(proto *proto.Run) {
-	statusReason := &RunStatusReason{}
-	statusReason.FromProto(proto.StatusReason)
+	var statusReason *RunStatusReason = nil
+	if proto.StatusReason != nil {
+		sr := &RunStatusReason{}
+		sr.FromProto(proto.StatusReason)
+		statusReason = sr
+	}
 
 	trigger := TriggerInfo{}
 	trigger.FromProto(proto.Trigger)
