@@ -1,4 +1,4 @@
-# Gofer: Run short-lived jobs easily.
+# [Gofer](./urban_dictionary_gofer.png): Run short-lived jobs easily.
 
 <p align="center">
     <img src="website/static/img/logo-name-hq.png" alt="gofer" width="200"/>
