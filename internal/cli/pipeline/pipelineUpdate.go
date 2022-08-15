@@ -1,205 +1,271 @@
 package pipeline
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"os"
-// 	"strings"
-// 	"time"
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
 
-// 	"github.com/clintjedwards/gofer/internal/cli/cl"
-// 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/clintjedwards/gofer/internal/cli/cl"
+	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/clintjedwards/polyfmt"
+	"github.com/fatih/color"
 
-// 	"github.com/spf13/cobra"
-// 	"google.golang.org/grpc/metadata"
-// )
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
+)
 
-// var cmdPipelineUpdate = &cobra.Command{
-// 	Use:   "update <id> <url|file>",
-// 	Short: "Update pipeline",
-// 	Long: `Update pipeline via pipeline configuration file.
+var cmdPipelineUpdate = &cobra.Command{
+	Use:   "update <id> <path>",
+	Short: "Update pipeline",
+	Long:  `Update pipeline via pipeline configuration.`,
+	Example: `$ gofer pipeline update simple ./example_pipelines/rust/simple
+$ gofer pipeline update simple ./example_pipelines/go/simple`,
+	RunE: pipelineUpdate,
+	Args: cobra.ExactArgs(2),
+}
 
-// Warning! Updating a pipeline requires disabling that pipeline and pausing all trigger events.
-// This may cause those events while the pipeline is being upgraded to be discarded.
+func init() {
+	cmdPipelineUpdate.Flags().BoolP("force", "f", false, "Stop all runs and update pipeline immediately")
+	cmdPipelineUpdate.Flags().BoolP("graceful-stop", "g", false,
+		"Stop all runs gracefully; sends a SIGTERM to all task runs for all in-progress runs and then waits for them to stop.")
+	CmdPipeline.AddCommand(cmdPipelineUpdate)
+}
 
-// Updating a Pipeline requires a "pipeline config file". You can find documentation on how create a pipeline configuration
-// file here: https://clintjedwards.com/gofer/docs/pipeline-configuration/overview
+func pipelineUpdate(cmd *cobra.Command, args []string) error {
+	id := args[0]
+	path := args[1]
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
-// Gofer can accept a configuration file from your local machine or checked into a repository.
+	gracefully, err := cmd.Flags().GetBool("graceful-stop")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
-// Pipeline configuration files can be a single file or broken up into multiple files. Pointing the create command
-// at a single file or folder will both work.
+	cl.State.Fmt.Print("Updating pipeline")
 
-// Remote configuration file syntax is based off hashicorp's go-getter syntax(https://github.com/hashicorp/go-getter#protocol-specific-options).
-// Allowing the user to use many remote protocols and pass in options.
-// `,
-// 	Example: `$ gofer pipeline update aup3gq github.com/clintjedwards/gofer.git//gofer
-// $ gofer pipeline update simple_test_pipeline somefile.hcl
-// $ gofer pipeline update simple_test_pipeline ./gofer/test.hcl`,
-// 	RunE: pipelineUpdate,
-// 	Args: cobra.ExactArgs(2),
-// }
+	conn, err := cl.State.Connect()
+	if err != nil {
+		cl.State.Fmt.PrintErr(err)
+		cl.State.Fmt.Finish()
+		return err
+	}
 
-// func init() {
-// 	cmdPipelineUpdate.Flags().BoolP("force", "f", false, "Stop all runs and update pipeline immediately")
-// 	cmdPipelineUpdate.Flags().BoolP("graceful-stop", "g", false,
-// 		"Stop all runs gracefully; sends a SIGTERM to all task runs for all in-progress runs and then waits for them to stop.")
-// 	CmdPipeline.AddCommand(cmdPipelineUpdate)
-// }
+	client := proto.NewGoferClient(conn)
 
-// func pipelineUpdate(cmd *cobra.Command, args []string) error {
-// 	id := args[0]
-// 	input := args[1]
-// 	force, err := cmd.Flags().GetBool("force")
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return err
-// 	}
+	cl.State.Fmt.Print("Disabling pipeline")
 
-// 	gracefully, err := cmd.Flags().GetBool("graceful-stop")
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return err
-// 	}
+	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	_, err = client.DisablePipeline(ctx, &proto.DisablePipelineRequest{
+		NamespaceId: cl.State.Config.Namespace,
+		Id:          id,
+	})
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not disable pipeline: %v", err))
+		cl.State.Fmt.Finish()
+		return err
+	}
 
-// 	cl.State.Fmt.Print("Updating pipeline")
+	cl.State.Fmt.PrintSuccess("Disabled pipeline")
 
-// 	conn, err := cl.State.Connect()
-// 	if err != nil {
-// 		cl.State.Fmt.PrintErr(err)
-// 		cl.State.Fmt.Finish()
-// 		return err
-// 	}
+	if force {
+		cl.State.Fmt.Print("Force cancelling pipeline runs")
 
-// 	client := proto.NewGoferClient(conn)
+		_, err = client.CancelAllRuns(ctx, &proto.CancelAllRunsRequest{PipelineId: id, Force: true})
+		if err != nil {
+			cl.State.Fmt.PrintErr(fmt.Sprintf("could not force cancel pipeline: %v", err))
+			cl.State.Fmt.Finish()
+			return err
+		}
+	}
 
-// 	cl.State.Fmt.Print("Disabling pipeline")
+	if gracefully {
+		cl.State.Fmt.Print("Cancelling pipeline runs")
 
-// 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
-// 	ctx := metadata.NewOutgoingContext(context.Background(), md)
-// 	_, err = client.DisablePipeline(ctx, &proto.DisablePipelineRequest{
-// 		NamespaceId: cl.State.Config.Namespace,
-// 		Id:          id,
-// 	})
-// 	if err != nil {
-// 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not disable pipeline: %v", err))
-// 		cl.State.Fmt.Finish()
-// 		return err
-// 	}
+		_, err = client.CancelAllRuns(ctx, &proto.CancelAllRunsRequest{PipelineId: id, Force: false})
+		if err != nil {
+			cl.State.Fmt.PrintErr(fmt.Sprintf("could not gracefully cancel pipeline: %v", err))
+			cl.State.Fmt.Finish()
+			return err
+		}
+	}
 
-// 	cl.State.Fmt.PrintSuccess("Disabled pipeline")
+	cl.State.Fmt.Print("Waiting for in-progress runs to stop")
+	for {
+		resp, err := client.ListRuns(ctx, &proto.ListRunsRequest{PipelineId: id, Offset: 0, Limit: 20})
+		if err != nil {
+			cl.State.Fmt.PrintErr(fmt.Sprintf("could not get run list for pipeline: %v", err))
+			time.Sleep(time.Second * 3)
+			continue
+		}
 
-// 	if force {
-// 		cl.State.Fmt.Print("Force cancelling pipeline runs")
+		hasRunningJob := false
+		for _, run := range resp.Runs {
+			if run.State != proto.Run_COMPLETE {
+				hasRunningJob = true
+			}
+		}
 
-// 		_, err = client.CancelAllRuns(ctx, &proto.CancelAllRunsRequest{PipelineId: id, Force: true})
-// 		if err != nil {
-// 			cl.State.Fmt.PrintErr(fmt.Sprintf("could not force cancel pipeline: %v", err))
-// 			cl.State.Fmt.Finish()
-// 			return err
-// 		}
-// 	}
+		if hasRunningJob {
+			time.Sleep(time.Second * 5)
+			continue
+		}
 
-// 	if gracefully {
-// 		cl.State.Fmt.Print("Cancelling pipeline runs")
+		break
+	}
 
-// 		_, err = client.CancelAllRuns(ctx, &proto.CancelAllRunsRequest{PipelineId: id, Force: false})
-// 		if err != nil {
-// 			cl.State.Fmt.PrintErr(fmt.Sprintf("could not gracefully cancel pipeline: %v", err))
-// 			cl.State.Fmt.Finish()
-// 			return err
-// 		}
-// 	}
+	cl.State.Fmt.PrintSuccess("Checked for runs in-progress")
 
-// 	cl.State.Fmt.Print("Waiting for in-progress runs to stop")
-// 	for {
-// 		resp, err := client.ListRuns(ctx, &proto.ListRunsRequest{PipelineId: id, Offset: 0, Limit: 10})
-// 		if err != nil {
-// 			cl.State.Fmt.PrintErr(fmt.Sprintf("could not get run list for pipeline: %v", err))
-// 			time.Sleep(time.Second * 3)
-// 			continue
-// 		}
+	cl.State.Fmt.Print("Updating pipeline")
 
-// 		hasRunningJob := false
-// 		for _, run := range resp.Runs {
-// 			if run.State != proto.Run_FAILED && run.State != proto.Run_CANCELLED && run.State != proto.Run_SUCCESS {
-// 				hasRunningJob = true
-// 			}
-// 		}
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not find absolute path for given path %q; %v", path, err))
+		cl.State.Fmt.Finish()
+		return err
+	}
 
-// 		if hasRunningJob {
-// 			time.Sleep(time.Second * 5)
-// 			continue
-// 		}
+	language, err := detectLanguage(absolutePath)
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not determine language for %q; %v", path, err))
+		cl.State.Fmt.Finish()
+		return err
+	}
 
-// 		break
-// 	}
+	var buildCmd *exec.Cmd
 
-// 	cl.State.Fmt.PrintSuccess("Checked for runs in-progress")
+	switch language {
+	case configLanguageGolang:
+		buildCmd = golangBuildCmd(absolutePath)
+	case configLanguageRust:
+		buildCmd = rustBuildCmd(absolutePath)
+	}
 
-// 	cl.State.Fmt.Print("Updating pipeline")
-// 	if strings.HasSuffix(strings.ToLower(input), ".hcl") {
-// 		file, err := os.ReadFile(input)
-// 		if err != nil {
-// 			cl.State.Fmt.PrintErr(fmt.Sprintf("could not read file: %v", err))
-// 			cl.State.Fmt.Finish()
-// 			return err
-// 		}
+	stderr, err := buildCmd.StderrPipe()
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not read output from cmd; %v", err))
+		cl.State.Fmt.Finish()
+		return err
+	}
+	stdout, err := buildCmd.StdoutPipe()
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not read output from cmd; %v", err))
+		cl.State.Fmt.Finish()
+		return err
+	}
 
-// 		resp, err := client.UpdatePipelineRaw(ctx, &proto.UpdatePipelineRawRequest{
-// 			Id:      id,
-// 			Content: file,
-// 			Path:    input,
-// 		})
-// 		if err != nil {
-// 			cl.State.Fmt.PrintErr(fmt.Sprintf("could not update pipeline: %v", err))
-// 			cl.State.Fmt.Finish()
-// 			return err
-// 		}
+	merged := io.MultiReader(stderr, stdout)
+	scanner := bufio.NewScanner(merged)
+	lines := make(chan string, 2000)
 
-// 		cl.State.Fmt.PrintSuccess(fmt.Sprintf("Updated pipeline: [%s] %q", resp.Pipeline.Id, resp.Pipeline.Name))
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			line = strings.TrimSpace(line)
+			lines <- line // Put the line into the lines buffer before truncating it.
 
-// 		cl.State.Fmt.Print("Enabling pipeline")
+			// Truncate the line so that it fits better in small command lines.
+			if len(line) > 80 {
+				line = line[:80]
+			}
+			cl.State.Fmt.Print(fmt.Sprintf("Building config: %s", line), polyfmt.Pretty)
+		}
+		close(lines)
+	}()
 
-// 		_, err = client.EnablePipeline(ctx, &proto.EnablePipelineRequest{
-// 			Id: id,
-// 		})
-// 		if err != nil {
-// 			cl.State.Fmt.PrintErr(fmt.Sprintf("could not enable pipeline: %v", err))
-// 			cl.State.Fmt.Finish()
-// 			return err
-// 		}
+	err = buildCmd.Run()
+	if err != nil {
+		cl.State.Fmt.PrintErr("Could not successfully build target pipeline; Examine partial error output below:\n...")
 
-// 		cl.State.Fmt.PrintSuccess("Enabled pipeline")
-// 		cl.State.Fmt.Finish()
-// 		return nil
-// 	}
+		linesList := []string{}
 
-// 	resp, err := client.UpdatePipelineByURL(ctx, &proto.UpdatePipelineByURLRequest{
-// 		Id:  id,
-// 		Url: input,
-// 	})
-// 	if err != nil {
-// 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not update pipeline: %v", err))
-// 		cl.State.Fmt.Finish()
-// 		return err
-// 	}
+		for line := range lines {
+			linesList = append(linesList, line)
+		}
 
-// 	cl.State.Fmt.PrintSuccess(fmt.Sprintf("Updated pipeline: [%s] %q", resp.Pipeline.Id, resp.Pipeline.Name))
+		if len(linesList) == 0 {
+			lines <- "No output found for this pipeline build"
+		}
 
-// 	cl.State.Fmt.Print("Enabling pipeline")
+		if len(linesList) > 15 {
+			linesList = linesList[:15]
+		}
 
-// 	_, err = client.EnablePipeline(ctx, &proto.EnablePipelineRequest{
-// 		Id: id,
-// 	})
-// 	if err != nil {
-// 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not enable pipeline: %v", err))
-// 		cl.State.Fmt.Finish()
-// 		return err
-// 	}
+		for _, line := range linesList {
+			cl.State.Fmt.Println(fmt.Sprintf("  %s", line))
+		}
 
-// 	cl.State.Fmt.PrintSuccess("Enabled pipeline")
-// 	cl.State.Fmt.Finish()
+		switch language {
+		case configLanguageRust:
+			cl.State.Fmt.Println(fmt.Sprintf("...\nView full error output: %s", color.CyanString(rustCmdString(path))))
+		case configLanguageGolang:
+			cl.State.Fmt.Println(fmt.Sprintf("...\nView full error output: %s", color.CyanString(golangCmdString(path))))
+		}
+		cl.State.Fmt.Finish()
+		return err
+	}
 
-// 	return nil
-// }
+	cl.State.Fmt.Print("Parsing pipeline config")
+
+	linesList := []string{}
+
+	for line := range lines {
+		linesList = append(linesList, line)
+	}
+
+	if len(linesList) == 0 {
+		cl.State.Fmt.PrintErr("No lines found in output")
+		cl.State.Fmt.Finish()
+		return err
+	}
+
+	lastLine := linesList[len(linesList)-1]
+
+	pipelineConfig := proto.PipelineConfig{}
+
+	err = json.Unmarshal([]byte(lastLine), &pipelineConfig)
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("Could not parse pipeline config; %v", err))
+		cl.State.Fmt.Finish()
+		return err
+	}
+
+	resp, err := client.UpdatePipeline(ctx, &proto.UpdatePipelineRequest{
+		NamespaceId:    cl.State.Config.Namespace,
+		PipelineConfig: &pipelineConfig,
+	})
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not update pipeline: %v", err))
+		cl.State.Fmt.Finish()
+		return err
+	}
+
+	cl.State.Fmt.PrintSuccess(fmt.Sprintf("Updated pipeline: [%s] %q", resp.Pipeline.Id, resp.Pipeline.Name))
+
+	cl.State.Fmt.Print("Enabling pipeline")
+
+	_, err = client.EnablePipeline(ctx, &proto.EnablePipelineRequest{
+		Id: id,
+	})
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not enable pipeline: %v", err))
+		cl.State.Fmt.Finish()
+		return err
+	}
+
+	cl.State.Fmt.PrintSuccess("Enabled pipeline")
+	cl.State.Fmt.Finish()
+
+	return nil
+}

@@ -43,7 +43,7 @@ func pipelineStorePut(cmd *cobra.Command, args []string) error {
 	key, value, ok := strings.Cut(keyValueStr, "=")
 	if !ok {
 		fmt.Println("Key-value pair malformed; should be key=value")
-		return fmt.Errorf("Key-value pair malformed; should be key=value")
+		return fmt.Errorf("key-value pair malformed; should be key=value")
 	}
 
 	force, err := cmd.Flags().GetBool("force")
