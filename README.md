@@ -5,50 +5,31 @@
 </p>
 
 [![godoc for clintjedwards/gofer][godoc-badge]][godoc-url]
-[![goreportcard for clintjedwards/gofer][goreport-badge]][goreport-url]
 [![docs site][website-badge]][website-url]
 [![project status][project-status]][project-status]
 
 Gofer is a simple, opinionated, cloud-native, container-focused, continuous thing do-er.
 
-- Deploy it as a single static binary
-- Pass it declarative configuration
-- Watch as it automatically handles scheduling of your short-term automation workloads.
+## Features:
 
-It uses a philosophy similar to [concourse][concourse-url], leveraging the docker container as a key mechanism
-to run short-lived workloads. The benefits of this is _simplicity_. No foreign agents, no cluster setup, no yaml mess,
-everything is based on the primitive of running a container.
+- Deploy it as a single static binary
+- Write your pipelines in **Go** or **Rust**
+- Pluggable: Write your own triggers, shared tasks, and more in any language (through GRPC).
+- DAG(Directed Acyclic Graph) support.
+- Reliability tooling: A/B test, version, and canary new pipelines.
+- Bring your own everything! Secret store, object store, container scheduler. Gofer has the interfaces to support all of them.
+
+## Philosophy:
+
+It uses a philosophy similar to [concourse][concourse-url], leveraging the industry popular Docker container as the packaging method for code running on infrastructure. The benefits of this is _simplicity_. No foreign agents, no cluster setup, no yaml mess. Everything is based on running a container, mirroring what most companies already understand and use on a day to day basis.
+
+[You can read more about Gofer and it's philosophy here.](https://clintjedwards.com/gofer/docs/intro)
+
+## Demo:
 
 <a href="https://asciinema.org/a/459946">
     <img src="demo.png" title="Click on image for demo" />
 </a>
-
-Gofer provides several key features that differ from traditional CI/CD philosophy:
-
-- **Opinionated**: Gofer follows [cloud-native best practices][12factor-url] for configuring and running your short-lived
-  jobs. Avoiding the swiss army knife of mess that most CD/CD tools give and instead focuses on delivering an experience where you can be happy with; strong, well-supported core functionality and practices.
-
-- **Pluggable**: Gofer provides pluggable interfaces to run on all your favorite cloud-native tooling. The default service
-  is easily run locally making it easy to develop against or troubleshoot. More advanced setups can leverage your
-  favorite container orchestrator, object store, and more.
-
-- **DAG(Directed Acyclic Graph) support**: Run simple or complex graphs of containers to accomplish your tasks
-  with full DAG support.
-
-  - Run containers in parallel.
-  - Wait on the result of other containers.
-  - Allow the result of other containers to dictate which downstream containers will run.
-
-- **One abstraction layer above the norm**: Many modern "ci/cd/ETL/thing do-er" tools focus specifically
-  on the concept of git-ops. This makes them in-flexible for workloads that require a different paradigm of operation.
-
-  Instead Gofer operates one abstration layer above these tools, offering what those tools as a optional feature. This and allowing the developer to choose what works best for them. The result is the ability for pipeline owners to possess the same values (stability, predictability, reliability) that brings their familiar long-running services success.
-
-  - The ability to properly version.
-  - A/B test.
-  - [Canary][canarying-url] out new versions!
-
-[You can read more about Gofer and it's philosophy here.](https://clintjedwards.com/gofer/docs/intro)
 
 ## Documentation & Getting Started
 
@@ -94,8 +75,7 @@ This software is provided as-is. It's a hobby project, done in my free time, and
 [godoc-badge]: https://pkg.go.dev/badge/github.com/clintjedwards/gofer
 [godoc-url]: https://pkg.go.dev/github.com/clintjedwards/gofer
 [goreport-badge]: https://goreportcard.com/badge/github.com/clintjedwards/gofer
-[goreport-url]: https://goreportcard.com/report/clintjedwards/gofer
-[website-badge]: https://img.shields.io/badge/docs-learn%20more-3498db
+[website-badge]: https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square
 [website-url]: https://clintjedwards.github.io/gofer
 [concourse-url]: https://concourse-ci.org/
 [canarying-url]: https://sre.google/workbook/canarying-releases/

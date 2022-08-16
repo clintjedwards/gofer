@@ -162,3 +162,4 @@
 - Restore CLI config init
 - Polyfmt needs to move the filter to be a builder function and the provide stringf functions.
 - We need a list objects for run objects and pipeline objects.
+- Replace blurry png for readme.

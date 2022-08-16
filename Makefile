@@ -12,7 +12,7 @@ VERSION = ${SEMVER}_${GIT_COMMIT}
 build: check-path-included check-semver-included build-protos
 	go test ./... -race
 	go mod tidy
-	CGO_ENABLED=0 go build -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
+	CGO_ENABLED=1 go build -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
 
 ## build-protos: build protobufs
 build-protos:
