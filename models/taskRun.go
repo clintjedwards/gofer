@@ -20,10 +20,10 @@ type TaskRunStatus string
 
 const (
 	TaskRunStatusUnknown    TaskRunStatus = "UNKNOWN"
-	TaskRunStatusFailed     TaskRunStatus = "FAILED"    // Has encountered an issue, either container issue or scheduling issue.
-	TaskRunStatusSuccessful TaskRunStatus = "SUCCESS"   // Finished with a proper error code.
-	TaskRunStatusCancelled  TaskRunStatus = "CANCELLED" // Cancelled mid run due to user requested cancellation.
-	TaskRunStatusSkipped    TaskRunStatus = "SKIPPED"   // Not run due to dependencies not being met.
+	TaskRunStatusFailed     TaskRunStatus = "FAILED"     // Has encountered an issue, either container issue or scheduling issue.
+	TaskRunStatusSuccessful TaskRunStatus = "SUCCESSFUL" // Finished with a proper error code.
+	TaskRunStatusCancelled  TaskRunStatus = "CANCELLED"  // Cancelled mid run due to user requested cancellation.
+	TaskRunStatusSkipped    TaskRunStatus = "SKIPPED"    // Not run due to dependencies not being met.
 )
 
 type TaskRunStatusReasonKind string
@@ -107,6 +107,21 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		variables = append(variables, variable.ToProto())
 	}
 
+	var statusReason *proto.TaskRunStatusReason = nil
+	if r.StatusReason != nil {
+		statusReason = r.StatusReason.ToProto()
+	}
+
+	var exitCode int64 = 155
+	if r.ExitCode != nil {
+		exitCode = *r.ExitCode
+	}
+
+	schedulerID := ""
+	if r.SchedulerID != nil {
+		schedulerID = *r.SchedulerID
+	}
+
 	return &proto.TaskRun{
 		Namespace:    r.Namespace,
 		Pipeline:     r.Pipeline,
@@ -115,21 +130,25 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		Created:      r.Created,
 		Started:      r.Started,
 		Ended:        r.Ended,
-		ExitCode:     int64(*r.ExitCode),
-		StatusReason: r.StatusReason.ToProto(),
+		ExitCode:     exitCode,
+		StatusReason: statusReason,
 		LogsExpired:  r.LogsExpired,
 		LogsRemoved:  r.LogsRemoved,
 		State:        proto.TaskRun_TaskRunState(proto.TaskRun_TaskRunState_value[string(r.State)]),
 		Status:       proto.TaskRun_TaskRunStatus(proto.TaskRun_TaskRunStatus_value[string(r.Status)]),
-		SchedulerId:  *r.SchedulerID,
+		SchedulerId:  schedulerID,
 		Variables:    variables,
 		Task:         r.Task.ToProto(),
 	}
 }
 
 func (r *TaskRun) FromProto(proto *proto.TaskRun) {
-	statusReason := &TaskRunStatusReason{}
-	statusReason.FromProto(proto.StatusReason)
+	var statusReason *TaskRunStatusReason = nil
+	if proto.StatusReason != nil {
+		sr := &TaskRunStatusReason{}
+		sr.FromProto(proto.StatusReason)
+		statusReason = sr
+	}
 
 	variables := []Variable{}
 	for _, variable := range proto.Variables {

@@ -136,7 +136,7 @@ func (r *Run) ToProto() *proto.Run {
 		Started:             r.Started,
 		Ended:               r.Ended,
 		State:               proto.Run_RunState(proto.Run_RunState_value[string(r.State)]),
-		Status:              proto.Run_RunStatus(proto.Run_RunStatus_value[string(r.State)]),
+		Status:              proto.Run_RunStatus(proto.Run_RunStatus_value[string(r.Status)]),
 		StatusReason:        statusReason,
 		TaskRuns:            r.TaskRuns,
 		Trigger:             r.Trigger.ToProto(),

@@ -140,8 +140,6 @@ func (db *DB) InsertTaskRun(taskRun *models.TaskRun) error {
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
 	}
 
-	fmt.Println("TEST", string(variablesJSON))
-
 	_, err = qb.Insert("task_runs").Columns("namespace", "pipeline", "run", "id", "created", "started", "ended",
 		"exit_code", "logs_expired", "logs_removed", "state", "status", "status_reason", "task", "scheduler_id",
 		"variables").Values(

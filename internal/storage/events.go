@@ -47,6 +47,14 @@ func (db *DB) ListEvents(offset, limit int, reverse bool) ([]models.Event, error
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
 
+		// TODO(clintjedwards): There is a known data race condition here that is safe
+		// but the go data race detector will squawk. What happens is the interface
+		// object below gets read in and passed to the calling function.
+		// That function will usually then pass that reference to other functions
+		// and then at some point read. This is technically a data race since the memory
+		// is access in a read/write fashion in two separate threads, but not an issue
+		// for us since we only do one read/write cycle and that write can only occur
+		// before any reads.
 		details := models.EventKindMap[models.EventKind(kind)]
 		err := json.Unmarshal([]byte(detailsJSON), &details)
 		if err != nil {

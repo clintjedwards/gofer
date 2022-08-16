@@ -23,6 +23,11 @@ build-protos:
 ## run: build application and run server
 run: export DEBUG=true
 run:
+	go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME} && /tmp/${APP_NAME} service start
+
+## run-race: build application and run server with race detector
+run-race: export DEBUG=true
+run-race:
 	go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME} && /tmp/${APP_NAME} service start
 
 ## run-website: build website js and run dev server

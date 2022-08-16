@@ -326,6 +326,10 @@ func (api *API) findOrphans() {
 	for event := range events {
 		switch event.Kind {
 		case models.EventKindStartedRun:
+			// TODO(clintjedwards): This causes the data race alert to be angry,
+			// but in theory it should be fine as we only read and write from
+			// the var once. Need to find a way to pass trait objects without
+			// Go complaining that other things can access them.
 			evt, ok := event.Details.(*models.EventStartedRun)
 			if !ok {
 				log.Error().Interface("event", event).Msg("could not decode event into correct type")

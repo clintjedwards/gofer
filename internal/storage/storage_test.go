@@ -241,13 +241,15 @@ func TestCRUDRuns(t *testing.T) {
 	}
 
 	err = db.UpdateRun(namespace.ID, pipeline.ID, fetchedRun.ID, UpdatableRunFields{
-		State: ptr(models.RunStateComplete),
+		State:  ptr(models.RunStateComplete),
+		Status: ptr(models.RunStatusSuccessful),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	run.State = models.RunStateComplete
+	run.Status = models.RunStatusSuccessful
 
 	fetchedRun, err = db.GetRun(namespace.ID, pipeline.ID, run.ID)
 	if err != nil {
