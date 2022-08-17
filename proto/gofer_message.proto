@@ -318,3 +318,13 @@ message TriggerResult {
   Status status = 1;
   string details = 2;
 }
+
+message SecretStoreKey {
+  string key = 1;
+  int64 created = 2;
+}
+
+message ObjectStoreKey {
+  string key = 1;
+  int64 created = 2;
+}

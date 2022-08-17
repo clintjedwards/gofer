@@ -6438,18 +6438,19 @@ func (*DeleteRunObjectResponse) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{121}
 }
 
-type GetSecretRequest struct {
+type GetPipelineSecretRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
-	PipelineId  string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
-	Key         string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+	NamespaceId   string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
+	PipelineId    string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	Key           string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+	IncludeSecret bool   `protobuf:"varint,4,opt,name=include_secret,json=includeSecret,proto3" json:"include_secret,omitempty"` // Whether to include plaintext secret
 }
 
-func (x *GetSecretRequest) Reset() {
-	*x = GetSecretRequest{}
+func (x *GetPipelineSecretRequest) Reset() {
+	*x = GetPipelineSecretRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[122]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6457,13 +6458,13 @@ func (x *GetSecretRequest) Reset() {
 	}
 }
 
-func (x *GetSecretRequest) String() string {
+func (x *GetPipelineSecretRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSecretRequest) ProtoMessage() {}
+func (*GetPipelineSecretRequest) ProtoMessage() {}
 
-func (x *GetSecretRequest) ProtoReflect() protoreflect.Message {
+func (x *GetPipelineSecretRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[122]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6475,42 +6476,50 @@ func (x *GetSecretRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetSecretRequest.ProtoReflect.Descriptor instead.
-func (*GetSecretRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetPipelineSecretRequest.ProtoReflect.Descriptor instead.
+func (*GetPipelineSecretRequest) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{122}
 }
 
-func (x *GetSecretRequest) GetNamespaceId() string {
+func (x *GetPipelineSecretRequest) GetNamespaceId() string {
 	if x != nil {
 		return x.NamespaceId
 	}
 	return ""
 }
 
-func (x *GetSecretRequest) GetPipelineId() string {
+func (x *GetPipelineSecretRequest) GetPipelineId() string {
 	if x != nil {
 		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *GetSecretRequest) GetKey() string {
+func (x *GetPipelineSecretRequest) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-type GetSecretResponse struct {
+func (x *GetPipelineSecretRequest) GetIncludeSecret() bool {
+	if x != nil {
+		return x.IncludeSecret
+	}
+	return false
+}
+
+type GetPipelineSecretResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	Metadata *SecretStoreKey `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Secret   string          `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
 }
 
-func (x *GetSecretResponse) Reset() {
-	*x = GetSecretResponse{}
+func (x *GetPipelineSecretResponse) Reset() {
+	*x = GetPipelineSecretResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[123]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6518,13 +6527,13 @@ func (x *GetSecretResponse) Reset() {
 	}
 }
 
-func (x *GetSecretResponse) String() string {
+func (x *GetPipelineSecretResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetSecretResponse) ProtoMessage() {}
+func (*GetPipelineSecretResponse) ProtoMessage() {}
 
-func (x *GetSecretResponse) ProtoReflect() protoreflect.Message {
+func (x *GetPipelineSecretResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[123]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6536,32 +6545,36 @@ func (x *GetSecretResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetSecretResponse.ProtoReflect.Descriptor instead.
-func (*GetSecretResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetPipelineSecretResponse.ProtoReflect.Descriptor instead.
+func (*GetPipelineSecretResponse) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{123}
 }
 
-func (x *GetSecretResponse) GetContent() string {
+func (x *GetPipelineSecretResponse) GetMetadata() *SecretStoreKey {
 	if x != nil {
-		return x.Content
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *GetPipelineSecretResponse) GetSecret() string {
+	if x != nil {
+		return x.Secret
 	}
 	return ""
 }
 
-type PutSecretRequest struct {
+type ListPipelineSecretsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
 	PipelineId  string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
-	Key         string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
-	Content     string `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
-	Force       bool   `protobuf:"varint,5,opt,name=force,proto3" json:"force,omitempty"` // Overwrites an already existing value.
 }
 
-func (x *PutSecretRequest) Reset() {
-	*x = PutSecretRequest{}
+func (x *ListPipelineSecretsRequest) Reset() {
+	*x = ListPipelineSecretsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[124]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6569,13 +6582,13 @@ func (x *PutSecretRequest) Reset() {
 	}
 }
 
-func (x *PutSecretRequest) String() string {
+func (x *ListPipelineSecretsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PutSecretRequest) ProtoMessage() {}
+func (*ListPipelineSecretsRequest) ProtoMessage() {}
 
-func (x *PutSecretRequest) ProtoReflect() protoreflect.Message {
+func (x *ListPipelineSecretsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[124]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6587,57 +6600,35 @@ func (x *PutSecretRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PutSecretRequest.ProtoReflect.Descriptor instead.
-func (*PutSecretRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListPipelineSecretsRequest.ProtoReflect.Descriptor instead.
+func (*ListPipelineSecretsRequest) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{124}
 }
 
-func (x *PutSecretRequest) GetNamespaceId() string {
+func (x *ListPipelineSecretsRequest) GetNamespaceId() string {
 	if x != nil {
 		return x.NamespaceId
 	}
 	return ""
 }
 
-func (x *PutSecretRequest) GetPipelineId() string {
+func (x *ListPipelineSecretsRequest) GetPipelineId() string {
 	if x != nil {
 		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *PutSecretRequest) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *PutSecretRequest) GetContent() string {
-	if x != nil {
-		return x.Content
-	}
-	return ""
-}
-
-func (x *PutSecretRequest) GetForce() bool {
-	if x != nil {
-		return x.Force
-	}
-	return false
-}
-
-type PutSecretResponse struct {
+type ListPipelineSecretsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The number of bytes uploaded.
-	Bytes int64 `protobuf:"varint,1,opt,name=bytes,proto3" json:"bytes,omitempty"`
+	Keys []*SecretStoreKey `protobuf:"bytes,1,rep,name=keys,proto3" json:"keys,omitempty"`
 }
 
-func (x *PutSecretResponse) Reset() {
-	*x = PutSecretResponse{}
+func (x *ListPipelineSecretsResponse) Reset() {
+	*x = ListPipelineSecretsResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[125]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6645,13 +6636,13 @@ func (x *PutSecretResponse) Reset() {
 	}
 }
 
-func (x *PutSecretResponse) String() string {
+func (x *ListPipelineSecretsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PutSecretResponse) ProtoMessage() {}
+func (*ListPipelineSecretsResponse) ProtoMessage() {}
 
-func (x *PutSecretResponse) ProtoReflect() protoreflect.Message {
+func (x *ListPipelineSecretsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[125]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6663,19 +6654,19 @@ func (x *PutSecretResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PutSecretResponse.ProtoReflect.Descriptor instead.
-func (*PutSecretResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListPipelineSecretsResponse.ProtoReflect.Descriptor instead.
+func (*ListPipelineSecretsResponse) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{125}
 }
 
-func (x *PutSecretResponse) GetBytes() int64 {
+func (x *ListPipelineSecretsResponse) GetKeys() []*SecretStoreKey {
 	if x != nil {
-		return x.Bytes
+		return x.Keys
 	}
-	return 0
+	return nil
 }
 
-type DeleteSecretRequest struct {
+type PutPipelineSecretRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -6683,10 +6674,12 @@ type DeleteSecretRequest struct {
 	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
 	PipelineId  string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
 	Key         string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+	Content     string `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
+	Force       bool   `protobuf:"varint,5,opt,name=force,proto3" json:"force,omitempty"` // Overwrites an already existing value.
 }
 
-func (x *DeleteSecretRequest) Reset() {
-	*x = DeleteSecretRequest{}
+func (x *PutPipelineSecretRequest) Reset() {
+	*x = PutPipelineSecretRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[126]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6694,13 +6687,13 @@ func (x *DeleteSecretRequest) Reset() {
 	}
 }
 
-func (x *DeleteSecretRequest) String() string {
+func (x *PutPipelineSecretRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteSecretRequest) ProtoMessage() {}
+func (*PutPipelineSecretRequest) ProtoMessage() {}
 
-func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
+func (x *PutPipelineSecretRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[126]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6712,40 +6705,57 @@ func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSecretRequest.ProtoReflect.Descriptor instead.
-func (*DeleteSecretRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use PutPipelineSecretRequest.ProtoReflect.Descriptor instead.
+func (*PutPipelineSecretRequest) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{126}
 }
 
-func (x *DeleteSecretRequest) GetNamespaceId() string {
+func (x *PutPipelineSecretRequest) GetNamespaceId() string {
 	if x != nil {
 		return x.NamespaceId
 	}
 	return ""
 }
 
-func (x *DeleteSecretRequest) GetPipelineId() string {
+func (x *PutPipelineSecretRequest) GetPipelineId() string {
 	if x != nil {
 		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *DeleteSecretRequest) GetKey() string {
+func (x *PutPipelineSecretRequest) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-type DeleteSecretResponse struct {
+func (x *PutPipelineSecretRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *PutPipelineSecretRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+type PutPipelineSecretResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	// The number of bytes uploaded.
+	Bytes int64 `protobuf:"varint,1,opt,name=bytes,proto3" json:"bytes,omitempty"`
 }
 
-func (x *DeleteSecretResponse) Reset() {
-	*x = DeleteSecretResponse{}
+func (x *PutPipelineSecretResponse) Reset() {
+	*x = PutPipelineSecretResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[127]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6753,13 +6763,13 @@ func (x *DeleteSecretResponse) Reset() {
 	}
 }
 
-func (x *DeleteSecretResponse) String() string {
+func (x *PutPipelineSecretResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteSecretResponse) ProtoMessage() {}
+func (*PutPipelineSecretResponse) ProtoMessage() {}
 
-func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
+func (x *PutPipelineSecretResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[127]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6771,9 +6781,508 @@ func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSecretResponse.ProtoReflect.Descriptor instead.
-func (*DeleteSecretResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use PutPipelineSecretResponse.ProtoReflect.Descriptor instead.
+func (*PutPipelineSecretResponse) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{127}
+}
+
+func (x *PutPipelineSecretResponse) GetBytes() int64 {
+	if x != nil {
+		return x.Bytes
+	}
+	return 0
+}
+
+type DeletePipelineSecretRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Unique namespace identifier
+	PipelineId  string `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	Key         string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+}
+
+func (x *DeletePipelineSecretRequest) Reset() {
+	*x = DeletePipelineSecretRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[128]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeletePipelineSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePipelineSecretRequest) ProtoMessage() {}
+
+func (x *DeletePipelineSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[128]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePipelineSecretRequest.ProtoReflect.Descriptor instead.
+func (*DeletePipelineSecretRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{128}
+}
+
+func (x *DeletePipelineSecretRequest) GetNamespaceId() string {
+	if x != nil {
+		return x.NamespaceId
+	}
+	return ""
+}
+
+func (x *DeletePipelineSecretRequest) GetPipelineId() string {
+	if x != nil {
+		return x.PipelineId
+	}
+	return ""
+}
+
+func (x *DeletePipelineSecretRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+type DeletePipelineSecretResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *DeletePipelineSecretResponse) Reset() {
+	*x = DeletePipelineSecretResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[129]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeletePipelineSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePipelineSecretResponse) ProtoMessage() {}
+
+func (x *DeletePipelineSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[129]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePipelineSecretResponse.ProtoReflect.Descriptor instead.
+func (*DeletePipelineSecretResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{129}
+}
+
+type GetGlobalSecretRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key           string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	IncludeSecret bool   `protobuf:"varint,2,opt,name=include_secret,json=includeSecret,proto3" json:"include_secret,omitempty"` // Whether to include plaintext secret
+}
+
+func (x *GetGlobalSecretRequest) Reset() {
+	*x = GetGlobalSecretRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[130]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetGlobalSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGlobalSecretRequest) ProtoMessage() {}
+
+func (x *GetGlobalSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[130]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGlobalSecretRequest.ProtoReflect.Descriptor instead.
+func (*GetGlobalSecretRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{130}
+}
+
+func (x *GetGlobalSecretRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *GetGlobalSecretRequest) GetIncludeSecret() bool {
+	if x != nil {
+		return x.IncludeSecret
+	}
+	return false
+}
+
+type GetGlobalSecretResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Metadata *SecretStoreKey `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Secret   string          `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
+}
+
+func (x *GetGlobalSecretResponse) Reset() {
+	*x = GetGlobalSecretResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[131]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetGlobalSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGlobalSecretResponse) ProtoMessage() {}
+
+func (x *GetGlobalSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[131]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGlobalSecretResponse.ProtoReflect.Descriptor instead.
+func (*GetGlobalSecretResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{131}
+}
+
+func (x *GetGlobalSecretResponse) GetMetadata() *SecretStoreKey {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *GetGlobalSecretResponse) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+type ListGlobalSecretsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ListGlobalSecretsRequest) Reset() {
+	*x = ListGlobalSecretsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[132]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListGlobalSecretsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGlobalSecretsRequest) ProtoMessage() {}
+
+func (x *ListGlobalSecretsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[132]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGlobalSecretsRequest.ProtoReflect.Descriptor instead.
+func (*ListGlobalSecretsRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{132}
+}
+
+type ListGlobalSecretsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Keys []*SecretStoreKey `protobuf:"bytes,1,rep,name=keys,proto3" json:"keys,omitempty"`
+}
+
+func (x *ListGlobalSecretsResponse) Reset() {
+	*x = ListGlobalSecretsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[133]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListGlobalSecretsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGlobalSecretsResponse) ProtoMessage() {}
+
+func (x *ListGlobalSecretsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[133]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGlobalSecretsResponse.ProtoReflect.Descriptor instead.
+func (*ListGlobalSecretsResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{133}
+}
+
+func (x *ListGlobalSecretsResponse) GetKeys() []*SecretStoreKey {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+type PutGlobalSecretRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key     string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Content string `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	Force   bool   `protobuf:"varint,3,opt,name=force,proto3" json:"force,omitempty"` // Overwrites an already existing value.
+}
+
+func (x *PutGlobalSecretRequest) Reset() {
+	*x = PutGlobalSecretRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[134]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PutGlobalSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutGlobalSecretRequest) ProtoMessage() {}
+
+func (x *PutGlobalSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[134]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutGlobalSecretRequest.ProtoReflect.Descriptor instead.
+func (*PutGlobalSecretRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{134}
+}
+
+func (x *PutGlobalSecretRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *PutGlobalSecretRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *PutGlobalSecretRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+type PutGlobalSecretResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The number of bytes uploaded.
+	Bytes int64 `protobuf:"varint,1,opt,name=bytes,proto3" json:"bytes,omitempty"`
+}
+
+func (x *PutGlobalSecretResponse) Reset() {
+	*x = PutGlobalSecretResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[135]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PutGlobalSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutGlobalSecretResponse) ProtoMessage() {}
+
+func (x *PutGlobalSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[135]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutGlobalSecretResponse.ProtoReflect.Descriptor instead.
+func (*PutGlobalSecretResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{135}
+}
+
+func (x *PutGlobalSecretResponse) GetBytes() int64 {
+	if x != nil {
+		return x.Bytes
+	}
+	return 0
+}
+
+type DeleteGlobalSecretRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+}
+
+func (x *DeleteGlobalSecretRequest) Reset() {
+	*x = DeleteGlobalSecretRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[136]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeleteGlobalSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteGlobalSecretRequest) ProtoMessage() {}
+
+func (x *DeleteGlobalSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[136]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteGlobalSecretRequest.ProtoReflect.Descriptor instead.
+func (*DeleteGlobalSecretRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{136}
+}
+
+func (x *DeleteGlobalSecretRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+type DeleteGlobalSecretResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *DeleteGlobalSecretResponse) Reset() {
+	*x = DeleteGlobalSecretResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[137]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeleteGlobalSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteGlobalSecretResponse) ProtoMessage() {}
+
+func (x *DeleteGlobalSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[137]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteGlobalSecretResponse.ProtoReflect.Descriptor instead.
+func (*DeleteGlobalSecretResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{137}
 }
 
 var File_gofer_transport_proto protoreflect.FileDescriptor
@@ -7380,40 +7889,91 @@ var file_gofer_transport_proto_rawDesc = []byte{
 	0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x19, 0x0a, 0x17, 0x44, 0x65, 0x6c, 0x65,
 	0x74, 0x65, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x22, 0x68, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73,
-	0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e,
-	0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69,
-	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b,
-	0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x2d, 0x0a,
-	0x11, 0x47, 0x65, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x22, 0x98, 0x01, 0x0a,
-	0x10, 0x50, 0x75, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69,
-	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
-	0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
-	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c,
-	0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65,
-	0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
-	0x74, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08,
-	0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x29, 0x0a, 0x11, 0x50, 0x75, 0x74, 0x53, 0x65,
-	0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05,
-	0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x62, 0x79, 0x74,
-	0x65, 0x73, 0x22, 0x6b, 0x0a, 0x13, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x65, 0x63, 0x72,
-	0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d,
-	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b,
-	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a,
-	0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22,
-	0x16, 0x0a, 0x14, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77, 0x61,
-	0x72, 0x64, 0x73, 0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f,
-	0x67, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6e, 0x73, 0x65, 0x22, 0x97, 0x01, 0x0a, 0x18, 0x47, 0x65, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c,
+	0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
+	0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f,
+	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
+	0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64,
+	0x65, 0x5f, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0d,
+	0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x22, 0x66, 0x0a,
+	0x19, 0x47, 0x65, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72,
+	0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x31, 0x0a, 0x08, 0x6d, 0x65,
+	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65,
+	0x4b, 0x65, 0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x16, 0x0a,
+	0x06, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x22, 0x60, 0x0a, 0x1a, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x69, 0x70,
+	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
+	0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70,
+	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x22, 0x48, 0x0a, 0x1b, 0x4c, 0x69, 0x73, 0x74, 0x50,
+	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63,
+	0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x04, 0x6b, 0x65, 0x79,
+	0x73, 0x22, 0xa0, 0x01, 0x0a, 0x18, 0x50, 0x75, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e,
+	0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21,
+	0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49,
+	0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
+	0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x14,
+	0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x66,
+	0x6f, 0x72, 0x63, 0x65, 0x22, 0x31, 0x0a, 0x19, 0x50, 0x75, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c,
+	0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x22, 0x73, 0x0a, 0x1b, 0x44, 0x65, 0x6c, 0x65, 0x74,
+	0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
+	0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61,
+	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70,
+	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a,
+	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
+	0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x1e, 0x0a, 0x1c,
+	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65,
+	0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x51, 0x0a, 0x16,
+	0x47, 0x65, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x63, 0x6c,
+	0x75, 0x64, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08,
+	0x52, 0x0d, 0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x22,
+	0x64, 0x0a, 0x17, 0x47, 0x65, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72,
+	0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x31, 0x0a, 0x08, 0x6d, 0x65,
+	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65,
+	0x4b, 0x65, 0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x16, 0x0a,
+	0x06, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x22, 0x1a, 0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x6c, 0x6f,
+	0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x22, 0x46, 0x0a, 0x19, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29,
+	0x0a, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65,
+	0x4b, 0x65, 0x79, 0x52, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x22, 0x5a, 0x0a, 0x16, 0x50, 0x75, 0x74,
+	0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12,
+	0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05,
+	0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x2f, 0x0a, 0x17, 0x50, 0x75, 0x74, 0x47, 0x6c, 0x6f, 0x62,
+	0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x12, 0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x22, 0x2d, 0x0a, 0x19, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x1c, 0x0a, 0x1a, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x47,
+	0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77, 0x61, 0x72, 0x64, 0x73, 0x2f,
+	0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -7429,7 +7989,7 @@ func file_gofer_transport_proto_rawDescGZIP() []byte {
 }
 
 var file_gofer_transport_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_gofer_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 134)
+var file_gofer_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 144)
 var file_gofer_transport_proto_goTypes = []interface{}{
 	(CreateTokenRequest_Kind)(0),                     // 0: proto.CreateTokenRequest.Kind
 	(TriggerWatchResponse_Result)(0),                 // 1: proto.TriggerWatchResponse.Result
@@ -7555,67 +8115,82 @@ var file_gofer_transport_proto_goTypes = []interface{}{
 	(*PutRunObjectResponse)(nil),                     // 121: proto.PutRunObjectResponse
 	(*DeleteRunObjectRequest)(nil),                   // 122: proto.DeleteRunObjectRequest
 	(*DeleteRunObjectResponse)(nil),                  // 123: proto.DeleteRunObjectResponse
-	(*GetSecretRequest)(nil),                         // 124: proto.GetSecretRequest
-	(*GetSecretResponse)(nil),                        // 125: proto.GetSecretResponse
-	(*PutSecretRequest)(nil),                         // 126: proto.PutSecretRequest
-	(*PutSecretResponse)(nil),                        // 127: proto.PutSecretResponse
-	(*DeleteSecretRequest)(nil),                      // 128: proto.DeleteSecretRequest
-	(*DeleteSecretResponse)(nil),                     // 129: proto.DeleteSecretResponse
-	nil,                                              // 130: proto.CreateTokenRequest.MetadataEntry
-	nil,                                              // 131: proto.StartRunRequest.VariablesEntry
-	nil,                                              // 132: proto.InstallTriggerRequest.VariablesEntry
-	nil,                                              // 133: proto.InstallCommonTaskRequest.VariablesEntry
-	nil,                                              // 134: proto.TriggerWatchResponse.MetadataEntry
-	nil,                                              // 135: proto.TriggerSubscribeRequest.ConfigEntry
-	(*Token)(nil),                                    // 136: proto.Token
-	(*Namespace)(nil),                                // 137: proto.Namespace
-	(*Pipeline)(nil),                                 // 138: proto.Pipeline
-	(*PipelineConfig)(nil),                           // 139: proto.PipelineConfig
-	(*Run)(nil),                                      // 140: proto.Run
-	(*TaskRun)(nil),                                  // 141: proto.TaskRun
-	(*Trigger)(nil),                                  // 142: proto.Trigger
-	(*CommonTask)(nil),                               // 143: proto.CommonTask
-	(*Event)(nil),                                    // 144: proto.Event
+	(*GetPipelineSecretRequest)(nil),                 // 124: proto.GetPipelineSecretRequest
+	(*GetPipelineSecretResponse)(nil),                // 125: proto.GetPipelineSecretResponse
+	(*ListPipelineSecretsRequest)(nil),               // 126: proto.ListPipelineSecretsRequest
+	(*ListPipelineSecretsResponse)(nil),              // 127: proto.ListPipelineSecretsResponse
+	(*PutPipelineSecretRequest)(nil),                 // 128: proto.PutPipelineSecretRequest
+	(*PutPipelineSecretResponse)(nil),                // 129: proto.PutPipelineSecretResponse
+	(*DeletePipelineSecretRequest)(nil),              // 130: proto.DeletePipelineSecretRequest
+	(*DeletePipelineSecretResponse)(nil),             // 131: proto.DeletePipelineSecretResponse
+	(*GetGlobalSecretRequest)(nil),                   // 132: proto.GetGlobalSecretRequest
+	(*GetGlobalSecretResponse)(nil),                  // 133: proto.GetGlobalSecretResponse
+	(*ListGlobalSecretsRequest)(nil),                 // 134: proto.ListGlobalSecretsRequest
+	(*ListGlobalSecretsResponse)(nil),                // 135: proto.ListGlobalSecretsResponse
+	(*PutGlobalSecretRequest)(nil),                   // 136: proto.PutGlobalSecretRequest
+	(*PutGlobalSecretResponse)(nil),                  // 137: proto.PutGlobalSecretResponse
+	(*DeleteGlobalSecretRequest)(nil),                // 138: proto.DeleteGlobalSecretRequest
+	(*DeleteGlobalSecretResponse)(nil),               // 139: proto.DeleteGlobalSecretResponse
+	nil,                                              // 140: proto.CreateTokenRequest.MetadataEntry
+	nil,                                              // 141: proto.StartRunRequest.VariablesEntry
+	nil,                                              // 142: proto.InstallTriggerRequest.VariablesEntry
+	nil,                                              // 143: proto.InstallCommonTaskRequest.VariablesEntry
+	nil,                                              // 144: proto.TriggerWatchResponse.MetadataEntry
+	nil,                                              // 145: proto.TriggerSubscribeRequest.ConfigEntry
+	(*Token)(nil),                                    // 146: proto.Token
+	(*Namespace)(nil),                                // 147: proto.Namespace
+	(*Pipeline)(nil),                                 // 148: proto.Pipeline
+	(*PipelineConfig)(nil),                           // 149: proto.PipelineConfig
+	(*Run)(nil),                                      // 150: proto.Run
+	(*TaskRun)(nil),                                  // 151: proto.TaskRun
+	(*Trigger)(nil),                                  // 152: proto.Trigger
+	(*CommonTask)(nil),                               // 153: proto.CommonTask
+	(*Event)(nil),                                    // 154: proto.Event
+	(*SecretStoreKey)(nil),                           // 155: proto.SecretStoreKey
 }
 var file_gofer_transport_proto_depIdxs = []int32{
 	0,   // 0: proto.CreateTokenRequest.kind:type_name -> proto.CreateTokenRequest.Kind
-	130, // 1: proto.CreateTokenRequest.metadata:type_name -> proto.CreateTokenRequest.MetadataEntry
-	136, // 2: proto.CreateTokenResponse.details:type_name -> proto.Token
-	136, // 3: proto.BootstrapTokenResponse.details:type_name -> proto.Token
-	136, // 4: proto.GetTokenResponse.details:type_name -> proto.Token
-	137, // 5: proto.GetNamespaceResponse.namespace:type_name -> proto.Namespace
-	137, // 6: proto.ListNamespacesResponse.namespaces:type_name -> proto.Namespace
-	137, // 7: proto.CreateNamespaceResponse.namespace:type_name -> proto.Namespace
-	138, // 8: proto.GetPipelineResponse.pipeline:type_name -> proto.Pipeline
-	138, // 9: proto.ListPipelinesResponse.pipelines:type_name -> proto.Pipeline
-	139, // 10: proto.CreatePipelineRequest.pipeline_config:type_name -> proto.PipelineConfig
-	138, // 11: proto.CreatePipelineResponse.pipeline:type_name -> proto.Pipeline
-	139, // 12: proto.UpdatePipelineRequest.pipeline_config:type_name -> proto.PipelineConfig
-	138, // 13: proto.UpdatePipelineResponse.pipeline:type_name -> proto.Pipeline
-	140, // 14: proto.GetRunResponse.run:type_name -> proto.Run
-	140, // 15: proto.BatchGetRunsResponse.runs:type_name -> proto.Run
-	140, // 16: proto.ListRunsResponse.runs:type_name -> proto.Run
-	131, // 17: proto.StartRunRequest.variables:type_name -> proto.StartRunRequest.VariablesEntry
-	140, // 18: proto.StartRunResponse.run:type_name -> proto.Run
-	140, // 19: proto.RetryRunResponse.run:type_name -> proto.Run
-	141, // 20: proto.ListTaskRunsResponse.task_runs:type_name -> proto.TaskRun
-	141, // 21: proto.GetTaskRunResponse.task_run:type_name -> proto.TaskRun
-	142, // 22: proto.GetTriggerResponse.trigger:type_name -> proto.Trigger
-	142, // 23: proto.ListTriggersResponse.triggers:type_name -> proto.Trigger
-	132, // 24: proto.InstallTriggerRequest.variables:type_name -> proto.InstallTriggerRequest.VariablesEntry
-	143, // 25: proto.GetCommonTaskResponse.common_task:type_name -> proto.CommonTask
-	143, // 26: proto.ListCommonTasksResponse.common_tasks:type_name -> proto.CommonTask
-	133, // 27: proto.InstallCommonTaskRequest.variables:type_name -> proto.InstallCommonTaskRequest.VariablesEntry
+	140, // 1: proto.CreateTokenRequest.metadata:type_name -> proto.CreateTokenRequest.MetadataEntry
+	146, // 2: proto.CreateTokenResponse.details:type_name -> proto.Token
+	146, // 3: proto.BootstrapTokenResponse.details:type_name -> proto.Token
+	146, // 4: proto.GetTokenResponse.details:type_name -> proto.Token
+	147, // 5: proto.GetNamespaceResponse.namespace:type_name -> proto.Namespace
+	147, // 6: proto.ListNamespacesResponse.namespaces:type_name -> proto.Namespace
+	147, // 7: proto.CreateNamespaceResponse.namespace:type_name -> proto.Namespace
+	148, // 8: proto.GetPipelineResponse.pipeline:type_name -> proto.Pipeline
+	148, // 9: proto.ListPipelinesResponse.pipelines:type_name -> proto.Pipeline
+	149, // 10: proto.CreatePipelineRequest.pipeline_config:type_name -> proto.PipelineConfig
+	148, // 11: proto.CreatePipelineResponse.pipeline:type_name -> proto.Pipeline
+	149, // 12: proto.UpdatePipelineRequest.pipeline_config:type_name -> proto.PipelineConfig
+	148, // 13: proto.UpdatePipelineResponse.pipeline:type_name -> proto.Pipeline
+	150, // 14: proto.GetRunResponse.run:type_name -> proto.Run
+	150, // 15: proto.BatchGetRunsResponse.runs:type_name -> proto.Run
+	150, // 16: proto.ListRunsResponse.runs:type_name -> proto.Run
+	141, // 17: proto.StartRunRequest.variables:type_name -> proto.StartRunRequest.VariablesEntry
+	150, // 18: proto.StartRunResponse.run:type_name -> proto.Run
+	150, // 19: proto.RetryRunResponse.run:type_name -> proto.Run
+	151, // 20: proto.ListTaskRunsResponse.task_runs:type_name -> proto.TaskRun
+	151, // 21: proto.GetTaskRunResponse.task_run:type_name -> proto.TaskRun
+	152, // 22: proto.GetTriggerResponse.trigger:type_name -> proto.Trigger
+	152, // 23: proto.ListTriggersResponse.triggers:type_name -> proto.Trigger
+	142, // 24: proto.InstallTriggerRequest.variables:type_name -> proto.InstallTriggerRequest.VariablesEntry
+	153, // 25: proto.GetCommonTaskResponse.common_task:type_name -> proto.CommonTask
+	153, // 26: proto.ListCommonTasksResponse.common_tasks:type_name -> proto.CommonTask
+	143, // 27: proto.InstallCommonTaskRequest.variables:type_name -> proto.InstallCommonTaskRequest.VariablesEntry
 	1,   // 28: proto.TriggerWatchResponse.result:type_name -> proto.TriggerWatchResponse.Result
-	134, // 29: proto.TriggerWatchResponse.metadata:type_name -> proto.TriggerWatchResponse.MetadataEntry
-	135, // 30: proto.TriggerSubscribeRequest.config:type_name -> proto.TriggerSubscribeRequest.ConfigEntry
-	144, // 31: proto.GetEventResponse.event:type_name -> proto.Event
-	144, // 32: proto.ListEventsResponse.event:type_name -> proto.Event
-	33,  // [33:33] is the sub-list for method output_type
-	33,  // [33:33] is the sub-list for method input_type
-	33,  // [33:33] is the sub-list for extension type_name
-	33,  // [33:33] is the sub-list for extension extendee
-	0,   // [0:33] is the sub-list for field type_name
+	144, // 29: proto.TriggerWatchResponse.metadata:type_name -> proto.TriggerWatchResponse.MetadataEntry
+	145, // 30: proto.TriggerSubscribeRequest.config:type_name -> proto.TriggerSubscribeRequest.ConfigEntry
+	154, // 31: proto.GetEventResponse.event:type_name -> proto.Event
+	154, // 32: proto.ListEventsResponse.event:type_name -> proto.Event
+	155, // 33: proto.GetPipelineSecretResponse.metadata:type_name -> proto.SecretStoreKey
+	155, // 34: proto.ListPipelineSecretsResponse.keys:type_name -> proto.SecretStoreKey
+	155, // 35: proto.GetGlobalSecretResponse.metadata:type_name -> proto.SecretStoreKey
+	155, // 36: proto.ListGlobalSecretsResponse.keys:type_name -> proto.SecretStoreKey
+	37,  // [37:37] is the sub-list for method output_type
+	37,  // [37:37] is the sub-list for method input_type
+	37,  // [37:37] is the sub-list for extension type_name
+	37,  // [37:37] is the sub-list for extension extendee
+	0,   // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_gofer_transport_proto_init() }
@@ -9090,7 +9665,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[122].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSecretRequest); i {
+			switch v := v.(*GetPipelineSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9102,7 +9677,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[123].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSecretResponse); i {
+			switch v := v.(*GetPipelineSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9114,7 +9689,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[124].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutSecretRequest); i {
+			switch v := v.(*ListPipelineSecretsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9126,7 +9701,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[125].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutSecretResponse); i {
+			switch v := v.(*ListPipelineSecretsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9138,7 +9713,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[126].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteSecretRequest); i {
+			switch v := v.(*PutPipelineSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9150,7 +9725,127 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[127].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteSecretResponse); i {
+			switch v := v.(*PutPipelineSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[128].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeletePipelineSecretRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[129].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeletePipelineSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[130].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetGlobalSecretRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[131].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetGlobalSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[132].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListGlobalSecretsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[133].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListGlobalSecretsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[134].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PutGlobalSecretRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[135].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PutGlobalSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[136].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeleteGlobalSecretRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[137].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeleteGlobalSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9168,7 +9863,7 @@ func file_gofer_transport_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_gofer_transport_proto_rawDesc,
 			NumEnums:      2,
-			NumMessages:   134,
+			NumMessages:   144,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

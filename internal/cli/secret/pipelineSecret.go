@@ -10,8 +10,7 @@ var CmdPipelineSecret = &cobra.Command{
 	Long: `Store pipeline specific secrets.
 
 Gofer allows you to store pipeline secrets. These secrets are then used to populate the pipeline
-configuration file.
-`,
+configuration file.`,
 }
 
 func init() {

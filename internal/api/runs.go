@@ -185,7 +185,7 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 
 		key, err := parseInterpolationSyntax(InterpolationKindSecret, variable.Value)
 		if err == nil {
-			value, err := api.secretStore.GetSecret(secretKey(namespace, pipeline, key))
+			value, err := api.secretStore.GetSecret(pipelineSecretKey(namespace, pipeline, key))
 			if err != nil {
 				return nil, err
 			}

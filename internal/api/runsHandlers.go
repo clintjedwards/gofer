@@ -75,7 +75,9 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 
 	pipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.PipelineId)
 	if err != nil {
-		log.Error().Err(err).Msg("could not get pipeline from db")
+		if errors.Is(err, storage.ErrEntityNotFound) {
+			return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
+		}
 		return &proto.StartRunResponse{}, status.Error(codes.Internal, "pipeline does not exist")
 	}
 

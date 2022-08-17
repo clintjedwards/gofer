@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS object_store_pipeline_keys(
     PRIMARY KEY (namespace, pipeline, key)
 ) STRICT;
 
-CREATE INDEX idx_pipeline_keys_created ON object_store_pipeline_keys (created);
+CREATE INDEX idx_object_pipeline_keys_created ON object_store_pipeline_keys (created);
 
 CREATE TABLE IF NOT EXISTS object_store_run_keys(
     namespace     TEXT NOT NULL,
@@ -126,7 +126,27 @@ CREATE TABLE IF NOT EXISTS object_store_run_keys(
     PRIMARY KEY (namespace, pipeline, run, key)
 ) STRICT;
 
-CREATE INDEX idx_run_keys_created ON object_store_run_keys (created);
+CREATE INDEX idx_object_run_keys_created ON object_store_run_keys (created);
+
+CREATE TABLE IF NOT EXISTS secret_store_pipeline_keys(
+    namespace     TEXT NOT NULL,
+    pipeline      TEXT NOT NULL,
+    key           TEXT NOT NULL,
+    created       INTEGER NOT NULL,
+    FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
+    PRIMARY KEY (namespace, pipeline, key)
+) STRICT;
+
+CREATE INDEX idx_secret_pipeline_keys_created ON secret_store_pipeline_keys (created);
+
+CREATE TABLE IF NOT EXISTS secret_store_global_keys(
+    key           TEXT NOT NULL,
+    created       INTEGER NOT NULL,
+    PRIMARY KEY (key)
+) STRICT;
+
+CREATE INDEX idx_secret_global_keys_created ON secret_store_global_keys (created);
 
 CREATE TABLE IF NOT EXISTS task_runs (
     namespace     TEXT    NOT NULL,

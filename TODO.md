@@ -163,3 +163,5 @@
 - Polyfmt needs to move the filter to be a builder function and the provide stringf functions.
 - We need a list objects for run objects and pipeline objects.
 - Replace blurry png for readme.
+- For secret store and object store stuff need to manually clean those up as we can't rely on cascade on delete.
+- Everything we just did for secret key probably needs to be done for object keys.

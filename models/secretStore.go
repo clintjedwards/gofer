@@ -6,20 +6,20 @@ import (
 	proto "github.com/clintjedwards/gofer/proto/go"
 )
 
-type ObjectStoreKey struct {
+type SecretStoreKey struct {
 	Key     string `json:"key"`
 	Created int64  `json:"created"`
 }
 
-func NewObjectStoreKey(key string) *ObjectStoreKey {
-	return &ObjectStoreKey{
+func NewSecretStoreKey(key string) *SecretStoreKey {
+	return &SecretStoreKey{
 		Key:     key,
 		Created: time.Now().UnixMilli(),
 	}
 }
 
-func (s *ObjectStoreKey) ToProto() *proto.ObjectStoreKey {
-	return &proto.ObjectStoreKey{
+func (s *SecretStoreKey) ToProto() *proto.SecretStoreKey {
+	return &proto.SecretStoreKey{
 		Key:     s.Key,
 		Created: s.Created,
 	}

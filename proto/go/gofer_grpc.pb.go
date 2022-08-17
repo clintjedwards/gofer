@@ -174,13 +174,23 @@ type GoferClient interface {
 	PutRunObject(ctx context.Context, in *PutRunObjectRequest, opts ...grpc.CallOption) (*PutRunObjectResponse, error)
 	// DeleteRunObject removes a specific run object by run ID and key.
 	DeleteRunObject(ctx context.Context, in *DeleteRunObjectRequest, opts ...grpc.CallOption) (*DeleteRunObjectResponse, error)
-	// GetSecret returns a single secret by pipeline ID and key.
-	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
-	// PutSecret uploads a single secret by pipeline ID and key.
-	PutSecret(ctx context.Context, in *PutSecretRequest, opts ...grpc.CallOption) (*PutSecretResponse, error)
-	// DeleteSecret removes a single secret by pipeline ID and
+	// GetPipelineSecret returns a single secret by pipeline ID and key.
+	GetPipelineSecret(ctx context.Context, in *GetPipelineSecretRequest, opts ...grpc.CallOption) (*GetPipelineSecretResponse, error)
+	// ListPipelineSecrets returns a single secret by pipeline ID and key.
+	ListPipelineSecrets(ctx context.Context, in *ListPipelineSecretsRequest, opts ...grpc.CallOption) (*ListPipelineSecretsResponse, error)
+	// PutPipelineSecret uploads a single secret by pipeline ID and key.
+	PutPipelineSecret(ctx context.Context, in *PutPipelineSecretRequest, opts ...grpc.CallOption) (*PutPipelineSecretResponse, error)
+	// DeletePipelineSecret removes a single secret by pipeline ID and
 	// key.
-	DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error)
+	DeletePipelineSecret(ctx context.Context, in *DeletePipelineSecretRequest, opts ...grpc.CallOption) (*DeletePipelineSecretResponse, error)
+	// GetGlobalSecret returns a single secret by  key.
+	GetGlobalSecret(ctx context.Context, in *GetGlobalSecretRequest, opts ...grpc.CallOption) (*GetGlobalSecretResponse, error)
+	// ListGlobalSecrets returns a single secret by global ID and key.
+	ListGlobalSecrets(ctx context.Context, in *ListGlobalSecretsRequest, opts ...grpc.CallOption) (*ListGlobalSecretsResponse, error)
+	// PutGlobalSecret uploads a single secret by key.
+	PutGlobalSecret(ctx context.Context, in *PutGlobalSecretRequest, opts ...grpc.CallOption) (*PutGlobalSecretResponse, error)
+	// DeleteGlobalSecret removes a single secret by key.
+	DeleteGlobalSecret(ctx context.Context, in *DeleteGlobalSecretRequest, opts ...grpc.CallOption) (*DeleteGlobalSecretResponse, error)
 	// GetEvent returns the details of a single event.
 	GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*GetEventResponse, error)
 	// ListEvents returns a streaming list of all events, ordered by
@@ -669,27 +679,72 @@ func (c *goferClient) DeleteRunObject(ctx context.Context, in *DeleteRunObjectRe
 	return out, nil
 }
 
-func (c *goferClient) GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error) {
-	out := new(GetSecretResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/GetSecret", in, out, opts...)
+func (c *goferClient) GetPipelineSecret(ctx context.Context, in *GetPipelineSecretRequest, opts ...grpc.CallOption) (*GetPipelineSecretResponse, error) {
+	out := new(GetPipelineSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/GetPipelineSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) PutSecret(ctx context.Context, in *PutSecretRequest, opts ...grpc.CallOption) (*PutSecretResponse, error) {
-	out := new(PutSecretResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/PutSecret", in, out, opts...)
+func (c *goferClient) ListPipelineSecrets(ctx context.Context, in *ListPipelineSecretsRequest, opts ...grpc.CallOption) (*ListPipelineSecretsResponse, error) {
+	out := new(ListPipelineSecretsResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListPipelineSecrets", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *goferClient) DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error) {
-	out := new(DeleteSecretResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/DeleteSecret", in, out, opts...)
+func (c *goferClient) PutPipelineSecret(ctx context.Context, in *PutPipelineSecretRequest, opts ...grpc.CallOption) (*PutPipelineSecretResponse, error) {
+	out := new(PutPipelineSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/PutPipelineSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) DeletePipelineSecret(ctx context.Context, in *DeletePipelineSecretRequest, opts ...grpc.CallOption) (*DeletePipelineSecretResponse, error) {
+	out := new(DeletePipelineSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/DeletePipelineSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) GetGlobalSecret(ctx context.Context, in *GetGlobalSecretRequest, opts ...grpc.CallOption) (*GetGlobalSecretResponse, error) {
+	out := new(GetGlobalSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/GetGlobalSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) ListGlobalSecrets(ctx context.Context, in *ListGlobalSecretsRequest, opts ...grpc.CallOption) (*ListGlobalSecretsResponse, error) {
+	out := new(ListGlobalSecretsResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListGlobalSecrets", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) PutGlobalSecret(ctx context.Context, in *PutGlobalSecretRequest, opts ...grpc.CallOption) (*PutGlobalSecretResponse, error) {
+	out := new(PutGlobalSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/PutGlobalSecret", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) DeleteGlobalSecret(ctx context.Context, in *DeleteGlobalSecretRequest, opts ...grpc.CallOption) (*DeleteGlobalSecretResponse, error) {
+	out := new(DeleteGlobalSecretResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/DeleteGlobalSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -893,13 +948,23 @@ type GoferServer interface {
 	PutRunObject(context.Context, *PutRunObjectRequest) (*PutRunObjectResponse, error)
 	// DeleteRunObject removes a specific run object by run ID and key.
 	DeleteRunObject(context.Context, *DeleteRunObjectRequest) (*DeleteRunObjectResponse, error)
-	// GetSecret returns a single secret by pipeline ID and key.
-	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
-	// PutSecret uploads a single secret by pipeline ID and key.
-	PutSecret(context.Context, *PutSecretRequest) (*PutSecretResponse, error)
-	// DeleteSecret removes a single secret by pipeline ID and
+	// GetPipelineSecret returns a single secret by pipeline ID and key.
+	GetPipelineSecret(context.Context, *GetPipelineSecretRequest) (*GetPipelineSecretResponse, error)
+	// ListPipelineSecrets returns a single secret by pipeline ID and key.
+	ListPipelineSecrets(context.Context, *ListPipelineSecretsRequest) (*ListPipelineSecretsResponse, error)
+	// PutPipelineSecret uploads a single secret by pipeline ID and key.
+	PutPipelineSecret(context.Context, *PutPipelineSecretRequest) (*PutPipelineSecretResponse, error)
+	// DeletePipelineSecret removes a single secret by pipeline ID and
 	// key.
-	DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error)
+	DeletePipelineSecret(context.Context, *DeletePipelineSecretRequest) (*DeletePipelineSecretResponse, error)
+	// GetGlobalSecret returns a single secret by  key.
+	GetGlobalSecret(context.Context, *GetGlobalSecretRequest) (*GetGlobalSecretResponse, error)
+	// ListGlobalSecrets returns a single secret by global ID and key.
+	ListGlobalSecrets(context.Context, *ListGlobalSecretsRequest) (*ListGlobalSecretsResponse, error)
+	// PutGlobalSecret uploads a single secret by key.
+	PutGlobalSecret(context.Context, *PutGlobalSecretRequest) (*PutGlobalSecretResponse, error)
+	// DeleteGlobalSecret removes a single secret by key.
+	DeleteGlobalSecret(context.Context, *DeleteGlobalSecretRequest) (*DeleteGlobalSecretResponse, error)
 	// GetEvent returns the details of a single event.
 	GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error)
 	// ListEvents returns a streaming list of all events, ordered by
@@ -1062,14 +1127,29 @@ func (UnimplementedGoferServer) PutRunObject(context.Context, *PutRunObjectReque
 func (UnimplementedGoferServer) DeleteRunObject(context.Context, *DeleteRunObjectRequest) (*DeleteRunObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteRunObject not implemented")
 }
-func (UnimplementedGoferServer) GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSecret not implemented")
+func (UnimplementedGoferServer) GetPipelineSecret(context.Context, *GetPipelineSecretRequest) (*GetPipelineSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPipelineSecret not implemented")
 }
-func (UnimplementedGoferServer) PutSecret(context.Context, *PutSecretRequest) (*PutSecretResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PutSecret not implemented")
+func (UnimplementedGoferServer) ListPipelineSecrets(context.Context, *ListPipelineSecretsRequest) (*ListPipelineSecretsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPipelineSecrets not implemented")
 }
-func (UnimplementedGoferServer) DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteSecret not implemented")
+func (UnimplementedGoferServer) PutPipelineSecret(context.Context, *PutPipelineSecretRequest) (*PutPipelineSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PutPipelineSecret not implemented")
+}
+func (UnimplementedGoferServer) DeletePipelineSecret(context.Context, *DeletePipelineSecretRequest) (*DeletePipelineSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeletePipelineSecret not implemented")
+}
+func (UnimplementedGoferServer) GetGlobalSecret(context.Context, *GetGlobalSecretRequest) (*GetGlobalSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGlobalSecret not implemented")
+}
+func (UnimplementedGoferServer) ListGlobalSecrets(context.Context, *ListGlobalSecretsRequest) (*ListGlobalSecretsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListGlobalSecrets not implemented")
+}
+func (UnimplementedGoferServer) PutGlobalSecret(context.Context, *PutGlobalSecretRequest) (*PutGlobalSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PutGlobalSecret not implemented")
+}
+func (UnimplementedGoferServer) DeleteGlobalSecret(context.Context, *DeleteGlobalSecretRequest) (*DeleteGlobalSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteGlobalSecret not implemented")
 }
 func (UnimplementedGoferServer) GetEvent(context.Context, *GetEventRequest) (*GetEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEvent not implemented")
@@ -1993,56 +2073,146 @@ func _Gofer_DeleteRunObject_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_GetSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSecretRequest)
+func _Gofer_GetPipelineSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPipelineSecretRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).GetSecret(ctx, in)
+		return srv.(GoferServer).GetPipelineSecret(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/GetSecret",
+		FullMethod: "/proto.Gofer/GetPipelineSecret",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).GetSecret(ctx, req.(*GetSecretRequest))
+		return srv.(GoferServer).GetPipelineSecret(ctx, req.(*GetPipelineSecretRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_PutSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PutSecretRequest)
+func _Gofer_ListPipelineSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPipelineSecretsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).PutSecret(ctx, in)
+		return srv.(GoferServer).ListPipelineSecrets(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/PutSecret",
+		FullMethod: "/proto.Gofer/ListPipelineSecrets",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).PutSecret(ctx, req.(*PutSecretRequest))
+		return srv.(GoferServer).ListPipelineSecrets(ctx, req.(*ListPipelineSecretsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_DeleteSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteSecretRequest)
+func _Gofer_PutPipelineSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PutPipelineSecretRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GoferServer).DeleteSecret(ctx, in)
+		return srv.(GoferServer).PutPipelineSecret(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Gofer/DeleteSecret",
+		FullMethod: "/proto.Gofer/PutPipelineSecret",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).DeleteSecret(ctx, req.(*DeleteSecretRequest))
+		return srv.(GoferServer).PutPipelineSecret(ctx, req.(*PutPipelineSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_DeletePipelineSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePipelineSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).DeletePipelineSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/DeletePipelineSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).DeletePipelineSecret(ctx, req.(*DeletePipelineSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_GetGlobalSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGlobalSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).GetGlobalSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/GetGlobalSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).GetGlobalSecret(ctx, req.(*GetGlobalSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_ListGlobalSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGlobalSecretsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).ListGlobalSecrets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/ListGlobalSecrets",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).ListGlobalSecrets(ctx, req.(*ListGlobalSecretsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_PutGlobalSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PutGlobalSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).PutGlobalSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/PutGlobalSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).PutGlobalSecret(ctx, req.(*PutGlobalSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_DeleteGlobalSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteGlobalSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).DeleteGlobalSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/DeleteGlobalSecret",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).DeleteGlobalSecret(ctx, req.(*DeleteGlobalSecretRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2290,16 +2460,36 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_DeleteRunObject_Handler,
 		},
 		{
-			MethodName: "GetSecret",
-			Handler:    _Gofer_GetSecret_Handler,
+			MethodName: "GetPipelineSecret",
+			Handler:    _Gofer_GetPipelineSecret_Handler,
 		},
 		{
-			MethodName: "PutSecret",
-			Handler:    _Gofer_PutSecret_Handler,
+			MethodName: "ListPipelineSecrets",
+			Handler:    _Gofer_ListPipelineSecrets_Handler,
 		},
 		{
-			MethodName: "DeleteSecret",
-			Handler:    _Gofer_DeleteSecret_Handler,
+			MethodName: "PutPipelineSecret",
+			Handler:    _Gofer_PutPipelineSecret_Handler,
+		},
+		{
+			MethodName: "DeletePipelineSecret",
+			Handler:    _Gofer_DeletePipelineSecret_Handler,
+		},
+		{
+			MethodName: "GetGlobalSecret",
+			Handler:    _Gofer_GetGlobalSecret_Handler,
+		},
+		{
+			MethodName: "ListGlobalSecrets",
+			Handler:    _Gofer_ListGlobalSecrets_Handler,
+		},
+		{
+			MethodName: "PutGlobalSecret",
+			Handler:    _Gofer_PutGlobalSecret_Handler,
+		},
+		{
+			MethodName: "DeleteGlobalSecret",
+			Handler:    _Gofer_DeleteGlobalSecret_Handler,
 		},
 		{
 			MethodName: "GetEvent",

@@ -749,3 +749,124 @@ func TestCRUDObjectStorePipelineRuns(t *testing.T) {
 		t.Fatalf("expected 0 keys but found keys: %+v", keys)
 	}
 }
+
+func TestCRUDSecretStorePipelineKeys(t *testing.T) {
+	path := tempFile()
+	db, err := New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
+
+	namespace := models.NewNamespace("test_namespace", "Test Namespace", "Testing namespace")
+
+	err = db.InsertNamespace(namespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pipelineConfig := sdk.NewPipeline("test_pipeline", "Test Pipeline").WithTasks([]sdk.Task{
+		*sdk.NewTask("test_task", "task:latest").WithDependsOnOne("test_task_depends", sdk.RequiredParentStatusAny),
+	}).WithTriggers([]sdk.PipelineTriggerConfig{
+		{
+			Name:  "test_trigger",
+			Label: "test_trigger_label",
+			Settings: map[string]string{
+				"test_setting_key": "test_setting_value",
+			},
+		},
+	})
+	pipeline := models.NewPipeline(namespace.ID, pipelineConfig)
+
+	err = db.InsertPipeline(pipeline)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key := models.NewSecretStoreKey("test_key")
+
+	err = db.InsertSecretStorePipelineKey("test_namespace", "test_pipeline", key, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	keys, err := db.ListSecretStorePipelineKeys("test_namespace", "test_pipeline")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(*key, keys[0]); diff != "" {
+		t.Errorf("unexpected map values (-want +got):\n%s", diff)
+	}
+
+	fetchedKey, err := db.GetSecretStorePipelineKey("test_namespace", "test_pipeline", key.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(*key, fetchedKey); diff != "" {
+		t.Errorf("unexpected map values (-want +got):\n%s", diff)
+	}
+
+	err = db.DeleteSecretStorePipelineKey("test_namespace", "test_pipeline", key.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	keys, err = db.ListSecretStorePipelineKeys("test_namespace", "test_pipeline")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(keys) != 0 {
+		t.Fatalf("expected 0 keys but found keys: %+v", keys)
+	}
+}
+
+func TestCRUDSecretStoreGlobalKeys(t *testing.T) {
+	path := tempFile()
+	db, err := New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
+
+	key := models.NewSecretStoreKey("test_key")
+
+	err = db.InsertSecretStoreGlobalKey(key, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	keys, err := db.ListSecretStoreGlobalKeys()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(*key, keys[0]); diff != "" {
+		t.Errorf("unexpected map values (-want +got):\n%s", diff)
+	}
+
+	fetchedKey, err := db.GetSecretStoreGlobalKey(key.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(*key, fetchedKey); diff != "" {
+		t.Errorf("unexpected map values (-want +got):\n%s", diff)
+	}
+
+	err = db.DeleteSecretStoreGlobalKey(key.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	keys, err = db.ListSecretStoreGlobalKeys()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(keys) != 0 {
+		t.Fatalf("expected 0 keys but found keys: %+v", keys)
+	}
+}

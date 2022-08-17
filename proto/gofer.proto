@@ -272,17 +272,38 @@ service Gofer {
   ////////////// Secret Store RPCs //////////////
   //
   // The secret store is an encrypted key-value store for secrets used within
-  // pipelines.
+  // pipelines, triggers, and common tasks.
 
-  // GetSecret returns a single secret by pipeline ID and key.
-  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse);
+  // GetPipelineSecret returns a single secret by pipeline ID and key.
+  rpc GetPipelineSecret(GetPipelineSecretRequest)
+      returns (GetPipelineSecretResponse);
 
-  // PutSecret uploads a single secret by pipeline ID and key.
-  rpc PutSecret(PutSecretRequest) returns (PutSecretResponse);
+  // ListPipelineSecrets returns a single secret by pipeline ID and key.
+  rpc ListPipelineSecrets(ListPipelineSecretsRequest)
+      returns (ListPipelineSecretsResponse);
 
-  // DeleteSecret removes a single secret by pipeline ID and
+  // PutPipelineSecret uploads a single secret by pipeline ID and key.
+  rpc PutPipelineSecret(PutPipelineSecretRequest)
+      returns (PutPipelineSecretResponse);
+
+  // DeletePipelineSecret removes a single secret by pipeline ID and
   // key.
-  rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
+  rpc DeletePipelineSecret(DeletePipelineSecretRequest)
+      returns (DeletePipelineSecretResponse);
+
+  // GetGlobalSecret returns a single secret by  key.
+  rpc GetGlobalSecret(GetGlobalSecretRequest) returns (GetGlobalSecretResponse);
+
+  // ListGlobalSecrets returns a single secret by global ID and key.
+  rpc ListGlobalSecrets(ListGlobalSecretsRequest)
+      returns (ListGlobalSecretsResponse);
+
+  // PutGlobalSecret uploads a single secret by key.
+  rpc PutGlobalSecret(PutGlobalSecretRequest) returns (PutGlobalSecretResponse);
+
+  // DeleteGlobalSecret removes a single secret by key.
+  rpc DeleteGlobalSecret(DeleteGlobalSecretRequest)
+      returns (DeleteGlobalSecretResponse);
 
   ////////////// Event RPCs //////////////
   //

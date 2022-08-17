@@ -1,6 +1,7 @@
 package bolt
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -64,7 +65,7 @@ func decrypt(key []byte, ciphertext []byte) ([]byte, error) {
 
 // New creates a new boltdb with given settings
 func New(path, encryptionKey string) (Store, error) {
-	store, err := storm.Open(path, storm.BoltOptions(0600, &bolt.Options{Timeout: 1 * time.Second}))
+	store, err := storm.Open(path, storm.BoltOptions(0o600, &bolt.Options{Timeout: 1 * time.Second}))
 	if err != nil {
 		return Store{}, err
 	}
@@ -94,6 +95,38 @@ func (store *Store) GetSecret(key string) (string, error) {
 	}
 
 	return string(decryptedSecret), nil
+}
+
+// db.View(func(tx *bolt.Tx) error {
+// 	// Assume bucket exists and has keys
+// 	c := tx.Bucket([]byte("MyBucket")).Cursor()
+
+// 	prefix := []byte("1234")
+// 	for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
+// 		fmt.Printf("key=%s, value=%s\n", k, v)
+// 	}
+
+// 	return nil
+// })
+
+func (store *Store) ListSecretKeys(prefix string) ([]string, error) {
+	keys := []string{}
+
+	err := store.Bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(rootBucket)).Cursor()
+
+		for key, _ := bucket.Seek([]byte(prefix)); key != nil && bytes.HasPrefix(key, []byte(prefix)); key, _ = bucket.Next() {
+			keys = append(keys, string(key))
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("could not list secret keys")
+		return nil, err
+	}
+
+	return keys, nil
 }
 
 func (store *Store) PutSecret(key string, content string, force bool) error {

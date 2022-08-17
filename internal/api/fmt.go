@@ -5,17 +5,22 @@ import (
 )
 
 const (
-	ObjectPipelineKeyFmt    = "%s_%s_%s"       // <namespaceid>_<pipelineid>_<key>
-	ObjectRunKeyFmt         = "%s_%s_%d_%s"    // <namespaceid>_<pipelineid>_<runid>_<key>
-	SecretKeyFmt            = "%s_%s_%s"       // <namespaceid>_<pipelineid>_<key>
-	TaskContainerIDFmt      = "%s_%s_%d_%s"    // <namespaceid>_<pipelineid>_<runid>_<taskrunid>
-	TriggerContainerIDFmt   = "trigger_%s"     // trigger_<name>
-	InstallerContainerIDFmt = "installer_%s"   // installer_<randomly-generated-value>
-	TaskRunFilePath         = "%s/%s_%s_%d_%s" // folder/<namespaceid>_<pipelineid>_<runid>_<taskrunid>
+	ObjectPipelineKeyFmt    = "%s_%s_%s"         // <namespaceid>_<pipelineid>_<key>
+	ObjectRunKeyFmt         = "%s_%s_%d_%s"      // <namespaceid>_<pipelineid>_<runid>_<key>
+	GlobalSecretKeyFmt      = "global_secret_%s" // global_secret<key>
+	PipelineSecretKeyFmt    = "%s_%s_%s"         // <namespaceid>_<pipelineid>_<key>
+	TaskContainerIDFmt      = "%s_%s_%d_%s"      // <namespaceid>_<pipelineid>_<runid>_<taskrunid>
+	TriggerContainerIDFmt   = "trigger_%s"       // trigger_<name>
+	InstallerContainerIDFmt = "installer_%s"     // installer_<randomly-generated-value>
+	TaskRunFilePath         = "%s/%s_%s_%d_%s"   // folder/<namespaceid>_<pipelineid>_<runid>_<taskrunid>
 )
 
-func secretKey(namespace, pipeline, key string) string {
-	return fmt.Sprintf(SecretKeyFmt, namespace, pipeline, key)
+func globalSecretKey(key string) string {
+	return fmt.Sprintf(GlobalSecretKeyFmt, key)
+}
+
+func pipelineSecretKey(namespace, pipeline, key string) string {
+	return fmt.Sprintf(PipelineSecretKeyFmt, namespace, pipeline, key)
 }
 
 func pipelineObjectKey(namespace, pipeline, key string) string {

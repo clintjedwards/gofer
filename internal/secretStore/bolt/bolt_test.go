@@ -10,13 +10,24 @@ func TestBolt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.Remove("/tmp/test_bolt_secretStore.db")
 
-	err = store.PutSecret("testkey", "mysupersecretkey", false)
+	err = store.PutSecret("testkey1", "mysupersecretkey", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	secret, err := store.GetSecret("testkey")
+	err = store.PutSecret("testkey2", "myothersupersecretkey", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = store.PutSecret("differentkey2", "mynextsupersecretkey", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secret, err := store.GetSecret("testkey1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,5 +36,12 @@ func TestBolt(t *testing.T) {
 		t.Fatal("secret returns does not equal secret put in")
 	}
 
-	defer os.Remove("/tmp/test_bolt_secretStore.db")
+	keys, err := store.ListSecretKeys("testkey")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(keys) != 2 {
+		t.Fatalf("expected two keys got %d", len(keys))
+	}
 }

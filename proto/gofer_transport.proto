@@ -490,28 +490,65 @@ message DeleteRunObjectResponse {}
 
 ////////////// Secret store Transport Models //////////////
 
-message GetSecretRequest {
+message GetPipelineSecretRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
   string key = 3;
+  bool include_secret = 4; // Whether to include plaintext secret
 }
-message GetSecretResponse { string content = 1; }
+message GetPipelineSecretResponse {
+  SecretStoreKey metadata = 1;
+  string secret = 2;
+}
 
-message PutSecretRequest {
+message ListPipelineSecretsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+}
+message ListPipelineSecretsResponse { repeated SecretStoreKey keys = 1; }
+
+message PutPipelineSecretRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
   string key = 3;
   string content = 4;
   bool force = 5; // Overwrites an already existing value.
 }
-message PutSecretResponse {
+message PutPipelineSecretResponse {
   // The number of bytes uploaded.
   int64 bytes = 1;
 }
 
-message DeleteSecretRequest {
+message DeletePipelineSecretRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
   string key = 3;
 }
-message DeleteSecretResponse {}
+message DeletePipelineSecretResponse {}
+
+////////////// Secret store Transport Models //////////////
+
+message GetGlobalSecretRequest {
+  string key = 1;
+  bool include_secret = 2; // Whether to include plaintext secret
+}
+message GetGlobalSecretResponse {
+  SecretStoreKey metadata = 1;
+  string secret = 2;
+}
+
+message ListGlobalSecretsRequest {}
+message ListGlobalSecretsResponse { repeated SecretStoreKey keys = 1; }
+
+message PutGlobalSecretRequest {
+  string key = 1;
+  string content = 2;
+  bool force = 3; // Overwrites an already existing value.
+}
+message PutGlobalSecretResponse {
+  // The number of bytes uploaded.
+  int64 bytes = 1;
+}
+
+message DeleteGlobalSecretRequest { string key = 1; }
+message DeleteGlobalSecretResponse {}

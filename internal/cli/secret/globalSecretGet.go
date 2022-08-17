@@ -11,24 +11,23 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelineSecretGet = &cobra.Command{
-	Use:     "get <pipeline_id> <key>",
-	Short:   "Read a secret from the pipeline secret store",
-	Example: `$ gofer secret pipeline get simple_test_pipeline my_key`,
-	RunE:    pipelineSecretGet,
-	Args:    cobra.ExactArgs(2),
+var cmdGlobalSecretGet = &cobra.Command{
+	Use:     "get <key>",
+	Short:   "Read a secret from the global secret store",
+	Example: `$ gofer global secret get simple_test_global my_key`,
+	RunE:    globalSecretGet,
+	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelineSecret.AddCommand(cmdPipelineSecretGet)
+	CmdGlobalSecret.AddCommand(cmdGlobalSecretGet)
 }
 
-func pipelineSecretGet(_ *cobra.Command, args []string) error {
+func globalSecretGet(_ *cobra.Command, args []string) error {
 	// We don't use the formatter here because we may want to redirect the object we get into
 	// a file or similar situation.
 	cl.State.Fmt.Finish()
-	pipelineID := args[0]
-	key := args[1]
+	key := args[0]
 
 	conn, err := cl.State.Connect()
 	if err != nil {
@@ -40,9 +39,7 @@ func pipelineSecretGet(_ *cobra.Command, args []string) error {
 
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	resp, err := client.GetPipelineSecret(ctx, &proto.GetPipelineSecretRequest{
-		NamespaceId:   cl.State.Config.Namespace,
-		PipelineId:    pipelineID,
+	resp, err := client.GetGlobalSecret(ctx, &proto.GetGlobalSecretRequest{
 		Key:           key,
 		IncludeSecret: true,
 	})

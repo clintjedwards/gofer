@@ -23,5 +23,6 @@ var (
 type Engine interface {
 	GetSecret(key string) (string, error)
 	PutSecret(key string, content string, force bool) error
+	ListSecretKeys(prefix string) ([]string, error)
 	DeleteSecret(key string) error
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
@@ -50,7 +51,8 @@ func (api *API) ListNamespaces(ctx context.Context, request *proto.ListNamespace
 
 func (api *API) CreateNamespace(ctx context.Context, request *proto.CreateNamespaceRequest) (*proto.CreateNamespaceResponse, error) {
 	if !isManagementUser(ctx) {
-		return &proto.CreateNamespaceResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
+		return &proto.CreateNamespaceResponse{},
+			status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
 	if request.Id == "" {
@@ -61,11 +63,23 @@ func (api *API) CreateNamespace(ctx context.Context, request *proto.CreateNamesp
 		return &proto.CreateNamespaceResponse{}, status.Error(codes.FailedPrecondition, "name required")
 	}
 
+	// Prevent users from getting global secrets by naming their pipelines particular ways.
+	if strings.EqualFold(request.Id, "global_secret") {
+		return &proto.CreateNamespaceResponse{},
+			status.Error(codes.FailedPrecondition, "namespace cannot be named global_secret")
+	}
+
 	newNamespace := models.NewNamespace(request.Id, request.Name, request.Description)
 
 	err := api.db.InsertNamespace(newNamespace)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, storage.ErrEntityExists) {
+			return &proto.CreateNamespaceResponse{},
+				status.Error(codes.AlreadyExists, "namespace already exists")
+		}
+
+		return &proto.CreateNamespaceResponse{},
+			status.Error(codes.Internal, "could not insert namespace")
 	}
 
 	go api.events.Publish(models.EventCreatedNamespace{

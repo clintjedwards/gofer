@@ -2764,6 +2764,116 @@ func (x *TriggerResult) GetDetails() string {
 	return ""
 }
 
+type SecretStoreKey struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key     string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Created int64  `protobuf:"varint,2,opt,name=created,proto3" json:"created,omitempty"`
+}
+
+func (x *SecretStoreKey) Reset() {
+	*x = SecretStoreKey{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_message_proto_msgTypes[22]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SecretStoreKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretStoreKey) ProtoMessage() {}
+
+func (x *SecretStoreKey) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_message_proto_msgTypes[22]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretStoreKey.ProtoReflect.Descriptor instead.
+func (*SecretStoreKey) Descriptor() ([]byte, []int) {
+	return file_gofer_message_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SecretStoreKey) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *SecretStoreKey) GetCreated() int64 {
+	if x != nil {
+		return x.Created
+	}
+	return 0
+}
+
+type ObjectStoreKey struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key     string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Created int64  `protobuf:"varint,2,opt,name=created,proto3" json:"created,omitempty"`
+}
+
+func (x *ObjectStoreKey) Reset() {
+	*x = ObjectStoreKey{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_message_proto_msgTypes[23]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ObjectStoreKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ObjectStoreKey) ProtoMessage() {}
+
+func (x *ObjectStoreKey) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_message_proto_msgTypes[23]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ObjectStoreKey.ProtoReflect.Descriptor instead.
+func (*ObjectStoreKey) Descriptor() ([]byte, []int) {
+	return file_gofer_message_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ObjectStoreKey) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *ObjectStoreKey) GetCreated() int64 {
+	if x != nil {
+		return x.Created
+	}
+	return 0
+}
+
 type Pipeline_Error struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2776,7 +2886,7 @@ type Pipeline_Error struct {
 func (x *Pipeline_Error) Reset() {
 	*x = Pipeline_Error{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_message_proto_msgTypes[25]
+		mi := &file_gofer_message_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2789,7 +2899,7 @@ func (x *Pipeline_Error) String() string {
 func (*Pipeline_Error) ProtoMessage() {}
 
 func (x *Pipeline_Error) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_message_proto_msgTypes[25]
+	mi := &file_gofer_message_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2831,7 +2941,7 @@ type Run_RunTriggerInfo struct {
 func (x *Run_RunTriggerInfo) Reset() {
 	*x = Run_RunTriggerInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_message_proto_msgTypes[26]
+		mi := &file_gofer_message_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2844,7 +2954,7 @@ func (x *Run_RunTriggerInfo) String() string {
 func (*Run_RunTriggerInfo) ProtoMessage() {}
 
 func (x *Run_RunTriggerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_message_proto_msgTypes[26]
+	mi := &file_gofer_message_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3337,10 +3447,18 @@ var file_gofer_message_proto_rawDesc = []byte{
 	0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x0b, 0x0a, 0x07, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57,
 	0x4e, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x46, 0x41, 0x49, 0x4c, 0x55, 0x52, 0x45, 0x10, 0x01,
 	0x12, 0x0b, 0x0a, 0x07, 0x53, 0x55, 0x43, 0x43, 0x45, 0x53, 0x53, 0x10, 0x02, 0x12, 0x0b, 0x0a,
-	0x07, 0x53, 0x4b, 0x49, 0x50, 0x50, 0x45, 0x44, 0x10, 0x03, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65,
-	0x64, 0x77, 0x61, 0x72, 0x64, 0x73, 0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x07, 0x53, 0x4b, 0x49, 0x50, 0x50, 0x45, 0x44, 0x10, 0x03, 0x22, 0x3c, 0x0a, 0x0e, 0x53, 0x65,
+	0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x10, 0x0a, 0x03,
+	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18,
+	0x0a, 0x07, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x07, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x22, 0x3c, 0x0a, 0x0e, 0x4f, 0x62, 0x6a, 0x65,
+	0x63, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
+	0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07,
+	0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x63,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77, 0x61, 0x72,
+	0x64, 0x73, 0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67,
+	0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -3356,7 +3474,7 @@ func file_gofer_message_proto_rawDescGZIP() []byte {
 }
 
 var file_gofer_message_proto_enumTypes = make([]protoimpl.EnumInfo, 17)
-var file_gofer_message_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_gofer_message_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_gofer_message_proto_goTypes = []interface{}{
 	(Pipeline_PipelineState)(0),              // 0: proto.Pipeline.PipelineState
 	(Pipeline_ErrorKind)(0),                  // 1: proto.Pipeline.ErrorKind
@@ -3397,47 +3515,49 @@ var file_gofer_message_proto_goTypes = []interface{}{
 	(*Event)(nil),                            // 36: proto.Event
 	(*Token)(nil),                            // 37: proto.Token
 	(*TriggerResult)(nil),                    // 38: proto.TriggerResult
-	nil,                                      // 39: proto.Pipeline.TasksEntry
-	nil,                                      // 40: proto.Pipeline.TriggersEntry
-	nil,                                      // 41: proto.Pipeline.CommonTasksEntry
-	(*Pipeline_Error)(nil),                   // 42: proto.Pipeline.Error
-	(*Run_RunTriggerInfo)(nil),               // 43: proto.Run.RunTriggerInfo
-	nil,                                      // 44: proto.Task.DependsOnEntry
-	nil,                                      // 45: proto.PipelineTriggerSettings.SettingsEntry
-	nil,                                      // 46: proto.PipelineCommonTaskSettings.SettingsEntry
-	nil,                                      // 47: proto.TaskConfig.DependsOnEntry
-	nil,                                      // 48: proto.TaskConfig.VariablesEntry
-	nil,                                      // 49: proto.PipelineTriggerConfig.SettingsEntry
-	nil,                                      // 50: proto.PipelineCommonTaskConfig.SettingsEntry
-	nil,                                      // 51: proto.TriggerRegistration.VariablesEntry
-	nil,                                      // 52: proto.CommonTaskRegistration.VariablesEntry
-	nil,                                      // 53: proto.Token.MetadataEntry
+	(*SecretStoreKey)(nil),                   // 39: proto.SecretStoreKey
+	(*ObjectStoreKey)(nil),                   // 40: proto.ObjectStoreKey
+	nil,                                      // 41: proto.Pipeline.TasksEntry
+	nil,                                      // 42: proto.Pipeline.TriggersEntry
+	nil,                                      // 43: proto.Pipeline.CommonTasksEntry
+	(*Pipeline_Error)(nil),                   // 44: proto.Pipeline.Error
+	(*Run_RunTriggerInfo)(nil),               // 45: proto.Run.RunTriggerInfo
+	nil,                                      // 46: proto.Task.DependsOnEntry
+	nil,                                      // 47: proto.PipelineTriggerSettings.SettingsEntry
+	nil,                                      // 48: proto.PipelineCommonTaskSettings.SettingsEntry
+	nil,                                      // 49: proto.TaskConfig.DependsOnEntry
+	nil,                                      // 50: proto.TaskConfig.VariablesEntry
+	nil,                                      // 51: proto.PipelineTriggerConfig.SettingsEntry
+	nil,                                      // 52: proto.PipelineCommonTaskConfig.SettingsEntry
+	nil,                                      // 53: proto.TriggerRegistration.VariablesEntry
+	nil,                                      // 54: proto.CommonTaskRegistration.VariablesEntry
+	nil,                                      // 55: proto.Token.MetadataEntry
 }
 var file_gofer_message_proto_depIdxs = []int32{
 	0,  // 0: proto.Pipeline.state:type_name -> proto.Pipeline.PipelineState
-	39, // 1: proto.Pipeline.tasks:type_name -> proto.Pipeline.TasksEntry
-	40, // 2: proto.Pipeline.triggers:type_name -> proto.Pipeline.TriggersEntry
-	41, // 3: proto.Pipeline.common_tasks:type_name -> proto.Pipeline.CommonTasksEntry
-	42, // 4: proto.Pipeline.errors:type_name -> proto.Pipeline.Error
+	41, // 1: proto.Pipeline.tasks:type_name -> proto.Pipeline.TasksEntry
+	42, // 2: proto.Pipeline.triggers:type_name -> proto.Pipeline.TriggersEntry
+	43, // 3: proto.Pipeline.common_tasks:type_name -> proto.Pipeline.CommonTasksEntry
+	44, // 4: proto.Pipeline.errors:type_name -> proto.Pipeline.Error
 	27, // 5: proto.PipelineConfig.tasks:type_name -> proto.TaskConfig
 	28, // 6: proto.PipelineConfig.triggers:type_name -> proto.PipelineTriggerConfig
 	29, // 7: proto.PipelineConfig.common_tasks:type_name -> proto.PipelineCommonTaskConfig
 	2,  // 8: proto.Run.state:type_name -> proto.Run.RunState
 	3,  // 9: proto.Run.status:type_name -> proto.Run.RunStatus
 	22, // 10: proto.Run.status_reason:type_name -> proto.RunStatusReason
-	43, // 11: proto.Run.trigger:type_name -> proto.Run.RunTriggerInfo
+	45, // 11: proto.Run.trigger:type_name -> proto.Run.RunTriggerInfo
 	18, // 12: proto.Run.variables:type_name -> proto.Variable
 	4,  // 13: proto.RunStatusReason.reason:type_name -> proto.RunStatusReason.RunStatusReasonKind
 	23, // 14: proto.Task.registry_auth:type_name -> proto.RegistryAuth
-	44, // 15: proto.Task.depends_on:type_name -> proto.Task.DependsOnEntry
+	46, // 15: proto.Task.depends_on:type_name -> proto.Task.DependsOnEntry
 	18, // 16: proto.Task.variables:type_name -> proto.Variable
-	45, // 17: proto.PipelineTriggerSettings.settings:type_name -> proto.PipelineTriggerSettings.SettingsEntry
-	46, // 18: proto.PipelineCommonTaskSettings.settings:type_name -> proto.PipelineCommonTaskSettings.SettingsEntry
+	47, // 17: proto.PipelineTriggerSettings.settings:type_name -> proto.PipelineTriggerSettings.SettingsEntry
+	48, // 18: proto.PipelineCommonTaskSettings.settings:type_name -> proto.PipelineCommonTaskSettings.SettingsEntry
 	23, // 19: proto.TaskConfig.registry_auth:type_name -> proto.RegistryAuth
-	47, // 20: proto.TaskConfig.depends_on:type_name -> proto.TaskConfig.DependsOnEntry
-	48, // 21: proto.TaskConfig.variables:type_name -> proto.TaskConfig.VariablesEntry
-	49, // 22: proto.PipelineTriggerConfig.settings:type_name -> proto.PipelineTriggerConfig.SettingsEntry
-	50, // 23: proto.PipelineCommonTaskConfig.settings:type_name -> proto.PipelineCommonTaskConfig.SettingsEntry
+	49, // 20: proto.TaskConfig.depends_on:type_name -> proto.TaskConfig.DependsOnEntry
+	50, // 21: proto.TaskConfig.variables:type_name -> proto.TaskConfig.VariablesEntry
+	51, // 22: proto.PipelineTriggerConfig.settings:type_name -> proto.PipelineTriggerConfig.SettingsEntry
+	52, // 23: proto.PipelineCommonTaskConfig.settings:type_name -> proto.PipelineCommonTaskConfig.SettingsEntry
 	7,  // 24: proto.TaskRunStatusReason.reason:type_name -> proto.TaskRunStatusReason.Reason
 	30, // 25: proto.TaskRun.status_reason:type_name -> proto.TaskRunStatusReason
 	8,  // 26: proto.TaskRun.state:type_name -> proto.TaskRun.TaskRunState
@@ -3446,13 +3566,13 @@ var file_gofer_message_proto_depIdxs = []int32{
 	18, // 29: proto.TaskRun.variables:type_name -> proto.Variable
 	10, // 30: proto.Trigger.state:type_name -> proto.Trigger.TriggerState
 	11, // 31: proto.Trigger.status:type_name -> proto.Trigger.TriggerStatus
-	51, // 32: proto.TriggerRegistration.variables:type_name -> proto.TriggerRegistration.VariablesEntry
+	53, // 32: proto.TriggerRegistration.variables:type_name -> proto.TriggerRegistration.VariablesEntry
 	12, // 33: proto.TriggerRegistration.status:type_name -> proto.TriggerRegistration.TriggerStatus
 	13, // 34: proto.CommonTask.status:type_name -> proto.CommonTask.Status
-	52, // 35: proto.CommonTaskRegistration.variables:type_name -> proto.CommonTaskRegistration.VariablesEntry
+	54, // 35: proto.CommonTaskRegistration.variables:type_name -> proto.CommonTaskRegistration.VariablesEntry
 	14, // 36: proto.CommonTaskRegistration.status:type_name -> proto.CommonTaskRegistration.Status
 	15, // 37: proto.Token.kind:type_name -> proto.Token.Kind
-	53, // 38: proto.Token.metadata:type_name -> proto.Token.MetadataEntry
+	55, // 38: proto.Token.metadata:type_name -> proto.Token.MetadataEntry
 	16, // 39: proto.TriggerResult.status:type_name -> proto.TriggerResult.Status
 	24, // 40: proto.Pipeline.TasksEntry.value:type_name -> proto.Task
 	25, // 41: proto.Pipeline.TriggersEntry.value:type_name -> proto.PipelineTriggerSettings
@@ -3737,7 +3857,31 @@ func file_gofer_message_proto_init() {
 				return nil
 			}
 		}
-		file_gofer_message_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+		file_gofer_message_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SecretStoreKey); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_message_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ObjectStoreKey); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_message_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Pipeline_Error); i {
 			case 0:
 				return &v.state
@@ -3749,7 +3893,7 @@ func file_gofer_message_proto_init() {
 				return nil
 			}
 		}
-		file_gofer_message_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+		file_gofer_message_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Run_RunTriggerInfo); i {
 			case 0:
 				return &v.state
@@ -3768,7 +3912,7 @@ func file_gofer_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_gofer_message_proto_rawDesc,
 			NumEnums:      17,
-			NumMessages:   37,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
