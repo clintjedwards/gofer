@@ -109,16 +109,13 @@
 
 - Create a namespace set command that allows the user to switch between namespaces and save it in their configuration file (CLI).
 - Write SDK library for rust both trigger and pipeline config.
-- Write code to detect which language and then call the appropriate compiler.
 - We can also just straight up read from things like json/toml since it all compiles back to json anyway.
 - In our integration testing for storage, test that cascading deletes works
-- Separate store_keys into it's own table
 - Purely for recovering lost containers, we can usually query the engine to ask it what time this container
   stopped and started. This way we can have more accurate running times instead of just leaving it as whenever
   the server restarted.
-- Install trigger should be able to be called again to update the trigger's configuration.
 - Pipeline validate - must have at least one task - limit parallesim to something like 20 - Make sure there are no cycles.
-- If a trigger by the same name is already installed, we should refuse to install another.
+- If a trigger by the same name is already installed, we should refuse to install another but instead allow the user to update it.
   - Maybe have a force function in the CLI to say "hey, if you want we'll uninstall this for you".
 - Make sure to go back and make sure that all secret values persisted to the database are encrypted.
 - We should have a watch function for run that nicely displays the task runs as they start and finish.
@@ -130,13 +127,11 @@
 - trigger-install cli cmd should force the user to chose either use -i or -v. Even if that means -v must be empty
 - Add an example of entrypoint/command running a multi-line script
 - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
-- In the CLI put a 'pipeline run' and a 'run start' that both just call the same endpoint.
 - In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
 - Remember to pass back common tasks in the pipeline get call to the client for the cli.
 - For all models -> Implement from for both proto -> model and model -> proto.
 - Use Mdbook for documentation.
 - Upgrade all packages.
-- Swap API service to using go 1.19's new atomic pointer stuff.
 - For trigger regs and common task reg when we install them we need a better way to figure out what things are okay
   and not okay to show back to regular users. For example we may want to show the user the this trigger has a global
   limit of some setting, but we DON'T want to show the user that this trigger has 'y' API key.
@@ -167,3 +162,7 @@
 - Everything we just did for secret key probably needs to be done for object keys.
 - Should all CLI nouns be plural?
   After mdbook upgrade update all code links to it.
+- Next: work on bringing the 2 starter triggers back into the fold and then getting them to auto register on the first
+  launch of Gofer.
+- Write install CLI commands for trigger/common task.
+- Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.

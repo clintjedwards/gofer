@@ -53,7 +53,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 		var created int64
 		var started int64
 		var ended int64
-		var exitCode sql.NullInt64
+		var exitCodeRaw sql.NullInt64
 		var state string
 		var status string
 		var statusReasonJSON sql.NullString
@@ -63,7 +63,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 		var variablesJSON string
 
 		err = rows.Scan(&namespace, &pipeline, &run, &id, &taskJSON, &created, &started, &ended,
-			&exitCode, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &schedulerIDRaw, &variablesJSON)
+			&exitCodeRaw, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &schedulerIDRaw, &variablesJSON)
 		if err != nil {
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
@@ -74,6 +74,11 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 			if err != nil {
 				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
 			}
+		}
+
+		var exitCode *int64 = nil
+		if exitCodeRaw.Valid {
+			exitCode = &exitCodeRaw.Int64
 		}
 
 		task := models.Task{}
@@ -101,6 +106,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 		taskRun.Created = created
 		taskRun.Started = started
 		taskRun.Ended = ended
+		taskRun.ExitCode = exitCode
 		taskRun.State = models.TaskRunState(state)
 		taskRun.Status = models.TaskRunStatus(status)
 		taskRun.StatusReason = statusReason
@@ -171,7 +177,7 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 	var created int64
 	var started int64
 	var ended int64
-	var exitCode sql.NullInt64
+	var exitCodeRaw sql.NullInt64
 	var state string
 	var status string
 	var statusReasonJSON sql.NullString
@@ -181,7 +187,7 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 	var variablesJSON string
 
 	err := row.Scan(&namespaceID, &pipelineID, &runID, &id, &taskJSON, &created, &started, &ended,
-		&exitCode, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &schedulerIDRaw, &variablesJSON)
+		&exitCodeRaw, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &schedulerIDRaw, &variablesJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.TaskRun{}, ErrEntityNotFound
@@ -209,6 +215,11 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 		schedulerID = &schedulerIDRaw.String
 	}
 
+	var exitCode *int64 = nil
+	if exitCodeRaw.Valid {
+		exitCode = &exitCodeRaw.Int64
+	}
+
 	variables := []models.Variable{}
 	err = json.Unmarshal([]byte(variablesJSON), &variables)
 	if err != nil {
@@ -225,6 +236,7 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 	retrievedTaskRun.Created = created
 	retrievedTaskRun.Started = started
 	retrievedTaskRun.Ended = ended
+	retrievedTaskRun.ExitCode = exitCode
 	retrievedTaskRun.State = models.TaskRunState(state)
 	retrievedTaskRun.Status = models.TaskRunStatus(status)
 	retrievedTaskRun.StatusReason = statusReason

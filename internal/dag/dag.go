@@ -1,5 +1,7 @@
 // Package dag is used to verify and map out directed acyclic graph implementations. This helps us verify that user's
 // task dependencies actually work as a DAG and avoid entering in any cycles.
+//
+// https://bertptrs.nl/2022/06/23/deadlock-free-mutexes-and-directed-acyclic-graphs.html
 package dag
 
 import (

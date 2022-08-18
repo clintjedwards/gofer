@@ -59,7 +59,7 @@ func Duration(start, end int64) string {
 	duration := endTime.Sub(startTime)
 
 	if duration > time.Second {
-		truncate := 1 * time.Second
+		truncate := time.Second
 		return "~" + duration.Truncate(truncate).String()
 	}
 

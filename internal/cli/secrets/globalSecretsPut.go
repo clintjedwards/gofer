@@ -1,4 +1,4 @@
-package secret
+package secrets
 
 import (
 	"bytes"
@@ -15,27 +15,26 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelineSecretsPut = &cobra.Command{
-	Use:   "put <pipeline_id> <key>=<secret>",
-	Short: "Write a secret to the pipeline secret store",
-	Long: `Write a secret to the pipeline secret store.
+var cmdGlobalSecretsPut = &cobra.Command{
+	Use:   "put <key>=<secret>",
+	Short: "Write a secret to the global secret store",
+	Long: `Write a secret to the global secret store.
 
 You can store both regular text values or read in entire files using the '@' prefix.
 `,
-	Example: `$ gofer secrets pipeline put simple_test_pipeline my_key=my_value
-$ gofer secrets pipeline put simple_test_pipeline my_key=@/test/folder/file_path`,
-	RunE: pipelineSecretsStorePut,
-	Args: cobra.ExactArgs(2),
+	Example: `$ gofer secrets global put simple_test_global my_key=my_value
+$ gofer secrets global put simple_test_global my_key=@/test/folder/file_path`,
+	RunE: globalSecretsStorePut,
+	Args: cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdPipelineSecretsPut.Flags().BoolP("force", "f", false, "replace value if exists")
-	CmdPipelineSecrets.AddCommand(cmdPipelineSecretsPut)
+	cmdGlobalSecretsPut.Flags().BoolP("force", "f", false, "replace value if exists")
+	CmdGlobalSecrets.AddCommand(cmdGlobalSecretsPut)
 }
 
-func pipelineSecretsStorePut(cmd *cobra.Command, args []string) error {
-	pipelineID := args[0]
-	keyValueStr := args[1]
+func globalSecretsStorePut(cmd *cobra.Command, args []string) error {
+	keyValueStr := args[0]
 
 	key, value, ok := strings.Cut(keyValueStr, "=")
 	if !ok {
@@ -80,12 +79,10 @@ func pipelineSecretsStorePut(cmd *cobra.Command, args []string) error {
 
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	resp, err := client.PutPipelineSecret(ctx, &proto.PutPipelineSecretRequest{
-		NamespaceId: cl.State.Config.Namespace,
-		PipelineId:  pipelineID,
-		Key:         key,
-		Content:     secret.String(),
-		Force:       force,
+	resp, err := client.PutGlobalSecret(ctx, &proto.PutGlobalSecretRequest{
+		Key:     key,
+		Content: secret.String(),
+		Force:   force,
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not upload object: %v", err))

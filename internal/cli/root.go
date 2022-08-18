@@ -12,9 +12,9 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/namespace"
 	"github.com/clintjedwards/gofer/internal/cli/pipeline"
 	"github.com/clintjedwards/gofer/internal/cli/run"
-	"github.com/clintjedwards/gofer/internal/cli/secret"
+	"github.com/clintjedwards/gofer/internal/cli/secrets"
 	"github.com/clintjedwards/gofer/internal/cli/service"
-	taskrun "github.com/clintjedwards/gofer/internal/cli/taskRun"
+	"github.com/clintjedwards/gofer/internal/cli/taskruns"
 	"github.com/clintjedwards/gofer/internal/cli/trigger"
 	"github.com/spf13/cobra"
 )
@@ -44,10 +44,10 @@ func init() {
 	RootCmd.AddCommand(service.CmdService)
 	RootCmd.AddCommand(pipeline.CmdPipeline)
 	RootCmd.AddCommand(run.CmdRun)
-	RootCmd.AddCommand(taskrun.CmdTaskRun)
+	RootCmd.AddCommand(taskruns.CmdTaskRuns)
 	RootCmd.AddCommand(trigger.CmdTrigger)
 	RootCmd.AddCommand(namespace.CmdNamespace)
-	RootCmd.AddCommand(secret.CmdSecrets)
+	RootCmd.AddCommand(secrets.CmdSecrets)
 	RootCmd.AddCommand(event.CmdEvent)
 
 	RootCmd.PersistentFlags().String("config", "", "configuration file path")
