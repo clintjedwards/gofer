@@ -165,3 +165,4 @@
 - Replace blurry png for readme.
 - For secret store and object store stuff need to manually clean those up as we can't rely on cascade on delete.
 - Everything we just did for secret key probably needs to be done for object keys.
+- Should all CLI nouns be plural?

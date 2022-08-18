@@ -2,12 +2,15 @@ package event
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
+	"github.com/clintjedwards/gofer/internal/cli/format"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/fatih/color"
 	"github.com/fatih/structs"
@@ -30,6 +33,13 @@ func init() {
 	cmdEventList.Flags().BoolP("reverse", "r", false, "Sort events from newest to oldest")
 	cmdEventList.Flags().BoolP("follow", "f", false, "Continuously wait for more events; does not work with reverse")
 	CmdEvent.AddCommand(cmdEventList)
+}
+
+type Event struct {
+	Kind    string
+	ID      int64
+	Emitted int64
+	Details string
 }
 
 func eventList(cmd *cobra.Command, _ []string) error {
@@ -77,7 +87,12 @@ func eventList(cmd *cobra.Command, _ []string) error {
 			break
 		}
 
-		cl.State.Fmt.Println(printEvent(resp))
+		event := constructEvent(resp.Event)
+
+		cl.State.Fmt.Println(fmt.Sprintf("[%s] %s %s: %v",
+			color.YellowString(fmt.Sprint(event.ID)),
+			format.UnixMilli(event.Emitted, "Unknown", cl.State.Config.Detail),
+			color.BlueString(formatEventKind(string(event.Kind))), event.Details))
 	}
 
 	cl.State.Fmt.Finish()
@@ -85,30 +100,29 @@ func eventList(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func printEvent(event *proto.ListEventsResponse) string {
+func constructEvent(event *proto.Event) Event {
 	// We're doing hacks here because I refuse to build long switch chains
-	convertedMap := structs.Map(event.Event)
-	kind := ""
-	metadata := map[string]interface{}{}
-	rawMap := map[string]interface{}{}
-	for key, value := range convertedMap {
-		rawMap = value.(map[string]interface{})
-		metadata = rawMap["Metadata"].(map[string]interface{})
-		kind = key
-		break // We only interate through this map so we can take the first (and only) key
+	convertedMap := structs.Map(event)
+
+	kind := convertedMap["Kind"].(string)
+	id := convertedMap["Id"].(int64)
+	emitted := convertedMap["Emitted"].(int64)
+	details := convertedMap["Details"].(string)
+
+	return Event{
+		Kind:    kind,
+		ID:      id,
+		Emitted: emitted,
+		Details: details,
 	}
+}
 
-	other := map[string]string{}
-	for key, value := range rawMap {
-		if key == "Metadata" {
-			continue
-		}
+func formatEventKind(kind string) string {
+	toTitle := cases.Title(language.AmericanEnglish)
+	toLower := cases.Lower(language.AmericanEnglish)
 
-		other[key] = fmt.Sprint(value)
-	}
+	kind = strings.ReplaceAll(kind, "_", " ")
+	kind = toTitle.String(toLower.String(kind))
 
-	otherRaw, _ := json.Marshal(other)
-	id := metadata["EventId"].(int64)
-
-	return fmt.Sprintf("[%s] %s: %v", color.YellowString(fmt.Sprint(id)), color.BlueString(kind), string(otherRaw))
+	return kind
 }

@@ -3,6 +3,7 @@ package event
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"text/template"
@@ -10,9 +11,8 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
 	proto "github.com/clintjedwards/gofer/proto/go"
-
 	"github.com/fatih/color"
-	"github.com/fatih/structs"
+
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
@@ -75,47 +75,38 @@ type data struct {
 	Kind    string
 	Emitted string
 	ID      string
-	Event   string
-	Other   map[string]string
+	Details map[string]interface{}
 }
 
 func formatEvent(event *proto.GetEventResponse, detail bool) (string, error) {
-	// We're doing hacks here because I refuse to build long switch chains
-	convertedMap := structs.Map(event.Event)
-	kind := ""
-	metadata := map[string]interface{}{}
-	rawMap := map[string]interface{}{}
-	for key, value := range convertedMap {
-		rawMap = value.(map[string]interface{})
-		metadata = rawMap["Metadata"].(map[string]interface{})
-		kind = key
-		break // We only interate through this map so we can take the first (and only) key
+	evnt := constructEvent(event.Event)
+
+	details := map[string]interface{}{}
+	err := json.Unmarshal([]byte(evnt.Details), &details)
+	if err != nil {
+		return "", err
 	}
 
-	other := map[string]string{}
-	for key, value := range rawMap {
-		if key == "Metadata" {
-			continue
-		}
-
-		other[color.BlueString("%s:", key)] = fmt.Sprint(value)
+	fmttedDetails := map[string]interface{}{}
+	for key, value := range details {
+		fmttedDetails[color.CyanString(formatEventKind(key))] = value
 	}
 
 	data := data{
-		Kind:    color.BlueString(kind),
-		Emitted: format.UnixMilli(metadata["Emitted"].(int64), "Unknown", detail),
-		ID:      fmt.Sprintf("%d", metadata["EventId"].(int64)),
-		Other:   other,
+		Kind:    color.BlueString(formatEventKind(evnt.Kind)),
+		Emitted: format.UnixMilli(evnt.Emitted, "Unknown", detail),
+		ID:      color.YellowString(fmt.Sprintf("%d", evnt.ID)),
+		Details: fmttedDetails,
 	}
 
 	const formatTmpl = `[{{.ID}}] {{.Kind}}
 
-🗒 Details:
-  {{- range $key, $value := .Other }}
-  • {{ $key }} {{ $value }}
-  {{- end }}
+  🗒 Details:
+    {{- range $key, $value := .Details }}
+    • {{ $key }}: {{ $value }}
+    {{- end }}
 
-Emitted {{.Emitted}}`
+  Emitted {{.Emitted}}`
 
 	var tpl bytes.Buffer
 	t := template.Must(template.New("tmp").Parse(formatTmpl))

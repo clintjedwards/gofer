@@ -11,19 +11,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelineSecretGet = &cobra.Command{
+var cmdPipelineSecretsGet = &cobra.Command{
 	Use:     "get <pipeline_id> <key>",
 	Short:   "Read a secret from the pipeline secret store",
-	Example: `$ gofer secret pipeline get simple_test_pipeline my_key`,
-	RunE:    pipelineSecretGet,
+	Example: `$ gofer secrets pipeline get simple_test_pipeline my_key`,
+	RunE:    pipelineSecretsGet,
 	Args:    cobra.ExactArgs(2),
 }
 
 func init() {
-	CmdPipelineSecret.AddCommand(cmdPipelineSecretGet)
+	CmdPipelineSecrets.AddCommand(cmdPipelineSecretsGet)
 }
 
-func pipelineSecretGet(_ *cobra.Command, args []string) error {
+func pipelineSecretsGet(_ *cobra.Command, args []string) error {
 	// We don't use the formatter here because we may want to redirect the object we get into
 	// a file or similar situation.
 	cl.State.Fmt.Finish()

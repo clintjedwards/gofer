@@ -47,7 +47,7 @@ func init() {
 	RootCmd.AddCommand(taskrun.CmdTaskRun)
 	RootCmd.AddCommand(trigger.CmdTrigger)
 	RootCmd.AddCommand(namespace.CmdNamespace)
-	RootCmd.AddCommand(secret.CmdSecret)
+	RootCmd.AddCommand(secret.CmdSecrets)
 	RootCmd.AddCommand(event.CmdEvent)
 
 	RootCmd.PersistentFlags().String("config", "", "configuration file path")

@@ -28,10 +28,8 @@ func init() {
 	CmdNamespace.AddCommand(cmdNamespaceGet)
 }
 
-func namespaceGet(cmd *cobra.Command, args []string) error {
+func namespaceGet(_ *cobra.Command, args []string) error {
 	id := args[0]
-
-	detail, _ := cmd.Flags().GetBool("detail")
 
 	cl.State.Fmt.Print("Retrieving namespace")
 
@@ -58,7 +56,7 @@ func namespaceGet(cmd *cobra.Command, args []string) error {
 	namespace := models.Namespace{}
 	namespace.FromProto(resp.Namespace)
 
-	output, err := formatNamespace(&namespace, detail)
+	output, err := formatNamespace(&namespace, cl.State.Config.Detail)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not render namespace: %v", err))
 		cl.State.Fmt.Finish()

@@ -14,21 +14,18 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdGlobalSecretList = &cobra.Command{
+var cmdGlobalSecretsList = &cobra.Command{
 	Use:     "list",
 	Short:   "View keys from the global secret store",
-	Example: `$ gofer secret global list`,
-	RunE:    globalSecretStoreList,
+	Example: `$ gofer secrets global list`,
+	RunE:    globalSecretsStoreList,
 }
 
 func init() {
-	CmdGlobalSecret.AddCommand(cmdGlobalSecretList)
+	CmdGlobalSecrets.AddCommand(cmdGlobalSecretsList)
 }
 
-func globalSecretStoreList(cmd *cobra.Command, _ []string) error {
-	noColor, _ := cmd.Flags().GetBool("no-color")
-	detail, _ := cmd.Flags().GetBool("detail")
-
+func globalSecretsStoreList(_ *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving global keys")
 
 	conn, err := cl.State.Connect()
@@ -53,11 +50,11 @@ func globalSecretStoreList(cmd *cobra.Command, _ []string) error {
 	for _, key := range resp.Keys {
 		data = append(data, []string{
 			key.Key,
-			format.UnixMilli(key.Created, "Never", detail),
+			format.UnixMilli(key.Created, "Never", cl.State.Config.Detail),
 		})
 	}
 
-	table := formatGlobalTable(data, !noColor)
+	table := formatGlobalTable(data, !cl.State.Config.NoColor)
 
 	cl.State.Fmt.Println(table)
 	cl.State.Fmt.Finish()

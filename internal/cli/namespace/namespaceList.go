@@ -31,9 +31,6 @@ func init() {
 }
 
 func namespaceList(cmd *cobra.Command, _ []string) error {
-	noColor, _ := cmd.Flags().GetBool("no-color")
-	detail, _ := cmd.Flags().GetBool("detail")
-
 	cl.State.Fmt.Print("Retrieving namespaces")
 
 	limit, err := cmd.Flags().GetInt("limit")
@@ -69,11 +66,11 @@ func namespaceList(cmd *cobra.Command, _ []string) error {
 			namespace.Id,
 			namespace.Name,
 			namespace.Description,
-			cliformat.UnixMilli(namespace.Created, "Never", detail),
+			cliformat.UnixMilli(namespace.Created, "Never", cl.State.Config.Detail),
 		})
 	}
 
-	table := formatTable(data, !noColor)
+	table := formatTable(data, !cl.State.Config.NoColor)
 
 	cl.State.Fmt.Println(table)
 	cl.State.Fmt.Finish()

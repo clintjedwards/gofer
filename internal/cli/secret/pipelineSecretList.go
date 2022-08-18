@@ -14,22 +14,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelineSecretList = &cobra.Command{
+var cmdPipelineSecretsList = &cobra.Command{
 	Use:     "list <pipeline_id>",
 	Short:   "View keys from the pipeline secret store",
-	Example: `$ gofer secret pipeline list simple`,
-	RunE:    pipelineSecretStoreList,
+	Example: `$ gofer secrets pipeline list simple`,
+	RunE:    pipelineSecretsStoreList,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelineSecret.AddCommand(cmdPipelineSecretList)
+	CmdPipelineSecrets.AddCommand(cmdPipelineSecretsList)
 }
 
-func pipelineSecretStoreList(cmd *cobra.Command, args []string) error {
+func pipelineSecretsStoreList(_ *cobra.Command, args []string) error {
 	id := args[0]
-	noColor, _ := cmd.Flags().GetBool("no-color")
-	detail, _ := cmd.Flags().GetBool("detail")
 
 	cl.State.Fmt.Print("Retrieving pipeline keys")
 
@@ -58,11 +56,11 @@ func pipelineSecretStoreList(cmd *cobra.Command, args []string) error {
 	for _, key := range resp.Keys {
 		data = append(data, []string{
 			key.Key,
-			format.UnixMilli(key.Created, "Never", detail),
+			format.UnixMilli(key.Created, "Never", cl.State.Config.Detail),
 		})
 	}
 
-	table := formatPipelineTable(data, !noColor)
+	table := formatPipelineTable(data, !cl.State.Config.NoColor)
 
 	cl.State.Fmt.Println(table)
 	cl.State.Fmt.Finish()

@@ -15,25 +15,25 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdGlobalSecretPut = &cobra.Command{
+var cmdGlobalSecretsPut = &cobra.Command{
 	Use:   "put <key>=<secret>",
 	Short: "Write a secret to the global secret store",
 	Long: `Write a secret to the global secret store.
 
 You can store both regular text values or read in entire files using the '@' prefix.
 `,
-	Example: `$ gofer secret global put simple_test_global my_key=my_value
-$ gofer secret global put simple_test_global my_key=@/test/folder/file_path`,
-	RunE: globalSecretStorePut,
+	Example: `$ gofer secrets global put simple_test_global my_key=my_value
+$ gofer secrets global put simple_test_global my_key=@/test/folder/file_path`,
+	RunE: globalSecretsStorePut,
 	Args: cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdGlobalSecretPut.Flags().BoolP("force", "f", false, "replace value if exists")
-	CmdGlobalSecret.AddCommand(cmdGlobalSecretPut)
+	cmdGlobalSecretsPut.Flags().BoolP("force", "f", false, "replace value if exists")
+	CmdGlobalSecrets.AddCommand(cmdGlobalSecretsPut)
 }
 
-func globalSecretStorePut(cmd *cobra.Command, args []string) error {
+func globalSecretsStorePut(cmd *cobra.Command, args []string) error {
 	keyValueStr := args[0]
 
 	key, value, ok := strings.Cut(keyValueStr, "=")
