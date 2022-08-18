@@ -58,7 +58,7 @@ func runToggleEventIngress(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	cl.State.Fmt.PrintSuccess(fmt.Sprintf("successfully toggled event ingress; accept new runs = %t", resp.Value))
+	cl.State.Fmt.PrintSuccess(fmt.Sprintf("successfully toggled event ingress; accept new runs = %t", !resp.Value))
 	cl.State.Fmt.Finish()
 
 	return nil

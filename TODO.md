@@ -166,3 +166,4 @@
 - For secret store and object store stuff need to manually clean those up as we can't rely on cascade on delete.
 - Everything we just did for secret key probably needs to be done for object keys.
 - Should all CLI nouns be plural?
+  After mdbook upgrade update all code links to it.

@@ -25,7 +25,7 @@ func TestAPISampleFromFile(t *testing.T) {
 		PruneEventsIntervalHCL:  "3h",
 		Host:                    "localhost:8080",
 		LogLevel:                "info",
-		RunLogExpiry:            20,
+		RunLogExpiry:            30,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      time.Minute * 5,
 		TaskRunStopTimeoutHCL:   "5m",
@@ -36,7 +36,7 @@ func TestAPISampleFromFile(t *testing.T) {
 		},
 
 		Database: &Database{
-			MaxResultsLimit: 100,
+			MaxResultsLimit: 200,
 			Path:            "/tmp/gofer.db",
 		},
 
@@ -45,8 +45,8 @@ func TestAPISampleFromFile(t *testing.T) {
 			BoltDB: &BoltDB{
 				Path: "/tmp/gofer-os.db",
 			},
-			PipelineObjectLimit: 10,
-			RunObjectExpiry:     20,
+			PipelineObjectLimit: 30,
+			RunObjectExpiry:     30,
 		},
 
 		SecretStore: &SecretStore{
@@ -126,7 +126,7 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		PruneEventsIntervalHCL:  "3h",
 		Host:                    "localhost:8080",
 		LogLevel:                "info",
-		RunLogExpiry:            20,
+		RunLogExpiry:            30,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      time.Minute * 5,
 		TaskRunStopTimeoutHCL:   "5m",
@@ -146,7 +146,7 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 			BoltDB: &BoltDB{
 				Path: "/tmp/gofer-os.db",
 			},
-			PipelineObjectLimit: 10,
+			PipelineObjectLimit: 30,
 			RunObjectExpiry:     1000,
 		},
 
