@@ -166,3 +166,4 @@
   launch of Gofer.
 - Write install CLI commands for trigger/common task.
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
+- Document the debug containers also

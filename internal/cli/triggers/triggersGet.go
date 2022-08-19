@@ -75,7 +75,7 @@ type triggerInfo struct {
 }
 
 func formatTriggerInfo(ti triggerInfo) string {
-	const formatTmpl = `Trigger "{{.Kind}}" :: {{.Status}} :: {{.State}}
+	const formatTmpl = `Trigger "{{.Name}}" :: {{.Status}} :: {{.State}}
 
 Started {{.Started}}
 

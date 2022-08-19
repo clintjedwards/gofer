@@ -288,30 +288,58 @@ func (api *API) installBaseTriggers() error {
 		return nil
 	}
 
-	registration := models.TriggerRegistration{}
-	registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
-		Name:  "cron",
-		Image: "ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest",
-	})
-
-	err := api.db.InsertTriggerRegistration(&registration)
+	registeredTriggers, err := api.db.ListTriggerRegistrations(0, 0)
 	if err != nil {
-		if !errors.Is(err, storage.ErrEntityExists) {
-			return err
+		return err
+	}
+
+	cronInstalled := false
+	intervalInstalled := false
+
+	for _, trigger := range registeredTriggers {
+		if strings.EqualFold(trigger.Name, "cron") {
+			cronInstalled = true
+		}
+
+		if strings.EqualFold(trigger.Name, "interval") {
+			intervalInstalled = true
 		}
 	}
 
-	registration = models.TriggerRegistration{}
-	registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
-		Name:  "interval",
-		Image: "ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest",
-	})
+	if !cronInstalled {
+		registration := models.TriggerRegistration{}
+		registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
+			Name:  "cron",
+			Image: "ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest",
+		})
 
-	err = api.db.InsertTriggerRegistration(&registration)
-	if err != nil {
-		if !errors.Is(err, storage.ErrEntityExists) {
-			return err
+		err := api.db.InsertTriggerRegistration(&registration)
+		if err != nil {
+			if !errors.Is(err, storage.ErrEntityExists) {
+				return err
+			}
 		}
+
+		log.Info().Str("name", registration.Name).Str("image", registration.Image).
+			Msg("registered base trigger automatically due to 'install_base_triggers' config")
+	}
+
+	if !intervalInstalled {
+		registration := models.TriggerRegistration{}
+		registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
+			Name:  "interval",
+			Image: "ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest",
+		})
+
+		err := api.db.InsertTriggerRegistration(&registration)
+		if err != nil {
+			if !errors.Is(err, storage.ErrEntityExists) {
+				return err
+			}
+		}
+
+		log.Info().Str("name", registration.Name).Str("image", registration.Image).
+			Msg("registered base trigger automatically due to 'install_base_triggers' config")
 	}
 
 	return nil
