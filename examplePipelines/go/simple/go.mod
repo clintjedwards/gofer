@@ -2,10 +2,10 @@ module github.com/clintjedwards/gofer/examplePipelines/go/simple
 
 go 1.19
 
-require github.com/clintjedwards/gofer/sdk/go v0.0.0-00010101000000-000000000000
+require github.com/clintjedwards/gofer/sdk/go v0.0.0-20220819124522-cd1972bcb6e8
 
 require (
-	github.com/clintjedwards/gofer v0.0.0-00010101000000-000000000000 // indirect
+	github.com/clintjedwards/gofer v0.0.0-20220818153553-9fcaee15b5ac // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
