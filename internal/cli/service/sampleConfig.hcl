@@ -54,9 +54,10 @@ server {
 }
 
 triggers {
-  stop_timeout         = "5m"
-  healthcheck_interval = "30s"
-  tls_cert_path        = "./localhost.crt"
-  tls_key_path         = "./localhost.key"
+  install_base_triggers = true
+  stop_timeout          = "5m"
+  healthcheck_interval  = "30s"
+  tls_cert_path         = "./localhost.crt"
+  tls_key_path          = "./localhost.key"
 }
 

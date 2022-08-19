@@ -1,11 +1,11 @@
-package trigger
+package triggers
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdTrigger = &cobra.Command{
-	Use:   "trigger",
+var CmdTriggers = &cobra.Command{
+	Use:   "triggers",
 	Short: "Get details about Gofer triggers",
 	Long: `Get details about Gofer triggers.
 

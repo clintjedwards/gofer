@@ -23,7 +23,7 @@ func (api *API) GetTrigger(ctx context.Context, request *proto.GetTriggerRequest
 
 	trigger, exists := api.triggers.Get(request.Name)
 	if !exists {
-		return &proto.GetTriggerResponse{}, status.Error(codes.NotFound, "could not find common task")
+		return &proto.GetTriggerResponse{}, status.Error(codes.NotFound, "could not find trigger")
 	}
 
 	return &proto.GetTriggerResponse{Trigger: trigger.ToProto()}, nil
@@ -160,10 +160,10 @@ func (api *API) InstallTrigger(ctx context.Context, request *proto.InstallTrigge
 	err = api.db.InsertTriggerRegistration(&registration)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
-			return &proto.InstallTriggerResponse{}, status.Errorf(codes.AlreadyExists, "common task is %s already installed", request.Name)
+			return &proto.InstallTriggerResponse{}, status.Errorf(codes.AlreadyExists, "trigger is %s already installed", request.Name)
 		}
 
-		return &proto.InstallTriggerResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
+		return &proto.InstallTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
 	}
 
 	go api.events.Publish(models.EventInstalledTrigger{
@@ -179,7 +179,7 @@ func (api *API) UninstallTrigger(ctx context.Context, request *proto.UninstallTr
 
 	err := api.db.DeleteTriggerRegistration(request.Name)
 	if err != nil {
-		return &proto.UninstallTriggerResponse{}, status.Error(codes.Internal, "error deleting common task registration")
+		return &proto.UninstallTriggerResponse{}, status.Error(codes.Internal, "error deleting trigger registration")
 	}
 
 	go api.events.Publish(models.EventUninstalledTrigger{
@@ -197,10 +197,10 @@ func (api *API) EnableTrigger(ctx context.Context, request *proto.EnableTriggerR
 	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.EnableTriggerResponse{}, status.Errorf(codes.NotFound, "common task %q is not found", request.Name)
+			return &proto.EnableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
 		}
 
-		return &proto.EnableTriggerResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
+		return &proto.EnableTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
 	}
 
 	// TODO(clintjedwards): This needs a get and swap
@@ -209,7 +209,7 @@ func (api *API) EnableTrigger(ctx context.Context, request *proto.EnableTriggerR
 		_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
 			Status: ptr(models.TriggerStatusDisabled),
 		})
-		return &proto.EnableTriggerResponse{}, status.Errorf(codes.FailedPrecondition, "common task %q is not found", request.Name)
+		return &proto.EnableTriggerResponse{}, status.Errorf(codes.FailedPrecondition, "trigger %q is not found", request.Name)
 	}
 
 	trigger.Registration.Status = models.TriggerStatusEnabled
@@ -224,10 +224,10 @@ func (api *API) DisableTrigger(ctx context.Context, request *proto.DisableTrigge
 	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.DisableTriggerResponse{}, status.Errorf(codes.NotFound, "common task %q is not found", request.Name)
+			return &proto.DisableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
 		}
 
-		return &proto.DisableTriggerResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
+		return &proto.DisableTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
 	}
 
 	// TODO(clintjedwards): This needs a get and swap
@@ -236,7 +236,7 @@ func (api *API) DisableTrigger(ctx context.Context, request *proto.DisableTrigge
 		_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
 			Status: ptr(models.TriggerStatusDisabled),
 		})
-		return &proto.DisableTriggerResponse{}, status.Errorf(codes.NotFound, "common task %q is not found", request.Name)
+		return &proto.DisableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
 	}
 
 	task.Registration.Status = models.TriggerStatusDisabled

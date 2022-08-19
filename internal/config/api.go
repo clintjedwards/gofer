@@ -121,6 +121,9 @@ func DefaultServerConfig() *Server {
 // Triggers represents the configuration for Gofer Triggers. Triggers are used to generate events in which pipelines
 // should run.
 type Triggers struct {
+	// InstallBaseTriggers attempts to automatically install the cron and interval triggers on first startup.
+	InstallBaseTriggers bool `split_words:"true" hcl:"install_base_triggers,optional"`
+
 	// StopTimeout controls the time the scheduler will wait for a trigger container to stop. After this period
 	// Gofer will attempt to force stop the trigger container.
 	StopTimeout time.Duration `split_words:"true"`
@@ -146,6 +149,7 @@ type Triggers struct {
 
 func DefaultTriggersConfig() *Triggers {
 	return &Triggers{
+		InstallBaseTriggers: true,
 		StopTimeout:         mustParseDuration("5m"),
 		HealthcheckInterval: mustParseDuration("30s"),
 	}

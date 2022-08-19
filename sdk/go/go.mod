@@ -1,7 +1,5 @@
 module github.com/clintjedwards/gofer/sdk/go
 
-replace github.com/clintjedwards/gofer => ../../
-
 go 1.19
 
 require (

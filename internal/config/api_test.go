@@ -76,6 +76,7 @@ func TestAPISampleFromFile(t *testing.T) {
 		},
 
 		Triggers: &Triggers{
+			InstallBaseTriggers:    true,
 			StopTimeout:            time.Minute * 5,
 			StopTimeoutHCL:         "5m",
 			HealthcheckInterval:    time.Second * 30,
@@ -177,6 +178,7 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		},
 
 		Triggers: &Triggers{
+			InstallBaseTriggers:    true,
 			StopTimeout:            time.Minute * 5,
 			StopTimeoutHCL:         "5m",
 			HealthcheckInterval:    time.Second * 30,

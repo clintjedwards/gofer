@@ -156,6 +156,11 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 		return nil, fmt.Errorf("could not create default namespace: %w", err)
 	}
 
+	err = newAPI.installBaseTriggers()
+	if err != nil {
+		return nil, fmt.Errorf("could not install base triggers: %w", err)
+	}
+
 	err = newAPI.startTriggers()
 	if err != nil {
 		return nil, fmt.Errorf("could not start triggers: %w", err)
@@ -276,6 +281,40 @@ func wrapGRPCServer(config *config.API, grpcServer *grpc.Server) *http.Server {
 	}
 
 	return &httpServer
+}
+
+func (api *API) installBaseTriggers() error {
+	if !api.config.Triggers.InstallBaseTriggers {
+		return nil
+	}
+
+	registration := models.TriggerRegistration{}
+	registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
+		Name:  "cron",
+		Image: "ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest",
+	})
+
+	err := api.db.InsertTriggerRegistration(&registration)
+	if err != nil {
+		if !errors.Is(err, storage.ErrEntityExists) {
+			return err
+		}
+	}
+
+	registration = models.TriggerRegistration{}
+	registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
+		Name:  "interval",
+		Image: "ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest",
+	})
+
+	err = api.db.InsertTriggerRegistration(&registration)
+	if err != nil {
+		if !errors.Is(err, storage.ErrEntityExists) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Gofer starts with a default namespace that all users have access to.
