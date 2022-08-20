@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -17,6 +18,36 @@ func TestInstallInstructions(t *testing.T) {
 	expected := `{"instructions":[{"message":{"text":"test"}},{"query":{"text":"test","config_key":"config"}}]}`
 
 	if diff := cmp.Diff(expected, instructions); diff != "" {
+		t.Errorf("unexpected json output (-want +got):\n%s", diff)
+	}
+}
+
+func TestInstallInstructionsUnmarshal(t *testing.T) {
+	input := `{"instructions":[{"message":{"text":"test"}},{"query":{"text":"test","config_key":"config"}}]}`
+
+	expected := InstallInstructions{
+		Instructions: []isInstallInstruction{
+			InstallInstructionMessageWrapper{
+				Message: InstallInstructionMessage{
+					Text: "test",
+				},
+			},
+			InstallInstructionQueryWrapper{
+				Query: InstallInstructionQuery{
+					Text:      "test",
+					ConfigKey: "config",
+				},
+			},
+		},
+	}
+
+	testStruct := InstallInstructions{}
+	err := json.Unmarshal([]byte(input), &testStruct)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(expected, testStruct); diff != "" {
 		t.Errorf("unexpected json output (-want +got):\n%s", diff)
 	}
 }

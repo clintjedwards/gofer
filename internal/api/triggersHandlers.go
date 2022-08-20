@@ -45,6 +45,10 @@ func (api *API) ListTriggers(ctx context.Context, request *proto.ListTriggersReq
 }
 
 func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *proto.GetTriggerInstallInstructionsRequest) (*proto.GetTriggerInstallInstructionsResponse, error) {
+	if !isManagementUser(ctx) {
+		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
 	cert, key, err := api.getTLSFromFile(api.config.Triggers.TLSCertPath, api.config.Triggers.TLSKeyPath)
 	if err != nil {
 		return &proto.GetTriggerInstallInstructionsResponse{},
@@ -136,6 +140,10 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 }
 
 func (api *API) InstallTrigger(ctx context.Context, request *proto.InstallTriggerRequest) (*proto.InstallTriggerResponse, error) {
+	if !isManagementUser(ctx) {
+		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
 	if request.Name == "" {
 		return &proto.InstallTriggerResponse{}, status.Error(codes.FailedPrecondition, "name required")
 	}
@@ -175,6 +183,14 @@ func (api *API) InstallTrigger(ctx context.Context, request *proto.InstallTrigge
 }
 
 func (api *API) UninstallTrigger(ctx context.Context, request *proto.UninstallTriggerRequest) (*proto.UninstallTriggerResponse, error) {
+	if !isManagementUser(ctx) {
+		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
+	if request.Name == "" {
+		return nil, status.Error(codes.FailedPrecondition, "name required")
+	}
+
 	api.triggers.Delete(request.Name)
 
 	err := api.db.DeleteTriggerRegistration(request.Name)
@@ -192,6 +208,14 @@ func (api *API) UninstallTrigger(ctx context.Context, request *proto.UninstallTr
 }
 
 func (api *API) EnableTrigger(ctx context.Context, request *proto.EnableTriggerRequest) (*proto.EnableTriggerResponse, error) {
+	if !isManagementUser(ctx) {
+		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
+	if request.Name == "" {
+		return nil, status.Error(codes.FailedPrecondition, "name required")
+	}
+
 	err := api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
 		Status: ptr(models.TriggerStatusEnabled),
 	})
@@ -219,6 +243,14 @@ func (api *API) EnableTrigger(ctx context.Context, request *proto.EnableTriggerR
 }
 
 func (api *API) DisableTrigger(ctx context.Context, request *proto.DisableTriggerRequest) (*proto.DisableTriggerResponse, error) {
+	if !isManagementUser(ctx) {
+		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
+	if request.Name == "" {
+		return nil, status.Error(codes.FailedPrecondition, "name required")
+	}
+
 	err := api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
 		Status: ptr(models.TriggerStatusDisabled),
 	})

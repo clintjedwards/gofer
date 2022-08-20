@@ -3,6 +3,7 @@ package namespace
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -28,6 +29,19 @@ func namespaceDelete(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Deleting namespace")
+	cl.State.Fmt.Finish()
+
+	var input string
+
+	for {
+		fmt.Print("Please type the ID of the namespace to confirm: ")
+		fmt.Scanln(&input)
+		if strings.EqualFold(input, id) {
+			break
+		}
+	}
+
+	cl.State.NewFormatter()
 
 	conn, err := cl.State.Connect()
 	if err != nil {

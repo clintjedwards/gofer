@@ -368,6 +368,64 @@ type InstallInstructions struct {
 	Instructions []isInstallInstruction `json:"instructions"`
 }
 
+func (i *InstallInstructions) UnmarshalJSON(b []byte) error {
+	data := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &data)
+	if err != nil {
+		return err
+	}
+
+	// Peel back the "instructions"
+	instructionJSON := data["instructions"]
+	instructions := []json.RawMessage{}
+
+	err = json.Unmarshal(instructionJSON, &instructions)
+	if err != nil {
+		return err
+	}
+
+	for _, value := range instructions {
+		instruction := map[string]json.RawMessage{}
+
+		err = json.Unmarshal(value, &instruction)
+		if err != nil {
+			return err
+		}
+
+		messageInstructionJSON, exists := instruction["message"]
+		if exists {
+			messageInstruction := InstallInstructionMessage{}
+			err = json.Unmarshal(messageInstructionJSON, &messageInstruction)
+			if err != nil {
+				return err
+			}
+
+			i.Instructions = append(i.Instructions, InstallInstructionMessageWrapper{
+				Message: messageInstruction,
+			})
+
+			continue
+		}
+
+		queryInstructionJSON, exists := instruction["query"]
+		if exists {
+			queryInstruction := InstallInstructionQuery{}
+			err = json.Unmarshal(queryInstructionJSON, &queryInstruction)
+			if err != nil {
+				return err
+			}
+
+			i.Instructions = append(i.Instructions, InstallInstructionQueryWrapper{
+				Query: queryInstruction,
+			})
+
+			continue
+		}
+	}
+
+	return nil
+}
+
 func NewInstructionsBuilder() InstallInstructions {
 	return InstallInstructions{
 		Instructions: []isInstallInstruction{},
