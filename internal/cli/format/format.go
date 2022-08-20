@@ -171,6 +171,19 @@ func ColorizeTriggerStatus(status string) string {
 	}
 }
 
+func ColorizeCommonTaskStatus(status string) string {
+	switch strings.ToUpper(status) {
+	case string(models.CommonTaskStatusUnknown):
+		return color.RedString(status)
+	case string(models.CommonTaskStatusEnabled):
+		return color.GreenString(status)
+	case string(models.CommonTaskStatusDisabled):
+		return color.YellowString(status)
+	default:
+		return status
+	}
+}
+
 func SliceJoin(slice []string, msg string) string {
 	if len(slice) == 0 {
 		return msg
