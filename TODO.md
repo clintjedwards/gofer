@@ -161,9 +161,6 @@
 - For secret store and object store stuff need to manually clean those up as we can't rely on cascade on delete.
 - Everything we just did for secret key probably needs to be done for object keys.
 - Should all CLI nouns be plural?
-  After mdbook upgrade update all code links to it.
-- Next: work on bringing the 2 starter triggers back into the fold and then getting them to auto register on the first
-  launch of Gofer.
-- Write install CLI commands for trigger/common task.
+- After mdbook upgrade update all code links to it.
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
 - Document the debug containers also

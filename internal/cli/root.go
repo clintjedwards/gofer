@@ -9,10 +9,10 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/commonTasks"
-	"github.com/clintjedwards/gofer/internal/cli/event"
-	"github.com/clintjedwards/gofer/internal/cli/namespace"
-	"github.com/clintjedwards/gofer/internal/cli/pipeline"
-	"github.com/clintjedwards/gofer/internal/cli/run"
+	"github.com/clintjedwards/gofer/internal/cli/events"
+	"github.com/clintjedwards/gofer/internal/cli/namespaces"
+	"github.com/clintjedwards/gofer/internal/cli/pipelines"
+	"github.com/clintjedwards/gofer/internal/cli/runs"
 	"github.com/clintjedwards/gofer/internal/cli/secrets"
 	"github.com/clintjedwards/gofer/internal/cli/service"
 	"github.com/clintjedwards/gofer/internal/cli/taskruns"
@@ -43,13 +43,13 @@ Read more at https://clintjedwards.com/gofer
 func init() {
 	RootCmd.SetVersionTemplate(humanizeVersion(appVersion))
 	RootCmd.AddCommand(service.CmdService)
-	RootCmd.AddCommand(pipeline.CmdPipeline)
-	RootCmd.AddCommand(run.CmdRun)
+	RootCmd.AddCommand(pipelines.CmdPipelines)
+	RootCmd.AddCommand(runs.CmdRuns)
 	RootCmd.AddCommand(taskruns.CmdTaskRuns)
 	RootCmd.AddCommand(triggers.CmdTriggers)
-	RootCmd.AddCommand(namespace.CmdNamespace)
+	RootCmd.AddCommand(namespaces.CmdNamespaces)
 	RootCmd.AddCommand(secrets.CmdSecrets)
-	RootCmd.AddCommand(event.CmdEvent)
+	RootCmd.AddCommand(events.CmdEvents)
 	RootCmd.AddCommand(commonTasks.CmdCommonTasks)
 
 	RootCmd.PersistentFlags().String("config", "", "configuration file path")
