@@ -178,7 +178,7 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 
 	// These two functions are responsible for gofer's trigger event loop system. The first launches goroutines that
 	// consumes events from triggers and the latter processes them into pipeline runs.
-	newAPI.checkForTriggerEvents(newAPI.context.ctx)
+	newAPI.watchForTriggerEvents(newAPI.context.ctx)
 	go func() {
 		err := newAPI.processTriggerEvents()
 		if err != nil {

@@ -286,11 +286,10 @@ func (api *API) restoreTriggerSubscriptions() error {
 	return nil
 }
 
-// TODO(clintjedwards): change to watchFor
-// checkForTriggerEvents spawns a goroutine for every trigger that is responsible for collecting the trigger events
+// watchForTriggerEvents spawns a goroutine for every trigger that is responsible for collecting the trigger events
 // on that trigger. The "Watch" method for receiving events from a trigger is a blocking RPC, so each
 // go routine essentially blocks until they receive an event and then immediately pushes it into the receiving channel.
-func (api *API) checkForTriggerEvents(ctx context.Context) {
+func (api *API) watchForTriggerEvents(ctx context.Context) {
 	for _, triggerKey := range api.triggers.Keys() {
 		trigger, exists := api.triggers.Get(triggerKey)
 		if !exists {
@@ -324,6 +323,10 @@ func (api *API) checkForTriggerEvents(ctx context.Context) {
 						time.Sleep(time.Second * 5) // Don't DOS ourselves if we can't connect
 						continue
 					}
+
+					// If the watch command didn't return an error then the trigger must be working.
+					trigger.State = models.TriggerStateRunning
+					api.triggers.Set(*trigger.Key, &trigger)
 
 					// We need to account for what happens if the check exits without returning anything.
 					// For instance, when the trigger gracefully shuts down it may close the channel providing
