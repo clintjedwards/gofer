@@ -26,6 +26,7 @@ func UnixMilli(unix int64, zeroMsg string, detail bool) string {
 
 	relativeTime := humanize.Time(time.UnixMilli(unix))
 	realTime := time.UnixMilli(unix).Format(time.RFC850)
+
 	return fmt.Sprintf("%s (%s)", realTime, relativeTime)
 }
 

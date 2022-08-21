@@ -41,6 +41,9 @@ service Gofer {
   // other tokens.
   rpc BootstrapToken(BootstrapTokenRequest) returns (BootstrapTokenResponse);
 
+  // ListTokens returns information about all tokens for a particular namespace;
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
+
   // GetToken returns information about a particular token;
   rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
 

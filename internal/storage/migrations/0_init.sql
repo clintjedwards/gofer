@@ -183,5 +183,6 @@ CREATE TABLE IF NOT EXISTS tokens (
     kind        TEXT NOT NULL,
     namespaces  TEXT NOT NULL,
     metadata    TEXT,
+    expires     TEXT NOT NULL,
     PRIMARY KEY (hash)
 ) STRICT;

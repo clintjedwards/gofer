@@ -21,15 +21,20 @@ type Token struct {
 	Kind       TokenKind         `json:"kind"`       // The type of token. Management tokens are essentially root.
 	Namespaces []string          `json:"namespaces"` // List of namespaces this token has access to.
 	Metadata   map[string]string `json:"metadata"`   // Extra information about this token in label form.
+	Expires    int64             `json:"expiry"`     // When the token would expire.
 }
 
-func NewToken(hash string, kind TokenKind, namespaces []string, metadata map[string]string) *Token {
+func NewToken(hash string, kind TokenKind, namespaces []string, metadata map[string]string, expiry time.Duration) *Token {
+	now := time.Now()
+	expires := now.Add(expiry)
+
 	return &Token{
 		Hash:       hash,
 		Created:    time.Now().UnixMilli(),
 		Kind:       kind,
 		Namespaces: namespaces,
 		Metadata:   metadata,
+		Expires:    expires.UnixMilli(),
 	}
 }
 
@@ -39,5 +44,14 @@ func (t *Token) ToProto() *proto.Token {
 		Kind:       proto.Token_Kind(proto.Token_Kind_value[string(t.Kind)]),
 		Namespaces: t.Namespaces,
 		Metadata:   t.Metadata,
+		Expires:    t.Expires,
 	}
+}
+
+func (t *Token) FromProto(proto *proto.Token) {
+	t.Created = proto.Created
+	t.Kind = TokenKind(proto.Kind.String())
+	t.Namespaces = proto.Namespaces
+	t.Metadata = proto.Metadata
+	t.Expires = proto.Expires
 }

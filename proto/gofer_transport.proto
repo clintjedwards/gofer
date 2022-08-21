@@ -37,6 +37,9 @@ message CreateTokenRequest {
   Kind kind = 1;
   repeated string namespaces = 2;
   map<string, string> metadata = 3;
+  // Accepts golang duration strings
+  // https://pkg.go.dev/time#ParseDuration
+  string expires = 4;
 }
 message CreateTokenResponse {
   Token details = 1;
@@ -50,6 +53,8 @@ message BootstrapTokenResponse {
 }
 message GetTokenRequest { string token = 1; }
 message GetTokenResponse { Token details = 1; }
+message ListTokensRequest { string namespace = 1; }
+message ListTokensResponse { repeated Token tokens = 1; }
 message DeleteTokenRequest { string token = 1; }
 message DeleteTokenResponse {}
 

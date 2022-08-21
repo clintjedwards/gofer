@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/clintjedwards/gofer/models"
@@ -66,6 +67,15 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 		return &proto.CreateTokenResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
+	if request.Expires == "" {
+		return &proto.CreateTokenResponse{}, status.Error(codes.FailedPrecondition, "requires expiration duration")
+	}
+
+	expires, err := time.ParseDuration(request.Expires)
+	if err != nil {
+		return &proto.CreateTokenResponse{}, status.Errorf(codes.FailedPrecondition, "could not parse duration: %v", err)
+	}
+
 	token, hash := api.createNewAPIToken()
 
 	for _, namespace := range request.Namespaces {
@@ -80,9 +90,9 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 		}
 	}
 
-	newToken := models.NewToken(hash, models.TokenKind(request.Kind.String()), request.Namespaces, request.Metadata)
+	newToken := models.NewToken(hash, models.TokenKind(request.Kind.String()), request.Namespaces, request.Metadata, expires)
 
-	err := api.db.InsertToken(newToken)
+	err = api.db.InsertToken(newToken)
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.CreateTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)
@@ -91,6 +101,48 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 	return &proto.CreateTokenResponse{
 		Details: newToken.ToProto(),
 		Token:   token,
+	}, nil
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func (api *API) ListTokens(ctx context.Context, request *proto.ListTokensRequest) (*proto.ListTokensResponse, error) {
+	if request.Namespace == "" {
+		request.Namespace = determineNamespace(ctx)
+	}
+
+	tokenList := []*proto.Token{}
+
+	tokens, err := api.db.ListTokens(0, 0)
+	if err != nil {
+		log.Error().Err(err).Msg("could not get token")
+		return &proto.ListTokensResponse{}, status.Error(codes.Internal, "failed to retrieve token from database")
+	}
+
+	for _, token := range tokens {
+		// If the token has namespaces AND the token does not contain the targeted namespace skip it.
+		if len(token.Namespaces) != 0 && !contains(token.Namespaces, request.Namespace) {
+			continue
+		}
+
+		// If the token is a management token, but the request is not made by a management key, skip it.
+		if !isManagementUser(ctx) && token.Kind == models.TokenKindManagement {
+			continue
+		}
+
+		// Otherwise just add the token.
+		tokenList = append(tokenList, token.ToProto())
+	}
+
+	return &proto.ListTokensResponse{
+		Tokens: tokenList,
 	}, nil
 }
 
@@ -147,7 +199,7 @@ func (api *API) BootstrapToken(ctx context.Context, request *proto.BootstrapToke
 	token, hash := api.createNewAPIToken()
 	newToken := models.NewToken(hash, models.TokenKindManagement, []string{}, map[string]string{
 		"bootstrap_token": "true",
-	})
+	}, time.Hour*876600)
 
 	err = api.db.InsertToken(newToken)
 	if err != nil {

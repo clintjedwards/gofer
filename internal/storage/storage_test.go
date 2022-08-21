@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/clintjedwards/gofer/models"
 	sdk "github.com/clintjedwards/gofer/sdk/go"
@@ -572,7 +573,7 @@ func TestCRUDTokens(t *testing.T) {
 	}
 	defer os.Remove(path)
 
-	token := models.NewToken("test_hash", models.TokenKindManagement, []string{"test_namespace"}, map[string]string{"key": "value"})
+	token := models.NewToken("test_hash", models.TokenKindManagement, []string{"test_namespace"}, map[string]string{"key": "value"}, time.Second)
 
 	err = db.InsertToken(token)
 	if err != nil {

@@ -306,6 +306,7 @@ message Token {
   Kind kind = 2;
   repeated string namespaces = 3;
   map<string, string> metadata = 4;
+  int64 expires = 5;
 }
 
 message TriggerResult {

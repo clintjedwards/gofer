@@ -50,6 +50,8 @@ type GoferClient interface {
 	// BootstrapToken creates the initial management token used to create all
 	// other tokens.
 	BootstrapToken(ctx context.Context, in *BootstrapTokenRequest, opts ...grpc.CallOption) (*BootstrapTokenResponse, error)
+	// ListTokens returns information about all tokens for a particular namespace;
+	ListTokens(ctx context.Context, in *ListTokensRequest, opts ...grpc.CallOption) (*ListTokensResponse, error)
 	// GetToken returns information about a particular token;
 	GetToken(ctx context.Context, in *GetTokenRequest, opts ...grpc.CallOption) (*GetTokenResponse, error)
 	// DeleteToken removes a token.
@@ -245,6 +247,15 @@ func (c *goferClient) CreateToken(ctx context.Context, in *CreateTokenRequest, o
 func (c *goferClient) BootstrapToken(ctx context.Context, in *BootstrapTokenRequest, opts ...grpc.CallOption) (*BootstrapTokenResponse, error) {
 	out := new(BootstrapTokenResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/BootstrapToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) ListTokens(ctx context.Context, in *ListTokensRequest, opts ...grpc.CallOption) (*ListTokensResponse, error) {
+	out := new(ListTokensResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListTokens", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -824,6 +835,8 @@ type GoferServer interface {
 	// BootstrapToken creates the initial management token used to create all
 	// other tokens.
 	BootstrapToken(context.Context, *BootstrapTokenRequest) (*BootstrapTokenResponse, error)
+	// ListTokens returns information about all tokens for a particular namespace;
+	ListTokens(context.Context, *ListTokensRequest) (*ListTokensResponse, error)
 	// GetToken returns information about a particular token;
 	GetToken(context.Context, *GetTokenRequest) (*GetTokenResponse, error)
 	// DeleteToken removes a token.
@@ -991,6 +1004,9 @@ func (UnimplementedGoferServer) CreateToken(context.Context, *CreateTokenRequest
 }
 func (UnimplementedGoferServer) BootstrapToken(context.Context, *BootstrapTokenRequest) (*BootstrapTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BootstrapToken not implemented")
+}
+func (UnimplementedGoferServer) ListTokens(context.Context, *ListTokensRequest) (*ListTokensResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListTokens not implemented")
 }
 func (UnimplementedGoferServer) GetToken(context.Context, *GetTokenRequest) (*GetTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetToken not implemented")
@@ -1256,6 +1272,24 @@ func _Gofer_BootstrapToken_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GoferServer).BootstrapToken(ctx, req.(*BootstrapTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_ListTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTokensRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).ListTokens(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/ListTokens",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).ListTokens(ctx, req.(*ListTokensRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2282,6 +2316,10 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BootstrapToken",
 			Handler:    _Gofer_BootstrapToken_Handler,
+		},
+		{
+			MethodName: "ListTokens",
+			Handler:    _Gofer_ListTokens_Handler,
 		},
 		{
 			MethodName: "GetToken",
