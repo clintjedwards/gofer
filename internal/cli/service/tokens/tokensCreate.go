@@ -20,6 +20,7 @@ var cmdTokensCreate = &cobra.Command{
 }
 
 func init() {
+	cmdTokensCreate.Flags().StringP("expiry", "e", "24h", "set the expiration time of the key. This value uses golang time durations such as '300ms', '1.5h' or '2h45m'. https://pkg.go.dev/time#ParseDuration")
 	cmdTokensCreate.Flags().StringSliceP("namespaces", "n", []string{"default"}, "namespaces this key will have access to. If not specified namespace is default")
 	cmdTokensCreate.Flags().StringSliceP("metadata", "m", []string{}, "metadata about the token, useful for attaching a name, team, and other details. Format = key:value")
 	CmdTokens.AddCommand(cmdTokensCreate)
@@ -41,6 +42,7 @@ func metadataToMap(metadata []string) map[string]string {
 }
 
 func tokensCreate(cmd *cobra.Command, args []string) error {
+	expiry, _ := cmd.Flags().GetString("expiry")
 	namespaces, _ := cmd.Flags().GetStringSlice("namespaces")
 	metadataSlice, _ := cmd.Flags().GetStringSlice("metadata")
 	tokenMetadata := metadataToMap(metadataSlice)
@@ -69,6 +71,7 @@ func tokensCreate(cmd *cobra.Command, args []string) error {
 		Kind:       proto.CreateTokenRequest_Kind(proto.CreateTokenRequest_Kind_value[string(kind)]),
 		Metadata:   tokenMetadata,
 		Namespaces: namespaces,
+		Expires:    expiry,
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get token: %v", err))

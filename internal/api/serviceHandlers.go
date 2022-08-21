@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
@@ -90,7 +91,13 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 		}
 	}
 
-	newToken := models.NewToken(hash, models.TokenKind(request.Kind.String()), request.Namespaces, request.Metadata, expires)
+	kind := models.TokenKindClient
+
+	if strings.EqualFold(request.Kind.String(), "management") {
+		kind = models.TokenKindManagement
+	}
+
+	newToken := models.NewToken(hash, kind, request.Namespaces, request.Metadata, expires)
 
 	err = api.db.InsertToken(newToken)
 	if err != nil {
