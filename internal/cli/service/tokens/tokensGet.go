@@ -1,4 +1,4 @@
-package token
+package tokens
 
 import (
 	"context"
@@ -11,18 +11,26 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTokenWhoami = &cobra.Command{
-	Use:   "whoami",
-	Short: "Get details about the token currently being used",
-	RunE:  tokenWhoami,
+var cmdTokensGet = &cobra.Command{
+	Use:   "get",
+	Short: "Get details on specific token",
+	RunE:  tokensGet,
 }
 
 func init() {
-	CmdToken.AddCommand(cmdTokenWhoami)
+	CmdTokens.AddCommand(cmdTokensGet)
 }
 
-func tokenWhoami(_ *cobra.Command, _ []string) error {
+func tokensGet(_ *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving token details")
+	cl.State.Fmt.Finish()
+
+	var input string
+
+	fmt.Print("Please paste the token to retrieve: ")
+	fmt.Scanln(&input)
+
+	cl.State.NewFormatter()
 
 	conn, err := cl.State.Connect()
 	if err != nil {
@@ -36,7 +44,7 @@ func tokenWhoami(_ *cobra.Command, _ []string) error {
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	resp, err := client.GetToken(ctx, &proto.GetTokenRequest{
-		Token: cl.State.Config.Token,
+		Token: input,
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get token: %v", err))

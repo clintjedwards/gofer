@@ -1,4 +1,4 @@
-package token
+package tokens
 
 import (
 	"context"
@@ -12,17 +12,17 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTokenCreate = &cobra.Command{
+var cmdTokensCreate = &cobra.Command{
 	Use:   "create <management|client>",
 	Short: "Create new API token",
-	RunE:  tokenCreate,
+	RunE:  tokensCreate,
 	Args:  cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdTokenCreate.Flags().StringSliceP("namespaces", "n", []string{"default"}, "namespaces this key will have access to. If not specified namespace is default")
-	cmdTokenCreate.Flags().StringSliceP("metadata", "m", []string{}, "metadata about the token, useful for attaching a name, team, and other details. Format = key:value")
-	CmdToken.AddCommand(cmdTokenCreate)
+	cmdTokensCreate.Flags().StringSliceP("namespaces", "n", []string{"default"}, "namespaces this key will have access to. If not specified namespace is default")
+	cmdTokensCreate.Flags().StringSliceP("metadata", "m", []string{}, "metadata about the token, useful for attaching a name, team, and other details. Format = key:value")
+	CmdTokens.AddCommand(cmdTokensCreate)
 }
 
 func metadataToMap(metadata []string) map[string]string {
@@ -40,7 +40,7 @@ func metadataToMap(metadata []string) map[string]string {
 	return metadataMap
 }
 
-func tokenCreate(cmd *cobra.Command, args []string) error {
+func tokensCreate(cmd *cobra.Command, args []string) error {
 	namespaces, _ := cmd.Flags().GetStringSlice("namespaces")
 	metadataSlice, _ := cmd.Flags().GetStringSlice("metadata")
 	tokenMetadata := metadataToMap(metadataSlice)

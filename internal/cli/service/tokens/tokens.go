@@ -1,10 +1,10 @@
-package token
+package tokens
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdToken = &cobra.Command{
-	Use:   "token",
+var CmdTokens = &cobra.Command{
+	Use:   "tokens",
 	Short: "Manage api tokens",
 }

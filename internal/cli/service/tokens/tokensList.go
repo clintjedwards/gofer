@@ -1,4 +1,4 @@
-package token
+package tokens
 
 import (
 	"context"
@@ -18,14 +18,14 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTokenList = &cobra.Command{
+var cmdTokensList = &cobra.Command{
 	Use:   "list",
 	Short: "List all tokens for a specific namespace",
-	RunE:  tokenList,
+	RunE:  tokensList,
 }
 
 func init() {
-	CmdToken.AddCommand(cmdTokenList)
+	CmdTokens.AddCommand(cmdTokensList)
 }
 
 func formatTokenKind(kind string) string {
@@ -38,7 +38,7 @@ func formatTokenKind(kind string) string {
 	return kind
 }
 
-func tokenList(_ *cobra.Command, _ []string) error {
+func tokensList(_ *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving tokens")
 
 	conn, err := cl.State.Connect()

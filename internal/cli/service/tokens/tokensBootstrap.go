@@ -1,4 +1,4 @@
-package token
+package tokens
 
 import (
 	"context"
@@ -10,17 +10,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cmdTokenBootstrap = &cobra.Command{
+var cmdTokensBootstrap = &cobra.Command{
 	Use:   "bootstrap",
 	Short: "Bootstrap creates the initial management token",
-	RunE:  tokenBootstrap,
+	RunE:  tokensBootstrap,
 }
 
 func init() {
-	CmdToken.AddCommand(cmdTokenBootstrap)
+	CmdTokens.AddCommand(cmdTokensBootstrap)
 }
 
-func tokenBootstrap(_ *cobra.Command, _ []string) error {
+func tokensBootstrap(_ *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Creating Token")
 
 	conn, err := cl.State.Connect()

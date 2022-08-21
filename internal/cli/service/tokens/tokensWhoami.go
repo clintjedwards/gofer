@@ -1,4 +1,4 @@
-package token
+package tokens
 
 import (
 	"context"
@@ -11,26 +11,18 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTokenDelete = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete specific token",
-	RunE:  tokenDelete,
+var cmdTokensWhoami = &cobra.Command{
+	Use:   "whoami",
+	Short: "Get details about the token currently being used",
+	RunE:  tokensWhoami,
 }
 
 func init() {
-	CmdToken.AddCommand(cmdTokenDelete)
+	CmdTokens.AddCommand(cmdTokensWhoami)
 }
 
-func tokenDelete(_ *cobra.Command, _ []string) error {
-	cl.State.Fmt.Print("Deleting token")
-	cl.State.Fmt.Finish()
-
-	var input string
-
-	fmt.Print("Please paste the token to delete: ")
-	fmt.Scanln(&input)
-
-	cl.State.NewFormatter()
+func tokensWhoami(_ *cobra.Command, _ []string) error {
+	cl.State.Fmt.Print("Retrieving token details")
 
 	conn, err := cl.State.Connect()
 	if err != nil {
@@ -43,16 +35,16 @@ func tokenDelete(_ *cobra.Command, _ []string) error {
 
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	_, err = client.DeleteToken(ctx, &proto.DeleteTokenRequest{
-		Token: input,
+	resp, err := client.GetToken(ctx, &proto.GetTokenRequest{
+		Token: cl.State.Config.Token,
 	})
 	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not delete token: %v", err))
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get token: %v", err))
 		cl.State.Fmt.Finish()
 		return err
 	}
 
-	cl.State.Fmt.PrintSuccess("Token Deleted")
+	cl.State.Fmt.Println(resp.Details)
 	cl.State.Fmt.Finish()
 
 	return nil

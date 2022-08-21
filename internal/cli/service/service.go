@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/clintjedwards/gofer/internal/cli/service/token"
+	"github.com/clintjedwards/gofer/internal/cli/service/tokens"
 	"github.com/spf13/cobra"
 )
 
@@ -14,5 +14,5 @@ These commands help with managing and running the Gofer service.`,
 }
 
 func init() {
-	CmdService.AddCommand(token.CmdToken)
+	CmdService.AddCommand(tokens.CmdTokens)
 }
