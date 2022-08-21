@@ -164,6 +164,8 @@ type GoferClient interface {
 	EnableCommonTask(ctx context.Context, in *EnableCommonTaskRequest, opts ...grpc.CallOption) (*EnableCommonTaskResponse, error)
 	// DisableCommonTask attempts to disable a new common task.
 	DisableCommonTask(ctx context.Context, in *DisableCommonTaskRequest, opts ...grpc.CallOption) (*DisableCommonTaskResponse, error)
+	// ListPipelineObjects returns a list of all pipeline object keys.
+	ListPipelineObjects(ctx context.Context, in *ListPipelineObjectsRequest, opts ...grpc.CallOption) (*ListPipelineObjectsResponse, error)
 	// GetPipelineObject returns a single pipeline object by pipeline ID and key.
 	GetPipelineObject(ctx context.Context, in *GetPipelineObjectRequest, opts ...grpc.CallOption) (*GetPipelineObjectResponse, error)
 	// PutPipelineObject uploads a single pipeline object by pipeline ID and key.
@@ -174,6 +176,8 @@ type GoferClient interface {
 	// key. Removing a pipeline object decrements the total count of the pipeline
 	// object limit.
 	DeletePipelineObject(ctx context.Context, in *DeletePipelineObjectRequest, opts ...grpc.CallOption) (*DeletePipelineObjectResponse, error)
+	// ListRunObjects returns a list of all run object keys.
+	ListRunObjects(ctx context.Context, in *ListRunObjectsRequest, opts ...grpc.CallOption) (*ListRunObjectsResponse, error)
 	// GetRunObject returns the content of a single run object.
 	GetRunObject(ctx context.Context, in *GetRunObjectRequest, opts ...grpc.CallOption) (*GetRunObjectResponse, error)
 	// PutRunObject uploads the context of an object by run ID and key.
@@ -658,6 +662,15 @@ func (c *goferClient) DisableCommonTask(ctx context.Context, in *DisableCommonTa
 	return out, nil
 }
 
+func (c *goferClient) ListPipelineObjects(ctx context.Context, in *ListPipelineObjectsRequest, opts ...grpc.CallOption) (*ListPipelineObjectsResponse, error) {
+	out := new(ListPipelineObjectsResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListPipelineObjects", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *goferClient) GetPipelineObject(ctx context.Context, in *GetPipelineObjectRequest, opts ...grpc.CallOption) (*GetPipelineObjectResponse, error) {
 	out := new(GetPipelineObjectResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/GetPipelineObject", in, out, opts...)
@@ -679,6 +692,15 @@ func (c *goferClient) PutPipelineObject(ctx context.Context, in *PutPipelineObje
 func (c *goferClient) DeletePipelineObject(ctx context.Context, in *DeletePipelineObjectRequest, opts ...grpc.CallOption) (*DeletePipelineObjectResponse, error) {
 	out := new(DeletePipelineObjectResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/DeletePipelineObject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) ListRunObjects(ctx context.Context, in *ListRunObjectsRequest, opts ...grpc.CallOption) (*ListRunObjectsResponse, error) {
+	out := new(ListRunObjectsResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/ListRunObjects", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -971,6 +993,8 @@ type GoferServer interface {
 	EnableCommonTask(context.Context, *EnableCommonTaskRequest) (*EnableCommonTaskResponse, error)
 	// DisableCommonTask attempts to disable a new common task.
 	DisableCommonTask(context.Context, *DisableCommonTaskRequest) (*DisableCommonTaskResponse, error)
+	// ListPipelineObjects returns a list of all pipeline object keys.
+	ListPipelineObjects(context.Context, *ListPipelineObjectsRequest) (*ListPipelineObjectsResponse, error)
 	// GetPipelineObject returns a single pipeline object by pipeline ID and key.
 	GetPipelineObject(context.Context, *GetPipelineObjectRequest) (*GetPipelineObjectResponse, error)
 	// PutPipelineObject uploads a single pipeline object by pipeline ID and key.
@@ -981,6 +1005,8 @@ type GoferServer interface {
 	// key. Removing a pipeline object decrements the total count of the pipeline
 	// object limit.
 	DeletePipelineObject(context.Context, *DeletePipelineObjectRequest) (*DeletePipelineObjectResponse, error)
+	// ListRunObjects returns a list of all run object keys.
+	ListRunObjects(context.Context, *ListRunObjectsRequest) (*ListRunObjectsResponse, error)
 	// GetRunObject returns the content of a single run object.
 	GetRunObject(context.Context, *GetRunObjectRequest) (*GetRunObjectResponse, error)
 	// PutRunObject uploads the context of an object by run ID and key.
@@ -1157,6 +1183,9 @@ func (UnimplementedGoferServer) EnableCommonTask(context.Context, *EnableCommonT
 func (UnimplementedGoferServer) DisableCommonTask(context.Context, *DisableCommonTaskRequest) (*DisableCommonTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DisableCommonTask not implemented")
 }
+func (UnimplementedGoferServer) ListPipelineObjects(context.Context, *ListPipelineObjectsRequest) (*ListPipelineObjectsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPipelineObjects not implemented")
+}
 func (UnimplementedGoferServer) GetPipelineObject(context.Context, *GetPipelineObjectRequest) (*GetPipelineObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPipelineObject not implemented")
 }
@@ -1165,6 +1194,9 @@ func (UnimplementedGoferServer) PutPipelineObject(context.Context, *PutPipelineO
 }
 func (UnimplementedGoferServer) DeletePipelineObject(context.Context, *DeletePipelineObjectRequest) (*DeletePipelineObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeletePipelineObject not implemented")
+}
+func (UnimplementedGoferServer) ListRunObjects(context.Context, *ListRunObjectsRequest) (*ListRunObjectsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRunObjects not implemented")
 }
 func (UnimplementedGoferServer) GetRunObject(context.Context, *GetRunObjectRequest) (*GetRunObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRunObject not implemented")
@@ -2067,6 +2099,24 @@ func _Gofer_DisableCommonTask_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gofer_ListPipelineObjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPipelineObjectsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).ListPipelineObjects(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/ListPipelineObjects",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).ListPipelineObjects(ctx, req.(*ListPipelineObjectsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Gofer_GetPipelineObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetPipelineObjectRequest)
 	if err := dec(in); err != nil {
@@ -2117,6 +2167,24 @@ func _Gofer_DeletePipelineObject_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GoferServer).DeletePipelineObject(ctx, req.(*DeletePipelineObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_ListRunObjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRunObjectsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).ListRunObjects(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/ListRunObjects",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).ListRunObjects(ctx, req.(*ListRunObjectsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2550,6 +2618,10 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_DisableCommonTask_Handler,
 		},
 		{
+			MethodName: "ListPipelineObjects",
+			Handler:    _Gofer_ListPipelineObjects_Handler,
+		},
+		{
 			MethodName: "GetPipelineObject",
 			Handler:    _Gofer_GetPipelineObject_Handler,
 		},
@@ -2560,6 +2632,10 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeletePipelineObject",
 			Handler:    _Gofer_DeletePipelineObject_Handler,
+		},
+		{
+			MethodName: "ListRunObjects",
+			Handler:    _Gofer_ListRunObjects_Handler,
 		},
 		{
 			MethodName: "GetRunObject",

@@ -433,11 +433,11 @@ message GetPipelineObjectRequest {
 }
 message GetPipelineObjectResponse { bytes content = 1; }
 
-message ListPipelineObjectRequest {
+message ListPipelineObjectsRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
 }
-message ListPipelineObjectResponse { repeated string keys = 1; }
+message ListPipelineObjectsResponse { repeated ObjectStoreKey keys = 1; }
 
 message PutPipelineObjectRequest {
   string namespace_id = 1; // Unique namespace identifier
@@ -472,12 +472,12 @@ message GetRunObjectRequest {
 }
 message GetRunObjectResponse { bytes content = 1; }
 
-message ListRunObjectRequest {
+message ListRunObjectsRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
   int64 run_id = 3;
 }
-message ListRunObjectResponse { repeated string keys = 1; }
+message ListRunObjectsResponse { repeated ObjectStoreKey keys = 1; }
 
 message PutRunObjectRequest {
   string namespace_id = 1; // Unique namespace identifier

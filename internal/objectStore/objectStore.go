@@ -23,5 +23,6 @@ var (
 type Engine interface {
 	GetObject(key string) ([]byte, error)
 	PutObject(key string, content []byte, force bool) error
+	ListObjectKeys(prefix string) ([]string, error)
 	DeleteObject(key string) error
 }

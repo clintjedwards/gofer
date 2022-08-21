@@ -158,8 +158,8 @@
 - Polyfmt needs to move the filter to be a builder function and the provide stringf functions.
 - We need a list objects for run objects and pipeline objects.
 - Replace blurry png for readme.
-- Write a function to clean up secret store and object store stuff when a user deletes a namespace or pipeline.
-- Everything we just did for secret key probably needs to be done for object keys.
+- Write a function to clean up secret store and object store stuff when a user deletes a namespace or pipeline. Have the user
+  be able to turn this off in the config.
 - After mdbook upgrade update all code links to it.
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
 - Document the debug containers also

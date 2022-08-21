@@ -97,18 +97,6 @@ func (store *Store) GetSecret(key string) (string, error) {
 	return string(decryptedSecret), nil
 }
 
-// db.View(func(tx *bolt.Tx) error {
-// 	// Assume bucket exists and has keys
-// 	c := tx.Bucket([]byte("MyBucket")).Cursor()
-
-// 	prefix := []byte("1234")
-// 	for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
-// 		fmt.Printf("key=%s, value=%s\n", k, v)
-// 	}
-
-// 	return nil
-// })
-
 func (store *Store) ListSecretKeys(prefix string) ([]string, error) {
 	keys := []string{}
 

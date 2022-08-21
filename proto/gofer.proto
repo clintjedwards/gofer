@@ -253,6 +253,10 @@ service Gofer {
   // Visit the documentation for more details on the associated lifetimes of
   // pipeline specific and run specific objects.
 
+  // ListPipelineObjects returns a list of all pipeline object keys.
+  rpc ListPipelineObjects(ListPipelineObjectsRequest)
+      returns (ListPipelineObjectsResponse);
+
   // GetPipelineObject returns a single pipeline object by pipeline ID and key.
   rpc GetPipelineObject(GetPipelineObjectRequest)
       returns (GetPipelineObjectResponse);
@@ -268,6 +272,9 @@ service Gofer {
   // object limit.
   rpc DeletePipelineObject(DeletePipelineObjectRequest)
       returns (DeletePipelineObjectResponse);
+
+  // ListRunObjects returns a list of all run object keys.
+  rpc ListRunObjects(ListRunObjectsRequest) returns (ListRunObjectsResponse);
 
   // GetRunObject returns the content of a single run object.
   rpc GetRunObject(GetRunObjectRequest) returns (GetRunObjectResponse);

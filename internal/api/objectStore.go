@@ -3,6 +3,7 @@ package api
 import (
 	"strings"
 
+	"github.com/clintjedwards/gofer/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -11,6 +12,13 @@ import (
 // puts the new item on top.
 func (api *API) addPipelineObject(namespace, pipeline, key string, content []byte, force bool) (string, error) {
 	objectKeys, err := api.db.ListObjectStorePipelineKeys(namespace, pipeline)
+	if err != nil {
+		return "", err
+	}
+
+	newObjectKey := models.NewObjectStoreKey(key)
+
+	err = api.db.InsertObjectStorePipelineKey(namespace, pipeline, newObjectKey)
 	if err != nil {
 		return "", err
 	}
