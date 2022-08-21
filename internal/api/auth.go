@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/clintjedwards/gofer/models"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -90,6 +91,15 @@ func (api *API) authenticate(ctx context.Context) (context.Context, error) {
 	storedToken, err := api.getAPIToken(token)
 	if err != nil {
 		return ctx, status.Error(codes.PermissionDenied, "access denied")
+	}
+
+	now := time.Now().UnixMilli()
+	if now >= storedToken.Expires {
+		return ctx, status.Error(codes.PermissionDenied, "access denied; token expired")
+	}
+
+	if storedToken.Disabled {
+		return ctx, status.Error(codes.PermissionDenied, "access denied; token disabled")
 	}
 
 	ctxNamespaces := context.WithValue(ctx, contextUserNamespaces, storedToken.Namespaces)

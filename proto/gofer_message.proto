@@ -307,6 +307,7 @@ message Token {
   repeated string namespaces = 3;
   map<string, string> metadata = 4;
   int64 expires = 5;
+  bool disabled = 6;
 }
 
 message TriggerResult {

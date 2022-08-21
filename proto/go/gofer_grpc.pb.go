@@ -54,6 +54,10 @@ type GoferClient interface {
 	ListTokens(ctx context.Context, in *ListTokensRequest, opts ...grpc.CallOption) (*ListTokensResponse, error)
 	// GetToken returns information about a particular token;
 	GetToken(ctx context.Context, in *GetTokenRequest, opts ...grpc.CallOption) (*GetTokenResponse, error)
+	// EnableToken makes a token usable.
+	EnableToken(ctx context.Context, in *EnableTokenRequest, opts ...grpc.CallOption) (*EnableTokenResponse, error)
+	// DisableToken makes a token unusable.
+	DisableToken(ctx context.Context, in *DisableTokenRequest, opts ...grpc.CallOption) (*DisableTokenResponse, error)
 	// DeleteToken removes a token.
 	DeleteToken(ctx context.Context, in *DeleteTokenRequest, opts ...grpc.CallOption) (*DeleteTokenResponse, error)
 	// ListNamespaces returns all registered namespaces.
@@ -265,6 +269,24 @@ func (c *goferClient) ListTokens(ctx context.Context, in *ListTokensRequest, opt
 func (c *goferClient) GetToken(ctx context.Context, in *GetTokenRequest, opts ...grpc.CallOption) (*GetTokenResponse, error) {
 	out := new(GetTokenResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/GetToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) EnableToken(ctx context.Context, in *EnableTokenRequest, opts ...grpc.CallOption) (*EnableTokenResponse, error) {
+	out := new(EnableTokenResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/EnableToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *goferClient) DisableToken(ctx context.Context, in *DisableTokenRequest, opts ...grpc.CallOption) (*DisableTokenResponse, error) {
+	out := new(DisableTokenResponse)
+	err := c.cc.Invoke(ctx, "/proto.Gofer/DisableToken", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -839,6 +861,10 @@ type GoferServer interface {
 	ListTokens(context.Context, *ListTokensRequest) (*ListTokensResponse, error)
 	// GetToken returns information about a particular token;
 	GetToken(context.Context, *GetTokenRequest) (*GetTokenResponse, error)
+	// EnableToken makes a token usable.
+	EnableToken(context.Context, *EnableTokenRequest) (*EnableTokenResponse, error)
+	// DisableToken makes a token unusable.
+	DisableToken(context.Context, *DisableTokenRequest) (*DisableTokenResponse, error)
 	// DeleteToken removes a token.
 	DeleteToken(context.Context, *DeleteTokenRequest) (*DeleteTokenResponse, error)
 	// ListNamespaces returns all registered namespaces.
@@ -1010,6 +1036,12 @@ func (UnimplementedGoferServer) ListTokens(context.Context, *ListTokensRequest) 
 }
 func (UnimplementedGoferServer) GetToken(context.Context, *GetTokenRequest) (*GetTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetToken not implemented")
+}
+func (UnimplementedGoferServer) EnableToken(context.Context, *EnableTokenRequest) (*EnableTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnableToken not implemented")
+}
+func (UnimplementedGoferServer) DisableToken(context.Context, *DisableTokenRequest) (*DisableTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DisableToken not implemented")
 }
 func (UnimplementedGoferServer) DeleteToken(context.Context, *DeleteTokenRequest) (*DeleteTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteToken not implemented")
@@ -1308,6 +1340,42 @@ func _Gofer_GetToken_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GoferServer).GetToken(ctx, req.(*GetTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_EnableToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).EnableToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/EnableToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).EnableToken(ctx, req.(*EnableTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Gofer_DisableToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoferServer).DisableToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Gofer/DisableToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoferServer).DisableToken(ctx, req.(*DisableTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2324,6 +2392,14 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetToken",
 			Handler:    _Gofer_GetToken_Handler,
+		},
+		{
+			MethodName: "EnableToken",
+			Handler:    _Gofer_EnableToken_Handler,
+		},
+		{
+			MethodName: "DisableToken",
+			Handler:    _Gofer_DisableToken_Handler,
 		},
 		{
 			MethodName: "DeleteToken",

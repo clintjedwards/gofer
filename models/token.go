@@ -22,6 +22,7 @@ type Token struct {
 	Namespaces []string          `json:"namespaces"` // List of namespaces this token has access to.
 	Metadata   map[string]string `json:"metadata"`   // Extra information about this token in label form.
 	Expires    int64             `json:"expiry"`     // When the token would expire.
+	Disabled   bool              `json:"disabled"`   // Disabled tokens cannot be used.
 }
 
 func NewToken(hash string, kind TokenKind, namespaces []string, metadata map[string]string, expiry time.Duration) *Token {
@@ -35,6 +36,7 @@ func NewToken(hash string, kind TokenKind, namespaces []string, metadata map[str
 		Namespaces: namespaces,
 		Metadata:   metadata,
 		Expires:    expires.UnixMilli(),
+		Disabled:   false,
 	}
 }
 
@@ -45,6 +47,7 @@ func (t *Token) ToProto() *proto.Token {
 		Namespaces: t.Namespaces,
 		Metadata:   t.Metadata,
 		Expires:    t.Expires,
+		Disabled:   t.Disabled,
 	}
 }
 
@@ -54,4 +57,5 @@ func (t *Token) FromProto(proto *proto.Token) {
 	t.Namespaces = proto.Namespaces
 	t.Metadata = proto.Metadata
 	t.Expires = proto.Expires
+	t.Disabled = proto.Disabled
 }

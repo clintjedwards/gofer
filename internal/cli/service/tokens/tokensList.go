@@ -8,6 +8,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -65,6 +66,10 @@ func tokensList(_ *cobra.Command, _ []string) error {
 	for _, protoToken := range resp.Tokens {
 		token := models.Token{}
 		token.FromProto(protoToken)
+		active := color.GreenString("Active")
+		if token.Disabled {
+			active = color.RedString("Disabled")
+		}
 
 		data = append(data, []string{
 			formatTokenKind(string(token.Kind)),
@@ -72,6 +77,7 @@ func tokensList(_ *cobra.Command, _ []string) error {
 			format.UnixMilli(token.Expires, "Unknown", cl.State.Config.Detail),
 			printMap(token.Metadata),
 			fmt.Sprintf("%v", token.Namespaces),
+			active,
 		})
 	}
 
@@ -97,7 +103,7 @@ func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"Kind", "Created", "Expires", "Metadata", "Namespaces"})
+	table.SetHeader([]string{"Kind", "Created", "Expires", "Metadata", "Namespaces", "Active"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)
@@ -115,9 +121,11 @@ func formatTable(data [][]string, color bool) string {
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
+			tablewriter.Color(tablewriter.FgBlueColor),
 		)
 		table.SetColumnColor(
 			tablewriter.Color(tablewriter.FgYellowColor),
+			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),

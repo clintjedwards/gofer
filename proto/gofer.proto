@@ -47,6 +47,12 @@ service Gofer {
   // GetToken returns information about a particular token;
   rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
 
+  // EnableToken makes a token usable.
+  rpc EnableToken(EnableTokenRequest) returns (EnableTokenResponse);
+
+  // DisableToken makes a token unusable.
+  rpc DisableToken(DisableTokenRequest) returns (DisableTokenResponse);
+
   // DeleteToken removes a token.
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
 

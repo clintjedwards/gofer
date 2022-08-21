@@ -16,7 +16,7 @@ func (db *DB) ListTokens(offset, limit int) ([]models.Token, error) {
 		limit = db.maxResultsLimit
 	}
 
-	rows, err := qb.Select("hash", "created", "kind", "namespaces", "metadata", "expires").
+	rows, err := qb.Select("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
 		From("tokens").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).RunWith(db).Query()
@@ -36,8 +36,9 @@ func (db *DB) ListTokens(offset, limit int) ([]models.Token, error) {
 		var namespacesJSON string
 		var metadataJSON string
 		var expires int64
+		var disabled bool
 
-		err = rows.Scan(&hash, &created, &kind, &namespacesJSON, &metadataJSON, &expires)
+		err = rows.Scan(&hash, &created, &kind, &namespacesJSON, &metadataJSON, &expires, &disabled)
 		if err != nil {
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
@@ -60,6 +61,7 @@ func (db *DB) ListTokens(offset, limit int) ([]models.Token, error) {
 		token.Namespaces = namespaces
 		token.Metadata = metadata
 		token.Expires = expires
+		token.Disabled = disabled
 
 		tokens = append(tokens, token)
 	}
@@ -82,8 +84,8 @@ func (db *DB) InsertToken(tr *models.Token) error {
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
 	}
 
-	_, err = qb.Insert("tokens").Columns("hash", "created", "kind", "namespaces", "metadata", "expires").
-		Values(tr.Hash, tr.Created, tr.Kind, string(namespacesJSON), string(metadataJSON), tr.Expires).RunWith(db).Exec()
+	_, err = qb.Insert("tokens").Columns("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
+		Values(tr.Hash, tr.Created, tr.Kind, string(namespacesJSON), string(metadataJSON), tr.Expires, tr.Disabled).RunWith(db).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrEntityExists
@@ -96,7 +98,7 @@ func (db *DB) InsertToken(tr *models.Token) error {
 }
 
 func (db *DB) GetToken(hashStr string) (models.Token, error) {
-	row := qb.Select("hash", "created", "kind", "namespaces", "metadata", "expires").
+	row := qb.Select("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
 		From("tokens").Where(qb.Eq{"hash": hashStr}).RunWith(db).QueryRow()
 
 	token := models.Token{}
@@ -107,8 +109,9 @@ func (db *DB) GetToken(hashStr string) (models.Token, error) {
 	var namespacesJSON string
 	var metadataJSON string
 	var expires int64
+	var disabled bool
 
-	err := row.Scan(&hash, &created, &kind, &namespacesJSON, &metadataJSON, &expires)
+	err := row.Scan(&hash, &created, &kind, &namespacesJSON, &metadataJSON, &expires, &disabled)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.Token{}, ErrEntityNotFound
@@ -135,8 +138,39 @@ func (db *DB) GetToken(hashStr string) (models.Token, error) {
 	token.Namespaces = namespaces
 	token.Metadata = metadata
 	token.Expires = expires
+	token.Disabled = disabled
 
 	return token, nil
+}
+
+func (db *DB) EnableToken(hashStr string) error {
+	query := qb.Update("tokens")
+	query = query.Set("disabled", false)
+	_, err := query.Where(qb.Eq{"hash": hashStr}).RunWith(db).Exec()
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows in result set") {
+			return ErrEntityNotFound
+		}
+
+		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return nil
+}
+
+func (db *DB) DisableToken(hashStr string) error {
+	query := qb.Update("tokens")
+	query = query.Set("disabled", true)
+	_, err := query.Where(qb.Eq{"hash": hashStr}).RunWith(db).Exec()
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows in result set") {
+			return ErrEntityNotFound
+		}
+
+		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return nil
 }
 
 func (db *DB) DeleteToken(hash string) error {

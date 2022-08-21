@@ -173,6 +173,50 @@ func (api *API) GetToken(ctx context.Context, request *proto.GetTokenRequest) (*
 	}, nil
 }
 
+func (api *API) EnableToken(ctx context.Context, request *proto.EnableTokenRequest) (*proto.EnableTokenResponse, error) {
+	if !isManagementUser(ctx) {
+		return &proto.EnableTokenResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
+	if request.Token == "" {
+		return &proto.EnableTokenResponse{}, status.Error(codes.FailedPrecondition, "token required")
+	}
+
+	hash := getHash(request.Token)
+	err := api.db.EnableToken(hash)
+	if err != nil {
+		if errors.Is(err, storage.ErrEntityNotFound) {
+			return &proto.EnableTokenResponse{}, status.Error(codes.NotFound, "token not found")
+		}
+		log.Error().Err(err).Msg("could not get token from storage")
+		return &proto.EnableTokenResponse{}, status.Error(codes.Internal, "could not get token")
+	}
+
+	return &proto.EnableTokenResponse{}, nil
+}
+
+func (api *API) DisableToken(ctx context.Context, request *proto.DisableTokenRequest) (*proto.DisableTokenResponse, error) {
+	if !isManagementUser(ctx) {
+		return &proto.DisableTokenResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
+	if request.Token == "" {
+		return &proto.DisableTokenResponse{}, status.Error(codes.FailedPrecondition, "token required")
+	}
+
+	hash := getHash(request.Token)
+	err := api.db.DisableToken(hash)
+	if err != nil {
+		if errors.Is(err, storage.ErrEntityNotFound) {
+			return &proto.DisableTokenResponse{}, status.Error(codes.NotFound, "token not found")
+		}
+		log.Error().Err(err).Msg("could not get token from storage")
+		return &proto.DisableTokenResponse{}, status.Error(codes.Internal, "could not get token")
+	}
+
+	return &proto.DisableTokenResponse{}, nil
+}
+
 func (api *API) DeleteToken(ctx context.Context, request *proto.DeleteTokenRequest) (*proto.DeleteTokenResponse, error) {
 	if !isManagementUser(ctx) {
 		return &proto.DeleteTokenResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")

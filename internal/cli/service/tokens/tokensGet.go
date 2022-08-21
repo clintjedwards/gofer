@@ -32,6 +32,7 @@ type data struct {
 	Metadata   map[string]string
 	Created    string
 	Expires    string
+	Active     string
 }
 
 func tokensGet(_ *cobra.Command, _ []string) error {
@@ -81,15 +82,21 @@ func tokensGet(_ *cobra.Command, _ []string) error {
 }
 
 func formatToken(token *models.Token, detail bool) (string, error) {
+	active := color.GreenString("Enabled")
+	if token.Disabled {
+		active = color.RedString("Disabled")
+	}
+
 	data := data{
 		Kind:       color.BlueString(formatTokenKind(string(token.Kind))),
 		Namespaces: token.Namespaces,
 		Metadata:   token.Metadata,
 		Created:    format.UnixMilli(token.Created, "Never", detail),
 		Expires:    format.UnixMilli(token.Expires, "Never", detail),
+		Active:     active,
 	}
 
-	const formatTmpl = `{{.Kind}} Token :: Created {{.Created}}
+	const formatTmpl = `{{.Kind}} Token :: Created {{.Created}} :: {{.Active}}
 	{{- if .Namespaces}}
 
   Valid for Namespaces:

@@ -24,7 +24,7 @@ func (s *migrate) migrate(db *sqlx.DB, dialect string) error {
 		err := db.Get(&found, "SELECT id FROM migrations WHERE id=$1", m.ID)
 		switch err {
 		case sql.ErrNoRows:
-			log.Debug().Msgf("running migration ID: %v", m.ID)
+			log.Info().Msgf("running migration ID: %v", m.ID)
 		case nil:
 			continue
 		default:

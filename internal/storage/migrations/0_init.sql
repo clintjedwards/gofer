@@ -184,5 +184,6 @@ CREATE TABLE IF NOT EXISTS tokens (
     namespaces  TEXT NOT NULL,
     metadata    TEXT,
     expires     TEXT NOT NULL,
+    disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1)),
     PRIMARY KEY (hash)
 ) STRICT;
