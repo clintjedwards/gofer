@@ -6,7 +6,6 @@ import (
 
 	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
-
 	sdk "github.com/clintjedwards/gofer/sdk/go"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/metadata"

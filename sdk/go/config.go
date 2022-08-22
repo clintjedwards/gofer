@@ -2,10 +2,12 @@ package sdk
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/clintjedwards/gofer/sdk/go/dag"
 )
 
 type RequiredParentStatus string
@@ -230,8 +232,13 @@ func (p *Pipeline) FromProto(proto *proto.PipelineConfig) {
 	p.CommonTasks = commonTasks
 }
 
-func (p *Pipeline) validate() error {
+func (p *Pipeline) Validate() error {
 	err := validateIdentifier("id", p.ID)
+	if err != nil {
+		return err
+	}
+
+	err = p.isDAG()
 	if err != nil {
 		return err
 	}
@@ -286,7 +293,7 @@ func (p *Pipeline) WithCommonTasks(commontasks []PipelineCommonTaskConfig) *Pipe
 
 // Call finish as the last method to the pipeline config
 func (p *Pipeline) Finish() error {
-	err := p.validate()
+	err := p.Validate()
 	if err != nil {
 		return err
 	}
@@ -320,5 +327,39 @@ func validateIdentifier(arg, value string) error {
 	if !alphanumericWithUnderscores.MatchString(value) {
 		return fmt.Errorf("can only be made up of alphanumeric and underscore characters")
 	}
+	return nil
+}
+
+// isDAG validates whether given task list inside a pipeline config represents an acyclic graph.
+func (p *Pipeline) isDAG() error {
+	taskDAG := dag.New()
+
+	// Add all nodes to the DAG first
+	for _, task := range p.Tasks {
+		err := taskDAG.AddNode(task.ID)
+		if err != nil {
+			if errors.Is(err, dag.ErrEntityExists) {
+				return fmt.Errorf("duplicate task names found; %q is already a task", task.ID)
+			}
+			return err
+		}
+	}
+
+	// Add all edges
+	for _, task := range p.Tasks {
+		for id := range task.DependsOn {
+			err := taskDAG.AddEdge(id, task.ID)
+			if err != nil {
+				if errors.Is(err, dag.ErrEdgeCreatesCycle) {
+					return fmt.Errorf("a cycle was detected creating a dependency from task %q to task %q; %w", task.ID, id, dag.ErrEdgeCreatesCycle)
+				}
+				if errors.Is(err, dag.ErrEntityNotFound) {
+					return fmt.Errorf("task %q is listed as a dependency within task %q but does not exist", id, task.ID)
+				}
+				return err
+			}
+		}
+	}
+
 	return nil
 }

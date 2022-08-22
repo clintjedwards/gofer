@@ -27,6 +27,10 @@ We need a common way to alert on a PR or something that a task has succeeded or 
     - A Gofer has uninstalled a trigger/commontask that a pipeline previously depended on.
   - When we uninstall common tasks or triggers we can list all pipelines that currently use those, disable them and add an error.
 
+### SDK
+
+Update rust sdk library to be equal to golangs.
+
 ### Common Tasks
 
 - It would be nice to create a common task with some basic "the user wants to do something when this condition
@@ -107,14 +111,15 @@ We need a common way to alert on a PR or something that a task has succeeded or 
 
 ### On the floor
 
-- Write SDK library for rust both trigger and pipeline config.
 - Pipeline validate - must have at least one task - limit parallesim to something like 20 - Make sure there are no cycles.
-- Add an example of entrypoint/command running a multi-line script
-- Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
-- In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
-- Get rid of the schedulerID
 - syncmap needs a get and swap method
-- Replace blurry png for readme.
+- Get rid of the schedulerID
+- Update Golang SDK library
+  - In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
+  - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
+- Convert over all previously lost example pipelines.
 - Use Mdbook for documentation.
   - After mdbook upgrade update all code links to it.
   - Document the debug containers also
+  - Replace blurry png for readme.
+  - Add an example of entrypoint/command running a multi-line script

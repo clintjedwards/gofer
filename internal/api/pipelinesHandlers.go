@@ -166,11 +166,14 @@ func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelin
 
 	config := sdk.Pipeline{}
 	config.FromProto(request.PipelineConfig)
+	err := config.Validate()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "could not validate pipeline; %v", err)
+	}
 
 	newPipeline := models.NewPipeline(request.NamespaceId, &config)
 
-	// TODO(clintjedwards): We need to validate a user passed pipeline
-	err := api.configTriggersIsValid(newPipeline.Triggers)
+	err = api.configTriggersIsValid(newPipeline.Triggers)
 	if err != nil {
 		return &proto.CreatePipelineResponse{},
 			status.Error(codes.FailedPrecondition, err.Error())
@@ -229,6 +232,10 @@ func (api *API) UpdatePipeline(ctx context.Context, request *proto.UpdatePipelin
 
 	config := sdk.Pipeline{}
 	config.FromProto(request.PipelineConfig)
+	err := config.Validate()
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "could not validate pipeline; %v", err)
+	}
 
 	updatedPipeline := models.NewPipeline(request.NamespaceId, &config)
 
