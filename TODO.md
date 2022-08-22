@@ -111,7 +111,6 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- Pipeline validate - must have at least one task - limit parallesim to something like 20 - Make sure there are no cycles.
 - syncmap needs a get and swap method
 - Get rid of the schedulerID
 - Update Golang SDK library

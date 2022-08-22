@@ -511,7 +511,6 @@ func (api *API) repairOrphanRun(namespace, pipelineID string, runID int64) error
 		// need to make sure it gets scheduled as normal.
 		if taskrun.State == models.TaskRunStateWaiting || taskrun.State == models.TaskRunStateProcessing {
 			go runStateMachine.launchTaskRun(taskrun.Task)
-			// go api.reviveLostTaskRun(&taskStatusMap, &taskrun) TODO(clintjedwards): Did I fuck this up?
 			continue
 		}
 

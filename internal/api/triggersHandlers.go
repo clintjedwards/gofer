@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/scheduler"
@@ -227,17 +228,21 @@ func (api *API) EnableTrigger(ctx context.Context, request *proto.EnableTriggerR
 		return &proto.EnableTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
 	}
 
-	// TODO(clintjedwards): This needs a get and swap
-	trigger, exists := api.triggers.Get(request.Name)
-	if !exists {
-		_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
-			Status: ptr(models.TriggerStatusDisabled),
-		})
-		return &proto.EnableTriggerResponse{}, status.Errorf(codes.FailedPrecondition, "trigger %q is not found", request.Name)
-	}
+	err = api.triggers.Swap(request.Name, func(value *models.Trigger, exists bool) (*models.Trigger, error) {
+		if !exists {
+			_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
+				Status: ptr(models.TriggerStatusDisabled),
+			})
 
-	trigger.Registration.Status = models.TriggerStatusEnabled
-	api.triggers.Set(request.Name, trigger)
+			return nil, fmt.Errorf("trigger %q not found", request.Name)
+		}
+
+		value.Registration.Status = models.TriggerStatusEnabled
+		return value, nil
+	})
+	if err != nil {
+		return &proto.EnableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
+	}
 
 	return &proto.EnableTriggerResponse{}, nil
 }
@@ -262,17 +267,21 @@ func (api *API) DisableTrigger(ctx context.Context, request *proto.DisableTrigge
 		return &proto.DisableTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
 	}
 
-	// TODO(clintjedwards): This needs a get and swap
-	task, exists := api.triggers.Get(request.Name)
-	if !exists {
-		_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
-			Status: ptr(models.TriggerStatusDisabled),
-		})
+	err = api.triggers.Swap(request.Name, func(value *models.Trigger, exists bool) (*models.Trigger, error) {
+		if !exists {
+			_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
+				Status: ptr(models.TriggerStatusEnabled),
+			})
+
+			return nil, fmt.Errorf("trigger %q not found", request.Name)
+		}
+
+		value.Registration.Status = models.TriggerStatusDisabled
+		return value, nil
+	})
+	if err != nil {
 		return &proto.DisableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
 	}
-
-	task.Registration.Status = models.TriggerStatusDisabled
-	api.triggers.Set(request.Name, task)
 
 	return &proto.DisableTriggerResponse{}, nil
 }

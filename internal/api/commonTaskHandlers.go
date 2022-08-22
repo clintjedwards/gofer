@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/scheduler"
@@ -162,17 +163,21 @@ func (api *API) EnableCommonTask(ctx context.Context, request *proto.EnableCommo
 		return &proto.EnableCommonTaskResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
 	}
 
-	// TODO(clintjedwards): This needs a get and swap
-	task, exists := api.commonTasks.Get(request.Name)
-	if !exists {
-		_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
-			Status: ptr(models.CommonTaskStatusDisabled),
-		})
+	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTask, exists bool) (*models.CommonTask, error) {
+		if !exists {
+			_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
+				Status: ptr(models.CommonTaskStatusDisabled),
+			})
+
+			return nil, fmt.Errorf("common task %q not found", request.Name)
+		}
+
+		value.Status = models.CommonTaskStatusEnabled
+		return value, nil
+	})
+	if err != nil {
 		return &proto.EnableCommonTaskResponse{}, status.Errorf(codes.NotFound, "common task %q is not found", request.Name)
 	}
-
-	task.Status = models.CommonTaskStatusEnabled
-	api.commonTasks.Set(request.Name, task)
 
 	return &proto.EnableCommonTaskResponse{}, nil
 }
@@ -189,17 +194,21 @@ func (api *API) DisableCommonTask(ctx context.Context, request *proto.DisableCom
 		return &proto.DisableCommonTaskResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
 	}
 
-	// TODO(clintjedwards): This needs a get and swap
-	task, exists := api.commonTasks.Get(request.Name)
-	if !exists {
-		_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
-			Status: ptr(models.CommonTaskStatusDisabled),
-		})
+	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTask, exists bool) (*models.CommonTask, error) {
+		if !exists {
+			_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
+				Status: ptr(models.CommonTaskStatusEnabled),
+			})
+
+			return nil, fmt.Errorf("common task %q not found", request.Name)
+		}
+
+		value.Status = models.CommonTaskStatusDisabled
+		return value, nil
+	})
+	if err != nil {
 		return &proto.DisableCommonTaskResponse{}, status.Errorf(codes.NotFound, "common task %q is not found", request.Name)
 	}
-
-	task.Status = models.CommonTaskStatusDisabled
-	api.commonTasks.Set(request.Name, task)
 
 	return &proto.DisableCommonTaskResponse{}, nil
 }

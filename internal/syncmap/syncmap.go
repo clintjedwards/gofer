@@ -29,6 +29,22 @@ func (s *Syncmap[Key, Value]) Set(key Key, value Value) {
 	s.m.Unlock()
 }
 
+// Swap allows the caller to atomically swap a value utilizing a closure.
+// Returning an error in the closure aborts the swap and returns the error to the main swap function.
+func (s *Syncmap[Key, Value]) Swap(key Key, fn func(value Value, exists bool) (Value, error)) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+	value, exists := s.internal[key]
+
+	newValue, err := fn(value, exists)
+	if err != nil {
+		return err
+	}
+
+	s.internal[key] = newValue
+	return nil
+}
+
 func (s *Syncmap[Key, Value]) Delete(key Key) {
 	s.m.Lock()
 	delete(s.internal, key)
