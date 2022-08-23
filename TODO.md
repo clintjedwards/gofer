@@ -111,7 +111,6 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- syncmap needs a get and swap method
 - Get rid of the schedulerID
 - Update Golang SDK library
   - In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.

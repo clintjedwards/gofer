@@ -29,10 +29,7 @@ type Trigger struct {
 	Registration TriggerRegistration `json:"registration"`
 
 	// URL is the network address used to communicate with the trigger by the main process.
-	URL string `json:"url"`
-	// SchedulerID is an identifier used by the scheduler to point out which container this trigger is mapped to. Used
-	// when manipulating the container through the identifier.
-	SchedulerID   string       `json:"scheduler_id"`
+	URL           string       `json:"url"`
 	Started       int64        `json:"started"` // The start time of the trigger in epoch milliseconds.
 	State         TriggerState `json:"state"`
 	Documentation string       `json:"documentation"` // The documentation link for this specific trigger.
@@ -47,7 +44,6 @@ func (t *Trigger) ToProto() *proto.Trigger {
 		Name:          t.Registration.Name,
 		Image:         t.Registration.Image,
 		Url:           t.URL,
-		SchedulerId:   t.SchedulerID,
 		Started:       t.Started,
 		State:         proto.Trigger_TriggerState(proto.Trigger_TriggerState_value[string(t.State)]),
 		Status:        proto.Trigger_TriggerStatus(proto.Trigger_TriggerStatus_value[string(t.Registration.Status)]),

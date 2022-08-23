@@ -20,12 +20,10 @@ Schedulers are pluggable! Simply implement a new scheduler by following [the giv
 
 ```go
 type Engine interface {
-	// StartContainer launches a new container on scheduler. Scheduler should return a unique "schedulerID" to allow
-	// the ability to refers specifically to the container on subsequent calls.
+	// StartContainer launches a new container on scheduler.
 	StartContainer(request StartContainerRequest) (response StartContainerResponse, err error)
 
-	// StopContainer attempts to stop a specific container identified by the aforementioned "schedulerID". The scheduler
-	// should attempt to gracefully stop the container, unless the timeout is reached.
+	// StopContainer attempts to stop a specific container identified by a unique container name.
 	StopContainer(request StopContainerRequest) error
 
 	// GetState returns the current state of the container translated to the "models.ContainerState" enum.

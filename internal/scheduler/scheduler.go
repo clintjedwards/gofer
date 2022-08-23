@@ -34,6 +34,10 @@ const (
 // ErrNoSuchContainer is returned when a container requested could not be located on the scheduler.
 var ErrNoSuchContainer = errors.New("scheduler: entity not found")
 
+// ErrAmbiguousContainerName is returned when we the scheduler attempts to operate on a single container but the given
+// name results in multiple container matches.
+var ErrAmbiguousContainerName = errors.New("scheduler: more than one container was found for the given container name")
+
 // ErrNoSuchImage is returned when the requested container image could not be pulled.
 var ErrNoSuchImage = errors.New("scheduler: docker image not found")
 
@@ -54,17 +58,16 @@ type StartContainerRequest struct {
 }
 
 type StartContainerResponse struct {
-	SchedulerID string // a unique way to identify the container that has started.
-	URL         string // optional endpoint if "EnableNetworking" was used.
+	URL string // optional endpoint if "EnableNetworking" was used.
 }
 
 type StopContainerRequest struct {
-	SchedulerID string        // unique identification for container to stop.
-	Timeout     time.Duration // The total time the scheduler should wait for a graceful stop before issueing a SIGKILL.
+	ID      string        // unique identification for container.
+	Timeout time.Duration // The total time the scheduler should wait for a graceful stop before issueing a SIGKILL.
 }
 
 type GetStateRequest struct {
-	SchedulerID string // unique identification for container to retrive.
+	ID string // unique identification for container.
 }
 
 type GetStateResponse struct {
@@ -73,12 +76,11 @@ type GetStateResponse struct {
 }
 
 type GetLogsRequest struct {
-	SchedulerID string
+	ID string
 }
 
 type Engine interface {
-	// StartContainer launches a new container on scheduler. Scheduler should return a unique "schedulerID" to allow
-	// the ability to refers specifically to the container on subsequent calls.
+	// StartContainer launches a new container on scheduler.
 	StartContainer(request StartContainerRequest) (response StartContainerResponse, err error)
 
 	// StopContainer attempts to stop a specific container identified by the aforementioned "schedulerID". The scheduler

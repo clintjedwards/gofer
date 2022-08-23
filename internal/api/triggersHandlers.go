@@ -108,14 +108,14 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 		Entrypoint:       &[]string{"./trigger", "installer"},
 	}
 
-	resp, err := api.scheduler.StartContainer(sc)
+	_, err = api.scheduler.StartContainer(sc)
 	if err != nil {
 		log.Error().Err(err).Str("image", request.Image).Msg("could not start trigger during installation instructions retrieval")
 		return &proto.GetTriggerInstallInstructionsResponse{},
 			status.Errorf(codes.Internal, "could not start trigger; %v", err)
 	}
 
-	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{SchedulerID: resp.SchedulerID})
+	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{ID: installerContainerID()})
 	if err != nil {
 		log.Error().Err(err).Str("image", request.Image).Msg("could not get logs from trigger installation run")
 		return &proto.GetTriggerInstallInstructionsResponse{},

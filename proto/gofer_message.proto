@@ -202,8 +202,7 @@ message TaskRun {
   string namespace = 8;
   string pipeline = 9;
   int64 run = 10;
-  string scheduler_id = 11;
-  int64 started = 12;
+  int64 started = 11;
   enum TaskRunState {
     UNKNOWN_STATE = 0;
     PROCESSING = 1;
@@ -211,7 +210,7 @@ message TaskRun {
     RUNNING = 3;
     COMPLETE = 4;
   }
-  TaskRunState state = 13;
+  TaskRunState state = 12;
   enum TaskRunStatus {
     UNKNOWN_STATUS = 0;
     SUCCESSFUL = 1;
@@ -219,31 +218,30 @@ message TaskRun {
     CANCELLED = 3;
     SKIPPED = 4;
   }
-  TaskRunStatus status = 14;
-  Task task = 15;
-  repeated Variable variables = 16;
+  TaskRunStatus status = 13;
+  Task task = 14;
+  repeated Variable variables = 15;
 }
 
 message Trigger {
   string name = 1;
   string image = 2;
   string url = 3;
-  string scheduler_id = 4;
-  int64 started = 5;
+  int64 started = 4;
   enum TriggerState {
     UNKNOWN_STATE = 0;
     PROCESSING = 1;
     RUNNING = 2;
     EXITED = 3;
   }
-  TriggerState state = 6;
+  TriggerState state = 5;
   enum TriggerStatus {
     UNKNOWN_STATUS = 0;
     ENABLED = 1;
     DISABLED = 2;
   }
-  TriggerStatus status = 7;
-  string documentation = 8;
+  TriggerStatus status = 6;
+  string documentation = 7;
 }
 
 message TriggerRegistration {

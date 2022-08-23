@@ -197,9 +197,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 	}
 
 	if len(containerInfo.NetworkSettings.Ports) == 0 && req.EnableNetworking {
-		return scheduler.StartContainerResponse{
-			SchedulerID: createResp.ID,
-		}, fmt.Errorf("could not start container; check logs for errors")
+		return scheduler.StartContainerResponse{}, fmt.Errorf("could not start container; check logs for errors")
 	}
 
 	rawHostPort := nat.PortBinding{
@@ -211,8 +209,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 	}
 
 	return scheduler.StartContainerResponse{
-		SchedulerID: createResp.ID,
-		URL:         fmt.Sprintf("%s:%s", rawHostPort.HostIP, rawHostPort.HostPort),
+		URL: fmt.Sprintf("%s:%s", rawHostPort.HostIP, rawHostPort.HostPort),
 	}, nil
 }
 
@@ -220,10 +217,10 @@ func (orch *Orchestrator) StopContainer(req scheduler.StopContainerRequest) erro
 	ctx := context.Background()
 
 	orch.cancellations.Lock()
-	orch.cancellations.cancelled[req.SchedulerID] = time.Now()
+	orch.cancellations.cancelled[req.ID] = time.Now()
 	orch.cancellations.Unlock()
 
-	err := orch.ContainerStop(ctx, req.SchedulerID, &req.Timeout)
+	err := orch.ContainerStop(ctx, req.ID, &req.Timeout)
 	if err != nil {
 		if strings.Contains(err.Error(), "No such container") {
 			return scheduler.ErrNoSuchContainer
@@ -235,7 +232,7 @@ func (orch *Orchestrator) StopContainer(req scheduler.StopContainerRequest) erro
 }
 
 func (orch *Orchestrator) GetState(gs scheduler.GetStateRequest) (scheduler.GetStateResponse, error) {
-	containerInfo, err := orch.ContainerInspect(context.Background(), gs.SchedulerID)
+	containerInfo, err := orch.ContainerInspect(context.Background(), gs.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "No such container") {
 			return scheduler.GetStateResponse{
@@ -261,14 +258,14 @@ func (orch *Orchestrator) GetState(gs scheduler.GetStateRequest) (scheduler.GetS
 	case "exited":
 		orch.cancellations.Lock()
 		defer orch.cancellations.Unlock()
-		_, wasCancelled := orch.cancellations.cancelled[gs.SchedulerID]
+		_, wasCancelled := orch.cancellations.cancelled[gs.ID]
 		if wasCancelled {
 			return scheduler.GetStateResponse{
 				ExitCode: int64(containerInfo.State.ExitCode),
 				State:    scheduler.ContainerStateCancelled,
 			}, nil
 		}
-		delete(orch.cancellations.cancelled, gs.SchedulerID)
+		delete(orch.cancellations.cancelled, gs.ID)
 
 		return scheduler.GetStateResponse{
 			ExitCode: int64(containerInfo.State.ExitCode),
@@ -295,7 +292,7 @@ func (orch *Orchestrator) GetState(gs scheduler.GetStateRequest) (scheduler.GetS
 func (orch *Orchestrator) GetLogs(gl scheduler.GetLogsRequest) (io.Reader, error) {
 	demuxr, demuxw := io.Pipe()
 
-	out, err := orch.ContainerLogs(context.Background(), gl.SchedulerID, types.ContainerLogsOptions{
+	out, err := orch.ContainerLogs(context.Background(), gl.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -314,7 +311,6 @@ func (orch *Orchestrator) GetLogs(gl scheduler.GetLogsRequest) (io.Reader, error
 			log.Error().Err(err).Msg("docker: could not demultiplex/parse log stream")
 		}
 		demuxw.Close()
-		// log.Debug().Int64("bytes written", byteCount).Msg("docker: finished demultiplexing")
 	}()
 
 	return demuxr, nil

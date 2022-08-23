@@ -18,9 +18,11 @@ func (api *API) cancelTaskRun(taskRun *models.TaskRun, force bool) error {
 		timeout = time.Millisecond * 500
 	}
 
+	containerID := taskContainerID(taskRun.Namespace, taskRun.Pipeline, taskRun.Run, taskRun.ID)
+
 	err := api.scheduler.StopContainer(scheduler.StopContainerRequest{
-		SchedulerID: *taskRun.SchedulerID,
-		Timeout:     timeout,
+		ID:      containerID,
+		Timeout: timeout,
 	})
 	if err != nil {
 		return err

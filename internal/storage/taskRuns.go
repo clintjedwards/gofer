@@ -20,7 +20,6 @@ type UpdatableTaskRunFields struct {
 	StatusReason *models.TaskRunStatusReason
 	LogsExpired  *bool
 	LogsRemoved  *bool
-	SchedulerID  *string
 	Variables    *[]models.Variable
 }
 
@@ -30,7 +29,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 	}
 
 	rows, err := qb.Select("namespace", "pipeline", "run", "id", "task", "created", "started", "ended", "exit_code",
-		"state", "status", "status_reason", "logs_expired", "logs_removed", "scheduler_id", "variables").
+		"state", "status", "status_reason", "logs_expired", "logs_removed", "variables").
 		From("task_runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run}).
 		Limit(uint64(limit)).
@@ -59,11 +58,10 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 		var statusReasonJSON sql.NullString
 		var logsExpired bool
 		var logsRemoved bool
-		var schedulerIDRaw sql.NullString
 		var variablesJSON string
 
 		err = rows.Scan(&namespace, &pipeline, &run, &id, &taskJSON, &created, &started, &ended,
-			&exitCodeRaw, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &schedulerIDRaw, &variablesJSON)
+			&exitCodeRaw, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &variablesJSON)
 		if err != nil {
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
@@ -87,11 +85,6 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 			return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
 		}
 
-		var schedulerID *string = nil
-		if schedulerIDRaw.Valid {
-			schedulerID = &schedulerIDRaw.String
-		}
-
 		variables := []models.Variable{}
 		err = json.Unmarshal([]byte(variablesJSON), &variables)
 		if err != nil {
@@ -112,7 +105,6 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 		taskRun.StatusReason = statusReason
 		taskRun.LogsExpired = logsExpired
 		taskRun.LogsRemoved = logsRemoved
-		taskRun.SchedulerID = schedulerID
 		taskRun.Variables = variables
 
 		taskRuns = append(taskRuns, taskRun)
@@ -147,11 +139,10 @@ func (db *DB) InsertTaskRun(taskRun *models.TaskRun) error {
 	}
 
 	_, err = qb.Insert("task_runs").Columns("namespace", "pipeline", "run", "id", "created", "started", "ended",
-		"exit_code", "logs_expired", "logs_removed", "state", "status", "status_reason", "task", "scheduler_id",
-		"variables").Values(
+		"exit_code", "logs_expired", "logs_removed", "state", "status", "status_reason", "task", "variables").Values(
 		taskRun.Namespace, taskRun.Pipeline, taskRun.Run, taskRun.ID, taskRun.Created, taskRun.Started,
 		taskRun.Ended, taskRun.ExitCode, taskRun.LogsExpired, taskRun.LogsRemoved, taskRun.State, taskRun.Status,
-		statusReasonJSON, string(taskJSON), taskRun.SchedulerID, string(variablesJSON)).RunWith(db).Exec()
+		statusReasonJSON, string(taskJSON), string(variablesJSON)).RunWith(db).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrEntityExists
@@ -165,7 +156,7 @@ func (db *DB) InsertTaskRun(taskRun *models.TaskRun) error {
 
 func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) (models.TaskRun, error) {
 	row := qb.Select("namespace", "pipeline", "run", "id", "task", "created", "started", "ended", "exit_code",
-		"state", "status", "status_reason", "logs_expired", "logs_removed", "scheduler_id", "variables").
+		"state", "status", "status_reason", "logs_expired", "logs_removed", "variables").
 		From("task_runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run, "id": taskRun}).RunWith(db).QueryRow()
 
@@ -183,11 +174,10 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 	var statusReasonJSON sql.NullString
 	var logsExpired bool
 	var logsRemoved bool
-	var schedulerIDRaw sql.NullString
 	var variablesJSON string
 
 	err := row.Scan(&namespaceID, &pipelineID, &runID, &id, &taskJSON, &created, &started, &ended,
-		&exitCodeRaw, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &schedulerIDRaw, &variablesJSON)
+		&exitCodeRaw, &state, &status, &statusReasonJSON, &logsExpired, &logsRemoved, &variablesJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.TaskRun{}, ErrEntityNotFound
@@ -208,11 +198,6 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 	err = json.Unmarshal([]byte(taskJSON), &task)
 	if err != nil {
 		return models.TaskRun{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
-	}
-
-	var schedulerID *string = nil
-	if schedulerIDRaw.Valid {
-		schedulerID = &schedulerIDRaw.String
 	}
 
 	var exitCode *int64 = nil
@@ -242,7 +227,6 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 	retrievedTaskRun.StatusReason = statusReason
 	retrievedTaskRun.LogsExpired = logsExpired
 	retrievedTaskRun.LogsRemoved = logsRemoved
-	retrievedTaskRun.SchedulerID = schedulerID
 	retrievedTaskRun.Variables = variables
 
 	return retrievedTaskRun, nil
@@ -285,10 +269,6 @@ func (db *DB) UpdateTaskRun(taskRun *models.TaskRun, fields UpdatableTaskRunFiel
 
 	if fields.LogsRemoved != nil {
 		query = query.Set("logs_removed", fields.LogsRemoved)
-	}
-
-	if fields.SchedulerID != nil {
-		query = query.Set("scheduler_id", fields.SchedulerID)
 	}
 
 	if fields.Variables != nil {

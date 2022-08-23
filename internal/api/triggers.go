@@ -122,7 +122,6 @@ func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key strin
 	api.triggers.Set(trigger.Name, &models.Trigger{
 		Registration:  trigger,
 		URL:           resp.URL,
-		SchedulerID:   resp.SchedulerID,
 		Started:       time.Now().UnixMilli(),
 		State:         models.TriggerStateRunning,
 		Documentation: info.Documentation,
@@ -131,10 +130,9 @@ func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key strin
 
 	log.Info().
 		Str("kind", trigger.Name).
-		Str("id", resp.SchedulerID).
 		Str("url", resp.URL).Msg("started trigger")
 
-	go api.collectLogs(resp.SchedulerID)
+	go api.collectLogs(triggerContainerID(trigger.Name))
 
 	return nil
 }
@@ -487,9 +485,9 @@ func (api *API) processTriggerEvents() error {
 
 // collectLogs simply streams a container's log right to stderr. This is useful when pipeing trigger logs to the main
 // application logs. Blocks until the logs have been fully read(essentially only when the container is shutdown).
-func (api *API) collectLogs(schedulerID string) {
+func (api *API) collectLogs(containerID string) {
 	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{
-		SchedulerID: schedulerID,
+		ID: containerID,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("scheduler error; could not get logs")

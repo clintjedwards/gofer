@@ -486,38 +486,16 @@ func (api *API) repairOrphanRun(namespace, pipelineID string, runID int64) error
 			continue
 		}
 
-		// If the task run isn't complete we need to further investigate.
-		//   * If its currently running then we need to attach a state monitor to it so we know when its actually
-		//     finished.
-		//   * If it is currently waiting to be run, then we need to "revive" it by setting it up to run when
-		//     its dependencies have finished.
-		// The absence of a schedulerID is only a problem if the container was marked as running.
-		// If this is the case the container is lost and we just mark it as "unknown".
-		if taskrun.SchedulerID == nil && taskrun.State == models.TaskRunStateRunning {
-			err = runStateMachine.setTaskRunFinished(taskrun.ID, nil, models.TaskRunStatusUnknown, &models.TaskRunStatusReason{
-				Reason:      models.TaskRunStatusReasonKindOrphaned,
-				Description: "could not find schedulerID for taskrun during recovery.",
-			})
-			if err != nil {
-				log.Error().Err(err).Str("task", taskrun.ID).
-					Str("pipeline", taskrun.Pipeline).
-					Int64("run", taskrun.Run).Msg("error setting task run finished")
-			}
-
-			continue
-		}
-
-		// If the taskrun was waiting to be scheduled then it will not have a schedulerID yet. As such we
-		// need to make sure it gets scheduled as normal.
+		// If the taskrun was waiting to be scheduled then we have to make sure it gets scheduled as normal.
 		if taskrun.State == models.TaskRunStateWaiting || taskrun.State == models.TaskRunStateProcessing {
 			go runStateMachine.launchTaskRun(taskrun.Task)
 			continue
 		}
 
 		// If it is unfinished and just need to be tracked then we just add log/state trackers onto it.
-		go runStateMachine.handleLogUpdates(*taskrun.SchedulerID, taskrun.ID)
+		go runStateMachine.handleLogUpdates(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)
 		go func() {
-			err = runStateMachine.waitTaskRunFinish(*taskrun.SchedulerID, taskrun.ID)
+			err = runStateMachine.waitTaskRunFinish(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)
 			if err != nil {
 				log.Error().Err(err).Str("task", taskrun.ID).
 					Str("pipeline", taskrun.Pipeline).

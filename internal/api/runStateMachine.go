@@ -306,10 +306,10 @@ outerLoop:
 
 // Monitors all task run statuses and determines the final run status based on all
 // finished task runs. It will block until all task runs have finished.
-func (r *RunStateMachine) waitTaskRunFinish(schedulerID, taskRunID string) error {
+func (r *RunStateMachine) waitTaskRunFinish(containerID, taskRunID string) error {
 	for {
 		response, err := r.API.scheduler.GetState(scheduler.GetStateRequest{
-			SchedulerID: schedulerID,
+			ID: containerID,
 		})
 		if err != nil {
 			_ = r.setTaskRunFinished(taskRunID, nil, models.TaskRunStatusUnknown, &models.TaskRunStatusReason{
@@ -363,9 +363,9 @@ func (r *RunStateMachine) waitTaskRunFinish(schedulerID, taskRunID string) error
 // Tracks state and log progress of a task_run. It automatically updates the provided task-run
 // with the resulting state change(s). This function will block until the task-run has
 // reached a terminal state.
-func (r *RunStateMachine) monitorTaskRun(schedulerID, taskRunID string) error {
-	go r.handleLogUpdates(schedulerID, taskRunID)
-	err := r.waitTaskRunFinish(schedulerID, taskRunID)
+func (r *RunStateMachine) monitorTaskRun(containerID, taskRunID string) error {
+	go r.handleLogUpdates(containerID, taskRunID)
+	err := r.waitTaskRunFinish(containerID, taskRunID)
 	if err != nil {
 		return err
 	}
@@ -373,7 +373,7 @@ func (r *RunStateMachine) monitorTaskRun(schedulerID, taskRunID string) error {
 	return nil
 }
 
-func (r *RunStateMachine) handleLogUpdates(schedulerID, taskRunID string) {
+func (r *RunStateMachine) handleLogUpdates(containerID, taskRunID string) {
 	taskRun, exists := r.TaskRuns.Get(taskRunID)
 	if !exists {
 		log.Error().Msg("Could not find task run in run state machine")
@@ -381,7 +381,7 @@ func (r *RunStateMachine) handleLogUpdates(schedulerID, taskRunID string) {
 	}
 
 	logReader, err := r.API.scheduler.GetLogs(scheduler.GetLogsRequest{
-		SchedulerID: schedulerID,
+		ID: containerID,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Scheduler error; could not get logs")
@@ -658,7 +658,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 
 	containerName := taskContainerID(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, newTaskRun.ID)
 
-	response, err := r.API.scheduler.StartContainer(scheduler.StartContainerRequest{
+	_, err = r.API.scheduler.StartContainer(scheduler.StartContainerRequest{
 		ID:               containerName,
 		ImageName:        newTaskRun.Image,
 		EnvVars:          preparedEnvVars,
@@ -695,8 +695,10 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 	newTaskRun.State = models.TaskRunStateRunning
 	r.TaskRuns.Set(newTaskRun.ID, *newTaskRun)
 
+	containerID := taskContainerID(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, newTaskRun.ID)
+
 	// Block until task run is finished and log results.
-	err = r.monitorTaskRun(response.SchedulerID, newTaskRun.ID)
+	err = r.monitorTaskRun(containerID, newTaskRun.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("could not launch task run; db error")
 		return

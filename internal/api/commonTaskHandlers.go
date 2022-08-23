@@ -54,8 +54,10 @@ func (api *API) GetCommonTaskInstallInstructions(ctx context.Context, request *p
 		}
 	}
 
+	containerID := installerContainerID()
+
 	sc := scheduler.StartContainerRequest{
-		ID:               installerContainerID(),
+		ID:               containerID,
 		ImageName:        request.Image,
 		EnvVars:          map[string]string{},
 		RegistryAuth:     registryAuth,
@@ -64,14 +66,14 @@ func (api *API) GetCommonTaskInstallInstructions(ctx context.Context, request *p
 		Entrypoint:       &[]string{"./commontask", "installer"},
 	}
 
-	resp, err := api.scheduler.StartContainer(sc)
+	_, err := api.scheduler.StartContainer(sc)
 	if err != nil {
 		log.Error().Err(err).Str("image", request.Image).Msg("could not start common task during installation instructions retrieval")
 		return &proto.GetCommonTaskInstallInstructionsResponse{},
 			status.Errorf(codes.Internal, "could not start common task; %v", err)
 	}
 
-	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{SchedulerID: resp.SchedulerID})
+	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{ID: containerID})
 	if err != nil {
 		log.Error().Err(err).Str("image", request.Image).Msg("could not get logs from common task installation run")
 		return &proto.GetCommonTaskInstallInstructionsResponse{},

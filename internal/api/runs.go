@@ -74,9 +74,8 @@ func systemInjectedVars(run *models.Run, task *models.Task) map[string]*models.V
 			Source: models.VariableSourceSystem,
 		},
 		"GOFER_API_TOKEN": {
-			Key: "GOFER_API_TOKEN",
-			Value: fmt.Sprintf("secret{{%s}}",
-				pipelineSecretKey(run.Namespace, run.Pipeline, fmt.Sprintf("gofer_api_token_%d", run.ID))),
+			Key:    "GOFER_API_TOKEN",
+			Value:  fmt.Sprintf("secret{{%s}}", fmt.Sprintf("gofer_api_token_%d", run.ID)),
 			Source: models.VariableSourceSystem,
 		},
 	}

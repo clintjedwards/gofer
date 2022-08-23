@@ -56,11 +56,8 @@ type TaskRun struct {
 	State        TaskRunState         `json:"state"`
 	Status       TaskRunStatus        `json:"status"`
 	StatusReason *TaskRunStatusReason `json:"status_reason"` // Extra information about the current status.
-	// The identifier used by the scheduler to identify this specific task run container. This is provided by the
-	// scheduler.
-	SchedulerID *string       `json:"scheduler_id"`
-	Variables   []Variable    `json:"variables"` // The environment variables injected during this particular task run.
-	Task        `json:"task"` // Task information.
+	Variables    []Variable           `json:"variables"`     // The environment variables injected during this particular task run.
+	Task         `json:"task"`        // Task information.
 }
 
 type TaskRunStatusReason struct {
@@ -95,7 +92,6 @@ func NewTaskRun(namespace, pipeline string, run int64, task Task) *TaskRun {
 		LogsRemoved:  false,
 		State:        TaskRunStateProcessing,
 		Status:       TaskRunStatusUnknown,
-		SchedulerID:  nil,
 		Variables:    []Variable{},
 		Task:         task,
 	}
@@ -117,11 +113,6 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		exitCode = *r.ExitCode
 	}
 
-	schedulerID := ""
-	if r.SchedulerID != nil {
-		schedulerID = *r.SchedulerID
-	}
-
 	return &proto.TaskRun{
 		Namespace:    r.Namespace,
 		Pipeline:     r.Pipeline,
@@ -136,7 +127,6 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		LogsRemoved:  r.LogsRemoved,
 		State:        proto.TaskRun_TaskRunState(proto.TaskRun_TaskRunState_value[string(r.State)]),
 		Status:       proto.TaskRun_TaskRunStatus(proto.TaskRun_TaskRunStatus_value[string(r.Status)]),
-		SchedulerId:  schedulerID,
 		Variables:    variables,
 		Task:         r.Task.ToProto(),
 	}
@@ -173,7 +163,6 @@ func (r *TaskRun) FromProto(proto *proto.TaskRun) {
 	r.LogsRemoved = proto.LogsRemoved
 	r.State = TaskRunState(proto.State.String())
 	r.Status = TaskRunStatus(proto.Status.String())
-	r.SchedulerID = &proto.SchedulerId
 	r.Variables = variables
 	r.Task = *task
 }
