@@ -19,9 +19,8 @@ Ideally, these tasks are custom containers built with the purpose of being run w
 particular workflow. Allowing you to keep the logic code closer to the actual object that uses it
 and keeping the Gofer pipeline configurations from becoming a mess.`).
 		WithTasks(
-			[]sdk.Task{
-				*sdk.NewTask("simple_task", "ubuntu:latest").
-					WithDescription("This task simply prints our hello-world message and exists!").
-					WithCommand([]string{"echo", "Hello from Gofer"}),
-			}).Finish()
+			sdk.NewCustomTask("simple_task", "ubuntu:latest").
+				WithDescription("This task simply prints our hello-world message and exists!").
+				WithCommand("echo", "Hello from Gofer"),
+		).Finish()
 }

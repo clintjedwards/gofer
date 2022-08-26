@@ -111,9 +111,21 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- Get rid of the schedulerID
+- Give a quick thought to models as they move through different phases from the Config -> SDK -> Proto -> Models
+- Erase comments in commonTask
+
+- For commonTasks when interpolating variables make sure to include the vars from the registration.
+- When we validate pipelines now we need to include the validation as if common tasks and custom tasks are the same thing.
+- Test registry auth.
+- In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
+
+  - We need to make sure dag generation takes into account common tasks now.
+
+- We currently cannot disambiguiate global secrets from pipeline secrets in the interpolation strings
+- For FromProto methods where the reference might be nil; auto-create the reference before attempting to fill it. Look at registry auth for an example.
+- We need a pipeline validate here.
+
 - Update Golang SDK library
-  - In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
   - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
 - Convert over all previously lost example pipelines.
 - Use Mdbook for documentation.

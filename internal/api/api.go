@@ -101,7 +101,7 @@ type API struct {
 	// commonTasks is an in-memory map of the currently registered commonTasks. These commonTasks are registered on startup
 	// and launched as needed at a user's request. Gofer refers to this cache as a way to quickly look
 	// up which container is needed to be launched.
-	commonTasks syncmap.Syncmap[string, *models.CommonTask]
+	commonTasks syncmap.Syncmap[string, *models.CommonTaskRegistration]
 
 	// ignorePipelineRunEvents controls if pipelines can trigger runs globally. If this is set to false the entire Gofer
 	// service will not schedule new runs.
@@ -148,7 +148,7 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 		secretStore:             secretStore,
 		ignorePipelineRunEvents: &ignorePipelineRunEvents,
 		triggers:                syncmap.New[string, *models.Trigger](),
-		commonTasks:             syncmap.New[string, *models.CommonTask](),
+		commonTasks:             syncmap.New[string, *models.CommonTaskRegistration](),
 	}
 
 	err = newAPI.createDefaultNamespace()
@@ -482,7 +482,7 @@ func (api *API) repairOrphanRun(namespace, pipelineID string, runID int64) error
 		}
 
 		if taskrun.State == models.TaskRunStateComplete {
-			runStateMachine.TaskRuns.Set(taskrun.Task.ID, taskrun)
+			runStateMachine.TaskRuns.Set(taskrun.Task.GetID(), taskrun)
 			continue
 		}
 

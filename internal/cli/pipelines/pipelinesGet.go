@@ -230,7 +230,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 	sort.Slice(triggerDataList, func(i, j int) bool { return triggerDataList[i].Label < triggerDataList[j].Label })
 
 	tasks := []taskData{}
-	for _, task := range pipeline.Tasks {
+	for _, task := range pipeline.CustomTasks {
 		tasks = append(tasks, taskData{
 			Name:      color.BlueString(task.ID),
 			DependsOn: format.Dependencies(task.DependsOn),

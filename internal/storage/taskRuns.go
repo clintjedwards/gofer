@@ -79,10 +79,28 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 			exitCode = &exitCodeRaw.Int64
 		}
 
-		task := models.Task{}
-		err = json.Unmarshal([]byte(taskJSON), &task)
+		var task models.Task
+
+		taskJSONRaw := map[string]json.RawMessage{}
+		err = json.Unmarshal([]byte(taskJSON), &taskJSONRaw)
 		if err != nil {
 			return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
+		}
+
+		_, settingsExists := taskJSONRaw["settings"]
+		_, registrationExists := taskJSONRaw["registration"]
+		if settingsExists && registrationExists {
+			task = &models.CommonTask{}
+			err = json.Unmarshal([]byte(taskJSON), &task)
+			if err != nil {
+				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
+			}
+		} else {
+			task = &models.CustomTask{}
+			err = json.Unmarshal([]byte(taskJSON), &task)
+			if err != nil {
+				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
+			}
 		}
 
 		variables := []models.Variable{}
@@ -194,10 +212,28 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 		}
 	}
 
-	task := models.Task{}
-	err = json.Unmarshal([]byte(taskJSON), &task)
+	var task models.Task
+
+	taskJSONRaw := map[string]json.RawMessage{}
+	err = json.Unmarshal([]byte(taskJSON), &taskJSONRaw)
 	if err != nil {
 		return models.TaskRun{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
+	}
+
+	_, settingsExists := taskJSONRaw["settings"]
+	_, registrationExists := taskJSONRaw["registration"]
+	if settingsExists && registrationExists {
+		task = &models.CommonTask{}
+		err = json.Unmarshal([]byte(taskJSON), &task)
+		if err != nil {
+			return models.TaskRun{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
+		}
+	} else {
+		task = &models.CustomTask{}
+		err = json.Unmarshal([]byte(taskJSON), &task)
+		if err != nil {
+			return models.TaskRun{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
+		}
 	}
 
 	var exitCode *int64 = nil

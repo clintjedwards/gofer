@@ -57,7 +57,7 @@ type TaskRun struct {
 	Status       TaskRunStatus        `json:"status"`
 	StatusReason *TaskRunStatusReason `json:"status_reason"` // Extra information about the current status.
 	Variables    []Variable           `json:"variables"`     // The environment variables injected during this particular task run.
-	Task         `json:"task"`        // Task information.
+	Task         Task                 `json:"task"`          // Task information.
 }
 
 type TaskRunStatusReason struct {
@@ -82,7 +82,7 @@ func NewTaskRun(namespace, pipeline string, run int64, task Task) *TaskRun {
 		Namespace:    namespace,
 		Pipeline:     pipeline,
 		Run:          run,
-		ID:           task.ID,
+		ID:           task.GetID(),
 		Created:      time.Now().UnixMilli(),
 		Started:      0,
 		Ended:        0,
@@ -113,7 +113,7 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		exitCode = *r.ExitCode
 	}
 
-	return &proto.TaskRun{
+	protoTaskRun := &proto.TaskRun{
 		Namespace:    r.Namespace,
 		Pipeline:     r.Pipeline,
 		Run:          r.Run,
@@ -128,43 +128,65 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		State:        proto.TaskRun_TaskRunState(proto.TaskRun_TaskRunState_value[string(r.State)]),
 		Status:       proto.TaskRun_TaskRunStatus(proto.TaskRun_TaskRunStatus_value[string(r.Status)]),
 		Variables:    variables,
-		Task:         r.Task.ToProto(),
 	}
+
+	switch task := r.Task.(type) {
+	case *CommonTask:
+		protoTaskRun.Task = &proto.TaskRun_CommonTask{
+			CommonTask: task.ToProto(),
+		}
+	case *CustomTask:
+		protoTaskRun.Task = &proto.TaskRun_CustomTask{
+			CustomTask: task.ToProto(),
+		}
+	}
+
+	return protoTaskRun
 }
 
-func (r *TaskRun) FromProto(proto *proto.TaskRun) {
+func (r *TaskRun) FromProto(pb *proto.TaskRun) {
 	var statusReason *TaskRunStatusReason = nil
-	if proto.StatusReason != nil {
+	if pb.StatusReason != nil {
 		sr := &TaskRunStatusReason{}
-		sr.FromProto(proto.StatusReason)
+		sr.FromProto(pb.StatusReason)
 		statusReason = sr
 	}
 
 	variables := []Variable{}
-	for _, variable := range proto.Variables {
+	for _, variable := range pb.Variables {
 		vari := Variable{}
 		vari.FromProto(variable)
 		variables = append(variables, vari)
 	}
 
-	task := &Task{}
-	task.FromProto(proto.Task)
+	var task Task
 
-	r.Namespace = proto.Namespace
-	r.Pipeline = proto.Pipeline
-	r.Run = proto.Run
-	r.ID = proto.Id
-	r.Created = proto.Created
-	r.Started = proto.Started
-	r.Ended = proto.Ended
-	r.ExitCode = Ptr(proto.ExitCode)
+	switch t := pb.Task.(type) {
+	case *proto.TaskRun_CommonTask:
+		commonTask := &CommonTask{}
+		commonTask.FromProto(t.CommonTask)
+		task = commonTask
+	case *proto.TaskRun_CustomTask:
+		customTask := &CustomTask{}
+		customTask.FromProto(t.CustomTask)
+		task = customTask
+	}
+
+	r.Namespace = pb.Namespace
+	r.Pipeline = pb.Pipeline
+	r.Run = pb.Run
+	r.ID = pb.Id
+	r.Created = pb.Created
+	r.Started = pb.Started
+	r.Ended = pb.Ended
+	r.ExitCode = Ptr(pb.ExitCode)
 	r.StatusReason = statusReason
-	r.LogsExpired = proto.LogsExpired
-	r.LogsRemoved = proto.LogsRemoved
-	r.State = TaskRunState(proto.State.String())
-	r.Status = TaskRunStatus(proto.Status.String())
+	r.LogsExpired = pb.LogsExpired
+	r.LogsRemoved = pb.LogsRemoved
+	r.State = TaskRunState(pb.State.String())
+	r.Status = TaskRunStatus(pb.Status.String())
 	r.Variables = variables
-	r.Task = *task
+	r.Task = task
 }
 
 func Ptr[T any](v T) *T {

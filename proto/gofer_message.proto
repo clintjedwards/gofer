@@ -48,7 +48,7 @@ message Pipeline {
     DISABLED = 2;
   }
   PipelineState state = 8;
-  map<string, Task> tasks = 9;
+  map<string, CustomTask> custom_tasks = 9;
   map<string, PipelineTriggerSettings> triggers = 10;
   map<string, PipelineCommonTaskSettings> common_tasks = 11;
   enum ErrorKind {
@@ -62,14 +62,20 @@ message Pipeline {
   repeated Error errors = 12;
 }
 
+message PipelineTaskConfig {
+  oneof task {
+    CustomTaskConfig custom_task = 1;
+    CommonTaskConfig common_task = 2;
+  }
+}
+
 message PipelineConfig {
   string id = 1;
   string name = 2;
   string description = 3;
   int64 parallelism = 4;
-  repeated TaskConfig tasks = 5;
+  repeated PipelineTaskConfig tasks = 5;
   repeated PipelineTriggerConfig triggers = 6;
-  repeated PipelineCommonTaskConfig common_tasks = 7;
 }
 
 message Run {
@@ -120,7 +126,8 @@ message RegistryAuth {
   string user = 1;
   string pass = 2;
 }
-message Task {
+
+message CustomTask {
   string id = 1;
   string description = 2;
   string image = 3;
@@ -146,10 +153,18 @@ message PipelineTriggerSettings {
 message PipelineCommonTaskSettings {
   string name = 1;
   string label = 2;
-  map<string, string> settings = 3;
+  enum RequiredParentStatus {
+    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
+    ANY = 1;
+    SUCCESS = 2;
+    FAILURE = 3;
+  }
+  string description = 3;
+  map<string, RequiredParentStatus> depends_on = 4;
+  map<string, string> settings = 5;
 }
 
-message TaskConfig {
+message CustomTaskConfig {
   string id = 1;
   string description = 2;
   string image = 3;
@@ -172,10 +187,35 @@ message PipelineTriggerConfig {
   map<string, string> settings = 3;
 }
 
-message PipelineCommonTaskConfig {
+message CommonTask {
+  string id = 1;
+  string description = 2;
+  string image = 3;
+  RegistryAuth registry_auth = 4;
+  enum RequiredParentStatus {
+    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
+    ANY = 1;
+    SUCCESS = 2;
+    FAILURE = 3;
+  }
+  map<string, RequiredParentStatus> depends_on = 5;
+  repeated Variable variables = 6;
+  string label = 7;
+  string name = 8;
+}
+
+message CommonTaskConfig {
   string name = 1;
   string label = 2;
-  map<string, string> settings = 3;
+  enum RequiredParentStatus {
+    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
+    ANY = 1;
+    SUCCESS = 2;
+    FAILURE = 3;
+  }
+  string description = 3;
+  map<string, RequiredParentStatus> depends_on = 4;
+  map<string, string> settings = 5;
 }
 
 message TaskRunStatusReason {
@@ -219,8 +259,11 @@ message TaskRun {
     SKIPPED = 4;
   }
   TaskRunStatus status = 13;
-  Task task = 14;
-  repeated Variable variables = 15;
+  oneof task {
+    CustomTask custom_task = 14;
+    CommonTask common_task = 15;
+  }
+  repeated Variable variables = 16;
 }
 
 message Trigger {
@@ -259,24 +302,12 @@ message TriggerRegistration {
   TriggerStatus status = 7;
 }
 
-message CommonTask {
-  string name = 1;
-  string image = 2;
-  string documentation = 3;
-  enum Status {
-    UNKNOWN = 0;
-    ENABLED = 1;
-    DISABLED = 2;
-  }
-  Status status = 4;
-}
-
 message CommonTaskRegistration {
   string name = 1;
   string image = 2;
   string user = 3;
   string pass = 4;
-  map<string, string> variables = 5;
+  repeated Variable variables = 5;
   int64 created = 6;
   enum Status {
     UNKNOWN = 0;

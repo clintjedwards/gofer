@@ -17,13 +17,13 @@ type UpdatablePipelineFields struct {
 	Parallelism *int64
 	Modified    *int64
 	State       *models.PipelineState
-	Tasks       *map[string]models.Task
+	Tasks       *map[string]models.CustomTask
 	Triggers    *map[string]models.PipelineTriggerSettings
 	CommonTasks *map[string]models.PipelineCommonTaskSettings
 	Errors      *[]models.PipelineError
 }
 
-func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]models.Task, error) {
+func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]models.CustomTask, error) {
 	if conn == nil {
 		conn = db
 	}
@@ -40,7 +40,7 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 	}
 	defer rows.Close()
 
-	tasks := []models.Task{}
+	tasks := []models.CustomTask{}
 
 	for rows.Next() {
 		var id string
@@ -96,7 +96,7 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 			}
 		}
 
-		tasks = append(tasks, models.Task{
+		tasks = append(tasks, models.CustomTask{
 			ID:           id,
 			Description:  description,
 			Image:        image,
@@ -276,7 +276,7 @@ func (db *DB) ListPipelines(offset, limit int, namespace string) ([]models.Pipel
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
 
-		tasks := map[string]models.Task{}
+		tasks := map[string]models.CustomTask{}
 		for _, task := range taskList {
 			tasks[task.ID] = task
 		}
@@ -301,7 +301,7 @@ func (db *DB) ListPipelines(offset, limit int, namespace string) ([]models.Pipel
 			commonTasks[task.Label] = task
 		}
 
-		pipeline.Tasks = tasks
+		pipeline.CustomTasks = tasks
 		pipeline.Triggers = triggers
 		pipeline.CommonTasks = commonTasks
 
@@ -311,7 +311,7 @@ func (db *DB) ListPipelines(offset, limit int, namespace string) ([]models.Pipel
 	return pipelines, nil
 }
 
-func insertTask(conn qb.BaseRunner, namespace, pipeline string, task *models.Task) error {
+func insertTask(conn qb.BaseRunner, namespace, pipeline string, task *models.CustomTask) error {
 	dependsOnJSON, err := json.Marshal(task.DependsOn)
 	if err != nil {
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
@@ -422,7 +422,7 @@ func (db *DB) InsertPipeline(pipeline *models.Pipeline) error {
 		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	for _, task := range pipeline.Tasks {
+	for _, task := range pipeline.CustomTasks {
 		err = insertTask(tx, pipeline.Namespace, pipeline.ID, &task)
 		if err != nil {
 			mustRollback(tx)
@@ -505,7 +505,7 @@ func (db *DB) GetPipeline(conn qb.BaseRunner, namespace, pipeline string) (model
 		return models.Pipeline{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	tasks := map[string]models.Task{}
+	tasks := map[string]models.CustomTask{}
 	for _, task := range taskList {
 		tasks[task.ID] = task
 	}
@@ -538,7 +538,7 @@ func (db *DB) GetPipeline(conn qb.BaseRunner, namespace, pipeline string) (model
 	retrievedPipeline.Created = created
 	retrievedPipeline.Modified = modified
 	retrievedPipeline.State = models.PipelineState(state)
-	retrievedPipeline.Tasks = tasks
+	retrievedPipeline.CustomTasks = tasks
 	retrievedPipeline.Triggers = triggers
 	retrievedPipeline.CommonTasks = commonTasks
 	retrievedPipeline.Errors = errors
@@ -594,7 +594,7 @@ func (db *DB) UpdatePipeline(namespace, id string, fields UpdatablePipelineField
 	}
 
 	if fields.Tasks != nil {
-		for id := range pipeline.Tasks {
+		for id := range pipeline.CustomTasks {
 			err := deleteTask(tx, namespace, pipeline.ID, id)
 			if err != nil {
 				mustRollback(tx)

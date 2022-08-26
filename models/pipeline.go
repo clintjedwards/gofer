@@ -4,8 +4,6 @@ import (
 	"time"
 
 	proto "github.com/clintjedwards/gofer/proto/go"
-
-	sdk "github.com/clintjedwards/gofer/sdk/go"
 )
 
 type PipelineState string
@@ -55,11 +53,13 @@ type Pipeline struct {
 	Modified int64 `json:"modified"`
 	// The current running state of the pipeline. This is used to determine if the pipeline should continue to process
 	// runs or not and properly convey that to the user.
-	State PipelineState   `json:"state"`
-	Tasks map[string]Task `json:"tasks"` // Map for quickly finding pipeline tasks and assists with DAG generation.
-	// Triggers is a listing of trigger labels to the their trigger subscription objects
-	Triggers    map[string]PipelineTriggerSettings    `json:"triggers"`
+	State PipelineState `json:"state"`
+	// Map for quickly finding user created pipeline tasks; assists with DAG generation.
+	CustomTasks map[string]CustomTask `json:"custom_tasks"`
+	// Map for quickly finding gofer provided pipeline tasks; assists with DAG generation.
 	CommonTasks map[string]PipelineCommonTaskSettings `json:"common_tasks"`
+	// Triggers is a listing of trigger labels to the their trigger subscription objects
+	Triggers map[string]PipelineTriggerSettings `json:"triggers"`
 	// There are certain things that might occur within a pipeline that the user will have to fix to restore full
 	// functionality of the pipeline[^1]. Errors is a way to describe to the user which problems their pipeline might
 	// have.
@@ -70,32 +70,40 @@ type Pipeline struct {
 	Errors []PipelineError `json:"errors"`
 }
 
-func NewPipeline(namespace string, config *sdk.Pipeline) *Pipeline {
-	tasks := map[string]Task{}
-	for _, task := range config.Tasks {
-		tasks[task.ID] = FromTaskConfig(&task)
+func NewPipeline(namespace string, pb *proto.PipelineConfig) *Pipeline {
+	customTasks := map[string]CustomTask{}
+	commonTasks := map[string]PipelineCommonTaskSettings{}
+
+	for _, task := range pb.Tasks {
+		switch t := task.Task.(type) {
+		case *proto.PipelineTaskConfig_CustomTask:
+			ct := CustomTask{}
+			ct.FromProtoCustomTaskConfig(t.CustomTask)
+			customTasks[t.CustomTask.Id] = ct
+		case *proto.PipelineTaskConfig_CommonTask:
+			ct := PipelineCommonTaskSettings{}
+			ct.FromProtoCommonTaskConfig(t.CommonTask)
+			commonTasks[ct.Label] = ct
+		}
 	}
 
 	triggers := map[string]PipelineTriggerSettings{}
-	for _, trigger := range config.Triggers {
-		triggers[trigger.Label] = FromTriggerConfig(&trigger)
-	}
-
-	commonTasks := map[string]PipelineCommonTaskSettings{}
-	for _, task := range config.CommonTasks {
-		commonTasks[task.Label] = FromCommonTaskConfig(&task)
+	for _, trigger := range pb.Triggers {
+		triggerConfig := PipelineTriggerSettings{}
+		triggerConfig.FromProtoTriggerConfig(trigger)
+		triggers[trigger.Label] = triggerConfig
 	}
 
 	newPipeline := &Pipeline{
 		Namespace:   namespace,
-		ID:          config.ID,
-		Name:        config.Name,
-		Description: config.Description,
-		Parallelism: config.Parallelism,
+		ID:          pb.Id,
+		Name:        pb.Name,
+		Description: pb.Description,
+		Parallelism: pb.Parallelism,
 		Created:     time.Now().UnixMilli(),
 		Modified:    time.Now().UnixMilli(),
 		State:       PipelineStateActive,
-		Tasks:       tasks,
+		CustomTasks: customTasks,
 		Triggers:    triggers,
 		CommonTasks: commonTasks,
 		Errors:      []PipelineError{},
@@ -105,9 +113,9 @@ func NewPipeline(namespace string, config *sdk.Pipeline) *Pipeline {
 }
 
 func (p *Pipeline) ToProto() *proto.Pipeline {
-	tasks := map[string]*proto.Task{}
-	for id, task := range p.Tasks {
-		tasks[id] = task.ToProto()
+	customTasks := map[string]*proto.CustomTask{}
+	for id, task := range p.CustomTasks {
+		customTasks[id] = task.ToProto()
 	}
 
 	triggers := map[string]*proto.PipelineTriggerSettings{}
@@ -134,7 +142,7 @@ func (p *Pipeline) ToProto() *proto.Pipeline {
 		Created:     p.Created,
 		Modified:    p.Modified,
 		State:       proto.Pipeline_PipelineState(proto.Pipeline_PipelineState_value[string(p.State)]),
-		Tasks:       tasks,
+		CustomTasks: customTasks,
 		Triggers:    triggers,
 		CommonTasks: commonTasks,
 		Errors:      pipelineErrors,
@@ -142,11 +150,11 @@ func (p *Pipeline) ToProto() *proto.Pipeline {
 }
 
 func (p *Pipeline) FromProto(proto *proto.Pipeline) {
-	tasks := map[string]Task{}
-	for id, protoTask := range proto.Tasks {
-		task := Task{}
-		task.FromProto(protoTask)
-		tasks[id] = task
+	customTasks := map[string]CustomTask{}
+	for id, protoCustomTask := range proto.CustomTasks {
+		customTask := CustomTask{}
+		customTask.FromProto(protoCustomTask)
+		customTasks[id] = customTask
 	}
 
 	triggers := map[string]PipelineTriggerSettings{}
@@ -178,7 +186,7 @@ func (p *Pipeline) FromProto(proto *proto.Pipeline) {
 	p.Created = proto.Created
 	p.Modified = proto.Modified
 	p.State = PipelineState(proto.State.String())
-	p.Tasks = tasks
+	p.CustomTasks = customTasks
 	p.Triggers = triggers
 	p.CommonTasks = commonTasks
 	p.Errors = pipelineErrors
@@ -209,39 +217,58 @@ func (t *PipelineTriggerSettings) FromProto(p *proto.PipelineTriggerSettings) {
 	t.Settings = p.Settings
 }
 
-func FromTriggerConfig(t *sdk.PipelineTriggerConfig) PipelineTriggerSettings {
-	return PipelineTriggerSettings{
-		Name:     t.Name,
-		Label:    t.Label,
-		Settings: t.Settings,
-	}
-}
-
-type PipelineCommonTaskSettings struct {
-	Name string // A global unique identifier.
-	// A user defined identifier for the common_task so that a pipeline with multiple common_tasks can be differentiated.
-	Label    string
-	Settings map[string]string
-}
-
-func (t *PipelineCommonTaskSettings) ToProto() *proto.PipelineCommonTaskSettings {
-	return &proto.PipelineCommonTaskSettings{
-		Name:     t.Name,
-		Label:    t.Label,
-		Settings: t.Settings,
-	}
-}
-
-func (t *PipelineCommonTaskSettings) FromProto(p *proto.PipelineCommonTaskSettings) {
+func (t *PipelineTriggerSettings) FromProtoTriggerConfig(p *proto.PipelineTriggerConfig) {
 	t.Name = p.Name
 	t.Label = p.Label
 	t.Settings = p.Settings
 }
 
-func FromCommonTaskConfig(t *sdk.PipelineCommonTaskConfig) PipelineCommonTaskSettings {
-	return PipelineCommonTaskSettings{
-		Name:     t.Name,
-		Label:    t.Label,
-		Settings: t.Settings,
+type PipelineCommonTaskSettings struct {
+	Name string `json:"name"` // A global unique identifier for a specific type of common task.
+	// A user defined identifier for the common_task so that a pipeline with multiple common_tasks can be differentiated.
+	Label       string                          `json:"label"`
+	Description string                          `json:"description"`
+	DependsOn   map[string]RequiredParentStatus `json:"depends_on"`
+	Settings    map[string]string               `json:"settings"`
+}
+
+func (t *PipelineCommonTaskSettings) ToProto() *proto.PipelineCommonTaskSettings {
+	dependsOn := map[string]proto.PipelineCommonTaskSettings_RequiredParentStatus{}
+	for key, value := range t.DependsOn {
+		dependsOn[key] = proto.PipelineCommonTaskSettings_RequiredParentStatus(proto.PipelineCommonTaskSettings_RequiredParentStatus_value[string(value)])
 	}
+
+	return &proto.PipelineCommonTaskSettings{
+		Name:        t.Name,
+		Label:       t.Label,
+		Description: t.Description,
+		DependsOn:   dependsOn,
+		Settings:    t.Settings,
+	}
+}
+
+func (t *PipelineCommonTaskSettings) FromProtoCommonTaskConfig(p *proto.CommonTaskConfig) {
+	dependsOn := map[string]RequiredParentStatus{}
+	for id, status := range p.DependsOn {
+		dependsOn[id] = RequiredParentStatus(status.String())
+	}
+
+	t.Name = p.Name
+	t.Label = p.Label
+	t.Description = p.Description
+	t.DependsOn = dependsOn
+	t.Settings = p.Settings
+}
+
+func (t *PipelineCommonTaskSettings) FromProto(p *proto.PipelineCommonTaskSettings) {
+	dependsOn := map[string]RequiredParentStatus{}
+	for id, status := range p.DependsOn {
+		dependsOn[id] = RequiredParentStatus(status.String())
+	}
+
+	t.Name = p.Name
+	t.Label = p.Label
+	t.Description = p.Description
+	t.DependsOn = dependsOn
+	t.Settings = p.Settings
 }

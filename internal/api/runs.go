@@ -51,7 +51,7 @@ func parseInterpolationSyntax(kind InterpolationKind, input string) (string, err
 	return "", fmt.Errorf("variable doesn't match interpolation prefix/suffix")
 }
 
-func systemInjectedVars(run *models.Run, task *models.Task) map[string]*models.Variable {
+func systemInjectedVars(run *models.Run, task models.Task) map[string]*models.Variable {
 	return map[string]*models.Variable{
 		"GOFER_PIPELINE_ID": {
 			Key:    "GOFER_PIPELINE_ID",
@@ -65,12 +65,12 @@ func systemInjectedVars(run *models.Run, task *models.Task) map[string]*models.V
 		},
 		"GOFER_TASK_ID": {
 			Key:    "GOFER_TASK_ID",
-			Value:  task.ID,
+			Value:  task.GetID(),
 			Source: models.VariableSourceSystem,
 		},
 		"GOFER_TASK_IMAGE": {
 			Key:    "GOFER_TASK_IMAGE",
-			Value:  task.Image,
+			Value:  task.GetImage(),
 			Source: models.VariableSourceSystem,
 		},
 		"GOFER_API_TOKEN": {
@@ -99,16 +99,16 @@ func systemInjectedVars(run *models.Run, task *models.Task) map[string]*models.V
 // 3) Lastly we pass in the run specific defined envvars. These are usually provided by either a trigger
 // or the user when they attempt to start a new run manually. Since these are the most likely to be
 // edited adhoc they are treated as the most important.
-func combineVariables(run *models.Run, task *models.Task) []models.Variable {
+func combineVariables(run *models.Run, task models.Task) []models.Variable {
 	systemInjectedVars := systemInjectedVars(run, task)
 
 	taskVars := map[string]*models.Variable{}
-	for _, variable := range task.Variables {
+	for _, variable := range task.GetVariables() {
 		taskVars[strings.ToUpper(variable.Key)] = &variable
 	}
 
 	runVars := map[string]*models.Variable{}
-	for _, variable := range task.Variables {
+	for _, variable := range run.Variables {
 		runVars[variable.Key] = &variable
 	}
 

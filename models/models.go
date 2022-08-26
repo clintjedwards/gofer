@@ -42,3 +42,27 @@ type RegistryAuth struct {
 	User string `json:"user"`
 	Pass string `json:"pass"`
 }
+
+func (t *RegistryAuth) ToProto() *proto.RegistryAuth {
+	if t == nil {
+		return nil
+	}
+
+	return &proto.RegistryAuth{
+		User: t.User,
+		Pass: t.Pass,
+	}
+}
+
+func (t *RegistryAuth) FromProto(pb *proto.RegistryAuth) {
+	if pb == nil {
+		return
+	}
+
+	if t == nil {
+		t = &RegistryAuth{}
+	}
+
+	t.User = pb.User
+	t.Pass = pb.Pass
+}

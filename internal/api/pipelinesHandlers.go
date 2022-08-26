@@ -9,7 +9,6 @@ import (
 	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
-	sdk "github.com/clintjedwards/gofer/sdk/go"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -164,16 +163,9 @@ func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelin
 		return &proto.CreatePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	config := sdk.Pipeline{}
-	config.FromProto(request.PipelineConfig)
-	err := config.Validate()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "could not validate pipeline; %v", err)
-	}
+	newPipeline := models.NewPipeline(request.NamespaceId, request.PipelineConfig)
 
-	newPipeline := models.NewPipeline(request.NamespaceId, &config)
-
-	err = api.configTriggersIsValid(newPipeline.Triggers)
+	err := api.configTriggersIsValid(newPipeline.Triggers)
 	if err != nil {
 		return &proto.CreatePipelineResponse{},
 			status.Error(codes.FailedPrecondition, err.Error())
@@ -190,7 +182,12 @@ func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelin
 			status.Error(codes.Internal, "could not insert pipeline")
 	}
 
-	successfulSubscriptions, err := api.subscribeTriggers(newPipeline.Namespace, newPipeline.ID, config.Triggers)
+	triggers := []models.PipelineTriggerSettings{}
+	for _, value := range newPipeline.Triggers {
+		triggers = append(triggers, value)
+	}
+
+	successfulSubscriptions, err := api.subscribeTriggers(newPipeline.Namespace, newPipeline.ID, triggers)
 	if err != nil {
 		// Rollback successful subscriptions
 		triggersToUnsubscribe := map[string]string{}
@@ -230,14 +227,13 @@ func (api *API) UpdatePipeline(ctx context.Context, request *proto.UpdatePipelin
 		return &proto.UpdatePipelineResponse{}, status.Error(codes.FailedPrecondition, "content required")
 	}
 
-	config := sdk.Pipeline{}
-	config.FromProto(request.PipelineConfig)
-	err := config.Validate()
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "could not validate pipeline; %v", err)
-	}
+	updatedPipeline := models.NewPipeline(request.NamespaceId, request.PipelineConfig)
+	// TODO(clintjedwards): We need a validate here.
 
-	updatedPipeline := models.NewPipeline(request.NamespaceId, &config)
+	triggers := []models.PipelineTriggerSettings{}
+	for _, value := range updatedPipeline.Triggers {
+		triggers = append(triggers, value)
+	}
 
 	currentPipeline, err := api.db.GetPipeline(nil, request.NamespaceId, updatedPipeline.ID)
 	if err != nil {
@@ -259,7 +255,7 @@ func (api *API) UpdatePipeline(ctx context.Context, request *proto.UpdatePipelin
 		return &proto.UpdatePipelineResponse{}, status.Error(codes.Internal, "could not unsubscribe triggers")
 	}
 
-	successfulSubscriptions, err := api.subscribeTriggers(updatedPipeline.Namespace, updatedPipeline.ID, config.Triggers)
+	successfulSubscriptions, err := api.subscribeTriggers(updatedPipeline.Namespace, updatedPipeline.ID, triggers)
 	if err != nil {
 		// Rollback successful subscriptions
 		triggersToUnsubscribe := map[string]string{}
@@ -276,12 +272,12 @@ func (api *API) UpdatePipeline(ctx context.Context, request *proto.UpdatePipelin
 			status.Errorf(codes.FailedPrecondition, "could not successfully register all subscriptions; %v", err)
 	}
 
-	err = api.db.UpdatePipeline(request.NamespaceId, config.ID, storage.UpdatablePipelineFields{
+	err = api.db.UpdatePipeline(request.NamespaceId, updatedPipeline.ID, storage.UpdatablePipelineFields{
 		Name:        &updatedPipeline.Name,
 		Description: &updatedPipeline.Description,
 		Parallelism: &updatedPipeline.Parallelism,
 		Modified:    ptr(time.Now().UnixMilli()),
-		Tasks:       &updatedPipeline.Tasks,
+		Tasks:       &updatedPipeline.CustomTasks,
 		Triggers:    &updatedPipeline.Triggers,
 		CommonTasks: &updatedPipeline.CommonTasks,
 	})

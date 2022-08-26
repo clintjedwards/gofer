@@ -305,10 +305,12 @@ message GetTriggerInstallInstructionsResponse { string instructions = 1; }
 message GetCommonTaskRequest {
   string name = 1; // The unique name/kind for a particular commontask
 }
-message GetCommonTaskResponse { CommonTask common_task = 1; }
+message GetCommonTaskResponse { CommonTaskRegistration common_task = 1; }
 
 message ListCommonTasksRequest {}
-message ListCommonTasksResponse { repeated CommonTask common_tasks = 1; }
+message ListCommonTasksResponse {
+  repeated CommonTaskRegistration common_tasks = 1;
+}
 
 message InstallCommonTaskRequest {
   string name = 1;

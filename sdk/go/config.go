@@ -41,111 +41,21 @@ func (ra *RegistryAuth) FromProto(proto *proto.RegistryAuth) {
 	ra.Pass = proto.Pass
 }
 
-type Task struct {
-	ID           string                          `json:"id"`
-	Description  string                          `json:"description"`
-	Image        string                          `json:"image"`
-	RegistryAuth *RegistryAuth                   `json:"registry_auth"`
-	DependsOn    map[string]RequiredParentStatus `json:"depends_on"`
-	Variables    map[string]string               `json:"variables"`
-	Entrypoint   *[]string                       `json:"entrypoint"`
-	Command      *[]string                       `json:"command"`
+type TaskConfig interface {
+	isTaskConfig()
+	getKind() TaskKind
+	getID() string
+	getDependsOn() map[string]RequiredParentStatus
+	validate() error
 }
 
-func NewTask(id, image string) *Task {
-	return &Task{
-		ID:           id,
-		Description:  "",
-		Image:        image,
-		RegistryAuth: nil,
-		DependsOn:    make(map[string]RequiredParentStatus),
-		Variables:    make(map[string]string),
-	}
-}
+type TaskKind string
 
-func (t *Task) FromProto(proto *proto.TaskConfig) {
-	var registryAuth *RegistryAuth = nil
-	if proto.RegistryAuth != nil {
-		ra := RegistryAuth{}
-		ra.FromProto(proto.RegistryAuth)
-		registryAuth = &ra
-	}
-
-	dependsOn := map[string]RequiredParentStatus{}
-	for id, status := range proto.DependsOn {
-		dependsOn[id] = RequiredParentStatus(status)
-	}
-
-	var entrypoint *[]string = nil
-	if len(proto.Entrypoint) != 0 {
-		entrypoint = &proto.Entrypoint
-	}
-
-	var command *[]string = nil
-	if len(proto.Command) != 0 {
-		command = &proto.Command
-	}
-
-	t.ID = proto.Id
-	t.Description = proto.Description
-	t.Image = proto.Image
-	t.RegistryAuth = registryAuth
-	t.DependsOn = dependsOn
-	t.Variables = proto.Variables
-	t.Entrypoint = entrypoint
-	t.Command = command
-}
-
-func (t *Task) validate() error {
-	return validateIdentifier("id", t.ID)
-}
-
-func (t *Task) WithDescription(description string) *Task {
-	t.Description = description
-	return t
-}
-
-func (t *Task) WithRegistryAuth(user, pass string) *Task {
-	t.RegistryAuth = &RegistryAuth{
-		User: user,
-		Pass: pass,
-	}
-	return t
-}
-
-func (t *Task) WithDependsOnOne(taskID string, state RequiredParentStatus) *Task {
-	t.DependsOn[taskID] = state
-	return t
-}
-
-func (t *Task) WithDependsOnMany(dependsOn map[string]RequiredParentStatus) *Task {
-	for id, status := range dependsOn {
-		t.DependsOn[id] = status
-	}
-	return t
-}
-
-func (t *Task) WithVariable(key, value string) *Task {
-	t.Variables[key] = value
-	return t
-}
-
-func (t *Task) WithVariables(variables map[string]string) *Task {
-	for key, value := range variables {
-		t.Variables[key] = value
-	}
-	return t
-}
-
-func (t *Task) WithEntrypoint(entrypoint []string) *Task {
-	t.Entrypoint = &entrypoint
-	return t
-}
-
-func (t *Task) WithCommand(command []string) *Task {
-	t.Command = &command
-	return t
-}
+const (
+	TaskKindUnknown TaskKind = "UNKNOWN"
+	TaskKindCommon  TaskKind = "COMMON"
+	TaskKindCustom  TaskKind = "CUSTOM"
+)
 
 type PipelineTriggerConfig struct {
 	Name     string            `json:"name"`
@@ -163,76 +73,27 @@ func (p *PipelineTriggerConfig) validate() error {
 	return validateIdentifier("label", p.Label)
 }
 
-type PipelineCommonTaskConfig struct {
-	Name     string            `json:"name"`
-	Label    string            `json:"label"`
-	Settings map[string]string `json:"settings"`
+type PipelineConfig struct {
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
+	Parallelism int64                   `json:"parallelism"`
+	Tasks       []TaskConfig            `json:"tasks"`
+	Triggers    []PipelineTriggerConfig `json:"triggers"`
 }
 
-func (p *PipelineCommonTaskConfig) FromProto(proto *proto.PipelineCommonTaskConfig) {
-	p.Name = proto.Name
-	p.Label = proto.Label
-	p.Settings = proto.Settings
-}
-
-func (p *PipelineCommonTaskConfig) validate() error {
-	return validateIdentifier("label", p.Label)
-}
-
-type Pipeline struct {
-	ID          string                     `json:"id"`
-	Name        string                     `json:"name"`
-	Description string                     `json:"description"`
-	Parallelism int64                      `json:"parallelism"`
-	Tasks       []Task                     `json:"tasks"`
-	Triggers    []PipelineTriggerConfig    `json:"triggers"`
-	CommonTasks []PipelineCommonTaskConfig `json:"common_tasks"`
-}
-
-func NewPipeline(id, name string) *Pipeline {
-	return &Pipeline{
+func NewPipeline(id, name string) *PipelineConfig {
+	return &PipelineConfig{
 		ID:          id,
 		Name:        name,
 		Description: "",
 		Parallelism: 0,
-		Tasks:       []Task{},
+		Tasks:       []TaskConfig{},
 		Triggers:    []PipelineTriggerConfig{},
-		CommonTasks: []PipelineCommonTaskConfig{},
 	}
 }
 
-func (p *Pipeline) FromProto(proto *proto.PipelineConfig) {
-	tasks := []Task{}
-	for _, taskConfig := range proto.Tasks {
-		task := Task{}
-		task.FromProto(taskConfig)
-		tasks = append(tasks, task)
-	}
-
-	triggers := []PipelineTriggerConfig{}
-	for _, triggerConfig := range proto.Triggers {
-		trigger := PipelineTriggerConfig{}
-		trigger.FromProto(triggerConfig)
-		triggers = append(triggers, trigger)
-	}
-
-	commonTasks := []PipelineCommonTaskConfig{}
-	for _, commonTaskConfig := range proto.CommonTasks {
-		commonTask := PipelineCommonTaskConfig{}
-		commonTask.FromProto(commonTaskConfig)
-		commonTasks = append(commonTasks, commonTask)
-	}
-
-	p.ID = proto.Id
-	p.Name = proto.Name
-	p.Description = proto.Description
-	p.Parallelism = proto.Parallelism
-	p.Tasks = tasks
-	p.Triggers = triggers
-	p.CommonTasks = commonTasks
-}
-
-func (p *Pipeline) Validate() error {
+func (p *PipelineConfig) Validate() error {
 	err := validateIdentifier("id", p.ID)
 	if err != nil {
 		return err
@@ -257,42 +118,31 @@ func (p *Pipeline) Validate() error {
 		}
 	}
 
-	for _, commontask := range p.CommonTasks {
-		err = commontask.validate()
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func (p *Pipeline) WithDescription(description string) *Pipeline {
+func (p *PipelineConfig) WithDescription(description string) *PipelineConfig {
 	p.Description = description
 	return p
 }
 
-func (p *Pipeline) WithParallelism(parallelism int64) *Pipeline {
+func (p *PipelineConfig) WithParallelism(parallelism int64) *PipelineConfig {
 	p.Parallelism = parallelism
 	return p
 }
 
-func (p *Pipeline) WithTasks(tasks []Task) *Pipeline {
+func (p *PipelineConfig) WithTasks(tasks ...TaskConfig) *PipelineConfig {
 	p.Tasks = tasks
 	return p
 }
 
-func (p *Pipeline) WithTriggers(triggers []PipelineTriggerConfig) *Pipeline {
+func (p *PipelineConfig) WithTriggers(triggers ...PipelineTriggerConfig) *PipelineConfig {
 	p.Triggers = triggers
 	return p
 }
 
-func (p *Pipeline) WithCommonTasks(commontasks []PipelineCommonTaskConfig) *Pipeline {
-	p.CommonTasks = commontasks
-	return p
-}
-
 // Call finish as the last method to the pipeline config
-func (p *Pipeline) Finish() error {
+func (p *PipelineConfig) Finish() error {
 	err := p.Validate()
 	if err != nil {
 		return err
@@ -331,15 +181,15 @@ func validateIdentifier(arg, value string) error {
 }
 
 // isDAG validates whether given task list inside a pipeline config represents an acyclic graph.
-func (p *Pipeline) isDAG() error {
+func (p *PipelineConfig) isDAG() error {
 	taskDAG := dag.New()
 
 	// Add all nodes to the DAG first
 	for _, task := range p.Tasks {
-		err := taskDAG.AddNode(task.ID)
+		err := taskDAG.AddNode(task.getID())
 		if err != nil {
 			if errors.Is(err, dag.ErrEntityExists) {
-				return fmt.Errorf("duplicate task names found; %q is already a task", task.ID)
+				return fmt.Errorf("duplicate task names found; %q is already a task", task.getID())
 			}
 			return err
 		}
@@ -347,14 +197,14 @@ func (p *Pipeline) isDAG() error {
 
 	// Add all edges
 	for _, task := range p.Tasks {
-		for id := range task.DependsOn {
-			err := taskDAG.AddEdge(id, task.ID)
+		for id := range task.getDependsOn() {
+			err := taskDAG.AddEdge(id, task.getID())
 			if err != nil {
 				if errors.Is(err, dag.ErrEdgeCreatesCycle) {
-					return fmt.Errorf("a cycle was detected creating a dependency from task %q to task %q; %w", task.ID, id, dag.ErrEdgeCreatesCycle)
+					return fmt.Errorf("a cycle was detected creating a dependency from task %q to task %q; %w", task.getID(), id, dag.ErrEdgeCreatesCycle)
 				}
 				if errors.Is(err, dag.ErrEntityNotFound) {
-					return fmt.Errorf("task %q is listed as a dependency within task %q but does not exist", id, task.ID)
+					return fmt.Errorf("task %q is listed as a dependency within task %q but does not exist", id, task.getID())
 				}
 				return err
 			}

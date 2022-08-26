@@ -137,7 +137,7 @@ func formatRunInfo(run models.Run, taskRuns []models.TaskRun, detail bool) strin
 			Status:      format.ColorizeTaskRunStatus(format.NormalizeEnumValue(task.Status, "Unknown")),
 			State:       format.ColorizeTaskRunState(format.NormalizeEnumValue(task.State, "Unknown")),
 			StatePrefix: formatTaskRunStatePrefix(task.State),
-			DependsOn:   format.Dependencies(task.Task.DependsOn),
+			DependsOn:   format.Dependencies(task.Task.GetDependsOn()),
 		})
 	}
 

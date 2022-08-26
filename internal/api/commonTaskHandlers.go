@@ -31,7 +31,7 @@ func (api *API) GetCommonTask(ctx context.Context, request *proto.GetCommonTaskR
 }
 
 func (api *API) ListCommonTasks(ctx context.Context, request *proto.ListCommonTasksRequest) (*proto.ListCommonTasksResponse, error) {
-	protoCommonTasks := []*proto.CommonTask{}
+	protoCommonTasks := []*proto.CommonTaskRegistration{}
 	for _, commonTaskKey := range api.commonTasks.Keys() {
 		commonTask, exists := api.commonTasks.Get(commonTaskKey)
 		if !exists {
@@ -119,12 +119,12 @@ func (api *API) InstallCommonTask(ctx context.Context, request *proto.InstallCom
 		return &proto.InstallCommonTaskResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
 	}
 
-	api.commonTasks.Set(request.Name, &models.CommonTask{
+	api.commonTasks.Set(request.Name, &models.CommonTaskRegistration{
 		Name:          request.Name,
 		Image:         request.Image,
 		RegistryAuth:  registration.RegistryAuth,
 		Variables:     registration.Variables,
-		Documentation: &request.Documentation,
+		Documentation: request.Documentation,
 	})
 
 	go api.events.Publish(models.EventInstalledCommonTask{
@@ -165,7 +165,7 @@ func (api *API) EnableCommonTask(ctx context.Context, request *proto.EnableCommo
 		return &proto.EnableCommonTaskResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
 	}
 
-	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTask, exists bool) (*models.CommonTask, error) {
+	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTaskRegistration, exists bool) (*models.CommonTaskRegistration, error) {
 		if !exists {
 			_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
 				Status: ptr(models.CommonTaskStatusDisabled),
@@ -196,7 +196,7 @@ func (api *API) DisableCommonTask(ctx context.Context, request *proto.DisableCom
 		return &proto.DisableCommonTaskResponse{}, status.Errorf(codes.Internal, "common task could not be installed; %v", err)
 	}
 
-	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTask, exists bool) (*models.CommonTask, error) {
+	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTaskRegistration, exists bool) (*models.CommonTaskRegistration, error) {
 		if !exists {
 			_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
 				Status: ptr(models.CommonTaskStatusEnabled),

@@ -6,7 +6,6 @@ import (
 
 	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	sdk "github.com/clintjedwards/gofer/sdk/go"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/metadata"
 )
@@ -78,8 +77,8 @@ func (api *API) unsubscribeTrigger(namespace, pipeline, name, label string) erro
 // It will return an error if one of the subscription processes fails but it will always
 // return a list of trigger names that have been successfully subscribed.
 // This returned list can be used to rollback subscriptions if need be.
-func (api *API) subscribeTriggers(namespace, pipeline string, configs []sdk.PipelineTriggerConfig) ([]sdk.PipelineTriggerConfig, error) {
-	successfulSubscriptions := []sdk.PipelineTriggerConfig{}
+func (api *API) subscribeTriggers(namespace, pipeline string, configs []models.PipelineTriggerSettings) ([]models.PipelineTriggerSettings, error) {
+	successfulSubscriptions := []models.PipelineTriggerSettings{}
 
 	for _, config := range configs {
 		err := api.subscribeTrigger(namespace, pipeline, &config)
@@ -95,7 +94,7 @@ func (api *API) subscribeTriggers(namespace, pipeline string, configs []sdk.Pipe
 
 // subscribeTrigger takes a pipeline config requested trigger and communicates with the trigger container
 // in order appropriately make sure the trigger is aware for the pipeline.
-func (api *API) subscribeTrigger(namespace, pipeline string, config *sdk.PipelineTriggerConfig) error {
+func (api *API) subscribeTrigger(namespace, pipeline string, config *models.PipelineTriggerSettings) error {
 	trigger, exists := api.triggers.Get(config.Name)
 	if !exists {
 		return fmt.Errorf("trigger %q not found;", config.Name)

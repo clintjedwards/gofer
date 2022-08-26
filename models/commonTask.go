@@ -16,26 +16,119 @@ const (
 	CommonTaskStatusDisabled CommonTaskStatus = "DISABLED"
 )
 
+// CommonTask is a representation of a Pipeline Common task. It combines not only the settings for the common task
+// store exclusivly with Gofer, but also the pipeline's personal settings. This is so they can be combined and used
+// in downstream task runs.
 type CommonTask struct {
-	Name          string           `json:"name"`
-	Image         string           `json:"image"`
-	RegistryAuth  *RegistryAuth    `json:"registry_auth"`
-	Variables     []Variable       `json:"variables"`
-	Status        CommonTaskStatus `json:"status"`
-	Documentation *string          `json:"documentation"`
+	Settings     PipelineCommonTaskSettings `json:"settings"`
+	Registration CommonTaskRegistration     `json:"registration"`
 }
 
-func (ct *CommonTask) ToProto() *proto.CommonTask {
-	var docs string = ""
-	if ct.Documentation != nil {
-		docs = *ct.Documentation
+func (t *CommonTask) isTask() {}
+
+func (t *CommonTask) GetID() string {
+	return t.Settings.Label
+}
+
+func (t *CommonTask) GetDescription() string {
+	return t.Settings.Description
+}
+
+func (t *CommonTask) GetImage() string {
+	return t.Registration.Image
+}
+
+func (t *CommonTask) GetRegistryAuth() *RegistryAuth {
+	return t.Registration.RegistryAuth
+}
+
+func (t *CommonTask) GetDependsOn() map[string]RequiredParentStatus {
+	return t.Settings.DependsOn
+}
+
+func (t *CommonTask) GetVariables() []Variable {
+	variables := []Variable{}
+	for key, value := range t.Settings.Settings {
+		variables = append(variables, Variable{
+			Key:    key,
+			Value:  value,
+			Source: VariableSourcePipelineConfig,
+		})
+	}
+
+	variables = append(variables, t.Registration.Variables...)
+
+	return variables
+}
+
+func (t *CommonTask) GetEntrypoint() *[]string {
+	return nil
+}
+
+func (t *CommonTask) GetCommand() *[]string {
+	return nil
+}
+
+func (t *CommonTask) ToProto() *proto.CommonTask {
+	dependsOn := map[string]proto.CommonTask_RequiredParentStatus{}
+	for key, value := range t.GetDependsOn() {
+		dependsOn[key] = proto.CommonTask_RequiredParentStatus(proto.CommonTask_RequiredParentStatus_value[string(value)])
+	}
+
+	variables := []*proto.Variable{}
+	for _, v := range t.GetVariables() {
+		variables = append(variables, v.ToProto())
 	}
 
 	return &proto.CommonTask{
-		Name:          ct.Name,
-		Image:         ct.Image,
-		Documentation: docs,
-		Status:        proto.CommonTask_Status(proto.CommonTask_Status_value[string(ct.Status)]),
+		Id:           t.GetID(),
+		Description:  t.GetDescription(),
+		Image:        t.GetImage(),
+		RegistryAuth: t.GetRegistryAuth().ToProto(),
+		DependsOn:    dependsOn,
+		Variables:    variables,
+		Label:        t.Settings.Label,
+		Name:         t.Settings.Name,
+	}
+}
+
+func (t *CommonTask) FromProto(pb *proto.CommonTask) {
+	dependsOn := map[string]RequiredParentStatus{}
+	for id, status := range pb.DependsOn {
+		dependsOn[id] = RequiredParentStatus(status.String())
+	}
+
+	variablesMap := map[string]string{}
+	for _, v := range pb.Variables {
+		variablesMap[v.Key] = v.Value
+	}
+
+	variablesList := []Variable{}
+	for _, v := range pb.Variables {
+		variable := Variable{}
+		variable.FromProto(v)
+		variablesList = append(variablesList, variable)
+	}
+
+	var regAuth *RegistryAuth = nil
+	regAuth.FromProto(pb.RegistryAuth)
+
+	t.Settings = PipelineCommonTaskSettings{
+		Name:        pb.Name,
+		Label:       pb.Label,
+		Description: pb.Description,
+		DependsOn:   dependsOn,
+		Settings:    variablesMap,
+	}
+
+	t.Registration = CommonTaskRegistration{
+		Name:          pb.Name,
+		Image:         pb.Image,
+		RegistryAuth:  regAuth,
+		Variables:     variablesList,
+		Created:       0,
+		Status:        CommonTaskStatusUnknown,
+		Documentation: "",
 	}
 }
 
@@ -49,6 +142,24 @@ type CommonTaskRegistration struct {
 	Created       int64            `json:"created"`
 	Status        CommonTaskStatus `json:"status"`
 	Documentation string           `json:"documentation"`
+}
+
+func (c *CommonTaskRegistration) ToProto() *proto.CommonTaskRegistration {
+	variables := []*proto.Variable{}
+	for _, v := range c.Variables {
+		variables = append(variables, v.ToProto())
+	}
+
+	return &proto.CommonTaskRegistration{
+		Name:          c.Name,
+		Image:         c.Image,
+		User:          c.RegistryAuth.User,
+		Pass:          c.RegistryAuth.Pass,
+		Variables:     variables,
+		Created:       c.Created,
+		Status:        proto.CommonTaskRegistration_Status(proto.CommonTaskRegistration_Status_value[string(c.Status)]),
+		Documentation: c.Documentation,
+	}
 }
 
 func (c *CommonTaskRegistration) FromInstallCommonTaskRequest(proto *proto.InstallCommonTaskRequest) {

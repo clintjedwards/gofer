@@ -134,8 +134,20 @@ func (r *RunStateMachine) executeTaskTree() {
 	}
 
 	// Launch a new task run for each task found.
-	for _, task := range r.Pipeline.Tasks {
-		go r.launchTaskRun(task)
+	for _, task := range r.Pipeline.CustomTasks {
+		go r.launchTaskRun(&task)
+	}
+
+	for _, taskSettings := range r.Pipeline.CommonTasks {
+		// We create a half filled model of common task because so that
+		// we can pass it to the next step where it will get fully filled in.
+		// We only do this because the next step already has the facilities to handle
+		// a task run failure properly.
+		task := models.CommonTask{
+			Settings: taskSettings,
+		}
+
+		go r.launchTaskRun(&task)
 	}
 
 	// Finally monitor the entire run until it finishes. This will block until the run has ended.
@@ -242,7 +254,7 @@ func (r *RunStateMachine) waitRunFinish() {
 
 	// If the task run map hasn't had all the entries com in we should wait until it does.
 	for {
-		if len(r.TaskRuns.Keys()) != len(r.Pipeline.Tasks) {
+		if len(r.TaskRuns.Keys()) != len(r.Pipeline.CustomTasks) {
 			time.Sleep(time.Millisecond * 500)
 			continue
 		}
@@ -573,6 +585,41 @@ outerLoop:
 // Launches a brand new task run as part of a larger run for a specific task.
 // It blocks until the task run has completed.
 func (r *RunStateMachine) launchTaskRun(task models.Task) {
+	// If the task is a common task we need to check that it is in the registry, fill in those registry details,
+	// and then fail properly if it is not.
+	commonTask, isCommonTask := task.(*models.CommonTask)
+	if isCommonTask {
+		registration, exists := r.API.commonTasks.Get(commonTask.Settings.Name)
+		if !exists {
+			newTaskRun := models.NewTaskRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, task)
+
+			r.TaskRuns.Set(newTaskRun.ID, *newTaskRun)
+
+			err := r.API.db.InsertTaskRun(newTaskRun)
+			if err != nil {
+				log.Error().Err(err).Msg("could not register task run; db error")
+				return
+			}
+
+			// Alert the event bus that a new task run is being started.
+			go r.API.events.Publish(models.EventCreatedTaskRun{
+				NamespaceID: r.Pipeline.Namespace,
+				PipelineID:  r.Pipeline.ID,
+				RunID:       r.Run.ID,
+				TaskRunID:   newTaskRun.ID,
+			})
+
+			_ = r.setTaskRunFinished(newTaskRun.ID, nil, models.TaskRunStatusFailed, &models.TaskRunStatusReason{
+				Reason:      models.TaskRunStatusReasonKindFailedPrecondition,
+				Description: "Common Task was not found in Gofer registry.",
+			})
+			return
+		}
+
+		commonTask.Registration = *registration
+		task = commonTask
+	}
+
 	// Start by created a new task run and saving it to the state machine and disk.
 	newTaskRun := models.NewTaskRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, task)
 
@@ -592,7 +639,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 		TaskRunID:   newTaskRun.ID,
 	})
 
-	envVars := combineVariables(r.Run, &task)
+	envVars := combineVariables(r.Run, task)
 
 	// Determine the task run's final variable set and pass them in.
 	err = r.API.db.UpdateTaskRun(newTaskRun, storage.UpdatableTaskRunFields{
@@ -611,7 +658,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 	}
 
 	// First we need to make sure all the parents of the current task are in a finished state.
-	for !r.parentTaskFinished(&newTaskRun.DependsOn) {
+	for !r.parentTaskFinished(ptr(newTaskRun.Task.GetDependsOn())) {
 		time.Sleep(time.Millisecond * 500)
 	}
 
@@ -623,7 +670,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 
 	// Then check to make sure that the parents all finished in the required states. If not
 	// we'll have to mark this task as skipped.
-	err = r.taskDependenciesSatisfied(&newTaskRun.DependsOn)
+	err = r.taskDependenciesSatisfied(ptr(newTaskRun.Task.GetDependsOn()))
 	if err != nil {
 		_ = r.setTaskRunFinished(newTaskRun.ID, nil, models.TaskRunStatusSkipped, &models.TaskRunStatusReason{
 			Reason:      models.TaskRunStatusReasonKindFailedPrecondition,
@@ -660,13 +707,13 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 
 	_, err = r.API.scheduler.StartContainer(scheduler.StartContainerRequest{
 		ID:               containerName,
-		ImageName:        newTaskRun.Image,
+		ImageName:        newTaskRun.Task.GetImage(),
 		EnvVars:          preparedEnvVars,
-		RegistryAuth:     newTaskRun.RegistryAuth,
+		RegistryAuth:     newTaskRun.Task.GetRegistryAuth(),
 		AlwaysPull:       false,
 		EnableNetworking: false,
-		Entrypoint:       newTaskRun.Entrypoint,
-		Command:          newTaskRun.Command,
+		Entrypoint:       newTaskRun.Task.GetEntrypoint(),
+		Command:          newTaskRun.Task.GetCommand(),
 	})
 	if err != nil {
 		_ = r.setTaskRunFinished(newTaskRun.ID, nil, models.TaskRunStatusFailed, &models.TaskRunStatusReason{

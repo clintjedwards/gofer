@@ -113,12 +113,12 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 		Started:      format.UnixMilli(taskRun.Started, "Not yet", detail),
 		Duration:     format.Duration(taskRun.Started, taskRun.Ended),
 		PipelineID:   color.BlueString(taskRun.Pipeline),
-		EnvVars:      convertVariables(taskRun.Task.Variables),
+		EnvVars:      convertVariables(taskRun.Task.GetVariables()),
 		ExitCode:     exitCode,
 		RunID:        color.BlueString("#" + strconv.Itoa(int(taskRun.Run))),
 		StatusReason: taskRun.StatusReason,
 		TaskRunCmd:   color.CyanString(fmt.Sprintf("taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.ID)),
-		ImageName:    taskRun.Task.Image,
+		ImageName:    taskRun.Task.GetImage(),
 	}
 
 	const formatTmpl = `TaskRun {{.ID}} :: {{.Status}} :: {{.State}}

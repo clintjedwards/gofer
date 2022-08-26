@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/clintjedwards/gofer/models"
-	sdk "github.com/clintjedwards/gofer/sdk/go"
+	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -101,18 +101,35 @@ func TestCRUDPipelines(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pipelineConfig := sdk.NewPipeline("test_pipeline", "Test Pipeline").WithTasks([]sdk.Task{
-		*sdk.NewTask("test_task", "task:latest").WithDependsOnOne("test_task_depends", sdk.RequiredParentStatusAny),
-	}).WithTriggers([]sdk.PipelineTriggerConfig{
-		{
-			Name:  "test_trigger",
-			Label: "test_trigger_label",
-			Settings: map[string]string{
-				"test_setting_key": "test_setting_value",
+	pipelineConfig := proto.PipelineConfig{
+		Id:          "test_pipeline",
+		Name:        "Test Pipeline",
+		Description: "",
+		Tasks: []*proto.PipelineTaskConfig{
+			{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: &proto.CustomTaskConfig{
+						Id:    "test_task",
+						Image: "task:latest",
+						DependsOn: map[string]proto.CustomTaskConfig_RequiredParentStatus{
+							"test_task_depends": 1,
+						},
+					},
+				},
 			},
 		},
-	})
-	pipeline := models.NewPipeline(namespace.ID, pipelineConfig)
+		Triggers: []*proto.PipelineTriggerConfig{
+			{
+				Name:  "test_trigger",
+				Label: "test_trigger_label",
+				Settings: map[string]string{
+					"test_setting_key": "test_setting_value",
+				},
+			},
+		},
+	}
+
+	pipeline := models.NewPipeline(namespace.ID, &pipelineConfig)
 
 	err = db.InsertPipeline(pipeline)
 	if err != nil {
@@ -138,7 +155,7 @@ func TestCRUDPipelines(t *testing.T) {
 	}
 
 	fetchedPipeline.Description = "updated pipeline"
-	fetchedPipeline.Tasks = map[string]models.Task{
+	fetchedPipeline.CustomTasks = map[string]models.CustomTask{
 		"updated_task": {
 			ID:    "updated_task",
 			Image: "updated:latest",
@@ -150,7 +167,7 @@ func TestCRUDPipelines(t *testing.T) {
 
 	err = db.UpdatePipeline(namespace.ID, pipeline.ID, UpdatablePipelineFields{
 		Description: ptr("updated pipeline"),
-		Tasks:       &fetchedPipeline.Tasks,
+		Tasks:       &fetchedPipeline.CustomTasks,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -191,18 +208,35 @@ func TestCRUDRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pipelineConfig := sdk.NewPipeline("test_pipeline", "Test Pipeline").WithTasks([]sdk.Task{
-		*sdk.NewTask("test_task", "task:latest").WithDependsOnOne("test_task_depends", sdk.RequiredParentStatusAny),
-	}).WithTriggers([]sdk.PipelineTriggerConfig{
-		{
-			Name:  "test_trigger",
-			Label: "test_trigger_label",
-			Settings: map[string]string{
-				"test_setting_key": "test_setting_value",
+	pipelineConfig := proto.PipelineConfig{
+		Id:          "test_pipeline",
+		Name:        "Test Pipeline",
+		Description: "",
+		Tasks: []*proto.PipelineTaskConfig{
+			{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: &proto.CustomTaskConfig{
+						Id:    "test_task",
+						Image: "task:latest",
+						DependsOn: map[string]proto.CustomTaskConfig_RequiredParentStatus{
+							"test_task_depends": 1,
+						},
+					},
+				},
 			},
 		},
-	})
-	pipeline := models.NewPipeline(namespace.ID, pipelineConfig)
+		Triggers: []*proto.PipelineTriggerConfig{
+			{
+				Name:  "test_trigger",
+				Label: "test_trigger_label",
+				Settings: map[string]string{
+					"test_setting_key": "test_setting_value",
+				},
+			},
+		},
+	}
+
+	pipeline := models.NewPipeline(namespace.ID, &pipelineConfig)
 
 	err = db.InsertPipeline(pipeline)
 	if err != nil {
@@ -287,18 +321,35 @@ func TestCRUDTaskRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pipelineConfig := sdk.NewPipeline("test_pipeline", "Test Pipeline").WithTasks([]sdk.Task{
-		*sdk.NewTask("test_task", "task:latest").WithDependsOnOne("test_task_depends", sdk.RequiredParentStatusAny),
-	}).WithTriggers([]sdk.PipelineTriggerConfig{
-		{
-			Name:  "test_trigger",
-			Label: "test_trigger_label",
-			Settings: map[string]string{
-				"test_setting_key": "test_setting_value",
+	pipelineConfig := proto.PipelineConfig{
+		Id:          "test_pipeline",
+		Name:        "Test Pipeline",
+		Description: "",
+		Tasks: []*proto.PipelineTaskConfig{
+			{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: &proto.CustomTaskConfig{
+						Id:    "test_task",
+						Image: "task:latest",
+						DependsOn: map[string]proto.CustomTaskConfig_RequiredParentStatus{
+							"test_task_depends": 1,
+						},
+					},
+				},
 			},
 		},
-	})
-	pipeline := models.NewPipeline(namespace.ID, pipelineConfig)
+		Triggers: []*proto.PipelineTriggerConfig{
+			{
+				Name:  "test_trigger",
+				Label: "test_trigger_label",
+				Settings: map[string]string{
+					"test_setting_key": "test_setting_value",
+				},
+			},
+		},
+	}
+
+	pipeline := models.NewPipeline(namespace.ID, &pipelineConfig)
 
 	err = db.InsertPipeline(pipeline)
 	if err != nil {
@@ -319,7 +370,7 @@ func TestCRUDTaskRuns(t *testing.T) {
 	}
 	run.ID = runID
 
-	taskRun := models.NewTaskRun(namespace.ID, pipeline.ID, run.ID, models.Task{
+	taskRun := models.NewTaskRun(namespace.ID, pipeline.ID, run.ID, &models.CustomTask{
 		ID: "test_task",
 	})
 
@@ -624,18 +675,35 @@ func TestCRUDObjectStorePipelineKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pipelineConfig := sdk.NewPipeline("test_pipeline", "Test Pipeline").WithTasks([]sdk.Task{
-		*sdk.NewTask("test_task", "task:latest").WithDependsOnOne("test_task_depends", sdk.RequiredParentStatusAny),
-	}).WithTriggers([]sdk.PipelineTriggerConfig{
-		{
-			Name:  "test_trigger",
-			Label: "test_trigger_label",
-			Settings: map[string]string{
-				"test_setting_key": "test_setting_value",
+	pipelineConfig := proto.PipelineConfig{
+		Id:          "test_pipeline",
+		Name:        "Test Pipeline",
+		Description: "",
+		Tasks: []*proto.PipelineTaskConfig{
+			{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: &proto.CustomTaskConfig{
+						Id:    "test_task",
+						Image: "task:latest",
+						DependsOn: map[string]proto.CustomTaskConfig_RequiredParentStatus{
+							"test_task_depends": 1,
+						},
+					},
+				},
 			},
 		},
-	})
-	pipeline := models.NewPipeline(namespace.ID, pipelineConfig)
+		Triggers: []*proto.PipelineTriggerConfig{
+			{
+				Name:  "test_trigger",
+				Label: "test_trigger_label",
+				Settings: map[string]string{
+					"test_setting_key": "test_setting_value",
+				},
+			},
+		},
+	}
+
+	pipeline := models.NewPipeline(namespace.ID, &pipelineConfig)
 
 	err = db.InsertPipeline(pipeline)
 	if err != nil {
@@ -688,18 +756,35 @@ func TestCRUDObjectStorePipelineRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pipelineConfig := sdk.NewPipeline("test_pipeline", "Test Pipeline").WithTasks([]sdk.Task{
-		*sdk.NewTask("test_task", "task:latest").WithDependsOnOne("test_task_depends", sdk.RequiredParentStatusAny),
-	}).WithTriggers([]sdk.PipelineTriggerConfig{
-		{
-			Name:  "test_trigger",
-			Label: "test_trigger_label",
-			Settings: map[string]string{
-				"test_setting_key": "test_setting_value",
+	pipelineConfig := proto.PipelineConfig{
+		Id:          "test_pipeline",
+		Name:        "Test Pipeline",
+		Description: "",
+		Tasks: []*proto.PipelineTaskConfig{
+			{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: &proto.CustomTaskConfig{
+						Id:    "test_task",
+						Image: "task:latest",
+						DependsOn: map[string]proto.CustomTaskConfig_RequiredParentStatus{
+							"test_task_depends": 1,
+						},
+					},
+				},
 			},
 		},
-	})
-	pipeline := models.NewPipeline(namespace.ID, pipelineConfig)
+		Triggers: []*proto.PipelineTriggerConfig{
+			{
+				Name:  "test_trigger",
+				Label: "test_trigger_label",
+				Settings: map[string]string{
+					"test_setting_key": "test_setting_value",
+				},
+			},
+		},
+	}
+
+	pipeline := models.NewPipeline(namespace.ID, &pipelineConfig)
 
 	err = db.InsertPipeline(pipeline)
 	if err != nil {
@@ -766,18 +851,35 @@ func TestCRUDSecretStorePipelineKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pipelineConfig := sdk.NewPipeline("test_pipeline", "Test Pipeline").WithTasks([]sdk.Task{
-		*sdk.NewTask("test_task", "task:latest").WithDependsOnOne("test_task_depends", sdk.RequiredParentStatusAny),
-	}).WithTriggers([]sdk.PipelineTriggerConfig{
-		{
-			Name:  "test_trigger",
-			Label: "test_trigger_label",
-			Settings: map[string]string{
-				"test_setting_key": "test_setting_value",
+	pipelineConfig := proto.PipelineConfig{
+		Id:          "test_pipeline",
+		Name:        "Test Pipeline",
+		Description: "",
+		Tasks: []*proto.PipelineTaskConfig{
+			{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: &proto.CustomTaskConfig{
+						Id:    "test_task",
+						Image: "task:latest",
+						DependsOn: map[string]proto.CustomTaskConfig_RequiredParentStatus{
+							"test_task_depends": 1,
+						},
+					},
+				},
 			},
 		},
-	})
-	pipeline := models.NewPipeline(namespace.ID, pipelineConfig)
+		Triggers: []*proto.PipelineTriggerConfig{
+			{
+				Name:  "test_trigger",
+				Label: "test_trigger_label",
+				Settings: map[string]string{
+					"test_setting_key": "test_setting_value",
+				},
+			},
+		},
+	}
+
+	pipeline := models.NewPipeline(namespace.ID, &pipelineConfig)
 
 	err = db.InsertPipeline(pipeline)
 	if err != nil {
