@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/Masterminds/squirrel v1.5.3
 	github.com/asdine/storm/v3 v3.2.1
-	github.com/clintjedwards/gofer/sdk/go v0.0.0-20220818153553-9fcaee15b5ac
 	github.com/clintjedwards/polyfmt v0.4.0
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0

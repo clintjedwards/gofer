@@ -5,6 +5,8 @@ github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/clintjedwards/gofer v0.0.0-20220818153553-9fcaee15b5ac h1:b/pbeJqelgb59AIxMtA21hzkwSCZyGZP/Y+tpeaw/Lw=
 github.com/clintjedwards/gofer v0.0.0-20220818153553-9fcaee15b5ac/go.mod h1:9TO4nC/+43HfpWn82xmjTpeOHpHkxY2BrR/Mrsgw4VA=
+github.com/clintjedwards/gofer/sdk/go v0.0.0-20220826223156-31b7a9b2c6e9 h1:LKEJtj4zYWzF59hsqFHxWIA/LE5KaeeBSUgiSAtO2Zg=
+github.com/clintjedwards/gofer/sdk/go v0.0.0-20220826223156-31b7a9b2c6e9/go.mod h1:sgLQHf+xD+HDr2Q3sOpwOc2F1ALI3CQFezb0SJSpDcg=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/coreos/go-systemd/v22 v22.3.3-0.20220203105225-a9a7ef127534/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
