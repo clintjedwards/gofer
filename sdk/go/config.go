@@ -7,7 +7,7 @@ import (
 	"regexp"
 
 	proto "github.com/clintjedwards/gofer/proto/go"
-	"github.com/clintjedwards/gofer/sdk/go/dag"
+	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
 )
 
 type RequiredParentStatus string

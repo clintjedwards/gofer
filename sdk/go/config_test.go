@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/clintjedwards/gofer/sdk/go/dag"
+	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
 )
 
 func ExampleNewPipeline_simple() {
