@@ -1,13 +1,15 @@
 package sdk
 
 import (
-	"encoding/json"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
+	pb "google.golang.org/protobuf/proto"
 )
 
 type RequiredParentStatus string
@@ -41,6 +43,17 @@ func (ra *RegistryAuth) FromProto(proto *proto.RegistryAuth) {
 	ra.Pass = proto.Pass
 }
 
+func (ra *RegistryAuth) ToProto() *proto.RegistryAuth {
+	if ra == nil {
+		return nil
+	}
+
+	return &proto.RegistryAuth{
+		User: ra.User,
+		Pass: ra.Pass,
+	}
+}
+
 type TaskConfig interface {
 	isTaskConfig()
 	getKind() TaskKind
@@ -67,6 +80,14 @@ func (p *PipelineTriggerConfig) FromProto(proto *proto.PipelineTriggerConfig) {
 	p.Name = proto.Name
 	p.Label = proto.Label
 	p.Settings = proto.Settings
+}
+
+func (p *PipelineTriggerConfig) ToProto() *proto.PipelineTriggerConfig {
+	return &proto.PipelineTriggerConfig{
+		Name:     p.Name,
+		Label:    p.Label,
+		Settings: p.Settings,
+	}
 }
 
 func (p *PipelineTriggerConfig) validate() error {
@@ -141,6 +162,40 @@ func (p *PipelineConfig) WithTriggers(triggers ...PipelineTriggerConfig) *Pipeli
 	return p
 }
 
+func (p *PipelineConfig) ToProto() *proto.PipelineConfig {
+	tasks := []*proto.PipelineTaskConfig{}
+	for _, task := range p.Tasks {
+		switch t := task.(type) {
+		case *CommonTaskConfig:
+			tasks = append(tasks, &proto.PipelineTaskConfig{
+				Task: &proto.PipelineTaskConfig_CommonTask{
+					CommonTask: t.ToProto(),
+				},
+			})
+		case *CustomTaskConfig:
+			tasks = append(tasks, &proto.PipelineTaskConfig{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: t.ToProto(),
+				},
+			})
+		}
+	}
+
+	triggers := []*proto.PipelineTriggerConfig{}
+	for _, trigger := range p.Triggers {
+		triggers = append(triggers, trigger.ToProto())
+	}
+
+	return &proto.PipelineConfig{
+		Id:          p.ID,
+		Name:        p.Name,
+		Description: p.Description,
+		Parallelism: p.Parallelism,
+		Tasks:       tasks,
+		Triggers:    triggers,
+	}
+}
+
 // Call finish as the last method to the pipeline config
 func (p *PipelineConfig) Finish() error {
 	err := p.Validate()
@@ -148,12 +203,17 @@ func (p *PipelineConfig) Finish() error {
 		return err
 	}
 
-	output, err := json.Marshal(p)
+	pipelineProto := p.ToProto()
+
+	output, err := pb.Marshal(pipelineProto)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%s", output)
+	err = binary.Write(os.Stdout, binary.LittleEndian, output)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

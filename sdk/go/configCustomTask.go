@@ -42,6 +42,34 @@ func NewCustomTask(id, image string) *CustomTaskConfig {
 	}
 }
 
+func (t *CustomTaskConfig) ToProto() *proto.CustomTaskConfig {
+	dependsOn := map[string]proto.CustomTaskConfig_RequiredParentStatus{}
+	for key, value := range t.DependsOn {
+		dependsOn[key] = proto.CustomTaskConfig_RequiredParentStatus(proto.CustomTaskConfig_RequiredParentStatus_value[string(value)])
+	}
+
+	entrypoint := []string{}
+	if t.Entrypoint != nil {
+		entrypoint = *t.Entrypoint
+	}
+
+	command := []string{}
+	if t.Command != nil {
+		command = *t.Command
+	}
+
+	return &proto.CustomTaskConfig{
+		Id:           t.ID,
+		Description:  t.Description,
+		Image:        t.Image,
+		RegistryAuth: t.RegistryAuth.ToProto(),
+		DependsOn:    dependsOn,
+		Variables:    t.Variables,
+		Entrypoint:   entrypoint,
+		Command:      command,
+	}
+}
+
 func (t *CustomTaskConfig) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
 	var registryAuth *RegistryAuth = nil
 	if proto.RegistryAuth != nil {

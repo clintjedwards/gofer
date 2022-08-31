@@ -1,5 +1,7 @@
 package sdk
 
+import proto "github.com/clintjedwards/gofer/proto/go"
+
 type CommonTaskConfig struct {
 	Kind        TaskKind                        `json:"kind"`
 	Name        string                          `json:"name"`
@@ -31,6 +33,21 @@ func NewCommonTask(name, label string) *CommonTaskConfig {
 		Description: "",
 		DependsOn:   make(map[string]RequiredParentStatus),
 		Settings:    make(map[string]string),
+	}
+}
+
+func (t *CommonTaskConfig) ToProto() *proto.CommonTaskConfig {
+	dependsOn := map[string]proto.CommonTaskConfig_RequiredParentStatus{}
+	for key, value := range t.DependsOn {
+		dependsOn[key] = proto.CommonTaskConfig_RequiredParentStatus(proto.CommonTaskConfig_RequiredParentStatus_value[string(value)])
+	}
+
+	return &proto.CommonTaskConfig{
+		Name:        t.Name,
+		Label:       t.Label,
+		Description: t.Description,
+		DependsOn:   dependsOn,
+		Settings:    t.Settings,
 	}
 }
 

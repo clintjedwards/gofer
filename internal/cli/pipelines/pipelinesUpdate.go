@@ -2,6 +2,7 @@ package pipelines
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -158,15 +159,10 @@ func pipelinesUpdate(cmd *cobra.Command, args []string) error {
 		cl.State.Fmt.Finish()
 		return err
 	}
-	stdout, err := buildCmd.StdoutPipe()
-	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not read output from cmd; %v", err))
-		cl.State.Fmt.Finish()
-		return err
-	}
+	outputBuffer := bytes.NewBuffer([]byte{})
+	buildCmd.Stdout = outputBuffer
 
-	merged := io.MultiReader(stderr, stdout)
-	scanner := bufio.NewScanner(merged)
+	scanner := bufio.NewScanner(stderr)
 	lines := make(chan string, 2000)
 
 	go func() {
@@ -218,23 +214,22 @@ func pipelinesUpdate(cmd *cobra.Command, args []string) error {
 
 	cl.State.Fmt.Print("Parsing pipeline config")
 
-	linesList := []string{}
-
-	for line := range lines {
-		linesList = append(linesList, line)
+	output, err := io.ReadAll(outputBuffer)
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("Could not parse pipeline config; %v", err))
+		cl.State.Fmt.Finish()
+		return err
 	}
 
-	if len(linesList) == 0 {
+	if len(output) == 0 {
 		cl.State.Fmt.PrintErr("No lines found in output")
 		cl.State.Fmt.Finish()
 		return err
 	}
 
-	lastLine := linesList[len(linesList)-1]
-
 	pipelineConfig := proto.PipelineConfig{}
 
-	err = json.Unmarshal([]byte(lastLine), &pipelineConfig)
+	err = json.Unmarshal([]byte(output), &pipelineConfig)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("Could not parse pipeline config; %v", err))
 		cl.State.Fmt.Finish()

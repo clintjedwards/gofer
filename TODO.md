@@ -124,6 +124,7 @@ Update rust sdk library to be equal to golangs.
 - We currently cannot disambiguiate global secrets from pipeline secrets in the interpolation strings
 - For FromProto methods where the reference might be nil; auto-create the reference before attempting to fill it. Look at registry auth for an example.
 - We need a pipeline validate here.
+- Pipeline get needs to put more detail (list tasks, triggers, commontasks)
 
 - Update Golang SDK library
   - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.

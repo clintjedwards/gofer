@@ -1,10 +1,16 @@
 package sdk
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"testing"
 
+	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
+	"github.com/google/go-cmp/cmp"
+	pb "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func ExampleNewPipeline_simple() {
@@ -19,9 +25,6 @@ func ExampleNewPipeline_simple() {
 	if err != nil {
 		panic(err)
 	}
-
-	// Output:
-	// {"id":"simple_test_pipeline","name":"Simple Test Pipeline","description":"Simple Test Pipeline","parallelism":0,"tasks":[{"kind":"CUSTOM","id":"simple_task","description":"This task simply prints our hello-world message and exits!","image":"ubuntu:latest","registry_auth":null,"depends_on":{},"variables":{},"entrypoint":null,"command":["echo","Hello from Gofer!"]}],"triggers":[]}
 }
 
 func ExampleNewPipeline_dag() {
@@ -49,9 +52,6 @@ perform certain trees of actions depending on what happens in earlier containers
 	if err != nil {
 		panic(err)
 	}
-
-	// Output:
-	// {"id":"dag_test_pipeline","name":"DAG Test Pipeline","description":"This pipeline shows off how you might use Gofer's DAG(Directed Acyclic Graph) system to chain\ntogether containers that depend on other container's end states. This is obviously very useful if you want to\nperform certain trees of actions depending on what happens in earlier containers.","parallelism":10,"tasks":[{"kind":"CUSTOM","id":"task_one","description":"This task has no dependencies so it will run immediately","image":"ghcr.io/clintjedwards/gofer-containers/debug/wait:latest","registry_auth":null,"depends_on":{},"variables":{"WAIT_DURATION":"20s"},"entrypoint":null,"command":null},{"kind":"CUSTOM","id":"depends_on_one","description":"This task depends on the first task to finish with a successfull result.This means that if the first task fails this task will not run.","image":"ghcr.io/clintjedwards/gofer-containers/debug/log:latest","registry_auth":null,"depends_on":{"task_one":"SUCCESS"},"variables":{"LOGS_HEADER":"This string can be anything you want it to be"},"entrypoint":null,"command":null},{"kind":"CUSTOM","id":"depends_on_two","description":"This task depends on the second task, but will run after its finished regardless of the result.","image":"docker.io/library/hello-world","registry_auth":null,"depends_on":{"depends_on_one":"ANY"},"variables":{},"entrypoint":null,"command":null}],"triggers":[]}
 }
 
 func TestInvalidPipelineCyclical(t *testing.T) {
@@ -63,5 +63,58 @@ func TestInvalidPipelineCyclical(t *testing.T) {
 
 	if !errors.Is(err, dag.ErrEdgeCreatesCycle) {
 		t.Fatalf("expected cyclic graph error; found %v", err)
+	}
+}
+
+// Tests that a pipeline can be fully serialized into proto and back and retain correct structure.
+// Mostly a test on the many ToProto calls in the library.
+func TestSimpleConfigSerialization(t *testing.T) {
+	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
+		WithDescription("Simple Test Pipeline").
+		WithTasks(
+			NewCustomTask("simple_task", "ubuntu:latest").
+				WithDescription("This task simply prints our hello-world message and exits!").
+				WithCommand("echo", `Hello from Gofer!`),
+		)
+
+	pipelineProto := pipeline.ToProto()
+
+	output, err := pb.Marshal(pipelineProto)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	err = binary.Write(buf, binary.LittleEndian, output)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := proto.PipelineConfig{}
+	err = pb.Unmarshal(buf.Bytes(), &got)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := proto.PipelineConfig{
+		Id:          "simple_test_pipeline",
+		Name:        "Simple Test Pipeline",
+		Description: "Simple Test Pipeline",
+		Tasks: []*proto.PipelineTaskConfig{
+			{
+				Task: &proto.PipelineTaskConfig_CustomTask{
+					CustomTask: &proto.CustomTaskConfig{
+						Id:          "simple_task",
+						Image:       "ubuntu:latest",
+						Description: "This task simply prints our hello-world message and exits!",
+						Command:     []string{"echo", `Hello from Gofer!`},
+					},
+				},
+			},
+		},
+	}
+
+	if diff := cmp.Diff(&want, &got, protocmp.Transform()); diff != "" {
+		t.Errorf("proto did not match (-want +got):\n%s", diff)
 	}
 }

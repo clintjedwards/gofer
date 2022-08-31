@@ -2,8 +2,8 @@ package pipelines
 
 import (
 	"bufio"
+	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -16,6 +16,7 @@ import (
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/clintjedwards/polyfmt"
 	"google.golang.org/grpc/metadata"
+	pb "google.golang.org/protobuf/proto"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -81,7 +82,7 @@ func detectLanguage(path string) (configLanguage, error) {
 }
 
 func golangBuildCmd(path string) *exec.Cmd {
-	cmd := exec.Command("/bin/sh", "-c", "go build -o /tmp/gofer_go_pipeline && /tmp/gofer_go_pipeline")
+	cmd := exec.Command("/bin/sh", "-c", "go build -v -o /tmp/gofer_go_pipeline && /tmp/gofer_go_pipeline")
 	cmd.Dir = path
 	return cmd
 }
@@ -133,15 +134,17 @@ func pipelinesCreate(_ *cobra.Command, args []string) error {
 		cl.State.Fmt.Finish()
 		return err
 	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not read output from cmd; %v", err))
-		cl.State.Fmt.Finish()
-		return err
-	}
 
-	merged := io.MultiReader(stderr, stdout)
-	scanner := bufio.NewScanner(merged)
+	outputBuffer := bytes.NewBuffer([]byte{})
+	cmd.Stdout = outputBuffer
+
+	// By default the diagnostic output for a program should probably write to stderr.
+	// We will assume (maybe naively) this is the case for both the go compiler and the rust
+	// compiler(https://github.com/rust-lang/cargo/issues/1473) and make anything printing to
+	// stderr go to the user as an update and anything in stdout must be the binary output
+	// we're looking for.
+
+	scanner := bufio.NewScanner(stderr)
 	lines := make(chan string, 2000)
 
 	go func() {
@@ -154,6 +157,10 @@ func pipelinesCreate(_ *cobra.Command, args []string) error {
 			if len(line) > 80 {
 				line = line[:80]
 			}
+			if line == "" {
+				line = "compiling"
+			}
+
 			cl.State.Fmt.Print(fmt.Sprintf("Building config: %s", line), polyfmt.Pretty)
 		}
 		close(lines)
@@ -193,23 +200,22 @@ func pipelinesCreate(_ *cobra.Command, args []string) error {
 
 	cl.State.Fmt.Print("Parsing pipeline config")
 
-	linesList := []string{}
-
-	for line := range lines {
-		linesList = append(linesList, line)
+	output, err := io.ReadAll(outputBuffer)
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("Could not parse pipeline config; %v", err))
+		cl.State.Fmt.Finish()
+		return err
 	}
 
-	if len(linesList) == 0 {
+	if len(output) == 0 {
 		cl.State.Fmt.PrintErr("No lines found in output")
 		cl.State.Fmt.Finish()
 		return err
 	}
 
-	lastLine := linesList[len(linesList)-1]
-
 	pipelineConfig := proto.PipelineConfig{}
 
-	err = json.Unmarshal([]byte(lastLine), &pipelineConfig)
+	err = pb.Unmarshal(output, &pipelineConfig)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("Could not parse pipeline config; %v", err))
 		cl.State.Fmt.Finish()
