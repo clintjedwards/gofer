@@ -26,6 +26,7 @@ We need a common way to alert on a PR or something that a task has succeeded or 
     - A pipeline's config for trigger/commontask is invalid
     - A Gofer has uninstalled a trigger/commontask that a pipeline previously depended on.
   - When we uninstall common tasks or triggers we can list all pipelines that currently use those, disable them and add an error.
+  - Create an API side pipeline validate that uses the sdk validate but also implements some things the SDK cannot do, like for instance check that all the triggers mentioned in the pipeline config are registered
 
 ### SDK
 
@@ -53,6 +54,7 @@ Update rust sdk library to be equal to golangs.
 - Create a namespace set command that allows the user to switch between namespaces and save it in their configuration file (CLI).
 - CLI now just compiles from language. This means that we can also just straight up read from things like json/toml since it all compiles back to json anyway.
 - https://github.com/clintjedwards/gofer/commit/955e1b7da76fdfa5aa26bcb5dd0b138af605aa45
+- Pipeline get needs to put more detail (list tasks, triggers, commontasks)
 
 ### Scheduler
 
@@ -77,6 +79,7 @@ Update rust sdk library to be equal to golangs.
 
 ### General
 
+- For FromProto methods where the reference might be nil; auto-create the reference before attempting to fill it. Look at registry auth for an example.
 - Metrics via openTelemetry
 - Database functions need to be more flexible. The caller should be able to mix and match and start/stop transactions at will.
 - Check that when we create the run specific token for a run and enter it into the user's run stuff. We also need to make sure we clean
@@ -112,20 +115,9 @@ Update rust sdk library to be equal to golangs.
 ### On the floor
 
 - Give a quick thought to models as they move through different phases from the Config -> SDK -> Proto -> Models
-- Erase comments in commonTask
-
-- For commonTasks when interpolating variables make sure to include the vars from the registration.
-- When we validate pipelines now we need to include the validation as if common tasks and custom tasks are the same thing.
 - Test registry auth.
-- In the SDK make it so that people can mix both gofer tasks and regular tasks and then unmix them in the actual thing.
-
-  - We need to make sure dag generation takes into account common tasks now.
-
+- CLI Fix representation for UNKNOWN status
 - We currently cannot disambiguiate global secrets from pipeline secrets in the interpolation strings
-- For FromProto methods where the reference might be nil; auto-create the reference before attempting to fill it. Look at registry auth for an example.
-- We need a pipeline validate here.
-- Pipeline get needs to put more detail (list tasks, triggers, commontasks)
-
 - Update Golang SDK library
   - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
 - Convert over all previously lost example pipelines.

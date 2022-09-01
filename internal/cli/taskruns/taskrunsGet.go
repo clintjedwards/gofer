@@ -117,7 +117,7 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 		ExitCode:     exitCode,
 		RunID:        color.BlueString("#" + strconv.Itoa(int(taskRun.Run))),
 		StatusReason: taskRun.StatusReason,
-		TaskRunCmd:   color.CyanString(fmt.Sprintf("taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.ID)),
+		TaskRunCmd:   color.CyanString(fmt.Sprintf("gofer taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.ID)),
 		ImageName:    taskRun.Task.GetImage(),
 	}
 
@@ -137,7 +137,7 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 
   $ Environment Variables:
   {{- range $v := .EnvVars}}
-    | {{$v.Key}}={{$v.Value}} from {{$v.Source}}
+    | {{$v.Key}}={{$v.Value}} [from {{$v.Source}}]
   {{- end}}
 {{- end}}
 

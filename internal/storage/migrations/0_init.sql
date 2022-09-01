@@ -169,6 +169,8 @@ CREATE TABLE IF NOT EXISTS task_runs (
     PRIMARY KEY (namespace, pipeline, run, id)
 ) STRICT;
 
+CREATE INDEX idx_taskruns_started ON task_runs (started);
+
 CREATE TABLE IF NOT EXISTS events (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     kind     TEXT NOT NULL,

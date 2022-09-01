@@ -33,6 +33,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 		From("task_runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run}).
 		Limit(uint64(limit)).
+		OrderBy("started ASC").
 		Offset(uint64(offset)).RunWith(db).Query()
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)

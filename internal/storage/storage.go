@@ -32,11 +32,6 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
-// PRAGMA journal_mode = WAL;
-// PRAGMA busy_timeout = 5000;
-// PRAGMA foreign_keys = ON;
-// PRAGMA strict = ON;
-
 // DB is a representation of the datastore
 type DB struct {
 	maxResultsLimit int

@@ -87,7 +87,7 @@ func (r *RunStateMachine) setRunFinished(status models.RunStatus, reason *models
 		NamespaceID: r.Run.Namespace,
 		PipelineID:  r.Run.Pipeline,
 		RunID:       r.Run.ID,
-		Status:      r.Run.Status,
+		Status:      status,
 	})
 
 	return nil
@@ -135,11 +135,12 @@ func (r *RunStateMachine) executeTaskTree() {
 
 	// Launch a new task run for each task found.
 	for _, task := range r.Pipeline.CustomTasks {
+		task := task
 		go r.launchTaskRun(&task)
 	}
 
 	for _, taskSettings := range r.Pipeline.CommonTasks {
-		// We create a half filled model of common task because so that
+		// We create a half filled model of common task so that
 		// we can pass it to the next step where it will get fully filled in.
 		// We only do this because the next step already has the facilities to handle
 		// a task run failure properly.
@@ -624,6 +625,8 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 	newTaskRun := models.NewTaskRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, task)
 
 	r.TaskRuns.Set(newTaskRun.ID, *newTaskRun)
+
+	fmt.Println(newTaskRun.ID)
 
 	err := r.API.db.InsertTaskRun(newTaskRun)
 	if err != nil {
