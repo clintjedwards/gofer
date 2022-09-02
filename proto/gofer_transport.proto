@@ -388,13 +388,16 @@ message TriggerSubscribeRequest {
   string pipeline_id = 2;  // unique identifier for associated pipeline
   string pipeline_trigger_label = 3; // pipeline specific subscription id
 
-  // pipelines are allowed to pass a configuration to triggers denoting what
+  // Pipelines are allowed to pass a configuration to triggers denoting what
   // specific settings they might like for a specific trigger. The acceptable
   // values of this config map is defined by the triggers and should be
   // mentioned in documentation.
   //
   // Additionally, the trigger should verify config settings and pass back an
   // error when it does not meet requirements.
+  //
+  // Note: The keys in this map are forced to be uppercase. This is important
+  // when checking for their existance when writing a trigger.
   map<string, string> config = 4;
 }
 message TriggerSubscribeResponse {}

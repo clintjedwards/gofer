@@ -472,12 +472,12 @@ func (api *API) processTriggerEvents() error {
 	defer api.events.Unsubscribe(subscription)
 
 	for eventRaw := range subscription.Events {
-		event, ok := eventRaw.Details.(*models.EventFiredTriggerEvent)
+		event, ok := eventRaw.Details.(models.EventFiredTriggerEvent)
 		if !ok {
 			continue
 		}
 
-		go api.processTriggerEvent(event)
+		go api.processTriggerEvent(&event)
 	}
 
 	return nil

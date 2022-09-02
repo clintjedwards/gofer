@@ -83,7 +83,7 @@ func (api *API) subscribeTriggers(namespace, pipeline string, configs []models.P
 	for _, config := range configs {
 		err := api.subscribeTrigger(namespace, pipeline, &config)
 		if err != nil {
-			return successfulSubscriptions, fmt.Errorf("could not subscribe to trigger %q (%q)", config.Label, config.Name)
+			return successfulSubscriptions, fmt.Errorf("could not subscribe to trigger %q (%q)", config.Name, config.Label)
 		}
 
 		successfulSubscriptions = append(successfulSubscriptions, config)
