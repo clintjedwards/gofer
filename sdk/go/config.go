@@ -235,7 +235,7 @@ func validateIdentifier(arg, value string) error {
 	}
 
 	if !alphanumericWithUnderscores.MatchString(value) {
-		return fmt.Errorf("can only be made up of alphanumeric and underscore characters")
+		return fmt.Errorf("config %q can only be made up of alphanumeric and underscore characters; found %q", arg, value)
 	}
 	return nil
 }

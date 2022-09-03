@@ -117,6 +117,11 @@ Update rust sdk library to be equal to golangs.
 - Give a quick thought to models as they move through different phases from the Config -> SDK -> Proto -> Models
 - Test registry auth.
 - CLI Fix representation for UNKNOWN status
+- There is a weird bug, when we can't find something in any bolt database the function to get that item will just hang.
+- When parsing any field that the user might have multiple lines in (description is the popular one here), we should normalize
+  them such that it takes two \n\n to actually create a new line. This is so the user can use the multiline for their respective
+  language without making it look ugly when it gets stored.
+- CLI should sort by started
 - We currently cannot disambiguiate global secrets from pipeline secrets in the interpolation strings
 - Update Golang SDK library
   - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.

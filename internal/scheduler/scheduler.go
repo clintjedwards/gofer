@@ -83,7 +83,7 @@ type Engine interface {
 	// StartContainer launches a new container on scheduler.
 	StartContainer(request StartContainerRequest) (response StartContainerResponse, err error)
 
-	// StopContainer attempts to stop a specific container identified by the aforementioned "schedulerID". The scheduler
+	// StopContainer attempts to stop a specific container identified by a unique container name. The scheduler
 	// should attempt to gracefully stop the container, unless the timeout is reached.
 	StopContainer(request StopContainerRequest) error
 

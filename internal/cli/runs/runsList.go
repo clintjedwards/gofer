@@ -23,7 +23,7 @@ var cmdRunsList = &cobra.Command{
 	Long: `List all runs.
 
 A short listing of all currently started runs.`,
-	Example: `$ gofer run list simple_test_pipeline`,
+	Example: `$ gofer runs list simple_test_pipeline`,
 	RunE:    runsList,
 	Args:    cobra.ExactArgs(1),
 }
