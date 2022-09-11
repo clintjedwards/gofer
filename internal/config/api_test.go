@@ -50,8 +50,8 @@ func TestAPISampleFromFile(t *testing.T) {
 		},
 
 		SecretStore: &SecretStore{
-			Engine: "bolt",
-			BoltDB: &BoltDBSecret{
+			Engine: "sqlite",
+			Sqlite: &SqliteSecret{
 				Path:          "/tmp/gofer-secret.db",
 				EncryptionKey: "changemechangemechangemechangeme",
 			},
@@ -153,8 +153,8 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		},
 
 		SecretStore: &SecretStore{
-			Engine: "bolt",
-			BoltDB: &BoltDBSecret{
+			Engine: "sqlite",
+			Sqlite: &SqliteSecret{
 				Path:          "/tmp/gofer-secret.db",
 				EncryptionKey: "changemechangemechangemechangeme",
 			},

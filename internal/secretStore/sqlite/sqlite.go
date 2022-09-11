@@ -1,39 +1,48 @@
-package bolt
+package sqlite
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
-	"time"
+	"strings"
 
-	"github.com/asdine/storm/v3"
+	qb "github.com/Masterminds/squirrel"
 	"github.com/clintjedwards/gofer/internal/secretStore"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3" // Provides sqlite3 lib
 	"github.com/rs/zerolog/log"
-	bolt "go.etcd.io/bbolt"
 )
+
+const initialMigration = `CREATE TABLE IF NOT EXISTS secrets (
+    key         TEXT    NOT NULL,
+    value       BLOB    NOT NULL,
+    PRIMARY KEY (key)
+) STRICT;`
 
 // Store is a representation of the bolt datastore
 type Store struct {
 	encryptionKey string
-	*storm.DB
+	*sqlx.DB
 }
-
-const rootBucket string = "root"
 
 // New creates a new boltdb with given settings
 func New(path, encryptionKey string) (Store, error) {
-	store, err := storm.Open(path, storm.BoltOptions(0o600, &bolt.Options{Timeout: 1 * time.Second}))
+	dsn := fmt.Sprintf("%s?_journal=wal&_fk=true&_timeout=5000", path)
+
+	db, err := sqlx.Connect("sqlite3", dsn)
 	if err != nil {
 		return Store{}, err
 	}
 
+	_ = db.MustExec(initialMigration)
+
 	return Store{
 		encryptionKey,
-		store,
+		db,
 	}, nil
 }
 
@@ -77,18 +86,20 @@ func decrypt(key []byte, ciphertext []byte) ([]byte, error) {
 }
 
 func (store *Store) GetSecret(key string) (string, error) {
-	var storedSecret []byte
+	row := qb.Select("value").
+		From("secrets").Where(qb.Eq{"key": key}).RunWith(store).QueryRow()
 
-	err := store.Get(rootBucket, key, &storedSecret)
+	var value []byte
+	err := row.Scan(&value)
 	if err != nil {
-		if errors.Is(err, storm.ErrNotFound) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", secretStore.ErrEntityNotFound
 		}
 
-		return "", err
+		return "", fmt.Errorf("database error occurred: %v; %w", err, secretStore.ErrInternal)
 	}
 
-	decryptedSecret, err := decrypt([]byte(store.encryptionKey), storedSecret)
+	decryptedSecret, err := decrypt([]byte(store.encryptionKey), value)
 	if err != nil {
 		log.Error().Err(err).Msg("could not decrypt secret")
 		return "", err
@@ -98,20 +109,28 @@ func (store *Store) GetSecret(key string) (string, error) {
 }
 
 func (store *Store) ListSecretKeys(prefix string) ([]string, error) {
+	rows, err := qb.Select("key").
+		From("secrets").Where(qb.Like{"key": prefix + "%"}).RunWith(store).Query()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, secretStore.ErrInternal)
+	}
+	defer rows.Close()
+
 	keys := []string{}
 
-	err := store.Bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(rootBucket)).Cursor()
+	for rows.Next() {
+		var key string
 
-		for key, _ := bucket.Seek([]byte(prefix)); key != nil && bytes.HasPrefix(key, []byte(prefix)); key, _ = bucket.Next() {
-			keys = append(keys, string(key))
+		err = rows.Scan(&key)
+		if err != nil {
+			return nil, fmt.Errorf("database error occurred: %v; %w", err, secretStore.ErrInternal)
 		}
 
-		return nil
-	})
+		keys = append(keys, key)
+	}
+	err = rows.Err()
 	if err != nil {
-		log.Error().Err(err).Msg("could not list secret keys")
-		return nil, err
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, secretStore.ErrInternal)
 	}
 
 	return keys, nil
@@ -124,40 +143,26 @@ func (store *Store) PutSecret(key string, content string, force bool) error {
 		return fmt.Errorf("could not encrypt secret")
 	}
 
-	tx, err := store.Begin(true)
+	_, err = qb.Insert("secrets").Columns("key", "value").Values(key, encryptedSecret).RunWith(store).Exec()
 	if err != nil {
-		return err
-	}
-	defer tx.Rollback() // nolint: errcheck
-
-	exists, err := tx.KeyExists(rootBucket, key)
-	if err != nil {
-		if errors.Is(err, storm.ErrNotFound) {
-		} else {
-			return err
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return secretStore.ErrEntityExists
 		}
+
+		return fmt.Errorf("database error occurred: %v; %w", err, secretStore.ErrInternal)
 	}
 
-	if exists && !force {
-		return secretStore.ErrEntityExists
-	}
-
-	err = tx.Set(rootBucket, key, encryptedSecret)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return nil
 }
 
 func (store *Store) DeleteSecret(key string) error {
-	err := store.Delete(rootBucket, key)
+	_, err := qb.Delete("secrets").Where(qb.Eq{"key": key}).RunWith(store).Exec()
 	if err != nil {
-		if errors.Is(err, storm.ErrNotFound) {
-			return secretStore.ErrEntityNotFound
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
 		}
 
-		return err
+		return fmt.Errorf("database error occurred: %v; %w", err, secretStore.ErrInternal)
 	}
 
 	return nil

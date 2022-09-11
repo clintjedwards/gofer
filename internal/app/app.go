@@ -12,7 +12,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/scheduler/docker"
 	"github.com/clintjedwards/gofer/internal/secretStore"
-	boltsecret "github.com/clintjedwards/gofer/internal/secretStore/bolt"
+	sqlitesecret "github.com/clintjedwards/gofer/internal/secretStore/sqlite"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/rs/zerolog/log"
 )
@@ -84,8 +84,8 @@ func initObjectStore(config *config.ObjectStore) (objectstore.Engine, error) {
 
 func initSecretStore(config *config.SecretStore) (secretStore.Engine, error) {
 	switch secretStore.EngineType(config.Engine) {
-	case secretStore.EngineBolt:
-		engine, err := boltsecret.New(config.BoltDB.Path, config.BoltDB.EncryptionKey)
+	case secretStore.EngineSqlite:
+		engine, err := sqlitesecret.New(config.Sqlite.Path, config.Sqlite.EncryptionKey)
 		if err != nil {
 			return nil, err
 		}

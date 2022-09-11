@@ -14,6 +14,8 @@ func TestSqlite(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Remove("/tmp/test_sqlite_objectStore.db")
+	defer os.Remove("/tmp/test_sqlite_objectStore.db-wal")
+	defer os.Remove("/tmp/test_sqlite_objectStore.db-shm")
 
 	err = store.PutObject("testkey1", []byte("mysupersecretkey"), false)
 	if err != nil {

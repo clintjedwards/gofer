@@ -30,8 +30,8 @@ object_store {
 }
 
 secret_store {
-  engine = "bolt"
-  boltdb {
+  engine = "sqlite"
+  sqlite {
     path           = "/tmp/gofer-secret.db"
     encryption_key = "changemechangemechangemechangeme"
   }

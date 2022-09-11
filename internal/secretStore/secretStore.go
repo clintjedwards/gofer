@@ -5,11 +5,14 @@ import "errors"
 type EngineType string
 
 const (
-	// EngineBolt uses the boltDB.
-	EngineBolt EngineType = "bolt"
+	// EngineSqlite uses the sqlite DB.
+	EngineSqlite EngineType = "sqlite"
 )
 
 var (
+	// ErrInternal is returned when the db runs into an unexpected error.
+	ErrInternal = errors.New("secretstore: internal error occurred")
+
 	// ErrEntityNotFound is returned when a certain entity could not be located.
 	ErrEntityNotFound = errors.New("secretStore: entity not found")
 

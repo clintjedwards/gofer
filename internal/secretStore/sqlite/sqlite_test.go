@@ -1,16 +1,18 @@
-package bolt
+package sqlite
 
 import (
 	"os"
 	"testing"
 )
 
-func TestBolt(t *testing.T) {
-	store, err := New("/tmp/test_bolt_secretStore.db", "testencryptionkeytestencryptionk")
+func TestSqlite(t *testing.T) {
+	store, err := New("/tmp/test_sqlite_secretStore.db", "testencryptionkeytestencryptionk")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove("/tmp/test_bolt_secretStore.db")
+	defer os.Remove("/tmp/test_sqlite_secretStore.db")
+	defer os.Remove("/tmp/test_sqlite_secretStore.db-wal")
+	defer os.Remove("/tmp/test_sqlite_secretStore.db-shm")
 
 	err = store.PutSecret("testkey1", "mysupersecretkey", false)
 	if err != nil {

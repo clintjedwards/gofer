@@ -129,5 +129,3 @@ Update rust sdk library to be equal to golangs.
   - Document the debug containers also
   - Replace blurry png for readme.
   - Add an example of entrypoint/command running a multi-line script
-
-- Debug why objects aren't working, swap the secret store to sqlite also
