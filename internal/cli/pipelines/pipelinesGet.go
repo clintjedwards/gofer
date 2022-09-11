@@ -133,23 +133,12 @@ type data struct {
 	Name        string
 	State       string
 	Description string
-	RecentRuns  []runData
+	RecentRuns  string
 	Tasks       []taskData
 	Health      string
 	Triggers    []triggerData
 	Created     string
 	LastRun     string
-}
-
-type runData struct {
-	ID           string
-	Started      string
-	Lasted       string
-	Status       string
-	StatePrefix  string
-	State        string
-	TriggerLabel string
-	TriggerName  string
 }
 
 type taskData struct {
@@ -181,22 +170,21 @@ func formatStatePrefix(state models.RunState) string {
 
 func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *models.Pipeline, detail bool) (string, error) {
 	recentRuns := recentRuns(ctx, client, pipeline.Namespace, pipeline.ID, 5)
-	recentRunList := []runData{}
+	recentRunList := [][]string{}
 	recentRunHealth := []models.RunStatus{}
 	for _, run := range recentRuns {
-		recentRunList = append(recentRunList, runData{
-			ID:           color.BlueString("Run #" + strconv.Itoa(int(run.ID))),
-			Started:      format.UnixMilli(run.Started, "Not yet", detail),
-			Lasted:       format.Duration(run.Started, run.Ended),
-			Status:       format.ColorizeRunStatus(format.NormalizeEnumValue(run.Status, "Unknown")),
-			State:        format.ColorizeRunState(format.NormalizeEnumValue(run.State, "Unknown")),
-			StatePrefix:  formatStatePrefix(run.State),
-			TriggerLabel: color.CyanString(run.Trigger.Label),
-			TriggerName:  color.YellowString(run.Trigger.Name),
+		recentRunList = append(recentRunList, []string{
+			color.BlueString("• Run #" + strconv.Itoa(int(run.ID))),
+			fmt.Sprintf("%s by %s %s", format.UnixMilli(run.Started, "Not yet", detail), color.CyanString(run.Trigger.Label), color.YellowString(run.Trigger.Name)),
+			fmt.Sprintf("%s %s", formatStatePrefix(run.State), format.Duration(run.Started, run.Ended)),
+			format.ColorizeRunStatus(format.NormalizeEnumValue(run.Status, "Unknown")),
+			format.ColorizeRunState(format.NormalizeEnumValue(run.State, "Unknown")),
 		})
 
 		recentRunHealth = append(recentRunHealth, run.Status)
 	}
+
+	recentRunsTable := format.GenerateGenericTable(5, recentRunList)
 
 	triggerDataList := []triggerData{}
 	for _, trigger := range pipeline.Triggers {
@@ -251,7 +239,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 		Name:        pipeline.Name,
 		State:       format.ColorizePipelineState(format.NormalizeEnumValue(pipeline.State, "Unknown")),
 		Description: pipeline.Description,
-		RecentRuns:  recentRunList,
+		RecentRuns:  recentRunsTable,
 		Triggers:    triggerDataList,
 		Health:      format.Health(recentRunHealth, true),
 		Tasks:       tasks,
@@ -265,9 +253,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
   {{- if .RecentRuns}}
 
   📦 Recent Runs
-    {{- range $run := .RecentRuns}}
-    • {{ $run.ID }} :: {{ $run.Started }} by {{$run.TriggerLabel}} ({{$run.TriggerName}}) :: {{ $run.StatePrefix }} {{ $run.Lasted }} :: {{ $run.State }}
-    {{- end}}
+    {{.RecentRuns}}
   {{- end}}
   {{- if .Tasks }}
 
@@ -286,7 +272,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 
   🗘 Attached Triggers:
     {{- range $trigger := .Triggers}}
-    ⟳ [{{ $trigger.State }}] {{ $trigger.Label }} ({{ $trigger.Name }}) {{- if ne (len $trigger.Events) 0 }} recent events:{{- end }}
+    ⟳ {{ $trigger.Label }} ({{ $trigger.Name }}) {{- if ne (len $trigger.Events) 0 }} recent events:{{- end }}
       {{- range $event := $trigger.Events }}
       + {{$event.Processed}} | {{$event.Details}}
 	  {{- end}}

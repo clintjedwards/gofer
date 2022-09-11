@@ -438,7 +438,7 @@ func (api *API) processTriggerEvent(event *models.EventFiredTriggerEvent) {
 
 	runID, err := api.db.InsertRun(newRun)
 	if err != nil {
-		log.Error().Err(err).Msg("could not insert pipeline into db")
+		log.Error().Err(err).Msg("could not insert run into db")
 		api.resolveFiredTriggerEvent(event, models.TriggerResult{
 			Details: fmt.Sprintf("Internal error; %v", err),
 			Status:  models.TriggerResultStateFailure,

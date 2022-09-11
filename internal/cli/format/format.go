@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/clintjedwards/gofer/models"
+	"github.com/olekukonko/tablewriter"
 
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
@@ -42,6 +43,33 @@ func NormalizeEnumValue[s ~string](value s, unknownString string) string {
 	}
 
 	return state
+}
+
+func GenerateGenericTable(rows int, data [][]string) string {
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
+
+	headers := []string{}
+	for i := 1; i < rows; i++ {
+		headers = append(headers, "  ")
+	}
+
+	table.SetHeader(headers)
+	table.SetAutoWrapText(false)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	table.SetHeaderLine(false)
+	table.SetBorder(false)
+	table.SetAutoFormatHeaders(false)
+	table.SetRowSeparator("―")
+	table.SetRowLine(false)
+	table.SetColumnSeparator("")
+	table.SetCenterSeparator("")
+
+	table.AppendBulk(data)
+
+	table.Render()
+	return tableString.String()
 }
 
 // Duration returns a humanized duration time for two epoch milli second times.
