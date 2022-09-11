@@ -21,9 +21,9 @@ database {
 }
 
 object_store {
-  engine = "bolt"
-  boltdb {
-    path = "/tmp/gofer-os.db"
+  engine = "sqlite"
+  sqlite {
+    path = "/tmp/gofer-object.db"
   }
   pipeline_object_limit = 30
   run_object_expiry     = 30

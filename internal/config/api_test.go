@@ -41,9 +41,9 @@ func TestAPISampleFromFile(t *testing.T) {
 		},
 
 		ObjectStore: &ObjectStore{
-			Engine: "bolt",
-			BoltDB: &BoltDB{
-				Path: "/tmp/gofer-os.db",
+			Engine: "sqlite",
+			Sqlite: &Sqlite{
+				Path: "/tmp/gofer-object.db",
 			},
 			PipelineObjectLimit: 30,
 			RunObjectExpiry:     30,
@@ -143,9 +143,10 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		},
 
 		ObjectStore: &ObjectStore{
-			Engine: "bolt",
-			BoltDB: &BoltDB{
-				Path: "/tmp/gofer-os.db",
+			Engine: "sqlite",
+			BoltDB: &BoltDB{},
+			Sqlite: &Sqlite{
+				Path: "/tmp/gofer-object.db",
 			},
 			PipelineObjectLimit: 30,
 			RunObjectExpiry:     1000,

@@ -24,6 +24,19 @@ type Store struct {
 
 const rootBucket string = "root"
 
+// New creates a new boltdb with given settings
+func New(path, encryptionKey string) (Store, error) {
+	store, err := storm.Open(path, storm.BoltOptions(0o600, &bolt.Options{Timeout: 1 * time.Second}))
+	if err != nil {
+		return Store{}, err
+	}
+
+	return Store{
+		encryptionKey,
+		store,
+	}, nil
+}
+
 func encrypt(key []byte, plaintext []byte) ([]byte, error) {
 	c, err := aes.NewCipher(key)
 	if err != nil {
@@ -61,19 +74,6 @@ func decrypt(key []byte, ciphertext []byte) ([]byte, error) {
 
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	return gcm.Open(nil, nonce, ciphertext, nil)
-}
-
-// New creates a new boltdb with given settings
-func New(path, encryptionKey string) (Store, error) {
-	store, err := storm.Open(path, storm.BoltOptions(0o600, &bolt.Options{Timeout: 1 * time.Second}))
-	if err != nil {
-		return Store{}, err
-	}
-
-	return Store{
-		encryptionKey,
-		store,
-	}, nil
 }
 
 func (store *Store) GetSecret(key string) (string, error) {

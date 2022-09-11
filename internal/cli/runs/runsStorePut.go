@@ -29,8 +29,8 @@ configuration). This run limit is related to the number of runs in a pipeline.
 For instance, after a run is 10 runs old, gofer may clean up its objects.
 
 You can store both regular text values or read in entire files using the '@' prefix.`,
-	Example: `$ gofer run store put simple_test_pipeline my_key=my_value
-$ gofer run store put simple_test_pipeline my_key=@file_path`,
+	Example: `$ gofer runs store put simple_test_pipeline my_key=my_value
+$ gofer runs store put simple_test_pipeline my_key=@file_path`,
 	RunE: storePut,
 	Args: cobra.ExactArgs(3),
 }

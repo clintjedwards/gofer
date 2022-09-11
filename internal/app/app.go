@@ -8,7 +8,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/api"
 	"github.com/clintjedwards/gofer/internal/config"
 	objectstore "github.com/clintjedwards/gofer/internal/objectStore"
-	boltos "github.com/clintjedwards/gofer/internal/objectStore/bolt"
+	sqliteos "github.com/clintjedwards/gofer/internal/objectStore/sqlite"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/scheduler/docker"
 	"github.com/clintjedwards/gofer/internal/secretStore"
@@ -70,8 +70,8 @@ func initStorage(config *config.Database) (storage.DB, error) {
 
 func initObjectStore(config *config.ObjectStore) (objectstore.Engine, error) {
 	switch objectstore.EngineType(config.Engine) {
-	case objectstore.EngineBolt:
-		engine, err := boltos.New(config.BoltDB.Path)
+	case objectstore.EngineSqlite:
+		engine, err := sqliteos.New(config.Sqlite.Path)
 		if err != nil {
 			return nil, err
 		}

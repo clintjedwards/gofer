@@ -9,6 +9,8 @@ type ObjectStore struct {
 
 	BoltDB *BoltDB `hcl:"boltdb,block"`
 
+	Sqlite *Sqlite `hcl:"sqlite,block"`
+
 	// Pipeline Objects last forever but are limited in number. This is the total amount of items that can be stored
 	// per pipeline before gofer starts deleting objects.
 	PipelineObjectLimit int `split_words:"true" hcl:"pipeline_object_limit,optional"`
@@ -20,11 +22,16 @@ type ObjectStore struct {
 	RunObjectExpiry int `split_words:"true" hcl:"run_object_expiry,optional"`
 }
 
+// Sqlite
+type Sqlite struct {
+	Path string `hcl:"path,optional"` // file path for database file
+}
+
 func DefaultObjectStoreConfig() *ObjectStore {
 	return &ObjectStore{
-		Engine: "bolt",
-		BoltDB: &BoltDB{
-			Path: "/tmp/gofer-os.db",
+		Engine: "sqlite",
+		Sqlite: &Sqlite{
+			Path: "/tmp/gofer-object.db",
 		},
 		PipelineObjectLimit: 10,
 		RunObjectExpiry:     20,
