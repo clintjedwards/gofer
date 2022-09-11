@@ -694,10 +694,13 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 	// to eventually pass them into the start container function.
 	envVars, err = r.API.interpolateVars(r.Pipeline.Namespace, r.Pipeline.ID, &r.Run.ID, envVars)
 	if err != nil {
-		_ = r.setTaskRunFinished(newTaskRun.ID, nil, models.TaskRunStatusFailed, &models.TaskRunStatusReason{
+		err := r.setTaskRunFinished(newTaskRun.ID, nil, models.TaskRunStatusFailed, &models.TaskRunStatusReason{
 			Reason:      models.TaskRunStatusReasonKindFailedPrecondition,
 			Description: fmt.Sprintf("Task could not be run due to inability to retrieve interpolated variables; %v", err),
 		})
+		if err != nil {
+			log.Error().Err(err).Msg("could not properly set task run")
+		}
 		return
 	}
 

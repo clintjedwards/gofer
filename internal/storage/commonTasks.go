@@ -53,6 +53,7 @@ func (db *DB) ListCommonTaskRegistrations(offset, limit int) ([]models.CommonTas
 
 		var registryAuth *models.RegistryAuth = nil
 		if registryAuthJSON.Valid {
+			registryAuth = &models.RegistryAuth{}
 			err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
 			if err != nil {
 				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)

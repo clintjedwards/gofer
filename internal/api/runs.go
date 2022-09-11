@@ -188,10 +188,9 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 	varList := []models.Variable{}
 
 	for _, variable := range variables {
-		variable := variable
-
 		key, err := parseInterpolationSyntax(InterpolationKindSecret, variable.Value)
 		if err == nil {
+			variable := variable
 			value, err := api.secretStore.GetSecret(pipelineSecretKey(namespace, pipeline, key))
 			if err != nil {
 				return nil, err

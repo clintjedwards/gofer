@@ -68,6 +68,7 @@ func (db *DB) ListRuns(conn qb.BaseRunner, offset, limit int, namespace, pipelin
 
 		var statusReason *models.RunStatusReason = nil
 		if statusReasonJSON.Valid {
+			statusReason = &models.RunStatusReason{}
 			err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)
 			if err != nil {
 				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
@@ -208,6 +209,7 @@ func (db *DB) GetRun(namespace, pipeline string, run int64) (models.Run, error) 
 
 	var statusReason *models.RunStatusReason = nil
 	if statusReasonJSON.Valid {
+		statusReason = &models.RunStatusReason{}
 		err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)
 		if err != nil {
 			return models.Run{}, fmt.Errorf("database error occurred; could not decode object; %v", err)

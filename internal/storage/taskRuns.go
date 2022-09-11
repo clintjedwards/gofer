@@ -69,6 +69,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 
 		var statusReason *models.TaskRunStatusReason = nil
 		if statusReasonJSON.Valid {
+			statusReason = &models.TaskRunStatusReason{}
 			err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)
 			if err != nil {
 				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
@@ -207,6 +208,7 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 
 	var statusReason *models.TaskRunStatusReason = nil
 	if statusReasonJSON.Valid {
+		statusReason = &models.TaskRunStatusReason{}
 		err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)
 		if err != nil {
 			return models.TaskRun{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
@@ -297,7 +299,7 @@ func (db *DB) UpdateTaskRun(taskRun *models.TaskRun, fields UpdatableTaskRunFiel
 		if err != nil {
 			return fmt.Errorf("database error occurred; could not encode object; %v", err)
 		}
-		query = query.Set("status_reason", statusReason)
+		query = query.Set("status_reason", string(statusReason))
 	}
 
 	if fields.LogsExpired != nil {
