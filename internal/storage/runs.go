@@ -272,7 +272,7 @@ func (db *DB) UpdateRun(namespace, pipeline string, run int64, fields UpdatableR
 		if err != nil {
 			return fmt.Errorf("database error occurred; could not encode object; %v", err)
 		}
-		query = query.Set("status_reason", statusReason)
+		query = query.Set("status_reason", string(statusReason))
 	}
 
 	if fields.TaskRuns != nil {

@@ -255,7 +255,7 @@ func (r *RunStateMachine) waitRunFinish() {
 
 	// If the task run map hasn't had all the entries com in we should wait until it does.
 	for {
-		if len(r.TaskRuns.Keys()) != len(r.Pipeline.CustomTasks) {
+		if len(r.TaskRuns.Keys()) != len(r.Pipeline.CustomTasks)+len(r.Pipeline.CommonTasks) {
 			time.Sleep(time.Millisecond * 500)
 			continue
 		}
@@ -295,18 +295,25 @@ outerLoop:
 		case models.TaskRunStatusUnknown:
 			fallthrough
 		case models.TaskRunStatusFailed:
-			_ = r.setRunFinished(models.RunStatusFailed, &models.RunStatusReason{
+			err := r.setRunFinished(models.RunStatusFailed, &models.RunStatusReason{
 				Reason:      models.RunStatusReasonKindAbnormalExit,
 				Description: "One or more task runs failed during execution",
 			})
+			if err != nil {
+				log.Error().Err(err).Msg("could not set run finished")
+			}
+
 			return
 		case models.TaskRunStatusSuccessful:
 			continue
 		case models.TaskRunStatusCancelled:
-			_ = r.setRunFinished(models.RunStatusCancelled, &models.RunStatusReason{
+			err := r.setRunFinished(models.RunStatusCancelled, &models.RunStatusReason{
 				Reason:      models.RunStatusReasonKindAbnormalExit,
 				Description: "One or more task runs were cancelled during execution",
 			})
+			if err != nil {
+				log.Error().Err(err).Msg("could not set run finished")
+			}
 			return
 
 		case models.TaskRunStatusSkipped:
