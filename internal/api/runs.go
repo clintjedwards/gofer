@@ -104,11 +104,13 @@ func combineVariables(run *models.Run, task models.Task) []models.Variable {
 
 	taskVars := map[string]*models.Variable{}
 	for _, variable := range task.GetVariables() {
+		variable := variable
 		taskVars[strings.ToUpper(variable.Key)] = &variable
 	}
 
 	runVars := map[string]*models.Variable{}
 	for _, variable := range run.Variables {
+		variable := variable
 		runVars[variable.Key] = &variable
 	}
 
@@ -120,6 +122,7 @@ func combineVariables(run *models.Run, task models.Task) []models.Variable {
 
 	variables := []models.Variable{}
 	for key, value := range taskRunVars {
+		value := value
 		if key == "" {
 			// It is possible for the user to enter an empty key, but that would be an error when
 			// attempting to pass it to the docker container.
@@ -140,6 +143,7 @@ func mergeMaps[ValueType string | *models.Variable](maps ...map[string]ValueType
 
 	for _, extraMap := range maps {
 		for key, value := range extraMap {
+			value := value
 			newMap[key] = value
 		}
 	}
@@ -153,6 +157,8 @@ func convertVarsToSlice(vars map[string]string, source models.VariableSource) []
 	variables := []models.Variable{}
 
 	for key, value := range vars {
+		key := key
+		value := value
 		variables = append(variables, models.Variable{
 			Key:    key,
 			Value:  value,
@@ -169,6 +175,7 @@ func convertVarsToMap(vars []models.Variable) map[string]string {
 	variables := map[string]string{}
 
 	for _, variable := range vars {
+		variable := variable
 		variables[strings.ToUpper(variable.Key)] = variable.Value
 	}
 
