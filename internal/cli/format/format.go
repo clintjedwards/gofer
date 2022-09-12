@@ -3,10 +3,10 @@ package format
 import (
 	"fmt"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/clintjedwards/gofer/models"
-	"github.com/olekukonko/tablewriter"
 
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
@@ -45,30 +45,21 @@ func NormalizeEnumValue[s ~string](value s, unknownString string) string {
 	return state
 }
 
-func GenerateGenericTable(rows int, data [][]string) string {
+func GenerateGenericTable(data [][]string, sep string, indent int) string {
 	tableString := &strings.Builder{}
-	table := tablewriter.NewWriter(tableString)
+	table := tabwriter.NewWriter(tableString, 0, 2, 1, ' ', tabwriter.TabIndent)
 
-	headers := []string{}
-	for i := 1; i < rows; i++ {
-		headers = append(headers, "  ")
+	for _, item := range data {
+		fmttedRow := ""
+
+		for i := 1; i < indent; i++ {
+			fmttedRow += " "
+		}
+
+		fmttedRow += strings.Join(item, fmt.Sprintf("\t%s ", sep))
+		fmt.Fprintln(table, fmttedRow)
 	}
-
-	table.SetHeader(headers)
-	table.SetAutoWrapText(false)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetAutoFormatHeaders(false)
-	table.SetRowSeparator("―")
-	table.SetRowLine(false)
-	table.SetColumnSeparator("")
-	table.SetCenterSeparator("")
-
-	table.AppendBulk(data)
-
-	table.Render()
+	table.Flush()
 	return tableString.String()
 }
 

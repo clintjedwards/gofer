@@ -147,15 +147,10 @@ type taskData struct {
 	NumItems  int
 }
 
-type eventData struct {
-	Processed string
-	Details   string
-}
-
 type triggerData struct {
 	Label    string
 	Name     string
-	Events   []eventData
+	Events   string
 	Settings map[string]string
 	State    string
 }
@@ -184,7 +179,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 		recentRunHealth = append(recentRunHealth, run.Status)
 	}
 
-	recentRunsTable := format.GenerateGenericTable(5, recentRunList)
+	recentRunsTable := format.GenerateGenericTable(recentRunList, "", 4)
 
 	triggerDataList := []triggerData{}
 	for _, trigger := range pipeline.Triggers {
@@ -193,7 +188,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 			return "", fmt.Errorf("could not get event data: %v", err)
 		}
 
-		eventDataList := []eventData{}
+		eventDataList := [][]string{}
 		for _, event := range recentEvents {
 			details := ""
 			evtDetail, ok := event.Details.(models.EventResolvedTriggerEvent)
@@ -201,16 +196,17 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 				details = evtDetail.Result.Details
 			}
 
-			eventDataList = append(eventDataList, eventData{
-				Processed: format.UnixMilli(event.Emitted, "Never", detail),
-				Details:   details,
+			eventDataList = append(eventDataList, []string{
+				format.UnixMilli(event.Emitted, "Never", detail), details,
 			})
 		}
+
+		eventDataTable := format.GenerateGenericTable(eventDataList, "|", 7)
 
 		triggerDataList = append(triggerDataList, triggerData{
 			Label:    color.BlueString(trigger.Label),
 			Name:     color.YellowString(trigger.Name),
-			Events:   eventDataList,
+			Events:   eventDataTable,
 			Settings: trigger.Settings,
 		})
 	}
@@ -253,10 +249,9 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
   {{- if .RecentRuns}}
 
   📦 Recent Runs
-    {{.RecentRuns}}
-  {{- end}}
+{{.RecentRuns}}
+  {{- end -}}
   {{- if .Tasks }}
-
   🗒 Tasks:
     {{- range $task := .Tasks}}
     • {{ $task.Name }}
@@ -272,13 +267,10 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 
   🗘 Attached Triggers:
     {{- range $trigger := .Triggers}}
-    ⟳ {{ $trigger.Label }} ({{ $trigger.Name }}) {{- if ne (len $trigger.Events) 0 }} recent events:{{- end }}
-      {{- range $event := $trigger.Events }}
-      + {{$event.Processed}} | {{$event.Details}}
-	  {{- end}}
-    {{- end}}
+    ⟳ {{ $trigger.Label }} ({{ $trigger.Name }}) {{if $trigger.Events }}recent events:{{- end }}
+{{ $trigger.Events }}
+    {{- end -}}
   {{- end}}
-
 Created {{.Created}} | Last Run {{.LastRun}} | Health {{.Health}}`
 
 	var tpl bytes.Buffer

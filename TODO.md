@@ -129,3 +129,6 @@ Update rust sdk library to be equal to golangs.
   - Document the debug containers also
   - Replace blurry png for readme.
   - Add an example of entrypoint/command running a multi-line script
+
+* Why is the database getting locked?
+* When we shutdown it doesn't seem like trigger shutdown appropriately happens.

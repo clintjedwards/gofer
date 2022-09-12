@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/Masterminds/squirrel v1.5.3
-	github.com/asdine/storm/v3 v3.2.1
 	github.com/clintjedwards/polyfmt v0.4.0
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0
@@ -24,7 +23,6 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rs/zerolog v1.27.0
 	github.com/spf13/cobra v1.5.0
-	go.etcd.io/bbolt v1.3.6
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
