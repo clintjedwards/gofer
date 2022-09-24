@@ -16,6 +16,10 @@ func (db *DB) ListSecretStoreGlobalKeys() ([]models.SecretStoreKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	globalKeys := []models.SecretStoreKey{}

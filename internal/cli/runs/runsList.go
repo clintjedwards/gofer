@@ -87,6 +87,7 @@ func runsList(cmd *cobra.Command, args []string) error {
 			cliformat.UnixMilli(run.Ended, "Still running", cl.State.Config.Detail),
 			cliformat.Duration(run.Started, run.Ended),
 			cliformat.ColorizeRunState(cliformat.NormalizeEnumValue(run.State, "Unknown")),
+			cliformat.ColorizeRunStatus(cliformat.NormalizeEnumValue(run.Status, "Unknown")),
 			fmt.Sprintf("%s(%s)", run.Trigger.Name, color.YellowString(run.Trigger.Label)),
 		})
 	}
@@ -103,7 +104,7 @@ func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "Result", "Triggered By"})
+	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "State", "Status", "Triggered By"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)
@@ -122,9 +123,11 @@ func formatTable(data [][]string, color bool) string {
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
+			tablewriter.Color(tablewriter.FgBlueColor),
 		)
 		table.SetColumnColor(
 			tablewriter.Color(tablewriter.FgYellowColor),
+			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),

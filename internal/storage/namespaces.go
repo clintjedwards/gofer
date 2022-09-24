@@ -26,6 +26,10 @@ func (db *DB) ListNamespaces(offset, limit int) ([]models.Namespace, error) {
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	namespaces := []models.Namespace{}

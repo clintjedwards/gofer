@@ -38,7 +38,7 @@ func NormalizeEnumValue[s ~string](value s, unknownString string) string {
 	toLower := cases.Lower(language.AmericanEnglish)
 	state := toTitle.String(toLower.String(string(value)))
 
-	if state == "Unknown" {
+	if strings.Contains(strings.ToLower(state), "unknown") {
 		return unknownString
 	}
 
@@ -89,7 +89,7 @@ func Duration(start, end int64) string {
 func ColorizePipelineState(state string) string {
 	switch strings.ToUpper(state) {
 	case string(models.PipelineStateUnknown):
-		return color.RedString(state)
+		return color.YellowString(state)
 	case string(models.PipelineStateActive):
 		return color.GreenString(state)
 	case string(models.PipelineStateDisabled):
@@ -102,7 +102,7 @@ func ColorizePipelineState(state string) string {
 func ColorizeRunState(state string) string {
 	switch strings.ToUpper(state) {
 	case string(models.RunStateUnknown):
-		return color.RedString(state)
+		return color.YellowString(state)
 	case string(models.RunStatePending):
 		return color.YellowString(state)
 	case string(models.RunStateRunning):
@@ -117,7 +117,7 @@ func ColorizeRunState(state string) string {
 func ColorizeRunStatus(status string) string {
 	switch strings.ToUpper(status) {
 	case string(models.RunStatusUnknown):
-		return color.RedString(status)
+		return color.YellowString(status)
 	case string(models.RunStatusSuccessful):
 		return color.GreenString(status)
 	case string(models.RunStatusFailed):
@@ -132,7 +132,7 @@ func ColorizeRunStatus(status string) string {
 func ColorizeTaskRunState(state string) string {
 	switch strings.ToUpper(state) {
 	case string(models.TaskRunStateUnknown):
-		return color.RedString(state)
+		return color.YellowString(state)
 	case string(models.TaskRunStateProcessing):
 		return color.YellowString(state)
 	case string(models.TaskRunStateWaiting):
@@ -149,7 +149,7 @@ func ColorizeTaskRunState(state string) string {
 func ColorizeTaskRunStatus(status string) string {
 	switch strings.ToUpper(status) {
 	case string(models.TaskRunStatusUnknown):
-		return color.RedString(status)
+		return color.YellowString(status)
 	case string(models.TaskRunStatusSuccessful):
 		return color.GreenString(status)
 	case string(models.TaskRunStatusFailed):
@@ -166,7 +166,7 @@ func ColorizeTaskRunStatus(status string) string {
 func ColorizeTriggerState(state string) string {
 	switch strings.ToUpper(state) {
 	case string(models.TriggerStateUnknown):
-		return color.RedString(state)
+		return color.YellowString(state)
 	case string(models.TriggerStateProcessing):
 		return color.YellowString(state)
 	case string(models.TriggerStateRunning):
@@ -181,7 +181,7 @@ func ColorizeTriggerState(state string) string {
 func ColorizeTriggerStatus(status string) string {
 	switch strings.ToUpper(status) {
 	case string(models.TriggerStatusUnknown):
-		return color.RedString(status)
+		return color.YellowString(status)
 	case string(models.TriggerStatusEnabled):
 		return color.GreenString(status)
 	case string(models.TriggerStatusDisabled):
@@ -194,7 +194,7 @@ func ColorizeTriggerStatus(status string) string {
 func ColorizeCommonTaskStatus(status string) string {
 	switch strings.ToUpper(status) {
 	case string(models.CommonTaskStatusUnknown):
-		return color.RedString(status)
+		return color.YellowString(status)
 	case string(models.CommonTaskStatusEnabled):
 		return color.GreenString(status)
 	case string(models.CommonTaskStatusDisabled):

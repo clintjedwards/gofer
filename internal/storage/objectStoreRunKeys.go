@@ -18,6 +18,10 @@ func (db *DB) ListObjectStoreRunKeys(namespace, pipeline string, run int64) ([]m
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	runKeys := []models.ObjectStoreKey{}

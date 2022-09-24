@@ -77,6 +77,10 @@ Update rust sdk library to be equal to golangs.
 - If a trigger by the same name is already installed, we should refuse to install another but instead allow the user to update it.
 - Should triggers be able to pass "metadata" values back to pipelines that are secret?
 
+### Things I need to do but probably will never get around to
+
+- Test registry auth.
+
 ### General
 
 - For FromProto methods where the reference might be nil; auto-create the reference before attempting to fill it. Look at registry auth for an example.
@@ -92,6 +96,7 @@ Update rust sdk library to be equal to golangs.
 - The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
 - It is possible for a trigger subscription to be disabled due to network error and the trigger to still send it a successful event, but
   not understand that it wasn't successfully delivered. Overtime this might cause drift between what events triggers should actually be sending back.
+- Give a quick thought to models as they move through different phases from the Config -> SDK -> Proto -> Models
 
 ### Documentation
 
@@ -114,15 +119,9 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- Handle foreign key constraint errors like namespace missing.
-- Give a quick thought to models as they move through different phases from the Config -> SDK -> Proto -> Models
-- Test registry auth.
-- CLI Fix representation for UNKNOWN status
-- There is a weird bug, when we can't find something in only the object bolt database the function to get that item will just hang.
 - We currently cannot disambiguiate global secrets from pipeline secrets in the interpolation strings
 - Update Golang SDK library
   - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
-- Convert over all previously lost example pipelines.
 - Use Mdbook for documentation.
 
   - After mdbook upgrade update all code links to it.
@@ -130,5 +129,4 @@ Update rust sdk library to be equal to golangs.
   - Replace blurry png for readme.
   - Add an example of entrypoint/command running a multi-line script
 
-* Why is the database getting locked?
 * When we shutdown it doesn't seem like trigger shutdown appropriately happens.

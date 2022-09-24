@@ -30,6 +30,10 @@ func (db *DB) ListTriggerRegistrations(offset, limit int) ([]models.TriggerRegis
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	triggerRegistrations := []models.TriggerRegistration{}

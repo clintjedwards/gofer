@@ -38,6 +38,10 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	taskRuns := []models.TaskRun{}

@@ -40,6 +40,10 @@ func (db *DB) ListRuns(conn qb.BaseRunner, offset, limit int, namespace, pipelin
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	runs := []models.Run{}

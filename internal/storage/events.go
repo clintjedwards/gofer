@@ -30,6 +30,10 @@ func (db *DB) ListEvents(offset, limit int, reverse bool) ([]models.Event, error
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	events := []models.Event{}

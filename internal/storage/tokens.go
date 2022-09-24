@@ -23,6 +23,10 @@ func (db *DB) ListTokens(offset, limit int) ([]models.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 	defer rows.Close()
 
 	tokens := []models.Token{}
