@@ -24,9 +24,10 @@ func TestParseInterpolationSyntaxKnownGood(t *testing.T) {
 		value    string
 		expected string
 	}{
-		"secret":   {kind: InterpolationKindSecret, value: "secret{{example}}", expected: "example"},
-		"pipeline": {kind: InterpolationKindPipeline, value: "pipeline{{example}}", expected: "example"},
-		"run":      {kind: InterpolationKindRun, value: "run{{example}}", expected: "example"},
+		"pipeline secret": {kind: InterpolationKindPipelineSecret, value: "pipeline_secret{{example}}", expected: "example"},
+		"global secret":   {kind: InterpolationKindGlobalSecret, value: "global_secret{{example}}", expected: "example"},
+		"pipeline object": {kind: InterpolationKindPipelineObject, value: "pipeline_object{{example}}", expected: "example"},
+		"run object":      {kind: InterpolationKindRunObject, value: "run_object{{example}}", expected: "example"},
 	}
 
 	for name, test := range tests {
@@ -49,8 +50,8 @@ func TestParseInterpolationSyntaxKnownBad(t *testing.T) {
 		value    string
 		expected string
 	}{
-		"incorrect_kind": {kind: InterpolationKindSecret, value: "run{{example}}", expected: ""},
-		"normal_value":   {kind: InterpolationKindSecret, value: "normal_value", expected: ""},
+		"incorrect_kind": {kind: InterpolationKindPipelineSecret, value: "run{{example}}", expected: ""},
+		"normal_value":   {kind: InterpolationKindGlobalSecret, value: "normal_value", expected: ""},
 	}
 
 	for name, test := range tests {

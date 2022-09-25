@@ -25,19 +25,21 @@ const (
 type InterpolationKind string
 
 const (
-	InterpolationKindUnknown  InterpolationKind = "UNKNOWN"
-	InterpolationKindSecret   InterpolationKind = "SECRET"
-	InterpolationKindPipeline InterpolationKind = "PIPELINE"
-	InterpolationKindRun      InterpolationKind = "RUN"
+	InterpolationKindUnknown        InterpolationKind = "UNKNOWN"
+	InterpolationKindPipelineSecret InterpolationKind = "PIPELINE_SECRET"
+	InterpolationKindGlobalSecret   InterpolationKind = "GLOBAL_SECRET"
+	InterpolationKindPipelineObject InterpolationKind = "PIPELINE_OBJECT"
+	InterpolationKindRunObject      InterpolationKind = "RUN_OBJECT"
 )
 
 // Checks a string for the existence of a interpolation format. ex: "secret{{ example }}".
 // If an interpolation was found we returns some, if not we return none.
 //
 // Currently the supported interpolation syntaxes are:
-// `secret{{ example }}` for inserting from the secret store.
-// `pipeline{{ example }}` for inserting from the pipeline object store.
-// `run{{ example }}` for inserting from the run object store.
+// `pipeline_secret{{ example }} for inserting from the pipeline secret store`
+// `global_secret{{ example }} for inserting from the global secret store`
+// `pipeline_object{{ example }}` for inserting from the pipeline object store.
+// `run_object{{ example }}` for inserting from the run object store.
 func parseInterpolationSyntax(kind InterpolationKind, input string) (string, error) {
 	variable := strings.TrimSpace(input)
 	interpolationPrefix := fmt.Sprintf("%s{{", strings.ToLower(string(kind)))
@@ -188,7 +190,7 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 	varList := []models.Variable{}
 
 	for _, variable := range variables {
-		key, err := parseInterpolationSyntax(InterpolationKindSecret, variable.Value)
+		key, err := parseInterpolationSyntax(InterpolationKindPipelineSecret, variable.Value)
 		if err == nil {
 			variable := variable
 			value, err := api.secretStore.GetSecret(pipelineSecretKey(namespace, pipeline, key))
@@ -201,7 +203,20 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 			continue
 		}
 
-		key, err = parseInterpolationSyntax(InterpolationKindPipeline, variable.Value)
+		key, err = parseInterpolationSyntax(InterpolationKindGlobalSecret, variable.Value)
+		if err == nil {
+			variable := variable
+			value, err := api.secretStore.GetSecret(globalSecretKey(key))
+			if err != nil {
+				return nil, err
+			}
+
+			variable.Value = value
+			varList = append(varList, variable)
+			continue
+		}
+
+		key, err = parseInterpolationSyntax(InterpolationKindPipelineObject, variable.Value)
 		if err == nil {
 			variable := variable
 			value, err := api.objectStore.GetObject(pipelineObjectKey(namespace, pipeline, key))
@@ -215,7 +230,7 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 		}
 
 		if run != nil {
-			key, err = parseInterpolationSyntax(InterpolationKindRun, variable.Value)
+			key, err = parseInterpolationSyntax(InterpolationKindRunObject, variable.Value)
 			if err == nil {
 				variable := variable
 				value, err := api.objectStore.GetObject(runObjectKey(namespace, pipeline, *run, key))

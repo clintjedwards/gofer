@@ -115,6 +115,9 @@ Update rust sdk library to be equal to golangs.
   - For example: writing custom notifiers allows you to implement Google style static analysis
 - We can probably bring up a public version of Gofer in which the timeout is super low. How do we properly secure this? Can we prevent root containers when using the Docker mode? Maybe this is a thing for Nomad? Can we prevent root containers there? This might mean we need to add quotas and rate limiting to the main process
   which would suck and is boring to implement, but having the functionality there might make this a more scale-able tool.
+- Secrets explanation. Why is there global secrets and pipelines secrets? Whats the difference.
+  - We needed a way to store secrets for common tasks which might be used for any pipeline
+    and a way to store secrets for user's individual pipelines.
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
 
 ### On the floor
@@ -130,3 +133,10 @@ Update rust sdk library to be equal to golangs.
   - Add an example of entrypoint/command running a multi-line script
 
 * When we shutdown it doesn't seem like trigger shutdown appropriately happens.
+
+- When you ask to list a pipeline or run or task run, if that thing or it's parent does not exist we should tell the user it doesn't.
+
+* We need to add a runtime(and maybe pipeline validation) check that prevents user's from trying to
+  grab global pipeline secrets.
+
+* Orphaned run recovery is currently broken.

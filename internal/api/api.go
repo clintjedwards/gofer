@@ -174,7 +174,7 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 
 	// findOrphans is a repair method that picks up where the gofer service left off if it was shutdown while
 	// a run was currently in progress.
-	go newAPI.findOrphans()
+	// go newAPI.findOrphans()
 
 	// These two functions are responsible for gofer's trigger event loop system. The first launches goroutines that
 	// consumes events from triggers and the latter processes them into pipeline runs.

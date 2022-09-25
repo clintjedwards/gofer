@@ -14,7 +14,7 @@ func main() {
 				WithDescription("This task has no dependencies so it will run immediately").
 				WithVariables(map[string]string{
 					"SOME_VARIABLE": "something here",
-					"LOGS_HEADER":   "pipeline{{ logs_header }}",
+					"LOGS_HEADER":   "pipeline_object{{ logs_header }}",
 				})).Finish()
 	if err != nil {
 		log.Fatal(err)
