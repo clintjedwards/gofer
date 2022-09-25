@@ -122,7 +122,6 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- We currently cannot disambiguiate global secrets from pipeline secrets in the interpolation strings
 - Update Golang SDK library
   - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
 - Use Mdbook for documentation.

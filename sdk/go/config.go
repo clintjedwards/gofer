@@ -218,6 +218,22 @@ func (p *PipelineConfig) Finish() error {
 	return nil
 }
 
+func PipelineSecret(key string) string {
+	return fmt.Sprintf("pipeline_secret{{%s}}", key)
+}
+
+func GlobalSecret(key string) string {
+	return fmt.Sprintf("global_secret{{%s}}", key)
+}
+
+func PipelineObject(key string) string {
+	return fmt.Sprintf("pipeline_object{{%s}}", key)
+}
+
+func RunObject(key string) string {
+	return fmt.Sprintf("run_object{{%s}}", key)
+}
+
 var alphanumericWithUnderscores = regexp.MustCompile("^[a-zA-Z0-9_]*$")
 
 // / Identifiers are used as the primary key in most of gofer's resources.
