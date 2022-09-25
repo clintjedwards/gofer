@@ -52,6 +52,10 @@ func (t *CommonTaskConfig) ToProto() *proto.CommonTaskConfig {
 }
 
 func (t *CommonTaskConfig) validate() error {
+	err := validateVariables(t.Settings)
+	if err != nil {
+		return err
+	}
 	return validateIdentifier("label", t.Label)
 }
 

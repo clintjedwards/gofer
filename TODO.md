@@ -122,20 +122,18 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- Update Golang SDK library
-  - Include interpolation wrappers in the gofer sdk for pipelines. Should just simply wrap values and provide the string format.
-- Use Mdbook for documentation.
+- We need to add a runtime(and maybe pipeline validation) check that prevents user's from trying to
+  grab global pipeline secrets.
+
+* Use Mdbook for documentation.
 
   - After mdbook upgrade update all code links to it.
   - Document the debug containers also
   - Replace blurry png for readme.
   - Add an example of entrypoint/command running a multi-line script
 
-* When we shutdown it doesn't seem like trigger shutdown appropriately happens.
+- When we shutdown it doesn't seem like trigger shutdown appropriately happens.
 
-- When you ask to list a pipeline or run or task run, if that thing or it's parent does not exist we should tell the user it doesn't.
+* When you ask to list a pipeline or run or task run, if that thing or it's parent does not exist we should tell the user it doesn't.(This is most likely just simply passing up the not found error from the db)
 
-* We need to add a runtime(and maybe pipeline validation) check that prevents user's from trying to
-  grab global pipeline secrets.
-
-* Orphaned run recovery is currently broken.
+- Orphaned run recovery is currently broken.

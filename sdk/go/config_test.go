@@ -118,3 +118,18 @@ func TestSimpleConfigSerialization(t *testing.T) {
 		t.Errorf("proto did not match (-want +got):\n%s", diff)
 	}
 }
+
+// Tests that compliation fails if user attempts to request a global var.
+func TestInvalidConfigGlobalSecrets(t *testing.T) {
+	err := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
+		WithDescription("Simple Test Pipeline").
+		WithTasks(
+			NewCustomTask("simple_task", "ubuntu:latest").
+				WithDescription("This task simply prints our hello-world message and exits!").
+				WithCommand("echo", `Hello from Gofer!`).
+				WithVariable("test_var", GlobalSecret("some_secret_here")),
+		).Finish()
+	if err == nil {
+		t.Fatal("pipeline should return an error due to user attempting to use global secrets, but it does not")
+	}
+}

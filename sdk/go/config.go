@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
@@ -236,11 +237,11 @@ func RunObject(key string) string {
 
 var alphanumericWithUnderscores = regexp.MustCompile("^[a-zA-Z0-9_]*$")
 
-// / Identifiers are used as the primary key in most of gofer's resources.
-// / They're defined by the user and therefore should have some sane bounds.
-// / For all ids we'll want the following:
-// / * 32 > characters < 3
-// / * Only alphanumeric characters or underscores
+// Identifiers are used as the primary key in most of gofer's resources.
+// They're defined by the user and therefore should have some sane bounds.
+// For all ids we'll want the following:
+//   - 32 > characters < 3
+//   - Only alphanumeric characters or underscores
 func validateIdentifier(arg, value string) error {
 	if len(value) > 32 {
 		return fmt.Errorf("length of arg %q cannot be greater than 32", arg)
@@ -253,6 +254,20 @@ func validateIdentifier(arg, value string) error {
 	if !alphanumericWithUnderscores.MatchString(value) {
 		return fmt.Errorf("config %q can only be made up of alphanumeric and underscore characters; found %q", arg, value)
 	}
+	return nil
+}
+
+// validateVariables checks to make sure all variables are in a parsable form and don't contain any requests for global secrets
+// as this will fail the pipeline.
+func validateVariables(variables map[string]string) error {
+	// TODO(clintjedwards): We should check to make sure that "interpolatevars" function in the main program will work here.
+
+	for _, variable := range variables {
+		if strings.HasPrefix(variable, "global_secret") {
+			return fmt.Errorf("invalid variable %q; cannot use global secrets in pipeline configs; global secrets are only allowed for system level configs set up by Gofer administrators", variable)
+		}
+	}
+
 	return nil
 }
 

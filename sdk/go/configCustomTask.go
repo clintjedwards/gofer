@@ -104,6 +104,10 @@ func (t *CustomTaskConfig) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
 }
 
 func (t *CustomTaskConfig) validate() error {
+	err := validateVariables(t.Variables)
+	if err != nil {
+		return err
+	}
 	return validateIdentifier("id", t.ID)
 }
 

@@ -205,6 +205,12 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 
 		key, err = parseInterpolationSyntax(InterpolationKindGlobalSecret, variable.Value)
 		if err == nil {
+			// We exclude instead of include so in case sources get updated, we don't potentially
+			// leak global secrets.
+			if variable.Source != models.VariableSourceSystem && variable.Source != models.VariableSourceTrigger {
+				return nil, fmt.Errorf("invalid request of global secret %q; interpolation of global secrets not allowed in user; global secrets are only allowed for system level configs(ex. Common tasks, triggers) set by admins", key)
+			}
+
 			variable := variable
 			value, err := api.secretStore.GetSecret(globalSecretKey(key))
 			if err != nil {
