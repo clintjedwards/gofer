@@ -27,6 +27,7 @@ We need a common way to alert on a PR or something that a task has succeeded or 
     - A Gofer has uninstalled a trigger/commontask that a pipeline previously depended on.
   - When we uninstall common tasks or triggers we can list all pipelines that currently use those, disable them and add an error.
   - Create an API side pipeline validate that uses the sdk validate but also implements some things the SDK cannot do, like for instance check that all the triggers mentioned in the pipeline config are registered
+- When you ask to list a pipeline or run or task run, if that thing or it's parent does not exist we should tell the user it doesn't.(This is most likely just simply passing up the not found error from the db)
 
 ### SDK
 
@@ -93,6 +94,7 @@ Update rust sdk library to be equal to golangs.
 
 - It currently runs as a singleton, not distributed.
 - Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of large git repos is the biggest pain point here.
+  - To give people the ability to cache certain important items like repositories we can create a special ubuntu container with a fuse file system. We can then allow people to use this container to connect back to the object fs and make common tasks like storing your repo easy.
 - The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
 - It is possible for a trigger subscription to be disabled due to network error and the trigger to still send it a successful event, but
   not understand that it wasn't successfully delivered. Overtime this might cause drift between what events triggers should actually be sending back.
@@ -108,8 +110,7 @@ Update rust sdk library to be equal to golangs.
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add interval as the example for new triggers in the docs
-- Write a design document
-  - Document why notifiers are designed the way they are first-class citizens.
+- Document why common tasks are designed the way they are first-class citizens.
   - Why is this? Because of authentication. It's nice to set up the Slack app once and protect the credentials such that any user for you application can use it.
 - Improve documentation and examples for features.
   - For example: writing custom notifiers allows you to implement Google style static analysis
@@ -118,22 +119,18 @@ Update rust sdk library to be equal to golangs.
 - Secrets explanation. Why is there global secrets and pipelines secrets? Whats the difference.
   - We needed a way to store secrets for common tasks which might be used for any pipeline
     and a way to store secrets for user's individual pipelines.
+  - Global secrets can only be set by administrators
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
+- Write copius notes on commontasks and triggers layout. The difference between user passed config and system passed config. And suggest a way to collect those.
 
 ### On the floor
 
-- We need to add a runtime(and maybe pipeline validation) check that prevents user's from trying to
-  grab global pipeline secrets.
-
-* Use Mdbook for documentation.
+- Use Mdbook for documentation.
 
   - After mdbook upgrade update all code links to it.
   - Document the debug containers also
   - Replace blurry png for readme.
   - Add an example of entrypoint/command running a multi-line script
 
-- When we shutdown it doesn't seem like trigger shutdown appropriately happens.
-
-* When you ask to list a pipeline or run or task run, if that thing or it's parent does not exist we should tell the user it doesn't.(This is most likely just simply passing up the not found error from the db)
-
-- Orphaned run recovery is currently broken.
+* When we shutdown it doesn't seem like trigger shutdown appropriately happens.
+* Orphaned run recovery is currently broken.

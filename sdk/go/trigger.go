@@ -93,7 +93,7 @@ func (t *trigger) Info(ctx context.Context, req *proto.TriggerInfoRequest) (*pro
 		return &proto.TriggerInfoResponse{}, nil
 	}
 
-	resp.Name = os.Getenv("GOFER_TRIGGER_NAME")
+	resp.Name = os.Getenv("GOFER_PLUGIN_SYSTEM_NAME")
 
 	return resp, nil
 }
@@ -284,7 +284,7 @@ type internalTriggerConfig struct {
 // getTriggerConfig returns environment variables that all triggers require.
 func getTriggerConfig() (*internalTriggerConfig, error) {
 	config := internalTriggerConfig{}
-	err := envconfig.Process("gofer_trigger", &config)
+	err := envconfig.Process("gofer_plugin_system", &config)
 	if err != nil {
 		return nil, err
 	}
@@ -323,18 +323,24 @@ func parseLogLevel(loglevel string) zerolog.Level {
 	}
 }
 
-// GetConfig is a convenience function that returns trigger/notifier config values from the environment.
+// GetConfig is a convenience function that returns trigger/commonTask config values from the environment.
 // It simply puts the needed config in the correct format to be retrieved from the environment
 // so the caller doesn't have to.
-func GetConfig(variable string) string {
-	name := os.Getenv("GOFER_TRIGGER_NAME")
-	return os.Getenv(fmt.Sprintf("GOFER_TRIGGER_%s_%s", strings.ToUpper(name), strings.ToUpper(variable)))
+func GetConfig(variableName string) string {
+	return os.Getenv(fmt.Sprintf("GOFER_PLUGIN_CONFIG_%s", strings.ToUpper(variableName)))
+}
+
+// GetParameters is a convenience function that returns trigger/commonTask config values from the environment.
+// It simply puts the needed config in the correct format to be retrieved from the environment
+// so the caller doesn't have to.
+func GetParameter(variableName string) string {
+	return os.Getenv(fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(variableName)))
 }
 
 // InfoResponse is a convenience function for the Info interface function response.
 func InfoResponse(documentationLink string) (*proto.TriggerInfoResponse, error) {
 	return &proto.TriggerInfoResponse{
-		Name:          os.Getenv("GOFER_TRIGGER_NAME"),
+		Name:          os.Getenv("GOFER_PLUGIN_SYSTEM_NAME"),
 		Documentation: documentationLink,
 	}, nil
 }

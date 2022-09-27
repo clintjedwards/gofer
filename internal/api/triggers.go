@@ -28,27 +28,27 @@ func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key strin
 	// variables.
 	systemTriggerVars := []models.Variable{
 		{
-			Key:    "GOFER_TRIGGER_TLS_CERT",
+			Key:    "GOFER_PLUGIN_SYSTEM_TLS_CERT",
 			Value:  cert,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_TRIGGER_TLS_KEY",
+			Key:    "GOFER_PLUGIN_SYSTEM_TLS_KEY",
 			Value:  key,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_TRIGGER_NAME",
+			Key:    "GOFER_PLUGIN_SYSTEM_NAME",
 			Value:  trigger.Name,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_TRIGGER_LOG_LEVEL",
+			Key:    "GOFER_PLUGIN_SYSTEM_LOG_LEVEL",
 			Value:  api.config.LogLevel,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_TRIGGER_KEY",
+			Key:    "GOFER_PLUGIN_SYSTEM_KEY",
 			Value:  triggerKey,
 			Source: models.VariableSourceSystem,
 		},
