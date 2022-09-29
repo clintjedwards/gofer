@@ -310,7 +310,7 @@ func (api *API) installBaseTriggers() error {
 		registration := models.TriggerRegistration{}
 		registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
 			Name:  "cron",
-			Image: "ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest",
+			Image: "ghcr.io/clintjedwards/gofer/triggers/cron:latest",
 		})
 
 		err := api.db.InsertTriggerRegistration(&registration)
@@ -328,7 +328,7 @@ func (api *API) installBaseTriggers() error {
 		registration := models.TriggerRegistration{}
 		registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
 			Name:  "interval",
-			Image: "ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest",
+			Image: "ghcr.io/clintjedwards/gofer/triggers/interval:latest",
 		})
 
 		err := api.db.InsertTriggerRegistration(&registration)

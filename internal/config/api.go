@@ -88,7 +88,7 @@ func DefaultAPIConfig() *API {
 	}
 }
 
-// Server respresents lower level HTTP/GRPC server settings.
+// Server represents lower level HTTP/GRPC server settings.
 type Server struct {
 	// DevMode turns on humanized debug messages, extra debug logging for the webserver and other
 	// convenient features for development. Usually turned on along side LogLevel=debug.

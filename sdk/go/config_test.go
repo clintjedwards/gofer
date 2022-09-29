@@ -28,11 +28,11 @@ func ExampleNewPipeline_simple() {
 }
 
 func ExampleNewPipeline_dag() {
-	taskOne := NewCustomTask("task_one", "ghcr.io/clintjedwards/gofer-containers/debug/wait:latest").
+	taskOne := NewCustomTask("task_one", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
 		WithDescription("This task has no dependencies so it will run immediately").
 		WithVariable("WAIT_DURATION", "20s")
 
-	dependsOnOne := NewCustomTask("depends_on_one", "ghcr.io/clintjedwards/gofer-containers/debug/log:latest").
+	dependsOnOne := NewCustomTask("depends_on_one", "ghcr.io/clintjedwards/gofer/debug/log:latest").
 		WithDescription("This task depends on the first task to finish with a successfull result."+
 			"This means that if the first task fails this task will not run.").
 		WithVariable("LOGS_HEADER", "This string can be anything you want it to be").

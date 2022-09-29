@@ -72,6 +72,50 @@ deploy-website:
 > USE_SSH_true; npm --prefix ./website run deploy
 .PHONY: deploy-website
 
+# 	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/github:${semver} .
+#	docker tag ghcr.io/clintjedwards/gofer/triggers/github:${semver} ghcr.io/clintjedwards/gofer/triggers/github:latest
+#	docker push ghcr.io/clintjedwards/gofer/triggers/github:${semver}
+#	docker push ghcr.io/clintjedwards/gofer/triggers/github:latest
+
+## build-containers: build docker containers
+build-containers: check-semver-included
+> cd containers
+> docker build -f triggers/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/cron:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/triggers/cron:${SEMVER} ghcr.io/clintjedwards/gofer/triggers/cron:latest
+> docker build -f triggers/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/interval:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/triggers/interval:${SEMVER} ghcr.io/clintjedwards/gofer/triggers/interval:latest
+
+> docker build -f debug/envs/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} ghcr.io/clintjedwards/gofer/debug/envs:latest
+> docker build -f debug/fail/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/fail:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/debug/fail:${SEMVER} ghcr.io/clintjedwards/gofer/debug/fail:latest
+> docker build -f debug/log/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/log:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/debug/log:${SEMVER} ghcr.io/clintjedwards/gofer/debug/log:latest
+> docker build -f debug/wait/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} ghcr.io/clintjedwards/gofer/debug/wait:latest
+
+> docker build -f tasks/debug/Dockerfile -t ghcr.io/clintjedwards/gofer/tasks/debug:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/tasks/debug:${SEMVER} ghcr.io/clintjedwards/gofer/tasks/debug:latest
+
+## push-containers: push docker containers to github
+push-containers: check-semver-included
+> docker push ghcr.io/clintjedwards/gofer/triggers/cron:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/triggers/cron:latest
+> docker push ghcr.io/clintjedwards/gofer/triggers/interval:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/triggers/interval:latest
+
+> docker push ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/debug/envs:latest
+> docker push ghcr.io/clintjedwards/gofer/debug/fail:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/debug/fail:latest
+> docker push ghcr.io/clintjedwards/gofer/debug/log:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/debug/log:latest
+> docker push ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/debug/wait:latest
+
+> docker push ghcr.io/clintjedwards/gofer/tasks/debug:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/tasks/debug:latest
+
 ## help: prints this help message
 help:
 > @echo "Usage: "

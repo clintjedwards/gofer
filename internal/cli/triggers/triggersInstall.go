@@ -30,8 +30,8 @@ By simply following the prompt in this method the Gofer CLI will collect the nec
 the trigger. It will then attempt to install the trigger on your behalf.
 
 When using the --manual flag you'll need to provide config values via the "-c" flag in KEY=VALUE format.`,
-	Example: `$ gofer triggers install cron ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest
-$ gofer triggers install interval ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest --manual -c MIN_DURATION=1m`,
+	Example: `$ gofer triggers install cron ghcr.io/clintjedwards/gofer/triggers/cron:latest
+$ gofer triggers install interval ghcr.io/clintjedwards/gofer/triggers/interval:latest --manual -c MIN_DURATION=1m`,
 	RunE: triggersInstall,
 	Args: cobra.ExactArgs(2),
 }
