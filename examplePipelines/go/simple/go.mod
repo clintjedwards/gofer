@@ -1,7 +1,5 @@
 module github.com/clintjedwards/gofer/examplePipelines/go/simple
 
-replace github.com/clintjedwards/gofer => ../../../
-
 go 1.19
 
 require github.com/clintjedwards/gofer v0.0.0-20220828041951-a0aacbc1af76

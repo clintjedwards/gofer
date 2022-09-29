@@ -28,7 +28,7 @@ GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GO_LDFLAGS = '-X "github.com/clintjedwards/${APP_NAME}/internal/cli.appVersion=$(VERSION)" \
 				-X "github.com/clintjedwards/${APP_NAME}/internal/api.appVersion=$(VERSION)"'
 SHELL = /bin/bash
-SEMVER = 0.0.1
+SEMVER = 0.0.0
 VERSION = ${SEMVER}_${GIT_COMMIT}
 
 ## build: run tests and compile application
@@ -45,16 +45,14 @@ build-protos:
 .PHONY: build-protos
 
 ## run: build application and run server
-run: export DEBUG=true
 run:
-> go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
+> DEBUG=true; SEMVER=0.0.0; go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
 > /tmp/${APP_NAME} service start
 .PHONY: run
 
 ## run-race: build application and run server with race detector
-run-race: export DEBUG=true
 run-race:
-> go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
+> DEBUG=true; SEMVER=0.0.0; go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
 > /tmp/${APP_NAME} service start
 .PHONY: run-race
 
@@ -69,10 +67,9 @@ build-website:
 .PHONY: build-website
 
 ## deploy-website: build website js and deploy to github pages
-deploy-website: export USE_SSH=true
 deploy-website:
-> npm --prefix ./website run build
-> npm --prefix ./website run deploy
+> USE_SSH=true; npm --prefix ./website run build
+> USE_SSH_true; npm --prefix ./website run deploy
 .PHONY: deploy-website
 
 ## help: prints this help message
@@ -82,7 +79,11 @@ help:
 .PHONY: help
 
 check-path-included:
-> ifndef OUTPUT $(error OUTPUT is undefined; ex. OUTPUT=/tmp/${APP_NAME}) endif
+ifndef OUTPUT
+>	$(error OUTPUT is undefined; ex. OUTPUT=/tmp/${APP_NAME})
+endif
 
 check-semver-included:
-> ifndef SEMVER $(error SEMVER is undefined; ex. SEMVER=0.0.1) endif
+ifeq ($(SEMVER), 0.0.0)
+>	$(error SEMVER is undefined; ex. SEMVER=0.0.1)
+endif

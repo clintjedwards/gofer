@@ -122,6 +122,12 @@ Update rust sdk library to be equal to golangs.
   - Global secrets can only be set by administrators
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
 - Write copius notes on commontasks and triggers layout. The difference between user passed config and system passed config. And suggest a way to collect those.
+  - Gofer passes them one set of env vars from the gofer system itself
+    These are prefixed with `gofer_plugin_system_{var}`
+  - Gofer then passes them another set of env vars from the admin that was set up through registration.
+    These are prefixed with `gofer_plugin_config_{var}`
+  - Gofer then passes them another set of env vars from the user's own config.
+    These are prefixed with `gofer_plugin_param_{var}`
 
 ### On the floor
 
@@ -134,3 +140,5 @@ Update rust sdk library to be equal to golangs.
 
 * When we shutdown it doesn't seem like trigger shutdown appropriately happens.
 * Orphaned run recovery is currently broken.
+
+- TestGetALL fails with race condition, check it out. I think it's a known issue.
