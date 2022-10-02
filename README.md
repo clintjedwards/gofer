@@ -67,6 +67,33 @@ The Gofer binary comes with a CLI to manage the server as well as act as a clien
 | [Airflow](https://airflow.apache.org/)                                                                                          | ETL systems                      | I haven't worked with large scale data systems enough to know deeply about how ETL systems came to be, but (maybe naively) they seem to fit into the same paradigm of "run _x_ thing every time _y_ happens". Airflow was particularly rough to operate in the early days of its release with security and UX around DAG runs/management being nearly non-existent. As an added bonus the scheduler regularly crashed from poorly written user workloads making it a reliability nightmare. <br /><br /> Additionally, Airflow's models of combining the execution logic of your DAGs with your code led to issues of testing and iterating locally. <br /><br /> Instead of having tooling specifically for data workloads, instead it might be easier for both data teams and ops teams to work in the model of distributed cron as Gofer does. Write your stream processing using dedicated tooling/libraries like [Benthos](https://www.benthos.dev/) (or in whatever language you're most familiar with), wrap it in a Docker container, and use Gofer to manage which containers should run when, where, and how often. This gives you easy testing, separation of responsibilities, and no python decorator spam around your logic. |
 | [Cadence](https://cadenceworkflow.io/)                                                                                          | ETL systems                      | I like Uber's cadence, it does a great job at providing a platform that does distributed cron and has some really nifty features by choosing to interact with your workflows at the code level. The ability to bake in sleeps and polls just like you would regular code is awesome. But just like Airflow, I don't want to marry my scheduling platform with my business logic. I write the code as I would for a normal application context and I just need something to run that code. When we unmarry the business logic and the scheduling platform we are able to treat it just like we treat all our other code, which means code workflows(testing, for example) we were all already used to and the ability to foster code reuse for these same processes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
+## Dev Setup
+
+Gofer is setup such that the base run mode is the development mode. So simply running the binary
+without any additional flags allows easy authless development.
+
+### You'll need to install the following first:
+
+To run Gofer dev mode:
+
+- [Docker](https://www.docker.com/)
+
+To build protocol buffers:
+
+- [protoc](https://grpc.io/docs/protoc-installation/)
+- [protoc gen plugins go/grpc](https://grpc.io/docs/languages/go/quickstart/)
+
+### Run from the Makefile
+
+Gofer uses flags, env vars, and files to manage configuration (in order of most important). The Makefile already includes all the commands and flags you need to run in dev mode by simply running `make run`.
+
+In case you want to run without the make file simply run:
+
+```bash
+go build -o /tmp/gofer
+DEBUG=true; SEMVER=0.0.0; /tmp/gofer service start
+```
+
 ## Authors
 
 - **Clint Edwards** - [Github](https://github.com/clintjedwards)
