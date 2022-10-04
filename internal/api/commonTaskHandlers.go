@@ -46,7 +46,7 @@ func (api *API) ListCommonTasks(ctx context.Context, request *proto.ListCommonTa
 }
 
 func (api *API) GetCommonTaskInstallInstructions(ctx context.Context, request *proto.GetCommonTaskInstallInstructionsRequest) (*proto.GetCommonTaskInstallInstructionsResponse, error) {
-	var registryAuth *models.RegistryAuth = nil
+	var registryAuth *models.RegistryAuth
 	if request.User != "" {
 		registryAuth = &models.RegistryAuth{
 			User: request.User,

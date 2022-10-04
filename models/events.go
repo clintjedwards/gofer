@@ -7,6 +7,7 @@ import (
 	proto "github.com/clintjedwards/gofer/proto/go"
 )
 
+// Make sure to keep changes to these enums in lockstep with EventKindMap
 type EventKind string
 
 const (
@@ -290,6 +291,7 @@ func (e EventEvictedPipelineObject) Kind() EventKind {
 // Maps the kind type into an empty instance of the detail type.
 // This allows us to quickly get back the correct type for things
 // like json marshalling and unmarshalling.
+// Make sure to keep this map in lockstep with the EventKind enum.
 var EventKindMap = map[EventKind]EventKindDetails{
 	EventKindCreatedNamespace: &EventCreatedNamespace{},
 	EventKindDeletedNamespace: &EventDeletedNamespace{},
@@ -310,6 +312,11 @@ var EventKindMap = map[EventKind]EventKindDetails{
 	EventKindUninstalledTrigger: &EventUninstalledTrigger{},
 	EventKindEnabledTrigger:     &EventEnabledTrigger{},
 	EventKindDisabledTrigger:    &EventDisabledTrigger{},
+
+	EventKindInstalledCommonTask:   &EventInstalledCommonTask{},
+	EventKindUninstalledCommonTask: &EventUninstalledCommonTask{},
+	EventKindEnabledCommonTask:     &EventEnabledCommonTask{},
+	EventKindDisabledCommonTask:    &EventDisabledCommonTask{},
 
 	EventKindFiredTriggerEvent:     &EventFiredTriggerEvent{},
 	EventKindProcessedTriggerEvent: &EventProcessedTriggerEvent{},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -17,18 +18,20 @@ type commonTask struct {
 }
 
 func newCommonTask() (*commonTask, error) {
-	filterStr := sdk.GetConfig(ConfigFilter)
-	filter, err := strconv.ParseBool(filterStr)
-	if err != nil {
-		return nil, fmt.Errorf("could not convert config %q to boolean; given string %q should be either 'true' or 'false'", ConfigFilter, filterStr)
-	}
-
 	return &commonTask{
-		filter: filter,
+		filter: false,
 	}, nil
 }
 
 func (c *commonTask) Run() {
+	filterStr := sdk.GetConfig(ConfigFilter)
+	filter, err := strconv.ParseBool(filterStr)
+	if err != nil {
+		log.Fatalf("could not convert config %q to boolean; given string %q should be either 'true' or 'false'", ConfigFilter, filterStr)
+	}
+
+	c.filter = filter
+
 	fmt.Println("Printing out env vars")
 
 	if c.filter {

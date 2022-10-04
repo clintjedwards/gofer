@@ -10,9 +10,9 @@ WORKDIR /files/tasks/debug
 
 ENV GOOS=linux GOARCH=${GOARCH} CGO_ENABLED=0
 
-RUN go build -o /build/commonTask
+RUN go build -o /build/commontask
 
 FROM gcr.io/distroless/static
 WORKDIR /app
 COPY --from=build-environment /build /app
-ENTRYPOINT [ "./commonTask", "task" ]
+ENTRYPOINT [ "./commontask", "task" ]

@@ -191,7 +191,7 @@ func (r *RunStateMachine) parallelismLimitExceeded() bool {
 		return true
 	}
 
-	var runsInProgress int64 = 0
+	var runsInProgress int64
 
 	for _, run := range runs {
 		if run.State != models.RunStateComplete {

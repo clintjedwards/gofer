@@ -71,7 +71,7 @@ func (t *CustomTaskConfig) ToProto() *proto.CustomTaskConfig {
 }
 
 func (t *CustomTaskConfig) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
-	var registryAuth *RegistryAuth = nil
+	var registryAuth *RegistryAuth
 	if proto.RegistryAuth != nil {
 		ra := RegistryAuth{}
 		ra.FromProto(proto.RegistryAuth)

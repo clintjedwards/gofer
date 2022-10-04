@@ -1,4 +1,4 @@
-module github.com/clintjedwards/gofer/examplePipelines/go/simple
+module github.com/clintjedwards/gofer/examplePipelines/go/trigger
 
 go 1.19
 

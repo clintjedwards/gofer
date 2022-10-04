@@ -13,7 +13,7 @@ type CommonTaskPluginInterface interface {
 
 func NewCommonTaskPlugin(service CommonTaskPluginInterface, installInstructions InstallInstructions) {
 	if len(os.Args) != 2 {
-		log.Fatal().Msg("Usage: ./commonTask <task|installer>")
+		log.Fatal().Msg("Usage: ./commontask <task|installer>")
 	}
 
 	switch os.Args[1] {
@@ -26,6 +26,6 @@ func NewCommonTaskPlugin(service CommonTaskPluginInterface, installInstructions 
 		}
 		fmt.Println(instructions)
 	default:
-		log.Fatal().Msg("Usage: ./commonTask <task|installer>")
+		log.Fatal().Msg("Usage: ./commontask <task|installer>")
 	}
 }

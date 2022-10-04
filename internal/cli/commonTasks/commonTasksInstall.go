@@ -30,10 +30,9 @@ By simply following the prompt in this method the Gofer CLI will collect the nec
 the common task. It will then attempt to install the common task on your behalf.
 
 When using the --manual flag you'll need to provide config values via the "-c" flag in KEY=VALUE format.`,
-	Example: `$ gofer common-tasks install cron ghcr.io/clintjedwards/gofer/common-tasks/cron:latest
-$ gofer common-tasks install interval ghcr.io/clintjedwards/gofer/common-tasks/interval:latest --manual -c MIN_DURATION=1m`,
-	RunE: commonTasksInstall,
-	Args: cobra.ExactArgs(2),
+	Example: `$ gofer common-tasks install debug ghcr.io/clintjedwards/gofer/tasks/debug:latest`,
+	RunE:    commonTasksInstall,
+	Args:    cobra.ExactArgs(2),
 }
 
 func init() {

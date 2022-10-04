@@ -90,7 +90,7 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 		},
 	}
 
-	var registryAuth *models.RegistryAuth = nil
+	var registryAuth *models.RegistryAuth
 	if request.User != "" {
 		registryAuth = &models.RegistryAuth{
 			User: request.User,
@@ -98,8 +98,10 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 		}
 	}
 
+	containerID := installerContainerID()
+
 	sc := scheduler.StartContainerRequest{
-		ID:               installerContainerID(),
+		ID:               containerID,
 		ImageName:        request.Image,
 		EnvVars:          convertVarsToMap(systemTriggerVars),
 		RegistryAuth:     registryAuth,
@@ -115,7 +117,7 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 			status.Errorf(codes.Internal, "could not start trigger; %v", err)
 	}
 
-	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{ID: installerContainerID()})
+	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{ID: containerID})
 	if err != nil {
 		log.Error().Err(err).Str("image", request.Image).Msg("could not get logs from trigger installation run")
 		return &proto.GetTriggerInstallInstructionsResponse{},

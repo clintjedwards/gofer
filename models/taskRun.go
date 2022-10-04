@@ -103,7 +103,7 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		variables = append(variables, variable.ToProto())
 	}
 
-	var statusReason *proto.TaskRunStatusReason = nil
+	var statusReason *proto.TaskRunStatusReason
 	if r.StatusReason != nil {
 		statusReason = r.StatusReason.ToProto()
 	}
@@ -145,7 +145,7 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 }
 
 func (r *TaskRun) FromProto(pb *proto.TaskRun) {
-	var statusReason *TaskRunStatusReason = nil
+	var statusReason *TaskRunStatusReason
 	if pb.StatusReason != nil {
 		sr := &TaskRunStatusReason{}
 		sr.FromProto(pb.StatusReason)

@@ -110,7 +110,7 @@ func (t *CommonTask) FromProto(pb *proto.CommonTask) {
 		variablesList = append(variablesList, variable)
 	}
 
-	var regAuth *RegistryAuth = nil
+	var regAuth *RegistryAuth
 	regAuth.FromProto(pb.RegistryAuth)
 
 	t.Settings = PipelineCommonTaskSettings{
@@ -150,11 +150,19 @@ func (c *CommonTaskRegistration) ToProto() *proto.CommonTaskRegistration {
 		variables = append(variables, v.ToProto())
 	}
 
+	registryAuthUser := ""
+	registryAuthPass := ""
+
+	if c.RegistryAuth != nil {
+		registryAuthUser = c.RegistryAuth.User
+		registryAuthPass = c.RegistryAuth.Pass
+	}
+
 	return &proto.CommonTaskRegistration{
 		Name:          c.Name,
 		Image:         c.Image,
-		User:          c.RegistryAuth.User,
-		Pass:          c.RegistryAuth.Pass,
+		User:          registryAuthUser,
+		Pass:          registryAuthPass,
 		Variables:     variables,
 		Created:       c.Created,
 		Status:        proto.CommonTaskRegistration_Status(proto.CommonTaskRegistration_Status_value[string(c.Status)]),
@@ -172,7 +180,7 @@ func (c *CommonTaskRegistration) FromInstallCommonTaskRequest(proto *proto.Insta
 		})
 	}
 
-	var registryAuth *RegistryAuth = nil
+	var registryAuth *RegistryAuth
 	if proto.User != "" {
 		registryAuth = &RegistryAuth{
 			User: proto.User,

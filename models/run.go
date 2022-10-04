@@ -124,7 +124,7 @@ func (r *Run) ToProto() *proto.Run {
 		variables = append(variables, variable.ToProto())
 	}
 
-	var statusReason *proto.RunStatusReason = nil
+	var statusReason *proto.RunStatusReason
 	if r.StatusReason != nil {
 		statusReason = r.StatusReason.ToProto()
 	}
@@ -146,7 +146,7 @@ func (r *Run) ToProto() *proto.Run {
 }
 
 func (r *Run) FromProto(proto *proto.Run) {
-	var statusReason *RunStatusReason = nil
+	var statusReason *RunStatusReason
 	if proto.StatusReason != nil {
 		sr := &RunStatusReason{}
 		sr.FromProto(proto.StatusReason)

@@ -1,4 +1,4 @@
-module github.com/clintjedwards/gofer/examplePipelines/go/dag
+module github.com/clintjedwards/gofer/examplePipelines/go/commonTask
 
 go 1.19
 

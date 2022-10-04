@@ -142,3 +142,4 @@ Update rust sdk library to be equal to golangs.
 * Orphaned run recovery is currently broken.
 
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
+- Once commontasks are installed they are not reinserted into memory on restart of Gofer.

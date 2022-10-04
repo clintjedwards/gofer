@@ -121,12 +121,12 @@ func (r *CustomTask) FromProto(t *proto.CustomTask) {
 		variables = append(variables, variable)
 	}
 
-	var entrypoint *[]string = nil
+	var entrypoint *[]string
 	if len(t.Entrypoint) != 0 {
 		entrypoint = &t.Entrypoint
 	}
 
-	var command *[]string = nil
+	var command *[]string
 	if len(t.Command) != 0 {
 		command = &t.Command
 	}
@@ -155,15 +155,15 @@ func (r *CustomTask) FromProtoCustomTaskConfig(t *proto.CustomTaskConfig) {
 		})
 	}
 
-	var regAuth *RegistryAuth = nil
+	var regAuth *RegistryAuth
 	regAuth.FromProto(t.RegistryAuth)
 
-	var entrypoint *[]string = nil
+	var entrypoint *[]string
 	if len(t.Entrypoint) > 0 {
 		entrypoint = &t.Entrypoint
 	}
 
-	var command *[]string = nil
+	var command *[]string
 	if len(t.Command) > 0 {
 		command = &t.Command
 	}

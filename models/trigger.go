@@ -72,7 +72,7 @@ func (c *TriggerRegistration) FromInstallTriggerRequest(proto *proto.InstallTrig
 		})
 	}
 
-	var registryAuth *RegistryAuth = nil
+	var registryAuth *RegistryAuth
 	if proto.User != "" {
 		registryAuth = &RegistryAuth{
 			User: proto.User,

@@ -1,4 +1,4 @@
-module github.com/clintjedwards/gofer/examplePipelines/go/simple
+module github.com/clintjedwards/gofer/examplePipelines/go/objects
 
 go 1.19
 
