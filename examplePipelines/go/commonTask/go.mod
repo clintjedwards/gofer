@@ -2,7 +2,7 @@ module github.com/clintjedwards/gofer/examplePipelines/go/commonTask
 
 go 1.19
 
-require github.com/clintjedwards/gofer v0.0.0-20220828041951-a0aacbc1af76
+require github.com/clintjedwards/gofer v0.1.0-alpha
 
 require (
 	github.com/golang/protobuf v1.5.2 // indirect

@@ -1,4 +1,4 @@
-package sdk
+package config
 
 import (
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -83,12 +83,12 @@ func (t *CustomTaskConfig) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
 		dependsOn[id] = RequiredParentStatus(status)
 	}
 
-	var entrypoint *[]string = nil
+	var entrypoint *[]string
 	if len(proto.Entrypoint) != 0 {
 		entrypoint = &proto.Entrypoint
 	}
 
-	var command *[]string = nil
+	var command *[]string
 	if len(proto.Command) != 0 {
 		command = &proto.Command
 	}

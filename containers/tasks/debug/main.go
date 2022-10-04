@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
-	sdk "github.com/clintjedwards/gofer/sdk/go"
+	sdk "github.com/clintjedwards/gofer/sdk/go/plugins"
+	"github.com/rs/zerolog/log"
 )
 
 // Whether or not to attempt to filter out any env vars with the words key or token.
@@ -27,7 +27,7 @@ func (c *commonTask) Run() {
 	filterStr := sdk.GetConfig(ConfigFilter)
 	filter, err := strconv.ParseBool(filterStr)
 	if err != nil {
-		log.Fatalf("could not convert config %q to boolean; given string %q should be either 'true' or 'false'", ConfigFilter, filterStr)
+		log.Error().Msgf("could not convert config %q to boolean; given string %q should be either 'true' or 'false'", ConfigFilter, filterStr)
 	}
 
 	c.filter = filter

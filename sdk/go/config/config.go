@@ -1,4 +1,4 @@
-package sdk
+package config
 
 import (
 	"encoding/binary"
@@ -70,30 +70,6 @@ const (
 	TaskKindCommon  TaskKind = "COMMON"
 	TaskKindCustom  TaskKind = "CUSTOM"
 )
-
-type PipelineTriggerConfig struct {
-	Name     string            `json:"name"`
-	Label    string            `json:"label"`
-	Settings map[string]string `json:"settings"`
-}
-
-func (p *PipelineTriggerConfig) FromProto(proto *proto.PipelineTriggerConfig) {
-	p.Name = proto.Name
-	p.Label = proto.Label
-	p.Settings = proto.Settings
-}
-
-func (p *PipelineTriggerConfig) ToProto() *proto.PipelineTriggerConfig {
-	return &proto.PipelineTriggerConfig{
-		Name:     p.Name,
-		Label:    p.Label,
-		Settings: p.Settings,
-	}
-}
-
-func (p *PipelineTriggerConfig) validate() error {
-	return validateIdentifier("label", p.Label)
-}
 
 type PipelineConfig struct {
 	ID          string                  `json:"id"`

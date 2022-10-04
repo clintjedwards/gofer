@@ -9,7 +9,7 @@ import (
 
 	"github.com/clintjedwards/avail/v2"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	sdk "github.com/clintjedwards/gofer/sdk/go"
+	sdk "github.com/clintjedwards/gofer/sdk/go/plugins"
 	"github.com/rs/zerolog/log"
 )
 

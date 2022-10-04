@@ -1,6 +1,11 @@
-package sdk
+package config
 
-import proto "github.com/clintjedwards/gofer/proto/go"
+import (
+	"fmt"
+	"strings"
+
+	proto "github.com/clintjedwards/gofer/proto/go"
+)
 
 type CommonTaskConfig struct {
 	Kind        TaskKind                        `json:"kind"`
@@ -77,13 +82,13 @@ func (t *CommonTaskConfig) WithDependsOnMany(dependsOn map[string]RequiredParent
 }
 
 func (t *CommonTaskConfig) WithSetting(key, value string) *CommonTaskConfig {
-	t.Settings[key] = value
+	t.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
 	return t
 }
 
 func (t *CommonTaskConfig) WithSettings(settings map[string]string) *CommonTaskConfig {
 	for key, value := range settings {
-		t.Settings[key] = value
+		t.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
 	}
 	return t
 }

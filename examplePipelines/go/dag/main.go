@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	sdk "github.com/clintjedwards/gofer/sdk/go"
+	sdk "github.com/clintjedwards/gofer/sdk/go/config"
 )
 
 func main() {
