@@ -128,7 +128,7 @@ func (eb *EventBus) Publish(evt models.EventKindDetails) int64 {
 
 	listeners, exists := eb.subscribers[evt.Kind()]
 	if !exists {
-		log.Error().Err(ErrEventKindNotFound).Msgf("event kind %q not found", evt.Kind())
+		log.Error().Err(ErrEventKindNotFound).Msgf("event kind %q not found; This usually means that an event is missing from the EventKindMap object.", evt.Kind())
 		return 0
 	}
 

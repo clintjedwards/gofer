@@ -143,3 +143,7 @@ Update rust sdk library to be equal to golangs.
 
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
 - Once commontasks are installed they are not reinserted into memory on restart of Gofer.
+
+GOFER*PLUGIN_CONFIG*%s"
+GOFER*PLUGIN_PARAM*%s"
+GOFER_PLUGIN_SYSTEM_NAME"

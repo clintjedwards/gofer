@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/clintjedwards/avail/v2 v2.0.1
-	github.com/clintjedwards/gofer v0.1.0-alpha
+	github.com/clintjedwards/gofer v0.2.0-alpha
 	github.com/rs/zerolog v1.28.0
 )
 
