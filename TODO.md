@@ -145,3 +145,4 @@ Update rust sdk library to be equal to golangs.
 * Orphaned run recovery is currently broken.
 
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
+- Pipeline updates for CLI is broken.

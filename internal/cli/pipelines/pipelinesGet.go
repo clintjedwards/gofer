@@ -247,10 +247,9 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 
   {{.Description}}
   {{- if .RecentRuns}}
-
   📦 Recent Runs
 {{.RecentRuns}}
-  {{- end -}}
+  {{- end }}
   {{- if .Tasks }}
   🗒 Tasks:
     {{- range $task := .Tasks}}
@@ -271,6 +270,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 {{ $trigger.Events }}
     {{- end -}}
   {{- end}}
+
 Created {{.Created}} | Last Run {{.LastRun}} | Health {{.Health}}`
 
 	var tpl bytes.Buffer
