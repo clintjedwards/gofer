@@ -127,7 +127,7 @@ func commonTasksInstall(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		fmt.Printf("Install commontask %q with above settings? [Y/n]: ", toTitle.String(name))
+		fmt.Printf("> Install commontask %q with above settings? [Y/n]: ", toTitle.String(name))
 		var input string
 		fmt.Scanln(&input)
 

@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -70,66 +72,21 @@ func (t *CommonTask) GetCommand() *[]string {
 }
 
 func (t *CommonTask) ToProto() *proto.CommonTask {
-	dependsOn := map[string]proto.CommonTask_RequiredParentStatus{}
-	for key, value := range t.GetDependsOn() {
-		dependsOn[key] = proto.CommonTask_RequiredParentStatus(proto.CommonTask_RequiredParentStatus_value[string(value)])
-	}
-
-	variables := []*proto.Variable{}
-	for _, v := range t.GetVariables() {
-		variables = append(variables, v.ToProto())
-	}
-
 	return &proto.CommonTask{
-		Id:           t.GetID(),
-		Description:  t.GetDescription(),
-		Image:        t.GetImage(),
-		RegistryAuth: t.GetRegistryAuth().ToProto(),
-		DependsOn:    dependsOn,
-		Variables:    variables,
-		Label:        t.Settings.Label,
-		Name:         t.Settings.Name,
+		Settings:     t.Settings.ToProto(),
+		Registration: t.Registration.ToProto(),
 	}
 }
 
 func (t *CommonTask) FromProto(pb *proto.CommonTask) {
-	dependsOn := map[string]RequiredParentStatus{}
-	for id, status := range pb.DependsOn {
-		dependsOn[id] = RequiredParentStatus(status.String())
-	}
+	var registration CommonTaskRegistration
+	registration.FromProto(pb.Registration)
 
-	variablesMap := map[string]string{}
-	for _, v := range pb.Variables {
-		variablesMap[v.Key] = v.Value
-	}
+	var settings PipelineCommonTaskSettings
+	settings.FromProto(pb.Settings)
 
-	variablesList := []Variable{}
-	for _, v := range pb.Variables {
-		variable := Variable{}
-		variable.FromProto(v)
-		variablesList = append(variablesList, variable)
-	}
-
-	var regAuth *RegistryAuth
-	regAuth.FromProto(pb.RegistryAuth)
-
-	t.Settings = PipelineCommonTaskSettings{
-		Name:        pb.Name,
-		Label:       pb.Label,
-		Description: pb.Description,
-		DependsOn:   dependsOn,
-		Settings:    variablesMap,
-	}
-
-	t.Registration = CommonTaskRegistration{
-		Name:          pb.Name,
-		Image:         pb.Image,
-		RegistryAuth:  regAuth,
-		Variables:     variablesList,
-		Created:       0,
-		Status:        CommonTaskStatusUnknown,
-		Documentation: "",
-	}
+	t.Settings = settings
+	t.Registration = registration
 }
 
 // When installing a new common task, we allow the common task installer to pass a bunch of settings that
@@ -170,11 +127,36 @@ func (c *CommonTaskRegistration) ToProto() *proto.CommonTaskRegistration {
 	}
 }
 
+func (c *CommonTaskRegistration) FromProto(proto *proto.CommonTaskRegistration) {
+	variables := []Variable{}
+	for _, variable := range proto.Variables {
+		vari := Variable{}
+		vari.FromProto(variable)
+		variables = append(variables, vari)
+	}
+
+	var registryAuth *RegistryAuth
+	if proto.User != "" {
+		registryAuth = &RegistryAuth{
+			User: proto.User,
+			Pass: proto.Pass,
+		}
+	}
+
+	c.Name = proto.Name
+	c.Image = proto.Image
+	c.RegistryAuth = registryAuth
+	c.Variables = variables
+	c.Created = time.Now().UnixMilli()
+	c.Status = CommonTaskStatusEnabled
+	c.Documentation = proto.Documentation
+}
+
 func (c *CommonTaskRegistration) FromInstallCommonTaskRequest(proto *proto.InstallCommonTaskRequest) {
 	variables := []Variable{}
 	for key, value := range proto.Variables {
 		variables = append(variables, Variable{
-			Key:    key,
+			Key:    fmt.Sprintf("GOFER_PLUGIN_CONFIG_%s", strings.ToUpper(key)),
 			Value:  value,
 			Source: VariableSourceSystem,
 		})

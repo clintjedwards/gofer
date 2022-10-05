@@ -101,7 +101,7 @@ type data struct {
 }
 
 func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
-	var exitCode int64 = 0
+	var exitCode int64
 	if taskRun.ExitCode != nil {
 		exitCode = *taskRun.ExitCode
 	}
@@ -125,24 +125,22 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 
   ✏ Parent Pipeline {{.PipelineID}} | Parent Run {{.RunID}}
   ✏ Started {{.Started}} and ran for {{.Duration}}
-  ✏ {{.ImageName}}
+ {{if .ImageName}} ✏ {{.ImageName}} {{- end}}
  {{if .ExitCode}} ✏ Exit Code: {{.ExitCode}} {{- end}}
 {{- if .StatusReason}}
 
   Status Details:
     | Reason: {{.StatusReason.Reason}}
-	| Description: {{.StatusReason.Description}}
-{{- end}}
+    | Description: {{.StatusReason.Description}}
+{{- end }}
 {{- if .EnvVars}}
-
   $ Environment Variables:
   {{- range $v := .EnvVars}}
     | {{$v.Key}}={{$v.Value}} [from {{$v.Source}}]
   {{- end}}
 {{- end}}
 
-* Use '{{.TaskRunCmd}}' to view logs.
-`
+* Use '{{.TaskRunCmd}}' to view logs.`
 
 	var tpl bytes.Buffer
 	t := template.Must(template.New("tmp").Parse(formatTmpl))

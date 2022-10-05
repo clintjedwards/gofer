@@ -98,7 +98,11 @@ Update rust sdk library to be equal to golangs.
 - The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
 - It is possible for a trigger subscription to be disabled due to network error and the trigger to still send it a successful event, but
   not understand that it wasn't successfully delivered. Overtime this might cause drift between what events triggers should actually be sending back.
-- Give a quick thought to models as they move through different phases from the Config -> SDK -> Proto -> Models
+- Give a thought to models as they move through different phases from the Config -> SDK -> Proto -> Models.
+  Right now it can be kinda hard to figure out which ends of the program might produce which objects.
+  - For instance when dealing with common tasks, they move from commonTask models to commonTaskConfigs and the transition doesn't seem to make a bunch of sense.
+  - At the very least we should maybe make a table that relates the models to each other and document why
+    they might be in a certain shape.
 
 ### Documentation
 
@@ -138,12 +142,6 @@ Update rust sdk library to be equal to golangs.
   - Replace blurry png for readme.
   - Add an example of entrypoint/command running a multi-line script
 
-* When we shutdown it doesn't seem like trigger shutdown appropriately happens.
 * Orphaned run recovery is currently broken.
 
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
-- Once commontasks are installed they are not reinserted into memory on restart of Gofer.
-
-GOFER*PLUGIN_CONFIG*%s"
-GOFER*PLUGIN_PARAM*%s"
-GOFER_PLUGIN_SYSTEM_NAME"

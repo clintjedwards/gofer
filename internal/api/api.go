@@ -161,6 +161,11 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 		return nil, fmt.Errorf("could not install base triggers: %w", err)
 	}
 
+	err = newAPI.restoreRegisteredCommonTasks()
+	if err != nil {
+		return nil, fmt.Errorf("could not register common tasks: %w", err)
+	}
+
 	err = newAPI.startTriggers()
 	if err != nil {
 		return nil, fmt.Errorf("could not start triggers: %w", err)

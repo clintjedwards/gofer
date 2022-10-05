@@ -188,20 +188,8 @@ message PipelineTriggerConfig {
 }
 
 message CommonTask {
-  string id = 1;
-  string description = 2;
-  string image = 3;
-  RegistryAuth registry_auth = 4;
-  enum RequiredParentStatus {
-    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
-    ANY = 1;
-    SUCCESS = 2;
-    FAILURE = 3;
-  }
-  map<string, RequiredParentStatus> depends_on = 5;
-  repeated Variable variables = 6;
-  string label = 7;
-  string name = 8;
+  PipelineCommonTaskSettings settings = 1;
+  CommonTaskRegistration registration = 2;
 }
 
 message CommonTaskConfig {
