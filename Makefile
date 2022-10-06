@@ -56,6 +56,12 @@ run-race:
 > /tmp/${APP_NAME} service start
 .PHONY: run-race
 
+## run-docs: build and run documentation website for development
+run-docs:
+> cd documentation
+> mdbook serve --open
+.PHONY: run-docs
+
 ## run-website: build website js and run dev server
 run-website:
 > npm --prefix ./website start

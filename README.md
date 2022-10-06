@@ -94,6 +94,13 @@ go build -o /tmp/gofer
 DEBUG=true; SEMVER=0.0.0; /tmp/gofer service start
 ```
 
+### Editing Protobufs
+
+Gofer uses grpc and protobufs to communicate with both plugins and provide an external API. These protobuf
+files are located in `/proto`. To compile new protobufs once the original `.proto` files have changed you can use the `make build-protos` command.
+
+### Editing Documentation
+
 ## Authors
 
 - **Clint Edwards** - [Github](https://github.com/clintjedwards)

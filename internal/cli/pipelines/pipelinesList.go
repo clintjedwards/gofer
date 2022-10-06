@@ -84,7 +84,7 @@ func pipelinesList(cmd *cobra.Command, _ []string) error {
 			recentRunsHealth = append(recentRunsHealth, run.Status)
 		}
 
-		var lastRunTime int64 = 0
+		var lastRunTime int64
 		if len(recentRuns) != 0 {
 			lastRun := recentRuns[len(recentRuns)-1]
 			lastRunTime = lastRun.Ended

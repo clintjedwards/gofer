@@ -141,8 +141,21 @@ Update rust sdk library to be equal to golangs.
   - Document the debug containers also
   - Replace blurry png for readme.
   - Add an example of entrypoint/command running a multi-line script
+  - Take API.md and combine it with general how to use Gofer docs
+  - Review all links to make sure they're not broken. Lots of stuff changed with mdbook.
 
 * Orphaned run recovery is currently broken.
 
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
 - Pipeline updates for CLI is broken.
+<!--
+
+## Auth
+
+You can authenticate to Gofer using GRPC's metadata pair:
+
+```go
+md := metadata.Pairs("Authorization", "Bearer "+<token>)
+```
+
+More details about auth [can be found here.](server-configuration/auth) -->

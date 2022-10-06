@@ -224,7 +224,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 
 	sort.Slice(tasks, func(i, j int) bool { return tasks[i].NumItems < tasks[j].NumItems })
 
-	var lastRunTime int64 = 0
+	var lastRunTime int64
 	if len(recentRuns) != 0 {
 		lastRun := recentRuns[len(recentRuns)-1]
 		lastRunTime = lastRun.Ended

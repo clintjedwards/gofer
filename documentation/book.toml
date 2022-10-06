@@ -1,0 +1,6 @@
+[book]
+authors = ["Clint J Edwards"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Gofer"
