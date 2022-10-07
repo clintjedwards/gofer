@@ -508,7 +508,7 @@ func (r *RunStateMachine) handleRunObjectExpiry() {
 }
 
 func (r *RunStateMachine) handleRunLogExpiry() {
-	limit := r.API.config.RunLogExpiry
+	limit := r.API.config.TaskRunLogExpiry
 
 	// We ask for the limit of runs plus one extra
 	runs, err := r.API.db.ListRuns(nil, 0, limit+1, r.Pipeline.Namespace, r.Pipeline.ID)

@@ -125,7 +125,7 @@ type API struct {
 func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, objectStore objectStore.Engine,
 	secretStore secretStore.Engine,
 ) (*API, error) {
-	eventbus, err := eventbus.New(storage, config.EventLogRetention, config.PruneEventsInterval)
+	eventbus, err := eventbus.New(storage, config.EventLogRetention, config.EventPruneInterval)
 	if err != nil {
 		return nil, fmt.Errorf("could not init event bus: %w", err)
 	}
@@ -226,7 +226,7 @@ func (api *API) StartAPIService() {
 			log.Fatal().Err(err).Msg("server exited abnormally")
 		}
 	}()
-	log.Info().Str("url", api.config.Host).Msg("started gofer grpc/http service")
+	log.Info().Str("url", api.config.Server.Host).Msg("started gofer grpc/http service")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
@@ -268,14 +268,14 @@ func wrapGRPCServer(config *config.API, grpcServer *grpc.Server) *http.Server {
 	})
 
 	var modifiedHandler http.Handler
-	if config.Server.DevMode {
+	if config.DevMode {
 		modifiedHandler = handlers.LoggingHandler(os.Stdout, combinedHandler)
 	} else {
 		modifiedHandler = combinedHandler
 	}
 
 	httpServer := http.Server{
-		Addr:    config.Host,
+		Addr:    config.Server.Host,
 		Handler: modifiedHandler,
 		// Timeouts set here unfortunately also apply to the backing GRPC server. Because GRPC might have long running calls
 		// we have to set these to 0 or a very high number. This creates an issue where running the frontend in this configuration

@@ -21,7 +21,7 @@ func (api *API) GetSystemInfo(context context.Context, request *proto.GetSystemI
 
 	return &proto.GetSystemInfoResponse{
 		Commit:         commit,
-		DevModeEnabled: api.config.Server.DevMode,
+		DevModeEnabled: api.config.DevMode,
 		Semver:         version,
 	}, nil
 }

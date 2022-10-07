@@ -149,6 +149,9 @@ Update rust sdk library to be equal to golangs.
 
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
 - Pipeline updates for CLI is broken.
+- Go over the sample config file for api and make sure it still makes sense.
+- Server configuration reference should have one more field on whether it is required or not.
+- We should move our global default to be part of config default, instead of it being a default only known in application.
 <!--
 
 ## Auth

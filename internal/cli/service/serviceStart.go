@@ -35,8 +35,7 @@ func serverStart(cmd *cobra.Command, _ []string) error {
 		log.Fatal().Err(err).Msg("error in config initialization")
 	}
 
-	setupLogging(conf.LogLevel, conf.Server.DevMode)
-	setup(conf.Server.TmpDir)
+	setupLogging(conf.LogLevel, conf.DevMode)
 	app.StartServices(conf)
 
 	return nil
@@ -49,7 +48,7 @@ func createDir(dirPath string) error {
 
 	switch {
 	case os.IsNotExist(err):
-		err := os.MkdirAll(dirPath, 0755)
+		err := os.MkdirAll(dirPath, 0o755)
 		if err != nil {
 			return err
 		}
@@ -60,16 +59,6 @@ func createDir(dirPath string) error {
 	}
 
 	return nil
-}
-
-// setup creates the correct storage directories for proper server operation.
-func setup(dirs ...string) {
-	for _, path := range dirs {
-		err := createDir(path)
-		if err != nil {
-			log.Fatal().Err(err).Str("path", path).Msg("could not create directory")
-		}
-	}
 }
 
 func setupLogging(loglevel string, pretty bool) {

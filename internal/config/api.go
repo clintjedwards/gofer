@@ -11,6 +11,10 @@ import (
 
 // API defines config settings for the gofer server
 type API struct {
+	// DevMode turns on humanized debug messages, extra debug logging for the web server and other
+	// convenient features for development. Usually turned on along side LogLevel=debug.
+	DevMode bool `hcl:"dev_mode,optional"`
+
 	// Controls the ability to trigger runs. This setting can be toggled while the server is running.
 	IgnorePipelineRunEvents bool `split_words:"true" hcl:"ignore_pipeline_run_events,optional"`
 
@@ -29,20 +33,17 @@ type API struct {
 	EventLogRetentionHCL string `ignored:"true" hcl:"event_log_retention,optional"`
 
 	// How often the background process for pruning events should run.
-	PruneEventsInterval time.Duration `split_words:"true"`
+	EventPruneInterval time.Duration `split_words:"true"`
 
-	// PruneEventsIntervalHCL is the HCL compatible counter part to PruneEventsInterval. It allows the parsing of a string
+	// EventPruneIntervalHCL is the HCL compatible counter part to PruneEventsInterval. It allows the parsing of a string
 	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
-	PruneEventsIntervalHCL string `ignored:"true" hcl:"prune_events_interval,optional"`
-
-	// URL for the server to bind to. Ex: localhost:8080
-	Host string `hcl:"host,optional"`
+	EventPruneIntervalHCL string `ignored:"true" hcl:"event_prune_interval,optional"`
 
 	// Log level affects the entire application's logs including launched triggers.
 	LogLevel string `split_words:"true" hcl:"log_level,optional"`
 
 	// The total amount of runs before logs of the oldest log starts being deleted.
-	RunLogExpiry int `split_words:"true" hcl:"run_log_expiry,optional"`
+	TaskRunLogExpiry int `split_words:"true" hcl:"task_run_log_expiry,optional"`
 
 	// Directory to store task run log files.
 	TaskRunLogsDir string `split_words:"true" hcl:"task_run_logs_dir,optional"`
@@ -59,7 +60,6 @@ type API struct {
 	TaskRunStopTimeoutHCL string `ignored:"true" hcl:"task_run_stop_timeout,optional"`
 
 	ExternalEventsAPI *ExternalEventsAPI `split_words:"true" hcl:"external_events_api,block"`
-	Database          *Database          `hcl:"database,block"`
 	ObjectStore       *ObjectStore       `hcl:"object_store,block"`
 	SecretStore       *SecretStore       `hcl:"secret_store,block"`
 	Scheduler         *Scheduler         `hcl:"scheduler,block"`
@@ -69,17 +69,16 @@ type API struct {
 
 func DefaultAPIConfig() *API {
 	return &API{
+		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
 		RunParallelismLimit:     200,
 		EventLogRetention:       mustParseDuration("4380h"), // 4380 hours is roughly 6 months.
-		PruneEventsInterval:     mustParseDuration("3h"),
-		Host:                    "localhost:8080",
+		EventPruneInterval:      mustParseDuration("3h"),
 		LogLevel:                "debug",
-		RunLogExpiry:            20,
+		TaskRunLogExpiry:        50,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      mustParseDuration("5m"),
 		ExternalEventsAPI:       DefaultExternalEventsAPIConfig(),
-		Database:                DefaultDatabaseConfig(),
 		ObjectStore:             DefaultObjectStoreConfig(),
 		SecretStore:             DefaultSecretStoreConfig(),
 		Scheduler:               DefaultSchedulerConfig(),
@@ -90,9 +89,8 @@ func DefaultAPIConfig() *API {
 
 // Server represents lower level HTTP/GRPC server settings.
 type Server struct {
-	// DevMode turns on humanized debug messages, extra debug logging for the webserver and other
-	// convenient features for development. Usually turned on along side LogLevel=debug.
-	DevMode bool `hcl:"dev_mode,optional"`
+	// URL for the server to bind to. Ex: localhost:8080
+	Host string `hcl:"host,optional"`
 
 	// How long the GRPC service should wait on in-progress connections before hard closing everything out.
 	ShutdownTimeout time.Duration `split_words:"true"`
@@ -101,20 +99,24 @@ type Server struct {
 	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
 	ShutdownTimeoutHCL string `ignored:"true" hcl:"shutdown_timeout,optional"`
 
+	// Path to Gofer's sqlite database.
+	StoragePath string `split_words:"true" hcl:"storage_path,optional"`
+
+	// The total amount of results the database will attempt to pass back when a limit is not explicitly given.
+	StorageResultsLimit int `split_words:"true" hcl:"storage_results_limit,optional"`
+
 	TLSCertPath string `split_words:"true" hcl:"tls_cert_path,optional"`
 	TLSKeyPath  string `split_words:"true" hcl:"tls_key_path,optional"`
-
-	// Temporary storage for downloaded pipeline configs.
-	TmpDir string `split_words:"true" hcl:"tmp_dir,optional"`
 }
 
 // DefaultServerConfig returns a pre-populated configuration struct that is used as the base for super imposing user configuration
 // settings.
 func DefaultServerConfig() *Server {
 	return &Server{
-		DevMode:         true,
-		ShutdownTimeout: mustParseDuration("15s"),
-		TmpDir:          "/tmp",
+		Host:                "localhost:8080",
+		ShutdownTimeout:     mustParseDuration("15s"),
+		StoragePath:         "/tmp/gofer.db",
+		StorageResultsLimit: 200,
 	}
 }
 
@@ -132,14 +134,6 @@ type Triggers struct {
 	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
 	StopTimeoutHCL string `ignored:"true" hcl:"stop_timeout,optional"`
 
-	// HealthcheckInterval defines the period of time between attempted GRPC connections to all triggers. Triggers
-	// are healthchecked to ensure proper operation.
-	HealthcheckInterval time.Duration `split_words:"true"`
-
-	// HealthcheckInternalHCL is the HCL compatible counter part to TriggerHealthcheck. It allows the parsing of a string
-	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
-	HealthcheckIntervalHCL string `ignored:"true" hcl:"healthcheck_interval,optional"`
-
 	// TLSCertPath is the file path of the trigger TLS certificate.
 	TLSCertPath string `split_words:"true" hcl:"tls_cert_path,optional"`
 
@@ -151,7 +145,6 @@ func DefaultTriggersConfig() *Triggers {
 	return &Triggers{
 		InstallBaseTriggers: true,
 		StopTimeout:         mustParseDuration("5m"),
-		HealthcheckInterval: mustParseDuration("30s"),
 	}
 }
 
@@ -216,10 +209,6 @@ func (c *API) convertDurationFromHCL() {
 		c.Server.ShutdownTimeout = mustParseDuration(c.Server.ShutdownTimeoutHCL)
 	}
 
-	if c != nil && c.Triggers.HealthcheckIntervalHCL != "" {
-		c.Triggers.HealthcheckInterval = mustParseDuration(c.Triggers.HealthcheckIntervalHCL)
-	}
-
 	if c != nil && c.TaskRunStopTimeoutHCL != "" {
 		c.TaskRunStopTimeout = mustParseDuration(c.TaskRunStopTimeoutHCL)
 	}
@@ -228,8 +217,8 @@ func (c *API) convertDurationFromHCL() {
 		c.EventLogRetention = mustParseDuration(c.EventLogRetentionHCL)
 	}
 
-	if c != nil && c.PruneEventsIntervalHCL != "" {
-		c.PruneEventsInterval = mustParseDuration(c.PruneEventsIntervalHCL)
+	if c != nil && c.EventPruneIntervalHCL != "" {
+		c.EventPruneInterval = mustParseDuration(c.EventPruneIntervalHCL)
 	}
 
 	if c != nil && c.Triggers.StopTimeoutHCL != "" {
@@ -294,7 +283,7 @@ func (c *API) validate() error {
 			return fmt.Errorf("encryption_key must be a 32 character random string")
 		}
 
-		if !c.Server.DevMode && c.SecretStore.Sqlite.EncryptionKey == "changemechangemechangemechangeme" {
+		if !c.DevMode && c.SecretStore.Sqlite.EncryptionKey == "changemechangemechangemechangeme" {
 			return fmt.Errorf("encryption_key cannot be left as default; must be changed to a 32 character random string")
 		}
 	}
@@ -311,9 +300,4 @@ func PrintAPIEnvs() error {
 	fmt.Println("GOFER_CONFIG_PATH")
 
 	return nil
-}
-
-// BoltDB: https://pkg.go.dev/go.etcd.io/bbolt
-type BoltDB struct {
-	Path string `hcl:"path,optional"` // file path for database file
 }

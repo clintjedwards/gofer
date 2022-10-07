@@ -174,12 +174,12 @@
 <pre><code class="language-hcl">// Gofer Service configuration file is used as an alternative to providing the server configurations via envvars.
 // You can find an explanation of these configuration variables and where to put this file so the server can read this
 // file in the documenation: https://clintjedwards.com/gofer/docs/server-configuration/overview
+dev_mode                   = false
 event_log_retention        = &quot;4380h&quot;
-host                       = &quot;localhost:8080&quot;
+event_prune_interval       = &quot;3h&quot;
 ignore_pipeline_run_events = false
 log_level                  = &quot;info&quot;
-prune_events_interval      = &quot;3h&quot;
-run_log_expiry             = 30
+task_run_log_expiry        = 50
 task_run_logs_dir          = &quot;/tmp&quot;
 task_run_stop_timeout      = &quot;5m&quot;
 
@@ -188,18 +188,13 @@ external_events_api {
   host   = &quot;localhost:8081&quot;
 }
 
-database {
-  max_results_limit = 200
-  path = &quot;/tmp/gofer.db&quot;
-}
-
 object_store {
   engine = &quot;sqlite&quot;
   sqlite {
     path = &quot;/tmp/gofer-object.db&quot;
   }
-  pipeline_object_limit = 30
-  run_object_expiry     = 30
+  pipeline_object_limit = 50
+  run_object_expiry     = 50
 }
 
 secret_store {
@@ -219,17 +214,17 @@ scheduler {
 }
 
 server {
-  dev_mode         = false
-  shutdown_timeout = &quot;15s&quot;
-  tls_cert_path    = &quot;./localhost.crt&quot;
-  tls_key_path     = &quot;./localhost.key&quot;
-  tmp_dir          = &quot;/tmp&quot;
+  host                  = &quot;localhost:8080&quot;
+  shutdown_timeout      = &quot;15s&quot;
+  tls_cert_path         = &quot;./localhost.crt&quot;
+  tls_key_path          = &quot;./localhost.key&quot;
+  storage_path          = &quot;/tmp/gofer.db&quot;
+  storage_results_limit = 200
 }
 
 triggers {
   install_base_triggers = true
   stop_timeout          = &quot;5m&quot;
-  healthcheck_interval  = &quot;30s&quot;
   tls_cert_path         = &quot;./localhost.crt&quot;
   tls_key_path          = &quot;./localhost.key&quot;
 }

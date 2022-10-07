@@ -76,7 +76,7 @@ func (api *API) authenticate(ctx context.Context) (context.Context, error) {
 	}
 
 	// If server is in DevMode give context fake admin values
-	if api.config.Server.DevMode {
+	if api.config.DevMode {
 		ctxNamespaces := context.WithValue(ctx, contextUserNamespaces, []string{})
 		ctxKind := context.WithValue(ctxNamespaces, contextUserKind, string(models.TokenKindManagement))
 

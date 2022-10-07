@@ -19,16 +19,16 @@ import (
 
 // StartServices initializes all required services.
 func StartServices(config *config.API) {
-	if config.Server.DevMode {
+	if config.DevMode {
 		log.Warn().Msg("server in development mode; not for use in production")
 	}
 
-	newStorage, err := initStorage(config.Database)
+	newStorage, err := initStorage(config.Server)
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not init storage")
 	}
 
-	log.Info().Str("path", config.Database.Path).Int("max_results_limit", config.Database.MaxResultsLimit).
+	log.Info().Str("path", config.Server.StoragePath).Int("max_results_limit", config.Server.StorageResultsLimit).
 		Msg("storage initialized")
 
 	newScheduler, err := initScheduler(config.Scheduler)
@@ -64,8 +64,8 @@ func StartServices(config *config.API) {
 }
 
 // initStorage creates a storage object with the appropriate engine
-func initStorage(config *config.Database) (storage.DB, error) {
-	return storage.New(config.Path, config.MaxResultsLimit)
+func initStorage(config *config.Server) (storage.DB, error) {
+	return storage.New(config.StoragePath, config.StorageResultsLimit)
 }
 
 func initObjectStore(config *config.ObjectStore) (objectstore.Engine, error) {

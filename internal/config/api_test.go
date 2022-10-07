@@ -18,14 +18,14 @@ func TestAPISampleFromFile(t *testing.T) {
 	}
 
 	expected := API{
+		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
 		EventLogRetention:       time.Hour * 4380,
 		EventLogRetentionHCL:    "4380h",
-		PruneEventsInterval:     time.Hour * 3,
-		PruneEventsIntervalHCL:  "3h",
-		Host:                    "localhost:8080",
+		EventPruneInterval:      time.Hour * 3,
+		EventPruneIntervalHCL:   "3h",
 		LogLevel:                "info",
-		RunLogExpiry:            30,
+		TaskRunLogExpiry:        50,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      time.Minute * 5,
 		TaskRunStopTimeoutHCL:   "5m",
@@ -35,18 +35,13 @@ func TestAPISampleFromFile(t *testing.T) {
 			Host:   "localhost:8081",
 		},
 
-		Database: &Database{
-			MaxResultsLimit: 200,
-			Path:            "/tmp/gofer.db",
-		},
-
 		ObjectStore: &ObjectStore{
 			Engine: "sqlite",
 			Sqlite: &Sqlite{
 				Path: "/tmp/gofer-object.db",
 			},
-			PipelineObjectLimit: 30,
-			RunObjectExpiry:     30,
+			PipelineObjectLimit: 50,
+			RunObjectExpiry:     50,
 		},
 
 		SecretStore: &SecretStore{
@@ -67,22 +62,21 @@ func TestAPISampleFromFile(t *testing.T) {
 		},
 
 		Server: &Server{
-			DevMode:            false,
-			ShutdownTimeout:    time.Second * 15,
-			ShutdownTimeoutHCL: "15s",
-			TLSCertPath:        "./localhost.crt",
-			TLSKeyPath:         "./localhost.key",
-			TmpDir:             "/tmp",
+			Host:                "localhost:8080",
+			ShutdownTimeout:     time.Second * 15,
+			ShutdownTimeoutHCL:  "15s",
+			TLSCertPath:         "./localhost.crt",
+			TLSKeyPath:          "./localhost.key",
+			StoragePath:         "/tmp/gofer.db",
+			StorageResultsLimit: 200,
 		},
 
 		Triggers: &Triggers{
-			InstallBaseTriggers:    true,
-			StopTimeout:            time.Minute * 5,
-			StopTimeoutHCL:         "5m",
-			HealthcheckInterval:    time.Second * 30,
-			HealthcheckIntervalHCL: "30s",
-			TLSCertPath:            "./localhost.crt",
-			TLSKeyPath:             "./localhost.key",
+			InstallBaseTriggers: true,
+			StopTimeout:         time.Minute * 5,
+			StopTimeoutHCL:      "5m",
+			TLSCertPath:         "./localhost.crt",
+			TLSKeyPath:          "./localhost.key",
 		},
 	}
 
@@ -120,14 +114,14 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 	}
 
 	expected := API{
+		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
 		EventLogRetention:       time.Hour * 4380,
 		EventLogRetentionHCL:    "4380h",
-		PruneEventsInterval:     time.Hour * 3,
-		PruneEventsIntervalHCL:  "3h",
-		Host:                    "localhost:8080",
+		EventPruneInterval:      time.Hour * 3,
+		EventPruneIntervalHCL:   "3h",
 		LogLevel:                "info",
-		RunLogExpiry:            30,
+		TaskRunLogExpiry:        50,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      time.Minute * 5,
 		TaskRunStopTimeoutHCL:   "5m",
@@ -137,18 +131,12 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 			Host:   "localhost:8081",
 		},
 
-		Database: &Database{
-			MaxResultsLimit: 1000,
-			Path:            "/tmp/gofer.db",
-		},
-
 		ObjectStore: &ObjectStore{
 			Engine: "sqlite",
-			BoltDB: &BoltDB{},
 			Sqlite: &Sqlite{
 				Path: "/tmp/gofer-object.db",
 			},
-			PipelineObjectLimit: 30,
+			PipelineObjectLimit: 50,
 			RunObjectExpiry:     1000,
 		},
 
@@ -170,22 +158,21 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		},
 
 		Server: &Server{
-			DevMode:            false,
-			ShutdownTimeout:    time.Second * 15,
-			ShutdownTimeoutHCL: "15s",
-			TLSCertPath:        "./test",
-			TLSKeyPath:         "./localhost.key",
-			TmpDir:             "/tmp",
+			Host:                "localhost:8080",
+			ShutdownTimeout:     time.Second * 15,
+			ShutdownTimeoutHCL:  "15s",
+			TLSCertPath:         "./test",
+			TLSKeyPath:          "./localhost.key",
+			StoragePath:         "/tmp/gofer.db",
+			StorageResultsLimit: 200,
 		},
 
 		Triggers: &Triggers{
-			InstallBaseTriggers:    true,
-			StopTimeout:            time.Minute * 5,
-			StopTimeoutHCL:         "5m",
-			HealthcheckInterval:    time.Second * 30,
-			HealthcheckIntervalHCL: "30s",
-			TLSCertPath:            "./test",
-			TLSKeyPath:             "./localhost.key",
+			InstallBaseTriggers: true,
+			StopTimeout:         time.Minute * 5,
+			StopTimeoutHCL:      "5m",
+			TLSCertPath:         "./test",
+			TLSKeyPath:          "./localhost.key",
 		},
 	}
 
