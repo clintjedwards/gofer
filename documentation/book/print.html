@@ -82,7 +82,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="how_does_gofer_work.html">How Does Gofer Work?</a></li><li class="chapter-item expanded affix "><a href="glossary.html">Glossary</a></li><li class="chapter-item expanded affix "><a href="faq.html">FAQ</a></li><li class="chapter-item expanded affix "><a href="features.html">Features In-depth</a></li><li class="chapter-item expanded "><a href="guide/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guide/installing_gofer.html"><strong aria-hidden="true">1.1.</strong> Installing Gofer</a></li><li class="chapter-item expanded "><a href="guide/running_the_server_locally.html"><strong aria-hidden="true">1.2.</strong> Running the Server Locally</a></li><li class="chapter-item expanded "><a href="guide/generate_a_pipeline_config.html"><strong aria-hidden="true">1.3.</strong> Generate a Pipeline Config</a></li><li class="chapter-item expanded "><a href="guide/create_your_first_pipeline.html"><strong aria-hidden="true">1.4.</strong> Create Your First Pipeline</a></li><li class="chapter-item expanded "><a href="guide/start_a_run.html"><strong aria-hidden="true">1.5.</strong> Start a Run</a></li><li class="chapter-item expanded "><a href="guide/whats_next.html"><strong aria-hidden="true">1.6.</strong> What's Next?</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="how_does_gofer_work.html">How Does Gofer Work?</a></li><li class="chapter-item expanded affix "><a href="glossary.html">Glossary</a></li><li class="chapter-item expanded affix "><a href="faq.html">FAQ</a></li><li class="chapter-item expanded affix "><a href="features.html">Features In-depth</a></li><li class="chapter-item expanded affix "><a href="best_practices.html">Best Practices</a></li><li class="chapter-item expanded "><a href="guide/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guide/installing_gofer.html"><strong aria-hidden="true">1.1.</strong> Installing Gofer</a></li><li class="chapter-item expanded "><a href="guide/running_the_server_locally.html"><strong aria-hidden="true">1.2.</strong> Running the Server Locally</a></li><li class="chapter-item expanded "><a href="guide/create_your_first_pipeline_configuration.html"><strong aria-hidden="true">1.3.</strong> Create Your First Pipeline Config</a></li><li class="chapter-item expanded "><a href="guide/register_your_pipeline.html"><strong aria-hidden="true">1.4.</strong> Register your pipeline</a></li><li class="chapter-item expanded "><a href="guide/start_a_run.html"><strong aria-hidden="true">1.5.</strong> Start a Run</a></li><li class="chapter-item expanded "><a href="guide/whats_next.html"><strong aria-hidden="true">1.6.</strong> What's Next?</a></li></ol></li><li class="chapter-item expanded "><a href="ref/index.html"><strong aria-hidden="true">2.</strong> Component Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/pipeline_configuration/index.html"><strong aria-hidden="true">2.1.</strong> Pipeline Configuration</a></li><li class="chapter-item expanded "><a href="ref/server_configuration/index.html"><strong aria-hidden="true">2.2.</strong> Server Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/server_configuration/configuration_reference.html"><strong aria-hidden="true">2.2.1.</strong> Configuration Reference</a></li><li class="chapter-item expanded "><a href="ref/server_configuration/authentication.html"><strong aria-hidden="true">2.2.2.</strong> Authentication</a></li><li class="chapter-item expanded "><a href="ref/server_configuration/external_events.html"><strong aria-hidden="true">2.2.3.</strong> External Events</a></li></ol></li><li class="chapter-item expanded "><a href="ref/scheduler/index.html"><strong aria-hidden="true">2.3.</strong> Scheduler</a></li><li class="chapter-item expanded "><a href="ref/object_store/index.html"><strong aria-hidden="true">2.4.</strong> Object Store</a></li><li class="chapter-item expanded "><a href="ref/secret_store/index.html"><strong aria-hidden="true">2.5.</strong> Secret Store</a></li><li class="chapter-item expanded "><a href="ref/triggers/index.html"><strong aria-hidden="true">2.6.</strong> Triggers</a></li><li class="chapter-item expanded "><a href="ref/triggers/index.html"><strong aria-hidden="true">2.7.</strong> Common Tasks</a></li></ol></li><li class="chapter-item expanded "><a href="cli/index.html"><strong aria-hidden="true">3.</strong> Command Line</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/configuration.html"><strong aria-hidden="true">3.1.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="cli/namespaces.html"><strong aria-hidden="true">3.2.</strong> namespaces</a></li><li class="chapter-item expanded "><a href="cli/namespaces_create.html"><strong aria-hidden="true">3.3.</strong> namespaces create</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -357,13 +357,579 @@ as needed.</li>
 <div class="footnote-definition" id="2"><sup class="footnote-definition-label">2</sup>
 <p>Via GRPC.</p>
 </div>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h1>
+<p>In order to schedule workloads on Gofer your code will need to be wrapped in a docker container. This is a short workflow blurb about how to create containers to best work with Gofer.</p>
+<h2 id="1-write-your-code-to-be-idempotent"><a class="header" href="#1-write-your-code-to-be-idempotent">1) Write your code to be idempotent.</a></h2>
+<p>Write your code in whatever language you want, but it's a good idea to make it idempotent. Gofer does not guarantee single container runs (but even if it did that doesn't prevent mistakes from users).</p>
+<h2 id="2-follow-12-factor-best-practices"><a class="header" href="#2-follow-12-factor-best-practices">2) Follow <a href="https://12factor.net">12-factor best practices.</a></a></h2>
+<p><a href="https://12factor.net/config">Configuration</a> is the important one. Gofer manages information into containers by environment variables so your code will need to take any input or configuration it needs from environment variables.</p>
+<h2 id="3-keep-things-simple"><a class="header" href="#3-keep-things-simple">3) Keep things simple.</a></h2>
+<p>You could, in theory, create a super complicated graph of containers that run off each other. But the main theme of Gofer is simplicity. Make sure you're thinking through the benefits of managing something in separate containers vs just running a monolith container. There are good reasons for both; always err on the side of clarity and ease of understanding.</p>
+<h2 id="4-keep-your-containers-lean"><a class="header" href="#4-keep-your-containers-lean">4) Keep your containers lean.</a></h2>
+<p>Because of the potentially distributed nature of Gofer, the larger the containers you run, the greater potential lag time between the start of execution for your container. This is because there is no guarantee that your container will end up on a machine that already has the image. Downloading large images takes a lot of time and a lot of disk space.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
+<p>Let's start by setting up our first Gofer pipeline!</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installing-gofer"><a class="header" href="#installing-gofer">Installing Gofer</a></h1>
+<p>Gofer comes as an easy to distribute pre-compiled binary that you can run on your machine locally, but you can always build Gofer from <a href="guide/installing_gofer.html#from-source">source</a> if need be.</p>
+<h2 id="pre-compiled-recommended"><a class="header" href="#pre-compiled-recommended">Pre-compiled (Recommended)</a></h2>
+<p>You can download the latest version for linux here:</p>
+<pre><code class="language-bash">wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer
+</code></pre>
+<h2 id="from-source"><a class="header" href="#from-source">From Source</a></h2>
+<p>Gofer contains protobuf assets which will not get compiled if used via <code>go install</code>.
+Alternatively we can use <code>make</code> to build ourselves an impromptu version.</p>
+<pre><code class="language-bash">git clone https://github.com/clintjedwards/gofer &amp;&amp; cd gofer
+make build path=/tmp/gofer
+/tmp/gofer --version
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="running-the-server-locally"><a class="header" href="#running-the-server-locally">Running the Server Locally</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="generate-a-pipeline-config"><a class="header" href="#generate-a-pipeline-config">Generate a Pipeline Config</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="create-your-first-pipeline"><a class="header" href="#create-your-first-pipeline">Create Your First Pipeline</a></h1>
+<p>Gofer is deployed as a single static binary allowing you to run the full service locally so you can play with the
+internals before committing resources to it. Spinning Gofer up locally is also a great way to
+debug &quot;what would happen if?&quot; questions that might come up during the creation of pipeline config files.</p>
+<h2 id="install-gofer"><a class="header" href="#install-gofer"><a href="guide/../installing-gofer">Install Gofer</a></a></h2>
+<h2 id="install-docker"><a class="header" href="#install-docker">Install Docker</a></h2>
+<p>The way in which Gofer runs containers is called a <a href="guide/../../schedulers/overview">Scheduler</a>. When deploying Gofer at scale we can deploy it with a more serious container scheduler (<a href="https://www.nomadproject.io/">Nomad</a>, <a href="https://kubernetes.io/">Kubernetes</a>) but for now we're just going to use the default local docker scheduler included. This simply uses your local instance of <a href="guide/../../schedulers/docker/overview">docker</a> instance to run containers.</p>
+<p>But before we use your local docker service... you have to have one in the first place. If you don't have docker installed, the installation is quick. Rather than covering the specifics here you can instead find a guide on how to install docker for your operating system <a href="https://docs.docker.com/get-docker/">on its documentation site.</a></p>
+<h2 id="start-the-server"><a class="header" href="#start-the-server">Start the server</a></h2>
+<p>By default the Gofer binary is able to run the server in development mode. Simply start the service by:</p>
+<pre><code class="language-bash">gofer service start
+</code></pre>
+<blockquote>
+<p>🪧 The Gofer CLI has many useful commands, try running <code>gofer -h</code> to see a full listing.</p>
+</blockquote>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="create-your-first-pipeline-configuration"><a class="header" href="#create-your-first-pipeline-configuration">Create Your First Pipeline Configuration</a></h1>
+<p>Before you can start running containers you must tell Gofer what you want to run. To do this we create what is called a <code>pipeline configuration</code>.</p>
+<p>The creation of this pipeline configuration is very easy and can be done in either Golang or Rust. This allows you to use a fully-featured programming language to organize your pipelines, instead of dealing with YAML mess.</p>
+<h2 id="lets-go"><a class="header" href="#lets-go">Let's Go!</a></h2>
+<p>As an example, let's just copy a pipeline that has been given to us already. We'll use Go as our language, which means you'll need to <a href="https://go.dev/doc/install">install it</a> if you don't have it. The Gofer repository gives us a <a href="https://github.com/clintjedwards/gofer/tree/main/examplePipelines/go/simple">simple pipeline</a> that we can copy and use.</p>
+<h3 id="lets-first-create-a-folder-where-well-put-our-pipeline"><a class="header" href="#lets-first-create-a-folder-where-well-put-our-pipeline">Let's first create a folder where we'll put our pipeline:</a></h3>
+<pre><code class="language-bash">mkdir /tmp/simple_pipeline
+</code></pre>
+<h3 id="then-lets-copy-the-gofer-provided-pipelines-main-file-into-the-correct-place"><a class="header" href="#then-lets-copy-the-gofer-provided-pipelines-main-file-into-the-correct-place">Then let's copy the Gofer provided pipeline's main file into the correct place:</a></h3>
+<pre><code class="language-bash">cd /tmp/simple_pipeline
+wget https://raw.githubusercontent.com/clintjedwards/gofer/main/examplePipelines/go/simple/main.go
+</code></pre>
+<p>This should create a <code>main.go</code> file inside our <code>/tmp/simple_pipeline</code> directory.</p>
+<h3 id="lastly-lets-initialize-the-new-golang-program"><a class="header" href="#lastly-lets-initialize-the-new-golang-program">Lastly, let's initialize the new Golang program:</a></h3>
+<p>To complete our Go program we simply have to initialize it with the <code>go mod</code> command.</p>
+<pre><code class="language-bash">go mod init test/simple_pipeline
+go mod tidy
+</code></pre>
+<p>The pipeline we generated above gives you a very simple pipeline with a few pre-prepared testing docker containers. You should be able to view it using your favorite IDE.</p>
+<p>The configuration itself is very simple. Essentially a pipeline contains of a few parts:</p>
+<ul>
+<li>Some basic attributes so we know what to call it and how to document it.</li>
+<li>The containers we want to run are defined through <a href="guide/">tasks</a>.</li>
+<li>And when we want to automate when the pipeline runs automatically, we can do that through <a href="guide/">triggers</a>.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="register-your-pipeline"><a class="header" href="#register-your-pipeline">Register your pipeline</a></h1>
+<p>Now we will register your newly created pipeline configuration with Gofer!</p>
+<h2 id="more-cli-to-the-rescue"><a class="header" href="#more-cli-to-the-rescue">More CLI to the rescue</a></h2>
+<p>From your terminal, lets use the Gofer binary to run the following command, pointing Gofer at your newly created pipeline folder:</p>
+<pre><code class="language-bash">gofer pipelines create ./tmp/simple_pipeline
+</code></pre>
+<h2 id="examine-created-pipeline"><a class="header" href="#examine-created-pipeline">Examine created pipeline</a></h2>
+<p>It's that easy!</p>
+<p>The Gofer command line application uses your local Golang compiler to compile, parse, and upload your pipeline configuration to Gofer.</p>
+<p>You should have received a success message and some suggested commands:</p>
+<pre><code class="language-bash"> ✓ Created pipeline: [simple] &quot;Simple Pipeline&quot;
+
+  View details of your new pipeline: gofer pipelines get simple
+  Start a new run: gofer runs start simple
+</code></pre>
+<p>We can view the details of our new pipeline by running:</p>
+<pre><code class="language-bash">gofer pipelines get example_pipeline
+</code></pre>
+<p>If you ever forget your pipeline ID you can list all pipelines that you own by using:</p>
+<pre><code class="language-bash">gofer pipelines list
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="start-a-run"><a class="header" href="#start-a-run">Start a Run</a></h1>
+<p>Now that we've set up Gofer, defined our pipeline, and registered it we're ready to actually run our containers.</p>
+<h2 id="press-start"><a class="header" href="#press-start">Press start</a></h2>
+<pre><code class="language-bash">gofer pipelines run simple
+</code></pre>
+<h2 id="what-happens-now"><a class="header" href="#what-happens-now">What happens now?</a></h2>
+<p>When you start a run Gofer will attempt to schedule all your tasks according to their dependencies onto your chosen scheduler. In this case that scheduler is your local instance of Docker.</p>
+<p>Your run should be chugging along now!</p>
+<h4 id="view-a-list-of-runs-for-your-pipeline"><a class="header" href="#view-a-list-of-runs-for-your-pipeline">View a list of runs for your pipeline:</a></h4>
+<pre><code class="language-bash">gofer runs list simple
+</code></pre>
+<h4 id="view-details-about-your-run"><a class="header" href="#view-details-about-your-run">View details about your run:</a></h4>
+<pre><code class="language-bash">gofer runs get simple 1
+</code></pre>
+<h4 id="list-the-containers-that-executed-during-the-run"><a class="header" href="#list-the-containers-that-executed-during-the-run">List the containers that executed during the run:</a></h4>
+<pre><code class="language-bash">gofer taskruns list simple 1
+</code></pre>
+<h4 id="view-a-particular-containers-details-during-the-run"><a class="header" href="#view-a-particular-containers-details-during-the-run">View a particular container's details during the run:</a></h4>
+<pre><code class="language-bash">gofer taskruns get simple 1 &lt;task_id&gt;
+</code></pre>
+<h4 id="stream-a-particular-containers-logs-during-the-run"><a class="header" href="#stream-a-particular-containers-logs-during-the-run">Stream a particular container's logs during the run:</a></h4>
+<pre><code class="language-shell">gofer taskruns logs simple 1 &lt;task_id&gt;
+
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="whats-next"><a class="header" href="#whats-next">What's Next?</a></h1>
+<p>Anything!</p>
+<ol>
+<li>Keep playing with Gofer locally and check out all the <a href="guide/../../cli/gofer">CLI commands</a>.</li>
+<li>Spruce up your <a href="guide/../../pipeline-configuration/overview">pipeline definition</a>!</li>
+<li>Learn more about Gofer <a href="guide/../../glossary">terminology</a>.</li>
+<li><a href="guide/../../server-configuration/overview">Deploy Gofer for real</a>. Pair it with your favorite scheduler and start using it to automate your jobs.</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="component-reference"><a class="header" href="#component-reference">Component Reference</a></h1>
+<p>The following section contains reference documentation for different parts of Gofer.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="pipeline-configuration"><a class="header" href="#pipeline-configuration">Pipeline Configuration</a></h1>
+<p>A pipeline is a directed acyclic graph of tasks that run together. A single execution of a pipeline is called a run. Gofer allows users to configure their pipeline via a configuration file written in <a href="https://go.dev/">Golang</a> or <a href="https://www.rust-lang.org/">Rust</a>.</p>
+<p>The general hierarchy for a pipeline is:</p>
+<pre><code>pipeline
+    \_ run
+         \_ task
+</code></pre>
+<p>Each execution of a pipeline is a run and every run consists of one or more tasks (containers). These tasks are where users specify their containers and settings.</p>
+<h2 id="sdk"><a class="header" href="#sdk">SDK</a></h2>
+<p>Creating a pipeline involves using <a href="https://pkg.go.dev/github.com/clintjedwards/gofer/sdk">Gofer's SDK</a> currently written in Go or Rust.</p>
+<p>Extensive documentation can be found on the <a href="https://pkg.go.dev/github.com/clintjedwards/gofer/sdk/config">SDK's reference page</a>. There you will find most of the features and idiosyncrasies available to you when creating a pipeline.</p>
+<h2 id="small-walkthrough"><a class="header" href="#small-walkthrough">Small Walkthrough</a></h2>
+<p>To introduce some of the concepts slowly, lets build a pipeline step by step. We'll be using Go as our pipeline configuration language and this documentation assumes you've already set up your project and are operating in a <code>main.go</code> file.</p>
+<h3 id="a-simple-pipeline"><a class="header" href="#a-simple-pipeline">A Simple Pipeline</a></h3>
+<p>Every pipeline is initialized with a simple pipeline declaration. It's here that we will name our pipeline, giving it a machine referable ID and a human referable name.</p>
+<pre><code class="language-go">err := sdk.NewPipeline(&quot;my_pipeline&quot;, &quot;My Simple Pipeline&quot;)
+</code></pre>
+<p>It's important to note here that while your human readable name (&quot;My Simple Pipeline&quot; in this case) can contain a large amount of characters the ID can only container alphanumeric letters, numbers, and underscores. Any other characters will result in an error when attempting to register the pipeline.</p>
+<h3 id="add-a-description"><a class="header" href="#add-a-description">Add a Description</a></h3>
+<p>Next we'll add a simple description to remind us what this pipeline is used for.</p>
+<pre><code class="language-go">err := sdk.NewPipeline(&quot;my_pipeline&quot;, &quot;My Simple Pipeline&quot;).
+    WithDescription(&quot;This pipeline is purely for testing purposes.&quot;)
+</code></pre>
+<p>The SDK uses a builder pattern, which allows us to simply add another function onto our Pipeline object which we can type our description into.</p>
+<h3 id="add-a-trigger"><a class="header" href="#add-a-trigger">Add a trigger</a></h3>
+<p>Next we'll add a trigger. Triggers allow us to automate when our pipeline's run. Triggers usually execute a pipeline for us based on some event. In this example that even is the passage of time.</p>
+<p>To do this we'll use a trigger included with Gofer called the <a href="ref/pipeline_configuration/">interval</a> trigger. This trigger simply counts time and executes pipeline's based on that pipeline's specific time configuration.</p>
+<pre><code class="language-go">err := sdk.NewPipeline(&quot;my_pipeline&quot;, &quot;My Simple Pipeline&quot;).
+    WithDescription(&quot;This pipeline is purely for testing purposes.&quot;).
+    WithTriggers(
+        *sdk.NewTrigger(&quot;interval&quot;, &quot;every_one_minute&quot;).WithSetting(&quot;every&quot;, &quot;1m&quot;),
+    )
+</code></pre>
+<p>Here you can see we create a new <code>WithTriggers</code> block and then add a single trigger <code>interval</code>. We also add a setting block. Different triggers have different settings that pipelines can pass to them. In this case, passing the setting <code>every</code> along with the value <code>1m</code> will tell interval that this pipeline should be executed every minute.</p>
+<p>When this pipeline is registered, Gofer will check that a trigger named <code>interval</code> actually exists and it will then communicate with that trigger to tell it which pipeline wants to register and which configuration values it has passed along.</p>
+<p>If this registration with the trigger cannot be formed the registration of the overall pipeline will fail.</p>
+<h3 id="add-a-task"><a class="header" href="#add-a-task">Add a task</a></h3>
+<p>Lastly let's add a task(container to our pipeline). We'll add a simple ubuntu container and change the command that gets
+run on container start to just say &quot;Hello from Gofer!&quot;.</p>
+<pre><code class="language-go">err := sdk.NewPipeline(&quot;my_pipeline&quot;, &quot;My Simple Pipeline&quot;).
+    WithDescription(&quot;This pipeline is purely for testing purposes.&quot;).
+    WithTriggers(
+        *sdk.NewTrigger(&quot;interval&quot;, &quot;every_one_minute&quot;).WithSetting(&quot;every&quot;, &quot;1m&quot;),
+    ).WithTasks(
+		sdk.NewCustomTask(&quot;simple_task&quot;, &quot;ubuntu:latest&quot;).
+			WithDescription(&quot;This task simply prints our hello-world message and exists!&quot;).
+			WithCommand(&quot;echo&quot;, &quot;Hello from Gofer!&quot;),
+    )
+</code></pre>
+<p>We user the WithTasks function to add multiple tasks and then we use the SDK's <code>NewCustomTask</code> function to create a task. You can see we give the task an ID, much like our pipeline earlier, and then we specify which image we want to use. We also
+tack on a description and then specify the command.</p>
+<p>To tie a bow on it, we add the <code>.Finish()</code> function to specify that our pipeline is in it's final form.</p>
+<pre><code class="language-go">err := sdk.NewPipeline(&quot;my_pipeline&quot;, &quot;My Simple Pipeline&quot;).
+    WithDescription(&quot;This pipeline is purely for testing purposes.&quot;).
+    WithTriggers(
+        *sdk.NewTrigger(&quot;interval&quot;, &quot;every_one_minute&quot;).WithSetting(&quot;every&quot;, &quot;1m&quot;),
+    ).WithTasks(
+		sdk.NewCustomTask(&quot;simple_task&quot;, &quot;ubuntu:latest&quot;).
+			WithDescription(&quot;This task simply prints our hello-world message and exists!&quot;).
+			WithCommand(&quot;echo&quot;, &quot;Hello from Gofer!&quot;),
+    ).Finish()
+</code></pre>
+<p>That's it! This is a fully functioning pipeline.</p>
+<h2 id="full-example"><a class="header" href="#full-example">Full Example</a></h2>
+<pre><code class="language-go">package main
+
+import (
+	&quot;log&quot;
+
+	sdk &quot;github.com/clintjedwards/gofer/sdk/go/config&quot;
+)
+
+func main() {
+	err := sdk.NewPipeline(&quot;trigger&quot;, &quot;Trigger Pipeline&quot;).
+		WithDescription(&quot;This pipeline shows off the various features of a simple Gofer pipeline. Triggers, Tasks, and &quot; +
+			&quot;dependency graphs are all tools that can be wielded to create as complicated pipelines as need be.&quot;).
+		WithTriggers(
+			*sdk.NewTrigger(&quot;interval&quot;, &quot;every_one_minute&quot;).WithSetting(&quot;every&quot;, &quot;1m&quot;),
+		).WithTasks(
+		sdk.NewCustomTask(&quot;simple_task&quot;, &quot;ubuntu:latest&quot;).
+			WithDescription(&quot;This task simply prints our hello-world message and exists!&quot;).
+			WithCommand(&quot;echo&quot;, &quot;Hello from Gofer!&quot;),
+	).Finish()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="server-configuration"><a class="header" href="#server-configuration">Server Configuration</a></h1>
+<p>Gofer runs as a single static binary that you deploy onto your favorite VPS.</p>
+<p>While Gofer will happily run in development mode without any additional configuration, this mode is <strong>NOT</strong> recommended for production workloads and <strong>not intended to be secure.</strong></p>
+<p>Instead Gofer allows you to edit it's startup configuration allowing you to configure it to run on your favorite container orchestrator, object store, and/or storage backend.</p>
+<h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
+<p>There are a few steps to setting up the Gofer service for production:</p>
+<h3 id="1-configuration"><a class="header" href="#1-configuration">1) Configuration</a></h3>
+<p>First you will need to properly configure the Gofer service.</p>
+<p>Gofer accepts configuration through environment variables or a configuration file. If a configuration key is set both in an environment variable and in a configuration file, the value of the environment variable's value will be the final value.</p>
+<p>You can view a list of environment variables Gofer takes by using the <code>gofer service printenv</code> command. It's important to note that each environment variable starts with a prefix of <code>GOFER_</code>. So setting the <code>host</code> configuration can be set as:</p>
+<pre><code class="language-bash">export GOFER_HOST=localhost:8080
+</code></pre>
+<h4 id="configuration-file"><a class="header" href="#configuration-file">Configuration file</a></h4>
+<p>The Gofer service configuration file is written in <a href="https://octopus.com/blog/introduction-to-hcl-and-hcl-tooling">HCL</a>.</p>
+<h5 id="load-order"><a class="header" href="#load-order">Load order</a></h5>
+<p>The Gofer service looks for its configuration in one of several places (ordered by first searched):</p>
+<ol>
+<li>Path given through the <code>GOFER_CONFIG_PATH</code> environment variable</li>
+<li>/etc/gofer/gofer.hcl</li>
+</ol>
+<blockquote>
+<p>🪧 You can generate a sample Gofer configuration file by using the command: <code>gofer service init-config</code></p>
+</blockquote>
+<h4 id="bare-minimum-production-file"><a class="header" href="#bare-minimum-production-file">Bare minimum production file</a></h4>
+<p>These are the bare minimum values you should populate for a production ready Gofer configuration.</p>
+<p>The values below should be changed depending on your environment; leaving them as they currently are will lead to loss of data on server restarts.</p>
+<blockquote>
+<p>🪧 To keep your deployment of Gofer safe make sure to use your own TLS certificates instead of the default localhost ones included.</p>
+</blockquote>
+<pre><code class="language-hcl">// Gofer Service configuration file is used as an alternative to providing the server configurations via envvars.
+// You can find an explanation of these configuration variables and where to put this file so the server can read this
+// file in the documenation: https://clintjedwards.com/gofer/docs/server-configuration/overview
+event_log_retention        = &quot;4380h&quot;
+host                       = &quot;localhost:8080&quot;
+ignore_pipeline_run_events = false
+log_level                  = &quot;info&quot;
+prune_events_interval      = &quot;3h&quot;
+run_log_expiry             = 30
+task_run_logs_dir          = &quot;/tmp&quot;
+task_run_stop_timeout      = &quot;5m&quot;
+
+external_events_api {
+  enable = true
+  host   = &quot;localhost:8081&quot;
+}
+
+database {
+  max_results_limit = 200
+  path = &quot;/tmp/gofer.db&quot;
+}
+
+object_store {
+  engine = &quot;sqlite&quot;
+  sqlite {
+    path = &quot;/tmp/gofer-object.db&quot;
+  }
+  pipeline_object_limit = 30
+  run_object_expiry     = 30
+}
+
+secret_store {
+  engine = &quot;sqlite&quot;
+  sqlite {
+    path           = &quot;/tmp/gofer-secret.db&quot;
+    encryption_key = &quot;changemechangemechangemechangeme&quot;
+  }
+}
+
+scheduler {
+  engine = &quot;docker&quot;
+  docker {
+    prune          = true
+    prune_interval = &quot;24h&quot;
+  }
+}
+
+server {
+  dev_mode         = false
+  shutdown_timeout = &quot;15s&quot;
+  tls_cert_path    = &quot;./localhost.crt&quot;
+  tls_key_path     = &quot;./localhost.key&quot;
+  tmp_dir          = &quot;/tmp&quot;
+}
+
+triggers {
+  install_base_triggers = true
+  stop_timeout          = &quot;5m&quot;
+  healthcheck_interval  = &quot;30s&quot;
+  tls_cert_path         = &quot;./localhost.crt&quot;
+  tls_key_path          = &quot;./localhost.key&quot;
+}
+
+</code></pre>
+<h3 id="2-running-the-binary"><a class="header" href="#2-running-the-binary">2) Running the binary</a></h3>
+<p>You can find the most recent releases of Gofer on the <a href="https://github.com/clintjedwards/gofer/releases">github releases page.</a>.</p>
+<p>Simply use whatever configuration management system you're most familiar with to place the binary on your chosen VPS and manage it. You can find a quick and dirty <code>wget</code> command to pull the latest version in the <a href="ref/server_configuration/../getting-started/installing-gofer.html">getting started documentation.</a></p>
+<p>As an example a simple systemd service file setup to run Gofer is show below:</p>
+<h4 id="example-systemd-service-file"><a class="header" href="#example-systemd-service-file">Example systemd service file</a></h4>
+<pre><code class="language-bash">[Unit]
+Description=gofer service
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Restart=on-failure
+ExecStart=/usr/bin/gofer service start
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<h3 id="3-first-steps"><a class="header" href="#3-first-steps">3) First steps</a></h3>
+<p>You will notice upon service start that the Gofer CLI is unable to make any requests due to permissions.</p>
+<p>You will first need to handle the problem of auth. Every request to Gofer must use an API key so Gofer can appropriately direct requests.</p>
+<p>More information about auth in general terms <a href="ref/server_configuration/auth">can be found here.</a></p>
+<p>To create your root management token use the command: <code>gofer service token bootstrap</code></p>
+<blockquote>
+<p>🪧 The token returned is a management token and as such as access to all routes within Gofer. It is advised that:</p>
+<ol>
+<li>You use this token only in admin situations and to generate other lesser permissioned tokens.</li>
+<li>Store this token somewhere safe</li>
+</ol>
+</blockquote>
+<p>From here you can use your root token to provision extra lower permissioned tokens for everyday use.</p>
+<p>When communicating with Gofer through the CLI you can set the token to be automatically passed per request in <a href="ref/server_configuration/../cli/configuration">one of many ways.</a></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration-reference"><a class="header" href="#configuration-reference">Configuration Reference</a></h1>
+<p>Gofer has a variety of parameters that can be specified via environment variables or the configuration file.</p>
+<p>To view a listing of the possible environment variables use: <code>gofer service printenv</code>.</p>
+<p>The most up to date config file values can be found by <a href="https://github.com/clintjedwards/gofer/blob/main/internal/config/api.go#L14">reading the code</a>, but a best effort key and description list is given below.</p>
+<p>If examples of these values are needed you can find a sample file by using <code>gofer service init-config</code>.</p>
+<h2 id="values"><a class="header" href="#values">Values</a></h2>
+<pre><code>ExternalEventsAPI *ExternalEventsAPI `split_words:&quot;true&quot; hcl:&quot;external_events_api,block&quot;`
+Database          *Database          `hcl:&quot;database,block&quot;`
+ObjectStore       *ObjectStore       `hcl:&quot;object_store,block&quot;`
+SecretStore       *SecretStore       `hcl:&quot;secret_store,block&quot;`
+Scheduler         *Scheduler         `hcl:&quot;scheduler,block&quot;`
+Server            *Server            `hcl:&quot;server,block&quot;`
+Triggers          *Triggers          `hcl:&quot;triggers,block&quot;`
+</code></pre>
+<h3 id="general"><a class="header" href="#general">General</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>event_log_retention</td><td>string</td><td>4380h</td><td>The limit (in hours) for how long Gofer will store events. Larger values will lead to larger database footprints. The default retention period is 6 months.</td></tr>
+<tr><td>host</td><td>string</td><td>localhost:8080</td><td>The address and port for the service to bind to.</td></tr>
+<tr><td>ignore_pipeline_run_events</td><td>boolean</td><td>false</td><td>Controls the ability for the Gofer service to execute jobs on startup. If this is set to false you can set it to true manually using the CLI command <code>gofer service toggle-event-ingress</code>.</td></tr>
+<tr><td>log_level</td><td>string</td><td>debug</td><td>The logging level that is output. It is common to start with info.</td></tr>
+<tr><td>prune_events_interval</td><td>string</td><td>3h</td><td>How often to check for old events and remove them from the database.</td></tr>
+<tr><td>run_log_expiry</td><td>int</td><td>20</td><td>Each Gofer task run generates logs from the container being run. This controls the number of runs before Gofer cleans up the logs associated with that run.</td></tr>
+<tr><td>run_parallelism_limit</td><td>int</td><td>N/A</td><td>The global run parallelism limit. A pipeline is not allowed to have more than this number of runs active at the same time.</td></tr>
+<tr><td>task_run_logs_dir</td><td>string</td><td>/tmp</td><td>The path of the directory to store task run logs. Task run logs are stored as a text file on the server.</td></tr>
+<tr><td>task_run_stop_timeout</td><td>string</td><td>5m</td><td>The amount of time Gofer will wait for a container to gracefully stop before sending it a SIGKILL.</td></tr>
+</tbody></table>
+</div>
+<h3 id="external-events-api-block-external_events_api"><a class="header" href="#external-events-api-block-external_events_api">External Events API (block) [external_events_api]</a></h3>
+<p>The external events API controls webhook type interactions with triggers. HTTP requests go through the events endpoint and Gofer routes them to the proper trigger for handling.</p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>enable</td><td>boolean</td><td>true</td><td>Enable the events api. If this is turned off the events http service will not be started.</td></tr>
+<tr><td>host</td><td>string</td><td>localhost:8081</td><td>The address and port to bind the events service to.</td></tr>
+</tbody></table>
+</div>
+<h4 id="example"><a class="header" href="#example">Example</a></h4>
+<pre><code class="language-hcl">external_events_api {
+  enable = true
+  host   = &quot;0.0.0.0:8081&quot;
+}
+</code></pre>
+<h3 id="database-block-database"><a class="header" href="#database-block-database">Database (block) [database]</a></h3>
+<p>The settings for the backend database Gofer will use to store state. Gofer's only database option is boltdb.</p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>engine</td><td>string</td><td>sqlite</td><td>The engine Gofer will use to store state. The accepted values here are &quot;bolt&quot;.</td></tr>
+<tr><td>max_results_limit</td><td>int</td><td>100</td><td>The maximum amount of results the database will return when not specified. This is useful for pagination defaults.</td></tr>
+</tbody></table>
+</div>
+<h4 id="example-1"><a class="header" href="#example-1">Example</a></h4>
+<pre><code class="language-hcl">database {
+  engine            = &quot;sqlite&quot;
+  max_results_limit = 100
+}
+</code></pre>
+<h3 id="object-store-block-object_store"><a class="header" href="#object-store-block-object_store">Object Store (block) [object_store]</a></h3>
+<p>The settings for the Gofer object store. The object store assists Gofer with storing values between tasks since Gofer is by nature distributed. This helps jobs avoid having to download the same objects over and over or simply just allows tasks to share certain values.</p>
+<p>You can find <a href="ref/server_configuration/../object-stores/overview">more information on the object store block here.</a></p>
+<ul>
+<li>
+<h4 id="engine-string-bolt"><a class="header" href="#engine-string-bolt"><code>engine</code> (string: <em>bolt</em>)</a></h4>
+The engine Gofer will use to store state. The accepted values here are &quot;bolt&quot;.</li>
+<li>
+<h4 id="pipeline_object_limit-int-10"><a class="header" href="#pipeline_object_limit-int-10"><code>pipeline_object_limit</code> (int: <em>10</em>)</a></h4>
+The limit to the amount of objects that can be stored at the pipeline level. Objects stored at the pipeline level are kept permanently, but once the object limit is reach the oldest object will be deleted.</li>
+<li>
+<h4 id="run_object_expiry-int-20"><a class="header" href="#run_object_expiry-int-20"><code>run_object_expiry</code> (int: <em>20</em>)</a></h4>
+The number of runs before objects stored at the &quot;run level&quot; will be removed.</li>
+<li>
+<h4 id="boltdb-block"><a class="header" href="#boltdb-block"><code>boltdb</code> (block)</a></h4>
+<a href="https://dbdb.io/db/boltdb">Bolt DB</a> is a key-value store. Its fast, lightweight, and can be run easily locally. It is the defacto development storage because of these properties.
+<ul>
+<li>
+<h4 id="path-string-tmpgofer-osdb"><a class="header" href="#path-string-tmpgofer-osdb"><code>path</code> (string: <em>/tmp/gofer-os.db</em>)</a></h4>
+The path of the file that boltdb will use. If this file does not exist Gofer will create it.</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-hcl">object_store {
+  engine = &quot;bolt&quot;
+  boltdb {
+    path = &quot;/tmp/gofer-os.db&quot;
+  }
+}
+</code></pre>
+<ul>
+<li>
+<h4 id="secret_store-block"><a class="header" href="#secret_store-block"><code>secret_store</code> (block)</a></h4>
+<p>The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, trigger configuration, or scheduler.</p>
+<p>You can find <a href="ref/server_configuration/../secret-stores/overview">more information on the secret store block here.</a></p>
+<ul>
+<li>
+<h4 id="engine-string-bolt-1"><a class="header" href="#engine-string-bolt-1"><code>engine</code> (string: <em>bolt</em>)</a></h4>
+The engine Gofer will use to store state. The accepted values here are &quot;bolt&quot;.</li>
+<li>
+<h4 id="boltdb-block-1"><a class="header" href="#boltdb-block-1"><code>boltdb</code> (block)</a></h4>
+<a href="https://dbdb.io/db/boltdb">Bolt DB</a> is a key-value store. Its fast, lightweight, and can be run easily locally. It is the defacto development storage because of these properties.
+<ul>
+<li>
+<h4 id="path-string-tmpgofer-osdb-1"><a class="header" href="#path-string-tmpgofer-osdb-1"><code>path</code> (string: <em>/tmp/gofer-os.db</em>)</a></h4>
+The path of the file that boltdb will use. If this file does not exist Gofer will create it.</li>
+<li>
+<h4 id="encryption_key-string-default"><a class="header" href="#encryption_key-string-default"><code>encryption_key</code> (string: <em>default</em>)</a></h4>
+The key used to encrypt secrets into the secretStore. This must be a 32 character randomized value.</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-hcl">secret_store {
+  engine = &quot;bolt&quot;
+  boltdb {
+    path = &quot;/tmp/gofer-os.db&quot;
+    encryption_key = &quot;changemechangemechangemechangeme&quot;
+  }
+}
+</code></pre>
+</li>
+<li>
+<h4 id="scheduler-block"><a class="header" href="#scheduler-block"><code>scheduler</code> (block)</a></h4>
+<p>The settings for the container orchestrator that Gofer will use to schedule workloads.</p>
+<p>You can find <a href="ref/server_configuration/../schedulers/overview">more information on the scheduler block here.</a></p>
+<ul>
+<li>
+<h4 id="engine-string-docker"><a class="header" href="#engine-string-docker"><code>engine</code> (string: <em>docker</em>)</a></h4>
+The engine Gofer will use as a container orchestrator. The accepted values here are &quot;docker&quot;.</li>
+<li>
+<h4 id="docker-block"><a class="header" href="#docker-block"><code>docker</code> (block)</a></h4>
+<a href="https://www.docker.com/why-docker">Docker</a> is the default container orchestrator and leverages the machine's local docker engine to schedule containers.
+<ul>
+<li>
+<h4 id="prune-bool-false"><a class="header" href="#prune-bool-false"><code>prune</code> (bool: <em>false</em>)</a></h4>
+Controls if the docker scheduler should periodically clean up old containers.</li>
+<li>
+<h4 id="prune_interval-string-24h"><a class="header" href="#prune_interval-string-24h"><code>prune_interval</code> (string: <em>24h</em>)</a></h4>
+Controls how often the prune container job should run.</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-hcl">scheduler {
+  engine = &quot;docker&quot;
+  docker {
+    prune          = true
+    prune_interval = &quot;24h&quot;
+  }
+}
+</code></pre>
+</li>
+<li>
+<h4 id="server-block"><a class="header" href="#server-block"><code>server</code> (block)</a></h4>
+<p>Controls the settings for the Gofer service's server properties.</p>
+<ul>
+<li>
+<h4 id="dev_mode-bool-true"><a class="header" href="#dev_mode-bool-true"><code>dev_mode</code> (bool: <em>true</em>)</a></h4>
+Dev mode controls many aspects of Gofer to make it easier to run locally for development and testing. Because of this you should not run dev mode in production as it is not safe. A non-complete list of things dev-mode helps with: the use of localhost certificates, autogeneration of encryption key, bypass of authentication for all routes.</li>
+<li>
+<h4 id="shutdown_timeout-string-15s"><a class="header" href="#shutdown_timeout-string-15s"><code>shutdown_timeout</code> (string: <em>15s</em>)</a></h4>
+The time Gofer will wait for all connections to drain before exiting.</li>
+<li>
+<h4 id="tls_cert_path-string-required"><a class="header" href="#tls_cert_path-string-required"><code>tls_cert_path</code> (string: <em>required</em>)</a></h4>
+The TLS certificate Gofer will use for the main service endpoint. This is required.</li>
+<li>
+<h4 id="tls_key_path-string-required"><a class="header" href="#tls_key_path-string-required"><code>tls_key_path</code> (string: <em>required</em>)</a></h4>
+The TLS certificate key Gofer will use for the main service endpoint. This is required.</li>
+<li>
+<h4 id="tmp_dir-string-tmp"><a class="header" href="#tmp_dir-string-tmp"><code>tmp_dir</code> (string: <em>/tmp</em>)</a></h4>
+Gofer temporarily downloads pipeline configuration files so they can be parsed. This setting is the temp directory that those files are downloaded to. These files are also cleaned up afterwards.</li>
+</ul>
+<pre><code class="language-hcl">server {
+  dev_mode         = false
+  tls_cert_path    = &quot;./localhost.crt&quot;
+  tls_key_path     = &quot;./localhost.key&quot;
+  tmp_dir          = &quot;/tmp&quot;
+}
+</code></pre>
+</li>
+<li>
+<h4 id="triggers-block"><a class="header" href="#triggers-block"><code>triggers</code> (block)</a></h4>
+<p>Controls settings for Gofer's trigger system. Triggers are different workflows for running pipelines usually based on some other event (like the passing of time).</p>
+<p>You can find <a href="ref/server_configuration/../triggers/overview">more information on the trigger block here.</a></p>
+<ul>
+<li>
+<h4 id="stop_timeout-string-5m"><a class="header" href="#stop_timeout-string-5m"><code>stop_timeout</code> (string: <em>5m</em>)</a></h4>
+The amount of time Gofer will wait until trigger containers have stopped before sending a SIGKILL.</li>
+<li>
+<h4 id="healthcheck_interval-string-30s"><a class="header" href="#healthcheck_interval-string-30s"><code>healthcheck_interval</code> (string: <em>30s</em>)</a></h4>
+The amount of time between the check for if Gofer triggers are still alive. This check ensure that triggers aren't silently dead and workflows aren't silently being missed.</li>
+<li>
+<h4 id="tls_cert_path-string-required-1"><a class="header" href="#tls_cert_path-string-required-1"><code>tls_cert_path</code> (string: <em>required</em>)</a></h4>
+The TLS certificate path Gofer will use for the triggers. This should be a certificate that the main Gofer service will be able to access.</li>
+<li>
+<h4 id="tls_key_path-string-required-1"><a class="header" href="#tls_key_path-string-required-1"><code>tls_key_path</code> (string: <em>required</em>)</a></h4>
+The TLS certificate path key Gofer will use for the triggers. This should be a certificate that the main Gofer service will be able to access.</li>
+<li>
+<h4 id="registered_triggers-block"><a class="header" href="#registered_triggers-block"><code>registered_triggers</code> (block)</a></h4>
+Controls the list of triggers Gofer will start-up with. You can list this block many times and point to various images that use the <a href="ref/server_configuration/../triggers/overview">Gofer SDK</a> to create a trigger.
+<ul>
+<li>
+<h4 id="kind-label"><a class="header" href="#kind-label"><code>kind</code> (label)</a></h4>
+The unique name of the trigger.</li>
+<li>
+<h4 id="image-string-"><a class="header" href="#image-string-"><code>image</code> (string: <em>&quot;&quot;</em>)</a></h4>
+The registry and docker image name of the trigger.</li>
+<li>
+<h4 id="user-string-"><a class="header" href="#user-string-"><code>user</code> (string: <em>&quot;&quot;</em>)</a></h4>
+User value for registries that need authentication.</li>
+<li>
+<h4 id="pass-string-"><a class="header" href="#pass-string-"><code>pass</code> (string: <em>&quot;&quot;</em>)</a></h4>
+Pass value for registries that need authentication.</li>
+<li>
+<h4 id="env_vars-mapstringstring-"><a class="header" href="#env_vars-mapstringstring-"><code>env_vars</code> (map[string]string: <em>&quot;&quot;:&quot;&quot;</em>)</a></h4>
+A mapping of environment variables that will be passed to the container. This is useful for passing trigger specific values that edit the configuration of the triggers.</li>
+<li>
+<h4 id="secrets-mapstringstring-"><a class="header" href="#secrets-mapstringstring-"><code>secrets</code> (map[string]string: <em>&quot;&quot;:&quot;&quot;</em>)</a></h4>
+A mapping of secrets that will be passed to the container. This is useful for passing trigger specific secrets that modify the configuration of the triggers.</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-hcl">triggers {
+  stop_timeout         = &quot;5m&quot;
+  healthcheck_interval = &quot;30s&quot;
+  tls_cert_path        = &quot;./localhost.crt&quot;
+  tls_key_path         = &quot;./localhost.key&quot;
+  registered_triggers &quot;cron&quot; {
+      image = &quot;ghcr.io/clintjedwards/gofer/trigger_cron:latest&quot;
+  }
+  registered_triggers &quot;interval&quot; {
+      image = &quot;ghcr.io/clintjedwards/gofer-container/trigger_interval:latest&quot;
+  }
+}
+</code></pre>
+</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="authentication"><a class="header" href="#authentication">Authentication</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="external-events"><a class="header" href="#external-events">External Events</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="scheduler"><a class="header" href="#scheduler">Scheduler</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="object-store-1"><a class="header" href="#object-store-1">Object Store</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="secret-store-1"><a class="header" href="#secret-store-1">Secret Store</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="common-tasks-1"><a class="header" href="#common-tasks-1">Common Tasks</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="common-tasks-2"><a class="header" href="#common-tasks-2">Common Tasks</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="command-line"><a class="header" href="#command-line">Command Line</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="namespaces-1"><a class="header" href="#namespaces-1">namespaces</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="namespaces-create"><a class="header" href="#namespaces-create">namespaces create</a></h1>
 
                     </main>
 

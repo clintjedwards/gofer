@@ -56,6 +56,7 @@ Update rust sdk library to be equal to golangs.
 - CLI now just compiles from language. This means that we can also just straight up read from things like json/toml since it all compiles back to json anyway.
 - https://github.com/clintjedwards/gofer/commit/955e1b7da76fdfa5aa26bcb5dd0b138af605aa45
 - Pipeline get needs to put more detail (list tasks, triggers, commontasks)
+- Create an init function for both rust and golang(simply just prompts you for your language) and then creates a new default vanilla pipeline. (similar to the old "config init" command)
 
 ### Scheduler
 

@@ -5,13 +5,35 @@
 [Glossary](./glossary.md)
 [FAQ](./faq.md)
 [Features In-depth](./features.md)
+[Best Practices](./best_practices.md)
 
 ## Getting Started
 
 - [Getting Started](./guide/README.md)
   - [Installing Gofer](./guide/installing_gofer.md)
   - [Running the Server Locally](./guide/running_the_server_locally.md)
-  - [Generate a Pipeline Config](./guide/generate_a_pipeline_config.md)
-  - [Create Your First Pipeline](./guide/create_your_first_pipeline.md)
+  - [Create Your First Pipeline Config](./guide/create_your_first_pipeline_configuration.md)
+  - [Register your pipeline](./guide/register_your_pipeline.md)
   - [Start a Run](./guide/start_a_run.md)
   - [What's Next?](./guide/whats_next.md)
+
+## Component Reference
+
+- [Component Reference](./ref/README.md)
+  - [Pipeline Configuration](./ref/pipeline_configuration/README.md)
+  - [Server Configuration](./ref/server_configuration/README.md)
+    - [Configuration Reference](./ref/server_configuration/configuration_reference.md)
+    - [Authentication](./ref/server_configuration/authentication.md)
+    - [External Events](./ref/server_configuration/external_events.md)
+  - [Scheduler](./ref/scheduler/README.md)
+  - [Object Store](./ref/object_store/README.md)
+  - [Secret Store](./ref/secret_store/README.md)
+  - [Triggers](./ref/triggers/README.md)
+  - [Common Tasks](./ref/triggers/README.md)
+
+## CLI
+
+- [Command Line](./cli/README.md)
+  - [Configuration](./cli/configuration.md)
+  - [namespaces](./cli/namespaces.md)
+  - [namespaces create](./cli/namespaces_create.md)
