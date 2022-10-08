@@ -62,6 +62,8 @@ You can find [more information on the object store block here.](../object-stores
 
 #### Sqlite (block)
 
+The sqlite store is a built-in, easy to use object store. It is meant for development and small deployments.
+
 | name   | type   | default              | description                                                                                  |
 | ------ | ------ | -------------------- | -------------------------------------------------------------------------------------------- |
 | path   | string | /tmp/gofer-object.db | The path of the file that sqlite will use. If this file does not exist Gofer will create it. |
@@ -88,6 +90,8 @@ You can find [more information on the secret store block here.](../secret-stores
 | sqlite | block  | N/A     | The sqlite storage engine.                                                       |
 
 #### Sqlite (block)
+
+The sqlite store is a built-in, easy to use object store. It is meant for development and small deployments.
 
 | name           | type   | default                            | description                                                                                                                                                                                                            |
 | -------------- | ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

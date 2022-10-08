@@ -43,7 +43,7 @@ The values below should be changed depending on your environment; leaving them a
 
 > 🪧 To keep your deployment of Gofer safe make sure to use your own TLS certificates instead of the default localhost ones included.
 
-```hcl
+```ruby
 {{#include ../../../../internal/cli/service/sampleConfig.hcl}}
 ```
 
@@ -58,18 +58,7 @@ As an example a simple systemd service file setup to run Gofer is show below:
 #### Example systemd service file
 
 ```bash
-[Unit]
-Description=gofer service
-Requires=network-online.target
-After=network-online.target
-
-[Service]
-Restart=on-failure
-ExecStart=/usr/bin/gofer service start
-ExecReload=/bin/kill -HUP $MAINPID
-
-[Install]
-WantedBy=multi-user.target
+{{#include ../../../../gofer.service}}
 ```
 
 ### 3) First steps

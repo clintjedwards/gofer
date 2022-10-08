@@ -1,4 +1,4 @@
-# Triggers
+# Common Tasks
 
 Triggers are Gofer's way of automating pipeline runs. Triggers are registered to your pipeline on creation and will alert Gofer when it's time to run your pipeline when some event has occurred.
 

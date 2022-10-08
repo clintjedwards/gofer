@@ -7,7 +7,7 @@
 [Features In-depth](./features.md)
 [Best Practices](./best_practices.md)
 
-## Getting Started
+# User Guide
 
 - [Getting Started](./guide/README.md)
   - [Installing Gofer](./guide/installing_gofer.md)
@@ -17,23 +17,24 @@
   - [Start a Run](./guide/start_a_run.md)
   - [What's Next?](./guide/whats_next.md)
 
-## Component Reference
+# Component Reference
 
-- [Component Reference](./ref/README.md)
-  - [Pipeline Configuration](./ref/pipeline_configuration/README.md)
-  - [Server Configuration](./ref/server_configuration/README.md)
-    - [Configuration Reference](./ref/server_configuration/configuration_reference.md)
-    - [Authentication](./ref/server_configuration/authentication.md)
-    - [External Events](./ref/server_configuration/external_events.md)
-  - [Scheduler](./ref/scheduler/README.md)
-  - [Object Store](./ref/object_store/README.md)
-  - [Secret Store](./ref/secret_store/README.md)
-  - [Triggers](./ref/triggers/README.md)
-  - [Common Tasks](./ref/triggers/README.md)
+- [Pipeline Configuration](./ref/pipeline_configuration/README.md)
+- [Server Configuration](./ref/server_configuration/README.md)
+  - [Configuration Reference](./ref/server_configuration/configuration_reference.md)
+  - [Authentication](./ref/server_configuration/authentication.md)
+  - [External Events](./ref/server_configuration/external_events.md)
+- [Scheduler](./ref/scheduler/README.md)
+- [Object Store](./ref/object_store/README.md)
+- [Secret Store](./ref/secret_store/README.md)
+- [Triggers](./ref/triggers/README.md)
+  - [Cron](./ref/triggers/cron.md)
+  - [Interval](./ref/triggers/interval.md)
+  - [Github](./ref/triggers/github.md)
+- [Common Tasks](./ref/common_tasks/README.md)
+  - [Debug](./ref/common_tasks/debug.md)
 
-## CLI
+# CLI
 
 - [Command Line](./cli/README.md)
   - [Configuration](./cli/configuration.md)
-  - [namespaces](./cli/namespaces.md)
-  - [namespaces create](./cli/namespaces_create.md)
