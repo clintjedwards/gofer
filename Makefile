@@ -62,21 +62,11 @@ run-docs:
 > mdbook serve --open
 .PHONY: run-docs
 
-## run-website: build website js and run dev server
-run-website:
-> npm --prefix ./website start
-.PHONY: run-website
-
-## build-website: build website js for production
-build-website:
-> npm --prefix ./website run build
-.PHONY: build-website
-
-## deploy-website: build website js and deploy to github pages
-deploy-website:
-> USE_SSH=true; npm --prefix ./website run build
-> USE_SSH_true; npm --prefix ./website run deploy
-.PHONY: deploy-website
+## build-docs: build final documentation site artifacts
+build-docs:
+> cd documentation
+> mdbook build
+.PHONY: build-docs
 
 # 	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/github:${semver} .
 #	docker tag ghcr.io/clintjedwards/gofer/triggers/github:${semver} ghcr.io/clintjedwards/gofer/triggers/github:latest
