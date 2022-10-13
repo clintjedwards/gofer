@@ -44,7 +44,7 @@ trigger "github" "only_from_experimental" {
 
 ## Trigger Configuration
 
-Trigger configurations are set upon startup and cannot be changed afterwards. They are set via the [server configuration](../../server-configuration/overview).
+Trigger configurations are set upon startup and cannot be changed afterwards.
 
 The Github trigger requires the setup and use of a [new Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps). You can [view setup instructions below](#additional-setup) which will walk you through how to retrieve the required env var variables.
 

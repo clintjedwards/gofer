@@ -147,12 +147,14 @@
 <ul>
 <li><code>every</code> [string]: Specifies the time duration between events. Unless changed via the trigger configuration, the minimum for this is 5 mins.</li>
 </ul>
-<pre><code class="language-hcl">trigger &quot;interval&quot; &quot;every_five_mins&quot; {
-    every = &quot;5m&quot;
-}
+<pre><code class="language-go">...
+WithTriggers(
+    *sdk.NewTrigger(&quot;interval&quot;, &quot;every_five_mins&quot;).WithSetting(&quot;every&quot;, &quot;5m&quot;),
+)
+...
 </code></pre>
 <h2 id="trigger-configuration"><a class="header" href="#trigger-configuration">Trigger Configuration</a></h2>
-<p>Trigger configurations are set upon trigger startup and cannot be changed afterwards. They are set via the <a href="../../server-configuration/overview">server configuration</a>.</p>
+<p>Trigger configurations are set upon trigger startup and cannot be changed afterwards.</p>
 <div class="table-wrapper"><table><thead><tr><th>EnvVar</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td>MIN_DURATION</td><td>&quot;5m&quot;</td><td>The minimum duration users can set their pipelines to run</td></tr>
 </tbody></table>

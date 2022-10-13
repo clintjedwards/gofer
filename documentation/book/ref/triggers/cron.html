@@ -171,9 +171,11 @@ Year            1970-2100       * , -
 <li><code>expression</code> [string]: Specifies the cron expression of the interval desired.</li>
 </ul>
 <h3 id="every-year-on-xmas"><a class="header" href="#every-year-on-xmas">Every year on Xmas</a></h3>
-<pre><code class="language-hcl">trigger &quot;cron&quot; &quot;yearly_on_xmas&quot; {
-    expression = &quot;0 1 25 12 * *&quot;
-}
+<pre><code class="language-go">...
+WithTriggers(
+    *sdk.NewTrigger(&quot;cron&quot;, &quot;yearly_on_xmas&quot;).WithSetting(&quot;expression&quot;, &quot;0 1 25 12 * *&quot;),
+)
+...
 </code></pre>
 <h2 id="trigger-configuration"><a class="header" href="#trigger-configuration">Trigger Configuration</a></h2>
 <p>None</p>

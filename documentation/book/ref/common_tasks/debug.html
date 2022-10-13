@@ -142,8 +142,18 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="debug"><a class="header" href="#debug">Debug</a></h1>
-
+                        <h1 id="debug-common-task"><a class="header" href="#debug-common-task">Debug <small>Common Task</small></a></h1>
+<h2 id="pipeline-configuration"><a class="header" href="#pipeline-configuration">Pipeline Configuration</a></h2>
+<pre><code class="language-go">...
+WithTasks(sdk.NewCommonTask(&quot;debug&quot;, &quot;debug_task&quot;))
+...
+</code></pre>
+<h2 id="common-task-configuration"><a class="header" href="#common-task-configuration">Common Task Configuration</a></h2>
+<p>Common Task configurations are set upon common task startup and cannot be changed afterwards. They are set via the <a href="../../server-configuration/overview">server configuration</a>.</p>
+<div class="table-wrapper"><table><thead><tr><th>EnvVar</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td>FILTER</td><td>false</td><td>Don't print any env vars that contain the strings &quot;key&quot; or &quot;token&quot;</td></tr>
+</tbody></table>
+</div>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

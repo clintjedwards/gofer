@@ -4,15 +4,17 @@
 
 - `every` [string]: Specifies the time duration between events. Unless changed via the trigger configuration, the minimum for this is 5 mins.
 
-```hcl
-trigger "interval" "every_five_mins" {
-    every = "5m"
-}
+```go
+...
+WithTriggers(
+    *sdk.NewTrigger("interval", "every_five_mins").WithSetting("every", "5m"),
+)
+...
 ```
 
 ## Trigger Configuration
 
-Trigger configurations are set upon trigger startup and cannot be changed afterwards. They are set via the [server configuration](../../server-configuration/overview).
+Trigger configurations are set upon trigger startup and cannot be changed afterwards.
 
 | EnvVar       | Default | Description                                               |
 | ------------ | ------- | --------------------------------------------------------- |

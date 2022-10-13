@@ -101,6 +101,8 @@ files are located in `/proto`. To compile new protobufs once the original `.prot
 
 ### Editing Documentation
 
+Documentation is done with [mdbook](https://rust-lang.github.io/mdBook/).
+
 ## Authors
 
 - **Clint Edwards** - [Github](https://github.com/clintjedwards)

@@ -1025,9 +1025,11 @@ Year            1970-2100       * , -
 <li><code>expression</code> [string]: Specifies the cron expression of the interval desired.</li>
 </ul>
 <h3 id="every-year-on-xmas"><a class="header" href="#every-year-on-xmas">Every year on Xmas</a></h3>
-<pre><code class="language-hcl">trigger &quot;cron&quot; &quot;yearly_on_xmas&quot; {
-    expression = &quot;0 1 25 12 * *&quot;
-}
+<pre><code class="language-go">...
+WithTriggers(
+    *sdk.NewTrigger(&quot;cron&quot;, &quot;yearly_on_xmas&quot;).WithSetting(&quot;expression&quot;, &quot;0 1 25 12 * *&quot;),
+)
+...
 </code></pre>
 <h2 id="trigger-configuration"><a class="header" href="#trigger-configuration">Trigger Configuration</a></h2>
 <p>None</p>
@@ -1036,12 +1038,14 @@ Year            1970-2100       * , -
 <ul>
 <li><code>every</code> [string]: Specifies the time duration between events. Unless changed via the trigger configuration, the minimum for this is 5 mins.</li>
 </ul>
-<pre><code class="language-hcl">trigger &quot;interval&quot; &quot;every_five_mins&quot; {
-    every = &quot;5m&quot;
-}
+<pre><code class="language-go">...
+WithTriggers(
+    *sdk.NewTrigger(&quot;interval&quot;, &quot;every_five_mins&quot;).WithSetting(&quot;every&quot;, &quot;5m&quot;),
+)
+...
 </code></pre>
 <h2 id="trigger-configuration-1"><a class="header" href="#trigger-configuration-1">Trigger Configuration</a></h2>
-<p>Trigger configurations are set upon trigger startup and cannot be changed afterwards. They are set via the <a href="ref/triggers/../../server-configuration/overview">server configuration</a>.</p>
+<p>Trigger configurations are set upon trigger startup and cannot be changed afterwards.</p>
 <div class="table-wrapper"><table><thead><tr><th>EnvVar</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td>MIN_DURATION</td><td>&quot;5m&quot;</td><td>The minimum duration users can set their pipelines to run</td></tr>
 </tbody></table>
@@ -1079,7 +1083,7 @@ events endpoint.</p>
 }
 </code></pre>
 <h2 id="trigger-configuration-2"><a class="header" href="#trigger-configuration-2">Trigger Configuration</a></h2>
-<p>Trigger configurations are set upon startup and cannot be changed afterwards. They are set via the <a href="ref/triggers/../../server-configuration/overview">server configuration</a>.</p>
+<p>Trigger configurations are set upon startup and cannot be changed afterwards.</p>
 <p>The Github trigger requires the setup and use of a <a href="https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps">new Github app</a>. You can <a href="ref/triggers/github.html#additional-setup">view setup instructions below</a> which will walk you through how to retrieve the required env var variables.</p>
 <div class="table-wrapper"><table><thead><tr><th>EnvVar</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td>GOFER_TRIGGER_GITHUB_APPS_ID</td><td>Required</td><td>The Github app ID</td></tr>
@@ -1150,53 +1154,30 @@ You can find more information about the format the variables will be in by <a hr
 <tr><td>release</td><td>&quot;GOFER_TRIGGER_GITHUB_ACTION&quot;<br/>&quot;GOFER_TRIGGER_GITHUB_REPOSITORY&quot;<br/>&quot;GOFER_TRIGGER_GITHUB_RELEASE_TAG_NAME&quot;<br/>&quot;GOFER_TRIGGER_GITHUB_RELEASE_TARGET_COMMITISH&quot;<br/>&quot;GOFER_TRIGGER_GITHUB_RELEASE_AUTHOR_LOGIN&quot;<br/>&quot;GOFER_TRIGGER_GITHUB_RELEASE_CREATED_AT&quot;<br/>&quot;GOFER_TRIGGER_GITHUB_RELEASE_PUBLISHED_AT&quot;</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="common-tasks-1"><a class="header" href="#common-tasks-1">Common Tasks</a></h1>
-<p>Triggers are Gofer's way of automating pipeline runs. Triggers are registered to your pipeline on creation and will alert Gofer when it's time to run your pipeline when some event has occurred.</p>
-<p>The most straight-forward example of this is the event of passing time. Let's say you have a pipeline that needs to run every 5 mins. You would set your <a href="ref/common_tasks/../pipeline-configuration/trigger/trigger-stanza">pipeline</a> up with the <a href="ref/common_tasks/interval/overview">interval</a> trigger set to an interval of <code>5m</code>.</p>
-<p>On startup, Gofer launches the interval trigger as a long-running container. When your pipeline is created, it &quot;subscribes&quot; to the interval trigger with an interval of <code>5m</code>. The interval trigger starts a timer and when 5 minutes have passed an event is sent from the trigger to Gofer, causing Gofer to run your pipeline.</p>
-<h2 id="gofer-provided-triggers-1"><a class="header" href="#gofer-provided-triggers-1">Gofer Provided Triggers</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>name</th><th>image</th><th>included by default</th><th>description</th></tr></thead><tbody>
-<tr><td><a href="ref/common_tasks/./interval.html">interval</a></td><td>ghcr.io/clintjedwards/gofer/triggers/interval:latest</td><td>yes</td><td>Interval triggers an event after a predetermined amount of time has passed.</td></tr>
-<tr><td><a href="ref/common_tasks/./cron.html">cron</a></td><td>ghcr.io/clintjedwards/gofer/triggers/cron:latest</td><td>yes</td><td>Cron is used for longer termed intervals. For instance, running a pipeline every year on Christmas.</td></tr>
-<tr><td><a href="ref/common_tasks/./github.html">github</a></td><td>ghcr.io/clintjedwards/gofer/triggers/github:latest</td><td>no</td><td>Allow your pipelines to run based on branch, tag, or release activity.</td></tr>
+<p>Common Tasks are Gofer's way of allowing you to pre-setup tasks such that they can be set up once and used in multiple pipelines.</p>
+<p>This allows you to do potentially complicated or single use setups that make it easier for different pipelines to consume without going through the same process.</p>
+<p>An example of this might be having pipelines post to Slack. Setting up a new slack bot account for each and every pipeline that would want to post to slack is cumbersome and slows down productivity. Instead, Gofer's common tasks allow you to set up a single Slack bot, set up a single task, and have each pipeline just specify that task.</p>
+<p>Common tasks work just like any other task except that they are registered just like triggers.</p>
+<h2 id="gofer-provided-common-tasks"><a class="header" href="#gofer-provided-common-tasks">Gofer Provided Common Tasks</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>image</th><th>description</th></tr></thead><tbody>
+<tr><td><a href="ref/common_tasks/./debug.html">debug</a></td><td>ghcr.io/clintjedwards/gofer/tasks/debug:latest</td><td>Useful for debugging common tasks, simply prints out the env vars each run. A good example of how to setup other common tasks.</td></tr>
 </tbody></table>
 </div>
-<h2 id="how-to-add-new-triggers-1"><a class="header" href="#how-to-add-new-triggers-1">How to add new Triggers?</a></h2>
-<p>Just like tasks, triggers are simply docker containers! Making them easily testable and portable. To create a new trigger you simply use the included <a href="https://pkg.go.dev/github.com/clintjedwards/gofer/sdk">Gofer SDK</a>.</p>
-<p>The SDK provides an interface in which a well functioning GRPC service will be created from your concrete implementation.</p>
-<pre><code class="language-go">// TriggerServiceInterface provides a light wrapper around the GRPC trigger interface. This light wrapper
-// provides the caller with a clear interface to implement and allows this package to bake in common
-// functionality among all triggers.
-type TriggerServiceInterface interface {
-	// Watch blocks until the trigger has a pipeline that should be run, then it returns. This is ideal for setting
-	// the watch endpoint as an channel result.
-	Watch(context.Context, *proto.TriggerWatchRequest) (*proto.TriggerWatchResponse, error)
-
-	// Info returns information on the specific plugin
-	Info(context.Context, *proto.TriggerInfoRequest) (*proto.TriggerInfoResponse, error)
-
-	// Subscribe allows a trigger to keep track of all pipelines currently
-	// dependant on that trigger so that we can trigger them at appropriate times.
-	Subscribe(context.Context, *proto.TriggerSubscribeRequest) (*proto.TriggerSubscribeResponse, error)
-
-	// Unsubscribe allows pipelines to remove their trigger subscriptions. This is
-	// useful if the pipeline no longer needs to be notified about a specific
-	// trigger automation.
-	Unsubscribe(context.Context, *proto.TriggerUnsubscribeRequest) (*proto.TriggerUnsubscribeResponse, error)
-
-	// Shutdown tells the trigger to cleanup and gracefully shutdown. If a trigger
-	// does not shutdown in a time defined by the gofer API the trigger will
-	// instead be Force shutdown(SIGKILL). This is to say that all triggers should
-	// lean toward quick cleanups and shutdowns.
-	Shutdown(context.Context, *proto.TriggerShutdownRequest) (*proto.TriggerShutdownResponse, error)
-
-	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
-	// webhooks.
-	ExternalEvent(context.Context, *proto.TriggerExternalEventRequest) (*proto.TriggerExternalEventResponse, error)
-}
-
+<h2 id="how-to-add-new-common-tasks"><a class="header" href="#how-to-add-new-common-tasks">How to add new Common Tasks?</a></h2>
+<p>Just like custom tasks, common tasks are simply docker containers! Making them easily testable and portable. To create a new common task you simply use the included <a href="https://pkg.go.dev/github.com/clintjedwards/gofer/sdk">Gofer SDK</a>.</p>
+<p>The SDK provides simple functions to help in creating common tasks. To see an example of how a common task is structured and created view the <a href="ref/common_tasks/./debug.html">debug</a> task.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="debug-common-task"><a class="header" href="#debug-common-task">Debug <small>Common Task</small></a></h1>
+<h2 id="pipeline-configuration-4"><a class="header" href="#pipeline-configuration-4">Pipeline Configuration</a></h2>
+<pre><code class="language-go">...
+WithTasks(sdk.NewCommonTask(&quot;debug&quot;, &quot;debug_task&quot;))
+...
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="debug"><a class="header" href="#debug">Debug</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="command-line"><a class="header" href="#command-line">Command Line</a></h1>
+<h2 id="common-task-configuration"><a class="header" href="#common-task-configuration">Common Task Configuration</a></h2>
+<p>Common Task configurations are set upon common task startup and cannot be changed afterwards. They are set via the <a href="ref/common_tasks/../../server-configuration/overview">server configuration</a>.</p>
+<div class="table-wrapper"><table><thead><tr><th>EnvVar</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td>FILTER</td><td>false</td><td>Don't print any env vars that contain the strings &quot;key&quot; or &quot;token&quot;</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="command-line"><a class="header" href="#command-line">Command Line</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 
                     </main>

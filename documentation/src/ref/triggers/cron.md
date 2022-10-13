@@ -34,10 +34,12 @@ It uses a stripped down version of the cron syntax to do so:
 
 ### Every year on Xmas
 
-```hcl
-trigger "cron" "yearly_on_xmas" {
-    expression = "0 1 25 12 * *"
-}
+```go
+...
+WithTriggers(
+    *sdk.NewTrigger("cron", "yearly_on_xmas").WithSetting("expression", "0 1 25 12 * *"),
+)
+...
 ```
 
 ## Trigger Configuration
