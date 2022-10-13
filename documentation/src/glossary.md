@@ -2,7 +2,7 @@
 
 - **Pipeline:** A pipeline is a collection of tasks that can be run at once. Pipelines can be defined via a [pipeline configuration file](./guide/create_your_first_pipeline_configuration.md). Once you have a pipeline config file you can [create a new pipeline via the CLI](./guide/register_your_pipeline.md) (recommended) or API.
 
-- **Run:** A run is a single execution of a pipeline. A run can be started automatically via [triggers](./ref/triggers/README.md) or manually via the API or [CLI](cli/gofer_run_start.md)
+- **Run:** A run is a single execution of a pipeline. A run can be started automatically via [triggers](./ref/triggers/README.md) or manually via the API or [CLI](./cli/README.md)
 
 - **Trigger:** A trigger is an automatic way to run your pipeline. Once mentioned in your [pipeline configuration file](./guide/create_your_first_pipeline_configuration.md), your pipeline _subscribes_ to those triggers, passing them conditions on when to run. Once those conditions are met, those triggers will then inform Gofer that a new run should be launched for that pipeline.
 

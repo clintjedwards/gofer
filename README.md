@@ -101,7 +101,9 @@ files are located in `/proto`. To compile new protobufs once the original `.prot
 
 ### Editing Documentation
 
-Documentation is done with [mdbook](https://rust-lang.github.io/mdBook/).
+Documentation is done with [mdbook](https://rust-lang.github.io/mdBook/). Installation instructions should be on the main site.
+
+Once you have mdbook you can simply run `make run-docs` to give you an auto-reloading dev version of the documentation in a browser.
 
 ## Authors
 

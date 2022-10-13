@@ -51,7 +51,7 @@ The values below should be changed depending on your environment; leaving them a
 
 You can find the most recent releases of Gofer on the [github releases page.](https://github.com/clintjedwards/gofer/releases).
 
-Simply use whatever configuration management system you're most familiar with to place the binary on your chosen VPS and manage it. You can find a quick and dirty `wget` command to pull the latest version in the [getting started documentation.](../getting-started/installing-gofer.md)
+Simply use whatever configuration management system you're most familiar with to place the binary on your chosen VPS and manage it. You can find a quick and dirty `wget` command to pull the latest version in the [getting started documentation.](../../guide/README.md)
 
 As an example a simple systemd service file setup to run Gofer is show below:
 
@@ -67,7 +67,7 @@ You will notice upon service start that the Gofer CLI is unable to make any requ
 
 You will first need to handle the problem of auth. Every request to Gofer must use an API key so Gofer can appropriately direct requests.
 
-More information about auth in general terms [can be found here.](auth)
+More information about auth in general terms [can be found here.](../../cli/configuration.md)
 
 To create your root management token use the command: `gofer service token bootstrap`
 
@@ -78,4 +78,4 @@ To create your root management token use the command: `gofer service token boots
 
 From here you can use your root token to provision extra lower permissioned tokens for everyday use.
 
-When communicating with Gofer through the CLI you can set the token to be automatically passed per request in [one of many ways.](../cli/configuration)
+When communicating with Gofer through the CLI you can set the token to be automatically passed per request in [one of many ways.](../../cli/configuration.md)

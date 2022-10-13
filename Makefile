@@ -68,6 +68,14 @@ build-docs:
 > mdbook build
 .PHONY: build-docs
 
+## push-docs: push docs to github
+push-docs:
+> git checkout main
+> git subtree split --prefix documentation/book/html -b gh-pages
+> git push -f origin gh-pages:gh-pages
+> git branch -D gh-pages
+.PHONY: push-docs
+
 # 	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/github:${semver} .
 #	docker tag ghcr.io/clintjedwards/gofer/triggers/github:${semver} ghcr.io/clintjedwards/gofer/triggers/github:latest
 #	docker push ghcr.io/clintjedwards/gofer/triggers/github:${semver}

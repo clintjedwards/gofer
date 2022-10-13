@@ -1,0 +1,340 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Configuration Reference - Gofer</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="Gofer documentation">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../../introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="../../how_does_gofer_work.html">How Does Gofer Work?</a></li><li class="chapter-item expanded affix "><a href="../../glossary.html">Glossary</a></li><li class="chapter-item expanded affix "><a href="../../faq.html">FAQ</a></li><li class="chapter-item expanded affix "><a href="../../features.html">Features In-depth</a></li><li class="chapter-item expanded affix "><a href="../../best_practices.html">Best Practices</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="../../guide/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../guide/installing_gofer.html"><strong aria-hidden="true">1.1.</strong> Installing Gofer</a></li><li class="chapter-item expanded "><a href="../../guide/running_the_server_locally.html"><strong aria-hidden="true">1.2.</strong> Running the Server Locally</a></li><li class="chapter-item expanded "><a href="../../guide/create_your_first_pipeline_configuration.html"><strong aria-hidden="true">1.3.</strong> Create Your First Pipeline Config</a></li><li class="chapter-item expanded "><a href="../../guide/register_your_pipeline.html"><strong aria-hidden="true">1.4.</strong> Register your pipeline</a></li><li class="chapter-item expanded "><a href="../../guide/start_a_run.html"><strong aria-hidden="true">1.5.</strong> Start a Run</a></li><li class="chapter-item expanded "><a href="../../guide/whats_next.html"><strong aria-hidden="true">1.6.</strong> What's Next?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Component Reference</li><li class="chapter-item expanded "><a href="../../ref/pipeline_configuration/index.html"><strong aria-hidden="true">2.</strong> Pipeline Configuration</a></li><li class="chapter-item expanded "><a href="../../ref/server_configuration/index.html"><strong aria-hidden="true">3.</strong> Server Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/server_configuration/configuration_reference.html" class="active"><strong aria-hidden="true">3.1.</strong> Configuration Reference</a></li><li class="chapter-item expanded "><a href="../../ref/server_configuration/authentication.html"><strong aria-hidden="true">3.2.</strong> Authentication</a></li><li class="chapter-item expanded "><a href="../../ref/server_configuration/external_events.html"><strong aria-hidden="true">3.3.</strong> External Events</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/scheduler/index.html"><strong aria-hidden="true">4.</strong> Scheduler</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/scheduler/docker.html"><strong aria-hidden="true">4.1.</strong> Docker</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/object_store/index.html"><strong aria-hidden="true">5.</strong> Object Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/object_store/sqlite.html"><strong aria-hidden="true">5.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/secret_store/index.html"><strong aria-hidden="true">6.</strong> Secret Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/secret_store/sqlite.html"><strong aria-hidden="true">6.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/triggers/index.html"><strong aria-hidden="true">7.</strong> Triggers</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/triggers/cron.html"><strong aria-hidden="true">7.1.</strong> Cron</a></li><li class="chapter-item expanded "><a href="../../ref/triggers/interval.html"><strong aria-hidden="true">7.2.</strong> Interval</a></li><li class="chapter-item expanded "><a href="../../ref/triggers/github.html"><strong aria-hidden="true">7.3.</strong> Github</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/common_tasks/index.html"><strong aria-hidden="true">8.</strong> Common Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/common_tasks/debug.html"><strong aria-hidden="true">8.1.</strong> Debug</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">CLI</li><li class="chapter-item expanded "><a href="../../cli/index.html"><strong aria-hidden="true">9.</strong> Command Line</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../cli/configuration.html"><strong aria-hidden="true">9.1.</strong> Configuration</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Gofer</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="configuration-reference"><a class="header" href="#configuration-reference">Configuration Reference</a></h1>
+<p>Gofer has a variety of parameters that can be specified via environment variables or the configuration file.</p>
+<p>To view a listing of the possible environment variables use: <code>gofer service printenv</code>.</p>
+<p>The most up to date config file values can be found by <a href="https://github.com/clintjedwards/gofer/blob/main/internal/config/api.go#L14">reading the code</a>, but a best effort key and description list is given below.</p>
+<p>If examples of these values are needed you can find a sample file by using <code>gofer service init-config</code>.</p>
+<h2 id="values"><a class="header" href="#values">Values</a></h2>
+<h3 id="general"><a class="header" href="#general">General</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>dev_mode</td><td>boolean</td><td>true</td><td>Dev mode controls many aspects of Gofer to make it easier to run locally for development and testing. Because of this you should not run dev mode in production as it is not safe. A non-complete list of things dev-mode helps with: the use of localhost certificates, auto-generation of encryption key, bypass of authentication for all routes.</td></tr>
+<tr><td>event_log_retention</td><td>string (duration)</td><td>4380h</td><td>Controls how long Gofer will hold onto events before discarding them. This is important factor in disk space and memory footprint. Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention puts the memory and storage footprint at about 9GB.</td></tr>
+<tr><td>event_prune_interval</td><td>string</td><td>3h</td><td>How often to check for old events and remove them from the database.</td></tr>
+<tr><td>ignore_pipeline_run_events</td><td>boolean</td><td>false</td><td>Controls the ability for the Gofer service to execute jobs on startup. If this is set to false you can set it to true manually using the CLI command <code>gofer service toggle-event-ingress</code>.</td></tr>
+<tr><td>log_level</td><td>string</td><td>debug</td><td>The logging level that is output. It is common to start with <code>info</code>.</td></tr>
+<tr><td>run_parallelism_limit</td><td>int</td><td>N/A</td><td>The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.</td></tr>
+<tr><td>task_run_logs_dir</td><td>string</td><td>/tmp</td><td>The path of the directory to store task run logs. Task run logs are stored as a text file on the server.</td></tr>
+<tr><td>task_run_log_expiry</td><td>int</td><td>20</td><td>The total amount of runs before logs of the oldest run will be deleted.</td></tr>
+<tr><td>task_run_stop_timeout</td><td>string</td><td>5m</td><td>The amount of time Gofer will wait for a container to gracefully stop before sending it a SIGKILL.</td></tr>
+<tr><td>external_events_api</td><td>block</td><td>N/A</td><td>The external events API controls webhook type interactions with triggers. HTTP requests go through the events endpoint and Gofer routes them to the proper trigger for handling.</td></tr>
+<tr><td>object_store</td><td>block</td><td>N/A</td><td>The settings for the Gofer object store. The object store assists Gofer with storing values between tasks since Gofer is by nature distributed. This helps jobs avoid having to download the same objects over and over or simply just allows tasks to share certain values.</td></tr>
+<tr><td>secret_store</td><td>block</td><td>N/A</td><td>The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, trigger configuration, or scheduler.</td></tr>
+<tr><td>scheduler</td><td>block</td><td>N/A</td><td>The settings for the container orchestrator that Gofer will use to schedule workloads.</td></tr>
+<tr><td>server</td><td>block</td><td>N/A</td><td>Controls the settings for the Gofer API service properties.</td></tr>
+<tr><td>triggers</td><td>block</td><td>N/A</td><td>Controls settings for Gofer's trigger system. Triggers are different workflows for running pipelines usually based on some other event (like the passing of time).</td></tr>
+</tbody></table>
+</div>
+<h3 id="external-events-api-block"><a class="header" href="#external-events-api-block">External Events API (block)</a></h3>
+<p>The external events API controls webhook type interactions with triggers. HTTP requests go through the events endpoint and Gofer routes them to the proper trigger for handling.</p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>enable</td><td>boolean</td><td>true</td><td>Enable the events api. If this is turned off the events http service will not be started.</td></tr>
+<tr><td>host</td><td>string</td><td>localhost:8081</td><td>The address and port to bind the events service to.</td></tr>
+</tbody></table>
+</div>
+<h4 id="example"><a class="header" href="#example">Example</a></h4>
+<pre><code class="language-hcl">external_events_api {
+  enable = true
+  host   = &quot;0.0.0.0:8081&quot;
+}
+</code></pre>
+<h3 id="object-store-block"><a class="header" href="#object-store-block">Object Store (block)</a></h3>
+<p>The settings for the Gofer object store. The object store assists Gofer with storing values between tasks since Gofer is by nature distributed. This helps jobs avoid having to download the same objects over and over or simply just allows tasks to share certain values.</p>
+<p>You can find <a href="../object_store/README.html">more information on the object store block here.</a></p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>engine</td><td>string</td><td>sqlite</td><td>The engine Gofer will use to store state. The accepted values here are &quot;sqlite&quot;.</td></tr>
+<tr><td>pipeline_object_limit</td><td>int</td><td>50</td><td>The limit to the amount of objects that can be stored at the pipeline level. Objects stored at the pipeline level are kept permanently, but once the object limit is reach the oldest object will be deleted.</td></tr>
+<tr><td>run_object_expiry</td><td>int</td><td>50</td><td>Objects stored at the run level are unlimited in number, but only last for a certain number of runs. The number below controls how many runs until the run objects for the oldest run will be deleted. Ex. an object stored on run number #5 with an expiry of 2 will be deleted on run #7 regardless of run health.</td></tr>
+</tbody></table>
+</div>
+<h4 id="sqlite-block"><a class="header" href="#sqlite-block">Sqlite (block)</a></h4>
+<p>The sqlite store is a built-in, easy to use object store. It is meant for development and small deployments.</p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>path</td><td>string</td><td>/tmp/gofer-object.db</td><td>The path of the file that sqlite will use. If this file does not exist Gofer will create it.</td></tr>
+<tr><td>sqlite</td><td>block</td><td>N/A</td><td>The sqlite storage engine.</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-hcl">object_store {
+  engine = &quot;sqlite&quot;
+  sqlite {
+    path = &quot;/tmp/gofer-object.db&quot;
+  }
+}
+</code></pre>
+<h3 id="secret-store-block"><a class="header" href="#secret-store-block">Secret Store (block)</a></h3>
+<p>The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, trigger configuration, or scheduler.</p>
+<p>You can find <a href="../secret_store/README.html">more information on the secret store block here.</a></p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>engine</td><td>string</td><td>sqlite</td><td>The engine Gofer will use to store state. The accepted values here are &quot;sqlite&quot;.</td></tr>
+<tr><td>sqlite</td><td>block</td><td>N/A</td><td>The sqlite storage engine.</td></tr>
+</tbody></table>
+</div>
+<h4 id="sqlite-block-1"><a class="header" href="#sqlite-block-1">Sqlite (block)</a></h4>
+<p>The sqlite store is a built-in, easy to use object store. It is meant for development and small deployments.</p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>path</td><td>string</td><td>/tmp/gofer-secret.db</td><td>The path of the file that sqlite will use. If this file does not exist Gofer will create it.</td></tr>
+<tr><td>encryption_key</td><td>string</td><td>&quot;changemechangemechangemechangeme&quot;</td><td>Key used to encrypt keys to keep them safe. This encryption key is responsible for facilitating that. It MUST be 32 characters long and cannot be changed for any reason once it is set or else all data will be lost.</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-hcl">secret_store {
+  engine = &quot;sqlite&quot;
+  sqlite {
+    path = &quot;/tmp/gofer-secret.db&quot;
+    encryption_key = &quot;changemechangemechangemechangeme&quot;
+  }
+}
+</code></pre>
+<h3 id="scheduler-block"><a class="header" href="#scheduler-block">Scheduler (block)</a></h3>
+<p>The settings for the container orchestrator that Gofer will use to schedule workloads.</p>
+<p>You can find <a href="../scheduler/README.html">more information on the scheduler block here.</a></p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>engine</td><td>string</td><td>sqlite</td><td>The engine Gofer will use as a container orchestrator. The accepted values here are &quot;docker&quot;.</td></tr>
+<tr><td>docker</td><td>block</td><td>N/A</td><td><a href="https://www.docker.com/why-docker">Docker</a> is the default container orchestrator and leverages the machine's local docker engine to schedule containers.</td></tr>
+</tbody></table>
+</div>
+<h4 id="docker-block"><a class="header" href="#docker-block">Docker (block)</a></h4>
+<p><a href="https://www.docker.com/why-docker">Docker</a> is the default container orchestrator and leverages the machine's local docker engine to schedule containers.</p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>prune</td><td>boolean</td><td>false</td><td>Controls if the docker scheduler should periodically clean up old containers.</td></tr>
+<tr><td>prune_interval</td><td>string</td><td>24h</td><td>Controls how often the prune container job should run.</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-hcl">scheduler {
+  engine = &quot;docker&quot;
+  docker {
+    prune          = true
+    prune_interval = &quot;24h&quot;
+  }
+}
+</code></pre>
+<h3 id="server-block"><a class="header" href="#server-block">Server (block)</a></h3>
+<p>Controls the settings for the Gofer service's server properties.</p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>host</td><td>string</td><td>localhost:8080</td><td>The address and port for the service to bind to.</td></tr>
+<tr><td>shutdown_timeout</td><td>string</td><td>15s</td><td>The time Gofer will wait for all connections to drain before exiting.</td></tr>
+<tr><td>tls_cert_path</td><td>string</td><td><Required></td><td>The TLS certificate Gofer will use for the main service endpoint. This is required.</td></tr>
+<tr><td>tls_key_path</td><td>string</td><td><Required></td><td>The TLS certificate key Gofer will use for the main service endpoint. This is required.</td></tr>
+<tr><td>storage_path</td><td>string</td><td>/tmp/gofer.db</td><td>Where to put Gofer's sqlite database.</td></tr>
+<tr><td>storage_results_limit</td><td>int</td><td>200</td><td>The amount of results Gofer's database is allowed to return on one query.</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-hcl">server {
+  host                  = &quot;localhost:8080&quot;
+  dev_mode              = false
+  tls_cert_path         = &quot;./localhost.crt&quot;
+  tls_key_path          = &quot;./localhost.key&quot;
+  tmp_dir               = &quot;/tmp&quot;
+  storage_path          = &quot;/tmp/gofer.db&quot;
+  storage_results_limit = 200
+}
+</code></pre>
+<h3 id="triggers-block"><a class="header" href="#triggers-block">Triggers (block)</a></h3>
+<p>Controls settings for Gofer's trigger system. Triggers are different workflows for running pipelines usually based on some other event (like the passing of time).</p>
+<p>You can find <a href="../triggers/README.html">more information on the trigger block here.</a></p>
+<div class="table-wrapper"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>
+<tr><td>install_base_triggers</td><td>boolean</td><td>true</td><td>Attempts to automatically install the <code>cron</code> and <code>interval</code> triggers on first startup.</td></tr>
+<tr><td>stop_timeout</td><td>string</td><td>5m</td><td>The amount of time Gofer will wait until trigger containers have stopped before sending a SIGKILL.</td></tr>
+<tr><td>tls_cert_path</td><td>string</td><td><Required></td><td>The TLS certificate path Gofer will use for the triggers. This should be a certificate that the main Gofer service will be able to access.</td></tr>
+<tr><td>tls_key_path</td><td>string</td><td><Required></td><td>The TLS certificate path key Gofer will use for the triggers. This should be a certificate that the main Gofer service will be able to access.</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-hcl">triggers {
+  install_base_triggers = true
+  stop_timeout          = &quot;5m&quot;
+  tls_cert_path         = &quot;./localhost.crt&quot;
+  tls_key_path          = &quot;./localhost.key&quot;
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../ref/server_configuration/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../../ref/server_configuration/authentication.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../ref/server_configuration/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../../ref/server_configuration/authentication.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>

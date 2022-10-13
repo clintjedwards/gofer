@@ -2,7 +2,7 @@
 
 ## Pipeline Configuration
 
-- `every` [string]: Specifies the time duration between events. Unless changed via the trigger configuration, the minimum for this is 5 mins.
+- `every` <string>: Specifies the time duration between events. Unless changed via the trigger configuration, the minimum for this is 5 mins.
 
 ```go
 ...

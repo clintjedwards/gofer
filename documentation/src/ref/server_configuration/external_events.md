@@ -2,7 +2,7 @@
 
 Gofer has an alternate endpoint specifically for external events streams[^1]. This endpoint takes in http requests from the outside and passes them to the relevant trigger.
 
-You can find more about external event configuration in the [configuration-values](configuration-values#external_events_api-block) section.
+You can find more about external event configuration in the [configuration-values](../server_configuration/configuration_reference.md) reference.
 
 ```hcl
  external_events_api {

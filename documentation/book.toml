@@ -5,3 +5,7 @@ multilingual = false
 src = "src"
 title = "Gofer"
 description = "Gofer documentation"
+
+[output.html]
+
+[output.linkcheck]

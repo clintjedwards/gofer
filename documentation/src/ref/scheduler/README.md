@@ -6,7 +6,7 @@ The vision of Gofer is for you to use whatever scheduler your team is most famil
 
 ## Supported Schedulers
 
-The only currently supported scheduler is [local docker](docker/overview). This scheduler is used for small deployments
+The only currently supported scheduler is [local docker](../scheduler/docker.md). This scheduler is used for small deployments
 and development work.
 
 ## How to add new Schedulers?
