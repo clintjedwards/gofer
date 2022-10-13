@@ -105,22 +105,29 @@ Update rust sdk library to be equal to golangs.
   - At the very least we should maybe make a table that relates the models to each other and document why
     they might be in a certain shape.
 
+### Public Gofer ideas
+
+- Is it feasible to expose Gofer to the public?
+- Can we give user's a timeout that is super low, like a total container runtime of 5 mins. That way you can try it out, but you can't just run your own crypto shit on it.
+- Once the timeout is up we simply log the IP and prevent that user from making any more requests.
+- We might be able to get this for free in some golang ratelimiting libraries, we'd have to have the user sign up in some way first in order to prevent people from abusing. We can ratelimit routes that need to be always public per IP.
+- How do we secure the running of containers? We can do somethings like preventing root user for the container, we might be also able to
+
 ### Documentation
 
-- Document the different env variables that get injected into each Trigger, Task, Notifier.
+- Document the different env variables that get injected into each Trigger, Task, commonTask.
+- Server configuration reference should have one more field on whether it is required or not.
 - Trigger documentation:
   - Triggers now have two required functions, trigger installations and trigger runs
     - Run is the service, Install runs a small program meant to help with installation.
   - How to test triggers
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
-- Add interval as the example for new triggers in the docs
-- Document why common tasks are designed the way they are first-class citizens.
-  - Why is this? Because of authentication. It's nice to set up the Slack app once and protect the credentials such that any user for you application can use it.
+- Add a section where we create a new trigger using a trigger that has already been created. as the example for new triggers in the docs
 - Improve documentation and examples for features.
+
   - For example: writing custom notifiers allows you to implement Google style static analysis
-- We can probably bring up a public version of Gofer in which the timeout is super low. How do we properly secure this? Can we prevent root containers when using the Docker mode? Maybe this is a thing for Nomad? Can we prevent root containers there? This might mean we need to add quotas and rate limiting to the main process
-  which would suck and is boring to implement, but having the functionality there might make this a more scale-able tool.
+
 - Secrets explanation. Why is there global secrets and pipelines secrets? Whats the difference.
   - We needed a way to store secrets for common tasks which might be used for any pipeline
     and a way to store secrets for user's individual pipelines.
@@ -136,30 +143,10 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- Use Mdbook for documentation.
-
-  - After mdbook upgrade update all code links to it.
-  - Document the debug containers also
-  - Replace blurry png for readme.
-  - Add an example of entrypoint/command running a multi-line script
-  - Take API.md and combine it with general how to use Gofer docs
-  - Review all links to make sure they're not broken. Lots of stuff changed with mdbook.
-
-* Orphaned run recovery is currently broken.
-
+- After mdbook upgrade update all code links to it.
+- Document the debug containers also. Maybe add a link to troubleshooting in general.
+- Add an example of entrypoint/command running a multi-line script
+- Orphaned run recovery is currently broken.
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
 - Pipeline updates for CLI is broken.
-- Go over the sample config file for api and make sure it still makes sense.
-- Server configuration reference should have one more field on whether it is required or not.
-- We should move our global default to be part of config default, instead of it being a default only known in application.
-<!--
-
-## Auth
-
-You can authenticate to Gofer using GRPC's metadata pair:
-
-```go
-md := metadata.Pairs("Authorization", "Bearer "+<token>)
-```
-
-More details about auth [can be found here.](server-configuration/auth) -->
+- Add a debug trigger to the provided trigger lists

@@ -35,7 +35,8 @@ VERSION = ${SEMVER}_${GIT_COMMIT}
 build: check-path-included check-semver-included build-protos
 > go test ./... -race
 > go mod tidy
-> CGO_ENABLED=1 go build -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
+> export CGO_ENABLED=1
+> go build -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
 .PHONY: build
 
 ## build-protos: build protobufs
@@ -46,13 +47,19 @@ build-protos:
 
 ## run: build application and run server
 run:
-> DEBUG=true; SEMVER=0.0.0; go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
+> export GOFER_DEBUG=true
+> export GOFER_DEVMODE=true
+> export SEMVER=0.0.0
+> go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
 > /tmp/${APP_NAME} service start
 .PHONY: run
 
 ## run-race: build application and run server with race detector
 run-race:
-> DEBUG=true; SEMVER=0.0.0; go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
+> export GOFER_DEBUG=true
+> export GOFER_DEVMODE=true
+> export SEMVER=0.0.0
+> go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
 > /tmp/${APP_NAME} service start
 .PHONY: run-race
 
