@@ -10,7 +10,7 @@ WithTasks(sdk.NewCommonTask("debug", "debug_task"))
 
 ## Common Task Configuration
 
-Common Task configurations are set upon common task startup and cannot be changed afterwards. They are set via the [server configuration](../../server-configuration/overview).
+Common Task configurations are set upon common task startup and cannot be changed afterwards.
 
 | EnvVar | Default | Description                                                        |
 | ------ | ------- | ------------------------------------------------------------------ |

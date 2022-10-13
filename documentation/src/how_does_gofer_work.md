@@ -6,7 +6,7 @@ Gofer acts as a scheduling middle man between a user's intent to run a container
 
 ## Workflow
 
-Interaction with Gofer is mostly done through its [command line interface](cli/gofer) which is included in the same binary as the master service.
+Interaction with Gofer is mostly done through its [command line interface](./cli/README.md) which is included in the same binary as the master service.
 
 ### General Workflow
 

@@ -37,17 +37,17 @@ Triggers are the way users can automate their pipelines by waiting on bespoke ev
 
 Gofer supports any trigger you can imagine by making triggers pluggable and portable[^2]! Triggers are nothing more than docker containers themselves that talk to the main process when its time for a pipeline to be triggered.
 
-Gofer out of the box provides some default triggers like [cron](triggers/cron/overview) and [interval](triggers/interval/overview). But even more powerful than that, it accepts any type of trigger you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
+Gofer out of the box provides some default triggers like [cron](./ref/triggers/cron.md) and [interval](./ref/triggers/interval.md). But even more powerful than that, it accepts any type of trigger you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
 
 Triggers are brought up alongside Gofer as long-running docker containers that it launches and manages.
 
 ## Object Store
 
-Gofer provides a built in object store [you can access with the Gofer CLI](cli/gofer_pipeline_store). This object store provides a caching and data transfer mechanism so you can pass values from one container to the next, but also store objects that you might need for all containers.
+Gofer provides a built in [object store](./ref/object_store/README.md) you can access with the Gofer CLI. This object store provides a caching and data transfer mechanism so you can pass values from one container to the next, but also store objects that you might need for all containers.
 
 ## Secret Store
 
-Gofer provides a built in secret store [you can access with the Gofer CLI](cli/gofer_pipeline_secret). This secret store provides a way to pass secret values needed by your pipeline configuration into Gofer.
+Gofer provides a built in [secret store](./ref/secret_store/README.md) you can access with the Gofer CLI. This secret store provides a way to pass secret values needed by your pipeline configuration into Gofer.
 
 ## Events
 

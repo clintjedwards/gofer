@@ -47,7 +47,7 @@ The SDK uses a builder pattern, which allows us to simply add another function o
 
 Next we'll add a trigger. Triggers allow us to automate when our pipeline's run. Triggers usually execute a pipeline for us based on some event. In this example that even is the passage of time.
 
-To do this we'll use a trigger included with Gofer called the [interval]() trigger. This trigger simply counts time and executes pipeline's based on that pipeline's specific time configuration.
+To do this we'll use a trigger included with Gofer called the [interval](../triggers/interval.md) trigger. This trigger simply counts time and executes pipeline's based on that pipeline's specific time configuration.
 
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
