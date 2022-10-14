@@ -6,6 +6,7 @@
 [FAQ](./faq.md)
 [Features In-depth](./features.md)
 [Best Practices](./best_practices.md)
+[Troubleshooting](./troubleshooting.md)
 
 # User Guide
 

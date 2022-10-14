@@ -14,6 +14,30 @@ On startup, Gofer launches the interval trigger as a long-running container. Whe
 | [cron](../triggers/cron.md)         | ghcr.io/clintjedwards/gofer/triggers/cron:latest     | yes                 | Cron is used for longer termed intervals. For instance, running a pipeline every year on Christmas. |
 | [github](../triggers/github.md)     | ghcr.io/clintjedwards/gofer/triggers/github:latest   | no                  | Allow your pipelines to run based on branch, tag, or release activity.                              |
 
+## How do I install a Trigger?
+
+Triggers are installed by the CLI. For more information run:
+
+```bash
+gofer triggers install -h
+```
+
+## How do I configure a Trigger?
+
+Triggers allow for both system and user configuration[^1]. This is what makes them so dynamically useful!
+
+### Pipeline Configuration
+
+Most Triggers allow for some user specific configuration usually referred to as "Parameters" or "Pipeline configuration".
+
+These variables are passed by the pipeline configuration file into the Trigger when the pipeline is registered.
+
+### System Configuration
+
+Most Triggers have system configurations which allow the administrator or system to inject some needed variables. These are defined when the Trigger is installed.
+
+[^1]: See the Trigger's documentation for the exact variables and where they belong.
+
 ## How to add new Triggers?
 
 Just like tasks, triggers are simply docker containers! Making them easily testable and portable. To create a new trigger you simply use the included [Gofer SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).

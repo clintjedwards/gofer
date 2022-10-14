@@ -8,11 +8,37 @@ An example of this might be having pipelines post to Slack. Setting up a new sla
 
 Common tasks work just like any other task except that they are registered just like triggers.
 
+Common Tasks are installed by a Gofer administrator and can be used by all pipelines.
+
 ## Gofer Provided Common Tasks
 
 | name                | image                                          | description                                                                                                                    |
 | ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | [debug](./debug.md) | ghcr.io/clintjedwards/gofer/tasks/debug:latest | Useful for debugging common tasks, simply prints out the env vars each run. A good example of how to setup other common tasks. |
+
+## How do I install a Common Task?
+
+Common Tasks are installed by the CLI. For more information run:
+
+```bash
+gofer common-tasks install -h
+```
+
+## How do I configure a Common Task?
+
+Common tasks allow for both system and user configuration[^1]. This is what makes them so dynamically useful!
+
+### Pipeline Configuration
+
+Most common tasks allow for some user specific configuration usually referred to as "Parameters" or "Pipeline configuration".
+
+These variables are passed by the pipeline configuration file into the common task when run.
+
+### System Configuration
+
+Most Common Tasks have system configurations which allow the administrator or system to inject some needed variables. These are defined when the Common Task is installed.
+
+[^1]: See the Common Task's documentation for the exact variables and where they belong.
 
 ## How to add new Common Tasks?
 
