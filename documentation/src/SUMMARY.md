@@ -21,6 +21,7 @@
 # Component Reference
 
 - [Pipeline Configuration](./ref/pipeline_configuration/README.md)
+  - [Custom Tasks](./ref/pipeline_configuration/custom_tasks.md)
 - [Server Configuration](./ref/server_configuration/README.md)
   - [Configuration Reference](./ref/server_configuration/configuration_reference.md)
   - [Authentication](./ref/server_configuration/authentication.md)

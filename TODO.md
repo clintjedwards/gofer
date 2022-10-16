@@ -144,7 +144,6 @@ Update rust sdk library to be equal to golangs.
 ### On the floor
 
 - After mdbook upgrade update all code links to it.
-- Document the debug containers also. Maybe add a link to troubleshooting in general.
 - Add an example of entrypoint/command running a multi-line script
 - Orphaned run recovery is currently broken.
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
