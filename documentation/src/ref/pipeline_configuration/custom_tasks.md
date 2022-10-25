@@ -12,30 +12,35 @@ WithTasks(
 )
 ```
 
-// We need to combine the environment variables we get from multiple sources in order to pass them
-// finally to the task run. The order in which they are passed is very important as they can and should
-// overwrite each other, even though the intention of prefixing the environment variables is to prevent
-// the chance of overwriting. The order in which they are passed into the extend function
-// determines the priority in reverse order. Last in the stack will overwrite any conflicts from the others.
-//
-// There are many places a task_run could potentially get env vars from. From the outer most layer to the inner most:
-// 1) The user sets variables in their pipeline configuration for each task.
-// 2) At the time of run inception, either the trigger or the user themselves have the ability to inject extra env vars.
-// 3) Right before the task run starts, Gofer itself might inject variables into the task run.
-//
-// The order in which the env vars are stacked are in reverse order to the above, due to that order being the best
-// for giving the user the most control over what the pipeline does:
-// 1) We first pass in the Gofer system specific envvars as these are the most replaceable on the totem pole.
-// 2) We pass in the task specific envvars defined by the user in the pipeline config.
-// 3) Lastly we pass in the run specific defined envvars. These are usually provided by either a trigger
-// or the user when they attempt to start a new run manually. Since these are the most likely to be
-// edited adhoc they are treated as the most important.
+## Custom Task Environment Variables and Configuration
 
-## How do I pass in variables to my task/container?
+Gofer handles container configuration [the cloud native way](https://12factor.net/config). That is to say every configuration is passed in as an environment variable. This allows for many advantages, the greatest of which is standardization.
 
-Gofer handles container configuration [the cloud native way](https://12factor.net/config). That is to say everything is passed in as an environment variable. This allows the program inside the container to read in it's configuration in a standardized way.
+As a user, [you pass your configuration in via the `Variable(s)`](https://pkg.go.dev/github.com/clintjedwards/gofer@v0.3.0/sdk/go/config#CustomTaskConfig.WithVariables) flavor of functions in your pipeline-config.
 
-Gofer passes in the variables configured for each task in your pipeline configuration and also passes in a few others that might be useful to develop against:
+When a container is run by Gofer, the Gofer scheduler has the potential to pass in configuration from multiple sources[^1]:
+
+1. **Your pipeline configuration:** Configs you pass in by using the `Variable(s)` functions.
+2. **Trigger/Manual configurations:** Triggers are allowed to pass in custom configuration for a run. Usually this configuration gives extra information the run might need. (For example, the git commit that activated the trigger.).
+
+   Alternatively, if this run was not activated by a trigger and instead kicked of manually, the user who launched the run might opt to pass in configuration at that runtime.
+
+3. **Gofer's system configurations:** Gofer will pass in system configurations that might be helpful to the user. (For example, what current pipeline is running.)[^2]
+
+The exact key names injected for each of these configurations can be seen on any taskrun by getting that taskrun's details: `gofer taskruns get <pipeline_name> <run_id>`
+
+[^1]: These sources are ordered from most to least important. Since the configuration is passed in a "Key => Value" format any conflicts between sources will default to the source with the greater importance. For instance, a pipeline config with the key `GOFER_PIPELINE_ID` will replace the key of the same name later injected by the Gofer system itself.
+
+<!-- prettier-ignore -->
+[^2]: The current Gofer system injected variables can be found [here.](https://github.com/clintjedwards/gofer/blob/40512915a3ae4cd140f5c855bbff631793c380fb/internal/api/runs.go#L56-L57) Below is a possibly out of date short reference:
+
+| Key                 | Description                                                                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GOFER_PIPELINE_ID` | The pipeline identification string.                                                                                                                                   |
+| `GOFER_RUN_ID`      | The run identification number.                                                                                                                                        |
+| `GOFER_TASK_ID`     | The task run identification string.                                                                                                                                   |
+| `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                    |
+| `GOFER_API_TOKEN`   | Runs can be assigned a unique Gofer API token automatically. This makes it easy and manageable for tasks to query Gofer's API and do lots of other convenience tasks. |
 
 ## What happens when a task is run?
 

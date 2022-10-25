@@ -65,7 +65,7 @@ If this registration with the trigger cannot be formed the registration of the o
 
 ### Add a task
 
-Lastly let's add a task(container to our pipeline). We'll add a simple ubuntu container and change the command that gets
+Lastly let's add a task(container) to our pipeline. We'll add a simple ubuntu container and change the command that gets
 run on container start to just say "Hello from Gofer!".
 
 ```go
@@ -80,8 +80,12 @@ err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
     )
 ```
 
-We user the WithTasks function to add multiple tasks and then we use the SDK's `NewCustomTask` function to create a task. You can see we give the task an ID, much like our pipeline earlier, and then we specify which image we want to use. We also
-tack on a description and then specify the command.
+We used the WithTasks function to add multiple tasks and then we use the SDK's `NewCustomTask` function to create a task. You can see we:
+
+- Give the task an ID, much like our pipeline earlier.
+- Specify which image we want to use.
+- Tack on a description.
+- And then finally specify the command.
 
 To tie a bow on it, we add the `.Finish()` function to specify that our pipeline is in it's final form.
 
@@ -98,6 +102,9 @@ err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
 ```
 
 That's it! This is a fully functioning pipeline.
+
+You can run and test this pipeline much like you would any other code you write. Running it will produce
+a protobuf binary output which Gofer uses to pass to the server.
 
 ## Full Example
 

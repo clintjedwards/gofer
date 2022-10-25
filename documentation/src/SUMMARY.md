@@ -4,7 +4,7 @@
 [How Does Gofer Work?](./how_does_gofer_work.md)
 [Glossary](./glossary.md)
 [FAQ](./faq.md)
-[Features In-depth](./features.md)
+[Feature Guide](./features.md)
 [Best Practices](./best_practices.md)
 [Troubleshooting](./troubleshooting.md)
 

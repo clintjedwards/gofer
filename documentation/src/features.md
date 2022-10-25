@@ -1,8 +1,8 @@
-# Features In-depth
+# Feature Guide
 
-## Write your pipeline files in Go or Rust.
+## Write your pipelines in a real programming language.
 
-The Gofer CLI allows you to create your pipelines in a fully featured programming language. Pipelines can be currently be written in Go or Rust[^1].
+Other infrastructure tooling tried configuration languages(yaml, hcl).... and they kinda suck[^1]. The Gofer CLI allows you to create your pipelines in a fully featured programming language. Pipelines can be currently be written in Go or Rust[^2].
 
 ## DAG(Directed Acyclic Graph) Support.
 
@@ -35,7 +35,7 @@ Gofer allows you to separate out your pipelines into different namespaces, allow
 
 Triggers are the way users can automate their pipelines by waiting on bespoke events (like the passage of time).
 
-Gofer supports any trigger you can imagine by making triggers pluggable and portable[^2]! Triggers are nothing more than docker containers themselves that talk to the main process when its time for a pipeline to be triggered.
+Gofer supports any trigger you can imagine by making triggers pluggable and portable[^3]! Triggers are nothing more than docker containers themselves that talk to the main process when its time for a pipeline to be triggered.
 
 Gofer out of the box provides some default triggers like [cron](./ref/triggers/cron.md) and [interval](./ref/triggers/interval.md). But even more powerful than that, it accepts any type of trigger you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
 
@@ -53,6 +53,10 @@ Gofer provides a built in [secret store](./ref/secret_store/README.md) you can a
 
 Gofer provides a list of events for the most common actions performed. You can view this event stream via the Gofer API, allowing you to build on top of Gofer's actions and even using Gofer as a trigger.
 
+## External Events
+
+Gofer allows triggers to consume external events. This allows for triggers to respond to webhooks from favorite sites like Github and more.
+
 ## Common Tasks
 
 Much like triggers, Gofer allows users to install "common tasks". Common tasks are Gofer's way of cutting down on some of the setup and allowing containers to be pre-setup by the system administrator for use in any pipeline.
@@ -65,8 +69,10 @@ Gofer plugs into all your favorite backends your team is already using. This mea
 
 Whether you want to schedule your containers on [K8s](https://kubernetes.io/) or [AWS Lambda](https://aws.amazon.com/lambda/), or maybe you'd like to use an object store that you're more familiar with in [minio](https://min.io/) or [AWS S3](https://aws.amazon.com/s3/), Gofer provides either an already created plugin or an interface to write your own.
 
-[^1]: All pipelines eventualy reduce to protobuf so technically given the correct libraries your pipelines can be written in any language you like!
+[^1]: Initally why configuration languages are used made sense, namely lowering the bar for users who might not know how to program and making it simplier overall to maintain(read: not shoot yourself in the foot with crazy inheritance structures). But, in practice, we've found that they kinda suck. Nobody wants to learn yet another language for this one specific thing. Furthermore, using a separate configuration language doesn't allow you to plug into years of practice/tooling/testing teams have with a certain favorite language.
 
-[//]: <>
+<!-- prettier-ignore -->
+[^2]: All pipelines eventualy reduce to protobuf so technically given the correct libraries your pipelines can be written in any language you like!
 
-[^2]: Via GRPC.
+<!-- prettier-ignore -->
+[^3]: Via GRPC.

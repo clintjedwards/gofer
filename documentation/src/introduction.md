@@ -2,12 +2,6 @@
 
 Welcome to the Gofer documentation! This documentation is a reference for all available features and options of Gofer.
 
-## Demo
-
-<p align="center">
-<iframe width="560" height="315" src="https://www.youtube.com/embed/wqDNYcT0XOo" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-</p>
-
 ## What is Gofer?
 
 Gofer is an opinionated, cloud-native, container-focused, continuous thing do-er, that focuses on simplicity and usability for both developers and ops.
@@ -17,6 +11,21 @@ You deploy it as a single static binary service, pass it declarative configurati
 Gofer runs your workloads on whatever your choice of container scheduler: Nomad, K8s, Local Docker.
 
 It's purpose is to run short term jobs such as: code linters, build tools, tests, port-scanners, ETL tooling and anything else you can package into a Docker container and run as a result of some other event happening.
+
+## Features:
+
+- Deploy it as a single static binary.
+- Write your pipelines in a programming language you're familar with. (**Go** or **Rust** for now).
+- Pluggable: Write your own triggers, shared tasks, and more in any language (through GRPC).
+- DAG(Directed Acyclic Graph) support.
+- Reliability tooling: A/B test, version, and canary new pipelines.
+- Bring your own everything! Secret store, object store, container scheduler. Gofer has the interfaces to support all of them.
+
+## Demo
+
+<p align="center">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/wqDNYcT0XOo" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</p>
 
 ## Gofer's Philosophy
 
@@ -146,6 +155,5 @@ Gofer works better when jobs are expected to run +1 to +5 mins of their schedule
 
 [^1]: _cough cough_ https://github.com/clintjedwards/hclvet.
 
-[//]: <>
-
+<!-- prettier-ignore -->
 [^2]: [Here is an example of buildkite's approach](https://buildkite.com/docs/pipelines/defining-steps#customizing-the-pipeline-upload-path) where your job definition is uploaded on every run via the buildkite config file at that certain commit.

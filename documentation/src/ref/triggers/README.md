@@ -8,11 +8,11 @@ On startup, Gofer launches the interval trigger as a long-running container. Whe
 
 ## Gofer Provided Triggers
 
-| name                                | image                                                | included by default | description                                                                                         |
-| ----------------------------------- | ---------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------- |
-| [interval](../triggers/interval.md) | ghcr.io/clintjedwards/gofer/triggers/interval:latest | yes                 | Interval triggers an event after a predetermined amount of time has passed.                         |
-| [cron](../triggers/cron.md)         | ghcr.io/clintjedwards/gofer/triggers/cron:latest     | yes                 | Cron is used for longer termed intervals. For instance, running a pipeline every year on Christmas. |
-| [github](../triggers/github.md)     | ghcr.io/clintjedwards/gofer/triggers/github:latest   | no                  | Allow your pipelines to run based on branch, tag, or release activity.                              |
+| name                                | image                                                | included by default | description                                                                                                       |
+| ----------------------------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [interval](../triggers/interval.md) | ghcr.io/clintjedwards/gofer/triggers/interval:latest | yes                 | Interval triggers an event after a predetermined amount of time has passed.                                       |
+| [cron](../triggers/cron.md)         | ghcr.io/clintjedwards/gofer/triggers/cron:latest     | yes                 | Cron is used for longer termed, more nuanced intervals. For instance, running a pipeline every year on Christmas. |
+| [github](../triggers/github.md)     | ghcr.io/clintjedwards/gofer/triggers/github:latest   | no                  | Allow your pipelines to run based on branch, tag, or release activity.                                            |
 
 ## How do I install a Trigger?
 

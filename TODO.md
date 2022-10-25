@@ -57,11 +57,14 @@ Update rust sdk library to be equal to golangs.
 - https://github.com/clintjedwards/gofer/commit/955e1b7da76fdfa5aa26bcb5dd0b138af605aa45
 - Pipeline get needs to put more detail (list tasks, triggers, commontasks)
 - Create an init function for both rust and golang(simply just prompts you for your language) and then creates a new default vanilla pipeline. (similar to the old "config init" command)
+- Inspiration for CLI design: https://github.com/bensadeh/circumflex
+  - Look into bubble tea for some interactions.
 
 ### Scheduler
 
 - Implement CPU/MEMORY per task values since all non-local schedulers will need this.
 - It would be cool to have at least one other scheduler. Nomad is a great scheduler for this.
+- Docker scheduler should check for the docker process before attempting to connect to it.
 
 ### SecretStore
 
@@ -133,6 +136,7 @@ Update rust sdk library to be equal to golangs.
     and a way to store secrets for user's individual pipelines.
   - Global secrets can only be set by administrators
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
+  - We are forgoing having cli spit out Json due to gofer having an API, the cli is meant for humans and shouldn't be used by programs.
 - Write copius notes on commontasks and triggers layout. The difference between user passed config and system passed config. And suggest a way to collect those.
   - Gofer passes them one set of env vars from the gofer system itself
     These are prefixed with `gofer_plugin_system_{var}`
@@ -149,3 +153,5 @@ Update rust sdk library to be equal to golangs.
 - TestGetALL fails with race condition, check it out. I think it's a known issue.
 - Pipeline updates for CLI is broken.
 - Add a debug trigger to the provided trigger lists
+- CLI should be able to modify the default namespace purely through the CLI.
+- Instead of injecting Gofer API tokens by default, allow the user to turn it on per pipeline and possibly even better allow the user to opt out certain tasks from recieving the key.
