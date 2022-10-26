@@ -144,7 +144,13 @@
                     <main>
                         <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <p>Welcome to the Gofer documentation! This documentation is a reference for all available features and options of Gofer.</p>
-<h2 id="what-is-gofer"><a class="header" href="#what-is-gofer">What is Gofer?</a></h2>
+<h1 id="gofer-run-short-lived-jobs-easily"><a class="header" href="#gofer-run-short-lived-jobs-easily"><a href="https://clintjedwards.com/gofer/assets/urban_dictionary_gofer.png">Gofer</a>: Run short-lived jobs easily.</a></h1>
+<p align="center">
+    <img src="https://clintjedwards.com/gofer/assets/logo-name-hq.png" alt="gofer" width="200"/>
+</p>
+<p><a href="https://pkg.go.dev/github.com/clintjedwards/gofer"><img src="https://pkg.go.dev/badge/github.com/clintjedwards/gofer" alt="godoc for clintjedwards/gofer" /></a>
+<a href="https://clintjedwards.github.io/gofer"><img src="https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square" alt="docs site" /></a>
+<a href="https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square"><img src="https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square" alt="project status" /></a></p>
 <p>Gofer is an opinionated, cloud-native, container-focused, continuous thing do-er, that focuses on simplicity and usability for both developers and ops.</p>
 <p>You deploy it as a single static binary service, pass it declarative configurations written in real programming languages, and watch as it automatically handles periodic scheduling of your automation workloads.</p>
 <p>Gofer runs your workloads on whatever your choice of container scheduler: Nomad, K8s, Local Docker.</p>
@@ -158,10 +164,57 @@
 <li>Reliability tooling: A/B test, version, and canary new pipelines.</li>
 <li>Bring your own everything! Secret store, object store, container scheduler. Gofer has the interfaces to support all of them.</li>
 </ul>
-<h2 id="demo"><a class="header" href="#demo">Demo</a></h2>
-<p align="center">
-<iframe width="560" height="315" src="https://www.youtube.com/embed/wqDNYcT0XOo" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-</p>
+<h2 id="demo"><a class="header" href="#demo">Demo:</a></h2>
+<a href="https://asciinema.org/a/459946">
+    <img src="https://clintjedwards.com/gofer/assets/demo.png" title="Click on image for demo" />
+</a>
+<p><a href="https://youtu.be/wqDNYcT0XOo"><em>You can click here for an alternative video demo</em></a></p>
+<h2 id="documentation--getting-started"><a class="header" href="#documentation--getting-started">Documentation &amp; Getting Started</a></h2>
+<p>If you want to fully dive into Gofer, check out the <a href="https://clintjedwards.github.io/gofer">documentation site</a>!</p>
+<h2 id="install"><a class="header" href="#install">Install</a></h2>
+<p>Extended installation information is available through the <a href="https://clintjedwards.com/gofer/docs/getting-started/installing-gofer">documentation site</a>.</p>
+<h3 id="download-a-specific-release"><a class="header" href="#download-a-specific-release">Download a specific release:</a></h3>
+<p>You can <a href="https://github.com/clintjedwards/gofer/releases">view and download releases by version here</a>.</p>
+<h3 id="download-the-latest-release"><a class="header" href="#download-the-latest-release">Download the latest release:</a></h3>
+<ul>
+<li><strong>Linux:</strong> <code>wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer</code></li>
+</ul>
+<h3 id="build-from-source"><a class="header" href="#build-from-source">Build from source:</a></h3>
+<p>You'll need to install <a href="https://grpc.io/docs/languages/go/quickstart/">protoc and its associated golang/grpc modules first</a></p>
+<ol>
+<li><code>git clone https://github.com/clintjedwards/gofer &amp;&amp; cd gofer</code></li>
+<li><code>make build OUTPUT=/tmp/gofer</code></li>
+</ol>
+<p>The Gofer binary comes with a CLI to manage the server as well as act as a client.</p>
+<h2 id="dev-setup"><a class="header" href="#dev-setup">Dev Setup</a></h2>
+<p>Gofer is setup such that the base run mode is the development mode. So simply running the binary
+without any additional flags allows easy authless development.</p>
+<h3 id="youll-need-to-install-the-following-first"><a class="header" href="#youll-need-to-install-the-following-first">You'll need to install the following first:</a></h3>
+<p>To run Gofer dev mode:</p>
+<ul>
+<li><a href="https://www.docker.com/">Docker</a></li>
+</ul>
+<p>To build protocol buffers:</p>
+<ul>
+<li><a href="https://grpc.io/docs/protoc-installation/">protoc</a></li>
+<li><a href="https://grpc.io/docs/languages/go/quickstart/">protoc gen plugins go/grpc</a></li>
+</ul>
+<h3 id="run-from-the-makefile"><a class="header" href="#run-from-the-makefile">Run from the Makefile</a></h3>
+<p>Gofer uses flags, env vars, and files to manage configuration (in order of most important). The Makefile already includes all the commands and flags you need to run in dev mode by simply running <code>make run</code>.</p>
+<p>In case you want to run without the make file simply run:</p>
+<pre><code class="language-bash">go build -o /tmp/gofer
+DEBUG=true; SEMVER=0.0.0; /tmp/gofer service start
+</code></pre>
+<h3 id="editing-protobufs"><a class="header" href="#editing-protobufs">Editing Protobufs</a></h3>
+<p>Gofer uses grpc and protobufs to communicate with both plugins and provide an external API. These protobuf
+files are located in <code>/proto</code>. To compile new protobufs once the original <code>.proto</code> files have changed you can use the <code>make build-protos</code> command.</p>
+<h3 id="editing-documentation"><a class="header" href="#editing-documentation">Editing Documentation</a></h3>
+<p>Documentation is done with <a href="https://rust-lang.github.io/mdBook/">mdbook</a>.</p>
+<p>To install:</p>
+<pre><code class="language-bash">cargo install mdbook
+cargo install mdbook-linkcheck
+</code></pre>
+<p>Once you have mdbook you can simply run <code>make run-docs</code> to give you an auto-reloading dev version of the documentation in a browser.</p>
 <h2 id="gofers-philosophy"><a class="header" href="#gofers-philosophy">Gofer's Philosophy</a></h2>
 <p><em>Things should be <strong>easy and fast</strong>. For if they are not, people will look for an alternate solution.</em></p>
 <p>Gofer focuses on the usage of common docker containers to run workloads that don't belong as long-running applications. The ability to run containers <em>easily</em> is powerful tool for users who need to run various short-term workloads and don't want to care about the idiosyncrasies of the tooling that they run on top of.</p>
@@ -252,6 +305,11 @@ canary out new versions, Blue/Green test and more.</p>
 <div class="footnote-definition" id="2"><sup class="footnote-definition-label">2</sup>
 <p><a href="https://buildkite.com/docs/pipelines/defining-steps#customizing-the-pipeline-upload-path">Here is an example of buildkite's approach</a> where your job definition is uploaded on every run via the buildkite config file at that certain commit.</p>
 </div>
+<h2 id="authors"><a class="header" href="#authors">Authors</a></h2>
+<ul>
+<li><strong>Clint Edwards</strong> - <a href="https://github.com/clintjedwards">Github</a></li>
+</ul>
+<p>This software is provided as-is. It's a hobby project, done in my free time, and I don't get paid for doing it.</p>
 
                     </main>
 
