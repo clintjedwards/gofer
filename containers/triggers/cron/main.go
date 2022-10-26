@@ -113,7 +113,7 @@ func (t *trigger) Info(ctx context.Context, request *proto.TriggerInfoRequest) (
 
 	return &proto.TriggerInfoResponse{
 		Name:          os.Getenv("GOFER_TRIGGER_NAME"),
-		Documentation: "https://clintjedwards.com/gofer/docs/triggers/cron/overview",
+		Documentation: "https://clintjedwards.com/gofer/ref/triggers/cron.html",
 		Registered:    registered,
 	}, nil
 }

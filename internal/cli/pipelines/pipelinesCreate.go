@@ -29,7 +29,7 @@ var cmdPipelinesCreate = &cobra.Command{
 
 Updating a pipeline requires a pipeline configuration file. You can find documentation on how to
 manage your pipeline configuration file
-[here](https://clintjedwards.com/gofer/docs/getting-started/first-steps/generate-pipeline-config).`,
+[here](https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html).`,
 	Example: `$ gofer pipeline create ./example_pipelines/rust/simple
 $ gofer pipeline create ./example_pipelines/go/simple`,
 	RunE: pipelinesCreate,

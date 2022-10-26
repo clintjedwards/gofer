@@ -149,7 +149,7 @@ func (t *trigger) Unsubscribe(ctx context.Context, request *proto.TriggerUnsubsc
 }
 
 func (t *trigger) Info(ctx context.Context, request *proto.TriggerInfoRequest) (*proto.TriggerInfoResponse, error) {
-	return sdk.InfoResponse("https://clintjedwards.com/gofer/docs/triggers/interval/overview")
+	return sdk.InfoResponse("https://clintjedwards.com/gofer/ref/triggers/interval.html")
 }
 
 func (t *trigger) ExternalEvent(ctx context.Context, request *proto.TriggerExternalEventRequest) (*proto.TriggerExternalEventResponse, error) {

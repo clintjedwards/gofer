@@ -1,6 +1,6 @@
 // Gofer Service configuration file is used as an alternative to providing the server configurations via envvars.
 // You can find an explanation of these configuration variables and where to put this file so the server can read this
-// file in the documenation: https://clintjedwards.com/gofer/docs/server-configuration/overview
+// file in the documenation: https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html
 dev_mode                   = false
 event_log_retention        = "4380h"
 event_prune_interval       = "3h"
