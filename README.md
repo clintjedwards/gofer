@@ -27,11 +27,9 @@ It's purpose is to run short term jobs such as: code linters, build tools, tests
 
 ## Demo:
 
-<a href="https://asciinema.org/a/459946">
-    <img src="https://clintjedwards.com/gofer/assets/demo.png" title="Click on image for demo" />
+<a href="https://youtu.be/wqDNYcT0XOo">
+    <img src="https://clintjedwards.com/gofer/assets/demo.gif" title="Click on image for extended demo" />
 </a>
-
-[_You can click here for an alternative video demo_](https://youtu.be/wqDNYcT0XOo)
 
 ## Documentation & Getting Started
 
