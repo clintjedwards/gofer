@@ -24,7 +24,7 @@ func main() {
 			"and keeping the Gofer pipeline configurations from becoming a mess.\n").
 		WithTasks(
 			sdk.NewCustomTask("simple_task", "ubuntu:latest").
-				WithDescription("This task simply prints our hello-world message and exists!").
+				WithDescription("This task simply prints our hello-world message and exits!").
 				WithCommand("echo", "Hello from Gofer!"),
 		).Finish()
 	if err != nil {

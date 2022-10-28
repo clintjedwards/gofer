@@ -55,7 +55,7 @@ pub struct Pipeline {
     #[prost(enumeration="pipeline::PipelineState", tag="8")]
     pub state: i32,
     #[prost(map="string, message", tag="9")]
-    pub tasks: ::std::collections::HashMap<::prost::alloc::string::String, Task>,
+    pub custom_tasks: ::std::collections::HashMap<::prost::alloc::string::String, CustomTask>,
     #[prost(map="string, message", tag="10")]
     pub triggers: ::std::collections::HashMap<::prost::alloc::string::String, PipelineTriggerSettings>,
     #[prost(map="string, message", tag="11")]
@@ -87,6 +87,21 @@ pub mod pipeline {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PipelineTaskConfig {
+    #[prost(oneof="pipeline_task_config::Task", tags="1, 2")]
+    pub task: ::core::option::Option<pipeline_task_config::Task>,
+}
+/// Nested message and enum types in `PipelineTaskConfig`.
+pub mod pipeline_task_config {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Task {
+        #[prost(message, tag="1")]
+        CustomTask(super::CustomTaskConfig),
+        #[prost(message, tag="2")]
+        CommonTask(super::CommonTaskConfig),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PipelineConfig {
     #[prost(string, tag="1")]
     pub id: ::prost::alloc::string::String,
@@ -97,11 +112,9 @@ pub struct PipelineConfig {
     #[prost(int64, tag="4")]
     pub parallelism: i64,
     #[prost(message, repeated, tag="5")]
-    pub tasks: ::prost::alloc::vec::Vec<TaskConfig>,
+    pub tasks: ::prost::alloc::vec::Vec<PipelineTaskConfig>,
     #[prost(message, repeated, tag="6")]
     pub triggers: ::prost::alloc::vec::Vec<PipelineTriggerConfig>,
-    #[prost(message, repeated, tag="7")]
-    pub common_tasks: ::prost::alloc::vec::Vec<PipelineCommonTaskConfig>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Run {
@@ -184,7 +197,7 @@ pub struct RegistryAuth {
     pub pass: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Task {
+pub struct CustomTask {
     #[prost(string, tag="1")]
     pub id: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -193,7 +206,7 @@ pub struct Task {
     pub image: ::prost::alloc::string::String,
     #[prost(message, optional, tag="4")]
     pub registry_auth: ::core::option::Option<RegistryAuth>,
-    #[prost(map="string, enumeration(task::RequiredParentStatus)", tag="5")]
+    #[prost(map="string, enumeration(custom_task::RequiredParentStatus)", tag="5")]
     pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     #[prost(message, repeated, tag="6")]
     pub variables: ::prost::alloc::vec::Vec<Variable>,
@@ -202,8 +215,8 @@ pub struct Task {
     #[prost(string, repeated, tag="8")]
     pub command: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-/// Nested message and enum types in `Task`.
-pub mod task {
+/// Nested message and enum types in `CustomTask`.
+pub mod custom_task {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RequiredParentStatus {
@@ -228,11 +241,26 @@ pub struct PipelineCommonTaskSettings {
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub label: ::prost::alloc::string::String,
-    #[prost(map="string, string", tag="3")]
+    #[prost(string, tag="3")]
+    pub description: ::prost::alloc::string::String,
+    #[prost(map="string, enumeration(pipeline_common_task_settings::RequiredParentStatus)", tag="4")]
+    pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
+    #[prost(map="string, string", tag="5")]
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
+/// Nested message and enum types in `PipelineCommonTaskSettings`.
+pub mod pipeline_common_task_settings {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum RequiredParentStatus {
+        Unknown = 0,
+        Any = 1,
+        Success = 2,
+        Failure = 3,
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TaskConfig {
+pub struct CustomTaskConfig {
     #[prost(string, tag="1")]
     pub id: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -241,7 +269,7 @@ pub struct TaskConfig {
     pub image: ::prost::alloc::string::String,
     #[prost(message, optional, tag="4")]
     pub registry_auth: ::core::option::Option<RegistryAuth>,
-    #[prost(map="string, enumeration(task_config::RequiredParentStatus)", tag="5")]
+    #[prost(map="string, enumeration(custom_task_config::RequiredParentStatus)", tag="5")]
     pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     #[prost(map="string, string", tag="6")]
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
@@ -250,8 +278,8 @@ pub struct TaskConfig {
     #[prost(string, repeated, tag="8")]
     pub command: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-/// Nested message and enum types in `TaskConfig`.
-pub mod task_config {
+/// Nested message and enum types in `CustomTaskConfig`.
+pub mod custom_task_config {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RequiredParentStatus {
@@ -271,13 +299,35 @@ pub struct PipelineTriggerConfig {
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PipelineCommonTaskConfig {
+pub struct CommonTask {
+    #[prost(message, optional, tag="1")]
+    pub settings: ::core::option::Option<PipelineCommonTaskSettings>,
+    #[prost(message, optional, tag="2")]
+    pub registration: ::core::option::Option<CommonTaskRegistration>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CommonTaskConfig {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub label: ::prost::alloc::string::String,
-    #[prost(map="string, string", tag="3")]
+    #[prost(string, tag="3")]
+    pub description: ::prost::alloc::string::String,
+    #[prost(map="string, enumeration(common_task_config::RequiredParentStatus)", tag="4")]
+    pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
+    #[prost(map="string, string", tag="5")]
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+}
+/// Nested message and enum types in `CommonTaskConfig`.
+pub mod common_task_config {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum RequiredParentStatus {
+        Unknown = 0,
+        Any = 1,
+        Success = 2,
+        Failure = 3,
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TaskRunStatusReason {
@@ -321,18 +371,16 @@ pub struct TaskRun {
     pub pipeline: ::prost::alloc::string::String,
     #[prost(int64, tag="10")]
     pub run: i64,
-    #[prost(string, tag="11")]
-    pub scheduler_id: ::prost::alloc::string::String,
-    #[prost(int64, tag="12")]
+    #[prost(int64, tag="11")]
     pub started: i64,
-    #[prost(enumeration="task_run::TaskRunState", tag="13")]
+    #[prost(enumeration="task_run::TaskRunState", tag="12")]
     pub state: i32,
-    #[prost(enumeration="task_run::TaskRunStatus", tag="14")]
+    #[prost(enumeration="task_run::TaskRunStatus", tag="13")]
     pub status: i32,
-    #[prost(message, optional, tag="15")]
-    pub task: ::core::option::Option<Task>,
     #[prost(message, repeated, tag="16")]
     pub variables: ::prost::alloc::vec::Vec<Variable>,
+    #[prost(oneof="task_run::Task", tags="14, 15")]
+    pub task: ::core::option::Option<task_run::Task>,
 }
 /// Nested message and enum types in `TaskRun`.
 pub mod task_run {
@@ -354,6 +402,13 @@ pub mod task_run {
         Cancelled = 3,
         Skipped = 4,
     }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Task {
+        #[prost(message, tag="14")]
+        CustomTask(super::CustomTask),
+        #[prost(message, tag="15")]
+        CommonTask(super::CommonTask),
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Trigger {
@@ -363,15 +418,13 @@ pub struct Trigger {
     pub image: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
     pub url: ::prost::alloc::string::String,
-    #[prost(string, tag="4")]
-    pub scheduler_id: ::prost::alloc::string::String,
-    #[prost(int64, tag="5")]
+    #[prost(int64, tag="4")]
     pub started: i64,
-    #[prost(enumeration="trigger::TriggerState", tag="6")]
+    #[prost(enumeration="trigger::TriggerState", tag="5")]
     pub state: i32,
-    #[prost(enumeration="trigger::TriggerStatus", tag="7")]
+    #[prost(enumeration="trigger::TriggerStatus", tag="6")]
     pub status: i32,
-    #[prost(string, tag="8")]
+    #[prost(string, tag="7")]
     pub documentation: ::prost::alloc::string::String,
 }
 /// Nested message and enum types in `Trigger`.
@@ -420,27 +473,6 @@ pub mod trigger_registration {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CommonTask {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub image: ::prost::alloc::string::String,
-    #[prost(string, tag="3")]
-    pub documentation: ::prost::alloc::string::String,
-    #[prost(enumeration="common_task::Status", tag="4")]
-    pub status: i32,
-}
-/// Nested message and enum types in `CommonTask`.
-pub mod common_task {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Status {
-        Unknown = 0,
-        Enabled = 1,
-        Disabled = 2,
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommonTaskRegistration {
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
@@ -450,8 +482,8 @@ pub struct CommonTaskRegistration {
     pub user: ::prost::alloc::string::String,
     #[prost(string, tag="4")]
     pub pass: ::prost::alloc::string::String,
-    #[prost(map="string, string", tag="5")]
-    pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(message, repeated, tag="5")]
+    pub variables: ::prost::alloc::vec::Vec<Variable>,
     #[prost(int64, tag="6")]
     pub created: i64,
     #[prost(enumeration="common_task_registration::Status", tag="7")]
@@ -492,6 +524,10 @@ pub struct Token {
     pub namespaces: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(map="string, string", tag="4")]
     pub metadata: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(int64, tag="5")]
+    pub expires: i64,
+    #[prost(bool, tag="6")]
+    pub disabled: bool,
 }
 /// Nested message and enum types in `Token`.
 pub mod token {
@@ -520,6 +556,20 @@ pub mod trigger_result {
         Success = 2,
         Skipped = 3,
     }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SecretStoreKey {
+    #[prost(string, tag="1")]
+    pub key: ::prost::alloc::string::String,
+    #[prost(int64, tag="2")]
+    pub created: i64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ObjectStoreKey {
+    #[prost(string, tag="1")]
+    pub key: ::prost::alloc::string::String,
+    #[prost(int64, tag="2")]
+    pub created: i64,
 }
 ////////////// System Transport Models //////////////
 
@@ -565,6 +615,10 @@ pub struct CreateTokenRequest {
     pub namespaces: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(map="string, string", tag="3")]
     pub metadata: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    /// Accepts golang duration strings
+    /// <https://pkg.go.dev/time#ParseDuration>
+    #[prost(string, tag="4")]
+    pub expires: ::prost::alloc::string::String,
 }
 /// Nested message and enum types in `CreateTokenRequest`.
 pub mod create_token_request {
@@ -604,12 +658,38 @@ pub struct GetTokenResponse {
     pub details: ::core::option::Option<Token>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListTokensRequest {
+    #[prost(string, tag="1")]
+    pub namespace: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListTokensResponse {
+    #[prost(message, repeated, tag="1")]
+    pub tokens: ::prost::alloc::vec::Vec<Token>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteTokenRequest {
     #[prost(string, tag="1")]
     pub token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteTokenResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EnableTokenRequest {
+    #[prost(string, tag="1")]
+    pub token: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EnableTokenResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DisableTokenRequest {
+    #[prost(string, tag="1")]
+    pub token: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DisableTokenResponse {
 }
 ////////////// Namespace Transport Models //////////////
 
@@ -1074,7 +1154,7 @@ pub struct GetCommonTaskRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetCommonTaskResponse {
     #[prost(message, optional, tag="1")]
-    pub common_task: ::core::option::Option<CommonTask>,
+    pub common_task: ::core::option::Option<CommonTaskRegistration>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListCommonTasksRequest {
@@ -1082,7 +1162,7 @@ pub struct ListCommonTasksRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListCommonTasksResponse {
     #[prost(message, repeated, tag="1")]
-    pub common_tasks: ::prost::alloc::vec::Vec<CommonTask>,
+    pub common_tasks: ::prost::alloc::vec::Vec<CommonTaskRegistration>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InstallCommonTaskRequest {
@@ -1207,13 +1287,16 @@ pub struct TriggerSubscribeRequest {
     /// pipeline specific subscription id
     #[prost(string, tag="3")]
     pub pipeline_trigger_label: ::prost::alloc::string::String,
-    /// pipelines are allowed to pass a configuration to triggers denoting what
+    /// Pipelines are allowed to pass a configuration to triggers denoting what
     /// specific settings they might like for a specific trigger. The acceptable
     /// values of this config map is defined by the triggers and should be
     /// mentioned in documentation.
     ///
     /// Additionally, the trigger should verify config settings and pass back an
     /// error when it does not meet requirements.
+    ///
+    /// Note: The keys in this map are forced to be uppercase. This is important
+    /// when checking for their existance when writing a trigger.
     #[prost(map="string, string", tag="4")]
     pub config: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
@@ -1294,7 +1377,7 @@ pub struct GetPipelineObjectResponse {
     pub content: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListPipelineObjectRequest {
+pub struct ListPipelineObjectsRequest {
     /// Unique namespace identifier
     #[prost(string, tag="1")]
     pub namespace_id: ::prost::alloc::string::String,
@@ -1302,9 +1385,9 @@ pub struct ListPipelineObjectRequest {
     pub pipeline_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListPipelineObjectResponse {
-    #[prost(string, repeated, tag="1")]
-    pub keys: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+pub struct ListPipelineObjectsResponse {
+    #[prost(message, repeated, tag="1")]
+    pub keys: ::prost::alloc::vec::Vec<ObjectStoreKey>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PutPipelineObjectRequest {
@@ -1364,7 +1447,7 @@ pub struct GetRunObjectResponse {
     pub content: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListRunObjectRequest {
+pub struct ListRunObjectsRequest {
     /// Unique namespace identifier
     #[prost(string, tag="1")]
     pub namespace_id: ::prost::alloc::string::String,
@@ -1374,9 +1457,9 @@ pub struct ListRunObjectRequest {
     pub run_id: i64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListRunObjectResponse {
-    #[prost(string, repeated, tag="1")]
-    pub keys: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+pub struct ListRunObjectsResponse {
+    #[prost(message, repeated, tag="1")]
+    pub keys: ::prost::alloc::vec::Vec<ObjectStoreKey>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PutRunObjectRequest {
@@ -1418,7 +1501,7 @@ pub struct DeleteRunObjectResponse {
 ////////////// Secret store Transport Models //////////////
 
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetSecretRequest {
+pub struct GetPipelineSecretRequest {
     /// Unique namespace identifier
     #[prost(string, tag="1")]
     pub namespace_id: ::prost::alloc::string::String,
@@ -1426,14 +1509,32 @@ pub struct GetSecretRequest {
     pub pipeline_id: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
     pub key: ::prost::alloc::string::String,
+    /// Whether to include plaintext secret
+    #[prost(bool, tag="4")]
+    pub include_secret: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetSecretResponse {
+pub struct GetPipelineSecretResponse {
+    #[prost(message, optional, tag="1")]
+    pub metadata: ::core::option::Option<SecretStoreKey>,
+    #[prost(string, tag="2")]
+    pub secret: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListPipelineSecretsRequest {
+    /// Unique namespace identifier
     #[prost(string, tag="1")]
-    pub content: ::prost::alloc::string::String,
+    pub namespace_id: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub pipeline_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PutSecretRequest {
+pub struct ListPipelineSecretsResponse {
+    #[prost(message, repeated, tag="1")]
+    pub keys: ::prost::alloc::vec::Vec<SecretStoreKey>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PutPipelineSecretRequest {
     /// Unique namespace identifier
     #[prost(string, tag="1")]
     pub namespace_id: ::prost::alloc::string::String,
@@ -1448,13 +1549,13 @@ pub struct PutSecretRequest {
     pub force: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PutSecretResponse {
+pub struct PutPipelineSecretResponse {
     /// The number of bytes uploaded.
     #[prost(int64, tag="1")]
     pub bytes: i64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteSecretRequest {
+pub struct DeletePipelineSecretRequest {
     /// Unique namespace identifier
     #[prost(string, tag="1")]
     pub namespace_id: ::prost::alloc::string::String,
@@ -1464,7 +1565,56 @@ pub struct DeleteSecretRequest {
     pub key: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteSecretResponse {
+pub struct DeletePipelineSecretResponse {
+}
+////////////// Secret store Transport Models //////////////
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetGlobalSecretRequest {
+    #[prost(string, tag="1")]
+    pub key: ::prost::alloc::string::String,
+    /// Whether to include plaintext secret
+    #[prost(bool, tag="2")]
+    pub include_secret: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetGlobalSecretResponse {
+    #[prost(message, optional, tag="1")]
+    pub metadata: ::core::option::Option<SecretStoreKey>,
+    #[prost(string, tag="2")]
+    pub secret: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListGlobalSecretsRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListGlobalSecretsResponse {
+    #[prost(message, repeated, tag="1")]
+    pub keys: ::prost::alloc::vec::Vec<SecretStoreKey>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PutGlobalSecretRequest {
+    #[prost(string, tag="1")]
+    pub key: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub content: ::prost::alloc::string::String,
+    /// Overwrites an already existing value.
+    #[prost(bool, tag="3")]
+    pub force: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PutGlobalSecretResponse {
+    /// The number of bytes uploaded.
+    #[prost(int64, tag="1")]
+    pub bytes: i64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteGlobalSecretRequest {
+    #[prost(string, tag="1")]
+    pub key: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteGlobalSecretResponse {
 }
 /// Generated client implementations.
 pub mod gofer_client {
@@ -1530,7 +1680,7 @@ pub mod gofer_client {
             self.inner = self.inner.accept_gzip();
             self
         }
-        /////////////// System RPCs //////////////
+        #[doc = "//////////// System RPCs //////////////"]
         ///
         /// Service RPCs exist to help with management of the Gofer service. They
         /// usually perform admin type interactions with the service as a whole and
@@ -1644,6 +1794,24 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// ListTokens returns information about all tokens for a particular namespace;
+        pub async fn list_tokens(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListTokensRequest>,
+        ) -> Result<tonic::Response<super::ListTokensResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/ListTokens");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// GetToken returns information about a particular token;
         pub async fn get_token(
             &mut self,
@@ -1660,6 +1828,42 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetToken");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// EnableToken makes a token usable.
+        pub async fn enable_token(
+            &mut self,
+            request: impl tonic::IntoRequest<super::EnableTokenRequest>,
+        ) -> Result<tonic::Response<super::EnableTokenResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/EnableToken");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// DisableToken makes a token unusable.
+        pub async fn disable_token(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DisableTokenRequest>,
+        ) -> Result<tonic::Response<super::DisableTokenResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/DisableToken");
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// DeleteToken removes a token.
@@ -2439,6 +2643,26 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// ListPipelineObjects returns a list of all pipeline object keys.
+        pub async fn list_pipeline_objects(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListPipelineObjectsRequest>,
+        ) -> Result<tonic::Response<super::ListPipelineObjectsResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/ListPipelineObjects",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// GetPipelineObject returns a single pipeline object by pipeline ID and key.
         pub async fn get_pipeline_object(
             &mut self,
@@ -2506,6 +2730,26 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// ListRunObjects returns a list of all run object keys.
+        pub async fn list_run_objects(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListRunObjectsRequest>,
+        ) -> Result<tonic::Response<super::ListRunObjectsResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/ListRunObjects",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         /// GetRunObject returns the content of a single run object.
         pub async fn get_run_object(
             &mut self,
@@ -2562,11 +2806,11 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// GetSecret returns a single secret by pipeline ID and key.
-        pub async fn get_secret(
+        /// GetPipelineSecret returns a single secret by pipeline ID and key.
+        pub async fn get_pipeline_secret(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetSecretRequest>,
-        ) -> Result<tonic::Response<super::GetSecretResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::GetPipelineSecretRequest>,
+        ) -> Result<tonic::Response<super::GetPipelineSecretResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2577,14 +2821,16 @@ pub mod gofer_client {
                     )
                 })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/GetSecret");
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/GetPipelineSecret",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// PutSecret uploads a single secret by pipeline ID and key.
-        pub async fn put_secret(
+        /// ListPipelineSecrets returns a single secret by pipeline ID and key.
+        pub async fn list_pipeline_secrets(
             &mut self,
-            request: impl tonic::IntoRequest<super::PutSecretRequest>,
-        ) -> Result<tonic::Response<super::PutSecretResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::ListPipelineSecretsRequest>,
+        ) -> Result<tonic::Response<super::ListPipelineSecretsResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2595,15 +2841,40 @@ pub mod gofer_client {
                     )
                 })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/PutSecret");
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/ListPipelineSecrets",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// DeleteSecret removes a single secret by pipeline ID and
+        /// PutPipelineSecret uploads a single secret by pipeline ID and key.
+        pub async fn put_pipeline_secret(
+            &mut self,
+            request: impl tonic::IntoRequest<super::PutPipelineSecretRequest>,
+        ) -> Result<tonic::Response<super::PutPipelineSecretResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/PutPipelineSecret",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// DeletePipelineSecret removes a single secret by pipeline ID and
         /// key.
-        pub async fn delete_secret(
+        pub async fn delete_pipeline_secret(
             &mut self,
-            request: impl tonic::IntoRequest<super::DeleteSecretRequest>,
-        ) -> Result<tonic::Response<super::DeleteSecretResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::DeletePipelineSecretRequest>,
+        ) -> Result<
+            tonic::Response<super::DeletePipelineSecretResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2614,7 +2885,89 @@ pub mod gofer_client {
                     )
                 })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/proto.Gofer/DeleteSecret");
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/DeletePipelineSecret",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// GetGlobalSecret returns a single secret by  key.
+        pub async fn get_global_secret(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetGlobalSecretRequest>,
+        ) -> Result<tonic::Response<super::GetGlobalSecretResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/GetGlobalSecret",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// ListGlobalSecrets returns a single secret by global ID and key.
+        pub async fn list_global_secrets(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListGlobalSecretsRequest>,
+        ) -> Result<tonic::Response<super::ListGlobalSecretsResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/ListGlobalSecrets",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// PutGlobalSecret uploads a single secret by key.
+        pub async fn put_global_secret(
+            &mut self,
+            request: impl tonic::IntoRequest<super::PutGlobalSecretRequest>,
+        ) -> Result<tonic::Response<super::PutGlobalSecretResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/PutGlobalSecret",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// DeleteGlobalSecret removes a single secret by key.
+        pub async fn delete_global_secret(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteGlobalSecretRequest>,
+        ) -> Result<tonic::Response<super::DeleteGlobalSecretResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/DeleteGlobalSecret",
+            );
             self.inner.unary(request.into_request(), path, codec).await
         }
         /// GetEvent returns the details of a single event.
@@ -2863,7 +3216,7 @@ pub mod gofer_server {
     ///Generated trait containing gRPC methods that should be implemented for use with GoferServer.
     #[async_trait]
     pub trait Gofer: Send + Sync + 'static {
-        /////////////// System RPCs //////////////
+        #[doc = "//////////// System RPCs //////////////"]
         ///
         /// Service RPCs exist to help with management of the Gofer service. They
         /// usually perform admin type interactions with the service as a whole and
@@ -2906,11 +3259,26 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::BootstrapTokenRequest>,
         ) -> Result<tonic::Response<super::BootstrapTokenResponse>, tonic::Status>;
+        /// ListTokens returns information about all tokens for a particular namespace;
+        async fn list_tokens(
+            &self,
+            request: tonic::Request<super::ListTokensRequest>,
+        ) -> Result<tonic::Response<super::ListTokensResponse>, tonic::Status>;
         /// GetToken returns information about a particular token;
         async fn get_token(
             &self,
             request: tonic::Request<super::GetTokenRequest>,
         ) -> Result<tonic::Response<super::GetTokenResponse>, tonic::Status>;
+        /// EnableToken makes a token usable.
+        async fn enable_token(
+            &self,
+            request: tonic::Request<super::EnableTokenRequest>,
+        ) -> Result<tonic::Response<super::EnableTokenResponse>, tonic::Status>;
+        /// DisableToken makes a token unusable.
+        async fn disable_token(
+            &self,
+            request: tonic::Request<super::DisableTokenRequest>,
+        ) -> Result<tonic::Response<super::DisableTokenResponse>, tonic::Status>;
         /// DeleteToken removes a token.
         async fn delete_token(
             &self,
@@ -3143,6 +3511,11 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DisableCommonTaskRequest>,
         ) -> Result<tonic::Response<super::DisableCommonTaskResponse>, tonic::Status>;
+        /// ListPipelineObjects returns a list of all pipeline object keys.
+        async fn list_pipeline_objects(
+            &self,
+            request: tonic::Request<super::ListPipelineObjectsRequest>,
+        ) -> Result<tonic::Response<super::ListPipelineObjectsResponse>, tonic::Status>;
         /// GetPipelineObject returns a single pipeline object by pipeline ID and key.
         async fn get_pipeline_object(
             &self,
@@ -3162,6 +3535,11 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DeletePipelineObjectRequest>,
         ) -> Result<tonic::Response<super::DeletePipelineObjectResponse>, tonic::Status>;
+        /// ListRunObjects returns a list of all run object keys.
+        async fn list_run_objects(
+            &self,
+            request: tonic::Request<super::ListRunObjectsRequest>,
+        ) -> Result<tonic::Response<super::ListRunObjectsResponse>, tonic::Status>;
         /// GetRunObject returns the content of a single run object.
         async fn get_run_object(
             &self,
@@ -3177,22 +3555,47 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DeleteRunObjectRequest>,
         ) -> Result<tonic::Response<super::DeleteRunObjectResponse>, tonic::Status>;
-        /// GetSecret returns a single secret by pipeline ID and key.
-        async fn get_secret(
+        /// GetPipelineSecret returns a single secret by pipeline ID and key.
+        async fn get_pipeline_secret(
             &self,
-            request: tonic::Request<super::GetSecretRequest>,
-        ) -> Result<tonic::Response<super::GetSecretResponse>, tonic::Status>;
-        /// PutSecret uploads a single secret by pipeline ID and key.
-        async fn put_secret(
+            request: tonic::Request<super::GetPipelineSecretRequest>,
+        ) -> Result<tonic::Response<super::GetPipelineSecretResponse>, tonic::Status>;
+        /// ListPipelineSecrets returns a single secret by pipeline ID and key.
+        async fn list_pipeline_secrets(
             &self,
-            request: tonic::Request<super::PutSecretRequest>,
-        ) -> Result<tonic::Response<super::PutSecretResponse>, tonic::Status>;
-        /// DeleteSecret removes a single secret by pipeline ID and
+            request: tonic::Request<super::ListPipelineSecretsRequest>,
+        ) -> Result<tonic::Response<super::ListPipelineSecretsResponse>, tonic::Status>;
+        /// PutPipelineSecret uploads a single secret by pipeline ID and key.
+        async fn put_pipeline_secret(
+            &self,
+            request: tonic::Request<super::PutPipelineSecretRequest>,
+        ) -> Result<tonic::Response<super::PutPipelineSecretResponse>, tonic::Status>;
+        /// DeletePipelineSecret removes a single secret by pipeline ID and
         /// key.
-        async fn delete_secret(
+        async fn delete_pipeline_secret(
             &self,
-            request: tonic::Request<super::DeleteSecretRequest>,
-        ) -> Result<tonic::Response<super::DeleteSecretResponse>, tonic::Status>;
+            request: tonic::Request<super::DeletePipelineSecretRequest>,
+        ) -> Result<tonic::Response<super::DeletePipelineSecretResponse>, tonic::Status>;
+        /// GetGlobalSecret returns a single secret by  key.
+        async fn get_global_secret(
+            &self,
+            request: tonic::Request<super::GetGlobalSecretRequest>,
+        ) -> Result<tonic::Response<super::GetGlobalSecretResponse>, tonic::Status>;
+        /// ListGlobalSecrets returns a single secret by global ID and key.
+        async fn list_global_secrets(
+            &self,
+            request: tonic::Request<super::ListGlobalSecretsRequest>,
+        ) -> Result<tonic::Response<super::ListGlobalSecretsResponse>, tonic::Status>;
+        /// PutGlobalSecret uploads a single secret by key.
+        async fn put_global_secret(
+            &self,
+            request: tonic::Request<super::PutGlobalSecretRequest>,
+        ) -> Result<tonic::Response<super::PutGlobalSecretResponse>, tonic::Status>;
+        /// DeleteGlobalSecret removes a single secret by key.
+        async fn delete_global_secret(
+            &self,
+            request: tonic::Request<super::DeleteGlobalSecretRequest>,
+        ) -> Result<tonic::Response<super::DeleteGlobalSecretResponse>, tonic::Status>;
         /// GetEvent returns the details of a single event.
         async fn get_event(
             &self,
@@ -3456,6 +3859,42 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
+                "/proto.Gofer/ListTokens" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListTokensSvc<T: Gofer>(pub Arc<T>);
+                    impl<T: Gofer> tonic::server::UnaryService<super::ListTokensRequest>
+                    for ListTokensSvc<T> {
+                        type Response = super::ListTokensResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListTokensRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).list_tokens(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListTokensSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/proto.Gofer/GetToken" => {
                     #[allow(non_camel_case_types)]
                     struct GetTokenSvc<T: Gofer>(pub Arc<T>);
@@ -3481,6 +3920,84 @@ pub mod gofer_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetTokenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/EnableToken" => {
+                    #[allow(non_camel_case_types)]
+                    struct EnableTokenSvc<T: Gofer>(pub Arc<T>);
+                    impl<T: Gofer> tonic::server::UnaryService<super::EnableTokenRequest>
+                    for EnableTokenSvc<T> {
+                        type Response = super::EnableTokenResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::EnableTokenRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).enable_token(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = EnableTokenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/DisableToken" => {
+                    #[allow(non_camel_case_types)]
+                    struct DisableTokenSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::DisableTokenRequest>
+                    for DisableTokenSvc<T> {
+                        type Response = super::DisableTokenResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DisableTokenRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).disable_token(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = DisableTokenSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -4989,6 +5506,46 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
+                "/proto.Gofer/ListPipelineObjects" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListPipelineObjectsSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::ListPipelineObjectsRequest>
+                    for ListPipelineObjectsSvc<T> {
+                        type Response = super::ListPipelineObjectsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListPipelineObjectsRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).list_pipeline_objects(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListPipelineObjectsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/proto.Gofer/GetPipelineObject" => {
                     #[allow(non_camel_case_types)]
                     struct GetPipelineObjectSvc<T: Gofer>(pub Arc<T>);
@@ -5098,6 +5655,46 @@ pub mod gofer_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = DeletePipelineObjectSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/ListRunObjects" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListRunObjectsSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::ListRunObjectsRequest>
+                    for ListRunObjectsSvc<T> {
+                        type Response = super::ListRunObjectsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListRunObjectsRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).list_run_objects(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListRunObjectsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -5229,97 +5826,25 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/GetSecret" => {
+                "/proto.Gofer/GetPipelineSecret" => {
                     #[allow(non_camel_case_types)]
-                    struct GetSecretSvc<T: Gofer>(pub Arc<T>);
-                    impl<T: Gofer> tonic::server::UnaryService<super::GetSecretRequest>
-                    for GetSecretSvc<T> {
-                        type Response = super::GetSecretResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetSecretRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).get_secret(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = GetSecretSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/PutSecret" => {
-                    #[allow(non_camel_case_types)]
-                    struct PutSecretSvc<T: Gofer>(pub Arc<T>);
-                    impl<T: Gofer> tonic::server::UnaryService<super::PutSecretRequest>
-                    for PutSecretSvc<T> {
-                        type Response = super::PutSecretResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::PutSecretRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).put_secret(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = PutSecretSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/DeleteSecret" => {
-                    #[allow(non_camel_case_types)]
-                    struct DeleteSecretSvc<T: Gofer>(pub Arc<T>);
+                    struct GetPipelineSecretSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<super::DeleteSecretRequest>
-                    for DeleteSecretSvc<T> {
-                        type Response = super::DeleteSecretResponse;
+                    > tonic::server::UnaryService<super::GetPipelineSecretRequest>
+                    for GetPipelineSecretSvc<T> {
+                        type Response = super::GetPipelineSecretResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::DeleteSecretRequest>,
+                            request: tonic::Request<super::GetPipelineSecretRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).delete_secret(request).await
+                                (*inner).get_pipeline_secret(request).await
                             };
                             Box::pin(fut)
                         }
@@ -5329,7 +5854,287 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = DeleteSecretSvc(inner);
+                        let method = GetPipelineSecretSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/ListPipelineSecrets" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListPipelineSecretsSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::ListPipelineSecretsRequest>
+                    for ListPipelineSecretsSvc<T> {
+                        type Response = super::ListPipelineSecretsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListPipelineSecretsRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).list_pipeline_secrets(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListPipelineSecretsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/PutPipelineSecret" => {
+                    #[allow(non_camel_case_types)]
+                    struct PutPipelineSecretSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::PutPipelineSecretRequest>
+                    for PutPipelineSecretSvc<T> {
+                        type Response = super::PutPipelineSecretResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::PutPipelineSecretRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).put_pipeline_secret(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = PutPipelineSecretSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/DeletePipelineSecret" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeletePipelineSecretSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::DeletePipelineSecretRequest>
+                    for DeletePipelineSecretSvc<T> {
+                        type Response = super::DeletePipelineSecretResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeletePipelineSecretRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).delete_pipeline_secret(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = DeletePipelineSecretSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/GetGlobalSecret" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetGlobalSecretSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::GetGlobalSecretRequest>
+                    for GetGlobalSecretSvc<T> {
+                        type Response = super::GetGlobalSecretResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetGlobalSecretRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).get_global_secret(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetGlobalSecretSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/ListGlobalSecrets" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListGlobalSecretsSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::ListGlobalSecretsRequest>
+                    for ListGlobalSecretsSvc<T> {
+                        type Response = super::ListGlobalSecretsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListGlobalSecretsRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).list_global_secrets(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListGlobalSecretsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/PutGlobalSecret" => {
+                    #[allow(non_camel_case_types)]
+                    struct PutGlobalSecretSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::PutGlobalSecretRequest>
+                    for PutGlobalSecretSvc<T> {
+                        type Response = super::PutGlobalSecretResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::PutGlobalSecretRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).put_global_secret(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = PutGlobalSecretSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/DeleteGlobalSecret" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteGlobalSecretSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::DeleteGlobalSecretRequest>
+                    for DeleteGlobalSecretSvc<T> {
+                        type Response = super::DeleteGlobalSecretResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteGlobalSecretRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).delete_global_secret(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = DeleteGlobalSecretSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

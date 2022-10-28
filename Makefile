@@ -32,7 +32,7 @@ SEMVER = 0.0.0
 VERSION = ${SEMVER}_${GIT_COMMIT}
 
 ## build: run tests and compile application
-build: check-path-included check-semver-included build-protos
+build: check-path-included check-semver-included build-protos build-sdk
 > go test ./... -race
 > go mod tidy
 > export CGO_ENABLED=1
@@ -43,7 +43,15 @@ build: check-path-included check-semver-included build-protos
 build-protos:
 > protoc --proto_path=proto --go_out=proto/go --go_opt=paths=source_relative \
 	 --go-grpc_out=proto/go --go-grpc_opt=paths=source_relative proto/*.proto
+> cd proto/rust
+> cargo build
 .PHONY: build-protos
+
+## build-sdk: build rust sdk
+build-sdk:
+> cd sdk/rust
+> cargo build
+.PHONY: build-sdk
 
 ## run: build application and run server
 run:

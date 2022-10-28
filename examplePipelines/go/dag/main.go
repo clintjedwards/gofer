@@ -21,7 +21,7 @@ func main() {
 				WithDescription("This task depends on the first task to finish with a successful result. This means "+
 					"that if the first task fails this task will not run").
 				WithDependsOnOne("first_task", sdk.RequiredParentStatusSuccess).
-				WithVariable("LOGS_HEADER", "This string can be anything you want it to be"),
+				WithVariable("LOGS_HEADER", "This string is a stand in for something you might pass to your custom task"),
 
 			sdk.NewCustomTask("depends_on_second", "docker.io/library/hello-world").
 				WithDescription(`This task depends on the second task, but will run after it's finished regardless of the result`).

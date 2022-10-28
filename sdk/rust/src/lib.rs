@@ -1,19 +1,10 @@
 pub mod config;
+mod dag;
 pub mod trigger;
 
+use config::ConfigError;
 use lazy_regex::regex;
-
-#[derive(thiserror::Error, Debug)]
-pub enum ConfigError {
-    #[error("invalid {argument}: '{value}'; {description}")]
-    InvalidArgument {
-        argument: String,
-        value: String,
-        description: String,
-    },
-    #[error("could not parse config; {0}")]
-    Parsing(String),
-}
+use std::collections::HashMap;
 
 /// Identifiers are used as the primary key in most of gofer's resources.
 /// They're defined by the user and therefore should have some sane bounds.
@@ -46,6 +37,20 @@ fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
             description: "can only be made up of alphanumeric and underscore characters"
                 .to_string(),
         });
+    }
+
+    Ok(())
+}
+
+fn validate_variables(variables: HashMap<String, String>) -> Result<(), ConfigError> {
+    for (key, value) in &variables {
+        if value.starts_with("global_secret") {
+            return Err(ConfigError::InvalidArgument {
+                argument: key.to_string(),
+                value: value.to_string(),
+                description: "cannot use global secrets in pipeline configs; global secrets are only allowed for system level configs set up by Gofer administrators".to_string()
+            });
+        }
     }
 
     Ok(())

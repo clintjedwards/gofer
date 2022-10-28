@@ -46,14 +46,14 @@ Update rust sdk library to be equal to golangs.
 
 ### CLI
 
-- Biggest feature missing is we are not currently doing proper json output.
 - Provide custom errors downstream via grpc metadata so the CLI can pass back intelligent errors to users.
+- Improve CLI errors overall.
 - Add command line options for controlling pagination
 - Combined logs feature: Ability to attach to all task runs at the same time and dump from the run.
 - We should have a watch function for run that nicely displays the task runs as they start and finish.
   (We could even have the active task_runs display the last 5 log lines as it runs each in their own personal terminal print load bar thing)
 - Create a namespace set command that allows the user to switch between namespaces and save it in their configuration file (CLI).
-- CLI now just compiles from language. This means that we can also just straight up read from things like json/toml since it all compiles back to json anyway.
+- CLI now just compiles from language. This means that we can also just straight up read from things like json/toml since it all compiles back to proto anyway.
 - https://github.com/clintjedwards/gofer/commit/955e1b7da76fdfa5aa26bcb5dd0b138af605aa45
 - Pipeline get needs to put more detail (list tasks, triggers, commontasks)
 - Create an init function for both rust and golang(simply just prompts you for your language) and then creates a new default vanilla pipeline. (similar to the old "config init" command)
@@ -114,11 +114,10 @@ Update rust sdk library to be equal to golangs.
 - Can we give user's a timeout that is super low, like a total container runtime of 5 mins. That way you can try it out, but you can't just run your own crypto shit on it.
 - Once the timeout is up we simply log the IP and prevent that user from making any more requests.
 - We might be able to get this for free in some golang ratelimiting libraries, we'd have to have the user sign up in some way first in order to prevent people from abusing. We can ratelimit routes that need to be always public per IP.
-- How do we secure the running of containers? We can do somethings like preventing root user for the container, we might be also able to
+- How do we secure the running of containers? We can do somethings like preventing root user for the container: https://firecracker-microvm.github.io/
 
 ### Documentation
 
-- Document the different env variables that get injected into each Trigger, Task, commonTask.
 - Server configuration reference should have one more field on whether it is required or not.
 - Trigger documentation:
   - Triggers now have two required functions, trigger installations and trigger runs
@@ -127,10 +126,6 @@ Update rust sdk library to be equal to golangs.
   - How to work with triggers locally
   - Explanation of the SDK on writing triggers
 - Add a section where we create a new trigger using a trigger that has already been created. as the example for new triggers in the docs
-- Improve documentation and examples for features.
-
-  - For example: writing custom notifiers allows you to implement Google style static analysis
-
 - Secrets explanation. Why is there global secrets and pipelines secrets? Whats the difference.
   - We needed a way to store secrets for common tasks which might be used for any pipeline
     and a way to store secrets for user's individual pipelines.
@@ -147,11 +142,30 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- After mdbook upgrade update all code links to it.
+- The What's next page in the documentation has several broken links.
+- We should remove the "With" from the Gofer sdk config API. It looks ugly. Lets just wrap the type. The user wont care and it will match Rust's.
+- Fixing Pipeline updates and rolling out versioned pipelines.
+  - Gofer needs versioned pipelines as a first step into supporting the possibility of canarying pipelines.
+    - We need to make a user settable limit for pipeline versions. Delete older versions.
+  - Several things need to get done
+    1. We need to figure out how to support versioned pipelines in the context of the database and data models. We'll probably need to change schema quite a bit.
+    2. Clean up how trigger sub/un-subs work. Hitting the upgrade endpoint for your pipeline should return immediately and update the pipeline's status to updating.
+       - (We'll probably need to add statues to pipeline [Ready, Updating])
+       - During this "updating" time Gofer will remove triggers and subscribe triggers as necessary.
+       - If this process fails Gofer will rollback to old trigger state.
+         - If this fails Gofer will mark the pipeline as paused(or better) for a specific reason.
+       - Clients of the API will kick off the update by passing the proto as usual and then listen for pipeline updates which can then be relayed to the user.
+       - Once the pipeline finishes updating the pipeline will switch back to Ready state but the API will not
+         autoswitch back to active.
+    3. We need to add "update methods" to pipeline settings which will control the manner in which we roll out updates. Runs will need to include which version of the pipeline has run
 - Add an example of entrypoint/command running a multi-line script
 - Orphaned run recovery is currently broken.
-- TestGetALL fails with race condition, check it out. I think it's a known issue.
-- Pipeline updates for CLI is broken.
 - Add a debug trigger to the provided trigger lists
 - CLI should be able to modify the default namespace purely through the CLI.
-- Instead of injecting Gofer API tokens by default, allow the user to turn it on per pipeline and possibly even better allow the user to opt out certain tasks from recieving the key.
+- Instead of injecting Gofer API tokens by default, allow the user to turn it on per pipeline and possibly even better allow the user to opt out certain tasks from receiving the key.
+- Clean up both github triggers and add a github common task.
+  - common task we can throw in there as a parallel task a the start of each pipeline. It will consume github commit, inform github of the pipeline pending and then query gofer to see when the run has ended. When the run ends the task will then inform github that the run has finished with a particular state.
+- Change to_proto to just proto()
+- Rust sdk tasks methods needs a better UX. Maybe a macro that will wrap the user's items in a box for them?
+- Update any mention of /experimental docker containers with the new debug containers.
+- CHange depends on one to dpends_on for go
