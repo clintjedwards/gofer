@@ -44,7 +44,7 @@ func (ra *RegistryAuth) FromProto(proto *proto.RegistryAuth) {
 	ra.Pass = proto.Pass
 }
 
-func (ra *RegistryAuth) ToProto() *proto.RegistryAuth {
+func (ra *RegistryAuth) Proto() *proto.RegistryAuth {
 	if ra == nil {
 		return nil
 	}
@@ -71,27 +71,36 @@ const (
 	TaskKindCustom  TaskKind = "CUSTOM"
 )
 
-type PipelineConfig struct {
-	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
-	Description string                  `json:"description"`
-	Parallelism int64                   `json:"parallelism"`
-	Tasks       []TaskConfig            `json:"tasks"`
-	Triggers    []PipelineTriggerConfig `json:"triggers"`
+// PipelineWrapper type simply exists so that we can make structs with fields like "id"
+// and we can still add functions called "id()". This makes it not only easier to
+// reason about when working with the struct, but when just writing pipelines as an end user.
+type PipelineWrapper struct {
+	Pipeline
 }
 
-func NewPipeline(id, name string) *PipelineConfig {
-	return &PipelineConfig{
-		ID:          id,
-		Name:        name,
-		Description: "",
-		Parallelism: 0,
-		Tasks:       []TaskConfig{},
-		Triggers:    []PipelineTriggerConfig{},
+type Pipeline struct {
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Parallelism int64            `json:"parallelism"`
+	Tasks       []TaskConfig     `json:"tasks"`
+	Triggers    []TriggerWrapper `json:"triggers"`
+}
+
+func NewPipeline(id, name string) *PipelineWrapper {
+	return &PipelineWrapper{
+		Pipeline{
+			ID:          id,
+			Name:        name,
+			Description: "",
+			Parallelism: 0,
+			Tasks:       []TaskConfig{},
+			Triggers:    []TriggerWrapper{},
+		},
 	}
 }
 
-func (p *PipelineConfig) Validate() error {
+func (p *PipelineWrapper) Validate() error {
 	err := validateIdentifier("id", p.ID)
 	if err != nil {
 		return err
@@ -102,14 +111,14 @@ func (p *PipelineConfig) Validate() error {
 		return err
 	}
 
-	for _, task := range p.Tasks {
+	for _, task := range p.Pipeline.Tasks {
 		err = task.validate()
 		if err != nil {
 			return err
 		}
 	}
 
-	for _, trigger := range p.Triggers {
+	for _, trigger := range p.Pipeline.Triggers {
 		err = trigger.validate()
 		if err != nil {
 			return err
@@ -119,68 +128,68 @@ func (p *PipelineConfig) Validate() error {
 	return nil
 }
 
-func (p *PipelineConfig) WithDescription(description string) *PipelineConfig {
-	p.Description = description
+func (p *PipelineWrapper) Description(description string) *PipelineWrapper {
+	p.Pipeline.Description = description
 	return p
 }
 
-func (p *PipelineConfig) WithParallelism(parallelism int64) *PipelineConfig {
-	p.Parallelism = parallelism
+func (p *PipelineWrapper) Parallelism(parallelism int64) *PipelineWrapper {
+	p.Pipeline.Parallelism = parallelism
 	return p
 }
 
-func (p *PipelineConfig) WithTasks(tasks ...TaskConfig) *PipelineConfig {
-	p.Tasks = tasks
+func (p *PipelineWrapper) Tasks(tasks ...TaskConfig) *PipelineWrapper {
+	p.Pipeline.Tasks = tasks
 	return p
 }
 
-func (p *PipelineConfig) WithTriggers(triggers ...PipelineTriggerConfig) *PipelineConfig {
-	p.Triggers = triggers
+func (p *PipelineWrapper) Triggers(triggers ...TriggerWrapper) *PipelineWrapper {
+	p.Pipeline.Triggers = triggers
 	return p
 }
 
-func (p *PipelineConfig) ToProto() *proto.PipelineConfig {
+func (p *PipelineWrapper) Proto() *proto.PipelineConfig {
 	tasks := []*proto.PipelineTaskConfig{}
-	for _, task := range p.Tasks {
+	for _, task := range p.Pipeline.Tasks {
 		switch t := task.(type) {
-		case *CommonTaskConfig:
+		case *CommonTaskWrapper:
 			tasks = append(tasks, &proto.PipelineTaskConfig{
 				Task: &proto.PipelineTaskConfig_CommonTask{
-					CommonTask: t.ToProto(),
+					CommonTask: t.Proto(),
 				},
 			})
-		case *CustomTaskConfig:
+		case *CustomTaskWrapper:
 			tasks = append(tasks, &proto.PipelineTaskConfig{
 				Task: &proto.PipelineTaskConfig_CustomTask{
-					CustomTask: t.ToProto(),
+					CustomTask: t.Proto(),
 				},
 			})
 		}
 	}
 
 	triggers := []*proto.PipelineTriggerConfig{}
-	for _, trigger := range p.Triggers {
-		triggers = append(triggers, trigger.ToProto())
+	for _, trigger := range p.Pipeline.Triggers {
+		triggers = append(triggers, trigger.Proto())
 	}
 
 	return &proto.PipelineConfig{
-		Id:          p.ID,
-		Name:        p.Name,
-		Description: p.Description,
-		Parallelism: p.Parallelism,
+		Id:          p.Pipeline.ID,
+		Name:        p.Pipeline.Name,
+		Description: p.Pipeline.Description,
+		Parallelism: p.Pipeline.Parallelism,
 		Tasks:       tasks,
 		Triggers:    triggers,
 	}
 }
 
 // Call finish as the last method to the pipeline config
-func (p *PipelineConfig) Finish() error {
+func (p *PipelineWrapper) Finish() error {
 	err := p.Validate()
 	if err != nil {
 		return err
 	}
 
-	pipelineProto := p.ToProto()
+	pipelineProto := p.Proto()
 
 	output, err := pb.Marshal(pipelineProto)
 	if err != nil {
@@ -248,11 +257,11 @@ func validateVariables(variables map[string]string) error {
 }
 
 // isDAG validates whether given task list inside a pipeline config represents an acyclic graph.
-func (p *PipelineConfig) isDAG() error {
+func (p *PipelineWrapper) isDAG() error {
 	taskDAG := dag.New()
 
 	// Add all nodes to the DAG first
-	for _, task := range p.Tasks {
+	for _, task := range p.Pipeline.Tasks {
 		err := taskDAG.AddNode(task.getID())
 		if err != nil {
 			if errors.Is(err, dag.ErrEntityExists) {
@@ -263,7 +272,7 @@ func (p *PipelineConfig) isDAG() error {
 	}
 
 	// Add all edges
-	for _, task := range p.Tasks {
+	for _, task := range p.Pipeline.Tasks {
 		for id := range task.getDependsOn() {
 			err := taskDAG.AddEdge(id, task.getID())
 			if err != nil {

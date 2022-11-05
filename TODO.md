@@ -142,8 +142,7 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- The What's next page in the documentation has several broken links.
-- We should remove the "With" from the Gofer sdk config API. It looks ugly. Lets just wrap the type. The user wont care and it will match Rust's.
+- SDK config specifically needs better documentation.
 - Fixing Pipeline updates and rolling out versioned pipelines.
   - Gofer needs versioned pipelines as a first step into supporting the possibility of canarying pipelines.
     - We need to make a user settable limit for pipeline versions. Delete older versions.

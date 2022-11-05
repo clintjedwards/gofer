@@ -4,7 +4,11 @@ import (
 	proto "github.com/clintjedwards/gofer/proto/go"
 )
 
-type CustomTaskConfig struct {
+type CustomTaskWrapper struct {
+	CustomTask
+}
+
+type CustomTask struct {
 	Kind         TaskKind                        `json:"kind"`
 	ID           string                          `json:"id"`
 	Description  string                          `json:"description"`
@@ -16,61 +20,63 @@ type CustomTaskConfig struct {
 	Command      *[]string                       `json:"command"`
 }
 
-func (t *CustomTaskConfig) isTaskConfig() {}
+func (t *CustomTaskWrapper) isTaskConfig() {}
 
-func (t *CustomTaskConfig) getKind() TaskKind {
+func (t *CustomTaskWrapper) getKind() TaskKind {
 	return TaskKindCustom
 }
 
-func (t *CustomTaskConfig) getID() string {
-	return t.ID
+func (t *CustomTaskWrapper) getID() string {
+	return t.CustomTask.ID
 }
 
-func (t *CustomTaskConfig) getDependsOn() map[string]RequiredParentStatus {
-	return t.DependsOn
+func (t *CustomTaskWrapper) getDependsOn() map[string]RequiredParentStatus {
+	return t.CustomTask.DependsOn
 }
 
-func NewCustomTask(id, image string) *CustomTaskConfig {
-	return &CustomTaskConfig{
-		Kind:         TaskKindCustom,
-		ID:           id,
-		Description:  "",
-		Image:        image,
-		RegistryAuth: nil,
-		DependsOn:    make(map[string]RequiredParentStatus),
-		Variables:    make(map[string]string),
+func NewCustomTask(id, image string) *CustomTaskWrapper {
+	return &CustomTaskWrapper{
+		CustomTask{
+			Kind:         TaskKindCustom,
+			ID:           id,
+			Description:  "",
+			Image:        image,
+			RegistryAuth: nil,
+			DependsOn:    make(map[string]RequiredParentStatus),
+			Variables:    make(map[string]string),
+		},
 	}
 }
 
-func (t *CustomTaskConfig) ToProto() *proto.CustomTaskConfig {
+func (t *CustomTaskWrapper) Proto() *proto.CustomTaskConfig {
 	dependsOn := map[string]proto.CustomTaskConfig_RequiredParentStatus{}
-	for key, value := range t.DependsOn {
+	for key, value := range t.CustomTask.DependsOn {
 		dependsOn[key] = proto.CustomTaskConfig_RequiredParentStatus(proto.CustomTaskConfig_RequiredParentStatus_value[string(value)])
 	}
 
 	entrypoint := []string{}
-	if t.Entrypoint != nil {
-		entrypoint = *t.Entrypoint
+	if t.CustomTask.Entrypoint != nil {
+		entrypoint = *t.CustomTask.Entrypoint
 	}
 
 	command := []string{}
-	if t.Command != nil {
-		command = *t.Command
+	if t.CustomTask.Command != nil {
+		command = *t.CustomTask.Command
 	}
 
 	return &proto.CustomTaskConfig{
-		Id:           t.ID,
-		Description:  t.Description,
-		Image:        t.Image,
-		RegistryAuth: t.RegistryAuth.ToProto(),
+		Id:           t.CustomTask.ID,
+		Description:  t.CustomTask.Description,
+		Image:        t.CustomTask.Image,
+		RegistryAuth: t.CustomTask.RegistryAuth.Proto(),
 		DependsOn:    dependsOn,
-		Variables:    t.Variables,
+		Variables:    t.CustomTask.Variables,
 		Entrypoint:   entrypoint,
 		Command:      command,
 	}
 }
 
-func (t *CustomTaskConfig) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
+func (t *CustomTaskWrapper) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
 	var registryAuth *RegistryAuth
 	if proto.RegistryAuth != nil {
 		ra := RegistryAuth{}
@@ -93,67 +99,67 @@ func (t *CustomTaskConfig) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
 		command = &proto.Command
 	}
 
-	t.ID = proto.Id
-	t.Description = proto.Description
-	t.Image = proto.Image
-	t.RegistryAuth = registryAuth
-	t.DependsOn = dependsOn
-	t.Variables = proto.Variables
-	t.Entrypoint = entrypoint
-	t.Command = command
+	t.CustomTask.ID = proto.Id
+	t.CustomTask.Description = proto.Description
+	t.CustomTask.Image = proto.Image
+	t.CustomTask.RegistryAuth = registryAuth
+	t.CustomTask.DependsOn = dependsOn
+	t.CustomTask.Variables = proto.Variables
+	t.CustomTask.Entrypoint = entrypoint
+	t.CustomTask.Command = command
 }
 
-func (t *CustomTaskConfig) validate() error {
-	err := validateVariables(t.Variables)
+func (t *CustomTaskWrapper) validate() error {
+	err := validateVariables(t.CustomTask.Variables)
 	if err != nil {
 		return err
 	}
 	return validateIdentifier("id", t.ID)
 }
 
-func (t *CustomTaskConfig) WithDescription(description string) *CustomTaskConfig {
-	t.Description = description
+func (t *CustomTaskWrapper) Description(description string) *CustomTaskWrapper {
+	t.CustomTask.Description = description
 	return t
 }
 
-func (t *CustomTaskConfig) WithRegistryAuth(user, pass string) *CustomTaskConfig {
-	t.RegistryAuth = &RegistryAuth{
+func (t *CustomTaskWrapper) RegistryAuth(user, pass string) *CustomTaskWrapper {
+	t.CustomTask.RegistryAuth = &RegistryAuth{
 		User: user,
 		Pass: pass,
 	}
 	return t
 }
 
-func (t *CustomTaskConfig) WithDependsOnOne(taskID string, state RequiredParentStatus) *CustomTaskConfig {
-	t.DependsOn[taskID] = state
+func (t *CustomTaskWrapper) DependsOn(taskID string, state RequiredParentStatus) *CustomTaskWrapper {
+	t.CustomTask.DependsOn[taskID] = state
 	return t
 }
 
-func (t *CustomTaskConfig) WithDependsOnMany(dependsOn map[string]RequiredParentStatus) *CustomTaskConfig {
+func (t *CustomTaskWrapper) DependsOnMany(dependsOn map[string]RequiredParentStatus) *CustomTaskWrapper {
 	for id, status := range dependsOn {
-		t.DependsOn[id] = status
+		t.CustomTask.DependsOn[id] = status
 	}
 	return t
 }
 
-func (t *CustomTaskConfig) WithVariable(key, value string) *CustomTaskConfig {
-	t.Variables[key] = value
+func (t *CustomTaskWrapper) Variable(key, value string) *CustomTaskWrapper {
+	t.CustomTask.Variables[key] = value
 	return t
 }
 
-func (t *CustomTaskConfig) WithVariables(variables map[string]string) *CustomTaskConfig {
+func (t *CustomTaskWrapper) Variables(variables map[string]string) *CustomTaskWrapper {
 	for key, value := range variables {
-		t.Variables[key] = value
+		t.CustomTask.Variables[key] = value
 	}
 	return t
 }
 
-func (t *CustomTaskConfig) WithEntrypoint(entrypoint ...string) *CustomTaskConfig {
-	t.Entrypoint = &entrypoint
+func (t *CustomTaskWrapper) Entrypoint(entrypoint ...string) *CustomTaskWrapper {
+	t.CustomTask.Entrypoint = &entrypoint
 	return t
 }
 
-func (t *CustomTaskConfig) WithCommand(command ...string) *CustomTaskConfig {
-	t.Command = &command
+func (t *CustomTaskWrapper) Command(command ...string) *CustomTaskWrapper {
+	t.CustomTask.Command = &command
 	return t
 }

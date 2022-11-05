@@ -7,45 +7,51 @@ import (
 	proto "github.com/clintjedwards/gofer/proto/go"
 )
 
-type PipelineTriggerConfig struct {
+type TriggerWrapper struct {
+	Trigger
+}
+
+type Trigger struct {
 	Name     string            `json:"name"`
 	Label    string            `json:"label"`
 	Settings map[string]string `json:"settings"`
 }
 
-func NewTrigger(name, label string) *PipelineTriggerConfig {
-	return &PipelineTriggerConfig{
-		Name:  name,
-		Label: label,
+func NewTrigger(name, label string) *TriggerWrapper {
+	return &TriggerWrapper{
+		Trigger{
+			Name:  name,
+			Label: label,
+		},
 	}
 }
 
-func (p *PipelineTriggerConfig) WithSetting(key, value string) *PipelineTriggerConfig {
-	p.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
+func (p *TriggerWrapper) Setting(key, value string) *TriggerWrapper {
+	p.Trigger.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
 	return p
 }
 
-func (p *PipelineTriggerConfig) WithSettings(settings map[string]string) *PipelineTriggerConfig {
+func (p *TriggerWrapper) Settings(settings map[string]string) *TriggerWrapper {
 	for key, value := range settings {
-		p.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
+		p.Trigger.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
 	}
 	return p
 }
 
-func (p *PipelineTriggerConfig) FromProto(proto *proto.PipelineTriggerConfig) {
-	p.Name = proto.Name
-	p.Label = proto.Label
-	p.Settings = proto.Settings
+func (p *TriggerWrapper) FromProto(proto *proto.PipelineTriggerConfig) {
+	p.Trigger.Name = proto.Name
+	p.Trigger.Label = proto.Label
+	p.Trigger.Settings = proto.Settings
 }
 
-func (p *PipelineTriggerConfig) ToProto() *proto.PipelineTriggerConfig {
+func (p *TriggerWrapper) Proto() *proto.PipelineTriggerConfig {
 	return &proto.PipelineTriggerConfig{
-		Name:     p.Name,
-		Label:    p.Label,
-		Settings: p.Settings,
+		Name:     p.Trigger.Name,
+		Label:    p.Trigger.Label,
+		Settings: p.Trigger.Settings,
 	}
 }
 
-func (p *PipelineTriggerConfig) validate() error {
+func (p *TriggerWrapper) validate() error {
 	return validateIdentifier("label", p.Label)
 }
