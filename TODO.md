@@ -31,7 +31,9 @@ We need a common way to alert on a PR or something that a task has succeeded or 
 
 ### SDK
 
-Update rust sdk library to be equal to golangs.
+- Rust sdk tasks methods needs a better UX. Maybe a macro that will wrap the user's items in a box for them?
+- Rust sdk needs documentation.
+- Rust documentation possibly needs to be on cargo.io.
 
 ### Common Tasks
 
@@ -142,7 +144,6 @@ Update rust sdk library to be equal to golangs.
 
 ### On the floor
 
-- SDK config specifically needs better documentation.
 - Fixing Pipeline updates and rolling out versioned pipelines.
   - Gofer needs versioned pipelines as a first step into supporting the possibility of canarying pipelines.
     - We need to make a user settable limit for pipeline versions. Delete older versions.
@@ -164,7 +165,3 @@ Update rust sdk library to be equal to golangs.
 - Instead of injecting Gofer API tokens by default, allow the user to turn it on per pipeline and possibly even better allow the user to opt out certain tasks from receiving the key.
 - Clean up both github triggers and add a github common task.
   - common task we can throw in there as a parallel task a the start of each pipeline. It will consume github commit, inform github of the pipeline pending and then query gofer to see when the run has ended. When the run ends the task will then inform github that the run has finished with a particular state.
-- Change to_proto to just proto()
-- Rust sdk tasks methods needs a better UX. Maybe a macro that will wrap the user's items in a box for them?
-- Update any mention of /experimental docker containers with the new debug containers.
-- CHange depends on one to dpends_on for go

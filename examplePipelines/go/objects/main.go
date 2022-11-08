@@ -10,7 +10,7 @@ func main() {
 	err := sdk.NewPipeline("objects", "Objects Pipeline").
 		Description(`This pipeline displays how one might use Gofer's object/kv store to pass container results to other containers.`).
 		Tasks(
-			sdk.NewCustomTask("simple_task", "ghcr.io/clintjedwards/experimental:log").
+			sdk.NewCustomTask("simple_task", "ghcr.io/clintjedwards/gofer/debug/log:latest").
 				Description("This task has no dependencies so it will run immediately").
 				Variables(map[string]string{
 					"SOME_VARIABLE":         "something here",

@@ -127,7 +127,7 @@ func TestInvalidConfigGlobalSecrets(t *testing.T) {
 			NewCustomTask("simple_task", "ubuntu:latest").
 				Description("This task simply prints our hello-world message and exits!").
 				Command("echo", `Hello from Gofer!`).
-				Variable("test_var", GlobalSecret("some_secret_here")),
+				Variable("test_var", "global_secret{{some_secret_here}}"),
 		).Finish()
 	if err == nil {
 		t.Fatal("pipeline should return an error due to user attempting to use global secrets, but it does not")

@@ -13,27 +13,22 @@ import (
 	pb "google.golang.org/protobuf/proto"
 )
 
+// RequiredParentStatus is used to describe the state you would like the parent dependency to be in
+// before the child is run.
 type RequiredParentStatus string
 
 const (
-	RequiredParentStatusAny     RequiredParentStatus = "ANY"
+	// Any means that no matter what the state of the parent is at end, the child will run.
+	RequiredParentStatusAny RequiredParentStatus = "ANY"
+
+	// Success requires that the parent pass with a SUCCESSFUL status before the child will run.
 	RequiredParentStatusSuccess RequiredParentStatus = "SUCCESS"
+
+	// Failure requires the parent fail in anyway before the child is run.
 	RequiredParentStatusFailure RequiredParentStatus = "FAILURE"
 )
 
-func (status RequiredParentStatus) ToString() string {
-	switch status {
-	case RequiredParentStatusAny:
-		return "any"
-	case RequiredParentStatusFailure:
-		return "failure"
-	case RequiredParentStatusSuccess:
-		return "success"
-	default:
-		return "unknown"
-	}
-}
-
+// RegistryAuth represents docker repository authentication.
 type RegistryAuth struct {
 	User string `json:"user"`
 	Pass string `json:"pass"`
@@ -44,6 +39,7 @@ func (ra *RegistryAuth) FromProto(proto *proto.RegistryAuth) {
 	ra.Pass = proto.Pass
 }
 
+// Returns the protobuf representation.
 func (ra *RegistryAuth) Proto() *proto.RegistryAuth {
 	if ra == nil {
 		return nil
@@ -55,6 +51,7 @@ func (ra *RegistryAuth) Proto() *proto.RegistryAuth {
 	}
 }
 
+// TaskConfig represents the interface for different types of tasks Gofer accepts.
 type TaskConfig interface {
 	isTaskConfig()
 	getKind() TaskKind
@@ -63,12 +60,18 @@ type TaskConfig interface {
 	validate() error
 }
 
+// TaskKind represents an enum of types of tasks Gofer accepts.
 type TaskKind string
 
 const (
 	TaskKindUnknown TaskKind = "UNKNOWN"
-	TaskKindCommon  TaskKind = "COMMON"
-	TaskKindCustom  TaskKind = "CUSTOM"
+
+	// TaskKindCommon represents a common task. Common Tasks are set up by Gofer administrators and then can be included
+	// in Gofer pipelines.
+	TaskKindCommon TaskKind = "COMMON"
+
+	// TaskKindCustom represents a custom task. Custom Tasks are set up on a per pipeline basis by the pipeline user.
+	TaskKindCustom TaskKind = "CUSTOM"
 )
 
 // PipelineWrapper type simply exists so that we can make structs with fields like "id"
@@ -78,15 +81,23 @@ type PipelineWrapper struct {
 	Pipeline
 }
 
+// A pipeline is a representation of a Gofer pipeline, the structure in which users represent what they
+// want to run in Gofer.
 type Pipeline struct {
-	ID          string           `json:"id"`
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	Parallelism int64            `json:"parallelism"`
-	Tasks       []TaskConfig     `json:"tasks"`
-	Triggers    []TriggerWrapper `json:"triggers"`
+	ID          string           `json:"id"`          // Unique Identifier for the pipeline.
+	Name        string           `json:"name"`        // Humanized name for the pipeline.
+	Description string           `json:"description"` // A short description for the pipeline.
+	Parallelism int64            `json:"parallelism"` // How many runs are allowed to run at the same time.
+	Tasks       []TaskConfig     `json:"tasks"`       // The task set of the pipeline. AKA which containers should be run.
+	Triggers    []TriggerWrapper `json:"triggers"`    // Associated triggers of the pipeline.
 }
 
+// Create a new pipeline.
+//   - The ID must be between 3 and 32 characters long and only alphanumeric, underscores are the only allowed
+//     alphanumeric character.
+//     Ex. `simple_pipeline`
+//   - The name is a human friendly name to represent the pipeline.
+//     Ex. `Simple Pipeline`
 func NewPipeline(id, name string) *PipelineWrapper {
 	return &PipelineWrapper{
 		Pipeline{
@@ -100,6 +111,7 @@ func NewPipeline(id, name string) *PipelineWrapper {
 	}
 }
 
+// Checks pipeline for common pipeline mistakes and returns an error if found.
 func (p *PipelineWrapper) Validate() error {
 	err := validateIdentifier("id", p.ID)
 	if err != nil {
@@ -128,21 +140,29 @@ func (p *PipelineWrapper) Validate() error {
 	return nil
 }
 
+// A description allows you to succinctly describe what your pipeline is used for.
 func (p *PipelineWrapper) Description(description string) *PipelineWrapper {
 	p.Pipeline.Description = description
 	return p
 }
 
+// How many runs are allowed to happen at the same time. 0 means no-limit.
 func (p *PipelineWrapper) Parallelism(parallelism int64) *PipelineWrapper {
 	p.Pipeline.Parallelism = parallelism
 	return p
 }
 
+// Tasks are containers that the pipeline runs. There are two types of tasks.
+//   - Common Tasks: Are set up by the Gofer administrator and allow you add pre-configured tasks to your  pipeline.
+//   - Custom Tasks: Are containers that you define for Gofer to execute.
 func (p *PipelineWrapper) Tasks(tasks ...TaskConfig) *PipelineWrapper {
 	p.Pipeline.Tasks = tasks
 	return p
 }
 
+// Triggers are the way in which Gofer handles automation. Triggers are allowed to start runs on your pipeline
+// per some predefined event. For example, a common trigger is just the passage of time. The interval trigger
+// might attempt to start a run for your pipeline when some value(that you set) of time has passed.
 func (p *PipelineWrapper) Triggers(triggers ...TriggerWrapper) *PipelineWrapper {
 	p.Pipeline.Triggers = triggers
 	return p
@@ -182,7 +202,8 @@ func (p *PipelineWrapper) Proto() *proto.PipelineConfig {
 	}
 }
 
-// Call finish as the last method to the pipeline config
+// Call finish as the last method to the pipeline config. Finish validates and converts the pipeline
+// to Protobuf so that it can be read in by other programs.
 func (p *PipelineWrapper) Finish() error {
 	err := p.Validate()
 	if err != nil {
@@ -204,18 +225,17 @@ func (p *PipelineWrapper) Finish() error {
 	return nil
 }
 
+// Convenience function to insert pipeline secret values.
 func PipelineSecret(key string) string {
 	return fmt.Sprintf("pipeline_secret{{%s}}", key)
 }
 
-func GlobalSecret(key string) string {
-	return fmt.Sprintf("global_secret{{%s}}", key)
-}
-
+// Convenience function to insert pipeline object values.
 func PipelineObject(key string) string {
 	return fmt.Sprintf("pipeline_object{{%s}}", key)
 }
 
+// Convenience function to insert run object values.
 func RunObject(key string) string {
 	return fmt.Sprintf("run_object{{%s}}", key)
 }

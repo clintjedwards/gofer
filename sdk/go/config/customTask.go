@@ -4,10 +4,15 @@ import (
 	proto "github.com/clintjedwards/gofer/proto/go"
 )
 
+// CustomTaskWrapper type simply exists so that we can make structs with fields like "id"
+// and we can still add functions called "id()". This makes it not only easier to
+// reason about when working with the struct, but when just writing pipelines as an end user.
 type CustomTaskWrapper struct {
 	CustomTask
 }
 
+// CustomTask is a representation of a Gofer custom task. Custom tasks are simply containers that
+// Pipeline users need to run.
 type CustomTask struct {
 	Kind         TaskKind                        `json:"kind"`
 	ID           string                          `json:"id"`
@@ -34,6 +39,7 @@ func (t *CustomTaskWrapper) getDependsOn() map[string]RequiredParentStatus {
 	return t.CustomTask.DependsOn
 }
 
+// Creates a new Gofer custom task. Custom Tasks are simple containers you wish to run.
 func NewCustomTask(id, image string) *CustomTaskWrapper {
 	return &CustomTaskWrapper{
 		CustomTask{
@@ -117,11 +123,13 @@ func (t *CustomTaskWrapper) validate() error {
 	return validateIdentifier("id", t.ID)
 }
 
+// Add a short description of the task's purpose.
 func (t *CustomTaskWrapper) Description(description string) *CustomTaskWrapper {
 	t.CustomTask.Description = description
 	return t
 }
 
+// Authentication details if your container repository requires them.
 func (t *CustomTaskWrapper) RegistryAuth(user, pass string) *CustomTaskWrapper {
 	t.CustomTask.RegistryAuth = &RegistryAuth{
 		User: user,
@@ -130,11 +138,13 @@ func (t *CustomTaskWrapper) RegistryAuth(user, pass string) *CustomTaskWrapper {
 	return t
 }
 
+// Add a single task dependency. This allows you to tie a task's execution to the result of another task.
 func (t *CustomTaskWrapper) DependsOn(taskID string, state RequiredParentStatus) *CustomTaskWrapper {
 	t.CustomTask.DependsOn[taskID] = state
 	return t
 }
 
+// Add multiple task dependencies. This allows you to tie a task's execution to the result of several other tasks.
 func (t *CustomTaskWrapper) DependsOnMany(dependsOn map[string]RequiredParentStatus) *CustomTaskWrapper {
 	for id, status := range dependsOn {
 		t.CustomTask.DependsOn[id] = status
@@ -142,11 +152,17 @@ func (t *CustomTaskWrapper) DependsOnMany(dependsOn map[string]RequiredParentSta
 	return t
 }
 
+// Add a single variable. Variables are passed to your custom task as environment variables in a key value fashion.
+// Variable values can also be pulled from other resources within Gofer. Making it easy to
+// pass in things like secrets.
 func (t *CustomTaskWrapper) Variable(key, value string) *CustomTaskWrapper {
 	t.CustomTask.Variables[key] = value
 	return t
 }
 
+// Add multiple variables. Variables are passed to your custom task as environment variables in a key value fashion.
+// Variable values can also be pulled from other resources within Gofer like the secret store. Making it easy to
+// pass in things like secrets.
 func (t *CustomTaskWrapper) Variables(variables map[string]string) *CustomTaskWrapper {
 	for key, value := range variables {
 		t.CustomTask.Variables[key] = value
@@ -154,11 +170,13 @@ func (t *CustomTaskWrapper) Variables(variables map[string]string) *CustomTaskWr
 	return t
 }
 
+// Change the container's [entrypoint](https://docs.docker.com/engine/reference/builder/#understand-how-cmd-and-entrypoint-interact
 func (t *CustomTaskWrapper) Entrypoint(entrypoint ...string) *CustomTaskWrapper {
 	t.CustomTask.Entrypoint = &entrypoint
 	return t
 }
 
+// Change the container's [command](https://docs.docker.com/engine/reference/builder/#understand-how-cmd-and-entrypoint-interact)
 func (t *CustomTaskWrapper) Command(command ...string) *CustomTaskWrapper {
 	t.CustomTask.Command = &command
 	return t

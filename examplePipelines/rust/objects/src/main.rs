@@ -6,7 +6,7 @@ fn main() {
         description("This pipeline displays how one might use Gofer's object/kv store to pass container results to others containers.").
         tasks(vec![
             Box::new(
-                CustomTask::new("simple_task", "ghcr.io/clintjedwards/debug/log:latest").
+                CustomTask::new("simple_task", "ghcr.io/clintjedwards/gofer/debug/log:latest").
                     description("This task has no dependencies so it will run immediately").
                     variables(HashMap::from([
                         ("SOME_VARIABLE".to_string(), "something here".to_string()),

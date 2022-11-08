@@ -7,10 +7,15 @@ import (
 	proto "github.com/clintjedwards/gofer/proto/go"
 )
 
+// CommonTaskWrapper type simply exists so that we can make structs with fields like "id"
+// and we can still add functions called "id()". This makes it not only easier to
+// reason about when working with the struct, but when just writing pipelines as an end user.
 type CommonTaskWrapper struct {
 	CommonTask
 }
 
+// CommonTask represents pre-configured containers set by Gofer administrators that can be used
+// as part of a pipeline.
 type CommonTask struct {
 	Kind        TaskKind                        `json:"kind"`
 	Name        string                          `json:"name"`
@@ -34,6 +39,10 @@ func (t *CommonTaskWrapper) getDependsOn() map[string]RequiredParentStatus {
 	return t.CommonTask.DependsOn
 }
 
+// Creates a new Gofer common task. Common Tasks are Gofer administrator set containers that
+// container pre-configured configuration such that you can use within your pipeline.
+//
+// For example, doing actions like posting to Slack would usually involve a common task rather than a custom one.
 func NewCommonTask(name, label string) *CommonTaskWrapper {
 	return &CommonTaskWrapper{
 		CommonTask{
@@ -70,16 +79,19 @@ func (t *CommonTaskWrapper) validate() error {
 	return validateIdentifier("label", t.Label)
 }
 
+// Add a short description of the purpose of this common task.
 func (t *CommonTaskWrapper) Description(description string) *CommonTaskWrapper {
 	t.CommonTask.Description = description
 	return t
 }
 
-func (t *CommonTaskWrapper) DependsOnOne(taskID string, state RequiredParentStatus) *CommonTaskWrapper {
+// Add a single task dependency. This allows you to tie a task's execution to the result of another task.
+func (t *CommonTaskWrapper) DependsOn(taskID string, state RequiredParentStatus) *CommonTaskWrapper {
 	t.CommonTask.DependsOn[taskID] = state
 	return t
 }
 
+// Add multiple task dependencies. This allows you to tie a task's execution to the result of several other tasks.
 func (t *CommonTaskWrapper) DependsOnMany(dependsOn map[string]RequiredParentStatus) *CommonTaskWrapper {
 	for id, status := range dependsOn {
 		t.CommonTask.DependsOn[id] = status
@@ -87,11 +99,17 @@ func (t *CommonTaskWrapper) DependsOnMany(dependsOn map[string]RequiredParentSta
 	return t
 }
 
+// Add a single setting. Settings allows you to control the behavior of common task's.
+// Make sure to read the common task's readme in order to understand which settings and their
+// associated values are accepted.
 func (t *CommonTaskWrapper) Setting(key, value string) *CommonTaskWrapper {
 	t.CommonTask.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
 	return t
 }
 
+// Add multiple settings. Settings allows you to control the behavior of common task's.
+// Make sure to read the common task's readme in order to understand which settings and their
+// associated values are accepted.
 func (t *CommonTaskWrapper) Settings(settings map[string]string) *CommonTaskWrapper {
 	for key, value := range settings {
 		t.CommonTask.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value

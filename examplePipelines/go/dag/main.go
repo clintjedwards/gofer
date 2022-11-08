@@ -13,11 +13,11 @@ func main() {
 				"together containers that depend on other container's end states. This is obviously very useful if you want to perform "+
 				"certain trees of actions depending on what happens in earlier containers.").
 		Tasks(
-			sdk.NewCustomTask("first_task", "ghcr.io/clintjedwards/experimental:wait").
+			sdk.NewCustomTask("first_task", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
 				Description("This task has no dependencies so it will run immediately").
 				Variable("WAIT_DURATION", "20s"),
 
-			sdk.NewCustomTask("depends_on_first", "ghcr.io/clintjedwards/experimental:log").
+			sdk.NewCustomTask("depends_on_first", "ghcr.io/clintjedwards/gofer/debug/log:latest").
 				Description("This task depends on the first task to finish with a successful result. This means "+
 					"that if the first task fails this task will not run").
 				DependsOn("first_task", sdk.RequiredParentStatusSuccess).
