@@ -245,7 +245,7 @@ func (t *trigger) Check(ctx context.Context, request *sdkProto.CheckRequest) (*s
 func (t *trigger) Info(ctx context.Context, request *sdkProto.InfoRequest) (*sdkProto.InfoResponse, error) {
 	return &sdkProto.InfoResponse{
 		Kind:          os.Getenv("GOFER_TRIGGER_KIND"),
-		Documentation: "https://clintjedwards.com/gofer/ref/triggers/github.html",
+		Documentation: "https://clintjedwards.com/gofer/ref/triggers/provided/github.html",
 	}, nil
 }
 

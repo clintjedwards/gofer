@@ -1,6 +1,8 @@
 # Interval <small>Trigger</small>
 
-## Pipeline Configuration
+Interval simply triggers the subscribed pipeline at the given interval.
+
+## Parameters/Pipeline Configuration
 
 - `every` <string>: Specifies the time duration between events. Unless changed via the trigger configuration, the minimum for this is 5 mins.
 
@@ -14,7 +16,7 @@ WithTriggers(
 
 ## Trigger Configuration
 
-Trigger configurations are set upon trigger startup and cannot be changed afterwards.
+Trigger configurations are set upon trigger startup and cannot be changed afterwards without restarting said trigger.
 
 | EnvVar       | Default | Description                                               |
 | ------------ | ------- | --------------------------------------------------------- |

@@ -37,7 +37,7 @@ Triggers are the way users can automate their pipelines by waiting on bespoke ev
 
 Gofer supports any trigger you can imagine by making triggers pluggable and portable[^3]! Triggers are nothing more than docker containers themselves that talk to the main process when its time for a pipeline to be triggered.
 
-Gofer out of the box provides some default triggers like [cron](./ref/triggers/cron.md) and [interval](./ref/triggers/interval.md). But even more powerful than that, it accepts any type of trigger you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
+Gofer out of the box provides some default triggers like [cron](./ref/triggers/provided/cron.md) and [interval](./ref/triggers/provided/interval.md). But even more powerful than that, it accepts any type of trigger you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
 
 Triggers are brought up alongside Gofer as long-running docker containers that it launches and manages.
 

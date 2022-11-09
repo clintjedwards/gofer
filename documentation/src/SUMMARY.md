@@ -33,9 +33,10 @@
 - [Secret Store](./ref/secret_store/README.md)
   - [Sqlite](./ref/secret_store/sqlite.md)
 - [Triggers](./ref/triggers/README.md)
-  - [Cron](./ref/triggers/cron.md)
-  - [Interval](./ref/triggers/interval.md)
-  - [Github](./ref/triggers/github.md)
+  - [Provided Triggers](./ref/triggers/provided/README.md)
+    - [Cron](./ref/triggers/provided/cron.md)
+    - [Interval](./ref/triggers/provided/interval.md)
+    - [Github](./ref/triggers/provided/github.md)
 - [Common Tasks](./ref/common_tasks/README.md)
   - [Debug](./ref/common_tasks/debug.md)
 

@@ -13,9 +13,9 @@ _Steps to accomplish this can be found in the [additional steps section.](#addit
 :::
 
 :::danger
-The Github trigger requires the [external events feature](../server_configuration/external_events.md) of Gofer in order to accept webhooks from Github's servers. This requires your application to take traffic from external, potentially unknown sources.
+The Github trigger requires the [external events feature](../../server_configuration/external_events.md) of Gofer in order to accept webhooks from Github's servers. This requires your application to take traffic from external, potentially unknown sources.
 
-Visit the [external events page](../server_configuration/external_events.md) for more information on how to configure Gofer's external
+Visit the [external events page](../../server_configuration/external_events.md) for more information on how to configure Gofer's external
 events endpoint.
 
 If Github is your only external trigger, to increase security consider [limiting the IP addresses](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses) that can access Gofer's external events endpoint.
@@ -108,8 +108,8 @@ It is recommended that you give read-only permissions to any permissions that mi
 The installation ID is unfortunately hidden in an event that gets sent once the Github app has been created and installed. You can find it by navigating to the settings page for the Github application and
 then viewing it in the "Recent Deliveries" page.
 
-![Recent Deliveries](../../assets/github-apps-recent-deliveries.png)
-![Installation webhook event](../../assets/github-apps-installation-id.png)
+![Recent Deliveries](../../../assets/github-apps-recent-deliveries.png)
+![Installation webhook event](../../../assets/github-apps-installation-id.png)
 
 ## Events
 

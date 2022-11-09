@@ -17,3 +17,6 @@ dist/*
 -dist/.gitkeep
 main.js
 
+# Remove the documentation assets
+documentation/book/html/*
+

@@ -165,3 +165,4 @@ We need a common way to alert on a PR or something that a task has succeeded or 
 - Instead of injecting Gofer API tokens by default, allow the user to turn it on per pipeline and possibly even better allow the user to opt out certain tasks from receiving the key.
 - Clean up both github triggers and add a github common task.
   - common task we can throw in there as a parallel task a the start of each pipeline. It will consume github commit, inform github of the pipeline pending and then query gofer to see when the run has ended. When the run ends the task will then inform github that the run has finished with a particular state.
+- For the install triggers cli command include a listing of the standard triggers.
