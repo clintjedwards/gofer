@@ -5,7 +5,7 @@ import (
 )
 
 var CmdRun = &cobra.Command{
-	Use:   "runs",
+	Use:   "run",
 	Short: "Manage runs",
 	Long: `Manage runs.
 
