@@ -1,4 +1,4 @@
-package namespaces
+package namespace
 
 import (
 	"context"
@@ -12,20 +12,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdNamespacesDelete = &cobra.Command{
+var cmdNamespaceDelete = &cobra.Command{
 	Use:     "delete <id>",
 	Short:   "Delete namespace",
 	Long:    `Delete namespace.`,
-	Example: `$ gofer namespaces delete my_namespace`,
-	RunE:    namespacesDelete,
+	Example: `$ gofer namespace delete my_namespace`,
+	RunE:    namespaceDelete,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdNamespaces.AddCommand(cmdNamespacesDelete)
+	CmdNamespace.AddCommand(cmdNamespaceDelete)
 }
 
-func namespacesDelete(_ *cobra.Command, args []string) error {
+func namespaceDelete(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Deleting namespace")

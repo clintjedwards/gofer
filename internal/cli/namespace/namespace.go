@@ -1,11 +1,11 @@
-package namespaces
+package namespace
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdNamespaces = &cobra.Command{
-	Use:   "namespaces",
+var CmdNamespace = &cobra.Command{
+	Use:   "namespace",
 	Short: "Manage namespaces",
 	Long: `Manage namespaces.
 

@@ -1,4 +1,4 @@
-package namespaces
+package namespace
 
 import (
 	"context"
@@ -11,21 +11,21 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdNamespacesUpdate = &cobra.Command{
+var cmdNamespaceUpdate = &cobra.Command{
 	Use:     "update <id>",
 	Short:   "Update details on a specific namespace",
 	Example: `$ gofer namespace update old_namespace --name="New name"`,
-	RunE:    namespacesUpdate,
+	RunE:    namespaceUpdate,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdNamespacesUpdate.Flags().StringP("name", "n", "", "Human readable name for namespace")
-	cmdNamespacesUpdate.Flags().StringP("description", "d", "", "Description on use for namespace")
-	CmdNamespaces.AddCommand(cmdNamespacesUpdate)
+	cmdNamespaceUpdate.Flags().StringP("name", "n", "", "Human readable name for namespace")
+	cmdNamespaceUpdate.Flags().StringP("description", "d", "", "Description on use for namespace")
+	CmdNamespace.AddCommand(cmdNamespaceUpdate)
 }
 
-func namespacesUpdate(cmd *cobra.Command, args []string) error {
+func namespaceUpdate(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name, err := cmd.Flags().GetString("name")
 	if err != nil {

@@ -1,4 +1,4 @@
-package namespaces
+package namespace
 
 import (
 	"context"
@@ -11,26 +11,26 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdNamespacesCreate = &cobra.Command{
+var cmdNamespaceCreate = &cobra.Command{
 	Use:   "create <id> <name>",
 	Short: "Create a new namespace",
 	Long: `Create a new namespace.
 
 Namespaces act as divider lines between different sets of pipelines.
 `,
-	Example: `$ gofer namespaces create new_namespace "New Namespace"
-$ gofer namespaces create new_namespace "New Namespace" --description="my new namespace"
+	Example: `$ gofer namespace create new_namespace "New Namespace"
+$ gofer namespace create new_namespace "New Namespace" --description="my new namespace"
 `,
-	RunE: namespacesCreate,
+	RunE: namespaceCreate,
 	Args: cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdNamespacesCreate.Flags().StringP("description", "d", "", "Description on use for namespace")
-	CmdNamespaces.AddCommand(cmdNamespacesCreate)
+	cmdNamespaceCreate.Flags().StringP("description", "d", "", "Description on use for namespace")
+	CmdNamespace.AddCommand(cmdNamespaceCreate)
 }
 
-func namespacesCreate(cmd *cobra.Command, args []string) error {
+func namespaceCreate(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name := args[1]
 

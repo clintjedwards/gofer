@@ -1,4 +1,4 @@
-package namespaces
+package namespace
 
 import (
 	"context"
@@ -14,23 +14,23 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdNamespacesList = &cobra.Command{
+var cmdNamespaceList = &cobra.Command{
 	Use:   "list",
 	Short: "List all namespaces",
 	Long: `List all namespaces.
 
 Namespaces act as divider lines between different sets of pipelines.
 `,
-	Example: `$ gofer namespaces list`,
-	RunE:    namespacesList,
+	Example: `$ gofer namespace list`,
+	RunE:    namespaceList,
 }
 
 func init() {
-	cmdNamespacesList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
-	CmdNamespaces.AddCommand(cmdNamespacesList)
+	cmdNamespaceList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
+	CmdNamespace.AddCommand(cmdNamespaceList)
 }
 
-func namespacesList(cmd *cobra.Command, _ []string) error {
+func namespaceList(cmd *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving namespaces")
 
 	limit, err := cmd.Flags().GetInt("limit")

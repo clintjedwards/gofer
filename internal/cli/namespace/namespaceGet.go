@@ -1,4 +1,4 @@
-package namespaces
+package namespace
 
 import (
 	"bytes"
@@ -16,19 +16,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdNamespacesGet = &cobra.Command{
+var cmdNamespaceGet = &cobra.Command{
 	Use:     "get <id>",
 	Short:   "Get details on a specific namespace",
-	Example: `$ gofer namespaces get new_namespace`,
-	RunE:    namespacesGet,
+	Example: `$ gofer namespace get new_namespace`,
+	RunE:    namespaceGet,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdNamespaces.AddCommand(cmdNamespacesGet)
+	CmdNamespace.AddCommand(cmdNamespaceGet)
 }
 
-func namespacesGet(_ *cobra.Command, args []string) error {
+func namespaceGet(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Retrieving namespace")
