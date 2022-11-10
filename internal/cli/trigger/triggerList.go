@@ -1,4 +1,4 @@
-package triggers
+package trigger
 
 import (
 	"context"
@@ -22,7 +22,7 @@ var cmdTriggerList = &cobra.Command{
 }
 
 func init() {
-	CmdTriggers.AddCommand(cmdTriggerList)
+	CmdTrigger.AddCommand(cmdTriggerList)
 }
 
 func triggerList(_ *cobra.Command, _ []string) error {

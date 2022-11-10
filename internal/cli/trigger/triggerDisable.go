@@ -1,4 +1,4 @@
-package triggers
+package trigger
 
 import (
 	"context"
@@ -12,19 +12,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTriggersDisable = &cobra.Command{
+var cmdTriggerDisable = &cobra.Command{
 	Use:     "disable <name>",
 	Short:   "Disable a specific trigger by name.",
-	Example: `$ gofer triggers disable cron`,
-	RunE:    triggersDisable,
+	Example: `$ gofer trigger disable cron`,
+	RunE:    triggerDisable,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdTriggers.AddCommand(cmdTriggersDisable)
+	CmdTrigger.AddCommand(cmdTriggerDisable)
 }
 
-func triggersDisable(_ *cobra.Command, args []string) error {
+func triggerDisable(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Disabling trigger")

@@ -1,4 +1,4 @@
-package triggers
+package trigger
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTriggersInstall = &cobra.Command{
+var cmdTriggerInstall = &cobra.Command{
 	Use:   "install <name> <image>",
 	Short: "Install a specific trigger by name.",
 	Long: `Install a specific trigger by name.
@@ -30,19 +30,19 @@ By simply following the prompt in this method the Gofer CLI will collect the nec
 the trigger. It will then attempt to install the trigger on your behalf.
 
 When using the --manual flag you'll need to provide config values via the "-c" flag in KEY=VALUE format.`,
-	Example: `$ gofer triggers install cron ghcr.io/clintjedwards/gofer/triggers/cron:latest
-$ gofer triggers install interval ghcr.io/clintjedwards/gofer/triggers/interval:latest --manual -c MIN_DURATION=1m`,
-	RunE: triggersInstall,
+	Example: `$ gofer trigger install cron ghcr.io/clintjedwards/gofer/triggers/cron:latest
+$ gofer trigger install interval ghcr.io/clintjedwards/gofer/triggers/interval:latest --manual -c MIN_DURATION=1m`,
+	RunE: triggerInstall,
 	Args: cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdTriggersInstall.Flags().BoolP("manual", "m", false, "manually set up the trigger by providing settings via the '-s' flag")
-	cmdTriggersInstall.Flags().StringSliceP("config", "c", []string{}, "provide trigger config values for installation")
-	CmdTriggers.AddCommand(cmdTriggersInstall)
+	cmdTriggerInstall.Flags().BoolP("manual", "m", false, "manually set up the trigger by providing settings via the '-s' flag")
+	cmdTriggerInstall.Flags().StringSliceP("config", "c", []string{}, "provide trigger config values for installation")
+	CmdTrigger.AddCommand(cmdTriggerInstall)
 }
 
-func triggersInstall(cmd *cobra.Command, args []string) error {
+func triggerInstall(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	image := args[1]
 

@@ -1,4 +1,4 @@
-package triggers
+package trigger
 
 import (
 	"bytes"
@@ -15,19 +15,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTriggersGet = &cobra.Command{
+var cmdTriggerGet = &cobra.Command{
 	Use:     "get <name>",
 	Short:   "Get a specific trigger by name.",
-	Example: `$ gofer triggers get cron`,
-	RunE:    triggersGet,
+	Example: `$ gofer trigger get cron`,
+	RunE:    triggerGet,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdTriggers.AddCommand(cmdTriggersGet)
+	CmdTrigger.AddCommand(cmdTriggerGet)
 }
 
-func triggersGet(_ *cobra.Command, args []string) error {
+func triggerGet(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Retrieving trigger")

@@ -1,4 +1,4 @@
-package triggers
+package trigger
 
 import (
 	"context"
@@ -11,19 +11,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTriggersEnable = &cobra.Command{
+var cmdTriggerEnable = &cobra.Command{
 	Use:     "enable <name>",
 	Short:   "Enable a specific trigger by name.",
-	Example: `$ gofer triggers enable cron`,
-	RunE:    triggersEnable,
+	Example: `$ gofer trigger enable cron`,
+	RunE:    triggerEnable,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdTriggers.AddCommand(cmdTriggersEnable)
+	CmdTrigger.AddCommand(cmdTriggerEnable)
 }
 
-func triggersEnable(_ *cobra.Command, args []string) error {
+func triggerEnable(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Enabling trigger")

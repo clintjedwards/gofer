@@ -1,4 +1,4 @@
-package triggers
+package trigger
 
 import (
 	"context"
@@ -11,20 +11,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTriggersUninstall = &cobra.Command{
+var cmdTriggerUninstall = &cobra.Command{
 	Use:     "uninstall <name>",
 	Short:   "Uninstall a specific trigger by name.",
 	Long:    `Uninstall a specific trigger by name.`,
-	Example: `$ gofer triggers uninstall cron`,
-	RunE:    triggersUninstall,
+	Example: `$ gofer trigger uninstall cron`,
+	RunE:    triggerUninstall,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdTriggers.AddCommand(cmdTriggersUninstall)
+	CmdTrigger.AddCommand(cmdTriggerUninstall)
 }
 
-func triggersUninstall(_ *cobra.Command, args []string) error {
+func triggerUninstall(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Uninstalling trigger")
