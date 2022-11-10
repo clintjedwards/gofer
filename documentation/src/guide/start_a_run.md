@@ -29,18 +29,17 @@ gofer run get simple 1
 #### List the containers that executed during the run:
 
 ```bash
-gofer taskruns list simple 1
+gofer taskrun list simple 1
 ```
 
 #### View a particular container's details during the run:
 
 ```bash
-gofer taskruns get simple 1 <task_id>
+gofer taskrun get simple 1 <task_id>
 ```
 
 #### Stream a particular container's logs during the run:
 
-```shell
-gofer taskruns logs simple 1 <task_id>
-
+```bash
+gofer taskrun logs simple 1 <task_id>
 ```

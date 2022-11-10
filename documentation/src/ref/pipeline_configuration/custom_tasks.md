@@ -27,7 +27,7 @@ When a container is run by Gofer, the Gofer scheduler has the potential to pass 
 
 3. **Gofer's system configurations:** Gofer will pass in system configurations that might be helpful to the user. (For example, what current pipeline is running.)[^2]
 
-The exact key names injected for each of these configurations can be seen on any taskrun by getting that taskrun's details: `gofer taskruns get <pipeline_name> <run_id>`
+The exact key names injected for each of these configurations can be seen on any taskrun by getting that taskrun's details: `gofer taskrun get <pipeline_name> <run_id>`
 
 [^1]: These sources are ordered from most to least important. Since the configuration is passed in a "Key => Value" format any conflicts between sources will default to the source with the greater importance. For instance, a pipeline config with the key `GOFER_PIPELINE_ID` will replace the key of the same name later injected by the Gofer system itself.
 

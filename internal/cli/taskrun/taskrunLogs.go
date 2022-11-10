@@ -1,4 +1,4 @@
-package taskruns
+package taskrun
 
 import (
 	"context"
@@ -12,16 +12,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cmdTaskRunsLogs = &cobra.Command{
+var cmdTaskRunLogs = &cobra.Command{
 	Use:     "logs <pipeline> <run> <id>",
 	Short:   "Examine logs for a particular taskrun/container",
-	Example: `$ gofer taskruns logs simple_test_pipeline 23 example_task`,
+	Example: `$ gofer taskrun logs simple_test_pipeline 23 example_task`,
 	RunE:    taskrunLogs,
 	Args:    cobra.ExactArgs(3),
 }
 
 func init() {
-	CmdTaskRuns.AddCommand(cmdTaskRunsLogs)
+	CmdTaskRun.AddCommand(cmdTaskRunLogs)
 }
 
 func taskrunLogs(_ *cobra.Command, args []string) error {

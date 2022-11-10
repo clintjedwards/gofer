@@ -1,4 +1,4 @@
-package taskruns
+package taskrun
 
 import (
 	"bytes"
@@ -20,19 +20,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTaskRunsGet = &cobra.Command{
+var cmdTaskRunGet = &cobra.Command{
 	Use:     "get <pipeline> <run> <id>",
 	Short:   "Get details on a specific task run",
-	Example: `$ gofer taskruns get simple_test_pipeline 23 example_run`,
-	RunE:    taskrunsGet,
+	Example: `$ gofer taskrun get simple_test_pipeline 23 example_run`,
+	RunE:    taskrunGet,
 	Args:    cobra.ExactArgs(3),
 }
 
 func init() {
-	CmdTaskRuns.AddCommand(cmdTaskRunsGet)
+	CmdTaskRun.AddCommand(cmdTaskRunGet)
 }
 
-func taskrunsGet(_ *cobra.Command, args []string) error {
+func taskrunGet(_ *cobra.Command, args []string) error {
 	pipeline := args[0]
 
 	runIDRaw := args[1]
@@ -117,7 +117,7 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 		ExitCode:     exitCode,
 		RunID:        color.BlueString("#" + strconv.Itoa(int(taskRun.Run))),
 		StatusReason: taskRun.StatusReason,
-		TaskRunCmd:   color.CyanString(fmt.Sprintf("gofer taskruns logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.ID)),
+		TaskRunCmd:   color.CyanString(fmt.Sprintf("gofer taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.ID)),
 		ImageName:    taskRun.Task.GetImage(),
 	}
 

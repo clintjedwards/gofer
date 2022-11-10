@@ -15,7 +15,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/run"
 	"github.com/clintjedwards/gofer/internal/cli/secret"
 	"github.com/clintjedwards/gofer/internal/cli/service"
-	"github.com/clintjedwards/gofer/internal/cli/taskruns"
+	"github.com/clintjedwards/gofer/internal/cli/taskrun"
 	"github.com/clintjedwards/gofer/internal/cli/triggers"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +45,7 @@ func init() {
 	RootCmd.AddCommand(service.CmdService)
 	RootCmd.AddCommand(pipeline.CmdPipeline)
 	RootCmd.AddCommand(run.CmdRun)
-	RootCmd.AddCommand(taskruns.CmdTaskRuns)
+	RootCmd.AddCommand(taskrun.CmdTaskRun)
 	RootCmd.AddCommand(triggers.CmdTriggers)
 	RootCmd.AddCommand(namespace.CmdNamespace)
 	RootCmd.AddCommand(secret.CmdSecret)

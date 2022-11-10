@@ -1,4 +1,4 @@
-package taskruns
+package taskrun
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTaskRunsCancel = &cobra.Command{
+var cmdTaskRunCancel = &cobra.Command{
 	Use:   "cancel <pipeline> <run> <id>",
 	Short: "Cancel a specific task run",
 	Long: `Cancels a task run by requesting that the scheduler gracefully stops it. Usually this means the scheduler will
@@ -20,17 +20,17 @@ pass a SIGTERM to the container. If the container does not shut down within the 
 the force flag the scheduler will then kill the container immediately.
 
 Cancelling a task run might mean that downstream/dependent task runs are skipped.`,
-	Example: `$ gofer taskruns cancel simple_test_pipeline 23 example_task`,
-	RunE:    taskrunsCancel,
+	Example: `$ gofer taskrun cancel simple_test_pipeline 23 example_task`,
+	RunE:    taskrunCancel,
 	Args:    cobra.ExactArgs(3),
 }
 
 func init() {
-	cmdTaskRunsCancel.Flags().BoolP("force", "f", false, "Stop job immediately(sigkill/ungraceful shutdown)")
-	CmdTaskRuns.AddCommand(cmdTaskRunsCancel)
+	cmdTaskRunCancel.Flags().BoolP("force", "f", false, "Stop job immediately(sigkill/ungraceful shutdown)")
+	CmdTaskRun.AddCommand(cmdTaskRunCancel)
 }
 
-func taskrunsCancel(cmd *cobra.Command, args []string) error {
+func taskrunCancel(cmd *cobra.Command, args []string) error {
 	pipeline := args[0]
 
 	runIDRaw := args[1]

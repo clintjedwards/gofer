@@ -89,19 +89,19 @@ Enter
 
 Sleep 3s
 
-Type "gofer taskruns list simple 1"
+Type "gofer taskrun list simple 1"
 
 Enter
 
 Sleep 4.5s
 
-Type "gofer taskruns get simple 1 simple_task"
+Type "gofer taskrun get simple 1 simple_task"
 
 Enter
 
 Sleep 4.5s
 
-Type "gofer taskruns logs simple 1 simple_task"
+Type "gofer taskrun logs simple 1 simple_task"
 
 Enter
 

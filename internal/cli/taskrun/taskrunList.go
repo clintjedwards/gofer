@@ -1,4 +1,4 @@
-package taskruns
+package taskrun
 
 import (
 	"context"
@@ -17,19 +17,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdTaskRunsList = &cobra.Command{
+var cmdTaskRunList = &cobra.Command{
 	Use:   "list <pipeline> <run>",
 	Short: "List all taskruns",
 	Long: `List all taskruns.
 
 A short listing of all task runs for a specific run.`,
-	Example: `$ gofer taskruns list simple_test_pipeline 15`,
+	Example: `$ gofer taskrun list simple_test_pipeline 15`,
 	RunE:    taskrunList,
 	Args:    cobra.ExactArgs(2),
 }
 
 func init() {
-	CmdTaskRuns.AddCommand(cmdTaskRunsList)
+	CmdTaskRun.AddCommand(cmdTaskRunList)
 }
 
 func taskrunList(_ *cobra.Command, args []string) error {
