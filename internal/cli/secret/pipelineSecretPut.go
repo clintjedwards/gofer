@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"bytes"
@@ -15,25 +15,25 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelineSecretsPut = &cobra.Command{
+var cmdPipelineSecretPut = &cobra.Command{
 	Use:   "put <pipeline_id> <key>=<secret>",
 	Short: "Write a secret to the pipeline secret store",
 	Long: `Write a secret to the pipeline secret store.
 
 You can store both regular text values or read in entire files using the '@' prefix.
 `,
-	Example: `$ gofer secrets pipeline put simple_test_pipeline my_key=my_value
-$ gofer secrets pipeline put simple_test_pipeline my_key=@/test/folder/file_path`,
-	RunE: pipelineSecretsStorePut,
+	Example: `$ gofer secret pipeline put simple_test_pipeline my_key=my_value
+$ gofer secret pipeline put simple_test_pipeline my_key=@/test/folder/file_path`,
+	RunE: pipelineSecretStorePut,
 	Args: cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdPipelineSecretsPut.Flags().BoolP("force", "f", false, "replace value if exists")
-	CmdPipelineSecrets.AddCommand(cmdPipelineSecretsPut)
+	cmdPipelineSecretPut.Flags().BoolP("force", "f", false, "replace value if exists")
+	CmdPipelineSecret.AddCommand(cmdPipelineSecretPut)
 }
 
-func pipelineSecretsStorePut(cmd *cobra.Command, args []string) error {
+func pipelineSecretStorePut(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 	keyValueStr := args[1]
 

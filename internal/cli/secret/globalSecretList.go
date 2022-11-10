@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"context"
@@ -14,18 +14,18 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdGlobalSecretsList = &cobra.Command{
+var cmdGlobalSecretList = &cobra.Command{
 	Use:     "list",
 	Short:   "View keys from the global secret store",
-	Example: `$ gofer secrets global list`,
-	RunE:    globalSecretsStoreList,
+	Example: `$ gofer secret global list`,
+	RunE:    globalSecretStoreList,
 }
 
 func init() {
-	CmdGlobalSecrets.AddCommand(cmdGlobalSecretsList)
+	CmdGlobalSecret.AddCommand(cmdGlobalSecretList)
 }
 
-func globalSecretsStoreList(_ *cobra.Command, _ []string) error {
+func globalSecretStoreList(_ *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving global keys")
 
 	conn, err := cl.State.Connect()

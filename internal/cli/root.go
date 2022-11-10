@@ -13,7 +13,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/namespace"
 	"github.com/clintjedwards/gofer/internal/cli/pipeline"
 	"github.com/clintjedwards/gofer/internal/cli/run"
-	"github.com/clintjedwards/gofer/internal/cli/secrets"
+	"github.com/clintjedwards/gofer/internal/cli/secret"
 	"github.com/clintjedwards/gofer/internal/cli/service"
 	"github.com/clintjedwards/gofer/internal/cli/taskruns"
 	"github.com/clintjedwards/gofer/internal/cli/triggers"
@@ -48,7 +48,7 @@ func init() {
 	RootCmd.AddCommand(taskruns.CmdTaskRuns)
 	RootCmd.AddCommand(triggers.CmdTriggers)
 	RootCmd.AddCommand(namespace.CmdNamespace)
-	RootCmd.AddCommand(secrets.CmdSecrets)
+	RootCmd.AddCommand(secret.CmdSecret)
 	RootCmd.AddCommand(event.CmdEvent)
 	RootCmd.AddCommand(commonTask.CmdCommonTask)
 

@@ -1,10 +1,10 @@
-package secrets
+package secret
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdPipelineSecrets = &cobra.Command{
+var CmdPipelineSecret = &cobra.Command{
 	Use:   "pipeline",
 	Short: "Store pipeline specific secrets",
 	Long: `Store pipeline specific secrets.
@@ -14,5 +14,5 @@ configuration file.`,
 }
 
 func init() {
-	CmdSecrets.AddCommand(CmdPipelineSecrets)
+	CmdSecret.AddCommand(CmdPipelineSecret)
 }

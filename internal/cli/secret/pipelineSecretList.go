@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"context"
@@ -14,19 +14,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelineSecretsList = &cobra.Command{
+var cmdPipelineSecretList = &cobra.Command{
 	Use:     "list <pipeline_id>",
 	Short:   "View keys from the pipeline secret store",
-	Example: `$ gofer secrets pipeline list simple`,
-	RunE:    pipelineSecretsStoreList,
+	Example: `$ gofer secret pipeline list simple`,
+	RunE:    pipelineSecretStoreList,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelineSecrets.AddCommand(cmdPipelineSecretsList)
+	CmdPipelineSecret.AddCommand(cmdPipelineSecretList)
 }
 
-func pipelineSecretsStoreList(_ *cobra.Command, args []string) error {
+func pipelineSecretStoreList(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Retrieving pipeline keys")

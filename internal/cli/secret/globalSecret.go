@@ -1,10 +1,10 @@
-package secrets
+package secret
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdGlobalSecrets = &cobra.Command{
+var CmdGlobalSecret = &cobra.Command{
 	Use:   "global",
 	Short: "Store global specific secrets",
 	Long: `Store global specific secrets.
@@ -14,5 +14,5 @@ Gofer needs to use shared secrets. Only accessible to admins.`,
 }
 
 func init() {
-	CmdSecrets.AddCommand(CmdGlobalSecrets)
+	CmdSecret.AddCommand(CmdGlobalSecret)
 }

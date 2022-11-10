@@ -1,4 +1,4 @@
-package secrets
+package secret
 
 import (
 	"context"
@@ -11,19 +11,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdGlobalSecretsGet = &cobra.Command{
+var cmdGlobalSecretGet = &cobra.Command{
 	Use:     "get <key>",
 	Short:   "Read a secret from the global secret store",
-	Example: `$ gofer global secrets get simple_test_global my_key`,
-	RunE:    globalSecretsGet,
+	Example: `$ gofer global secret get simple_test_global my_key`,
+	RunE:    globalSecretGet,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdGlobalSecrets.AddCommand(cmdGlobalSecretsGet)
+	CmdGlobalSecret.AddCommand(cmdGlobalSecretGet)
 }
 
-func globalSecretsGet(_ *cobra.Command, args []string) error {
+func globalSecretGet(_ *cobra.Command, args []string) error {
 	// We don't use the formatter here because we may want to redirect the object we get into
 	// a file or similar situation.
 	cl.State.Fmt.Finish()
