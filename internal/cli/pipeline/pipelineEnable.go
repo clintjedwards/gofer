@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"context"
@@ -11,22 +11,22 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesEnable = &cobra.Command{
+var cmdPipelineEnable = &cobra.Command{
 	Use:   "enable <id>",
 	Short: "Enable pipeline",
 	Long: `Enable pipeline.
 
 This restores a previously disabled pipeline.`,
-	Example: `$ gofer pipelines enable simple_test_pipeline`,
-	RunE:    pipelinesEnable,
+	Example: `$ gofer pipeline enable simple_test_pipeline`,
+	RunE:    pipelineEnable,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelines.AddCommand(cmdPipelinesEnable)
+	CmdPipeline.AddCommand(cmdPipelineEnable)
 }
 
-func pipelinesEnable(_ *cobra.Command, args []string) error {
+func pipelineEnable(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Enabling pipeline")

@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesList = &cobra.Command{
+var cmdPipelineList = &cobra.Command{
 	Use:   "list",
 	Short: "List all pipelines",
 	Long: `List all pipelines.
@@ -27,16 +27,16 @@ Health shows a quick glimpse into how the last 5 builds performed.
   * Poor = Past 5 builds have all failed.
   * Good = Past 5 builds have all passed.
 `,
-	Example: `$ gofer pipelines list`,
-	RunE:    pipelinesList,
+	Example: `$ gofer pipeline list`,
+	RunE:    pipelineList,
 }
 
 func init() {
-	cmdPipelinesList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
-	CmdPipelines.AddCommand(cmdPipelinesList)
+	cmdPipelineList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
+	CmdPipeline.AddCommand(cmdPipelineList)
 }
 
-func pipelinesList(cmd *cobra.Command, _ []string) error {
+func pipelineList(cmd *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving pipelines")
 
 	limit, err := cmd.Flags().GetInt("limit")

@@ -5,7 +5,7 @@ Now that we've set up Gofer, defined our pipeline, and registered it we're ready
 ## Press start
 
 ```bash
-gofer pipelines run simple
+gofer pipeline run simple
 ```
 
 ## What happens now?

@@ -1,10 +1,10 @@
-package pipelines
+package pipeline
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdPipelinesStore = &cobra.Command{
+var CmdPipelineStore = &cobra.Command{
 	Use:   "store",
 	Short: "Store pipeline specific values",
 	Long: `Store pipeline specific values.
@@ -22,5 +22,5 @@ a newer object would not cause any object deletions even at the object limit.`,
 }
 
 func init() {
-	CmdPipelines.AddCommand(CmdPipelinesStore)
+	CmdPipeline.AddCommand(CmdPipelineStore)
 }

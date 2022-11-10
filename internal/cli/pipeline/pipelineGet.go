@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"bytes"
@@ -21,19 +21,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesGet = &cobra.Command{
+var cmdPipelineGet = &cobra.Command{
 	Use:     "get <id>",
 	Short:   "Get details on a specific pipeline",
-	Example: `$ gofer pipelines get simple_test_pipeline`,
-	RunE:    pipelinesGet,
+	Example: `$ gofer pipeline get simple_test_pipeline`,
+	RunE:    pipelineGet,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelines.AddCommand(cmdPipelinesGet)
+	CmdPipeline.AddCommand(cmdPipelineGet)
 }
 
-func pipelinesGet(_ *cobra.Command, args []string) error {
+func pipelineGet(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Retrieving pipeline")

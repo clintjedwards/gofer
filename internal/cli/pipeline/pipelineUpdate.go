@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"bufio"
@@ -21,24 +21,24 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesUpdate = &cobra.Command{
+var cmdPipelineUpdate = &cobra.Command{
 	Use:   "update <id> <path>",
 	Short: "Update pipeline",
 	Long:  `Update pipeline via pipeline configuration.`,
 	Example: `$ gofer pipeline update simple ./example_pipelines/rust/simple
 $ gofer pipeline update simple ./example_pipelines/go/simple`,
-	RunE: pipelinesUpdate,
+	RunE: pipelineUpdate,
 	Args: cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdPipelinesUpdate.Flags().BoolP("force", "f", false, "Stop all runs and update pipeline immediately")
-	cmdPipelinesUpdate.Flags().BoolP("graceful-stop", "g", false,
+	cmdPipelineUpdate.Flags().BoolP("force", "f", false, "Stop all runs and update pipeline immediately")
+	cmdPipelineUpdate.Flags().BoolP("graceful-stop", "g", false,
 		"Stop all runs gracefully; sends a SIGTERM to all task runs for all in-progress runs and then waits for them to stop.")
-	CmdPipelines.AddCommand(cmdPipelinesUpdate)
+	CmdPipeline.AddCommand(cmdPipelineUpdate)
 }
 
-func pipelinesUpdate(cmd *cobra.Command, args []string) error {
+func pipelineUpdate(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	path := args[1]
 	force, err := cmd.Flags().GetBool("force")

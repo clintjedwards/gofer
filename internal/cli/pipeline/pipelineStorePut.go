@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesStorePut = &cobra.Command{
+var cmdPipelineStorePut = &cobra.Command{
 	Use:   "put <pipeline_id> <key>=<object>",
 	Short: "Write an object into the pipeline store",
 	Long: `Write an object into the pipeline store.
@@ -28,16 +28,16 @@ You can store both regular text values or read in entire files using the '@' pre
 `,
 	Example: `$ gofer pipeline store put simple_test_pipeline my_key=my_value
 $ gofer pipeline store put simple_test_pipeline my_key=@/test/folder/file_path`,
-	RunE: pipelinesStorePut,
+	RunE: pipelineStorePut,
 	Args: cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdPipelinesStorePut.Flags().BoolP("force", "f", false, "replace value if exists")
-	CmdPipelinesStore.AddCommand(cmdPipelinesStorePut)
+	cmdPipelineStorePut.Flags().BoolP("force", "f", false, "replace value if exists")
+	CmdPipelineStore.AddCommand(cmdPipelineStorePut)
 }
 
-func pipelinesStorePut(cmd *cobra.Command, args []string) error {
+func pipelineStorePut(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 	keyValueStr := args[1]
 	key, value, ok := strings.Cut(keyValueStr, "=")

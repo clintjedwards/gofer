@@ -53,19 +53,19 @@ Enter
 
 Sleep 500ms
 
-Type "gofer pipelines list"
+Type "gofer pipeline list"
 
 Enter
 
 Sleep 500ms
 
-Type "gofer pipelines create ~/Documents/gofer/examplePipelines/go/simple"
+Type "gofer pipeline create ~/Documents/gofer/examplePipelines/go/simple"
 
 Enter
 
 Sleep 2.5s
 
-Type "gofer pipelines list"
+Type "gofer pipeline list"
 
 Enter
 

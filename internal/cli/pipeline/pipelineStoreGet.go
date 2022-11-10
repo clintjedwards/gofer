@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"context"
@@ -13,20 +13,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesStoreGet = &cobra.Command{
+var cmdPipelineStoreGet = &cobra.Command{
 	Use:     "get <pipeline_id> <key>",
 	Short:   "Read an object from the pipeline store",
 	Example: `$ gofer pipeline store get simple_test_pipeline my_key`,
-	RunE:    pipelinesStoreGet,
+	RunE:    pipelineStoreGet,
 	Args:    cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdPipelinesStoreGet.Flags().BoolP("stringify", "s", false, "Attempt to print the object as a string")
-	CmdPipelinesStore.AddCommand(cmdPipelinesStoreGet)
+	cmdPipelineStoreGet.Flags().BoolP("stringify", "s", false, "Attempt to print the object as a string")
+	CmdPipelineStore.AddCommand(cmdPipelineStoreGet)
 }
 
-func pipelinesStoreGet(cmd *cobra.Command, args []string) error {
+func pipelineStoreGet(cmd *cobra.Command, args []string) error {
 	// We don't use the formatter here because we may want to redirect the object we get into
 	// a file or similar situation.
 	cl.State.Fmt.Finish()

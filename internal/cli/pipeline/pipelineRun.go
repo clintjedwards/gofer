@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"context"
@@ -13,20 +13,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesRun = &cobra.Command{
+var cmdPipelineRun = &cobra.Command{
 	Use:     "run <pipeline_id>",
 	Short:   "Start a new run",
-	Example: `$ gofer pipelines run simple_test_pipeline`,
-	RunE:    pipelinesRun,
+	Example: `$ gofer pipeline run simple_test_pipeline`,
+	RunE:    pipelineRun,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdPipelinesRun.Flags().StringSliceP("variable", "v", []string{}, "optional environment variables to pass to your run. Format: Key=Value")
-	CmdPipelines.AddCommand(cmdPipelinesRun)
+	cmdPipelineRun.Flags().StringSliceP("variable", "v", []string{}, "optional environment variables to pass to your run. Format: Key=Value")
+	CmdPipeline.AddCommand(cmdPipelineRun)
 }
 
-func pipelinesRun(cmd *cobra.Command, args []string) error {
+func pipelineRun(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 
 	variableList, err := cmd.Flags().GetStringSlice("variable")

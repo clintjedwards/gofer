@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesDisable = &cobra.Command{
+var cmdPipelineDisable = &cobra.Command{
 	Use:   "disable <id>",
 	Short: "Disable pipeline",
 	Long: `Disable pipeline.
@@ -20,16 +20,16 @@ var cmdPipelinesDisable = &cobra.Command{
 This will prevent the pipeline from running any more jobs and events passed to the pipeline
 will be discarded.
 `,
-	Example: `$ gofer pipelines disable simple_test_pipeline`,
-	RunE:    pipelinesDisable,
+	Example: `$ gofer pipeline disable simple_test_pipeline`,
+	RunE:    pipelineDisable,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelines.AddCommand(cmdPipelinesDisable)
+	CmdPipeline.AddCommand(cmdPipelineDisable)
 }
 
-func pipelinesDisable(_ *cobra.Command, args []string) error {
+func pipelineDisable(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Disabling pipeline")

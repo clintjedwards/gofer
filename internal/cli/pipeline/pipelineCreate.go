@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"bufio"
@@ -32,12 +32,12 @@ manage your pipeline configuration file
 [here](https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html).`,
 	Example: `$ gofer pipeline create ./example_pipelines/rust/simple
 $ gofer pipeline create ./example_pipelines/go/simple`,
-	RunE: pipelinesCreate,
+	RunE: pipelineCreate,
 	Args: cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelines.AddCommand(cmdPipelinesCreate)
+	CmdPipeline.AddCommand(cmdPipelinesCreate)
 }
 
 func detectLanguage(path string) (configLanguage, error) {
@@ -100,7 +100,7 @@ func rustCmdString(path string) string {
 	return fmt.Sprintf("cargo run --manifest-path %s/Cargo.toml", path)
 }
 
-func pipelinesCreate(_ *cobra.Command, args []string) error {
+func pipelineCreate(_ *cobra.Command, args []string) error {
 	path := args[0]
 
 	cl.State.Fmt.Print("Creating pipeline")
@@ -253,7 +253,7 @@ func pipelinesCreate(_ *cobra.Command, args []string) error {
 
 func printCreateSuccess(pipeline *proto.Pipeline) {
 	cl.State.Fmt.PrintSuccess(fmt.Sprintf("Created pipeline: [%s] %q", color.BlueString(pipeline.Id), pipeline.Name))
-	cl.State.Fmt.Println(fmt.Sprintf("\n  View details of your new pipeline: %s", color.YellowString("gofer pipelines get %s", pipeline.Id)))
+	cl.State.Fmt.Println(fmt.Sprintf("\n  View details of your new pipeline: %s", color.YellowString("gofer pipeline get %s", pipeline.Id)))
 	cl.State.Fmt.Println(fmt.Sprintf("  Start a new run: %s", color.YellowString("gofer runs start %s", pipeline.Id)))
 	cl.State.Fmt.Finish()
 }

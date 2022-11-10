@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"context"
@@ -13,16 +13,16 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesStoreList = &cobra.Command{
+var cmdPipelineStoreList = &cobra.Command{
 	Use:     "list <pipeline_id>",
 	Short:   "List all objects from the pipeline specific store",
-	Example: `$ gofer pipelines store list simple_test_pipeline 5`,
+	Example: `$ gofer pipeline store list simple_test_pipeline 5`,
 	RunE:    storeList,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelinesStore.AddCommand(cmdPipelinesStoreList)
+	CmdPipelineStore.AddCommand(cmdPipelineStoreList)
 }
 
 func storeList(_ *cobra.Command, args []string) error {

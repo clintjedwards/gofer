@@ -9,8 +9,8 @@ Gofer divides the objects stored into two different lifetime groups:
 Gofer can store objects permanently for each pipeline. You can store objects at the pipeline-level by using the gofer pipeline object store command:
 
 ```bash
-gofer pipelines store put my-pipeline my_key1=my_value5
-gofer pipelines store get my-pipeline my_key1
+gofer pipeline store put my-pipeline my_key1=my_value5
+gofer pipeline store get my-pipeline my_key1
 #output: my_value5
 ```
 

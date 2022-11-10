@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"context"
@@ -12,20 +12,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelinesDelete = &cobra.Command{
+var cmdPipelineDelete = &cobra.Command{
 	Use:     "delete <id>",
 	Short:   "Delete pipeline",
 	Long:    `Delete a pipeline.`,
-	Example: `$ gofer pipelines delete simple_test_pipeline`,
-	RunE:    pipelinesDelete,
+	Example: `$ gofer pipeline delete simple_test_pipeline`,
+	RunE:    pipelineDelete,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdPipelines.AddCommand(cmdPipelinesDelete)
+	CmdPipeline.AddCommand(cmdPipelineDelete)
 }
 
-func pipelinesDelete(_ *cobra.Command, args []string) error {
+func pipelineDelete(_ *cobra.Command, args []string) error {
 	id := args[0]
 
 	cl.State.Fmt.Print("Deleting pipeline")

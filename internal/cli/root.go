@@ -11,7 +11,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/commonTasks"
 	"github.com/clintjedwards/gofer/internal/cli/events"
 	"github.com/clintjedwards/gofer/internal/cli/namespaces"
-	"github.com/clintjedwards/gofer/internal/cli/pipelines"
+	"github.com/clintjedwards/gofer/internal/cli/pipeline"
 	"github.com/clintjedwards/gofer/internal/cli/runs"
 	"github.com/clintjedwards/gofer/internal/cli/secrets"
 	"github.com/clintjedwards/gofer/internal/cli/service"
@@ -43,7 +43,7 @@ Read more at https://clintjedwards.com/gofer
 func init() {
 	RootCmd.SetVersionTemplate(humanizeVersion(appVersion))
 	RootCmd.AddCommand(service.CmdService)
-	RootCmd.AddCommand(pipelines.CmdPipelines)
+	RootCmd.AddCommand(pipeline.CmdPipeline)
 	RootCmd.AddCommand(runs.CmdRuns)
 	RootCmd.AddCommand(taskruns.CmdTaskRuns)
 	RootCmd.AddCommand(triggers.CmdTriggers)

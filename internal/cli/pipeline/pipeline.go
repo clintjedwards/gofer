@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 import (
 	"github.com/spf13/cobra"
@@ -11,8 +11,8 @@ const (
 	configLanguageGolang configLanguage = "GOLANG"
 )
 
-var CmdPipelines = &cobra.Command{
-	Use:   "pipelines",
+var CmdPipeline = &cobra.Command{
+	Use:   "pipeline",
 	Short: "Manage pipelines",
 	Long: `Manage pipelines.
 
