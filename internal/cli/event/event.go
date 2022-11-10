@@ -1,10 +1,10 @@
-package events
+package event
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdEvents = &cobra.Command{
-	Use:   "events",
+var CmdEvent = &cobra.Command{
+	Use:   "event",
 	Short: "Get details on Gofer events",
 }

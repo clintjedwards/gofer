@@ -9,7 +9,7 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/commonTask"
-	"github.com/clintjedwards/gofer/internal/cli/events"
+	"github.com/clintjedwards/gofer/internal/cli/event"
 	"github.com/clintjedwards/gofer/internal/cli/namespaces"
 	"github.com/clintjedwards/gofer/internal/cli/pipeline"
 	"github.com/clintjedwards/gofer/internal/cli/runs"
@@ -49,7 +49,7 @@ func init() {
 	RootCmd.AddCommand(triggers.CmdTriggers)
 	RootCmd.AddCommand(namespaces.CmdNamespaces)
 	RootCmd.AddCommand(secrets.CmdSecrets)
-	RootCmd.AddCommand(events.CmdEvents)
+	RootCmd.AddCommand(event.CmdEvent)
 	RootCmd.AddCommand(commonTask.CmdCommonTask)
 
 	RootCmd.PersistentFlags().String("config", "", "configuration file path")

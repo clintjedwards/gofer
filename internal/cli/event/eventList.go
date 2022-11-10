@@ -1,4 +1,4 @@
-package events
+package event
 
 import (
 	"context"
@@ -18,21 +18,21 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdEventsList = &cobra.Command{
+var cmdEventList = &cobra.Command{
 	Use:   "list",
 	Short: "List all events",
 	Long: `List all events.
 
 Returns events from oldest to newest.`,
-	Example: `$ gofer events list`,
-	RunE:    eventsList,
+	Example: `$ gofer event list`,
+	RunE:    eventList,
 	Args:    cobra.ExactArgs(0),
 }
 
 func init() {
-	cmdEventsList.Flags().BoolP("reverse", "r", false, "Sort events from newest to oldest")
-	cmdEventsList.Flags().BoolP("follow", "f", false, "Continuously wait for more events; does not work with reverse")
-	CmdEvents.AddCommand(cmdEventsList)
+	cmdEventList.Flags().BoolP("reverse", "r", false, "Sort events from newest to oldest")
+	cmdEventList.Flags().BoolP("follow", "f", false, "Continuously wait for more events; does not work with reverse")
+	CmdEvent.AddCommand(cmdEventList)
 }
 
 type Event struct {
@@ -42,7 +42,7 @@ type Event struct {
 	Details string
 }
 
-func eventsList(cmd *cobra.Command, _ []string) error {
+func eventList(cmd *cobra.Command, _ []string) error {
 	cl.State.Fmt.Print("Retrieving events")
 
 	reverse, err := cmd.Flags().GetBool("reverse")

@@ -1,4 +1,4 @@
-package events
+package event
 
 import (
 	"bytes"
@@ -17,19 +17,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdEventsGet = &cobra.Command{
+var cmdEventGet = &cobra.Command{
 	Use:     "get <id>",
 	Short:   "Get details on a specific event",
-	Example: `$ gofer events get Abdedow8953`,
-	RunE:    eventsGet,
+	Example: `$ gofer event get Abdedow8953`,
+	RunE:    eventGet,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdEvents.AddCommand(cmdEventsGet)
+	CmdEvent.AddCommand(cmdEventGet)
 }
 
-func eventsGet(_ *cobra.Command, args []string) error {
+func eventGet(_ *cobra.Command, args []string) error {
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
 		cl.State.Fmt.PrintErr(err)
