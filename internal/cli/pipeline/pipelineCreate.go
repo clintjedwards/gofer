@@ -254,6 +254,6 @@ func pipelineCreate(_ *cobra.Command, args []string) error {
 func printCreateSuccess(pipeline *proto.Pipeline) {
 	cl.State.Fmt.PrintSuccess(fmt.Sprintf("Created pipeline: [%s] %q", color.BlueString(pipeline.Id), pipeline.Name))
 	cl.State.Fmt.Println(fmt.Sprintf("\n  View details of your new pipeline: %s", color.YellowString("gofer pipeline get %s", pipeline.Id)))
-	cl.State.Fmt.Println(fmt.Sprintf("  Start a new run: %s", color.YellowString("gofer runs start %s", pipeline.Id)))
+	cl.State.Fmt.Println(fmt.Sprintf("  Start a new run: %s", color.YellowString("gofer run start %s", pipeline.Id)))
 	cl.State.Fmt.Finish()
 }

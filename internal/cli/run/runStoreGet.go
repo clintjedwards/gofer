@@ -1,4 +1,4 @@
-package runs
+package run
 
 import (
 	"context"
@@ -14,17 +14,17 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdRunsStoreGet = &cobra.Command{
+var cmdRunStoreGet = &cobra.Command{
 	Use:     "get <pipeline_id> <run_id> <key>",
 	Short:   "Read an object from the run specific store",
-	Example: `$ gofer runs store get simple_test_pipeline 5 my_key`,
+	Example: `$ gofer run store get simple_test_pipeline 5 my_key`,
 	RunE:    storeGet,
 	Args:    cobra.ExactArgs(3),
 }
 
 func init() {
-	cmdRunsStoreGet.Flags().BoolP("stringify", "s", false, "Attempt to print the object as a string")
-	CmdRunsStore.AddCommand(cmdRunsStoreGet)
+	cmdRunStoreGet.Flags().BoolP("stringify", "s", false, "Attempt to print the object as a string")
+	CmdRunStore.AddCommand(cmdRunStoreGet)
 }
 
 func storeGet(cmd *cobra.Command, args []string) error {

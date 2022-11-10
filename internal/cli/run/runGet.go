@@ -1,4 +1,4 @@
-package runs
+package run
 
 import (
 	"bytes"
@@ -17,19 +17,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdRunsGet = &cobra.Command{
+var cmdRunGet = &cobra.Command{
 	Use:     "get <pipeline> <id>",
 	Short:   "Get details on a specific run",
-	Example: `$ gofer runs get simple_test_pipeline 23`,
-	RunE:    runsGet,
+	Example: `$ gofer run get simple_test_pipeline 23`,
+	RunE:    runGet,
 	Args:    cobra.ExactArgs(2),
 }
 
 func init() {
-	CmdRuns.AddCommand(cmdRunsGet)
+	CmdRun.AddCommand(cmdRunGet)
 }
 
-func runsGet(_ *cobra.Command, args []string) error {
+func runGet(_ *cobra.Command, args []string) error {
 	pipelineID := args[0]
 
 	idRaw := args[1]

@@ -1,10 +1,10 @@
-package runs
+package run
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdRunsStore = &cobra.Command{
+var CmdRunStore = &cobra.Command{
 	Use:   "store",
 	Short: "Store run specific values",
 	Long: `Store run specific values.
@@ -21,5 +21,5 @@ store per run is of a much higher limit.
 }
 
 func init() {
-	CmdRuns.AddCommand(CmdRunsStore)
+	CmdRun.AddCommand(CmdRunStore)
 }

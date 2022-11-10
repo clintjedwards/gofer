@@ -1,4 +1,4 @@
-package runs
+package run
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdRunsStorePut = &cobra.Command{
+var cmdRunStorePut = &cobra.Command{
 	Use:   "put <pipeline_id> <run_id> <key>=<object>",
 	Short: "Write an object into the run store",
 	Long: `Write an object into the run store.
@@ -29,15 +29,15 @@ configuration). This run limit is related to the number of runs in a pipeline.
 For instance, after a run is 10 runs old, gofer may clean up its objects.
 
 You can store both regular text values or read in entire files using the '@' prefix.`,
-	Example: `$ gofer runs store put simple_test_pipeline my_key=my_value
-$ gofer runs store put simple_test_pipeline my_key=@file_path`,
+	Example: `$ gofer run store put simple_test_pipeline my_key=my_value
+$ gofer run store put simple_test_pipeline my_key=@file_path`,
 	RunE: storePut,
 	Args: cobra.ExactArgs(3),
 }
 
 func init() {
-	cmdRunsStorePut.Flags().BoolP("force", "f", false, "replace value if exists")
-	CmdRunsStore.AddCommand(cmdRunsStorePut)
+	cmdRunStorePut.Flags().BoolP("force", "f", false, "replace value if exists")
+	CmdRunStore.AddCommand(cmdRunStorePut)
 }
 
 func storePut(cmd *cobra.Command, args []string) error {

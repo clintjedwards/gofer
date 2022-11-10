@@ -1,4 +1,4 @@
-package runs
+package run
 
 import (
 	"context"
@@ -17,23 +17,23 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdRunsList = &cobra.Command{
+var cmdRunList = &cobra.Command{
 	Use:   "list <pipeline_id>",
 	Short: "List all runs",
 	Long: `List all runs.
 
 A short listing of all currently started runs.`,
-	Example: `$ gofer runs list simple_test_pipeline`,
-	RunE:    runsList,
+	Example: `$ gofer run list simple_test_pipeline`,
+	RunE:    runList,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdRunsList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
-	CmdRuns.AddCommand(cmdRunsList)
+	cmdRunList.Flags().IntP("limit", "l", 10, "limit the amount of results returned")
+	CmdRun.AddCommand(cmdRunList)
 }
 
-func runsList(cmd *cobra.Command, args []string) error {
+func runList(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 
 	cl.State.Fmt.Print("Retrieving runs")

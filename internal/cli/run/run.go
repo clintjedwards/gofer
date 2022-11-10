@@ -1,10 +1,10 @@
-package runs
+package run
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdRuns = &cobra.Command{
+var CmdRun = &cobra.Command{
 	Use:   "runs",
 	Short: "Manage runs",
 	Long: `Manage runs.

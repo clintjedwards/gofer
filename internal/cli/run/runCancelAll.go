@@ -1,4 +1,4 @@
-package runs
+package run
 
 import (
 	"context"
@@ -11,20 +11,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdRunsCancelAll = &cobra.Command{
+var cmdRunCancelAll = &cobra.Command{
 	Use:     "cancel-all <pipeline_id>",
 	Short:   "CancelAll cancels all run for a given pipeline",
-	Example: `$ gofer runs cancel-all simple_test_pipeline`,
-	RunE:    runsCancelAll,
+	Example: `$ gofer run cancel-all simple_test_pipeline`,
+	RunE:    runCancelAll,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdRunsCancelAll.Flags().BoolP("force", "f", false, "Stop run and child taskrun containers immediately (SIGKILL)")
-	CmdRuns.AddCommand(cmdRunsCancelAll)
+	cmdRunCancelAll.Flags().BoolP("force", "f", false, "Stop run and child taskrun containers immediately (SIGKILL)")
+	CmdRun.AddCommand(cmdRunCancelAll)
 }
 
-func runsCancelAll(cmd *cobra.Command, args []string) error {
+func runCancelAll(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 
 	force, err := cmd.Flags().GetBool("force")

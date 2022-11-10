@@ -12,7 +12,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/cli/event"
 	"github.com/clintjedwards/gofer/internal/cli/namespace"
 	"github.com/clintjedwards/gofer/internal/cli/pipeline"
-	"github.com/clintjedwards/gofer/internal/cli/runs"
+	"github.com/clintjedwards/gofer/internal/cli/run"
 	"github.com/clintjedwards/gofer/internal/cli/secrets"
 	"github.com/clintjedwards/gofer/internal/cli/service"
 	"github.com/clintjedwards/gofer/internal/cli/taskruns"
@@ -44,7 +44,7 @@ func init() {
 	RootCmd.SetVersionTemplate(humanizeVersion(appVersion))
 	RootCmd.AddCommand(service.CmdService)
 	RootCmd.AddCommand(pipeline.CmdPipeline)
-	RootCmd.AddCommand(runs.CmdRuns)
+	RootCmd.AddCommand(run.CmdRun)
 	RootCmd.AddCommand(taskruns.CmdTaskRuns)
 	RootCmd.AddCommand(triggers.CmdTriggers)
 	RootCmd.AddCommand(namespace.CmdNamespace)

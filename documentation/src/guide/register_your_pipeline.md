@@ -22,7 +22,7 @@ You should have received a success message and some suggested commands:
  ✓ Created pipeline: [simple] "Simple Pipeline"
 
   View details of your new pipeline: gofer pipeline get simple
-  Start a new run: gofer runs start simple
+  Start a new run: gofer run start simple
 ```
 
 We can view the details of our new pipeline by running:

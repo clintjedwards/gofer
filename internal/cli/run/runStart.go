@@ -1,4 +1,4 @@
-package runs
+package run
 
 import (
 	"context"
@@ -13,20 +13,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdRunsStart = &cobra.Command{
+var cmdRunStart = &cobra.Command{
 	Use:     "start <pipeline_id>",
 	Short:   "Start a new run",
-	Example: `$ gofer runs start simple_test_pipeline`,
-	RunE:    runsStart,
+	Example: `$ gofer run start simple_test_pipeline`,
+	RunE:    runStart,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	cmdRunsStart.Flags().StringSliceP("variable", "v", []string{}, "optional environment variables to pass to your run. Format: Key=Value")
-	CmdRuns.AddCommand(cmdRunsStart)
+	cmdRunStart.Flags().StringSliceP("variable", "v", []string{}, "optional environment variables to pass to your run. Format: Key=Value")
+	CmdRun.AddCommand(cmdRunStart)
 }
 
-func runsStart(cmd *cobra.Command, args []string) error {
+func runStart(cmd *cobra.Command, args []string) error {
 	pipelineID := args[0]
 
 	variableList, err := cmd.Flags().GetStringSlice("variable")
@@ -72,7 +72,7 @@ func runsStart(cmd *cobra.Command, args []string) error {
 	}
 
 	cl.State.Fmt.PrintSuccess(fmt.Sprintf("Started new run (%d) for pipeline %s", resp.Run.Id, pipelineID))
-	cl.State.Fmt.Println(fmt.Sprintf("\n  View details of your new run: %s", color.YellowString("gofer runs get %s %d", resp.Run.Pipeline, resp.Run.Id)))
+	cl.State.Fmt.Println(fmt.Sprintf("\n  View details of your new run: %s", color.YellowString("gofer run get %s %d", resp.Run.Pipeline, resp.Run.Id)))
 	cl.State.Fmt.Println(fmt.Sprintf("  List all task runs: %s", color.YellowString("gofer taskruns list %s %d", resp.Run.Pipeline, resp.Run.Id)))
 	cl.State.Fmt.Finish()
 

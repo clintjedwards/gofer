@@ -23,8 +23,8 @@ Gofer can also store objects on a per-run basis. Unlike the pipeline-level objec
 You can access the run-level store using the run level store CLI commands. Here is an example:
 
 ```bash
-gofer runs store put simple_pipeline my_key=my_value
-gofer runs store get simple_pipeline my_key
+gofer run store put simple_pipeline my_key=my_value
+gofer run store get simple_pipeline my_key
 #output: my_value
 ```
 

@@ -1,4 +1,4 @@
-package runs
+package run
 
 import (
 	"context"
@@ -14,16 +14,16 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdRunsStoreList = &cobra.Command{
+var cmdRunStoreList = &cobra.Command{
 	Use:     "list <pipeline_id> <run_id>",
 	Short:   "List all objects from the run specific store",
-	Example: `$ gofer runs store list simple_test_pipeline 5`,
+	Example: `$ gofer run store list simple_test_pipeline 5`,
 	RunE:    storeList,
 	Args:    cobra.ExactArgs(2),
 }
 
 func init() {
-	CmdRunsStore.AddCommand(cmdRunsStoreList)
+	CmdRunStore.AddCommand(cmdRunStoreList)
 }
 
 func storeList(_ *cobra.Command, args []string) error {

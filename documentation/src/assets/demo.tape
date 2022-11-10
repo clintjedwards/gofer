@@ -77,13 +77,13 @@ Sleep 500ms
 
 Enter
 
-Type "gofer runs start simple"
+Type "gofer run start simple"
 
 Enter
 
 Sleep 3s
 
-Type "gofer runs get simple 1"
+Type "gofer run get simple 1"
 
 Enter
 

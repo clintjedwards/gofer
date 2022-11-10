@@ -17,13 +17,13 @@ Your run should be chugging along now!
 #### View a list of runs for your pipeline:
 
 ```bash
-gofer runs list simple
+gofer run list simple
 ```
 
 #### View details about your run:
 
 ```bash
-gofer runs get simple 1
+gofer run get simple 1
 ```
 
 #### List the containers that executed during the run:
