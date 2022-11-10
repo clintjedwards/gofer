@@ -86,9 +86,16 @@ build-docs:
 ## push-docs: push docs to github
 push-docs:
 > git checkout main
+> rm .gitignore
+> cd documentation
+> mdbook build
+> git add ./book/html/*
+> git commit -m "docs update"
+> cd ..
 > git subtree split --prefix documentation/book/html -b gh-pages
 > git push -f origin gh-pages:gh-pages
 > git branch -D gh-pages
+> git reset --hard origin/main
 .PHONY: push-docs
 
 # 	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/github:${semver} .
