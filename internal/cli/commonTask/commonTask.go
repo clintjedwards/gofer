@@ -1,11 +1,11 @@
-package commonTasks
+package commonTask
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var CmdCommonTasks = &cobra.Command{
-	Use:   "common-tasks",
+var CmdCommonTask = &cobra.Command{
+	Use:   "common-task",
 	Short: "Get details about Gofer common tasks",
 	Long: `Get details about Gofer common tasks.
 

@@ -1,4 +1,4 @@
-package commonTasks
+package commonTask
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdCommonTasksInstall = &cobra.Command{
+var cmdCommonTaskInstall = &cobra.Command{
 	Use:   "install <name> <image>",
 	Short: "Install a specific common task by name.",
 	Long: `Install a specific common task by name.
@@ -30,22 +30,22 @@ By simply following the prompt in this method the Gofer CLI will collect the nec
 the common task. It will then attempt to install the common task on your behalf.
 
 When using the --manual flag you'll need to provide config values via the "-c" flag in KEY=VALUE format.`,
-	Example: `$ gofer common-tasks install debug ghcr.io/clintjedwards/gofer/tasks/debug:latest`,
-	RunE:    commonTasksInstall,
+	Example: `$ gofer common-task install debug ghcr.io/clintjedwards/gofer/tasks/debug:latest`,
+	RunE:    commonTaskInstall,
 	Args:    cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdCommonTasksInstall.Flags().BoolP("manual", "m", false, "manually set up the common task by providing settings via the '-s' flag")
-	cmdCommonTasksInstall.Flags().StringSliceP("config", "c", []string{}, "provide common task config values for installation")
-	CmdCommonTasks.AddCommand(cmdCommonTasksInstall)
+	cmdCommonTaskInstall.Flags().BoolP("manual", "m", false, "manually set up the common task by providing settings via the '-s' flag")
+	cmdCommonTaskInstall.Flags().StringSliceP("config", "c", []string{}, "provide common task config values for installation")
+	CmdCommonTask.AddCommand(cmdCommonTaskInstall)
 }
 
-func commonTasksInstall(cmd *cobra.Command, args []string) error {
+func commonTaskInstall(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	image := args[1]
 
-	cl.State.Fmt.Print("Installing commontask")
+	cl.State.Fmt.Print("Installing common task")
 
 	manual, err := cmd.Flags().GetBool("manual")
 	if err != nil {

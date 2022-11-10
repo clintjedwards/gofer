@@ -1,4 +1,4 @@
-package commonTasks
+package commonTask
 
 import (
 	"context"
@@ -11,19 +11,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdCommonTasksEnable = &cobra.Command{
+var cmdCommonTaskEnable = &cobra.Command{
 	Use:     "enable <name>",
 	Short:   "Enable a specific common task by name.",
-	Example: `$ gofer common-tasks enable cron`,
-	RunE:    commonTasksEnable,
+	Example: `$ gofer common-task enable cron`,
+	RunE:    commonTaskEnable,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdCommonTasks.AddCommand(cmdCommonTasksEnable)
+	CmdCommonTask.AddCommand(cmdCommonTaskEnable)
 }
 
-func commonTasksEnable(_ *cobra.Command, args []string) error {
+func commonTaskEnable(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Enabling common task")

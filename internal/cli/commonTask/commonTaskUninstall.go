@@ -1,4 +1,4 @@
-package commonTasks
+package commonTask
 
 import (
 	"context"
@@ -11,20 +11,20 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdCommonTasksUninstall = &cobra.Command{
+var cmdCommonTaskUninstall = &cobra.Command{
 	Use:     "uninstall <name>",
 	Short:   "Uninstall a specific common task by name.",
 	Long:    `Uninstall a specific common task by name.`,
-	Example: `$ gofer common-tasks uninstall cron`,
-	RunE:    commontasksUninstall,
+	Example: `$ gofer common-task uninstall cron`,
+	RunE:    commontaskUninstall,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdCommonTasks.AddCommand(cmdCommonTasksUninstall)
+	CmdCommonTask.AddCommand(cmdCommonTaskUninstall)
 }
 
-func commontasksUninstall(_ *cobra.Command, args []string) error {
+func commontaskUninstall(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Uninstalling common task")

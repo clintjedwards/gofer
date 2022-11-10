@@ -21,7 +21,7 @@ Common Tasks are installed by a Gofer administrator and can be used by all pipel
 Common Tasks are installed by the CLI. For more information run:
 
 ```bash
-gofer common-tasks install -h
+gofer common-task install -h
 ```
 
 ## How do I configure a Common Task?

@@ -1,4 +1,4 @@
-package commonTasks
+package commonTask
 
 import (
 	"context"
@@ -22,7 +22,7 @@ var cmdCommonTaskList = &cobra.Command{
 }
 
 func init() {
-	CmdCommonTasks.AddCommand(cmdCommonTaskList)
+	CmdCommonTask.AddCommand(cmdCommonTaskList)
 }
 
 func commontaskList(_ *cobra.Command, _ []string) error {

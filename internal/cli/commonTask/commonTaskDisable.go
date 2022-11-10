@@ -1,4 +1,4 @@
-package commonTasks
+package commonTask
 
 import (
 	"context"
@@ -12,19 +12,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdCommonTasksDisable = &cobra.Command{
+var cmdCommonTaskDisable = &cobra.Command{
 	Use:     "disable <name>",
 	Short:   "Disable a specific common task by name.",
-	Example: `$ gofer common-tasks disable cron`,
-	RunE:    commonTasksDisable,
+	Example: `$ gofer common-task disable cron`,
+	RunE:    commonTaskDisable,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdCommonTasks.AddCommand(cmdCommonTasksDisable)
+	CmdCommonTask.AddCommand(cmdCommonTaskDisable)
 }
 
-func commonTasksDisable(_ *cobra.Command, args []string) error {
+func commonTaskDisable(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Disabling common task")

@@ -1,4 +1,4 @@
-package commonTasks
+package commonTask
 
 import (
 	"bytes"
@@ -15,19 +15,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdCommonTasksGet = &cobra.Command{
+var cmdCommonTaskGet = &cobra.Command{
 	Use:     "get <name>",
 	Short:   "Get a specific common task by name.",
-	Example: `$ gofer common-tasks get cron`,
-	RunE:    commonTasksGet,
+	Example: `$ gofer common-task get cron`,
+	RunE:    commonTaskGet,
 	Args:    cobra.ExactArgs(1),
 }
 
 func init() {
-	CmdCommonTasks.AddCommand(cmdCommonTasksGet)
+	CmdCommonTask.AddCommand(cmdCommonTaskGet)
 }
 
-func commonTasksGet(_ *cobra.Command, args []string) error {
+func commonTaskGet(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	cl.State.Fmt.Print("Retrieving common task")
