@@ -13,5 +13,6 @@ use (
 	./examplePipelines/go/secrets
 	./examplePipelines/go/simple
 	./examplePipelines/go/trigger
+	./examplePipelines/go/script
 	./examplePipelines/go/commonTask
 )

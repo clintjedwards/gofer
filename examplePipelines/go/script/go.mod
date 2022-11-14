@@ -1,4 +1,4 @@
-module github.com/clintjedwards/gofer/examplePipelines/go/secrets
+module github.com/clintjedwards/gofer/examplePipelines/go/script
 
 go 1.19
 
