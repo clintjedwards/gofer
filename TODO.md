@@ -158,10 +158,7 @@ We need a common way to alert on a PR or something that a task has succeeded or 
        - Once the pipeline finishes updating the pipeline will switch back to Ready state but the API will not
          autoswitch back to active.
     3. We need to add "update methods" to pipeline settings which will control the manner in which we roll out updates. Runs will need to include which version of the pipeline has run
-- Add an example of entrypoint/command running a multi-line script
 - Orphaned run recovery is currently broken.
-- Add a debug trigger to the provided trigger lists
-- CLI should be able to modify the default namespace purely through the CLI.
 - Instead of injecting Gofer API tokens by default, allow the user to turn it on per pipeline and possibly even better allow the user to opt out certain tasks from receiving the key.
 - Clean up both github triggers and add a github common task.
   - common task we can throw in there as a parallel task a the start of each pipeline. It will consume github commit, inform github of the pipeline pending and then query gofer to see when the run has ended. When the run ends the task will then inform github that the run has finished with a particular state.

@@ -6,11 +6,14 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/polyfmt"
 	"github.com/fatih/color"
+	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -18,8 +21,9 @@ import (
 
 // Harness is a structure for values that all commands need access to.
 type Harness struct {
-	Fmt    polyfmt.Formatter
-	Config *config.CLI
+	Fmt            polyfmt.Formatter
+	Config         *config.CLI
+	ConfigFilePath string
 }
 
 // State holds values that aid in the lifetime of a command.
@@ -128,4 +132,24 @@ func (s *Harness) NewConfig(configPath string) {
 	}
 
 	s.Config = config
+	s.ConfigFilePath = configPath
+}
+
+// writeConfig takes the current representation of config and writes it to the file.
+func (s *Harness) WriteConfig() error {
+	if s.ConfigFilePath == "" {
+		homeDir, _ := os.UserHomeDir()
+		s.ConfigFilePath = fmt.Sprintf("%s/%s", homeDir, ".gofer.hcl")
+	}
+
+	f := hclwrite.NewEmptyFile()
+
+	gohcl.EncodeIntoBody(s.Config, f.Body())
+
+	err := os.WriteFile(s.ConfigFilePath, f.Bytes(), 0o644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
