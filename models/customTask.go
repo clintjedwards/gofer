@@ -39,6 +39,11 @@ type CustomTask struct {
 	Variables    []Variable                      `json:"variables"`
 	Entrypoint   *[]string                       `json:"entrypoint"`
 	Command      *[]string                       `json:"command"`
+	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
+	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
+	// environment variables "GOFER_API_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
+	// the Run's objects.
+	InjectAPIToken bool `json:"inject_api_token"`
 }
 
 func (r *CustomTask) isTask() {}
@@ -75,6 +80,10 @@ func (r *CustomTask) GetCommand() *[]string {
 	return r.Command
 }
 
+func (r *CustomTask) GetInjectAPIToken() bool {
+	return r.InjectAPIToken
+}
+
 func (r *CustomTask) ToProto() *proto.CustomTask {
 	dependsOn := map[string]proto.CustomTask_RequiredParentStatus{}
 	for key, value := range r.DependsOn {
@@ -97,14 +106,15 @@ func (r *CustomTask) ToProto() *proto.CustomTask {
 	}
 
 	return &proto.CustomTask{
-		Id:           r.ID,
-		Description:  r.Description,
-		Image:        r.Image,
-		RegistryAuth: r.GetRegistryAuth().ToProto(),
-		DependsOn:    dependsOn,
-		Variables:    variables,
-		Entrypoint:   entrypoint,
-		Command:      command,
+		Id:             r.ID,
+		Description:    r.Description,
+		Image:          r.Image,
+		RegistryAuth:   r.GetRegistryAuth().ToProto(),
+		DependsOn:      dependsOn,
+		Variables:      variables,
+		Entrypoint:     entrypoint,
+		Command:        command,
+		InjectApiToken: r.InjectAPIToken,
 	}
 }
 
@@ -138,6 +148,7 @@ func (r *CustomTask) FromProto(t *proto.CustomTask) {
 	r.Variables = variables
 	r.Entrypoint = entrypoint
 	r.Command = command
+	r.InjectAPIToken = t.InjectApiToken
 }
 
 func (r *CustomTask) FromProtoCustomTaskConfig(t *proto.CustomTaskConfig) {
@@ -175,4 +186,5 @@ func (r *CustomTask) FromProtoCustomTaskConfig(t *proto.CustomTaskConfig) {
 	r.Variables = variables
 	r.Entrypoint = entrypoint
 	r.Command = command
+	r.InjectAPIToken = t.InjectApiToken
 }

@@ -23,6 +23,11 @@ type CommonTask struct {
 	Description string                          `json:"description"`
 	DependsOn   map[string]RequiredParentStatus `json:"depends_on"`
 	Settings    map[string]string               `json:"settings"`
+	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
+	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
+	// environment variables "GOFER_API_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
+	// the Run's objects.
+	InjectAPIToken bool `json:"inject_api_token"`
 }
 
 func (t *CommonTaskWrapper) isTaskConfig() {}
@@ -46,12 +51,13 @@ func (t *CommonTaskWrapper) getDependsOn() map[string]RequiredParentStatus {
 func NewCommonTask(name, label string) *CommonTaskWrapper {
 	return &CommonTaskWrapper{
 		CommonTask{
-			Kind:        TaskKindCommon,
-			Name:        name,
-			Label:       label,
-			Description: "",
-			DependsOn:   make(map[string]RequiredParentStatus),
-			Settings:    make(map[string]string),
+			Kind:           TaskKindCommon,
+			Name:           name,
+			Label:          label,
+			Description:    "",
+			DependsOn:      make(map[string]RequiredParentStatus),
+			Settings:       make(map[string]string),
+			InjectAPIToken: false,
 		},
 	}
 }
@@ -63,11 +69,12 @@ func (t *CommonTaskWrapper) Proto() *proto.CommonTaskConfig {
 	}
 
 	return &proto.CommonTaskConfig{
-		Name:        t.CommonTask.Name,
-		Label:       t.CommonTask.Label,
-		Description: t.CommonTask.Description,
-		DependsOn:   dependsOn,
-		Settings:    t.CommonTask.Settings,
+		Name:           t.CommonTask.Name,
+		Label:          t.CommonTask.Label,
+		Description:    t.CommonTask.Description,
+		DependsOn:      dependsOn,
+		Settings:       t.CommonTask.Settings,
+		InjectApiToken: t.CommonTask.InjectAPIToken,
 	}
 }
 
@@ -114,5 +121,15 @@ func (t *CommonTaskWrapper) Settings(settings map[string]string) *CommonTaskWrap
 	for key, value := range settings {
 		t.CommonTask.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
 	}
+	return t
+}
+
+// Gofer will auto-generate and inject a Gofer API token as `GOFER_API_TOKEN`. This allows you to easily have tasks
+// communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
+//
+// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
+// objects get cleaned up.
+func (t *CommonTaskWrapper) InjectAPIToken(injectToken bool) *CommonTaskWrapper {
+	t.CommonTask.InjectAPIToken = injectToken
 	return t
 }

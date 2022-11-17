@@ -230,6 +230,12 @@ type PipelineCommonTaskSettings struct {
 	Description string                          `json:"description"`
 	DependsOn   map[string]RequiredParentStatus `json:"depends_on"`
 	Settings    map[string]string               `json:"settings"`
+
+	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
+	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
+	// environment variables "GOFER_API_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
+	// the Run's objects.
+	InjectAPIToken bool `json:"inject_api_token"`
 }
 
 func (t *PipelineCommonTaskSettings) ToProto() *proto.PipelineCommonTaskSettings {
@@ -239,11 +245,12 @@ func (t *PipelineCommonTaskSettings) ToProto() *proto.PipelineCommonTaskSettings
 	}
 
 	return &proto.PipelineCommonTaskSettings{
-		Name:        t.Name,
-		Label:       t.Label,
-		Description: t.Description,
-		DependsOn:   dependsOn,
-		Settings:    t.Settings,
+		Name:           t.Name,
+		Label:          t.Label,
+		Description:    t.Description,
+		DependsOn:      dependsOn,
+		Settings:       t.Settings,
+		InjectApiToken: t.InjectAPIToken,
 	}
 }
 
@@ -258,6 +265,7 @@ func (t *PipelineCommonTaskSettings) FromProtoCommonTaskConfig(p *proto.CommonTa
 	t.Description = p.Description
 	t.DependsOn = dependsOn
 	t.Settings = p.Settings
+	t.InjectAPIToken = p.InjectApiToken
 }
 
 func (t *PipelineCommonTaskSettings) FromProto(p *proto.PipelineCommonTaskSettings) {
@@ -271,4 +279,5 @@ func (t *PipelineCommonTaskSettings) FromProto(p *proto.PipelineCommonTaskSettin
 	t.Description = p.Description
 	t.DependsOn = dependsOn
 	t.Settings = p.Settings
+	t.InjectAPIToken = p.InjectApiToken
 }

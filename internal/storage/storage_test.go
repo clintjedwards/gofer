@@ -114,6 +114,7 @@ func TestCRUDPipelines(t *testing.T) {
 						DependsOn: map[string]proto.CustomTaskConfig_RequiredParentStatus{
 							"test_task_depends": 1,
 						},
+						InjectApiToken: true,
 					},
 				},
 			},

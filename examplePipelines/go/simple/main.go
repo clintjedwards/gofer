@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	err := sdk.NewPipeline("simple", "Simple Pipeline").
+	err := sdk.NewPipeline("simple1", "Simple Pipeline").
 		Description("This pipeline shows off a very simple Gofer pipeline that simply pulls in " +
 			"a container and runs a command. Veterans of CI/CD tooling should be familiar with this pattern.\n\n" +
 
@@ -25,7 +25,7 @@ func main() {
 		Tasks(
 			sdk.NewCustomTask("simple_task", "ubuntu:latest").
 				Description("This task simply prints our hello-world message and exits!").
-				Command("echo", "Hello from Gofer!"),
+				Command("echo", "Hello from Gofer!").InjectAPIToken(true),
 		).Finish()
 	if err != nil {
 		log.Fatal(err)

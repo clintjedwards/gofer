@@ -70,7 +70,7 @@ func (db *DB) ListRuns(conn qb.BaseRunner, offset, limit int, namespace, pipelin
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
 
-		var statusReason *models.RunStatusReason = nil
+		var statusReason *models.RunStatusReason
 		if statusReasonJSON.Valid {
 			statusReason = &models.RunStatusReason{}
 			err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)
@@ -127,7 +127,7 @@ func (db *DB) InsertRun(run *models.Run) (int64, error) {
 		return 0, err
 	}
 
-	var statusReasonJSON *string = nil
+	var statusReasonJSON *string
 	if run.StatusReason != nil {
 		rawJSON, err := json.Marshal(run.StatusReason)
 		if err != nil {
@@ -211,7 +211,7 @@ func (db *DB) GetRun(namespace, pipeline string, run int64) (models.Run, error) 
 		return models.Run{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	var statusReason *models.RunStatusReason = nil
+	var statusReason *models.RunStatusReason
 	if statusReasonJSON.Valid {
 		statusReason = &models.RunStatusReason{}
 		err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)

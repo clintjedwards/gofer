@@ -18,12 +18,18 @@ const (
 	CommonTaskStatusDisabled CommonTaskStatus = "DISABLED"
 )
 
-// CommonTask is a representation of a Pipeline Common task. It combines not only the settings for the common task
-// store exclusivly with Gofer, but also the pipeline's personal settings. This is so they can be combined and used
+// CommonTask is a representation of a Pipeline Common task. It combines both the settings for the common task
+// stored exclusively with Gofer, but also a user pipeline's personal settings. This is so they can be combined and used
 // in downstream task runs.
+// To make this a little more clear, pipelines settings are stored on a per pipeline basis; while the registration
+// configuration is stored just once and used globally.
 type CommonTask struct {
-	Settings     PipelineCommonTaskSettings `json:"settings"`
-	Registration CommonTaskRegistration     `json:"registration"`
+	// Settings refers to settings passed to a common task by a specific pipeline.
+	Settings PipelineCommonTaskSettings `json:"settings"`
+
+	// Registration refers to the settings that the common task was installed with. These settings apply to all instances
+	// run of the common task.
+	Registration CommonTaskRegistration `json:"registration"`
 }
 
 func (t *CommonTask) isTask() {}
@@ -69,6 +75,10 @@ func (t *CommonTask) GetEntrypoint() *[]string {
 
 func (t *CommonTask) GetCommand() *[]string {
 	return nil
+}
+
+func (t *CommonTask) GetInjectAPIToken() bool {
+	return t.Settings.InjectAPIToken
 }
 
 func (t *CommonTask) ToProto() *proto.CommonTask {

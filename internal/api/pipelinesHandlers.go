@@ -178,6 +178,8 @@ func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelin
 				status.Error(codes.AlreadyExists, "pipeline already exists")
 		}
 
+		log.Error().Err(err).Msg("could not insert pipeline")
+
 		return &proto.CreatePipelineResponse{},
 			status.Error(codes.Internal, "could not insert pipeline")
 	}

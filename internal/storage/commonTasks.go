@@ -55,7 +55,7 @@ func (db *DB) ListCommonTaskRegistrations(offset, limit int) ([]models.CommonTas
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
 
-		var registryAuth *models.RegistryAuth = nil
+		var registryAuth *models.RegistryAuth
 		if registryAuthJSON.Valid {
 			registryAuth = &models.RegistryAuth{}
 			err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
@@ -94,7 +94,7 @@ func (db *DB) InsertCommonTaskRegistration(tr *models.CommonTaskRegistration) er
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
 	}
 
-	var registryAuthJSON *string = nil
+	var registryAuthJSON *string
 	if tr.RegistryAuth != nil {
 		tmpJSON, err := json.Marshal(tr.RegistryAuth)
 		if err != nil {
@@ -140,7 +140,7 @@ func (db *DB) GetCommonTaskRegistration(name string) (models.CommonTaskRegistrat
 		return models.CommonTaskRegistration{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	var registryAuth *models.RegistryAuth = nil
+	var registryAuth *models.RegistryAuth
 	if registryAuthJSON.Valid {
 		registryAuth = &models.RegistryAuth{}
 		err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)

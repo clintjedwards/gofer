@@ -23,6 +23,11 @@ type CustomTask struct {
 	Variables    map[string]string               `json:"variables"`
 	Entrypoint   *[]string                       `json:"entrypoint"`
 	Command      *[]string                       `json:"command"`
+	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
+	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
+	// environment variables "GOFER_API_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
+	// the Run's objects.
+	InjectAPIToken bool `json:"inject_api_token"`
 }
 
 func (t *CustomTaskWrapper) isTaskConfig() {}
@@ -43,13 +48,14 @@ func (t *CustomTaskWrapper) getDependsOn() map[string]RequiredParentStatus {
 func NewCustomTask(id, image string) *CustomTaskWrapper {
 	return &CustomTaskWrapper{
 		CustomTask{
-			Kind:         TaskKindCustom,
-			ID:           id,
-			Description:  "",
-			Image:        image,
-			RegistryAuth: nil,
-			DependsOn:    make(map[string]RequiredParentStatus),
-			Variables:    make(map[string]string),
+			Kind:           TaskKindCustom,
+			ID:             id,
+			Description:    "",
+			Image:          image,
+			RegistryAuth:   nil,
+			DependsOn:      make(map[string]RequiredParentStatus),
+			Variables:      make(map[string]string),
+			InjectAPIToken: false,
 		},
 	}
 }
@@ -71,14 +77,15 @@ func (t *CustomTaskWrapper) Proto() *proto.CustomTaskConfig {
 	}
 
 	return &proto.CustomTaskConfig{
-		Id:           t.CustomTask.ID,
-		Description:  t.CustomTask.Description,
-		Image:        t.CustomTask.Image,
-		RegistryAuth: t.CustomTask.RegistryAuth.Proto(),
-		DependsOn:    dependsOn,
-		Variables:    t.CustomTask.Variables,
-		Entrypoint:   entrypoint,
-		Command:      command,
+		Id:             t.CustomTask.ID,
+		Description:    t.CustomTask.Description,
+		Image:          t.CustomTask.Image,
+		RegistryAuth:   t.CustomTask.RegistryAuth.Proto(),
+		DependsOn:      dependsOn,
+		Variables:      t.CustomTask.Variables,
+		Entrypoint:     entrypoint,
+		Command:        command,
+		InjectApiToken: t.CustomTask.InjectAPIToken,
 	}
 }
 
@@ -113,6 +120,7 @@ func (t *CustomTaskWrapper) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
 	t.CustomTask.Variables = proto.Variables
 	t.CustomTask.Entrypoint = entrypoint
 	t.CustomTask.Command = command
+	t.CustomTask.InjectAPIToken = proto.InjectApiToken
 }
 
 func (t *CustomTaskWrapper) validate() error {
@@ -179,5 +187,15 @@ func (t *CustomTaskWrapper) Entrypoint(entrypoint ...string) *CustomTaskWrapper 
 // Change the container's [command](https://docs.docker.com/engine/reference/builder/#understand-how-cmd-and-entrypoint-interact)
 func (t *CustomTaskWrapper) Command(command ...string) *CustomTaskWrapper {
 	t.CustomTask.Command = &command
+	return t
+}
+
+// Gofer will auto-generate and inject a Gofer API token as `GOFER_API_TOKEN`. This allows you to easily have tasks
+// communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
+//
+// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
+// objects get cleaned up.
+func (t *CustomTaskWrapper) InjectAPIToken(injectToken bool) *CustomTaskWrapper {
+	t.CustomTask.InjectAPIToken = injectToken
 	return t
 }

@@ -28,6 +28,8 @@ pub enum TaskKind {
     Custom,
 }
 
+// The downcast trait here allows us to take in a Task object and get back our original common task or custom task
+// object (providing we know what it is ahead of time).
 pub trait Task: std::fmt::Debug + Downcast {
     fn kind(&self) -> TaskKind;
     fn id(&self) -> String;
@@ -301,6 +303,7 @@ pub struct CommonTask {
     pub depends_on: HashMap<String, RequiredParentStatus>,
     /// The settings for pertaining to that specific commontask.
     pub settings: HashMap<String, String>,
+    pub inject_api_token: bool,
 }
 
 impl CommonTask {
@@ -312,6 +315,7 @@ impl CommonTask {
             description: None,
             depends_on: HashMap::new(),
             settings: HashMap::new(),
+            inject_api_token: false,
         }
     }
 
@@ -343,6 +347,16 @@ impl CommonTask {
         self
     }
 
+    /// Gofer will auto-generate and inject a Gofer API token as `GOFER_API_TOKEN`. This allows you to easily have tasks
+    /// communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
+    ///
+    /// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
+    /// objects get cleaned up.
+    pub fn inject_api_token(mut self, inject_token: bool) -> Self {
+        self.inject_api_token = inject_token;
+        self
+    }
+
     fn proto(&self) -> CommonTaskConfig {
         let mut depends_on: HashMap<String, i32> = HashMap::new();
         for (key, value) in &self.depends_on {
@@ -370,6 +384,7 @@ impl CommonTask {
             description: self.description.clone().unwrap_or_default(),
             depends_on,
             settings: self.settings.clone(),
+            inject_api_token: self.inject_api_token,
         }
     }
 }
@@ -405,6 +420,7 @@ pub struct CustomTask {
     pub variables: HashMap<String, String>,
     pub entrypoint: Option<Vec<String>>,
     pub command: Option<Vec<String>>,
+    pub inject_api_token: bool,
 }
 
 impl CustomTask {
@@ -419,6 +435,7 @@ impl CustomTask {
             variables: HashMap::new(),
             entrypoint: None,
             command: None,
+            inject_api_token: false,
         }
     }
 
@@ -478,6 +495,16 @@ impl CustomTask {
         self
     }
 
+    /// Gofer will auto-generate and inject a Gofer API token as `GOFER_API_TOKEN`. This allows you to easily have tasks
+    /// communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
+    ///
+    /// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
+    /// objects get cleaned up.
+    pub fn inject_api_token(mut self, inject_token: bool) -> Self {
+        self.inject_api_token = inject_token;
+        self
+    }
+
     fn proto(&self) -> CustomTaskConfig {
         let mut depends_on: HashMap<String, i32> = HashMap::new();
         for (key, value) in &self.depends_on {
@@ -514,6 +541,7 @@ impl CustomTask {
             variables: self.variables.clone(),
             entrypoint: self.entrypoint.clone().unwrap_or_default(),
             command: self.command.clone().unwrap_or_default(),
+            inject_api_token: self.inject_api_token,
         }
     }
 }

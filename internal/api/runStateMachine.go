@@ -108,6 +108,49 @@ func (r *RunStateMachine) setTaskRunState(taskRun models.TaskRun, state models.T
 	return nil
 }
 
+// Creates the auto-injected token for Gofer's `InjectAPIToken` feature.
+// This simply evaluates whether the token will be needed in the future and then sets it to be
+// injected when the tasks that need it are eventually run.
+//
+// Gofer can auto create client tokens and inject them into the environment for tasks in a run.
+// This is a convenience function so that tasks can easily talk to the Gofer CLI.
+func (r *RunStateMachine) createAutoInjectToken() {
+	// Check we actually need to do this
+	createToken := false
+
+	for _, task := range r.Pipeline.CustomTasks {
+		if task.InjectAPIToken {
+			createToken = true
+			break
+		}
+	}
+
+	for _, task := range r.Pipeline.CommonTasks {
+		if task.InjectAPIToken {
+			createToken = true
+			break
+		}
+	}
+
+	if createToken {
+		token, hash := r.API.createNewAPIToken()
+		newToken := models.NewToken(hash, models.TokenKindClient, []string{r.Pipeline.Namespace}, map[string]string{
+			"description": "This token was automatically created by Gofer API at the user's request. Visit https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html#auto-inject-api-tokens to learn more.",
+		}, time.Hour*48)
+
+		err := r.API.db.InsertToken(newToken)
+		if err != nil {
+			log.Error().Err(err).Msg("could not save token to storage")
+		}
+
+		err = r.API.secretStore.PutSecret(
+			pipelineSecretKey(r.Pipeline.Namespace, r.Pipeline.ID, fmt.Sprintf("gofer_api_token_%d", r.Run.ID)), token, true)
+		if err != nil {
+			log.Error().Err(err).Msg("could not save token to storage")
+		}
+	}
+}
+
 // executeTaskTree creates all downstream task runs for a particular run. After creating all task runs it
 // then blocks and monitors the run until it is finished.
 func (r *RunStateMachine) executeTaskTree() {
@@ -115,23 +158,7 @@ func (r *RunStateMachine) executeTaskTree() {
 	go r.handleRunObjectExpiry()
 	go r.handleRunLogExpiry()
 
-	// Create run level token. This token is injected automatically on every run so that pipeline tasks can automatically
-	// talk to the Gofer API.
-	token, hash := r.API.createNewAPIToken()
-	newToken := models.NewToken(hash, models.TokenKindClient, []string{r.Pipeline.Namespace}, map[string]string{
-		"memo": "automatically created by Gofer API",
-	}, time.Hour*48)
-
-	err := r.API.db.InsertToken(newToken)
-	if err != nil {
-		log.Error().Err(err).Msg("could not save token to storage")
-	}
-
-	err = r.API.secretStore.PutSecret(
-		pipelineSecretKey(r.Pipeline.Namespace, r.Pipeline.ID, fmt.Sprintf("gofer_api_token_%d", r.Run.ID)), token, true)
-	if err != nil {
-		log.Error().Err(err).Msg("could not save token to storage")
-	}
+	r.createAutoInjectToken()
 
 	// Launch a new task run for each task found.
 	for _, task := range r.Pipeline.CustomTasks {

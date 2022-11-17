@@ -1,3 +1,15 @@
+// The models package contains the core objects needed by Gofer and friends.
+//
+// A note about changes to this package:
+//
+// This package can be somewhat brittle as Go does not alert on missing struct
+// fields and converting things to proto is done manually. The combination of
+// these two things means that unfortunately these models may connect to other
+// models(namely the proto models, but also the sdk and potentially others)
+// in ways that might not be obvious and changes to them might break things
+// in ways that are hard to set up testing for. Testing would need to
+// heavily use reflection to prevent breakages and for now I don't have the
+// time.
 package models
 
 import (

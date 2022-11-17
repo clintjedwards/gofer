@@ -23,13 +23,13 @@ type UpdatablePipelineFields struct {
 	Errors      *[]models.PipelineError
 }
 
-func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]models.CustomTask, error) {
+func (db *DB) ListCustomTasks(conn qb.BaseRunner, namespace, pipeline string) ([]models.CustomTask, error) {
 	if conn == nil {
 		conn = db
 	}
 
-	rows, err := qb.Select("id", "description", "image", "registry_auth", "depends_on", "variables", "entrypoint", "command").
-		From("tasks").
+	rows, err := qb.Select("id", "description", "image", "registry_auth", "depends_on", "variables", "entrypoint", "command", "inject_api_token").
+		From("custom_tasks").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline}).RunWith(conn).Query()
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
@@ -51,13 +51,14 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 		var variablesJSON string
 		var entrypointJSON sql.NullString
 		var commandJSON sql.NullString
+		var injectAPIToken bool
 
-		err = rows.Scan(&id, &description, &image, &registryAuthJSON, &dependsOnJSON, &variablesJSON, &entrypointJSON, &commandJSON)
+		err = rows.Scan(&id, &description, &image, &registryAuthJSON, &dependsOnJSON, &variablesJSON, &entrypointJSON, &commandJSON, &injectAPIToken)
 		if err != nil {
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
 
-		var registryAuth *models.RegistryAuth = nil
+		var registryAuth *models.RegistryAuth
 		if registryAuthJSON.Valid {
 			registryAuth = &models.RegistryAuth{}
 			err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
@@ -78,7 +79,7 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 			return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
 		}
 
-		var entrypoint *[]string = nil
+		var entrypoint *[]string
 		if entrypointJSON.Valid {
 			entrypoint = &[]string{}
 			err = json.Unmarshal([]byte(entrypointJSON.String), &entrypoint)
@@ -87,7 +88,7 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 			}
 		}
 
-		var command *[]string = nil
+		var command *[]string
 		if commandJSON.Valid {
 			command = &[]string{}
 			err = json.Unmarshal([]byte(commandJSON.String), &command)
@@ -97,14 +98,15 @@ func (db *DB) ListTasks(conn qb.BaseRunner, namespace, pipeline string) ([]model
 		}
 
 		tasks = append(tasks, models.CustomTask{
-			ID:           id,
-			Description:  description,
-			Image:        image,
-			RegistryAuth: registryAuth,
-			DependsOn:    dependsOn,
-			Variables:    variables,
-			Entrypoint:   entrypoint,
-			Command:      command,
+			ID:             id,
+			Description:    description,
+			Image:          image,
+			RegistryAuth:   registryAuth,
+			DependsOn:      dependsOn,
+			Variables:      variables,
+			Entrypoint:     entrypoint,
+			Command:        command,
+			InjectAPIToken: injectAPIToken,
 		})
 	}
 	err = rows.Err()
@@ -271,7 +273,7 @@ func (db *DB) ListPipelines(offset, limit int, namespace string) ([]models.Pipel
 	}
 
 	for index, pipeline := range pipelines {
-		taskList, err := db.ListTasks(nil, namespace, pipeline.ID)
+		taskList, err := db.ListCustomTasks(nil, namespace, pipeline.ID)
 		if err != nil {
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
@@ -311,7 +313,7 @@ func (db *DB) ListPipelines(offset, limit int, namespace string) ([]models.Pipel
 	return pipelines, nil
 }
 
-func insertTask(conn qb.BaseRunner, namespace, pipeline string, task *models.CustomTask) error {
+func insertCustomTask(conn qb.BaseRunner, namespace, pipeline string, task *models.CustomTask) error {
 	dependsOnJSON, err := json.Marshal(task.DependsOn)
 	if err != nil {
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
@@ -322,7 +324,7 @@ func insertTask(conn qb.BaseRunner, namespace, pipeline string, task *models.Cus
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
 	}
 
-	var registryAuthJSON *string = nil
+	var registryAuthJSON *string
 	if task.RegistryAuth != nil {
 		tmpJSON, err := json.Marshal(task.RegistryAuth)
 		if err != nil {
@@ -342,10 +344,10 @@ func insertTask(conn qb.BaseRunner, namespace, pipeline string, task *models.Cus
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
 	}
 
-	_, err = qb.Insert("tasks").Columns("namespace", "pipeline", "id", "description", "image",
-		"registry_auth", "depends_on", "variables", "entrypoint", "command").Values(
+	_, err = qb.Insert("custom_tasks").Columns("namespace", "pipeline", "id", "description", "image",
+		"registry_auth", "depends_on", "variables", "entrypoint", "command", "inject_api_token").Values(
 		namespace, pipeline, task.ID, task.Description, task.Image, registryAuthJSON,
-		string(dependsOnJSON), string(variablesJSON), string(entrypointJSON), string(commandJSON),
+		string(dependsOnJSON), string(variablesJSON), string(entrypointJSON), string(commandJSON), task.InjectAPIToken,
 	).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -400,7 +402,7 @@ func (db *DB) InsertPipeline(pipeline *models.Pipeline) error {
 	tx, err := db.Begin()
 	if err != nil {
 		mustRollback(tx)
-		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return fmt.Errorf("database error occurred; could not start transaction: %v; %w", err, ErrInternal)
 	}
 
 	errorsJSON, err := json.Marshal(pipeline.Errors)
@@ -419,11 +421,11 @@ func (db *DB) InsertPipeline(pipeline *models.Pipeline) error {
 			return ErrEntityExists
 		}
 
-		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return fmt.Errorf("database error occurred; could not insert pipeline to DB: %v; %w", err, ErrInternal)
 	}
 
 	for _, task := range pipeline.CustomTasks {
-		err = insertTask(tx, pipeline.Namespace, pipeline.ID, &task)
+		err = insertCustomTask(tx, pipeline.Namespace, pipeline.ID, &task)
 		if err != nil {
 			mustRollback(tx)
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -500,7 +502,7 @@ func (db *DB) GetPipeline(conn qb.BaseRunner, namespace, pipeline string) (model
 		return models.Pipeline{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
 	}
 
-	taskList, err := db.ListTasks(conn, namespace, pipeline)
+	taskList, err := db.ListCustomTasks(conn, namespace, pipeline)
 	if err != nil {
 		return models.Pipeline{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
@@ -603,7 +605,7 @@ func (db *DB) UpdatePipeline(namespace, id string, fields UpdatablePipelineField
 		}
 
 		for _, task := range *fields.Tasks {
-			err := insertTask(tx, namespace, pipeline.ID, &task)
+			err := insertCustomTask(tx, namespace, pipeline.ID, &task)
 			if err != nil {
 				mustRollback(tx)
 				return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
@@ -666,7 +668,7 @@ func (db *DB) UpdatePipeline(namespace, id string, fields UpdatablePipelineField
 }
 
 func deleteTask(conn qb.BaseRunner, namespace, pipeline, id string) error {
-	_, err := qb.Delete("tasks").Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "id": id}).RunWith(conn).Exec()
+	_, err := qb.Delete("custom_tasks").Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

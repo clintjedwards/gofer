@@ -53,7 +53,7 @@ func (db *DB) ListTriggerRegistrations(offset, limit int) ([]models.TriggerRegis
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
 
-		var registryAuth *models.RegistryAuth = nil
+		var registryAuth *models.RegistryAuth
 		if registryAuthJSON.Valid {
 			registryAuth = &models.RegistryAuth{}
 			err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)
@@ -91,7 +91,7 @@ func (db *DB) InsertTriggerRegistration(tr *models.TriggerRegistration) error {
 		return fmt.Errorf("database error occurred; could not encode object; %v", err)
 	}
 
-	var registryAuthJSON *string = nil
+	var registryAuthJSON *string
 	if tr.RegistryAuth != nil {
 		tmpJSON, err := json.Marshal(tr.RegistryAuth)
 		if err != nil {
@@ -136,7 +136,7 @@ func (db *DB) GetTriggerRegistration(name string) (models.TriggerRegistration, e
 		return models.TriggerRegistration{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	var registryAuth *models.RegistryAuth = nil
+	var registryAuth *models.RegistryAuth
 	if registryAuthJSON.Valid {
 		registryAuth = &models.RegistryAuth{}
 		err := json.Unmarshal([]byte(registryAuthJSON.String), registryAuth)

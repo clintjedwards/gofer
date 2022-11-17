@@ -71,7 +71,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
 
-		var statusReason *models.TaskRunStatusReason = nil
+		var statusReason *models.TaskRunStatusReason
 		if statusReasonJSON.Valid {
 			statusReason = &models.TaskRunStatusReason{}
 			err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)
@@ -80,7 +80,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 			}
 		}
 
-		var exitCode *int64 = nil
+		var exitCode *int64
 		if exitCodeRaw.Valid {
 			exitCode = &exitCodeRaw.Int64
 		}
@@ -142,7 +142,7 @@ func (db *DB) ListTaskRuns(offset, limit int, namespace, pipeline string, run in
 }
 
 func (db *DB) InsertTaskRun(taskRun *models.TaskRun) error {
-	var statusReasonJSON *string = nil
+	var statusReasonJSON *string
 	if taskRun.StatusReason != nil {
 		rawJSON, err := json.Marshal(taskRun.StatusReason)
 		if err != nil {
@@ -210,7 +210,7 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 		return models.TaskRun{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	var statusReason *models.TaskRunStatusReason = nil
+	var statusReason *models.TaskRunStatusReason
 	if statusReasonJSON.Valid {
 		statusReason = &models.TaskRunStatusReason{}
 		err := json.Unmarshal([]byte(statusReasonJSON.String), statusReason)
@@ -243,7 +243,7 @@ func (db *DB) GetTaskRun(namespace, pipeline string, run int64, taskRun string) 
 		}
 	}
 
-	var exitCode *int64 = nil
+	var exitCode *int64
 	if exitCodeRaw.Valid {
 		exitCode = &exitCodeRaw.Int64
 	}

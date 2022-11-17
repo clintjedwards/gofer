@@ -214,6 +214,8 @@ pub struct CustomTask {
     pub entrypoint: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(string, repeated, tag="8")]
     pub command: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(bool, tag="9")]
+    pub inject_api_token: bool,
 }
 /// Nested message and enum types in `CustomTask`.
 pub mod custom_task {
@@ -247,6 +249,8 @@ pub struct PipelineCommonTaskSettings {
     pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     #[prost(map="string, string", tag="5")]
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(bool, tag="6")]
+    pub inject_api_token: bool,
 }
 /// Nested message and enum types in `PipelineCommonTaskSettings`.
 pub mod pipeline_common_task_settings {
@@ -277,6 +281,8 @@ pub struct CustomTaskConfig {
     pub entrypoint: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(string, repeated, tag="8")]
     pub command: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(bool, tag="9")]
+    pub inject_api_token: bool,
 }
 /// Nested message and enum types in `CustomTaskConfig`.
 pub mod custom_task_config {
@@ -317,6 +323,8 @@ pub struct CommonTaskConfig {
     pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     #[prost(map="string, string", tag="5")]
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(bool, tag="6")]
+    pub inject_api_token: bool,
 }
 /// Nested message and enum types in `CommonTaskConfig`.
 pub mod common_task_config {

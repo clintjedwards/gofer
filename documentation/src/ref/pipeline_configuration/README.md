@@ -38,7 +38,7 @@ Next we'll add a simple description to remind us what this pipeline is used for.
 
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
-    WithDescription("This pipeline is purely for testing purposes.")
+        Description("This pipeline is purely for testing purposes.")
 ```
 
 The SDK uses a builder pattern, which allows us to simply add another function onto our Pipeline object which we can type our description into.
@@ -51,9 +51,9 @@ To do this we'll use a trigger included with Gofer called the [interval](../trig
 
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
-    WithDescription("This pipeline is purely for testing purposes.").
-    WithTriggers(
-        *sdk.NewTrigger("interval", "every_one_minute").WithSetting("every", "1m"),
+        Description("This pipeline is purely for testing purposes.").
+        Triggers(
+            *sdk.NewTrigger("interval", "every_one_minute").WithSetting("every", "1m"),
     )
 ```
 
@@ -70,17 +70,17 @@ run on container start to just say "Hello from Gofer!".
 
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
-    WithDescription("This pipeline is purely for testing purposes.").
-    WithTriggers(
-        *sdk.NewTrigger("interval", "every_one_minute").WithSetting("every", "1m"),
-    ).WithTasks(
+        Description("This pipeline is purely for testing purposes.").
+        Triggers(
+        *sdk.NewTrigger("interval", "every_one_minute").Setting("every", "1m"),
+    ).Tasks(
 		sdk.NewCustomTask("simple_task", "ubuntu:latest").
-			WithDescription("This task simply prints our hello-world message and exists!").
-			WithCommand("echo", "Hello from Gofer!"),
+			Description("This task simply prints our hello-world message and exists!").
+			Command("echo", "Hello from Gofer!"),
     )
 ```
 
-We used the WithTasks function to add multiple tasks and then we use the SDK's `NewCustomTask` function to create a task. You can see we:
+We used the `Tasks` function to add multiple tasks and then we use the SDK's `NewCustomTask` function to create a task. You can see we:
 
 - Give the task an ID, much like our pipeline earlier.
 - Specify which image we want to use.
@@ -91,13 +91,13 @@ To tie a bow on it, we add the `.Finish()` function to specify that our pipeline
 
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
-    WithDescription("This pipeline is purely for testing purposes.").
-    WithTriggers(
-        *sdk.NewTrigger("interval", "every_one_minute").WithSetting("every", "1m"),
-    ).WithTasks(
+    Description("This pipeline is purely for testing purposes.").
+    Triggers(
+        *sdk.NewTrigger("interval", "every_one_minute").Setting("every", "1m"),
+    ).Tasks(
 		sdk.NewCustomTask("simple_task", "ubuntu:latest").
-			WithDescription("This task simply prints our hello-world message and exists!").
-			WithCommand("echo", "Hello from Gofer!"),
+			Description("This task simply prints our hello-world message and exists!").
+			Command("echo", "Hello from Gofer!"),
     ).Finish()
 ```
 
@@ -119,17 +119,39 @@ import (
 
 func main() {
 	err := sdk.NewPipeline("trigger", "Trigger Pipeline").
-		WithDescription("This pipeline shows off the various features of a simple Gofer pipeline. Triggers, Tasks, and " +
+		Description("This pipeline shows off the various features of a simple Gofer pipeline. Triggers, Tasks, and " +
 			"dependency graphs are all tools that can be wielded to create as complicated pipelines as need be.").
-		WithTriggers(
-			*sdk.NewTrigger("interval", "every_one_minute").WithSetting("every", "1m"),
-		).WithTasks(
+		Triggers(
+			*sdk.NewTrigger("interval", "every_one_minute").Setting("every", "1m"),
+		).Tasks(
 		sdk.NewCustomTask("simple_task", "ubuntu:latest").
-			WithDescription("This task simply prints our hello-world message and exists!").
-			WithCommand("echo", "Hello from Gofer!"),
+			Description("This task simply prints our hello-world message and exists!").
+			Command("echo", "Hello from Gofer!"),
 	).Finish()
 	if err != nil {
 		log.Fatal(err)
 	}
 }
+```
+
+## Extra Examples
+
+### Auto Inject API Tokens
+
+Gofer has the ability to auto-create and inject a token into your tasks. This is helpful if you
+want to use the [Gofer CLI](../../cli/README.md) or the Gofer API to communicate with Gofer at
+some point in your task.
+
+You can tell Gofer to do this by using the `InjectAPIToken` function for a particular task.
+
+The token will be cleaned up the same time the logs for a particular run is cleaned up.
+
+```go
+err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
+    Description("This pipeline is purely for testing purposes.").
+    Tasks(
+		sdk.NewCustomTask("simple_task", "ubuntu:latest").
+			Description("This task simply prints our hello-world message and exists!").
+			Command("echo", "Hello from Gofer!").InjectAPIToken(true),
+    ).Finish()
 ```

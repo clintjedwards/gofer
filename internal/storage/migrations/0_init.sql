@@ -35,11 +35,12 @@ CREATE TABLE IF NOT EXISTS pipeline_trigger_settings (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS pipeline_common_task_settings (
-    namespace TEXT NOT NULL,
-    pipeline  TEXT NOT NULL,
-    name      TEXT NOT NULL,
-    label     TEXT NOT NULL,
-    settings  TEXT,
+    namespace        TEXT NOT NULL,
+    pipeline         TEXT NOT NULL,
+    name             TEXT NOT NULL,
+    label            TEXT NOT NULL,
+    settings         TEXT,
+    inject_api_token INTEGER NOT NULL CHECK (inject_api_token IN (0, 1)),
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, label)
@@ -65,17 +66,18 @@ CREATE TABLE IF NOT EXISTS runs (
 
 CREATE INDEX idx_runs_started ON runs (started);
 
-CREATE TABLE IF NOT EXISTS tasks (
-    namespace     TEXT NOT NULL,
-    pipeline      TEXT NOT NULL,
-    id            TEXT NOT NULL,
-    description   TEXT,
-    image         TEXT NOT NULL,
-    registry_auth TEXT,
-    depends_on    TEXT NOT NULL,
-    variables     TEXT NOT NULL,
-    entrypoint    TEXT,
-    command       TEXT,
+CREATE TABLE IF NOT EXISTS custom_tasks (
+    namespace        TEXT NOT NULL,
+    pipeline         TEXT NOT NULL,
+    id               TEXT NOT NULL,
+    description      TEXT,
+    image            TEXT NOT NULL,
+    registry_auth    TEXT,
+    depends_on       TEXT NOT NULL,
+    variables        TEXT NOT NULL,
+    entrypoint       TEXT,
+    command          TEXT,
+    inject_api_token INTEGER NOT NULL CHECK (inject_api_token IN (0, 1)),
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, id)

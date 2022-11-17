@@ -142,6 +142,7 @@ message CustomTask {
   repeated Variable variables = 6;
   repeated string entrypoint = 7;
   repeated string command = 8;
+  bool inject_api_token = 9;
 }
 
 message PipelineTriggerSettings {
@@ -162,6 +163,7 @@ message PipelineCommonTaskSettings {
   string description = 3;
   map<string, RequiredParentStatus> depends_on = 4;
   map<string, string> settings = 5;
+  bool inject_api_token = 6;
 }
 
 message CustomTaskConfig {
@@ -179,6 +181,7 @@ message CustomTaskConfig {
   map<string, string> variables = 6;
   repeated string entrypoint = 7;
   repeated string command = 8;
+  bool inject_api_token = 9;
 }
 
 message PipelineTriggerConfig {
@@ -204,6 +207,7 @@ message CommonTaskConfig {
   string description = 3;
   map<string, RequiredParentStatus> depends_on = 4;
   map<string, string> settings = 5;
+  bool inject_api_token = 6;
 }
 
 message TaskRunStatusReason {

@@ -14,4 +14,5 @@ type Task interface {
 	GetVariables() []Variable
 	GetEntrypoint() *[]string
 	GetCommand() *[]string
+	GetInjectAPIToken() bool
 }

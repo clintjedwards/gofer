@@ -34,13 +34,13 @@ The exact key names injected for each of these configurations can be seen on any
 <!-- prettier-ignore -->
 [^2]: The current Gofer system injected variables can be found [here.](https://github.com/clintjedwards/gofer/blob/40512915a3ae4cd140f5c855bbff631793c380fb/internal/api/runs.go#L56-L57) Below is a possibly out of date short reference:
 
-| Key                 | Description                                                                                                                                                           |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GOFER_PIPELINE_ID` | The pipeline identification string.                                                                                                                                   |
-| `GOFER_RUN_ID`      | The run identification number.                                                                                                                                        |
-| `GOFER_TASK_ID`     | The task run identification string.                                                                                                                                   |
-| `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                    |
-| `GOFER_API_TOKEN`   | Runs can be assigned a unique Gofer API token automatically. This makes it easy and manageable for tasks to query Gofer's API and do lots of other convenience tasks. |
+| Key                 | Description                                                                                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GOFER_PIPELINE_ID` | The pipeline identification string.                                                                                                                                             |
+| `GOFER_RUN_ID`      | The run identification number.                                                                                                                                                  |
+| `GOFER_TASK_ID`     | The task run identification string.                                                                                                                                             |
+| `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                              |
+| `GOFER_API_TOKEN`   | Optional. Runs can be assigned a unique Gofer API token automatically. This makes it easy and manageable for tasks to query Gofer's API and do lots of other convenience tasks. |
 
 ## What happens when a task is run?
 

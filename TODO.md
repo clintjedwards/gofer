@@ -144,6 +144,7 @@ We need a common way to alert on a PR or something that a task has succeeded or 
 
 ### On the floor
 
+- Create a container for custom use that has gofer-cli already packed in and possibly allows
 - Fixing Pipeline updates and rolling out versioned pipelines.
   - Gofer needs versioned pipelines as a first step into supporting the possibility of canarying pipelines.
     - We need to make a user settable limit for pipeline versions. Delete older versions.
@@ -160,5 +161,9 @@ We need a common way to alert on a PR or something that a task has succeeded or 
     3. We need to add "update methods" to pipeline settings which will control the manner in which we roll out updates. Runs will need to include which version of the pipeline has run
 - Orphaned run recovery is currently broken.
 - Instead of injecting Gofer API tokens by default, allow the user to turn it on per pipeline and possibly even better allow the user to opt out certain tasks from receiving the key.
+- Make sure that common tasks also get the same injected vars that other tasks get. This should be a baseline injection that all tasks can expect. Those tasks can then choose to ignore those specific vars.
 - Clean up both github triggers and add a github common task.
   - common task we can throw in there as a parallel task a the start of each pipeline. It will consume github commit, inform github of the pipeline pending and then query gofer to see when the run has ended. When the run ends the task will then inform github that the run has finished with a particular state.
+- Think about making a new task type that you can pass commands to that automatically uses the gofer container. So users can get zero to code ultra-fast.
+- When we attempt to create a pipeline we should test that the namespace exists before attempting to create it.
+- Get TaskRun is broken.

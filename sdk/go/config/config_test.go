@@ -133,3 +133,10 @@ func TestInvalidConfigGlobalSecrets(t *testing.T) {
 		t.Fatal("pipeline should return an error due to user attempting to use global secrets, but it does not")
 	}
 }
+
+func TestInjectAPITokens(t *testing.T) {
+	pipeline := NewPipeline("inject_test_pipeline", "").Tasks(NewCustomTask("task_1", "").InjectAPIToken(true))
+	if pipeline.Pipeline.Tasks[0].(*CustomTaskWrapper).CustomTask.InjectAPIToken == false {
+		t.Fatal("pipeline is not in correct state")
+	}
+}

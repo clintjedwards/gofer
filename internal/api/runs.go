@@ -53,8 +53,8 @@ func parseInterpolationSyntax(kind InterpolationKind, input string) (string, err
 	return "", fmt.Errorf("variable doesn't match interpolation prefix/suffix")
 }
 
-func systemInjectedVars(run *models.Run, task models.Task) map[string]*models.Variable {
-	return map[string]*models.Variable{
+func systemInjectedVars(run *models.Run, task models.Task, injectToken bool) map[string]*models.Variable {
+	vars := map[string]*models.Variable{
 		"GOFER_PIPELINE_ID": {
 			Key:    "GOFER_PIPELINE_ID",
 			Value:  run.Pipeline,
@@ -75,12 +75,17 @@ func systemInjectedVars(run *models.Run, task models.Task) map[string]*models.Va
 			Value:  task.GetImage(),
 			Source: models.VariableSourceSystem,
 		},
-		"GOFER_API_TOKEN": {
+	}
+
+	if injectToken {
+		vars["GOFER_API_TOKEN"] = &models.Variable{
 			Key:    "GOFER_API_TOKEN",
 			Value:  fmt.Sprintf("secret{{%s}}", fmt.Sprintf("gofer_api_token_%d", run.ID)),
 			Source: models.VariableSourceSystem,
-		},
+		}
 	}
+
+	return vars
 }
 
 // We need to combine the environment variables we get from multiple sources in order to pass them
@@ -102,7 +107,7 @@ func systemInjectedVars(run *models.Run, task models.Task) map[string]*models.Va
 // or the user when they attempt to start a new run manually. Since these are the most likely to be
 // edited adhoc they are treated as the most important.
 func combineVariables(run *models.Run, task models.Task) []models.Variable {
-	systemInjectedVars := systemInjectedVars(run, task)
+	systemInjectedVars := systemInjectedVars(run, task, task.GetInjectAPIToken())
 
 	taskVars := map[string]*models.Variable{}
 	for _, variable := range task.GetVariables() {
