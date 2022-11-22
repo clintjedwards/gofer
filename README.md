@@ -101,6 +101,20 @@ cargo install mdbook-linkcheck
 
 Once you have mdbook you can simply run `make run-docs` to give you an auto-reloading dev version of the documentation in a browser.
 
+### Regenerating Demo Gif
+
+The Gif on the README page uses [vhs](https://github.com/charmbracelet/vhs); a very handy tool that allows you to write a configuration file which will pop out
+a gif on the other side.
+
+In order to do this VHS has to run the commands so we must start the server first before we regenerate the gif.
+
+```bash
+rm -rf /tmp/gofer* # Start with a fresh database
+make run # Start the server in dev mode
+cd documentation/book/src/assets
+vhs < demo.tape # this will start running commands against the server and output the gif as demo.gif.
+```
+
 ## Gofer's Philosophy
 
 _Things should be **easy and fast**. For if they are not, people will look for an alternate solution._
