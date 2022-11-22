@@ -660,8 +660,6 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 
 	r.TaskRuns.Set(newTaskRun.ID, *newTaskRun)
 
-	fmt.Println(newTaskRun.ID)
-
 	err := r.API.db.InsertTaskRun(newTaskRun)
 	if err != nil {
 		log.Error().Err(err).Msg("could not register task run; db error")

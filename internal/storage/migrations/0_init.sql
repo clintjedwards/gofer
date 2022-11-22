@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS pipeline_common_task_settings (
     name             TEXT NOT NULL,
     label            TEXT NOT NULL,
     settings         TEXT,
-    inject_api_token INTEGER NOT NULL CHECK (inject_api_token IN (0, 1)),
+    inject_api_token INTEGER CHECK (inject_api_token IN (0, 1)),
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, label)
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS custom_tasks (
     variables        TEXT NOT NULL,
     entrypoint       TEXT,
     command          TEXT,
-    inject_api_token INTEGER NOT NULL CHECK (inject_api_token IN (0, 1)),
+    inject_api_token INTEGER CHECK (inject_api_token IN (0, 1)),
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipelines(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, id)

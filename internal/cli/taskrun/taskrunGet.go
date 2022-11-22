@@ -110,15 +110,22 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 
 	combinedVariables := taskRun.Task.GetVariables()
 	combinedVariables = append(combinedVariables, taskRun.Variables...)
-	variableList := [][]string{}
+	variableMap := map[string][]string{}
 
+	// De-dupe variables that may exist in task and taskrun
+	// TODO(clintjedwards): We should re-evaluate this in the future. Not sure if we even need both var lists.
 	for _, variable := range combinedVariables {
-		variableList = append(variableList, []string{
+		variableMap[variable.Key] = []string{
 			color.MagentaString("│"),
 			variable.Key,
 			color.BlueString(variable.Value),
 			faint("%s", formatSource(string(variable.Source))),
-		})
+		}
+	}
+
+	variableList := [][]string{}
+	for _, variable := range variableMap {
+		variableList = append(variableList, variable)
 	}
 
 	variablesTable := format.GenerateGenericTable(variableList, "", 4)
@@ -142,6 +149,7 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 
   {{magenta "│"}} Parent Pipeline: {{.PipelineID}}
   {{magenta "├─"}} Parent Run: {{.RunID}}
+  {{magenta "├──"}} Task ID: {{.ID}}
   {{magenta "│"}} Started {{.Started}} and ran for {{.Duration}}
  {{if .ImageName}} {{magenta "│"}} Image {{.ImageName}} {{- end}}
  {{if .ExitCode}} {{magenta "│"}} Exit Code: {{.ExitCode}} {{- end}}
