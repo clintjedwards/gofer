@@ -99,7 +99,6 @@ message Run {
   }
   RunStatus status = 7;
   RunStatusReason status_reason = 8;
-  repeated string task_runs = 9;
   message RunTriggerInfo {
     string name = 1;
     string label = 2;

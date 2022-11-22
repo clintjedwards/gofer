@@ -163,7 +163,7 @@ func (r *RunStateMachine) executeTaskTree() {
 	// Launch a new task run for each task found.
 	for _, task := range r.Pipeline.CustomTasks {
 		task := task
-		go r.launchTaskRun(&task)
+		go r.launchTaskRun(&task, true)
 	}
 
 	for _, taskSettings := range r.Pipeline.CommonTasks {
@@ -175,7 +175,7 @@ func (r *RunStateMachine) executeTaskTree() {
 			Settings: taskSettings,
 		}
 
-		go r.launchTaskRun(&task)
+		go r.launchTaskRun(&task, true)
 	}
 
 	// Finally monitor the entire run until it finishes. This will block until the run has ended.
@@ -617,9 +617,12 @@ outerLoop:
 	log.Debug().Strs("removed_files", removedFiles).Msg("removed task run logs")
 }
 
-// Launches a brand new task run as part of a larger run for a specific task.
+// Registers[^1] and Launches a brand new task run as part of a larger run for a specific task.
 // It blocks until the task run has completed.
-func (r *RunStateMachine) launchTaskRun(task models.Task) {
+//
+// [^1]: The register parameter controls whether the task is registered in the database, announces it's creation
+// via events. It's useful to turn this off when we're trying to revive a taskRun that is previously lost.
+func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 	// If the task is a common task we need to check that it is in the registry, fill in those registry details,
 	// and then fail properly if it is not.
 	commonTask, isCommonTask := task.(*models.CommonTask)
@@ -660,24 +663,26 @@ func (r *RunStateMachine) launchTaskRun(task models.Task) {
 
 	r.TaskRuns.Set(newTaskRun.ID, *newTaskRun)
 
-	err := r.API.db.InsertTaskRun(newTaskRun)
-	if err != nil {
-		log.Error().Err(err).Msg("could not register task run; db error")
-		return
-	}
+	if register {
+		err := r.API.db.InsertTaskRun(newTaskRun)
+		if err != nil {
+			log.Error().Err(err).Msg("could not register task run; db error")
+			return
+		}
 
-	// Alert the event bus that a new task run is being started.
-	go r.API.events.Publish(models.EventCreatedTaskRun{
-		NamespaceID: r.Pipeline.Namespace,
-		PipelineID:  r.Pipeline.ID,
-		RunID:       r.Run.ID,
-		TaskRunID:   newTaskRun.ID,
-	})
+		// Alert the event bus that a new task run is being started.
+		go r.API.events.Publish(models.EventCreatedTaskRun{
+			NamespaceID: r.Pipeline.Namespace,
+			PipelineID:  r.Pipeline.ID,
+			RunID:       r.Run.ID,
+			TaskRunID:   newTaskRun.ID,
+		})
+	}
 
 	envVars := combineVariables(r.Run, task)
 
 	// Determine the task run's final variable set and pass them in.
-	err = r.API.db.UpdateTaskRun(newTaskRun, storage.UpdatableTaskRunFields{
+	err := r.API.db.UpdateTaskRun(newTaskRun, storage.UpdatableTaskRunFields{
 		Variables: &envVars,
 	})
 	if err != nil {

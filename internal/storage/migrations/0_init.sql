@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS runs (
     state        TEXT    NOT NULL,
     status       TEXT    NOT NULL,
     status_reason TEXT,
-    task_runs    TEXT    NOT NULL,
     trigger      TEXT    NOT NULL,
     variables    TEXT    NOT NULL,
     store_objects_expired  INTEGER NOT NULL CHECK (store_objects_expired IN (0, 1)),

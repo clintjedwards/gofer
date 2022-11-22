@@ -248,9 +248,6 @@ func TestCRUDRuns(t *testing.T) {
 		Name:  "test_trigger_name",
 		Label: "test_trigger_label",
 	}, []models.Variable{})
-	run.TaskRuns = []string{
-		"test_task_run",
-	}
 
 	runID, err := db.InsertRun(run)
 	if err != nil {
@@ -361,9 +358,6 @@ func TestCRUDTaskRuns(t *testing.T) {
 		Name:  "test_trigger_name",
 		Label: "test_trigger_label",
 	}, []models.Variable{})
-	run.TaskRuns = []string{
-		"test_task_run",
-	}
 
 	runID, err := db.InsertRun(run)
 	if err != nil {
@@ -796,9 +790,6 @@ func TestCRUDObjectStorePipelineRuns(t *testing.T) {
 		Name:  "test_trigger_name",
 		Label: "test_trigger_label",
 	}, []models.Variable{})
-	run.TaskRuns = []string{
-		"test_task_run",
-	}
 
 	runID, err := db.InsertRun(run)
 	if err != nil {

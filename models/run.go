@@ -78,7 +78,6 @@ type Run struct {
 	State               RunState         `json:"state"`                 // The current state of the run.
 	Status              RunStatus        `json:"status"`                // The current status of the run.
 	StatusReason        *RunStatusReason `json:"status_reason"`         // Contains more information about a run's current status.
-	TaskRuns            []string         `json:"task_runs"`             // The unique ID of each task run.
 	Trigger             TriggerInfo      `json:"trigger"`               // Information about which trigger was responsible for the run's execution.
 	Variables           []Variable       `json:"variables"`             // Environment variables to be injected into each child task run. These are usually injected by the trigger.
 	StoreObjectsExpired bool             `json:"store_objects_expired"` // Tracks whether objects for this run have expired already.
@@ -111,7 +110,6 @@ func NewRun(namespace, pipeline string, trigger TriggerInfo, variables []Variabl
 		State:               RunStatePending,
 		Status:              RunStatusUnknown,
 		StatusReason:        nil,
-		TaskRuns:            []string{},
 		Trigger:             trigger,
 		Variables:           variables,
 		StoreObjectsExpired: false,
@@ -138,7 +136,6 @@ func (r *Run) ToProto() *proto.Run {
 		State:               proto.Run_RunState(proto.Run_RunState_value[string(r.State)]),
 		Status:              proto.Run_RunStatus(proto.Run_RunStatus_value[string(r.Status)]),
 		StatusReason:        statusReason,
-		TaskRuns:            r.TaskRuns,
 		Trigger:             r.Trigger.ToProto(),
 		Variables:           variables,
 		StoreObjectsExpired: r.StoreObjectsExpired,
@@ -171,7 +168,6 @@ func (r *Run) FromProto(proto *proto.Run) {
 	r.State = RunState(proto.State.String())
 	r.Status = RunStatus(proto.Status.String())
 	r.StatusReason = statusReason
-	r.TaskRuns = proto.TaskRuns
 	r.Trigger = trigger
 	r.Variables = variables
 	r.StoreObjectsExpired = proto.StoreObjectsExpired

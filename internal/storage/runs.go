@@ -16,7 +16,6 @@ type UpdatableRunFields struct {
 	State               *models.RunState
 	Status              *models.RunStatus
 	StatusReason        *models.RunStatusReason
-	TaskRuns            *[]string
 	Variables           *[]models.Variable
 	StoreObjectsExpired *bool
 }
@@ -31,7 +30,7 @@ func (db *DB) ListRuns(conn qb.BaseRunner, offset, limit int, namespace, pipelin
 	}
 
 	rows, err := qb.Select("namespace", "pipeline", "id", "started", "ended", "state", "status", "status_reason",
-		"task_runs", "trigger", "variables", "store_objects_expired").
+		"trigger", "variables", "store_objects_expired").
 		From("runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline}).
 		OrderBy("started DESC").
@@ -59,13 +58,12 @@ func (db *DB) ListRuns(conn qb.BaseRunner, offset, limit int, namespace, pipelin
 		var state string
 		var status string
 		var statusReasonJSON sql.NullString
-		var taskRunsJSON string
 		var triggerJSON string
 		var variablesJSON string
 		var storeObjectsExpired bool
 
 		err = rows.Scan(&namespace, &pipeline, &id, &started, &ended, &state, &status, &statusReasonJSON,
-			&taskRunsJSON, &triggerJSON, &variablesJSON, &storeObjectsExpired)
+			&triggerJSON, &variablesJSON, &storeObjectsExpired)
 		if err != nil {
 			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 		}
@@ -77,12 +75,6 @@ func (db *DB) ListRuns(conn qb.BaseRunner, offset, limit int, namespace, pipelin
 			if err != nil {
 				return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
 			}
-		}
-
-		taskRuns := []string{}
-		err = json.Unmarshal([]byte(taskRunsJSON), &taskRuns)
-		if err != nil {
-			return nil, fmt.Errorf("database error occurred; could not decode object; %v", err)
 		}
 
 		trigger := models.TriggerInfo{}
@@ -105,7 +97,6 @@ func (db *DB) ListRuns(conn qb.BaseRunner, offset, limit int, namespace, pipelin
 		run.State = models.RunState(state)
 		run.Status = models.RunStatus(status)
 		run.StatusReason = statusReason
-		run.TaskRuns = taskRuns
 		run.Trigger = trigger
 		run.Variables = variables
 		run.StoreObjectsExpired = storeObjectsExpired
@@ -137,11 +128,6 @@ func (db *DB) InsertRun(run *models.Run) (int64, error) {
 		statusReasonJSON = ptr(string(rawJSON))
 	}
 
-	taskRunsJSON, err := json.Marshal(run.TaskRuns)
-	if err != nil {
-		return 0, fmt.Errorf("database error occurred; could not encode object; %v", err)
-	}
-
 	triggerJSON, err := json.Marshal(run.Trigger)
 	if err != nil {
 		return 0, fmt.Errorf("database error occurred; could not encode object; %v", err)
@@ -165,9 +151,9 @@ func (db *DB) InsertRun(run *models.Run) (int64, error) {
 	}
 
 	_, err = qb.Insert("runs").Columns("namespace", "pipeline", "id", "started", "ended", "state", "status",
-		"status_reason", "task_runs", "trigger", "variables", "store_objects_expired").Values(
+		"status_reason", "trigger", "variables", "store_objects_expired").Values(
 		run.Namespace, run.Pipeline, nextID, run.Started, run.Ended, run.State, run.Status, statusReasonJSON,
-		string(taskRunsJSON), string(triggerJSON), string(variablesJSON), run.StoreObjectsExpired,
+		string(triggerJSON), string(variablesJSON), run.StoreObjectsExpired,
 	).RunWith(tx).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -187,7 +173,7 @@ func (db *DB) InsertRun(run *models.Run) (int64, error) {
 }
 
 func (db *DB) GetRun(namespace, pipeline string, run int64) (models.Run, error) {
-	row := qb.Select("started", "ended", "state", "status", "status_reason", "task_runs", "trigger", "variables",
+	row := qb.Select("started", "ended", "state", "status", "status_reason", "trigger", "variables",
 		"store_objects_expired").From("runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "id": run}).RunWith(db).QueryRow()
 
@@ -196,12 +182,11 @@ func (db *DB) GetRun(namespace, pipeline string, run int64) (models.Run, error) 
 	var state string
 	var status string
 	var statusReasonJSON sql.NullString
-	var taskRunsJSON string
 	var triggerJSON string
 	var variablesJSON string
 	var storeObjectsExpired bool
 
-	err := row.Scan(&started, &ended, &state, &status, &statusReasonJSON, &taskRunsJSON, &triggerJSON,
+	err := row.Scan(&started, &ended, &state, &status, &statusReasonJSON, &triggerJSON,
 		&variablesJSON, &storeObjectsExpired)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -218,12 +203,6 @@ func (db *DB) GetRun(namespace, pipeline string, run int64) (models.Run, error) 
 		if err != nil {
 			return models.Run{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
 		}
-	}
-
-	taskRuns := []string{}
-	err = json.Unmarshal([]byte(taskRunsJSON), &taskRuns)
-	if err != nil {
-		return models.Run{}, fmt.Errorf("database error occurred; could not decode object; %v", err)
 	}
 
 	trigger := models.TriggerInfo{}
@@ -248,7 +227,6 @@ func (db *DB) GetRun(namespace, pipeline string, run int64) (models.Run, error) 
 	retrievedRun.State = models.RunState(state)
 	retrievedRun.Status = models.RunStatus(status)
 	retrievedRun.StatusReason = statusReason
-	retrievedRun.TaskRuns = taskRuns
 	retrievedRun.Trigger = trigger
 	retrievedRun.Variables = variables
 	retrievedRun.StoreObjectsExpired = storeObjectsExpired
@@ -277,14 +255,6 @@ func (db *DB) UpdateRun(namespace, pipeline string, run int64, fields UpdatableR
 			return fmt.Errorf("database error occurred; could not encode object; %v", err)
 		}
 		query = query.Set("status_reason", string(statusReason))
-	}
-
-	if fields.TaskRuns != nil {
-		taskRuns, err := json.Marshal(fields.TaskRuns)
-		if err != nil {
-			return fmt.Errorf("database error occurred; could not encode object; %v", err)
-		}
-		query = query.Set("task_runs", taskRuns)
 	}
 
 	if fields.Variables != nil {

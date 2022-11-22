@@ -179,7 +179,7 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 
 	// findOrphans is a repair method that picks up where the gofer service left off if it was shutdown while
 	// a run was currently in progress.
-	// go newAPI.findOrphans()
+	go newAPI.findOrphans()
 
 	// These two functions are responsible for gofer's trigger event loop system. The first launches goroutines that
 	// consumes events from triggers and the latter processes them into pipeline runs.
@@ -374,8 +374,9 @@ func (api *API) createDefaultNamespace() error {
 // While simple on its face this is actually quite non-trivial as it requires delicate figuring out where the run is
 // currently in its lifecycle and accounting for any state it could possibly be in.
 //
-// Gofer identifies runs that haven't fully completed by keeping an in-progress run "cache" and identifying which ones it
-// did not get an opportunity to finish tracking.
+// Gofer identifies runs that haven't fully completed by searching through and matching run events.
+// If an event is missing it's "Completed" event then on startup Gofer considers that run not finished and attempts
+// to recover it.
 //
 // It then asks the scheduler for the last status of the container and appropriately either:
 //   - If the run is unfinished: Attach the goroutine responsible for monitoring said run.
@@ -398,7 +399,7 @@ func (api *API) findOrphans() {
 	for event := range events {
 		switch event.Kind {
 		case models.EventKindStartedRun:
-			// TODO(clintjedwards): This causes the data race alert to be angry,
+			// This causes the data race alert to be angry,
 			// but in theory it should be fine as we only read and write from
 			// the var once. Need to find a way to pass trait objects without
 			// Go complaining that other things can access them.
@@ -457,35 +458,39 @@ func (api *API) findOrphans() {
 	}
 }
 
-// repairOrphanRun allows gofer to repair runs that are orphaned from a bug of sudden shutdown.
+// repairOrphanRun allows gofer to repair runs that are orphaned from a loss of tracking or sudden shutdown.
 //
 //   - If the run is unfinished: Attach the goroutine responsible for monitoring said run.
 //   - If the container/task run is still running: Attach state watcher goroutine, truncate logs, attach new log watcher.
-//   - If the container is in a finished state: Remove from run cache -> update container state -> clear out logs
+//   - If the container is in a finished state: update container state -> clear out logs
 //     -> update logs with new logs.
 //   - If the scheduler has no record of this container ever running then assume the state is unknown.
-func (api *API) repairOrphanRun(namespace, pipelineID string, runID int64) error {
-	pipeline, err := api.db.GetPipeline(nil, namespace, pipelineID)
+func (api *API) repairOrphanRun(namespaceID, pipelineID string, runID int64) error {
+	pipeline, err := api.db.GetPipeline(nil, namespaceID, pipelineID)
 	if err != nil {
 		return err
 	}
 
-	run, err := api.db.GetRun(namespace, pipelineID, runID)
+	run, err := api.db.GetRun(namespaceID, pipelineID, runID)
 	if err != nil {
 		return err
 	}
 
+	taskRuns, err := api.db.ListTaskRuns(0, 0, namespaceID, pipelineID, runID)
+	if err != nil {
+		return err
+	}
+
+	// In order to manage the orphaned run we will create a new state machine and make it part of that.
 	runStateMachine := api.newRunStateMachine(&pipeline, &run)
 
-	// For each run we also need to handle the individual task runs.
-	for _, taskrunID := range run.TaskRuns {
-		taskrun, err := api.db.GetTaskRun(run.Namespace, run.Pipeline, run.ID, taskrunID)
-		if err != nil {
-			log.Error().Err(err).Str("pipeline", run.Pipeline).Int64("run", run.ID).
-				Msg("could not get run status for repair orphan")
-			continue
-		}
+	// For each run we also need to evaluate the individual task runs.
+	for _, taskrun := range taskRuns {
+		taskrun := taskrun
 
+		// If the task run was actually marked complete in the database. Then we add it to the state machine.
+		// This is necessary because eventually we will compute whether the run was complete and we'll need the
+		// state of that run.
 		if taskrun.State == models.TaskRunStateComplete {
 			runStateMachine.TaskRuns.Set(taskrun.Task.GetID(), taskrun)
 			continue
@@ -493,11 +498,13 @@ func (api *API) repairOrphanRun(namespace, pipelineID string, runID int64) error
 
 		// If the taskrun was waiting to be scheduled then we have to make sure it gets scheduled as normal.
 		if taskrun.State == models.TaskRunStateWaiting || taskrun.State == models.TaskRunStateProcessing {
-			go runStateMachine.launchTaskRun(taskrun.Task)
+			go runStateMachine.launchTaskRun(taskrun.Task, false)
 			continue
 		}
 
-		// If it is unfinished and just need to be tracked then we just add log/state trackers onto it.
+		// If the task run was in a state where it had been launched and just needs to be tracked then we just
+		// add log/state trackers onto it.
+		runStateMachine.TaskRuns.Set(taskrun.Task.GetID(), taskrun)
 		go runStateMachine.handleLogUpdates(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)
 		go func() {
 			err = runStateMachine.waitTaskRunFinish(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)

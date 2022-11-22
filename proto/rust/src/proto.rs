@@ -134,8 +134,6 @@ pub struct Run {
     pub status: i32,
     #[prost(message, optional, tag="8")]
     pub status_reason: ::core::option::Option<RunStatusReason>,
-    #[prost(string, repeated, tag="9")]
-    pub task_runs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(message, optional, tag="10")]
     pub trigger: ::core::option::Option<run::RunTriggerInfo>,
     #[prost(message, repeated, tag="11")]
