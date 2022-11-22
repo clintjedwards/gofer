@@ -74,8 +74,8 @@ func taskrunList(_ *cobra.Command, args []string) error {
 			cliformat.UnixMilli(taskrun.Started, "Not yet", cl.State.Config.Detail),
 			cliformat.UnixMilli(taskrun.Ended, "Still running", cl.State.Config.Detail),
 			cliformat.Duration(taskrun.Started, taskrun.Ended),
-			cliformat.ColorizeTaskRunStatus(cliformat.NormalizeEnumValue(taskrun.Status, "Unknown")),
 			cliformat.ColorizeTaskRunState(cliformat.NormalizeEnumValue(taskrun.State, "Unknown")),
+			cliformat.ColorizeTaskRunStatus(cliformat.NormalizeEnumValue(taskrun.Status, "Unknown")),
 		})
 	}
 
@@ -92,7 +92,7 @@ func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "Status", "State"})
+	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "State", "Status"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)

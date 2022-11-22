@@ -51,8 +51,8 @@ func triggerList(_ *cobra.Command, _ []string) error {
 		data = append(data, []string{
 			trigger.Name,
 			trigger.Url,
-			cliformat.ColorizeTriggerStatus(cliformat.NormalizeEnumValue(trigger.Status.String(), "Unknown")),
 			cliformat.ColorizeTriggerState(cliformat.NormalizeEnumValue(trigger.State.String(), "Unknown")),
+			cliformat.ColorizeTriggerStatus(cliformat.NormalizeEnumValue(trigger.Status.String(), "Unknown")),
 			trigger.Documentation,
 		})
 	}
@@ -69,7 +69,7 @@ func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"Name", "URL", "Status", "State", "Documentation Link"})
+	table.SetHeader([]string{"Name", "URL", "State", "Status", "Documentation Link"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)

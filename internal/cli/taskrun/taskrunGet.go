@@ -138,7 +138,7 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 		ImageName:    color.BlueString(taskRun.Task.GetImage()),
 	}
 
-	const formatTmpl = `TaskRun {{.ID}} :: {{.Status}} :: {{.State}}
+	const formatTmpl = `TaskRun {{.ID}} :: {{.State}} :: {{.Status}}
 
   {{magenta "│"}} Parent Pipeline: {{.PipelineID}}
   {{magenta "├─"}} Parent Run: {{.RunID}}
