@@ -19,9 +19,13 @@ func (api *API) GetPipeline(ctx context.Context, request *proto.GetPipelineReque
 		return &proto.GetPipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.GetPipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	pipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
 	if err != nil {
@@ -40,9 +44,13 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 		return &proto.DisablePipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.DisablePipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.DisablePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -86,9 +94,13 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 		return &proto.EnablePipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.EnablePipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.EnablePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -129,9 +141,13 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 }
 
 func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesRequest) (*proto.ListPipelinesResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.ListPipelinesResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	pipelines, err := api.db.ListPipelines(int(request.Offset), int(request.Limit), request.NamespaceId)
 	if err != nil {
@@ -150,9 +166,13 @@ func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesR
 }
 
 func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelineRequest) (*proto.CreatePipelineResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.CreatePipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if request.PipelineConfig == nil {
 		return &proto.CreatePipelineResponse{},
@@ -165,7 +185,7 @@ func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelin
 
 	newPipeline := models.NewPipeline(request.NamespaceId, request.PipelineConfig)
 
-	err := api.configTriggersIsValid(newPipeline.Triggers)
+	err = api.configTriggersIsValid(newPipeline.Triggers)
 	if err != nil {
 		return &proto.CreatePipelineResponse{},
 			status.Error(codes.FailedPrecondition, err.Error())
@@ -217,9 +237,13 @@ func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelin
 }
 
 func (api *API) UpdatePipeline(ctx context.Context, request *proto.UpdatePipelineRequest) (*proto.UpdatePipelineResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.UpdatePipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.UpdatePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -297,9 +321,13 @@ func (api *API) DeletePipeline(ctx context.Context, request *proto.DeletePipelin
 		return &proto.DeletePipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.DeletePipelineResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.DeletePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")

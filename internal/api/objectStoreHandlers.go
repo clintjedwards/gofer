@@ -15,9 +15,13 @@ import (
 )
 
 func (api *API) ListPipelineObjects(ctx context.Context, request *proto.ListPipelineObjectsRequest) (*proto.ListPipelineObjectsResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.ListPipelineObjectsResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.ListPipelineObjectsResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -39,9 +43,13 @@ func (api *API) ListPipelineObjects(ctx context.Context, request *proto.ListPipe
 }
 
 func (api *API) GetPipelineObject(ctx context.Context, request *proto.GetPipelineObjectRequest) (*proto.GetPipelineObjectResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.GetPipelineObjectResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.GetPipelineObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -58,9 +66,13 @@ func (api *API) GetPipelineObject(ctx context.Context, request *proto.GetPipelin
 }
 
 func (api *API) PutPipelineObject(ctx context.Context, request *proto.PutPipelineObjectRequest) (*proto.PutPipelineObjectResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.PutPipelineObjectResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.PutPipelineObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -84,15 +96,19 @@ func (api *API) PutPipelineObject(ctx context.Context, request *proto.PutPipelin
 }
 
 func (api *API) DeletePipelineObject(ctx context.Context, request *proto.DeletePipelineObjectRequest) (*proto.DeletePipelineObjectResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.DeletePipelineObjectResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.DeletePipelineObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	err := api.objectStore.DeleteObject(pipelineObjectKey(request.NamespaceId, request.PipelineId, request.Key))
+	err = api.objectStore.DeleteObject(pipelineObjectKey(request.NamespaceId, request.PipelineId, request.Key))
 	if err != nil {
 		return &proto.DeletePipelineObjectResponse{}, status.Error(codes.Internal, fmt.Sprintf("could not delete object %q; %v", request.Key, err))
 	}
@@ -101,9 +117,13 @@ func (api *API) DeletePipelineObject(ctx context.Context, request *proto.DeleteP
 }
 
 func (api *API) ListRunObjects(ctx context.Context, request *proto.ListRunObjectsRequest) (*proto.ListRunObjectsResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.ListRunObjectsResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.ListRunObjectsResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -125,9 +145,13 @@ func (api *API) ListRunObjects(ctx context.Context, request *proto.ListRunObject
 }
 
 func (api *API) GetRunObject(ctx context.Context, request *proto.GetRunObjectRequest) (*proto.GetRunObjectResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.GetRunObjectResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.GetRunObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -144,9 +168,13 @@ func (api *API) GetRunObject(ctx context.Context, request *proto.GetRunObjectReq
 }
 
 func (api *API) PutRunObject(ctx context.Context, request *proto.PutRunObjectRequest) (*proto.PutRunObjectResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.PutRunObjectResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.PutRunObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -154,7 +182,7 @@ func (api *API) PutRunObject(ctx context.Context, request *proto.PutRunObjectReq
 
 	newObjectKey := models.NewObjectStoreKey(request.Key)
 
-	err := api.db.InsertObjectStoreRunKey(request.NamespaceId, request.PipelineId, request.RunId, newObjectKey)
+	err = api.db.InsertObjectStoreRunKey(request.NamespaceId, request.PipelineId, request.RunId, newObjectKey)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return &proto.PutRunObjectResponse{},
@@ -180,15 +208,19 @@ func (api *API) PutRunObject(ctx context.Context, request *proto.PutRunObjectReq
 }
 
 func (api *API) DeleteRunObject(ctx context.Context, request *proto.DeleteRunObjectRequest) (*proto.DeleteRunObjectResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.DeleteRunObjectResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.DeleteRunObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	err := api.objectStore.DeleteObject(runObjectKey(request.NamespaceId, request.PipelineId, request.RunId, request.Key))
+	err = api.objectStore.DeleteObject(runObjectKey(request.NamespaceId, request.PipelineId, request.RunId, request.Key))
 	if err != nil {
 		return nil, err
 	}

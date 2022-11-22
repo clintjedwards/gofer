@@ -14,9 +14,13 @@ import (
 )
 
 func (api *API) GetPipelineSecret(ctx context.Context, request *proto.GetPipelineSecretRequest) (*proto.GetPipelineSecretResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.GetPipelineSecretResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if request.Key == "" {
 		return nil, status.Error(codes.FailedPrecondition, "key cannot be empty")
@@ -53,9 +57,13 @@ func (api *API) GetPipelineSecret(ctx context.Context, request *proto.GetPipelin
 }
 
 func (api *API) ListPipelineSecrets(ctx context.Context, request *proto.ListPipelineSecretsRequest) (*proto.ListPipelineSecretsResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.ListPipelineSecretsResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.ListPipelineSecretsResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -77,9 +85,13 @@ func (api *API) ListPipelineSecrets(ctx context.Context, request *proto.ListPipe
 }
 
 func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelineSecretRequest) (*proto.PutPipelineSecretResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.PutPipelineSecretResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if request.Key == "" {
 		return nil, status.Error(codes.FailedPrecondition, "key cannot be empty")
@@ -91,7 +103,7 @@ func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelin
 
 	newSecretKey := models.NewSecretStoreKey(request.Key)
 
-	err := api.db.InsertSecretStorePipelineKey(request.NamespaceId, request.PipelineId, newSecretKey, request.Force)
+	err = api.db.InsertSecretStorePipelineKey(request.NamespaceId, request.PipelineId, newSecretKey, request.Force)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return &proto.PutPipelineSecretResponse{},
@@ -119,9 +131,13 @@ func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelin
 }
 
 func (api *API) DeletePipelineSecret(ctx context.Context, request *proto.DeletePipelineSecretRequest) (*proto.DeletePipelineSecretResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.DeletePipelineSecretResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if request.Key == "" {
 		return nil, status.Error(codes.FailedPrecondition, "key cannot be empty")
@@ -131,7 +147,7 @@ func (api *API) DeletePipelineSecret(ctx context.Context, request *proto.DeleteP
 		return &proto.DeletePipelineSecretResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	err := api.db.DeleteSecretStorePipelineKey(request.NamespaceId, request.PipelineId, request.Key)
+	err = api.db.DeleteSecretStorePipelineKey(request.NamespaceId, request.PipelineId, request.Key)
 	if err != nil {
 		return &proto.DeletePipelineSecretResponse{}, err
 	}

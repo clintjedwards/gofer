@@ -40,3 +40,23 @@ func determineNamespace(ctx context.Context) string {
 
 	return namespaceDefaultID
 }
+
+// Determines what is the namespace the user probably meant and then determine if it exists. If it doesn't
+// we return an error, if it does we return the namespace's ID.
+func (api *API) resolveNamespace(ctx context.Context, intendedNamespace string) (string, error) {
+	// If the user didn't specify a namespace explicitly we go through a series of ways
+	// (explain in determineNamespace docs) to determine what that namespace might be.
+	if intendedNamespace == "" {
+		intendedNamespace = determineNamespace(ctx)
+		if intendedNamespace == namespaceDefaultID {
+			return intendedNamespace, nil
+		}
+	}
+
+	_, err := api.db.GetNamespace(intendedNamespace)
+	if err != nil {
+		return "", err
+	}
+
+	return intendedNamespace, nil
+}

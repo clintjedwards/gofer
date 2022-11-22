@@ -20,9 +20,13 @@ func (api *API) GetTaskRun(ctx context.Context, request *proto.GetTaskRunRequest
 		return &proto.GetTaskRunResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.GetTaskRunResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
@@ -41,9 +45,13 @@ func (api *API) ListTaskRuns(ctx context.Context, request *proto.ListTaskRunsReq
 		return &proto.ListTaskRunsResponse{}, status.Error(codes.FailedPrecondition, "pipeline required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.ListTaskRunsResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	taskRuns, err := api.db.ListTaskRuns(0, 0, request.NamespaceId, request.PipelineId, request.RunId)
 	if err != nil {
@@ -74,9 +82,13 @@ func (api *API) CancelTaskRun(ctx context.Context, request *proto.CancelTaskRunR
 		return &proto.CancelTaskRunResponse{}, status.Error(codes.FailedPrecondition, "run required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.CancelTaskRunResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.CancelTaskRunResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -112,9 +124,12 @@ func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream prot
 		return status.Error(codes.FailedPrecondition, "run required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(stream.Context())
+	namespace, err := api.resolveNamespace(stream.Context(), request.NamespaceId)
+	if err != nil {
+		return status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
@@ -191,9 +206,13 @@ func (api *API) DeleteTaskRunLogs(ctx context.Context, request *proto.DeleteTask
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.FailedPrecondition, "run required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.DeleteTaskRunLogsResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.PermissionDenied, "access denied")

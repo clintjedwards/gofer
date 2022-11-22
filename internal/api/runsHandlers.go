@@ -15,9 +15,13 @@ import (
 )
 
 func (api *API) GetRun(ctx context.Context, request *proto.GetRunRequest) (*proto.GetRunResponse, error) {
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.GetRunResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	run, err := api.db.GetRun(request.NamespaceId, request.PipelineId, request.Id)
 	if err != nil {
@@ -36,9 +40,13 @@ func (api *API) ListRuns(ctx context.Context, request *proto.ListRunsRequest) (*
 		return &proto.ListRunsResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.ListRunsResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	runs, err := api.db.ListRuns(nil, int(request.Offset), int(request.Limit), request.NamespaceId, request.PipelineId)
 	if err != nil {
@@ -61,9 +69,13 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.StartRunResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.StartRunResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -138,9 +150,13 @@ func (api *API) RetryRun(ctx context.Context, request *proto.RetryRunRequest) (*
 		return &proto.RetryRunResponse{}, status.Error(codes.FailedPrecondition, "pipeline id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.RetryRunResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.RetryRunResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -185,9 +201,13 @@ func (api *API) CancelRun(ctx context.Context, request *proto.CancelRunRequest) 
 		return &proto.CancelRunResponse{}, status.Error(codes.FailedPrecondition, "pipeline id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.CancelRunResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.CancelRunResponse{}, status.Error(codes.PermissionDenied, "access denied")
@@ -219,9 +239,13 @@ func (api *API) CancelAllRuns(ctx context.Context, request *proto.CancelAllRunsR
 		return &proto.CancelAllRunsResponse{}, status.Error(codes.FailedPrecondition, "pipeline id required")
 	}
 
-	if request.NamespaceId == "" {
-		request.NamespaceId = determineNamespace(ctx)
+	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
+	if err != nil {
+		return &proto.CancelAllRunsResponse{},
+			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
+
+	request.NamespaceId = namespace
 
 	if !hasAccess(ctx, request.NamespaceId) {
 		return &proto.CancelAllRunsResponse{}, status.Error(codes.PermissionDenied, "access denied")
