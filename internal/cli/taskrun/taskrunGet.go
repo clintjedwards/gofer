@@ -77,12 +77,6 @@ func taskrunGet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-type variable struct {
-	Key    string
-	Value  string
-	Source string
-}
-
 type data struct {
 	ID           string
 	State        string
@@ -93,7 +87,7 @@ type data struct {
 	ExitCode     int64
 	Duration     string
 	Logs         []string
-	EnvVars      []variable
+	EnvVars      string
 	PipelineID   string
 	RunID        string
 	TaskRunCmd   string
@@ -106,6 +100,29 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 		exitCode = *taskRun.ExitCode
 	}
 
+	faint := color.New(color.Faint).SprintfFunc()
+
+	// First we create a FuncMap with which to register the function.
+	funcMap := template.FuncMap{
+		"magenta": color.MagentaString,
+		"faint":   faint,
+	}
+
+	combinedVariables := taskRun.Task.GetVariables()
+	combinedVariables = append(combinedVariables, taskRun.Variables...)
+	variableList := [][]string{}
+
+	for _, variable := range combinedVariables {
+		variableList = append(variableList, []string{
+			color.MagentaString("│"),
+			variable.Key,
+			color.BlueString(variable.Value),
+			faint("%s", formatSource(string(variable.Source))),
+		})
+	}
+
+	variablesTable := format.GenerateGenericTable(variableList, "", 4)
+
 	data := data{
 		ID:           color.BlueString(taskRun.ID),
 		State:        format.ColorizeTaskRunState(format.NormalizeEnumValue(taskRun.State, "Unknown")),
@@ -113,55 +130,37 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 		Started:      format.UnixMilli(taskRun.Started, "Not yet", detail),
 		Duration:     format.Duration(taskRun.Started, taskRun.Ended),
 		PipelineID:   color.BlueString(taskRun.Pipeline),
-		EnvVars:      convertVariables(taskRun.Task.GetVariables()),
+		EnvVars:      variablesTable,
 		ExitCode:     exitCode,
 		RunID:        color.BlueString("#" + strconv.Itoa(int(taskRun.Run))),
 		StatusReason: taskRun.StatusReason,
 		TaskRunCmd:   color.CyanString(fmt.Sprintf("gofer taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.ID)),
-		ImageName:    taskRun.Task.GetImage(),
+		ImageName:    color.BlueString(taskRun.Task.GetImage()),
 	}
 
 	const formatTmpl = `TaskRun {{.ID}} :: {{.Status}} :: {{.State}}
 
-  ✏ Parent Pipeline {{.PipelineID}} | Parent Run {{.RunID}}
-  ✏ Started {{.Started}} and ran for {{.Duration}}
- {{if .ImageName}} ✏ {{.ImageName}} {{- end}}
- {{if .ExitCode}} ✏ Exit Code: {{.ExitCode}} {{- end}}
+  {{magenta "│"}} Parent Pipeline: {{.PipelineID}}
+  {{magenta "├─"}} Parent Run: {{.RunID}}
+  {{magenta "│"}} Started {{.Started}} and ran for {{.Duration}}
+ {{if .ImageName}} {{magenta "│"}} Image {{.ImageName}} {{- end}}
+ {{if .ExitCode}} {{magenta "│"}} Exit Code: {{.ExitCode}} {{- end}}
 {{- if .StatusReason}}
 
   Status Details:
-    | Reason: {{.StatusReason.Reason}}
-    | Description: {{.StatusReason.Description}}
+    {{magenta "│"}} Reason: {{.StatusReason.Reason}}
+    {{magenta "│"}} Description: {{.StatusReason.Description}}
 {{- end }}
 {{- if .EnvVars}}
   $ Environment Variables:
-  {{- range $v := .EnvVars}}
-    | {{$v.Key}}={{$v.Value}} [from {{$v.Source}}]
-  {{- end}}
+{{.EnvVars}}
 {{- end}}
-
 * Use '{{.TaskRunCmd}}' to view logs.`
 
 	var tpl bytes.Buffer
-	t := template.Must(template.New("tmp").Parse(formatTmpl))
+	t := template.Must(template.New("tmp").Funcs(funcMap).Parse(formatTmpl))
 	_ = t.Execute(&tpl, data)
 	return tpl.String()
-}
-
-func convertVariables(vars []models.Variable) []variable {
-	convertedVariables := []variable{}
-
-	for _, rawVar := range vars {
-		newVar := variable{
-			Key:    rawVar.Key,
-			Value:  rawVar.Value,
-			Source: formatSource(string(rawVar.Source)),
-		}
-
-		convertedVariables = append(convertedVariables, newVar)
-	}
-
-	return convertedVariables
 }
 
 func formatSource(source string) string {

@@ -165,5 +165,3 @@ We need a common way to alert on a PR or something that a task has succeeded or 
 - Clean up both github triggers and add a github common task.
   - common task we can throw in there as a parallel task a the start of each pipeline. It will consume github commit, inform github of the pipeline pending and then query gofer to see when the run has ended. When the run ends the task will then inform github that the run has finished with a particular state.
 - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So users can get zero to code ultra-fast.
-- When we attempt to create a pipeline we should test that the namespace exists before attempting to create it.
-- Get TaskRun is broken.
