@@ -1,6 +1,5 @@
 pub mod config;
 mod dag;
-pub mod trigger;
 
 use config::ConfigError;
 use lazy_regex::regex;

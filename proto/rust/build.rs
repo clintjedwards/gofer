@@ -6,7 +6,8 @@ fn main() {
             &[
                 "gofer.proto",
                 "gofer_transport.proto",
-                "gofer_message.proto",
+                "gofer_message_api.proto",
+                "gofer_message_sdk.proto",
             ],
             &["../"],
         )

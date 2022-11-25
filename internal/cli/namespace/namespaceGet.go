@@ -8,7 +8,6 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/fatih/color"
@@ -53,10 +52,7 @@ func namespaceGet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	namespace := models.Namespace{}
-	namespace.FromProto(resp.Namespace)
-
-	output, err := formatNamespace(&namespace, cl.State.Config.Detail)
+	output, err := formatNamespace(resp.Namespace, cl.State.Config.Detail)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not render namespace: %v", err))
 		cl.State.Fmt.Finish()
@@ -76,9 +72,9 @@ type data struct {
 	Deleted     string
 }
 
-func formatNamespace(namespace *models.Namespace, detail bool) (string, error) {
+func formatNamespace(namespace *proto.Namespace, detail bool) (string, error) {
 	data := data{
-		ID:          color.BlueString(namespace.ID),
+		ID:          color.BlueString(namespace.Id),
 		Name:        namespace.Name,
 		Description: namespace.Description,
 		Created:     cliformat.UnixMilli(namespace.Created, "Never", detail),

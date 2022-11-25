@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -116,7 +116,7 @@ func (eb *EventBus) Unsubscribe(sub Subscription) {
 func (eb *EventBus) Publish(evt models.EventKindDetails) int64 {
 	event := models.NewEvent(evt)
 
-	id, err := eb.storage.InsertEvent(event)
+	id, err := eb.storage.InsertEvent(eb.storage, event.ToStorage())
 	if err != nil {
 		log.Error().Err(err).Msg("could not add event to storage")
 	}
@@ -162,7 +162,7 @@ func (eb *EventBus) GetAll(reverse bool) <-chan models.Event {
 		offset := 0
 
 		for {
-			eventList, err := eb.storage.ListEvents(offset, 10, reverse)
+			eventList, err := eb.storage.ListEvents(eb.storage, offset, 10, reverse)
 			if err != nil {
 				log.Error().Err(err).Msg("could not get events")
 				close(events)
@@ -174,7 +174,10 @@ func (eb *EventBus) GetAll(reverse bool) <-chan models.Event {
 				return
 			}
 
-			for _, event := range eventList {
+			for _, rawEvent := range eventList {
+				event := models.Event{}
+				event.FromStorage(&rawEvent)
+
 				events <- event
 			}
 
@@ -187,13 +190,16 @@ func (eb *EventBus) GetAll(reverse bool) <-chan models.Event {
 
 // Get returns a single event by id. Returns a eventbus.ErrEventNotFound if the event could not be located.
 func (eb *EventBus) Get(id int64) (models.Event, error) {
-	event, err := eb.storage.GetEvent(id)
+	rawEvent, err := eb.storage.GetEvent(eb.storage, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return models.Event{}, ErrEventNotFound
 		}
 		return models.Event{}, err
 	}
+
+	event := models.Event{}
+	event.FromStorage(&rawEvent)
 
 	return event, nil
 }
@@ -204,19 +210,22 @@ func (eb *EventBus) pruneEvents() {
 	totalPruned := 0
 
 	for {
-		events, err := eb.storage.ListEvents(offset, 50, false)
+		events, err := eb.storage.ListEvents(eb.storage, offset, 50, false)
 		if err != nil {
 			log.Error().Err(err).Msg("could not get events from storage")
 			return
 		}
 
-		for _, event := range events {
+		for _, rawEvent := range events {
+			event := models.Event{}
+			event.FromStorage(&rawEvent)
+
 			if isPastCutDate(event, eb.retention) {
 				log.Debug().Int64("event_id", event.ID).Dur("retention", eb.retention).
 					Int64("emitted", event.Emitted).
 					Int64("current_time", time.Now().UnixMilli()).Msg("removed event past retention")
 				totalPruned++
-				err := eb.storage.DeleteEvent(event.ID)
+				err := eb.storage.DeleteEvent(eb.storage, event.ID)
 				if err != nil {
 					log.Error().Err(err).Msg("could not delete event")
 					return

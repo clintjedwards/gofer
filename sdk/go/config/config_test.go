@@ -96,14 +96,14 @@ func TestSimpleConfigSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := proto.PipelineConfig{
+	want := proto.UserPipelineConfig{
 		Id:          "simple_test_pipeline",
 		Name:        "Simple Test Pipeline",
 		Description: "Simple Test Pipeline",
-		Tasks: []*proto.PipelineTaskConfig{
+		Tasks: []*proto.UserPipelineTaskConfig{
 			{
-				Task: &proto.PipelineTaskConfig_CustomTask{
-					CustomTask: &proto.CustomTaskConfig{
+				Task: &proto.UserPipelineTaskConfig_CustomTask{
+					CustomTask: &proto.UserCustomTaskConfig{
 						Id:          "simple_task",
 						Image:       "ubuntu:latest",
 						Description: "This task simply prints our hello-world message and exits!",

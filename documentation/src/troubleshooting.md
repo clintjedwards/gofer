@@ -2,11 +2,11 @@
 
 This page provides various tips on how to troubleshoot and find issues/errors within Gofer.
 
-## Debugging triggers
+## Debugging extensions
 
-Triggers are simply long running docker containers that internally wait for an event to happen and then communicate with Gofer through a long GRPC poll on what should be the result of that event.
+Extensions are simply long running docker containers that internally wait for an event to happen and then communicate with Gofer through a long GRPC poll on what should be the result of that event.
 
-<!-- TODO(clintjedwards): Provide a debug Gofer trigger-->
+<!-- TODO(clintjedwards): Provide a debug Gofer extension-->
 
 ## Debugging Common Tasks
 

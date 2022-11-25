@@ -7,7 +7,6 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	cliFmt "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/olekukonko/tablewriter"
@@ -74,12 +73,9 @@ func pipelineList(cmd *cobra.Command, _ []string) error {
 	}
 
 	data := [][]string{}
-	for _, pipelineProto := range resp.Pipelines {
-		pipeline := models.Pipeline{}
-		pipeline.FromProto(pipelineProto)
-
-		recentRuns := recentRuns(ctx, client, pipeline.Namespace, pipeline.ID, 5)
-		recentRunsHealth := []models.RunStatus{}
+	for _, pipeline := range resp.Pipelines {
+		recentRuns := recentRuns(ctx, client, pipeline.Namespace, pipeline.Id, 5)
+		recentRunsHealth := []proto.Run_RunStatus{}
 		for _, run := range recentRuns {
 			recentRunsHealth = append(recentRunsHealth, run.Status)
 		}
@@ -91,9 +87,8 @@ func pipelineList(cmd *cobra.Command, _ []string) error {
 		}
 
 		data = append(data, []string{
-			pipeline.ID,
-			pipeline.Name,
-			cliFmt.ColorizePipelineState(cliFmt.NormalizeEnumValue(pipeline.State, "Unknown")),
+			pipeline.Id,
+			cliFmt.ColorizePipelineMetadataState(cliFmt.NormalizeEnumValue(pipeline.State.String(), "Unknown")),
 			cliFmt.Health(recentRunsHealth, false),
 			cliFmt.UnixMilli(pipeline.Created, "Never", cl.State.Config.Detail),
 			cliFmt.UnixMilli(lastRunTime, "None", cl.State.Config.Detail),
@@ -108,7 +103,7 @@ func pipelineList(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func recentRuns(ctx context.Context, client proto.GoferClient, namespace, pipeline string, limit int64) []models.Run {
+func recentRuns(ctx context.Context, client proto.GoferClient, namespace, pipeline string, limit int64) []*proto.Run {
 	resp, err := client.ListRuns(ctx, &proto.ListRunsRequest{
 		Offset:      0,
 		Limit:       limit,
@@ -120,22 +115,14 @@ func recentRuns(ctx context.Context, client proto.GoferClient, namespace, pipeli
 		return nil
 	}
 
-	runs := []models.Run{}
-
-	for _, protoRun := range resp.Runs {
-		run := models.Run{}
-		run.FromProto(protoRun)
-		runs = append(runs, run)
-	}
-
-	return runs
+	return resp.Runs
 }
 
 func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"ID", "Name", "State", "Health", "Created", "Last Run"})
+	table.SetHeader([]string{"ID", "State", "Health", "Created", "Last Run"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)
@@ -153,11 +140,9 @@ func formatTable(data [][]string, color bool) string {
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
 		)
 		table.SetColumnColor(
 			tablewriter.Color(tablewriter.FgYellowColor),
-			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),

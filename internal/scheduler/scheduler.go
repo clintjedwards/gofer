@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/clintjedwards/gofer/models"
+	"github.com/clintjedwards/gofer/internal/models"
 )
 
 type EngineType string
@@ -51,7 +51,7 @@ type StartContainerRequest struct {
 	// don't use proper tagging or versioning.
 	AlwaysPull bool
 
-	// Networking is used to communicate to the container via RPC. This is only needed by triggers.
+	// Networking is used to communicate to the container via RPC. This is only needed by extensions.
 	EnableNetworking bool
 	Entrypoint       *[]string
 	Command          *[]string

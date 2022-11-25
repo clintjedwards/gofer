@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/rs/zerolog/log"
@@ -17,52 +17,52 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetTrigger(ctx context.Context, request *proto.GetTriggerRequest) (*proto.GetTriggerResponse, error) {
+func (api *API) GetExtension(ctx context.Context, request *proto.GetExtensionRequest) (*proto.GetExtensionResponse, error) {
 	if request.Name == "" {
-		return &proto.GetTriggerResponse{}, status.Error(codes.FailedPrecondition, "name required")
+		return &proto.GetExtensionResponse{}, status.Error(codes.FailedPrecondition, "name required")
 	}
 
-	trigger, exists := api.triggers.Get(request.Name)
+	extension, exists := api.extensions.Get(request.Name)
 	if !exists {
-		return &proto.GetTriggerResponse{}, status.Error(codes.NotFound, "could not find trigger")
+		return &proto.GetExtensionResponse{}, status.Error(codes.NotFound, "could not find extension")
 	}
 
-	return &proto.GetTriggerResponse{Trigger: trigger.ToProto()}, nil
+	return &proto.GetExtensionResponse{Extension: extension.ToProto()}, nil
 }
 
-func (api *API) ListTriggers(ctx context.Context, request *proto.ListTriggersRequest) (*proto.ListTriggersResponse, error) {
-	protoTriggers := []*proto.Trigger{}
-	for _, triggerKey := range api.triggers.Keys() {
-		trigger, exists := api.triggers.Get(triggerKey)
+func (api *API) ListExtensions(ctx context.Context, request *proto.ListExtensionsRequest) (*proto.ListExtensionsResponse, error) {
+	protoExtensions := []*proto.Extension{}
+	for _, extensionKey := range api.extensions.Keys() {
+		extension, exists := api.extensions.Get(extensionKey)
 		if !exists {
 			continue
 		}
-		protoTriggers = append(protoTriggers, trigger.ToProto())
+		protoExtensions = append(protoExtensions, extension.ToProto())
 	}
 
-	return &proto.ListTriggersResponse{
-		Triggers: protoTriggers,
+	return &proto.ListExtensionsResponse{
+		Extensions: protoExtensions,
 	}, nil
 }
 
-func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *proto.GetTriggerInstallInstructionsRequest) (*proto.GetTriggerInstallInstructionsResponse, error) {
+func (api *API) GetExtensionInstallInstructions(ctx context.Context, request *proto.GetExtensionInstallInstructionsRequest) (*proto.GetExtensionInstallInstructionsResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
-	cert, key, err := api.getTLSFromFile(api.config.Triggers.TLSCertPath, api.config.Triggers.TLSKeyPath)
+	cert, key, err := api.getTLSFromFile(api.config.Extensions.TLSCertPath, api.config.Extensions.TLSKeyPath)
 	if err != nil {
-		return &proto.GetTriggerInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not obtain proper TLS for trigger certifications; %v", err)
+		return &proto.GetExtensionInstallInstructionsResponse{},
+			status.Errorf(codes.Internal, "could not obtain proper TLS for extension certifications; %v", err)
 	}
 
-	triggerKey := generateToken(32)
+	extensionKey := generateToken(32)
 
-	// We need to first populate the triggers with their required environment variables.
+	// We need to first populate the extensions with their required environment variables.
 	// Order is important here maps later in the list will overwrite earlier maps.
 	// We first include the Gofer defined environment variables and then the operator configured environment
 	// variables.
-	systemTriggerVars := []models.Variable{
+	systemExtensionVars := []models.Variable{
 		{
 			Key:    "GOFER_PLUGIN_SYSTEM_TLS_CERT",
 			Value:  string(cert),
@@ -85,7 +85,7 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 		},
 		{
 			Key:    "GOFER_PLUGIN_SYSTEM_KEY",
-			Value:  triggerKey,
+			Value:  extensionKey,
 			Source: models.VariableSourceSystem,
 		},
 	}
@@ -103,25 +103,25 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 	sc := scheduler.StartContainerRequest{
 		ID:               containerID,
 		ImageName:        request.Image,
-		EnvVars:          convertVarsToMap(systemTriggerVars),
+		EnvVars:          convertVarsToMap(systemExtensionVars),
 		RegistryAuth:     registryAuth,
 		AlwaysPull:       true,
 		EnableNetworking: false,
-		Entrypoint:       &[]string{"./trigger", "installer"},
+		Entrypoint:       &[]string{"./extension", "installer"},
 	}
 
 	_, err = api.scheduler.StartContainer(sc)
 	if err != nil {
-		log.Error().Err(err).Str("image", request.Image).Msg("could not start trigger during installation instructions retrieval")
-		return &proto.GetTriggerInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not start trigger; %v", err)
+		log.Error().Err(err).Str("image", request.Image).Msg("could not start extension during installation instructions retrieval")
+		return &proto.GetExtensionInstallInstructionsResponse{},
+			status.Errorf(codes.Internal, "could not start extension; %v", err)
 	}
 
 	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{ID: containerID})
 	if err != nil {
-		log.Error().Err(err).Str("image", request.Image).Msg("could not get logs from trigger installation run")
-		return &proto.GetTriggerInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not get logs from trigger installation run; %v", err)
+		log.Error().Err(err).Str("image", request.Image).Msg("could not get logs from extension installation run")
+		return &proto.GetExtensionInstallInstructionsResponse{},
+			status.Errorf(codes.Internal, "could not get logs from extension installation run; %v", err)
 	}
 
 	lastLine := ""
@@ -133,59 +133,59 @@ func (api *API) GetTriggerInstallInstructions(ctx context.Context, request *prot
 	err = scanner.Err()
 	if err != nil {
 		log.Error().Err(err).Msg("Could not properly read from logging stream")
-		return &proto.GetTriggerInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not get logs from trigger installation run; %v", err)
+		return &proto.GetExtensionInstallInstructionsResponse{},
+			status.Errorf(codes.Internal, "could not get logs from extension installation run; %v", err)
 	}
 
-	return &proto.GetTriggerInstallInstructionsResponse{
+	return &proto.GetExtensionInstallInstructionsResponse{
 		Instructions: strings.TrimSpace(lastLine),
 	}, nil
 }
 
-func (api *API) InstallTrigger(ctx context.Context, request *proto.InstallTriggerRequest) (*proto.InstallTriggerResponse, error) {
+func (api *API) InstallExtension(ctx context.Context, request *proto.InstallExtensionRequest) (*proto.InstallExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
 	if request.Name == "" {
-		return &proto.InstallTriggerResponse{}, status.Error(codes.FailedPrecondition, "name required")
+		return &proto.InstallExtensionResponse{}, status.Error(codes.FailedPrecondition, "name required")
 	}
 
 	if request.Image == "" {
-		return &proto.InstallTriggerResponse{}, status.Error(codes.FailedPrecondition, "image required")
+		return &proto.InstallExtensionResponse{}, status.Error(codes.FailedPrecondition, "image required")
 	}
 
-	registration := models.TriggerRegistration{}
-	registration.FromInstallTriggerRequest(request)
+	registration := models.ExtensionRegistration{}
+	registration.FromInstallExtensionRequest(request)
 
-	cert, key, err := api.getTLSFromFile(api.config.Triggers.TLSCertPath, api.config.Triggers.TLSKeyPath)
+	cert, key, err := api.getTLSFromFile(api.config.Extensions.TLSCertPath, api.config.Extensions.TLSKeyPath)
 	if err != nil {
-		return &proto.InstallTriggerResponse{}, status.Errorf(codes.Internal, "could not obtain proper TLS for trigger certifications; %v", err)
+		return &proto.InstallExtensionResponse{}, status.Errorf(codes.Internal, "could not obtain proper TLS for extension certifications; %v", err)
 	}
 
-	err = api.startTrigger(registration, string(cert), string(key))
+	err = api.startExtension(registration, string(cert), string(key))
 	if err != nil {
-		return &proto.InstallTriggerResponse{}, status.Errorf(codes.Internal, "could not start trigger; %v", err)
+		return &proto.InstallExtensionResponse{}, status.Errorf(codes.Internal, "could not start extension; %v", err)
 	}
 
-	err = api.db.InsertTriggerRegistration(&registration)
+	err = api.db.InsertGlobalExtensionRegistration(api.db, registration.ToStorage())
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
-			return &proto.InstallTriggerResponse{}, status.Errorf(codes.AlreadyExists, "trigger is %s already installed", request.Name)
+			return &proto.InstallExtensionResponse{}, status.Errorf(codes.AlreadyExists, "extension is %s already installed", request.Name)
 		}
 
-		return &proto.InstallTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
+		return &proto.InstallExtensionResponse{}, status.Errorf(codes.Internal, "extension could not be installed; %v", err)
 	}
 
-	go api.events.Publish(models.EventInstalledTrigger{
+	go api.events.Publish(models.EventInstalledExtension{
 		Name:  request.Name,
 		Image: request.Image,
 	})
 
-	return &proto.InstallTriggerResponse{}, nil
+	return &proto.InstallExtensionResponse{}, nil
 }
 
-func (api *API) UninstallTrigger(ctx context.Context, request *proto.UninstallTriggerRequest) (*proto.UninstallTriggerResponse, error) {
+func (api *API) UninstallExtension(ctx context.Context, request *proto.UninstallExtensionRequest) (*proto.UninstallExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -194,23 +194,23 @@ func (api *API) UninstallTrigger(ctx context.Context, request *proto.UninstallTr
 		return nil, status.Error(codes.FailedPrecondition, "name required")
 	}
 
-	api.triggers.Delete(request.Name)
+	api.extensions.Delete(request.Name)
 
-	err := api.db.DeleteTriggerRegistration(request.Name)
+	err := api.db.DeleteGlobalExtensionRegistration(api.db, request.Name)
 	if err != nil {
-		return &proto.UninstallTriggerResponse{}, status.Error(codes.Internal, "error deleting trigger registration")
+		return &proto.UninstallExtensionResponse{}, status.Error(codes.Internal, "error deleting extension registration")
 	}
 
-	go api.events.Publish(models.EventUninstalledTrigger{
+	go api.events.Publish(models.EventUninstalledExtension{
 		Name: request.Name,
 	})
 
 	// TODO(clintjedwards): We should alert all users that previously had registrations that they need to fix their pipeline.
 
-	return &proto.UninstallTriggerResponse{}, nil
+	return &proto.UninstallExtensionResponse{}, nil
 }
 
-func (api *API) EnableTrigger(ctx context.Context, request *proto.EnableTriggerRequest) (*proto.EnableTriggerResponse, error) {
+func (api *API) EnableExtension(ctx context.Context, request *proto.EnableExtensionRequest) (*proto.EnableExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -219,37 +219,37 @@ func (api *API) EnableTrigger(ctx context.Context, request *proto.EnableTriggerR
 		return nil, status.Error(codes.FailedPrecondition, "name required")
 	}
 
-	err := api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
-		Status: ptr(models.TriggerStatusEnabled),
+	err := api.db.UpdateGlobalExtensionRegistration(api.db, request.Name, storage.UpdatableGlobalExtensionRegistrationFields{
+		Status: ptr(string(models.ExtensionStatusEnabled)),
 	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.EnableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
+			return &proto.EnableExtensionResponse{}, status.Errorf(codes.NotFound, "extension %q is not found", request.Name)
 		}
 
-		return &proto.EnableTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
+		return &proto.EnableExtensionResponse{}, status.Errorf(codes.Internal, "extension could not be installed; %v", err)
 	}
 
-	err = api.triggers.Swap(request.Name, func(value *models.Trigger, exists bool) (*models.Trigger, error) {
+	err = api.extensions.Swap(request.Name, func(value *models.Extension, exists bool) (*models.Extension, error) {
 		if !exists {
-			_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
-				Status: ptr(models.TriggerStatusDisabled),
+			_ = api.db.UpdateGlobalExtensionRegistration(api.db, request.Name, storage.UpdatableGlobalExtensionRegistrationFields{
+				Status: ptr(string(models.ExtensionStatusDisabled)),
 			})
 
-			return nil, fmt.Errorf("trigger %q not found", request.Name)
+			return nil, fmt.Errorf("extension %q not found", request.Name)
 		}
 
-		value.Registration.Status = models.TriggerStatusEnabled
+		value.Registration.Status = models.ExtensionStatusEnabled
 		return value, nil
 	})
 	if err != nil {
-		return &proto.EnableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
+		return &proto.EnableExtensionResponse{}, status.Errorf(codes.NotFound, "extension %q is not found", request.Name)
 	}
 
-	return &proto.EnableTriggerResponse{}, nil
+	return &proto.EnableExtensionResponse{}, nil
 }
 
-func (api *API) DisableTrigger(ctx context.Context, request *proto.DisableTriggerRequest) (*proto.DisableTriggerResponse, error) {
+func (api *API) DisableExtension(ctx context.Context, request *proto.DisableExtensionRequest) (*proto.DisableExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -258,32 +258,32 @@ func (api *API) DisableTrigger(ctx context.Context, request *proto.DisableTrigge
 		return nil, status.Error(codes.FailedPrecondition, "name required")
 	}
 
-	err := api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
-		Status: ptr(models.TriggerStatusDisabled),
+	err := api.db.UpdateGlobalExtensionRegistration(api.db, request.Name, storage.UpdatableGlobalExtensionRegistrationFields{
+		Status: ptr(string(models.ExtensionStatusDisabled)),
 	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.DisableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
+			return &proto.DisableExtensionResponse{}, status.Errorf(codes.NotFound, "extension %q is not found", request.Name)
 		}
 
-		return &proto.DisableTriggerResponse{}, status.Errorf(codes.Internal, "trigger could not be installed; %v", err)
+		return &proto.DisableExtensionResponse{}, status.Errorf(codes.Internal, "extension could not be installed; %v", err)
 	}
 
-	err = api.triggers.Swap(request.Name, func(value *models.Trigger, exists bool) (*models.Trigger, error) {
+	err = api.extensions.Swap(request.Name, func(value *models.Extension, exists bool) (*models.Extension, error) {
 		if !exists {
-			_ = api.db.UpdateTriggerRegistration(request.Name, storage.UpdatableTriggerRegistrationFields{
-				Status: ptr(models.TriggerStatusEnabled),
+			_ = api.db.UpdateGlobalExtensionRegistration(api.db, request.Name, storage.UpdatableGlobalExtensionRegistrationFields{
+				Status: ptr(string(models.ExtensionStatusEnabled)),
 			})
 
-			return nil, fmt.Errorf("trigger %q not found", request.Name)
+			return nil, fmt.Errorf("extension %q not found", request.Name)
 		}
 
-		value.Registration.Status = models.TriggerStatusDisabled
+		value.Registration.Status = models.ExtensionStatusDisabled
 		return value, nil
 	})
 	if err != nil {
-		return &proto.DisableTriggerResponse{}, status.Errorf(codes.NotFound, "trigger %q is not found", request.Name)
+		return &proto.DisableExtensionResponse{}, status.Errorf(codes.NotFound, "extension %q is not found", request.Name)
 	}
 
-	return &proto.DisableTriggerResponse{}, nil
+	return &proto.DisableExtensionResponse{}, nil
 }

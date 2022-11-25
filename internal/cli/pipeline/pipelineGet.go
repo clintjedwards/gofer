@@ -5,18 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"sort"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/models"
+	"github.com/clintjedwards/gofer/internal/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
-
 	"github.com/fatih/color"
+
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
@@ -49,7 +49,7 @@ func pipelineGet(_ *cobra.Command, args []string) error {
 
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	resp, err := client.GetPipeline(ctx, &proto.GetPipelineRequest{
+	pipelineResp, err := client.GetPipeline(ctx, &proto.GetPipelineRequest{
 		NamespaceId: cl.State.Config.Namespace,
 		Id:          id,
 	})
@@ -59,10 +59,17 @@ func pipelineGet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	pipeline := models.Pipeline{}
-	pipeline.FromProto(resp.Pipeline)
+	subscriptionsResp, err := client.ListPipelineExtensionSubscriptions(context.Background(), &proto.ListPipelineExtensionSubscriptionsRequest{
+		NamespaceId: cl.State.Config.Namespace,
+		PipelineId:  id,
+	})
+	if err != nil {
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not get extension subscriptions: %v", err))
+		cl.State.Fmt.Finish()
+		return err
+	}
 
-	output, err := formatPipeline(ctx, client, &pipeline, cl.State.Config.Detail)
+	output, err := formatPipeline(ctx, client, pipelineResp.Pipeline, subscriptionsResp.Subscriptions, cl.State.Config.Detail)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not render pipeline: %v", err))
 		cl.State.Fmt.Finish()
@@ -75,7 +82,7 @@ func pipelineGet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func recentEvents(client proto.GoferClient, namespace, pipeline, triggerLabel string, limit int) ([]models.Event, error) {
+func recentEvents(client proto.GoferClient, namespace, pipeline, extensionLabel string, limit int) ([]models.Event, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -98,11 +105,11 @@ func recentEvents(client proto.GoferClient, namespace, pipeline, triggerLabel st
 			return nil, err
 		}
 
-		if !strings.EqualFold(response.Event.Kind, string(models.EventKindResolvedTriggerEvent)) {
+		if !strings.EqualFold(response.Event.Kind, string(models.EventKindResolvedExtensionEvent)) {
 			continue
 		}
 
-		details := models.EventResolvedTriggerEvent{}
+		details := models.EventResolvedExtensionEvent{}
 		err = json.Unmarshal([]byte(response.Event.Details), &details)
 		if err != nil {
 			return nil, err
@@ -110,7 +117,7 @@ func recentEvents(client proto.GoferClient, namespace, pipeline, triggerLabel st
 
 		if details.NamespaceID != namespace ||
 			details.PipelineID != pipeline ||
-			details.Label != triggerLabel {
+			details.Label != extensionLabel {
 			continue
 		}
 
@@ -136,7 +143,7 @@ type data struct {
 	RecentRuns  string
 	Tasks       []taskData
 	Health      string
-	Triggers    []triggerData
+	Extensions  []extensionData
 	Created     string
 	LastRun     string
 }
@@ -147,7 +154,7 @@ type taskData struct {
 	NumItems  int
 }
 
-type triggerData struct {
+type extensionData struct {
 	Label    string
 	Name     string
 	Events   string
@@ -155,25 +162,25 @@ type triggerData struct {
 	State    string
 }
 
-func formatStatePrefix(state models.RunState) string {
-	if state == models.RunStateRunning {
+func formatStatePrefix(state proto.Run_RunState) string {
+	if state == proto.Run_RUNNING {
 		return "Running for"
 	}
 
 	return "Lasted"
 }
 
-func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *models.Pipeline, detail bool) (string, error) {
-	recentRuns := recentRuns(ctx, client, pipeline.Namespace, pipeline.ID, 5)
+func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *proto.Pipeline, extensions []*proto.PipelineExtensionSubscription, detail bool) (string, error) {
+	recentRuns := recentRuns(ctx, client, pipeline.Metadata.Namespace, pipeline.Metadata.Id, 5)
 	recentRunList := [][]string{}
-	recentRunHealth := []models.RunStatus{}
+	recentRunHealth := []proto.Run_RunStatus{}
 	for _, run := range recentRuns {
 		recentRunList = append(recentRunList, []string{
-			color.BlueString("• Run #" + strconv.Itoa(int(run.ID))),
-			fmt.Sprintf("%s by %s %s", format.UnixMilli(run.Started, "Not yet", detail), color.CyanString(run.Trigger.Label), color.YellowString(run.Trigger.Name)),
+			color.BlueString("• Run #" + strconv.Itoa(int(run.Id))),
+			fmt.Sprintf("%s by %s %s", format.UnixMilli(run.Started, "Not yet", detail), color.CyanString(run.Extension.Label), color.YellowString(run.Extension.Name)),
 			fmt.Sprintf("%s %s", formatStatePrefix(run.State), format.Duration(run.Started, run.Ended)),
-			format.ColorizeRunState(format.NormalizeEnumValue(run.State, "Unknown")),
-			format.ColorizeRunStatus(format.NormalizeEnumValue(run.Status, "Unknown")),
+			format.ColorizeRunState(format.NormalizeEnumValue(run.State.String(), "Unknown")),
+			format.ColorizeRunStatus(format.NormalizeEnumValue(run.Status.String(), "Unknown")),
 		})
 
 		recentRunHealth = append(recentRunHealth, run.Status)
@@ -181,9 +188,9 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 
 	recentRunsTable := format.GenerateGenericTable(recentRunList, "", 4)
 
-	triggerDataList := []triggerData{}
-	for _, trigger := range pipeline.Triggers {
-		recentEvents, err := recentEvents(client, pipeline.Namespace, pipeline.ID, trigger.Label, 5)
+	extensionDataList := []extensionData{}
+	for _, extension := range extensions {
+		recentEvents, err := recentEvents(client, extension.Namespace, extension.Pipeline, extension.Label, 5)
 		if err != nil {
 			return "", fmt.Errorf("could not get event data: %v", err)
 		}
@@ -191,7 +198,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 		eventDataList := [][]string{}
 		for _, event := range recentEvents {
 			details := ""
-			evtDetail, ok := event.Details.(models.EventResolvedTriggerEvent)
+			evtDetail, ok := event.Details.(models.EventResolvedExtensionEvent)
 			if ok {
 				details = evtDetail.Result.Details
 			}
@@ -203,20 +210,20 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 
 		eventDataTable := format.GenerateGenericTable(eventDataList, "|", 7)
 
-		triggerDataList = append(triggerDataList, triggerData{
-			Label:    color.BlueString(trigger.Label),
-			Name:     color.YellowString(trigger.Name),
+		extensionDataList = append(extensionDataList, extensionData{
+			Label:    color.BlueString(extension.Label),
+			Name:     color.YellowString(extension.Name),
 			Events:   eventDataTable,
-			Settings: trigger.Settings,
+			Settings: extension.Settings,
 		})
 	}
 
-	sort.Slice(triggerDataList, func(i, j int) bool { return triggerDataList[i].Label < triggerDataList[j].Label })
+	sort.Slice(extensionDataList, func(i, j int) bool { return extensionDataList[i].Label < extensionDataList[j].Label })
 
 	tasks := []taskData{}
-	for _, task := range pipeline.CustomTasks {
+	for _, task := range pipeline.Config.CustomTasks {
 		tasks = append(tasks, taskData{
-			Name:      color.BlueString(task.ID),
+			Name:      color.BlueString(task.Id),
 			DependsOn: format.Dependencies(task.DependsOn),
 			NumItems:  len(task.DependsOn), // This is purely for sorting purposes
 		})
@@ -231,15 +238,15 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
 	}
 
 	data := data{
-		ID:          color.BlueString(pipeline.ID),
-		Name:        pipeline.Name,
-		State:       format.ColorizePipelineState(format.NormalizeEnumValue(pipeline.State, "Unknown")),
-		Description: pipeline.Description,
+		ID:          color.BlueString(pipeline.Metadata.Id),
+		Name:        pipeline.Config.Name,
+		State:       format.ColorizePipelineMetadataState(format.NormalizeEnumValue(pipeline.Metadata.State.String(), "Unknown")),
+		Description: pipeline.Config.Description,
 		RecentRuns:  recentRunsTable,
-		Triggers:    triggerDataList,
+		Extensions:  extensionDataList,
 		Health:      format.Health(recentRunHealth, true),
 		Tasks:       tasks,
-		Created:     format.UnixMilli(pipeline.Created, "Never", detail),
+		Created:     format.UnixMilli(pipeline.Metadata.Created, "Never", detail),
 		LastRun:     format.UnixMilli(lastRunTime, "Never", detail),
 	}
 
@@ -262,12 +269,12 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *mod
     {{- end -}}
   {{- end}}
 
-  {{- if .Triggers }}
+  {{- if .Extensions }}
 
-  🗘 Attached Triggers:
-    {{- range $trigger := .Triggers}}
-    ⟳ {{ $trigger.Label }} ({{ $trigger.Name }}) {{if $trigger.Events }}recent events:{{- end }}
-{{ $trigger.Events }}
+  🗘 Attached Extensions:
+    {{- range $extension := .Extensions}}
+    ⟳ {{ $extension.Label }} ({{ $extension.Name }}) {{if $extension.Events }}recent events:{{- end }}
+{{ $extension.Events }}
     {{- end -}}
   {{- end}}
 

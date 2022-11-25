@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 )
 
 func tempFile() string {
@@ -117,55 +117,55 @@ func TestUnsubscribe(t *testing.T) {
 	}
 }
 
-// func TestGetAll(t *testing.T) {
-// 	path := tempFile()
-// 	db, err := storage.New(path, 200)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer os.Remove(path)
+func TestGetAll(t *testing.T) {
+	path := tempFile()
+	db, err := storage.New(path, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
 
-// 	eb, err := New(db, time.Second*5, time.Minute*5)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	eb, err := New(db, time.Second*5, time.Minute*5)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	firstEventID := eb.Publish(models.EventCreatedNamespace{
-// 		NamespaceID: "test_namespace_1",
-// 	})
-// 	secondEventID := eb.Publish(models.EventCreatedNamespace{
-// 		NamespaceID: "test_namespace_2",
-// 	})
-// 	thirdEventID := eb.Publish(models.EventCreatedNamespace{
-// 		NamespaceID: "test_namespace_3",
-// 	})
-// 	eb.Publish(models.EventCreatedNamespace{
-// 		NamespaceID: "test_namespace_4",
-// 	})
-// 	eb.Publish(models.EventCreatedNamespace{
-// 		NamespaceID: "test_namespace_5",
-// 	})
+	firstEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_1",
+	})
+	secondEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_2",
+	})
+	thirdEventID := eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_3",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_4",
+	})
+	eb.Publish(models.EventCreatedNamespace{
+		NamespaceID: "test_namespace_5",
+	})
 
-// 	events := eb.GetAll(false)
-// 	event1 := <-events
-// 	event2 := <-events
-// 	event3 := <-events
+	events := eb.GetAll(false)
+	event1 := <-events
+	event2 := <-events
+	event3 := <-events
 
-// 	if event1.ID != firstEventID {
-// 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-// 			event1.ID, firstEventID)
-// 	}
+	if event1.ID != firstEventID {
+		t.Errorf("published event id and new event id do no match; published %d; new %d",
+			event1.ID, firstEventID)
+	}
 
-// 	if event2.ID != secondEventID {
-// 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-// 			event2.ID, secondEventID)
-// 	}
+	if event2.ID != secondEventID {
+		t.Errorf("published event id and new event id do no match; published %d; new %d",
+			event2.ID, secondEventID)
+	}
 
-// 	if event3.ID != thirdEventID {
-// 		t.Errorf("published event id and new event id do no match; published %d; new %d",
-// 			event3.ID, thirdEventID)
-// 	}
-// }
+	if event3.ID != thirdEventID {
+		t.Errorf("published event id and new event id do no match; published %d; new %d",
+			event3.ID, thirdEventID)
+	}
+}
 
 func TestGetAllOffset(t *testing.T) {
 	path := tempFile()

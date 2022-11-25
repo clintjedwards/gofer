@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	objectstore "github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"google.golang.org/grpc/codes"
@@ -27,13 +27,16 @@ func (api *API) ListPipelineObjects(ctx context.Context, request *proto.ListPipe
 		return &proto.ListPipelineObjectsResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	keys, err := api.db.ListObjectStorePipelineKeys(request.NamespaceId, request.PipelineId)
+	keys, err := api.db.ListObjectStorePipelineKeys(api.db, request.NamespaceId, request.PipelineId)
 	if err != nil {
 		return &proto.ListPipelineObjectsResponse{}, err
 	}
 
 	var protoKeys []*proto.ObjectStoreKey
-	for _, key := range keys {
+	for _, keyRaw := range keys {
+		var key models.ObjectStoreKey
+		key.Key = keyRaw.Key
+		key.Created = keyRaw.Created
 		protoKeys = append(protoKeys, key.ToProto())
 	}
 
@@ -78,8 +81,8 @@ func (api *API) PutPipelineObject(ctx context.Context, request *proto.PutPipelin
 		return &proto.PutPipelineObjectResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	evictedObject, err := api.addPipelineObject(request.NamespaceId,
-		request.PipelineId, request.Key, request.Content, request.Force)
+	evictedObject, err := api.addPipelineObject(request.NamespaceId, request.PipelineId, request.Key,
+		request.Content, request.Force)
 	if err != nil {
 		if errors.Is(err, objectstore.ErrEntityExists) {
 			return &proto.PutPipelineObjectResponse{}, status.Error(codes.FailedPrecondition,
@@ -129,13 +132,16 @@ func (api *API) ListRunObjects(ctx context.Context, request *proto.ListRunObject
 		return &proto.ListRunObjectsResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	keys, err := api.db.ListObjectStoreRunKeys(request.NamespaceId, request.PipelineId, request.RunId)
+	keys, err := api.db.ListObjectStoreRunKeys(api.db, request.NamespaceId, request.PipelineId, request.RunId)
 	if err != nil {
 		return &proto.ListRunObjectsResponse{}, err
 	}
 
 	var protoKeys []*proto.ObjectStoreKey
-	for _, key := range keys {
+	for _, keyRaw := range keys {
+		var key models.ObjectStoreKey
+		key.Key = keyRaw.Key
+		key.Created = keyRaw.Created
 		protoKeys = append(protoKeys, key.ToProto())
 	}
 
@@ -182,7 +188,13 @@ func (api *API) PutRunObject(ctx context.Context, request *proto.PutRunObjectReq
 
 	newObjectKey := models.NewObjectStoreKey(request.Key)
 
-	err = api.db.InsertObjectStoreRunKey(request.NamespaceId, request.PipelineId, request.RunId, newObjectKey)
+	err = api.db.InsertObjectStoreRunKey(api.db, &storage.ObjectStoreRunKey{
+		Namespace: namespace,
+		Pipeline:  request.PipelineId,
+		Run:       request.RunId,
+		Key:       newObjectKey.Key,
+		Created:   newObjectKey.Created,
+	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return &proto.PutRunObjectResponse{},

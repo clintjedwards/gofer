@@ -5,8 +5,8 @@ import (
 	"errors"
 	"os"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/nxadm/tail"
@@ -28,7 +28,7 @@ func (api *API) GetTaskRun(ctx context.Context, request *proto.GetTaskRunRequest
 
 	request.NamespaceId = namespace
 
-	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
+	taskRunRaw, err := api.db.GetPipelineTaskRun(api.db, request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetTaskRunResponse{}, status.Error(codes.FailedPrecondition, "task run not found")
@@ -36,6 +36,9 @@ func (api *API) GetTaskRun(ctx context.Context, request *proto.GetTaskRunRequest
 		log.Error().Err(err).Msg("could not get run")
 		return &proto.GetTaskRunResponse{}, status.Error(codes.Internal, "failed to retrieve task run from database")
 	}
+
+	var taskRun models.TaskRun
+	taskRun.FromStorage(&taskRunRaw)
 
 	return &proto.GetTaskRunResponse{TaskRun: taskRun.ToProto()}, nil
 }
@@ -53,14 +56,16 @@ func (api *API) ListTaskRuns(ctx context.Context, request *proto.ListTaskRunsReq
 
 	request.NamespaceId = namespace
 
-	taskRuns, err := api.db.ListTaskRuns(0, 0, request.NamespaceId, request.PipelineId, request.RunId)
+	taskRunsRaw, err := api.db.ListPipelineTaskRuns(api.db, 0, 0, request.NamespaceId, request.PipelineId, request.RunId)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get task runs")
 		return &proto.ListTaskRunsResponse{}, status.Error(codes.Internal, "failed to retrieve runs from database")
 	}
 
 	protoTaskRuns := []*proto.TaskRun{}
-	for _, taskRun := range taskRuns {
+	for _, taskRunRaw := range taskRunsRaw {
+		var taskRun models.TaskRun
+		taskRun.FromStorage(&taskRunRaw)
 		protoTaskRuns = append(protoTaskRuns, taskRun.ToProto())
 	}
 
@@ -94,7 +99,7 @@ func (api *API) CancelTaskRun(ctx context.Context, request *proto.CancelTaskRunR
 		return &proto.CancelTaskRunResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
+	taskRunRaw, err := api.db.GetPipelineTaskRun(api.db, request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.CancelTaskRunResponse{}, status.Error(codes.FailedPrecondition, "task run not found")
@@ -102,6 +107,9 @@ func (api *API) CancelTaskRun(ctx context.Context, request *proto.CancelTaskRunR
 		log.Error().Err(err).Msg("could not get run")
 		return &proto.CancelTaskRunResponse{}, status.Error(codes.Internal, "failed to retrieve task run from database")
 	}
+
+	var taskRun models.TaskRun
+	taskRun.FromStorage(&taskRunRaw)
 
 	err = api.cancelTaskRun(&taskRun, request.Force)
 	if err != nil {
@@ -131,7 +139,7 @@ func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream prot
 
 	request.NamespaceId = namespace
 
-	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
+	taskRun, err := api.db.GetPipelineTaskRun(api.db, request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return status.Error(codes.FailedPrecondition, "task run not found")
@@ -218,7 +226,7 @@ func (api *API) DeleteTaskRunLogs(ctx context.Context, request *proto.DeleteTask
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	taskRun, err := api.db.GetTaskRun(request.NamespaceId, request.PipelineId, request.RunId, request.Id)
+	taskRunRaw, err := api.db.GetPipelineTaskRun(api.db, request.NamespaceId, request.PipelineId, request.RunId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.FailedPrecondition, "task run not found")
@@ -226,6 +234,9 @@ func (api *API) DeleteTaskRunLogs(ctx context.Context, request *proto.DeleteTask
 		log.Error().Err(err).Msg("could not get task run")
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.Internal, "failed to retrieve task run from database")
 	}
+
+	var taskRun models.TaskRun
+	taskRun.FromStorage(&taskRunRaw)
 
 	if taskRun.State != models.TaskRunStateComplete {
 		return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.FailedPrecondition, "can not delete logs for a task currently in progress")
@@ -241,9 +252,10 @@ func (api *API) DeleteTaskRunLogs(ctx context.Context, request *proto.DeleteTask
 		return &proto.DeleteTaskRunLogsResponse{}, status.Errorf(codes.Internal, "could not remove task run log file: %v", err)
 	}
 
-	err = api.db.UpdateTaskRun(&taskRun, storage.UpdatableTaskRunFields{
-		LogsRemoved: ptr(true),
-	})
+	err = api.db.UpdatePipelineTaskRun(api.db, taskRun.Namespace, taskRun.Pipeline, taskRun.Run, taskRun.ID,
+		storage.UpdatablePipelineTaskRunFields{
+			LogsRemoved: ptr(true),
+		})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DeleteTaskRunLogsResponse{}, status.Error(codes.FailedPrecondition, "task run not found")

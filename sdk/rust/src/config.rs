@@ -1,8 +1,6 @@
 use crate::{dag::DAGError, dag::Dag, validate_identifier, validate_variables};
 use downcast_rs::{impl_downcast, Downcast};
-use gofer_proto::{
-    CommonTaskConfig, CustomTaskConfig, PipelineConfig, PipelineTaskConfig, PipelineTriggerConfig,
-};
+use gofer_proto::{CommonTaskConfig, CustomTaskConfig, PipelineConfig, PipelineTaskConfig};
 use prost::Message;
 use std::{collections::HashMap, io::Write};
 use strum::{Display, EnumString};
@@ -78,8 +76,6 @@ pub struct Pipeline {
     pub parallelism: i64,
     /// A mapping of pipeline owned tasks.
     pub tasks: Vec<Box<dyn Task>>,
-    /// A mapping of pipeline owned triggers to their settings.
-    pub triggers: Vec<Trigger>,
 }
 
 impl Pipeline {
@@ -91,7 +87,6 @@ impl Pipeline {
             description: None,
             parallelism: 0,
             tasks: Vec::new(),
-            triggers: Vec::new(),
         }
     }
 
@@ -134,10 +129,6 @@ impl Pipeline {
             task.validate()?;
         }
 
-        for trigger in &self.triggers {
-            trigger.validate()?;
-        }
-
         Ok(())
     }
 
@@ -153,11 +144,6 @@ impl Pipeline {
 
     pub fn tasks(mut self, tasks: Vec<Box<dyn Task>>) -> Self {
         self.tasks = tasks;
-        self
-    }
-
-    pub fn triggers(mut self, triggers: Vec<Trigger>) -> Self {
-        self.triggers = triggers;
         self
     }
 
@@ -202,19 +188,12 @@ impl Pipeline {
             }
         }
 
-        let mut triggers: Vec<PipelineTriggerConfig> = vec![];
-
-        for trigger in &self.triggers {
-            triggers.push(trigger.proto())
-        }
-
         PipelineConfig {
             id: self.id.clone(),
             name: self.name.clone(),
             description: self.description.clone().unwrap_or_default(),
             parallelism: self.parallelism,
             tasks,
-            triggers,
         }
     }
 }
@@ -229,66 +208,6 @@ pub fn pipeline_object(key: &str) -> String {
 
 pub fn run_object(key: &str) -> String {
     format!("run_object{{{}}}", key)
-}
-
-/// Every time a pipeline attempts to subscribe to a trigger, it passes certain
-/// values back to that trigger for certain functionality. Since triggers keep no
-/// permanent state, these settings are kept here so that when triggers are restarted
-/// they can be restored with proper settings.
-#[derive(Debug, PartialEq, Eq)]
-pub struct Trigger {
-    /// A global unique identifier for the trigger type.
-    pub name: String,
-    /// A user defined identifier for the trigger so that a pipeline with
-    /// multiple commontasks can be differentiated.
-    pub label: String,
-    /// The settings for pertaining to that specific trigger.
-    pub settings: HashMap<String, String>,
-}
-
-impl Trigger {
-    pub fn new(name: &str, label: &str) -> Self {
-        Trigger {
-            name: name.to_string(),
-            label: label.to_string(),
-            settings: HashMap::new(),
-        }
-    }
-
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        validate_identifier("label", &self.label)?;
-        Ok(())
-    }
-
-    pub fn setting(mut self, key: &str, value: &str) -> Self {
-        self.settings.insert(
-            format!("GOFER_PLUGIN_PARAM_{}", key.to_uppercase()),
-            value.to_string(),
-        );
-        self
-    }
-
-    pub fn settings(mut self, settings: HashMap<String, String>) -> Self {
-        let settings: HashMap<String, String> = settings
-            .iter()
-            .map(|(key, value)| {
-                (
-                    format!("GOFER_PLUGIN_PARAM_{}", key.to_uppercase()),
-                    value.clone(),
-                )
-            })
-            .collect();
-        self.settings.extend(settings);
-        self
-    }
-
-    fn proto(&self) -> PipelineTriggerConfig {
-        PipelineTriggerConfig {
-            name: self.name.clone(),
-            label: self.label.clone(),
-            settings: self.settings.clone(),
-        }
-    }
 }
 
 #[derive(Debug)]

@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/clintjedwards/gofer/internal/eventbus"
-	"github.com/clintjedwards/gofer/models"
+	"github.com/clintjedwards/gofer/internal/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/rs/zerolog/log"

@@ -1,12 +1,12 @@
-use gofer_sdk::config::{CustomTask, Pipeline, Trigger};
+use gofer_sdk::config::{CustomTask, Extension, Pipeline};
 
 fn main() {
-    Pipeline::new("trigger", "Trigger Pipeline").
+    Pipeline::new("extension", "Extension Pipeline").
         description(concat!("This pipeline shows off the various features of a simple Gofer pipeline. ",
-        "Triggers, Tasks, and dependency graphs are all tools that can be wielded to create as complicated ",
+        "Extensions, Tasks, and dependency graphs are all tools that can be wielded to create as complicated ",
         "pipelines as need be.")).
-        triggers(vec![
-            Trigger::new("interval", "every_one_minute").setting("every", "1m")
+        extensions(vec![
+            Extension::new("interval", "every_one_minute").setting("every", "1m")
         ]).
         tasks(vec![
             Box::new(

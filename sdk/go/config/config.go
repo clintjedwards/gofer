@@ -84,12 +84,11 @@ type PipelineWrapper struct {
 // A pipeline is a representation of a Gofer pipeline, the structure in which users represent what they
 // want to run in Gofer.
 type Pipeline struct {
-	ID          string           `json:"id"`          // Unique Identifier for the pipeline.
-	Name        string           `json:"name"`        // Humanized name for the pipeline.
-	Description string           `json:"description"` // A short description for the pipeline.
-	Parallelism int64            `json:"parallelism"` // How many runs are allowed to run at the same time.
-	Tasks       []TaskConfig     `json:"tasks"`       // The task set of the pipeline. AKA which containers should be run.
-	Triggers    []TriggerWrapper `json:"triggers"`    // Associated triggers of the pipeline.
+	ID          string       `json:"id"`          // Unique Identifier for the pipeline.
+	Name        string       `json:"name"`        // Humanized name for the pipeline.
+	Description string       `json:"description"` // A short description for the pipeline.
+	Parallelism int64        `json:"parallelism"` // How many runs are allowed to run at the same time.
+	Tasks       []TaskConfig `json:"tasks"`       // The task set of the pipeline. AKA which containers should be run.
 }
 
 // Create a new pipeline.
@@ -106,7 +105,6 @@ func NewPipeline(id, name string) *PipelineWrapper {
 			Description: "",
 			Parallelism: 0,
 			Tasks:       []TaskConfig{},
-			Triggers:    []TriggerWrapper{},
 		},
 	}
 }
@@ -125,13 +123,6 @@ func (p *PipelineWrapper) Validate() error {
 
 	for _, task := range p.Pipeline.Tasks {
 		err = task.validate()
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, trigger := range p.Pipeline.Triggers {
-		err = trigger.validate()
 		if err != nil {
 			return err
 		}
@@ -160,45 +151,31 @@ func (p *PipelineWrapper) Tasks(tasks ...TaskConfig) *PipelineWrapper {
 	return p
 }
 
-// Triggers are the way in which Gofer handles automation. Triggers are allowed to start runs on your pipeline
-// per some predefined event. For example, a common trigger is just the passage of time. The interval trigger
-// might attempt to start a run for your pipeline when some value(that you set) of time has passed.
-func (p *PipelineWrapper) Triggers(triggers ...TriggerWrapper) *PipelineWrapper {
-	p.Pipeline.Triggers = triggers
-	return p
-}
-
-func (p *PipelineWrapper) Proto() *proto.PipelineConfig {
-	tasks := []*proto.PipelineTaskConfig{}
+func (p *PipelineWrapper) Proto() *proto.UserPipelineConfig {
+	tasks := []*proto.UserPipelineTaskConfig{}
 	for _, task := range p.Pipeline.Tasks {
 		switch t := task.(type) {
 		case *CommonTaskWrapper:
-			tasks = append(tasks, &proto.PipelineTaskConfig{
-				Task: &proto.PipelineTaskConfig_CommonTask{
+			tasks = append(tasks, &proto.UserPipelineTaskConfig{
+				Task: &proto.UserPipelineTaskConfig_CommonTask{
 					CommonTask: t.Proto(),
 				},
 			})
 		case *CustomTaskWrapper:
-			tasks = append(tasks, &proto.PipelineTaskConfig{
-				Task: &proto.PipelineTaskConfig_CustomTask{
+			tasks = append(tasks, &proto.UserPipelineTaskConfig{
+				Task: &proto.UserPipelineTaskConfig_CustomTask{
 					CustomTask: t.Proto(),
 				},
 			})
 		}
 	}
 
-	triggers := []*proto.PipelineTriggerConfig{}
-	for _, trigger := range p.Pipeline.Triggers {
-		triggers = append(triggers, trigger.Proto())
-	}
-
-	return &proto.PipelineConfig{
+	return &proto.UserPipelineConfig{
 		Id:          p.Pipeline.ID,
 		Name:        p.Pipeline.Name,
 		Description: p.Pipeline.Description,
 		Parallelism: p.Pipeline.Parallelism,
 		Tasks:       tasks,
-		Triggers:    triggers,
 	}
 }
 

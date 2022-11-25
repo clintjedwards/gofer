@@ -21,9 +21,9 @@ As a user, [you pass your configuration in via the `Variable(s)`](https://pkg.go
 When a container is run by Gofer, the Gofer scheduler has the potential to pass in configuration from multiple sources[^1]:
 
 1. **Your pipeline configuration:** Configs you pass in by using the `Variable(s)` functions.
-2. **Trigger/Manual configurations:** Triggers are allowed to pass in custom configuration for a run. Usually this configuration gives extra information the run might need. (For example, the git commit that activated the trigger.).
+2. **Extension/Manual configurations:** Extensions are allowed to pass in custom configuration for a run. Usually this configuration gives extra information the run might need. (For example, the git commit that activated the extension.).
 
-   Alternatively, if this run was not activated by a trigger and instead kicked of manually, the user who launched the run might opt to pass in configuration at that runtime.
+   Alternatively, if this run was not activated by a extension and instead kicked of manually, the user who launched the run might opt to pass in configuration at that runtime.
 
 3. **Gofer's system configurations:** Gofer will pass in system configurations that might be helpful to the user. (For example, what current pipeline is running.)[^2]
 

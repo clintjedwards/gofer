@@ -1,4 +1,4 @@
-# Cron <small>Triggers</small>
+# Cron <small>Extensions</small>
 
 Cron allows users to schedule events on long term intervals and specific days.
 
@@ -36,12 +36,12 @@ It uses a stripped down version of the cron syntax to do so:
 
 ```go
 ...
-WithTriggers(
-    *sdk.NewTrigger("cron", "yearly_on_xmas").WithSetting("expression", "0 1 25 12 * *"),
+WithExtensions(
+    *sdk.NewExtension("cron", "yearly_on_xmas").WithSetting("expression", "0 1 25 12 * *"),
 )
 ...
 ```
 
-## Trigger Configuration
+## Extension Configuration
 
 None

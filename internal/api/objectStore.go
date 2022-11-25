@@ -3,22 +3,28 @@ package api
 import (
 	"strings"
 
-	"github.com/clintjedwards/gofer/models"
+	"github.com/clintjedwards/gofer/internal/models"
+	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/rs/zerolog/log"
 )
 
 // addPipelineObject adds an object to the pipeline specific object registry.
 // If this registry is at the limit it removes the least recently added pipeline object and
 // puts the new item on top.
-func (api *API) addPipelineObject(namespace, pipeline, key string, content []byte, force bool) (string, error) {
-	objectKeys, err := api.db.ListObjectStorePipelineKeys(namespace, pipeline)
+func (api *API) addPipelineObject(namespace, pipeline string, key string, content []byte, force bool) (string, error) {
+	objectKeys, err := api.db.ListObjectStorePipelineKeys(api.db, namespace, pipeline)
 	if err != nil {
 		return "", err
 	}
 
 	newObjectKey := models.NewObjectStoreKey(key)
 
-	err = api.db.InsertObjectStorePipelineKey(namespace, pipeline, newObjectKey)
+	err = api.db.InsertObjectStorePipelineKey(api.db, &storage.ObjectStorePipelineKey{
+		Namespace: namespace,
+		Pipeline:  pipeline,
+		Key:       newObjectKey.Key,
+		Created:   newObjectKey.Created,
+	})
 	if err != nil {
 		return "", err
 	}

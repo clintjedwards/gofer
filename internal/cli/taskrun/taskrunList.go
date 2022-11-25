@@ -8,7 +8,6 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/fatih/color"
@@ -23,7 +22,7 @@ var cmdTaskRunList = &cobra.Command{
 	Long: `List all taskruns.
 
 A short listing of all task runs for a specific run.`,
-	Example: `$ gofer taskrun list simple_test_pipeline 15`,
+	Example: `$ gofer taskrun list simple 15`,
 	RunE:    taskrunList,
 	Args:    cobra.ExactArgs(2),
 }
@@ -64,18 +63,21 @@ func taskrunList(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	data := [][]string{}
-	for _, protoTaskrun := range resp.TaskRuns {
-		taskrun := models.TaskRun{}
-		taskrun.FromProto(protoTaskrun)
+	if len(resp.TaskRuns) == 0 {
+		cl.State.Fmt.Println(fmt.Sprintf("No taskruns found for pipeline %q", pipelineID))
+		cl.State.Fmt.Finish()
+		return err
+	}
 
+	data := [][]string{}
+	for _, taskrun := range resp.TaskRuns {
 		data = append(data, []string{
-			taskrun.ID,
+			taskrun.Id,
 			cliformat.UnixMilli(taskrun.Started, "Not yet", cl.State.Config.Detail),
 			cliformat.UnixMilli(taskrun.Ended, "Still running", cl.State.Config.Detail),
 			cliformat.Duration(taskrun.Started, taskrun.Ended),
-			cliformat.ColorizeTaskRunState(cliformat.NormalizeEnumValue(taskrun.State, "Unknown")),
-			cliformat.ColorizeTaskRunStatus(cliformat.NormalizeEnumValue(taskrun.Status, "Unknown")),
+			cliformat.ColorizeTaskRunState(cliformat.NormalizeEnumValue(taskrun.State.String(), "Unknown")),
+			cliformat.ColorizeTaskRunStatus(cliformat.NormalizeEnumValue(taskrun.Status.String(), "Unknown")),
 		})
 	}
 

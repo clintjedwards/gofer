@@ -4,15 +4,16 @@
 // with anything found in environment variables. Environment variables always come last and have the highest priority.
 // As per (https://12factor.net/config).
 //
-//
 // All environment variables are prefixed with "GOFER". Ex: GOFER_DEBUG=true
 //
 // Most envvar configuration abides by common envvar string=string formatting: Ex. `export GOFER_DEBUG=true`.
-// Complex envvars like "Triggers" for example take a json string as value.
-//   Example: export GOFER_TRIGGERS="{"name":"test"},{"name":"test2"}"
+// Complex envvars like "Extensions" for example take a json string as value.
+//
+//	Example: export GOFER_EXTENSIONS="{"name":"test"},{"name":"test2"}"
 //
 // You can print out a current description of current environment variable configuration by using the cli command:
-//  `gofer service printenv`
+//
+//	`gofer service printenv`
 //
 // Note: Even though this package uses the envconfig package it is incorrect to use the 'default' struct tags as that
 // will cause incorrect overwriting of user defined configurations.
@@ -38,7 +39,8 @@ func mustParseDuration(duration string) time.Duration {
 }
 
 // searchFilePaths will search each path given in order for a file
-//  and return the first path that exists.
+//
+//	and return the first path that exists.
 func searchFilePaths(paths ...string) string {
 	for _, path := range paths {
 		if path == "" {

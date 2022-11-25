@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
@@ -63,9 +62,7 @@ func tokensList(_ *cobra.Command, _ []string) error {
 	}
 
 	data := [][]string{}
-	for _, protoToken := range resp.Tokens {
-		token := models.Token{}
-		token.FromProto(protoToken)
+	for _, token := range resp.Tokens {
 		active := color.GreenString("Active")
 		if token.Disabled {
 			active = color.RedString("Disabled")

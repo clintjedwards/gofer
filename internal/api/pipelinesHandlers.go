@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
@@ -27,7 +29,7 @@ func (api *API) GetPipeline(ctx context.Context, request *proto.GetPipelineReque
 
 	request.NamespaceId = namespace
 
-	pipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
+	pipeline, err := api.getPipelineFromDB(request.NamespaceId, request.Id, request.Version)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetPipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
@@ -36,7 +38,12 @@ func (api *API) GetPipeline(ctx context.Context, request *proto.GetPipelineReque
 		return &proto.GetPipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
 	}
 
-	return &proto.GetPipelineResponse{Pipeline: pipeline.ToProto()}, nil
+	response := &proto.Pipeline{
+		Metadata: pipeline.Metadata.ToProto(),
+		Config:   pipeline.Config.ToProto(),
+	}
+
+	return &proto.GetPipelineResponse{Pipeline: response}, nil
 }
 
 func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipelineRequest) (*proto.DisablePipelineResponse, error) {
@@ -56,7 +63,7 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 		return &proto.DisablePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	currentPipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
+	metadataRaw, err := api.db.GetPipelineMetadata(api.db, request.NamespaceId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DisablePipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
@@ -65,26 +72,17 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 		return &proto.DisablePipelineResponse{}, status.Errorf(codes.Internal, "could not get pipeline %q", request.Id)
 	}
 
-	if currentPipeline.State == models.PipelineStateDisabled {
-		return &proto.DisablePipelineResponse{}, nil
-	}
+	var metadata models.PipelineMetadata
+	metadata.FromStorage(&metadataRaw)
 
-	err = api.db.UpdatePipeline(request.NamespaceId, request.Id, storage.UpdatablePipelineFields{
-		State:    ptr(models.PipelineStateDisabled),
-		Modified: ptr(time.Now().UnixMilli()),
-	})
+	err = api.disablePipeline(&metadata)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.DisablePipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
+			return nil, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
 		}
 		log.Error().Err(err).Str("id", request.Id).Msg("could not save updated pipeline to storage")
-		return &proto.DisablePipelineResponse{}, status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
+		return nil, status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
 	}
-
-	go api.events.Publish(models.EventDisabledPipeline{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.Id,
-	})
 
 	return &proto.DisablePipelineResponse{}, nil
 }
@@ -106,7 +104,7 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 		return &proto.EnablePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	currentPipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
+	metadataRaw, err := api.db.GetPipelineMetadata(api.db, request.NamespaceId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.EnablePipelineResponse{}, status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
@@ -115,12 +113,15 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 		return &proto.EnablePipelineResponse{}, status.Errorf(codes.Internal, "could not get pipeline %q", request.Id)
 	}
 
-	if currentPipeline.State == models.PipelineStateActive {
+	var metadata models.PipelineMetadata
+	metadata.FromStorage(&metadataRaw)
+
+	if metadata.State == models.PipelineStateActive {
 		return &proto.EnablePipelineResponse{}, nil
 	}
 
-	err = api.db.UpdatePipeline(request.NamespaceId, request.Id, storage.UpdatablePipelineFields{
-		State:    ptr(models.PipelineStateActive),
+	err = api.db.UpdatePipelineMetadata(api.db, request.NamespaceId, request.Id, storage.UpdatablePipelineMetadataFields{
+		State:    ptr(string(models.PipelineStateActive)),
 		Modified: ptr(time.Now().UnixMilli()),
 	})
 	if err != nil {
@@ -149,15 +150,17 @@ func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesR
 
 	request.NamespaceId = namespace
 
-	pipelines, err := api.db.ListPipelines(int(request.Offset), int(request.Limit), request.NamespaceId)
+	metadataRaw, err := api.db.ListPipelineMetadata(api.db, int(request.Offset), int(request.Limit), request.NamespaceId)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get pipelines")
 		return &proto.ListPipelinesResponse{}, status.Error(codes.Internal, "failed to retrieve pipelines from database")
 	}
 
-	protoPipelines := []*proto.Pipeline{}
-	for _, pipeline := range pipelines {
-		protoPipelines = append(protoPipelines, pipeline.ToProto())
+	protoPipelines := []*proto.PipelineMetadata{}
+	for _, pipeline := range metadataRaw {
+		var metadata models.PipelineMetadata
+		metadata.FromStorage(&pipeline)
+		protoPipelines = append(protoPipelines, metadata.ToProto())
 	}
 
 	return &proto.ListPipelinesResponse{
@@ -165,154 +168,185 @@ func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesR
 	}, nil
 }
 
-func (api *API) CreatePipeline(ctx context.Context, request *proto.CreatePipelineRequest) (*proto.CreatePipelineResponse, error) {
+func (api *API) DeployPipeline(ctx context.Context, request *proto.DeployPipelineRequest) (*proto.DeployPipelineResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
-		return &proto.CreatePipelineResponse{},
-			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
 	}
 
 	request.NamespaceId = namespace
 
-	if request.PipelineConfig == nil {
-		return &proto.CreatePipelineResponse{},
-			status.Error(codes.FailedPrecondition, "pipeline configuration required but not found")
+	if request.Id == "" {
+		return nil, status.Error(codes.FailedPrecondition, "pipeline id required but not found")
 	}
 
 	if !hasAccess(ctx, request.NamespaceId) {
-		return &proto.CreatePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
+		return nil, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	newPipeline := models.NewPipeline(request.NamespaceId, request.PipelineConfig)
+	var startVersion int64
+	var endVersion int64
+	var deploymentID int64
 
-	err = api.configTriggersIsValid(newPipeline.Triggers)
-	if err != nil {
-		return &proto.CreatePipelineResponse{},
-			status.Error(codes.FailedPrecondition, err.Error())
-	}
-
-	err = api.db.InsertPipeline(newPipeline)
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityExists) {
-			return &proto.CreatePipelineResponse{},
-				status.Error(codes.AlreadyExists, "pipeline already exists")
+	// Step 1: Insert the new deployment
+	err = storage.InsideTx(api.db.DB, func(tx *sqlx.Tx) error {
+		// Check that there are no currently running deployments
+		deployments, err := api.db.ListRunningPipelineDeployments(tx, 0, 1, request.NamespaceId, request.Id)
+		if err != nil {
+			return err
 		}
 
-		log.Error().Err(err).Msg("could not insert pipeline")
-
-		return &proto.CreatePipelineResponse{},
-			status.Error(codes.Internal, "could not insert pipeline")
-	}
-
-	triggers := []models.PipelineTriggerSettings{}
-	for _, value := range newPipeline.Triggers {
-		triggers = append(triggers, value)
-	}
-
-	successfulSubscriptions, err := api.subscribeTriggers(newPipeline.Namespace, newPipeline.ID, triggers)
-	if err != nil {
-		// Rollback successful subscriptions
-		triggersToUnsubscribe := map[string]string{}
-		for _, subscription := range successfulSubscriptions {
-			triggersToUnsubscribe[subscription.Label] = subscription.Name
+		if len(deployments) != 0 {
+			log.Error().Str("namespace", request.NamespaceId).Str("pipeline", request.Id).
+				Int("total_deployments", len(deployments)).Msgf("deployment failure; deployment is already in progress")
+			return fmt.Errorf("deployment failure; deployment is already in progress")
 		}
 
-		_ = api.unsubscribeTriggers(newPipeline.Namespace, newPipeline.ID, triggersToUnsubscribe)
-		storageErr := api.db.DeletePipeline(newPipeline.Namespace, newPipeline.ID)
-		if storageErr != nil {
-			log.Error().Err(err).Msg("could not delete pipeline while trying to rollback subscriptions")
+		// Get the latest live config so we can deprecate it.
+		latestLiveConfig, err := api.db.GetLatestLivePipelineConfig(tx, request.NamespaceId, request.Id)
+		if err != nil {
+			if !errors.Is(err, storage.ErrEntityNotFound) {
+				return err
+			}
 		}
-		return &proto.CreatePipelineResponse{},
-			status.Errorf(codes.FailedPrecondition, "could not successfully register all subscriptions; %v", err)
-	}
 
-	go api.events.Publish(models.EventCreatedPipeline{
-		NamespaceID: newPipeline.Namespace,
-		PipelineID:  newPipeline.ID,
-	})
-
-	return &proto.CreatePipelineResponse{
-		Pipeline: newPipeline.ToProto(),
-	}, nil
-}
-
-func (api *API) UpdatePipeline(ctx context.Context, request *proto.UpdatePipelineRequest) (*proto.UpdatePipelineResponse, error) {
-	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
-	if err != nil {
-		return &proto.UpdatePipelineResponse{},
-			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
-	}
-
-	request.NamespaceId = namespace
-
-	if !hasAccess(ctx, request.NamespaceId) {
-		return &proto.UpdatePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
-	}
-
-	if request.PipelineConfig == nil {
-		return &proto.UpdatePipelineResponse{}, status.Error(codes.FailedPrecondition, "content required")
-	}
-
-	updatedPipeline := models.NewPipeline(request.NamespaceId, request.PipelineConfig)
-	// TODO(clintjedwards): We need a validate here.
-
-	triggers := []models.PipelineTriggerSettings{}
-	for _, value := range updatedPipeline.Triggers {
-		triggers = append(triggers, value)
-	}
-
-	currentPipeline, err := api.db.GetPipeline(nil, request.NamespaceId, updatedPipeline.ID)
-	if err != nil {
+		// Set start version; if there are no live pipeline configurations set the one being deployed to the
+		// be the starting version.
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.UpdatePipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
-		}
-		log.Error().Err(err).Msg("could not get pipeline")
-		return &proto.UpdatePipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
-	}
-
-	oldTriggers := map[string]string{}
-	for _, trigger := range currentPipeline.Triggers {
-		oldTriggers[trigger.Label] = trigger.Name
-	}
-
-	err = api.unsubscribeTriggers(request.NamespaceId, updatedPipeline.ID, oldTriggers)
-	if err != nil {
-		log.Error().Err(err).Str("pipeline", currentPipeline.ID).Msg("could not unsubscribe triggers")
-		return &proto.UpdatePipelineResponse{}, status.Error(codes.Internal, "could not unsubscribe triggers")
-	}
-
-	successfulSubscriptions, err := api.subscribeTriggers(updatedPipeline.Namespace, updatedPipeline.ID, triggers)
-	if err != nil {
-		// Rollback successful subscriptions
-		triggersToUnsubscribe := map[string]string{}
-		for _, subscription := range successfulSubscriptions {
-			triggersToUnsubscribe[subscription.Label] = subscription.Name
+			startVersion = request.Version
+		} else {
+			startVersion = latestLiveConfig.Version
 		}
 
-		_ = api.unsubscribeTriggers(updatedPipeline.Namespace, updatedPipeline.ID, triggersToUnsubscribe)
-		storageErr := api.db.DeletePipeline(updatedPipeline.Namespace, updatedPipeline.ID)
-		if storageErr != nil {
-			log.Error().Err(err).Msg("could not delete pipeline while trying to rollback subscriptions")
+		// Finally get the latest deployment so we can increment the ID by one.
+		latestDeployments, err := api.db.ListPipelineDeployments(tx, 0, 1, request.NamespaceId, request.Id)
+		if err != nil {
+			return err
 		}
-		return &proto.UpdatePipelineResponse{},
-			status.Errorf(codes.FailedPrecondition, "could not successfully register all subscriptions; %v", err)
-	}
 
-	err = api.db.UpdatePipeline(request.NamespaceId, updatedPipeline.ID, storage.UpdatablePipelineFields{
-		Name:        &updatedPipeline.Name,
-		Description: &updatedPipeline.Description,
-		Parallelism: &updatedPipeline.Parallelism,
-		Modified:    ptr(time.Now().UnixMilli()),
-		Tasks:       &updatedPipeline.CustomTasks,
-		Triggers:    &updatedPipeline.Triggers,
-		CommonTasks: &updatedPipeline.CommonTasks,
+		var latestDeploymentID int64
+
+		if len(latestDeployments) > 0 {
+			latestDeploymentID = latestDeployments[0].ID
+		}
+
+		endVersion = request.Version
+		deploymentID = latestDeploymentID + 1
+
+		deployment := models.NewDeployment(request.NamespaceId, request.Id, deploymentID, startVersion, endVersion)
+
+		err = api.db.InsertPipelineDeployment(tx, deployment.ToStorage())
+		if err != nil {
+			if errors.Is(err, storage.ErrEntityExists) {
+				return status.Error(codes.AlreadyExists, "deployment already exists")
+			}
+
+			log.Error().Err(err).Msg("could not insert deployment")
+			return status.Error(codes.Internal, "could not insert deployment")
+		}
+
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &proto.UpdatePipelineResponse{
-		Pipeline: updatedPipeline.ToProto(),
+	// Step 2: Officially start the deployment.
+	go api.events.Publish(models.EventStartedDeployPipeline{
+		NamespaceID:  request.NamespaceId,
+		PipelineID:   request.Id,
+		StartVersion: startVersion,
+		EndVersion:   endVersion,
+	})
+
+	// Step 3: We mark the new pipeline config as Live and Active, signifying that it is ready to take traffic.
+	// If this wasn't a same version upgrade. We mark the old pipeline config as Deprecated and Disabled.
+	// TODO(clintjedwards): Eventually this will become a more intricate function which will allow for more
+	// complex deployment types.
+
+	err = storage.InsideTx(api.db.DB, func(tx *sqlx.Tx) error {
+		// Update end version config
+		err = api.db.UpdatePipelineConfig(tx, request.NamespaceId, request.Id, endVersion,
+			storage.UpdatablePipelineConfigFields{
+				State:      ptr(string(models.PipelineConfigStateLive)),
+				Deprecated: ptr(int64(0)),
+			})
+		if err != nil {
+			if errors.Is(err, storage.ErrEntityNotFound) {
+				return status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
+			}
+			log.Error().Err(err).Str("namespace", request.NamespaceId).
+				Str("pipeline", request.Id).Int64("deployment", deploymentID).
+				Msg("could not save updated pipeline to storage during deployment")
+			return status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
+		}
+
+		// Update start version config
+		if startVersion != endVersion {
+			err = api.db.UpdatePipelineConfig(tx, request.NamespaceId, request.Id, startVersion,
+				storage.UpdatablePipelineConfigFields{
+					State:      ptr(string(models.PipelineConfigStateDeprecated)),
+					Deprecated: ptr(time.Now().UnixMilli()),
+				})
+			if err != nil {
+				if errors.Is(err, storage.ErrEntityNotFound) {
+					return status.Errorf(codes.NotFound, "pipeline %q not found", request.Id)
+				}
+				log.Error().Err(err).Str("namespace", request.NamespaceId).
+					Str("pipeline", request.Id).Int64("deployment", deploymentID).
+					Msg("could not save updated pipeline to storage during deployment")
+				return status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		statusReason := models.DeploymentStatusReason{
+			Reason:      models.DeploymentStatusReasonUnknown,
+			Description: fmt.Sprintf("Deployment has failed due to an internal error: %v", err),
+		}
+
+		// Mark deployment as failed
+		err = api.db.UpdatePipelineDeployment(api.db, request.NamespaceId, request.Id, deploymentID,
+			storage.UpdatablePipelineDeploymentFields{
+				Ended:        ptr(time.Now().UnixMilli()),
+				State:        ptr(string(models.DeploymentStateComplete)),
+				Status:       ptr(string(models.DeploymentStatusFailed)),
+				StatusReason: ptr(statusReason.ToJSON()),
+			})
+		if err != nil {
+			log.Error().Err(err).Str("namespace", request.NamespaceId).
+				Str("pipeline", request.Id).Int64("deployment", deploymentID).
+				Msg("could not complete deployment for pipeline")
+			return nil, status.Errorf(codes.Internal, "could not complete deployment for pipeline %q", request.Id)
+		}
+	}
+
+	// Complete deployment
+	err = api.db.UpdatePipelineDeployment(api.db, request.NamespaceId, request.Id, deploymentID,
+		storage.UpdatablePipelineDeploymentFields{
+			Ended:  ptr(time.Now().UnixMilli()),
+			State:  ptr(string(models.DeploymentStateComplete)),
+			Status: ptr(string(models.DeploymentStatusSuccessful)),
+		})
+	if err != nil {
+		log.Error().Err(err).Str("namespace", request.NamespaceId).
+			Str("pipeline", request.Id).Int64("deployment", deploymentID).
+			Msg("could not complete deployment for pipeline")
+		return nil, status.Errorf(codes.Internal, "could not complete deployment for pipeline %q", request.Id)
+	}
+
+	// Lastly: We're done. So now we just need to complete the deployment.
+	go api.events.Publish(models.EventCompletedDeployPipeline{
+		NamespaceID:  request.NamespaceId,
+		PipelineID:   request.Id,
+		StartVersion: startVersion,
+		EndVersion:   endVersion,
+	})
+
+	return &proto.DeployPipelineResponse{
+		DeploymentId: deploymentID,
 	}, nil
 }
 
@@ -333,26 +367,7 @@ func (api *API) DeletePipeline(ctx context.Context, request *proto.DeletePipelin
 		return &proto.DeletePipelineResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	pipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.Id)
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.DeletePipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
-		}
-		log.Error().Err(err).Msg("could not get pipeline")
-		return &proto.DeletePipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
-	}
-
-	triggers := map[string]string{}
-	for _, triggerSetting := range pipeline.Triggers {
-		triggers[triggerSetting.Label] = triggerSetting.Name
-	}
-
-	err = api.unsubscribeTriggers(pipeline.Namespace, pipeline.ID, triggers)
-	if err != nil {
-		log.Error().Err(err).Interface("pipeline", pipeline).Msg("could not unsubscribe all triggers from pipeline")
-	}
-
-	err = api.db.DeletePipeline(request.NamespaceId, request.Id)
+	err = api.db.DeletePipelineMetadata(api.db, request.NamespaceId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.DeletePipelineResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
@@ -362,8 +377,8 @@ func (api *API) DeletePipeline(ctx context.Context, request *proto.DeletePipelin
 	}
 
 	go api.events.Publish(models.EventDeletedPipeline{
-		NamespaceID: pipeline.Namespace,
-		PipelineID:  pipeline.ID,
+		NamespaceID: request.NamespaceId,
+		PipelineID:  request.Id,
 	})
 
 	return &proto.DeletePipelineResponse{}, nil

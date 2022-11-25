@@ -7,51 +7,36 @@ import (
 	"strings"
 
 	qb "github.com/Masterminds/squirrel"
-	"github.com/clintjedwards/gofer/models"
 )
 
-func (db *DB) ListObjectStoreRunKeys(namespace, pipeline string, run int64) ([]models.ObjectStoreKey, error) {
-	rows, err := qb.Select("key", "created").
-		From("object_store_run_keys").
-		OrderBy("created ASC"). // oldest first
-		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run}).RunWith(db).Query()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	defer rows.Close()
-
-	runKeys := []models.ObjectStoreKey{}
-
-	for rows.Next() {
-		var key string
-		var created int64
-
-		err = rows.Scan(&key, &created)
-		if err != nil {
-			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-		}
-
-		runKeys = append(runKeys, models.ObjectStoreKey{
-			Key:     key,
-			Created: created,
-		})
-
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-
-	return runKeys, nil
+type ObjectStoreRunKey struct {
+	Namespace string
+	Pipeline  string
+	Run       int64
+	Key       string
+	Created   int64
 }
 
-func (db *DB) InsertObjectStoreRunKey(namespace, pipeline string, run int64, objectKey *models.ObjectStoreKey) error {
-	_, err := qb.Insert("object_store_run_keys").Columns("namespace", "pipeline", "run", "key", "created").Values(
-		namespace, pipeline, run, objectKey.Key, objectKey.Created).RunWith(db).Exec()
+func (db *DB) ListObjectStoreRunKeys(conn Queryable, namespace, pipeline string, run int64) ([]ObjectStoreRunKey, error) {
+	query, args := qb.Select("namespace", "pipeline", "run", "key", "created").
+		From("object_store_run_keys").
+		OrderBy("created ASC"). // oldest first
+		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run}).MustSql()
+
+	keys := []ObjectStoreRunKey{}
+	err := conn.Select(&keys, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return keys, nil
+}
+
+func (db *DB) InsertObjectStoreRunKey(conn Queryable, objectKey *ObjectStoreRunKey) error {
+	_, err := qb.Insert("object_store_run_keys").
+		Columns("namespace", "pipeline", "run", "key", "created").Values(
+		objectKey.Namespace, objectKey.Pipeline, objectKey.Run, objectKey.Key, objectKey.Created).
+		RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrEntityExists
@@ -63,9 +48,9 @@ func (db *DB) InsertObjectStoreRunKey(namespace, pipeline string, run int64, obj
 	return nil
 }
 
-func (db *DB) DeleteObjectStoreRunKey(namespace, pipeline string, run int64, key string) error {
+func (db *DB) DeleteObjectStoreRunKey(conn Queryable, namespace, pipeline string, run int64, key string) error {
 	_, err := qb.Delete("object_store_run_keys").
-		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run, "key": key}).RunWith(db).Exec()
+		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run, "key": key}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

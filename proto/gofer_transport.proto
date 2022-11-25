@@ -4,7 +4,8 @@ package proto;
 
 option go_package = "github.com/clintjedwards/gofer/proto/go";
 
-import "gofer_message.proto";
+import "gofer_message_api.proto";
+import "gofer_message_sdk.proto";
 
 ////////////// System Transport Models //////////////
 
@@ -105,6 +106,8 @@ message DeleteNamespaceResponse {}
 message GetPipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
   string id = 2;           // Unique identifier
+  // Pipeline version to retrieve. 0 Returns the currently active version.
+  int64 version = 3;
 }
 message GetPipelineResponse { Pipeline pipeline = 1; }
 
@@ -118,7 +121,7 @@ message ListPipelinesRequest {
   int64 limit = 2;
   string namespace_id = 3; // Unique namespace identifier
 }
-message ListPipelinesResponse { repeated Pipeline pipelines = 1; }
+message ListPipelinesResponse { repeated PipelineMetadata pipelines = 1; }
 
 message DisablePipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
@@ -132,23 +135,135 @@ message EnablePipelineRequest {
 }
 message EnablePipelineResponse {}
 
-message CreatePipelineRequest {
+message RegisterPipelineConfigRequest {
   string namespace_id = 1; // Unique namespace identifier
-  PipelineConfig pipeline_config = 2;
+  UserPipelineConfig pipeline_config = 2;
 }
-message CreatePipelineResponse { Pipeline pipeline = 1; }
+message RegisterPipelineConfigResponse { Pipeline pipeline = 1; }
 
-message UpdatePipelineRequest {
+message DeployPipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
-  PipelineConfig pipeline_config = 2;
+  string id = 2;
+  int64 version = 3;
+  bool force = 4;
 }
-message UpdatePipelineResponse { Pipeline pipeline = 1; }
+message DeployPipelineResponse { int64 deployment_id = 1; }
 
 message DeletePipelineRequest {
   string namespace_id = 1; // Unique namespace identifier
   string id = 2;           // Pipeline ID
 }
 message DeletePipelineResponse {}
+
+////////////// Pipeline Config Transport Models //////////////
+
+message GetPipelineConfigRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+  // Pipeline version to retrieve. 0 Returns the currently active version.
+  int64 version = 3;
+}
+message GetPipelineConfigResponse { PipelineConfig config = 1; }
+
+message ListPipelineConfigsRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of objects to return.
+  int64 offset = 1;
+
+  // limit is a pagination parameter that defines how many objects to return
+  // per result.
+  int64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+  string pipeline_id = 4;  // Unique pipeline identifier
+}
+
+message ListPipelineConfigsResponse { repeated PipelineConfig configs = 1; }
+
+message DeletePipelineConfigRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+  // Pipeline version to retrieve. 0 Deletes the currently active version.
+  int64 version = 3;
+}
+message DeletePipelineConfigResponse {}
+
+////////////// Pipeline Extension Subscription Transport Models //////////////
+
+message CreatePipelineExtensionSubscriptionRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+  string extension_name = 3;
+  string extension_label = 4;
+  map<string, string> settings = 5;
+}
+
+message CreatePipelineExtensionSubscriptionResponse {}
+
+message GetPipelineExtensionSubscriptionRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+  string extension_name = 3;
+  string extension_label = 4;
+}
+
+message GetPipelineExtensionSubscriptionResponse {
+  PipelineExtensionSubscription subscription = 1;
+}
+
+message ListPipelineExtensionSubscriptionsRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+}
+
+message ListPipelineExtensionSubscriptionsResponse {
+  repeated PipelineExtensionSubscription subscriptions = 1;
+}
+
+message EnablePipelineExtensionSubscriptionRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+  string extension_name = 3;
+  string extension_label = 4;
+}
+message EnablePipelineExtensionSubscriptionResponse {}
+
+message DisablePipelineExtensionSubscriptionRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+  string extension_name = 3;
+  string extension_label = 4;
+}
+message DisablePipelineExtensionSubscriptionResponse {}
+
+message DeletePipelineExtensionSubscriptionRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;  // Unique pipeline identifier
+  string extension_name = 3;
+  string extension_label = 4;
+}
+message DeletePipelineExtensionSubscriptionResponse {}
+
+////////////// Deployment Transport Models //////////////
+message ListDeploymentsRequest {
+  // offset is a pagination parameter that defines where to start when counting
+  // the list of Deployments to return.
+  int64 offset = 1;
+
+  // limit is a pagination parameter that defines how many Deployments to return
+  // per result.
+  int64 limit = 2;
+  string namespace_id = 3; // Unique namespace identifier
+  string pipeline_id = 4;
+}
+
+message ListDeploymentsResponse { repeated Deployment Deployments = 1; }
+
+message GetDeploymentRequest {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 id = 3; // Unique deployment identifier.
+}
+message GetDeploymentResponse { Deployment deployment = 1; }
 
 ////////////// Runs Transport Models //////////////
 
@@ -265,40 +380,40 @@ message DeleteTaskRunLogsRequest {
 }
 message DeleteTaskRunLogsResponse {}
 
-////////////// Trigger Transport Models //////////////
+////////////// Extension Transport Models //////////////
 
-message GetTriggerRequest {
-  string name = 1; // The unique name for a particular trigger
+message GetExtensionRequest {
+  string name = 1; // The unique name for a particular extension
 }
-message GetTriggerResponse { Trigger trigger = 1; }
+message GetExtensionResponse { Extension extension = 1; }
 
-message ListTriggersRequest {}
-message ListTriggersResponse { repeated Trigger triggers = 1; }
+message ListExtensionsRequest {}
+message ListExtensionsResponse { repeated Extension extensions = 1; }
 
-message InstallTriggerRequest {
+message InstallExtensionRequest {
   string name = 1;
   string image = 2;
   string user = 3;
   string pass = 4;
   map<string, string> variables = 5;
 }
-message InstallTriggerResponse {}
+message InstallExtensionResponse {}
 
-message UninstallTriggerRequest { string name = 1; }
-message UninstallTriggerResponse {}
+message UninstallExtensionRequest { string name = 1; }
+message UninstallExtensionResponse {}
 
-message EnableTriggerRequest { string name = 1; }
-message EnableTriggerResponse {}
+message EnableExtensionRequest { string name = 1; }
+message EnableExtensionResponse {}
 
-message DisableTriggerRequest { string name = 1; }
-message DisableTriggerResponse {}
+message DisableExtensionRequest { string name = 1; }
+message DisableExtensionResponse {}
 
-message GetTriggerInstallInstructionsRequest {
+message GetExtensionInstallInstructionsRequest {
   string image = 1;
   string user = 2;
   string pass = 3;
 }
-message GetTriggerInstallInstructionsResponse { string instructions = 1; }
+message GetExtensionInstallInstructionsResponse { string instructions = 1; }
 
 ////////////// CommonTask Transport Models //////////////
 
@@ -338,11 +453,11 @@ message GetCommonTaskInstallInstructionsRequest {
 }
 message GetCommonTaskInstallInstructionsResponse { string instructions = 1; }
 
-////////////// Trigger Service Transport Models //////////////
+////////////// Extension Service Transport Models //////////////
 
-message TriggerWatchRequest {}
-message TriggerWatchResponse {
-  // The trigger can choose to give extra details about the specific trigger
+message ExtensionWatchRequest {}
+message ExtensionWatchResponse {
+  // The extension can choose to give extra details about the specific extension
   // event result in the form of a string description.
   string details = 1;
 
@@ -352,8 +467,8 @@ message TriggerWatchResponse {
   // Unique identifier for pipeline.
   string pipeline_id = 3;
 
-  // Unique id of trigger instance.
-  string pipeline_trigger_label = 4;
+  // Unique id of extension instance.
+  string pipeline_extension_label = 4;
 
   enum Result {
     UNKNOWN = 0;
@@ -367,15 +482,15 @@ message TriggerWatchResponse {
   map<string, string> metadata = 6;
 }
 
-message TriggerInfoRequest {}
-message TriggerInfoResponse {
-  // kind corresponds a unique trigger identifier, this is passed as a envvar
+message ExtensionInfoRequest {}
+message ExtensionInfoResponse {
+  // kind corresponds a unique extension identifier, this is passed as a envvar
   // via the main process(and as such can be left empty), as the main process
-  // container the configuration for which trigger "kind" corresponds to which
-  // trigger container.
+  // container the configuration for which extension "kind" corresponds to which
+  // extension container.
   string name = 1;
 
-  // Triggers are allowed to provide a link to more extensive documentation on
+  // Extensions are allowed to provide a link to more extensive documentation on
   // how to use and configure them.
   string documentation = 2;
 
@@ -383,37 +498,37 @@ message TriggerInfoResponse {
   repeated string registered = 3;
 }
 
-message TriggerSubscribeRequest {
-  string namespace_id = 1; // unique identifier for associated namespace
-  string pipeline_id = 2;  // unique identifier for associated pipeline
-  string pipeline_trigger_label = 3; // pipeline specific subscription id
+message ExtensionSubscribeRequest {
+  string namespace_id = 1; // unique identifier for associated namespace.
+  string pipeline_id = 2;  // unique identifier for associated pipeline.
+  string pipeline_extension_label = 3; // pipeline specific subscription id
 
-  // Pipelines are allowed to pass a configuration to triggers denoting what
-  // specific settings they might like for a specific trigger. The acceptable
-  // values of this config map is defined by the triggers and should be
+  // Pipelines are allowed to pass a configuration to extensions denoting what
+  // specific settings they might like for a specific extension. The acceptable
+  // values of this config map is defined by the extensions and should be
   // mentioned in documentation.
   //
-  // Additionally, the trigger should verify config settings and pass back an
+  // Additionally, the extension should verify config settings and pass back an
   // error when it does not meet requirements.
   //
   // Note: The keys in this map are forced to be uppercase. This is important
-  // when checking for their existance when writing a trigger.
+  // when checking for their existance when writing a extension.
   map<string, string> config = 4;
 }
-message TriggerSubscribeResponse {}
+message ExtensionSubscribeResponse {}
 
-message TriggerUnsubscribeRequest {
+message ExtensionUnsubscribeRequest {
   string namespace_id = 1; // unique identifier for associated namespace
   string pipeline_id = 2;  // unique identifier for associated pipeline
-  string pipeline_trigger_label = 3; // pipeline specific subscription id
+  string pipeline_extension_label = 3; // pipeline specific subscription id
 }
-message TriggerUnsubscribeResponse {}
+message ExtensionUnsubscribeResponse {}
 
-message TriggerShutdownRequest {}
-message TriggerShutdownResponse {}
+message ExtensionShutdownRequest {}
+message ExtensionShutdownResponse {}
 
-message TriggerExternalEventRequest { bytes payload = 1; }
-message TriggerExternalEventResponse {}
+message ExtensionExternalEventRequest { bytes payload = 1; }
+message ExtensionExternalEventResponse {}
 
 ////////////// Events Transport Models //////////////
 

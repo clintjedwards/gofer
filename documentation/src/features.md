@@ -31,15 +31,15 @@ You can find more information on protobuf, proto files, and how to autogenerate 
 
 Gofer allows you to separate out your pipelines into different namespaces, allowing you to organize your teams and set permissions based on those namespaces.
 
-## Triggers
+## Extensions
 
-Triggers are the way users can automate their pipelines by waiting on bespoke events (like the passage of time).
+Extensions are the way users can automate their pipelines by waiting on bespoke events (like the passage of time).
 
-Gofer supports any trigger you can imagine by making triggers pluggable and portable[^3]! Triggers are nothing more than docker containers themselves that talk to the main process when its time for a pipeline to be triggered.
+Gofer supports any extension you can imagine by making extensions pluggable and portable[^3]! Extensions are nothing more than docker containers themselves that talk to the main process when its time for a pipeline to be extensioned.
 
-Gofer out of the box provides some default triggers like [cron](./ref/triggers/provided/cron.md) and [interval](./ref/triggers/provided/interval.md). But even more powerful than that, it accepts any type of trigger you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
+Gofer out of the box provides some default extensions like [cron](./ref/extensions/provided/cron.md) and [interval](./ref/extensions/provided/interval.md). But even more powerful than that, it accepts any type of extension you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
 
-Triggers are brought up alongside Gofer as long-running docker containers that it launches and manages.
+Extensions are brought up alongside Gofer as long-running docker containers that it launches and manages.
 
 ## Object Store
 
@@ -51,15 +51,15 @@ Gofer provides a built in [secret store](./ref/secret_store/README.md) you can a
 
 ## Events
 
-Gofer provides a list of events for the most common actions performed. You can view this event stream via the Gofer API, allowing you to build on top of Gofer's actions and even using Gofer as a trigger.
+Gofer provides a list of events for the most common actions performed. You can view this event stream via the Gofer API, allowing you to build on top of Gofer's actions and even using Gofer as a extension.
 
 ## External Events
 
-Gofer allows triggers to consume external events. This allows for triggers to respond to webhooks from favorite sites like Github and more.
+Gofer allows extensions to consume external events. This allows for extensions to respond to webhooks from favorite sites like Github and more.
 
 ## Common Tasks
 
-Much like triggers, Gofer allows users to install "common tasks". Common tasks are Gofer's way of cutting down on some of the setup and allowing containers to be pre-setup by the system administrator for use in any pipeline.
+Much like extensions, Gofer allows users to install "common tasks". Common tasks are Gofer's way of cutting down on some of the setup and allowing containers to be pre-setup by the system administrator for use in any pipeline.
 
 For example, if you wanted to do some common action like post to Slack, it would be annoying have to set up the container that does this for every pipeline. Instead, Gofer allows you to set it up once and include it everywhere.
 

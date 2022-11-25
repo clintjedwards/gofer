@@ -60,10 +60,10 @@ func NewCustomTask(id, image string) *CustomTaskWrapper {
 	}
 }
 
-func (t *CustomTaskWrapper) Proto() *proto.CustomTaskConfig {
-	dependsOn := map[string]proto.CustomTaskConfig_RequiredParentStatus{}
+func (t *CustomTaskWrapper) Proto() *proto.UserCustomTaskConfig {
+	dependsOn := map[string]proto.UserCustomTaskConfig_RequiredParentStatus{}
 	for key, value := range t.CustomTask.DependsOn {
-		dependsOn[key] = proto.CustomTaskConfig_RequiredParentStatus(proto.CustomTaskConfig_RequiredParentStatus_value[string(value)])
+		dependsOn[key] = proto.UserCustomTaskConfig_RequiredParentStatus(proto.UserCustomTaskConfig_RequiredParentStatus_value[string(value)])
 	}
 
 	entrypoint := []string{}
@@ -76,7 +76,7 @@ func (t *CustomTaskWrapper) Proto() *proto.CustomTaskConfig {
 		command = *t.CustomTask.Command
 	}
 
-	return &proto.CustomTaskConfig{
+	return &proto.UserCustomTaskConfig{
 		Id:             t.CustomTask.ID,
 		Description:    t.CustomTask.Description,
 		Image:          t.CustomTask.Image,
@@ -89,7 +89,7 @@ func (t *CustomTaskWrapper) Proto() *proto.CustomTaskConfig {
 	}
 }
 
-func (t *CustomTaskWrapper) FromCustomTaskProto(proto *proto.CustomTaskConfig) {
+func (t *CustomTaskWrapper) FromCustomTaskProto(proto *proto.UserCustomTaskConfig) {
 	var registryAuth *RegistryAuth
 	if proto.RegistryAuth != nil {
 		ra := RegistryAuth{}

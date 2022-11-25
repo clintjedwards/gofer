@@ -18,10 +18,10 @@ import (
 
 func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	triggerKind := vars["trigger"]
-	trigger, exists := api.triggers.Get(triggerKind)
+	extensionKind := vars["extension"]
+	extension, exists := api.extensions.Get(extensionKind)
 	if !exists {
-		sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("trigger %q does not exist", triggerKind))
+		sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("extension %q does not exist", extensionKind))
 		return
 	}
 
@@ -34,16 +34,16 @@ func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) 
 
 	defer req.Body.Close()
 
-	conn, err := grpcDial(trigger.URL)
+	conn, err := grpcDial(extension.URL)
 	if err != nil {
-		log.Error().Err(err).Str("trigger", triggerKind).Msg("could not connect to trigger")
+		log.Error().Err(err).Str("extension", extensionKind).Msg("could not connect to extension")
 	}
 	defer conn.Close()
 
-	client := proto.NewTriggerServiceClient(conn)
+	client := proto.NewExtensionServiceClient(conn)
 
-	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*trigger.Key))
-	_, err = client.ExternalEvent(ctx, &proto.TriggerExternalEventRequest{
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*extension.Key))
+	_, err = client.ExternalEvent(ctx, &proto.ExtensionExternalEventRequest{
 		Payload: serializedRequest.Bytes(),
 	})
 	if err != nil {
@@ -51,8 +51,8 @@ func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) 
 			return
 		}
 
-		log.Error().Err(err).Str("trigger", triggerKind).Msg("could not connect to trigger")
-		sendErrResponse(w, http.StatusInternalServerError, fmt.Errorf("could not connect to trigger"))
+		log.Error().Err(err).Str("extension", extensionKind).Msg("could not connect to extension")
+		sendErrResponse(w, http.StatusInternalServerError, fmt.Errorf("could not connect to extension"))
 		return
 	}
 }

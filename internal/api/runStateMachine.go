@@ -2,34 +2,37 @@ package api
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync/atomic"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/clintjedwards/gofer/internal/syncmap"
-	"github.com/clintjedwards/gofer/models"
 	"github.com/rs/zerolog/log"
 )
 
 // Used to keep track of a run as it progresses through the necessary states.
 type RunStateMachine struct {
 	API      *API
-	Pipeline *models.Pipeline
+	Pipeline *models.PipelineMetadata
+	Config   *models.PipelineConfig
 	Run      *models.Run
 	TaskRuns syncmap.Syncmap[string, models.TaskRun]
 	StopRuns *atomic.Bool // Used to stop the progression of a run
 }
 
-func (api *API) newRunStateMachine(pipeline *models.Pipeline, run *models.Run) *RunStateMachine {
+func (api *API) newRunStateMachine(pipeline *models.PipelineMetadata, config *models.PipelineConfig, run *models.Run) *RunStateMachine {
 	var stopRuns atomic.Bool
 	stopRuns.Store(false)
 
 	return &RunStateMachine{
 		API:      api,
 		Pipeline: pipeline,
+		Config:   config,
 		Run:      run,
 		TaskRuns: syncmap.New[string, models.TaskRun](),
 		StopRuns: &stopRuns,
@@ -50,13 +53,14 @@ func (r *RunStateMachine) setTaskRunFinished(id string, code *int64,
 
 	r.TaskRuns.Set(id, taskRun)
 
-	err := r.API.db.UpdateTaskRun(&taskRun, storage.UpdatableTaskRunFields{
-		ExitCode:     code,
-		Status:       &status,
-		State:        ptr(models.TaskRunStateComplete),
-		Ended:        ptr(time.Now().UnixMilli()),
-		StatusReason: reason,
-	})
+	err := r.API.db.UpdatePipelineTaskRun(r.API.db, taskRun.Namespace, taskRun.Pipeline, taskRun.Run, taskRun.ID,
+		storage.UpdatablePipelineTaskRunFields{
+			ExitCode:     code,
+			Status:       ptr(string(status)),
+			State:        ptr(string(models.TaskRunStateComplete)),
+			Ended:        ptr(time.Now().UnixMilli()),
+			StatusReason: ptr(reason.ToJSON()),
+		})
 	if err != nil {
 		return err
 	}
@@ -73,10 +77,10 @@ func (r *RunStateMachine) setTaskRunFinished(id string, code *int64,
 }
 
 func (r *RunStateMachine) setRunFinished(status models.RunStatus, reason *models.RunStatusReason) error {
-	err := r.API.db.UpdateRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, storage.UpdatableRunFields{
-		State:        ptr(models.RunStateComplete),
-		Status:       &status,
-		StatusReason: reason,
+	err := r.API.db.UpdatePipelineRun(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, storage.UpdatablePipelineRunFields{
+		State:        ptr(string(models.RunStateComplete)),
+		Status:       ptr(string(status)),
+		StatusReason: ptr(reason.ToJSON()),
 		Ended:        ptr(time.Now().UnixMilli()),
 	})
 	if err != nil {
@@ -94,9 +98,10 @@ func (r *RunStateMachine) setRunFinished(status models.RunStatus, reason *models
 }
 
 func (r *RunStateMachine) setTaskRunState(taskRun models.TaskRun, state models.TaskRunState) error {
-	err := r.API.db.UpdateTaskRun(&taskRun, storage.UpdatableTaskRunFields{
-		State: &state,
-	})
+	err := r.API.db.UpdatePipelineTaskRun(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, taskRun.ID,
+		storage.UpdatablePipelineTaskRunFields{
+			State: ptr(string(state)),
+		})
 	if err != nil {
 		return err
 	}
@@ -118,14 +123,14 @@ func (r *RunStateMachine) createAutoInjectToken() {
 	// Check we actually need to do this
 	createToken := false
 
-	for _, task := range r.Pipeline.CustomTasks {
+	for _, task := range r.Config.CustomTasks {
 		if task.InjectAPIToken {
 			createToken = true
 			break
 		}
 	}
 
-	for _, task := range r.Pipeline.CommonTasks {
+	for _, task := range r.Config.CommonTasks {
 		if task.InjectAPIToken {
 			createToken = true
 			break
@@ -138,7 +143,7 @@ func (r *RunStateMachine) createAutoInjectToken() {
 			"description": "This token was automatically created by Gofer API at the user's request. Visit https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html#auto-inject-api-tokens to learn more.",
 		}, time.Hour*48)
 
-		err := r.API.db.InsertToken(newToken)
+		err := r.API.db.InsertToken(r.API.db, newToken.ToStorage())
 		if err != nil {
 			log.Error().Err(err).Msg("could not save token to storage")
 		}
@@ -161,12 +166,12 @@ func (r *RunStateMachine) executeTaskTree() {
 	r.createAutoInjectToken()
 
 	// Launch a new task run for each task found.
-	for _, task := range r.Pipeline.CustomTasks {
+	for _, task := range r.Config.CustomTasks {
 		task := task
 		go r.launchTaskRun(&task, true)
 	}
 
-	for _, taskSettings := range r.Pipeline.CommonTasks {
+	for _, taskSettings := range r.Config.CommonTasks {
 		// We create a half filled model of common task so that
 		// we can pass it to the next step where it will get fully filled in.
 		// We only do this because the next step already has the facilities to handle
@@ -199,7 +204,7 @@ func (r *RunStateMachine) parentTaskFinished(dependencies *map[string]models.Req
 }
 
 func (r *RunStateMachine) parallelismLimitExceeded() bool {
-	limit := r.Pipeline.Parallelism
+	limit := r.Config.Parallelism
 
 	if limit == 0 && r.API.config.RunParallelismLimit == 0 {
 		return false
@@ -213,14 +218,16 @@ func (r *RunStateMachine) parallelismLimitExceeded() bool {
 		return false
 	}
 
-	runs, err := r.API.db.ListRuns(nil, 0, 0, r.Pipeline.Namespace, r.Pipeline.ID)
+	runsRaw, err := r.API.db.ListPipelineRuns(r.API.db, 0, 0, r.Pipeline.Namespace, r.Pipeline.ID)
 	if err != nil {
 		return true
 	}
 
 	var runsInProgress int64
 
-	for _, run := range runs {
+	for _, runRaw := range runsRaw {
+		var run models.Run
+		run.FromStorage(&runRaw)
 		if run.State != models.RunStateComplete {
 			runsInProgress++
 		}
@@ -272,8 +279,8 @@ func (r *RunStateMachine) taskDependenciesSatisfied(dependencies *map[string]mod
 // Monitors all task run statuses and determines the final run status based on all
 // finished task runs. It will block until all task runs have finished.
 func (r *RunStateMachine) waitRunFinish() {
-	err := r.API.db.UpdateRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, storage.UpdatableRunFields{
-		State: ptr(models.RunStateRunning),
+	err := r.API.db.UpdatePipelineRun(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, storage.UpdatablePipelineRunFields{
+		State: ptr(string(models.RunStateRunning)),
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("storage error occurred while waiting for run to finish")
@@ -282,7 +289,7 @@ func (r *RunStateMachine) waitRunFinish() {
 
 	// If the task run map hasn't had all the entries com in we should wait until it does.
 	for {
-		if len(r.TaskRuns.Keys()) != len(r.Pipeline.CustomTasks)+len(r.Pipeline.CommonTasks) {
+		if len(r.TaskRuns.Keys()) != len(r.Config.CustomTasks)+len(r.Config.CommonTasks) {
 			time.Sleep(time.Millisecond * 500)
 			continue
 		}
@@ -465,7 +472,7 @@ func (r *RunStateMachine) handleRunObjectExpiry() {
 	limit := r.API.config.ObjectStore.RunObjectExpiry
 
 	// We ask for the limit of runs plus one extra
-	runs, err := r.API.db.ListRuns(nil, 0, limit+1, r.Pipeline.Namespace, r.Pipeline.ID)
+	runs, err := r.API.db.ListPipelineRuns(r.API.db, 0, limit+1, r.Pipeline.Namespace, r.Pipeline.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get runs for run expiry processing; db error")
 		return
@@ -480,24 +487,30 @@ func (r *RunStateMachine) handleRunObjectExpiry() {
 		return
 	}
 
-	expiredRun := runs[len(runs)-1]
+	expiredRunRaw := runs[len(runs)-1]
+	var expiredRun models.Run
+	expiredRun.FromStorage(&expiredRunRaw)
 
 	// If the run is still in progress wait for it to be done
 	for expiredRun.State != models.RunStateComplete {
 		time.Sleep(time.Second)
 
-		expiredRun, err = r.API.db.GetRun(r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
+		expiredRunRaw, err = r.API.db.GetPipelineRun(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
 		if err != nil {
 			log.Error().Err(err).Msg("could not get runs for run expiry processing; db error")
 			return
 		}
+
+		var tmpExpiredRun models.Run
+		tmpExpiredRun.FromStorage(&expiredRunRaw)
+		expiredRun = tmpExpiredRun
 	}
 
 	if expiredRun.StoreObjectsExpired {
 		return
 	}
 
-	objectKeys, err := r.API.db.ListObjectStoreRunKeys(r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
+	objectKeys, err := r.API.db.ListObjectStoreRunKeys(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get runs for run expiry processing; db error")
 		return
@@ -512,16 +525,17 @@ func (r *RunStateMachine) handleRunObjectExpiry() {
 		}
 
 		// Delete it from the run's records
-		err = r.API.db.DeleteObjectStoreRunKey(r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID, key.Key)
+		err = r.API.db.DeleteObjectStoreRunKey(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID, key.Key)
 		if err != nil {
 			log.Error().Err(err).Msg("could not delete run object for run expiry processing; db error")
 			continue
 		}
 	}
 
-	err = r.API.db.UpdateRun(r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID, storage.UpdatableRunFields{
-		StoreObjectsExpired: ptr(true),
-	})
+	err = r.API.db.UpdatePipelineRun(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID,
+		storage.UpdatablePipelineRunFields{
+			StoreObjectsExpired: ptr(true),
+		})
 	if err != nil {
 		log.Error().Err(err).Msg("could not get runs for run expiry processing; db error")
 		return
@@ -538,7 +552,7 @@ func (r *RunStateMachine) handleRunLogExpiry() {
 	limit := r.API.config.TaskRunLogExpiry
 
 	// We ask for the limit of runs plus one extra
-	runs, err := r.API.db.ListRuns(nil, 0, limit+1, r.Pipeline.Namespace, r.Pipeline.ID)
+	runs, err := r.API.db.ListPipelineRuns(r.API.db, 0, limit+1, r.Pipeline.Namespace, r.Pipeline.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get runs for run log expiry processing; db error")
 		return
@@ -553,17 +567,23 @@ func (r *RunStateMachine) handleRunLogExpiry() {
 		return
 	}
 
-	expiredRun := runs[len(runs)-1]
+	expiredRunRaw := runs[len(runs)-1]
+	var expiredRun models.Run
+	expiredRun.FromStorage(&expiredRunRaw)
 
 	// If the run is still in progress wait for it to be done
 	for expiredRun.State != models.RunStateComplete {
 		time.Sleep(time.Second)
 
-		expiredRun, err = r.API.db.GetRun(r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
+		expiredRunRaw, err = r.API.db.GetPipelineRun(r.API.db, r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
 		if err != nil {
 			log.Error().Err(err).Msg("could not get runs for run log expiry processing; db error")
 			return
 		}
+
+		var tmpExpiredRun models.Run
+		tmpExpiredRun.FromStorage(&expiredRunRaw)
+		expiredRun = tmpExpiredRun
 	}
 
 	var taskRuns []models.TaskRun
@@ -571,10 +591,16 @@ func (r *RunStateMachine) handleRunLogExpiry() {
 	// If the task runs are in progress we wait for it to be done.
 outerLoop:
 	for {
-		taskRuns, err = r.API.db.ListTaskRuns(0, 0, r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
+		taskRunsRaw, err := r.API.db.ListPipelineTaskRuns(r.API.db, 0, 0, r.Pipeline.Namespace, r.Pipeline.ID, expiredRun.ID)
 		if err != nil {
 			log.Error().Err(err).Msg("could not get task runs for run log expiry processing; db error")
 			return
+		}
+
+		for _, taskRunRaw := range taskRunsRaw {
+			var taskRun models.TaskRun
+			taskRun.FromStorage(&taskRunRaw)
+			taskRuns = append(taskRuns, taskRun)
 		}
 
 		for _, taskRun := range taskRuns {
@@ -602,10 +628,11 @@ outerLoop:
 			log.Debug().Err(err).Msg("could not remove task run log file")
 		}
 
-		err = r.API.db.UpdateTaskRun(&taskRun, storage.UpdatableTaskRunFields{
-			LogsExpired: ptr(true),
-			LogsRemoved: ptr(true),
-		})
+		err = r.API.db.UpdatePipelineTaskRun(r.API.db, taskRun.Namespace, taskRun.Pipeline, taskRun.Run, taskRun.ID,
+			storage.UpdatablePipelineTaskRunFields{
+				LogsExpired: ptr(true),
+				LogsRemoved: ptr(true),
+			})
 		if err != nil {
 			log.Error().Err(err).Msg("could not update task run state; db error")
 			continue
@@ -623,17 +650,20 @@ outerLoop:
 // [^1]: The register parameter controls whether the task is registered in the database, announces it's creation
 // via events. It's useful to turn this off when we're trying to revive a taskRun that is previously lost.
 func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
+	kind := models.TaskKindCustom
+
 	// If the task is a common task we need to check that it is in the registry, fill in those registry details,
 	// and then fail properly if it is not.
 	commonTask, isCommonTask := task.(*models.CommonTask)
 	if isCommonTask {
+		kind = models.TaskKindCommon
 		registration, exists := r.API.commonTasks.Get(commonTask.Settings.Name)
 		if !exists {
-			newTaskRun := models.NewTaskRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, task)
+			newTaskRun := models.NewTaskRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Config.Version, r.Run.ID, kind, task)
 
 			r.TaskRuns.Set(newTaskRun.ID, *newTaskRun)
 
-			err := r.API.db.InsertTaskRun(newTaskRun)
+			err := r.API.db.InsertPipelineTaskRun(r.API.db, newTaskRun.ToStorage())
 			if err != nil {
 				log.Error().Err(err).Msg("could not register task run; db error")
 				return
@@ -659,12 +689,12 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 	}
 
 	// Start by created a new task run and saving it to the state machine and disk.
-	newTaskRun := models.NewTaskRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, task)
+	newTaskRun := models.NewTaskRun(r.Pipeline.Namespace, r.Pipeline.ID, r.Config.Version, r.Run.ID, kind, task)
 
 	r.TaskRuns.Set(newTaskRun.ID, *newTaskRun)
 
 	if register {
-		err := r.API.db.InsertTaskRun(newTaskRun)
+		err := r.API.db.InsertPipelineTaskRun(r.API.db, newTaskRun.ToStorage())
 		if err != nil {
 			log.Error().Err(err).Msg("could not register task run; db error")
 			return
@@ -681,10 +711,17 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 
 	envVars := combineVariables(r.Run, task)
 
+	envVarsJSON, err := json.Marshal(envVars)
+	if err != nil {
+		log.Error().Err(err).Msg("could not register task run; db error")
+		return
+	}
+
 	// Determine the task run's final variable set and pass them in.
-	err := r.API.db.UpdateTaskRun(newTaskRun, storage.UpdatableTaskRunFields{
-		Variables: &envVars,
-	})
+	err = r.API.db.UpdatePipelineTaskRun(r.API.db, newTaskRun.Namespace, newTaskRun.Pipeline, newTaskRun.Run, newTaskRun.ID,
+		storage.UpdatablePipelineTaskRunFields{
+			Variables: ptr(string(envVarsJSON)),
+		})
 	if err != nil {
 		log.Error().Err(err).Msg("could not launch task run; db error")
 		return
@@ -766,10 +803,11 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 		return
 	}
 
-	err = r.API.db.UpdateTaskRun(newTaskRun, storage.UpdatableTaskRunFields{
-		State:   ptr(models.TaskRunStateRunning),
-		Started: ptr(time.Now().UnixMilli()),
-	})
+	err = r.API.db.UpdatePipelineTaskRun(r.API.db, newTaskRun.Namespace, newTaskRun.Pipeline, newTaskRun.Run, newTaskRun.ID,
+		storage.UpdatablePipelineTaskRunFields{
+			State:   ptr(string(models.TaskRunStateRunning)),
+			Started: ptr(time.Now().UnixMilli()),
+		})
 	if err != nil {
 		log.Error().Err(err).Msg("could not launch task run; db error")
 		return

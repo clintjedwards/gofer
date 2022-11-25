@@ -6,7 +6,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/clintjedwards/gofer/models"
+	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
@@ -86,14 +86,29 @@ func Duration(start, end int64) string {
 	return "~" + duration.String()
 }
 
-func ColorizePipelineState(state string) string {
+func ColorizePipelineMetadataState(state string) string {
 	switch strings.ToUpper(state) {
-	case string(models.PipelineStateUnknown):
+	case proto.PipelineMetadata_PIPELINE_STATE_UNKNOWN.String():
 		return color.YellowString(state)
-	case string(models.PipelineStateActive):
+	case proto.PipelineMetadata_ACTIVE.String():
 		return color.GreenString(state)
-	case string(models.PipelineStateDisabled):
+	case proto.PipelineMetadata_DISABLED.String():
 		return color.YellowString(state)
+	default:
+		return state
+	}
+}
+
+func ColorizePipelineConfigState(state string) string {
+	switch strings.ToUpper(state) {
+	case proto.PipelineConfig_PIPELINE_CONFIG_STATE_UNKNOWN.String():
+		return color.RedString(state)
+	case proto.PipelineConfig_LIVE.String():
+		return color.GreenString(state)
+	case proto.PipelineConfig_UNRELEASED.String():
+		return color.YellowString(state)
+	case proto.PipelineConfig_DEPRECATED.String():
+		return state
 	default:
 		return state
 	}
@@ -101,13 +116,13 @@ func ColorizePipelineState(state string) string {
 
 func ColorizeRunState(state string) string {
 	switch strings.ToUpper(state) {
-	case string(models.RunStateUnknown):
+	case proto.Run_RUN_STATE_UNKNOWN.String():
 		return color.YellowString(state)
-	case string(models.RunStatePending):
+	case proto.Run_PENDING.String():
 		return color.YellowString(state)
-	case string(models.RunStateRunning):
+	case proto.Run_RUNNING.String():
 		return color.YellowString(state)
-	case string(models.RunStateComplete):
+	case proto.Run_COMPLETE.String():
 		return color.GreenString(state)
 	default:
 		return state
@@ -116,13 +131,13 @@ func ColorizeRunState(state string) string {
 
 func ColorizeRunStatus(status string) string {
 	switch strings.ToUpper(status) {
-	case string(models.RunStatusUnknown):
+	case proto.Run_RUN_STATUS_UNKNOWN.String():
 		return color.YellowString(status)
-	case string(models.RunStatusSuccessful):
+	case proto.Run_SUCCESSFUL.String():
 		return color.GreenString(status)
-	case string(models.RunStatusFailed):
+	case proto.Run_FAILED.String():
 		return color.RedString(status)
-	case string(models.RunStatusCancelled):
+	case proto.Run_CANCELLED.String():
 		return status
 	default:
 		return status
@@ -131,15 +146,15 @@ func ColorizeRunStatus(status string) string {
 
 func ColorizeTaskRunState(state string) string {
 	switch strings.ToUpper(state) {
-	case string(models.TaskRunStateUnknown):
+	case proto.TaskRun_UNKNOWN_STATE.String():
 		return color.YellowString(state)
-	case string(models.TaskRunStateProcessing):
+	case proto.TaskRun_PROCESSING.String():
 		return color.YellowString(state)
-	case string(models.TaskRunStateWaiting):
+	case proto.TaskRun_WAITING.String():
 		return color.YellowString(state)
-	case string(models.TaskRunStateRunning):
+	case proto.TaskRun_RUNNING.String():
 		return color.YellowString(state)
-	case string(models.TaskRunStateComplete):
+	case proto.TaskRun_COMPLETE.String():
 		return color.GreenString(state)
 	default:
 		return state
@@ -148,56 +163,71 @@ func ColorizeTaskRunState(state string) string {
 
 func ColorizeTaskRunStatus(status string) string {
 	switch strings.ToUpper(status) {
-	case string(models.TaskRunStatusUnknown):
+	case proto.TaskRun_UNKNOWN_STATUS.String():
 		return color.YellowString(status)
-	case string(models.TaskRunStatusSuccessful):
+	case proto.TaskRun_SUCCESSFUL.String():
 		return color.GreenString(status)
-	case string(models.TaskRunStatusFailed):
+	case proto.TaskRun_FAILED.String():
 		return color.RedString(status)
-	case string(models.TaskRunStatusCancelled):
+	case proto.TaskRun_CANCELLED.String():
 		return status
-	case string(models.TaskRunStatusSkipped):
+	case proto.TaskRun_SKIPPED.String():
 		return status
 	default:
 		return status
 	}
 }
 
-func ColorizeTriggerState(state string) string {
+func ColorizeExtensionState(state string) string {
 	switch strings.ToUpper(state) {
-	case string(models.TriggerStateUnknown):
+	case proto.Extension_UNKNOWN_STATE.String():
 		return color.YellowString(state)
-	case string(models.TriggerStateProcessing):
+	case proto.Extension_PROCESSING.String():
 		return color.YellowString(state)
-	case string(models.TriggerStateRunning):
+	case proto.Extension_RUNNING.String():
 		return color.GreenString(state)
-	case string(models.TriggerStateExited):
+	case proto.Extension_EXITED.String():
 		return color.RedString(state)
 	default:
 		return state
 	}
 }
 
-func ColorizeTriggerStatus(status string) string {
+func ColorizeExtensionStatus(status string) string {
 	switch strings.ToUpper(status) {
-	case string(models.TriggerStatusUnknown):
+	case proto.Extension_UNKNOWN_STATUS.String():
 		return color.YellowString(status)
-	case string(models.TriggerStatusEnabled):
+	case proto.Extension_ENABLED.String():
 		return color.GreenString(status)
-	case string(models.TriggerStatusDisabled):
+	case proto.Extension_DISABLED.String():
 		return color.YellowString(status)
 	default:
 		return status
 	}
 }
 
-func ColorizeCommonTaskStatus(status string) string {
+func ColorizePipelineExtensionSubscriptionStatus(status string) string {
 	switch strings.ToUpper(status) {
-	case string(models.CommonTaskStatusUnknown):
+	case proto.PipelineExtensionSubscription_STATUS_UNKNOWN.String():
 		return color.YellowString(status)
-	case string(models.CommonTaskStatusEnabled):
+	case proto.PipelineExtensionSubscription_ACTIVE.String():
 		return color.GreenString(status)
-	case string(models.CommonTaskStatusDisabled):
+	case proto.PipelineExtensionSubscription_DISABLED.String():
+		return color.YellowString(status)
+	case proto.PipelineExtensionSubscription_ERROR.String():
+		return color.RedString(status)
+	default:
+		return status
+	}
+}
+
+func ColorizeCommonTaskRegistrationStatus(status string) string {
+	switch strings.ToUpper(status) {
+	case proto.CommonTaskRegistration_UNKNOWN.String():
+		return color.YellowString(status)
+	case proto.CommonTaskRegistration_ENABLED.String():
+		return color.GreenString(status)
+	case proto.CommonTaskRegistration_DISABLED.String():
 		return color.YellowString(status)
 	default:
 		return status
@@ -212,14 +242,14 @@ func SliceJoin(slice []string, msg string) string {
 	return strings.Join(slice, ", ")
 }
 
-func Health(states []models.RunStatus, emoji bool) string {
+func Health(states []proto.Run_RunStatus, emoji bool) string {
 	failed := 0
 	passed := 0
 	for _, state := range states {
 		switch state {
-		case models.RunStatusFailed:
+		case proto.Run_FAILED:
 			failed++
-		case models.RunStatusUnknown:
+		case proto.Run_RUN_STATUS_UNKNOWN:
 			failed++
 		default:
 			passed++
@@ -249,21 +279,31 @@ func Health(states []models.RunStatus, emoji bool) string {
 	return color.GreenString(healthString + "Good")
 }
 
-func Dependencies(dependencies map[string]models.RequiredParentStatus) []string {
+// Used to limit the types that can be passed to the dependencies function to only types that can be
+// retrieved by calling "DependsOn" for tasks.
+type DependencyConstraint interface {
+	proto.CustomTask_RequiredParentStatus | proto.PipelineCommonTaskSettings_RequiredParentStatus
+	String() string
+}
+
+// This function is generic only because tasks are generic. Because a task can be either a common task
+// or a custom task it's useful to have a function that can work with both types and their dependency
+// enums (which are exactly the same).
+func Dependencies[T DependencyConstraint](dependencies map[string]T) []string {
 	result := []string{}
 	any := []string{}
 	successful := []string{}
 	failure := []string{}
 
 	for name, state := range dependencies {
-		switch state {
-		case models.RequiredParentStatusAny:
+		switch state.String() {
+		case proto.CustomTask_ANY.String():
 			any = append(any, name)
-		case models.RequiredParentStatusSuccess:
+		case proto.CustomTask_SUCCESS.String():
 			successful = append(successful, name)
-		case models.RequiredParentStatusFailure:
+		case proto.CustomTask_FAILURE.String():
 			failure = append(failure, name)
-		case models.RequiredParentStatusUnknown:
+		case proto.CustomTask_REQUIRED_PARENT_STATUS_UNKNOWN.String():
 		}
 	}
 

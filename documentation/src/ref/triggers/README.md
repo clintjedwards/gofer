@@ -1,51 +1,51 @@
-# Triggers
+# Extensions
 
-Triggers are Gofer's way of automating pipeline runs. Triggers are registered to your pipeline on creation and will alert Gofer when it's time to run your pipeline (usually when some event has occurred).
+Extensions are Gofer's way of automating pipeline runs. Extensions are registered to your pipeline on creation and will alert Gofer when it's time to run your pipeline (usually when some event has occurred).
 
-The most straight-forward example of this, is the event of passing time. Let's say you have a pipeline that needs to run every 5 mins. You would set your [pipeline](../pipeline_configuration/README.md) up with the [interval](./provided/interval.md) trigger set to an interval of `5m`.
+The most straight-forward example of this, is the event of passing time. Let's say you have a pipeline that needs to run every 5 mins. You would set your [pipeline](../pipeline_configuration/README.md) up with the [interval](./provided/interval.md) extension set to an interval of `5m`.
 
-On startup, Gofer launches the interval trigger as a long-running container. When your pipeline is created, it "subscribes" to the interval trigger with an interval of `5m`. The interval trigger starts a timer and when 5 minutes have passed an event is sent from the trigger to Gofer, causing Gofer to run your pipeline.
+On startup, Gofer launches the interval extension as a long-running container. When your pipeline is created, it "subscribes" to the interval extension with an interval of `5m`. The interval extension starts a timer and when 5 minutes have passed an event is sent from the extension to Gofer, causing Gofer to run your pipeline.
 
-## Gofer Provided Triggers
+## Gofer Provided Extensions
 
-You can [create](#how-to-add-new-triggers) your own triggers, but Gofer provides some [provided triggers](./provided/README.md) for use.
+You can [create](#how-to-add-new-extensions) your own extensions, but Gofer provides some [provided extensions](./provided/README.md) for use.
 
-## How do I install a Trigger?
+## How do I install a Extension?
 
-Triggers must first be installed by Gofer administrators before they can be used. They can be installed by the CLI. For more information on how to install a specific trigger run:
+Extensions must first be installed by Gofer administrators before they can be used. They can be installed by the CLI. For more information on how to install a specific extension run:
 
 ```bash
-gofer triggers install -h
+gofer extension install -h
 ```
 
-## How do I configure a Trigger?
+## How do I configure a Extension?
 
-Triggers allow for both system and pipeline configuration[^1]. This is what makes them so dynamically useful!
+Extensions allow for both system and pipeline configuration[^1]. This is what makes them so dynamically useful!
 
 ### Pipeline Configuration
 
-Most Triggers allow for some user specific configuration usually referred to as "Parameters" or "Pipeline configuration".
+Most Extensions allow for some user specific configuration usually referred to as "Parameters" or "Pipeline configuration".
 
-These variables are passed by the pipeline configuration file into the Trigger when the pipeline is registered.
+These variables are passed by the pipeline configuration file into the Extension when the pipeline is registered.
 
 ### System Configuration
 
-Most Triggers have system configurations which allow the administrator or system to inject some needed variables. These are defined when the Trigger is installed.
+Most Extensions have system configurations which allow the administrator or system to inject some needed variables. These are defined when the Extension is installed.
 
-[^1]: See a specific Trigger's documentation for the exact variables accepted and where they belong.
+[^1]: See a specific Extension's documentation for the exact variables accepted and where they belong.
 
-## How to add new Triggers?
+## How to add new Extensions?
 
-Just like tasks, triggers are simply docker containers! Making them easily testable and portable. To create a new trigger you simply use the included [Gofer SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
+Just like tasks, extensions are simply docker containers! Making them easily testable and portable. To create a new extension you simply use the included [Gofer SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
 
 The SDK provides an interface in which a well functioning GRPC service will be created from your concrete implementation.
 
 ```go
-{{#include ../../../../sdk/go/plugins/trigger.go:29:59}}
+{{#include ../../../../sdk/go/plugins/extension.go:29:59}}
 ```
 
-For an commented example of a simple trigger you can follow to build your own, view the interval trigger:
+For an commented example of a simple extension you can follow to build your own, view the interval extension:
 
 ```go
-{{#include ../../../../containers/triggers/interval/main.go}}
+{{#include ../../../../containers/extensions/interval/main.go}}
 ```

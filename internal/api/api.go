@@ -17,14 +17,14 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/eventbus"
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/clintjedwards/gofer/internal/syncmap"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	"github.com/gorilla/handlers"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -53,11 +53,11 @@ var (
 	// ErrPipelineRunsInProgress is returned when a request is made against a pipeline with currently in progress runs.
 	ErrPipelineRunsInProgress = errors.New("api: pipeline has runs which are still in progress")
 
-	// ErrPipelineConfigNotValid is returned when a pipeline configuration contains is not valid for the trigger requested.
-	ErrPipelineConfigNotValid = errors.New("api: pipeline configuration is invalid")
+	// ErrNoValidConfiguration is returned there is no pipeline configuration that is avaiable for use.
+	ErrNoValidConfiguration = errors.New("api: there was no valid, live pipeline configuration found")
 
-	// ErrTriggerNotFound is returned when a pipeline configuration contains a trigger that was not registered with the API.
-	ErrTriggerNotFound = errors.New("api: trigger is not found")
+	// ErrExtensionNotFound is returned when a pipeline configuration contains a extension that was not registered with the API.
+	ErrExtensionNotFound = errors.New("api: extension is not found")
 )
 
 type CancelContext struct {
@@ -93,17 +93,17 @@ type API struct {
 	secretStore secretStore.Engine
 
 	// TODO(clintjedwards): replace this syncmap with an actually good version once generics catches up.
-	// Triggers is an in-memory map of currently registered triggers. These triggers are registered on startup and
+	// Extensions is an in-memory map of currently registered extensions. These extensions are registered on startup and
 	// launched as long running containers via the scheduler. Gofer refers to this cache as a way to communicate
 	// quickly with the containers and their potentially changing endpoints.
-	triggers syncmap.Syncmap[string, *models.Trigger]
+	extensions syncmap.Syncmap[string, *models.Extension]
 
 	// commonTasks is an in-memory map of the currently registered commonTasks. These commonTasks are registered on startup
 	// and launched as needed at a user's request. Gofer refers to this cache as a way to quickly look
 	// up which container is needed to be launched.
 	commonTasks syncmap.Syncmap[string, *models.CommonTaskRegistration]
 
-	// ignorePipelineRunEvents controls if pipelines can trigger runs globally. If this is set to false the entire Gofer
+	// ignorePipelineRunEvents controls if pipelines can extension runs globally. If this is set to false the entire Gofer
 	// service will not schedule new runs.
 	ignorePipelineRunEvents *atomic.Bool
 
@@ -147,7 +147,7 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 		objectStore:             objectStore,
 		secretStore:             secretStore,
 		ignorePipelineRunEvents: &ignorePipelineRunEvents,
-		triggers:                syncmap.New[string, *models.Trigger](),
+		extensions:              syncmap.New[string, *models.Extension](),
 		commonTasks:             syncmap.New[string, *models.CommonTaskRegistration](),
 	}
 
@@ -156,9 +156,9 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 		return nil, fmt.Errorf("could not create default namespace: %w", err)
 	}
 
-	err = newAPI.installBaseTriggers()
+	err = newAPI.installBaseExtensions()
 	if err != nil {
-		return nil, fmt.Errorf("could not install base triggers: %w", err)
+		return nil, fmt.Errorf("could not install base extensions: %w", err)
 	}
 
 	err = newAPI.restoreRegisteredCommonTasks()
@@ -166,28 +166,28 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 		return nil, fmt.Errorf("could not register common tasks: %w", err)
 	}
 
-	err = newAPI.startTriggers()
+	err = newAPI.startExtensions()
 	if err != nil {
-		return nil, fmt.Errorf("could not start triggers: %w", err)
+		return nil, fmt.Errorf("could not start extensions: %w", err)
 	}
 
-	err = newAPI.restoreTriggerSubscriptions()
+	err = newAPI.restoreExtensionSubscriptions()
 	if err != nil {
 		newAPI.cleanup()
-		return nil, fmt.Errorf("could not restore trigger subscriptions: %w", err)
+		return nil, fmt.Errorf("could not restore extension subscriptions: %w", err)
 	}
 
 	// findOrphans is a repair method that picks up where the gofer service left off if it was shutdown while
 	// a run was currently in progress.
 	go newAPI.findOrphans()
 
-	// These two functions are responsible for gofer's trigger event loop system. The first launches goroutines that
-	// consumes events from triggers and the latter processes them into pipeline runs.
-	newAPI.watchForTriggerEvents(newAPI.context.ctx)
+	// These two functions are responsible for gofer's extension event loop system. The first launches goroutines that
+	// consumes events from extensions and the latter processes them into pipeline runs.
+	newAPI.watchForExtensionEvents(newAPI.context.ctx)
 	go func() {
-		err := newAPI.processTriggerEvents()
+		err := newAPI.processExtensionEvents()
 		if err != nil {
-			panic(err)
+			log.Fatal().Err(err).Msg("could nto process extension events")
 		}
 	}()
 
@@ -198,10 +198,10 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 func (api *API) cleanup() {
 	api.ignorePipelineRunEvents.Store(true)
 
-	// Send graceful stop to all triggers
-	api.stopTriggers()
+	// Send graceful stop to all extensions
+	api.stopExtensions()
 
-	// Stop all goroutines which should stop the event processing pipeline and the trigger monitoring.
+	// Stop all goroutines which should stop the event processing pipeline and the extension monitoring.
 	api.context.cancel()
 }
 
@@ -250,6 +250,26 @@ func (api *API) StartAPIService() {
 	log.Info().Msg("grpc server exited gracefully")
 }
 
+// The logging middleware has to be run before the final call to return the request.
+// This is because we wrap the responseWriter to gain information from it after it
+// has been written to.
+// To speed this process up we call Serve as soon as possible and log afterwards.
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(ww, r)
+
+		log.Debug().Str("method", r.Method).
+			Stringer("url", r.URL).
+			Int("status_code", ww.Status()).
+			Int("response_size_bytes", ww.BytesWritten()).
+			Dur("elapsed_ms", time.Since(start)).
+			Msg("")
+	})
+}
+
 // wrapGRPCServer returns a combined grpc/http (grpc-web compatible) service with all proper settings;
 // Rather than going through the trouble of setting up a separate proxy and extra for the service in order to server http/grpc/grpc-web
 // this keeps things simple by enabling the operator to deploy a single binary and serve them all from one endpoint.
@@ -259,24 +279,18 @@ func wrapGRPCServer(config *config.API, grpcServer *grpc.Server) *http.Server {
 
 	router := mux.NewRouter()
 
-	combinedHandler := http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+	// Define GRPC/HTTP request detection middleware
+	GRPCandHTTPHandler := http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if strings.Contains(req.Header.Get("Content-Type"), "application/grpc") || wrappedGrpc.IsGrpcWebRequest(req) {
 			wrappedGrpc.ServeHTTP(resp, req)
-			return
+		} else {
+			router.ServeHTTP(resp, req)
 		}
-		router.ServeHTTP(resp, req)
 	})
-
-	var modifiedHandler http.Handler
-	if config.DevMode {
-		modifiedHandler = handlers.LoggingHandler(os.Stdout, combinedHandler)
-	} else {
-		modifiedHandler = combinedHandler
-	}
 
 	httpServer := http.Server{
 		Addr:    config.Server.Host,
-		Handler: modifiedHandler,
+		Handler: loggingMiddleware(GRPCandHTTPHandler),
 		// Timeouts set here unfortunately also apply to the backing GRPC server. Because GRPC might have long running calls
 		// we have to set these to 0 or a very high number. This creates an issue where running the frontend in this configuration
 		// could possibly open us up to DOS attacks where the client holds the request open for long periods of time. To mitigate
@@ -288,12 +302,12 @@ func wrapGRPCServer(config *config.API, grpcServer *grpc.Server) *http.Server {
 	return &httpServer
 }
 
-func (api *API) installBaseTriggers() error {
-	if !api.config.Triggers.InstallBaseTriggers {
+func (api *API) installBaseExtensions() error {
+	if !api.config.Extensions.InstallBaseExtensions {
 		return nil
 	}
 
-	registeredTriggers, err := api.db.ListTriggerRegistrations(0, 0)
+	registeredExtensions, err := api.db.ListGlobalExtensionRegistrations(api.db, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -301,24 +315,24 @@ func (api *API) installBaseTriggers() error {
 	cronInstalled := false
 	intervalInstalled := false
 
-	for _, trigger := range registeredTriggers {
-		if strings.EqualFold(trigger.Name, "cron") {
+	for _, extension := range registeredExtensions {
+		if strings.EqualFold(extension.Name, "cron") {
 			cronInstalled = true
 		}
 
-		if strings.EqualFold(trigger.Name, "interval") {
+		if strings.EqualFold(extension.Name, "interval") {
 			intervalInstalled = true
 		}
 	}
 
 	if !cronInstalled {
-		registration := models.TriggerRegistration{}
-		registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
+		registration := models.ExtensionRegistration{}
+		registration.FromInstallExtensionRequest(&proto.InstallExtensionRequest{
 			Name:  "cron",
-			Image: "ghcr.io/clintjedwards/gofer/triggers/cron:latest",
+			Image: "ghcr.io/clintjedwards/gofer/extensions/cron:latest",
 		})
 
-		err := api.db.InsertTriggerRegistration(&registration)
+		err := api.db.InsertGlobalExtensionRegistration(api.db, registration.ToStorage())
 		if err != nil {
 			if !errors.Is(err, storage.ErrEntityExists) {
 				return err
@@ -326,17 +340,17 @@ func (api *API) installBaseTriggers() error {
 		}
 
 		log.Info().Str("name", registration.Name).Str("image", registration.Image).
-			Msg("registered base trigger automatically due to 'install_base_triggers' config")
+			Msg("registered base extension automatically due to 'install_base_extensions' config")
 	}
 
 	if !intervalInstalled {
-		registration := models.TriggerRegistration{}
-		registration.FromInstallTriggerRequest(&proto.InstallTriggerRequest{
+		registration := models.ExtensionRegistration{}
+		registration.FromInstallExtensionRequest(&proto.InstallExtensionRequest{
 			Name:  "interval",
-			Image: "ghcr.io/clintjedwards/gofer/triggers/interval:latest",
+			Image: "ghcr.io/clintjedwards/gofer/extensions/interval:latest",
 		})
 
-		err := api.db.InsertTriggerRegistration(&registration)
+		err := api.db.InsertGlobalExtensionRegistration(api.db, registration.ToStorage())
 		if err != nil {
 			if !errors.Is(err, storage.ErrEntityExists) {
 				return err
@@ -344,7 +358,7 @@ func (api *API) installBaseTriggers() error {
 		}
 
 		log.Info().Str("name", registration.Name).Str("image", registration.Image).
-			Msg("registered base trigger automatically due to 'install_base_triggers' config")
+			Msg("registered base extension automatically due to 'install_base_extensions' config")
 	}
 
 	return nil
@@ -353,7 +367,7 @@ func (api *API) installBaseTriggers() error {
 // Gofer starts with a default namespace that all users have access to.
 func (api *API) createDefaultNamespace() error {
 	namespace := models.NewNamespace(namespaceDefaultID, namespaceDefaultName, "default namespace")
-	err := api.db.InsertNamespace(namespace)
+	err := api.db.InsertNamespace(api.db, namespace.ToStorage())
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return nil
@@ -466,23 +480,54 @@ func (api *API) findOrphans() {
 //     -> update logs with new logs.
 //   - If the scheduler has no record of this container ever running then assume the state is unknown.
 func (api *API) repairOrphanRun(namespaceID, pipelineID string, runID int64) error {
-	pipeline, err := api.db.GetPipeline(nil, namespaceID, pipelineID)
+	metadataRaw, err := api.db.GetPipelineMetadata(api.db, namespaceID, pipelineID)
 	if err != nil {
 		return err
 	}
 
-	run, err := api.db.GetRun(namespaceID, pipelineID, runID)
+	var metadata models.PipelineMetadata
+	metadata.FromStorage(&metadataRaw)
+
+	latestConfigRaw, err := api.db.GetLatestLivePipelineConfig(api.db, namespaceID, pipelineID)
 	if err != nil {
 		return err
 	}
 
-	taskRuns, err := api.db.ListTaskRuns(0, 0, namespaceID, pipelineID, runID)
+	commonTasksRaw, err := api.db.ListPipelineCommonTaskSettings(api.db, namespaceID, pipelineID, latestConfigRaw.Version)
 	if err != nil {
 		return err
+	}
+
+	customTasksRaw, err := api.db.ListPipelineCustomTasks(api.db, namespaceID, pipelineID, latestConfigRaw.Version)
+	if err != nil {
+		return err
+	}
+
+	var latestConfig models.PipelineConfig
+	latestConfig.FromStorage(&latestConfigRaw, &commonTasksRaw, &customTasksRaw)
+
+	runRaw, err := api.db.GetPipelineRun(api.db, namespaceID, pipelineID, runID)
+	if err != nil {
+		return err
+	}
+
+	var run models.Run
+	run.FromStorage(&runRaw)
+
+	taskRunsRaw, err := api.db.ListPipelineTaskRuns(api.db, 0, 0, namespaceID, pipelineID, runID)
+	if err != nil {
+		return err
+	}
+
+	var taskRuns []models.TaskRun
+	for _, taskRunRaw := range taskRunsRaw {
+		var taskRun models.TaskRun
+		taskRun.FromStorage(&taskRunRaw)
+		taskRuns = append(taskRuns, taskRun)
 	}
 
 	// In order to manage the orphaned run we will create a new state machine and make it part of that.
-	runStateMachine := api.newRunStateMachine(&pipeline, &run)
+	runStateMachine := api.newRunStateMachine(&metadata, &latestConfig, &run)
 
 	// For each run we also need to evaluate the individual task runs.
 	for _, taskrun := range taskRuns {
@@ -532,7 +577,8 @@ func (api *API) createGRPCServer() (*grpc.Server, error) {
 	}
 
 	panicHandler := func(p interface{}) (err error) {
-		log.Error().Err(err).Interface("panic", p).Bytes("stack", debug.Stack()).Msg("server has encountered a fatal error")
+		log.Error().Err(err).Interface("panic", p).Msg("server has encountered a fatal error")
+		log.Error().Msg(string(debug.Stack()))
 		return status.Errorf(codes.Unknown, "server has encountered a fatal error and could not process request")
 	}
 

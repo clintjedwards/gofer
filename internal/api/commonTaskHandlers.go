@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/rs/zerolog/log"
@@ -110,7 +110,7 @@ func (api *API) InstallCommonTask(ctx context.Context, request *proto.InstallCom
 	registration := models.CommonTaskRegistration{}
 	registration.FromInstallCommonTaskRequest(request)
 
-	err := api.db.InsertCommonTaskRegistration(&registration)
+	err := api.db.InsertCommonTaskRegistration(api.db, registration.ToStorage())
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return &proto.InstallCommonTaskResponse{}, status.Errorf(codes.AlreadyExists, "common task is %s already installed", request.Name)
@@ -138,7 +138,7 @@ func (api *API) InstallCommonTask(ctx context.Context, request *proto.InstallCom
 func (api *API) UninstallCommonTask(ctx context.Context, request *proto.UninstallCommonTaskRequest) (*proto.UninstallCommonTaskResponse, error) {
 	api.commonTasks.Delete(request.Name)
 
-	err := api.db.DeleteCommonTaskRegistration(request.Name)
+	err := api.db.DeleteCommonTaskRegistration(api.db, request.Name)
 	if err != nil {
 		log.Error().Err(err).Msg("could not delete common task registration")
 		return &proto.UninstallCommonTaskResponse{}, status.Errorf(codes.Internal, "could not delete common task registration: %v", err)
@@ -154,8 +154,8 @@ func (api *API) UninstallCommonTask(ctx context.Context, request *proto.Uninstal
 }
 
 func (api *API) EnableCommonTask(ctx context.Context, request *proto.EnableCommonTaskRequest) (*proto.EnableCommonTaskResponse, error) {
-	err := api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
-		Status: ptr(models.CommonTaskStatusEnabled),
+	err := api.db.UpdateCommonTaskRegistration(api.db, request.Name, storage.UpdatableCommonTaskRegistrationFields{
+		Status: ptr(string(models.CommonTaskStatusEnabled)),
 	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
@@ -167,8 +167,8 @@ func (api *API) EnableCommonTask(ctx context.Context, request *proto.EnableCommo
 
 	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTaskRegistration, exists bool) (*models.CommonTaskRegistration, error) {
 		if !exists {
-			_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
-				Status: ptr(models.CommonTaskStatusDisabled),
+			_ = api.db.UpdateCommonTaskRegistration(api.db, request.Name, storage.UpdatableCommonTaskRegistrationFields{
+				Status: ptr(string(models.CommonTaskStatusDisabled)),
 			})
 
 			return nil, fmt.Errorf("common task %q not found", request.Name)
@@ -185,8 +185,8 @@ func (api *API) EnableCommonTask(ctx context.Context, request *proto.EnableCommo
 }
 
 func (api *API) DisableCommonTask(ctx context.Context, request *proto.DisableCommonTaskRequest) (*proto.DisableCommonTaskResponse, error) {
-	err := api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
-		Status: ptr(models.CommonTaskStatusDisabled),
+	err := api.db.UpdateCommonTaskRegistration(api.db, request.Name, storage.UpdatableCommonTaskRegistrationFields{
+		Status: ptr(string(models.CommonTaskStatusDisabled)),
 	})
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
@@ -198,8 +198,8 @@ func (api *API) DisableCommonTask(ctx context.Context, request *proto.DisableCom
 
 	err = api.commonTasks.Swap(request.Name, func(value *models.CommonTaskRegistration, exists bool) (*models.CommonTaskRegistration, error) {
 		if !exists {
-			_ = api.db.UpdateCommonTaskRegistration(request.Name, storage.UpdatableCommonTaskRegistrationFields{
-				Status: ptr(models.CommonTaskStatusEnabled),
+			_ = api.db.UpdateCommonTaskRegistration(api.db, request.Name, storage.UpdatableCommonTaskRegistrationFields{
+				Status: ptr(string(models.CommonTaskStatusEnabled)),
 			})
 
 			return nil, fmt.Errorf("common task %q not found", request.Name)

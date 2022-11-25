@@ -18,11 +18,12 @@ It's purpose is to run short term jobs such as: code linters, build tools, tests
 
 ## Features:
 
-- Deploy it as a single static binary.
-- Write your pipelines in a programming language you're familar with. (**Go** or **Rust** for now).
-- Pluggable: Write your own triggers, shared tasks, and more in any language (through GRPC).
+- Deploy Gofer as a single static binary, manage Gofer through the included command line interface.
+- Write your pipelines in a programming language you're familar with; stop cobbling together unfamiliar yaml. (**Go** or **Rust** for now).
+- Test and run your pipelines locally; No more <i>"commit it and see"</i> testing.
+- Pluggable: Write your own extensions, shared tasks, and more in any language (through GRPC).
 - DAG(Directed Acyclic Graph) support.
-- Reliability tooling: A/B test, version, and canary new pipelines.
+- Reliability tooling: Version, Blue/Green deploy, and canary deploy updated versions of your pipelines.
 - Bring your own everything! Secret store, object store, container scheduler. Gofer has the interfaces to support all of them.
 
 ## Demo:
@@ -135,7 +136,7 @@ The current landscape for running short-term jobs is heavily splintered and coul
 
 This is actually a good thing in most cases and something that most small companies should embrace. The guarantees and structure of gitops is useful for building and testing software.
 
-Eventually as your workload grows though, you'll start to notice that tying your short-term job runner to gitops leaves a few holes in the proper management of those jobs. Gitops works for your code builds, but what about things in different shapes? Performing needful actions on a schedule (or a trigger) like database backups, port scanning, or maybe just smoke testing leaves something to be desired from the gitops model.
+Eventually as your workload grows though, you'll start to notice that tying your short-term job runner to gitops leaves a few holes in the proper management of those jobs. Gitops works for your code builds, but what about things in different shapes? Performing needful actions on a schedule (or a extension) like database backups, port scanning, or maybe just smoke testing leaves something to be desired from the gitops model.
 
 **Let's take a look at an example:**
 
@@ -170,7 +171,7 @@ When this happens it's a headache. You can try different ways of getting around 
 
 #### _How does Gofer help?_
 
-Instead of tying itself to gitops wholly, Gofer leaves it as an option for the job implementer. Each pipeline exists independent of a particular repository, while providing the job operator the ability to use triggers to still implement gitops related features. Now the structure of running our static analysis tool becomes "code change is detected" -> "pipeline is run".
+Instead of tying itself to gitops wholly, Gofer leaves it as an option for the job implementer. Each pipeline exists independent of a particular repository, while providing the job operator the ability to use extensions to still implement gitops related features. Now the structure of running our static analysis tool becomes "code change is detected" -> "pipeline is run".
 
 It's that simple.
 
@@ -218,7 +219,7 @@ While Gofer can do this, the gitops process really shines here. I'd recommend us
 
 ### 2) The code you run is not idempotent.
 
-Gofer does not guarantee a single run of a container. Even though it does a good job in best effort, a perfect storm of operator error, trigger errors, or sudden shutdowns could cause multiple runs of the same container.
+Gofer does not guarantee a single run of a container. Even though it does a good job in best effort, a perfect storm of operator error, extension errors, or sudden shutdowns could cause multiple runs of the same container.
 
 ### 3) The code you run does not follow cloud native best practices.
 

@@ -1,10 +1,11 @@
 // Gofer Service configuration file is used as an alternative to providing the server configurations via envvars.
 // You can find an explanation of these configuration variables and where to put this file so the server can read this
-// file in the documenation: https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html
+// file in the documenation: https://clintjedwards.com/gofer/ref/server_configuration/index.html
 dev_mode                   = false
 event_log_retention        = "4380h"
 event_prune_interval       = "3h"
 ignore_pipeline_run_events = false
+pipeline_version_limit     = 5
 log_level                  = "info"
 task_run_log_expiry        = 50
 task_run_logs_dir          = "/tmp"
@@ -49,8 +50,8 @@ server {
   storage_results_limit = 200
 }
 
-triggers {
-  install_base_triggers = true
+extensions {
+  install_base_extensions = true
   stop_timeout          = "5m"
   tls_cert_path         = "./localhost.crt"
   tls_key_path          = "./localhost.key"

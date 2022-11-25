@@ -7,71 +7,44 @@ import (
 	"strings"
 
 	qb "github.com/Masterminds/squirrel"
-	"github.com/clintjedwards/gofer/models"
 )
 
-func (db *DB) ListSecretStoreGlobalKeys() ([]models.SecretStoreKey, error) {
-	rows, err := qb.Select("key", "created").
-		From("secret_store_global_keys").RunWith(db).Query()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	defer rows.Close()
-
-	globalKeys := []models.SecretStoreKey{}
-
-	for rows.Next() {
-		var key string
-		var created int64
-
-		err = rows.Scan(&key, &created)
-		if err != nil {
-			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-		}
-
-		globalKeys = append(globalKeys, models.SecretStoreKey{
-			Key:     key,
-			Created: created,
-		})
-
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-
-	return globalKeys, nil
+type SecretStoreGlobalKey struct {
+	Key     string
+	Created int64
 }
 
-func (db *DB) GetSecretStoreGlobalKey(key string) (models.SecretStoreKey, error) {
-	row := qb.Select("key", "created").
-		From("secret_store_global_keys").Where(qb.Eq{"key": key}).RunWith(db).QueryRow()
+func (db *DB) ListSecretStoreGlobalKeys(conn Queryable) ([]SecretStoreGlobalKey, error) {
+	query, args := qb.Select("key", "created").From("secret_store_global_keys").MustSql()
 
-	var keyStr string
-	var created int64
+	keys := []SecretStoreGlobalKey{}
+	err := conn.Select(&keys, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 
-	err := row.Scan(&keyStr, &created)
+	return keys, nil
+}
+
+func (db *DB) GetSecretStoreGlobalKey(conn Queryable, key string) (SecretStoreGlobalKey, error) {
+	query, args := qb.Select("key", "created").From("secret_store_global_keys").Where(qb.Eq{"key": key}).MustSql()
+
+	secretKey := SecretStoreGlobalKey{}
+	err := conn.Get(&secretKey, query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.SecretStoreKey{}, ErrEntityNotFound
+			return SecretStoreGlobalKey{}, ErrEntityNotFound
 		}
 
-		return models.SecretStoreKey{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return SecretStoreGlobalKey{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return models.SecretStoreKey{
-		Key:     key,
-		Created: created,
-	}, nil
+	return secretKey, nil
 }
 
-func (db *DB) InsertSecretStoreGlobalKey(secretKey *models.SecretStoreKey, force bool) error {
+func (db *DB) InsertSecretStoreGlobalKey(conn Queryable, secretKey *SecretStoreGlobalKey, force bool) error {
 	_, err := qb.Insert("secret_store_global_keys").Columns("key", "created").
-		Values(secretKey.Key, secretKey.Created).RunWith(db).Exec()
+		Values(secretKey.Key, secretKey.Created).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") && !force {
 			return ErrEntityExists
@@ -79,7 +52,7 @@ func (db *DB) InsertSecretStoreGlobalKey(secretKey *models.SecretStoreKey, force
 
 		// We should update the key's created if the flag for force was passed down.
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			_, err = qb.Update("secret_store_pipeline_keys").Set("created", secretKey.Created).RunWith(db).Exec()
+			_, err = qb.Update("secret_store_pipeline_keys").Set("created", secretKey.Created).RunWith(conn).Exec()
 			if err != nil {
 				return err
 			}
@@ -92,8 +65,8 @@ func (db *DB) InsertSecretStoreGlobalKey(secretKey *models.SecretStoreKey, force
 	return nil
 }
 
-func (db *DB) DeleteSecretStoreGlobalKey(key string) error {
-	_, err := qb.Delete("secret_store_global_keys").Where(qb.Eq{"key": key}).RunWith(db).Exec()
+func (db *DB) DeleteSecretStoreGlobalKey(conn Queryable, key string) error {
+	_, err := qb.Delete("secret_store_global_keys").Where(qb.Eq{"key": key}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

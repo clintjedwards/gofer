@@ -53,7 +53,7 @@ func (api *API) resolveNamespace(ctx context.Context, intendedNamespace string) 
 		}
 	}
 
-	_, err := api.db.GetNamespace(intendedNamespace)
+	_, err := api.db.GetNamespace(api.db, intendedNamespace)
 	if err != nil {
 		return "", err
 	}

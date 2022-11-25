@@ -8,7 +8,6 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/fatih/color"
 
@@ -66,10 +65,7 @@ func tokensGet(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	token := models.Token{}
-	token.FromProto(resp.Details)
-
-	output, err := formatToken(&token, cl.State.Config.Detail)
+	output, err := formatToken(resp.Details, cl.State.Config.Detail)
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not render token: %v", err))
 		cl.State.Fmt.Finish()
@@ -81,7 +77,7 @@ func tokensGet(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func formatToken(token *models.Token, detail bool) (string, error) {
+func formatToken(token *proto.Token, detail bool) (string, error) {
 	active := color.GreenString("Enabled")
 	if token.Disabled {
 		active = color.RedString("Disabled")

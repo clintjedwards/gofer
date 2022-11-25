@@ -18,7 +18,7 @@
   - [Start a Run](./guide/start_a_run.md)
   - [What's Next?](./guide/whats_next.md)
 
-# Component Reference
+# Extension Reference
 
 - [Pipeline Configuration](./ref/pipeline_configuration/README.md)
   - [Custom Tasks](./ref/pipeline_configuration/custom_tasks.md)
@@ -32,11 +32,11 @@
   - [Sqlite](./ref/object_store/sqlite.md)
 - [Secret Store](./ref/secret_store/README.md)
   - [Sqlite](./ref/secret_store/sqlite.md)
-- [Triggers](./ref/triggers/README.md)
-  - [Provided Triggers](./ref/triggers/provided/README.md)
-    - [Cron](./ref/triggers/provided/cron.md)
-    - [Interval](./ref/triggers/provided/interval.md)
-    - [Github](./ref/triggers/provided/github.md)
+- [Extensions](./ref/extensions/README.md)
+  - [Provided Extensions](./ref/extensions/provided/README.md)
+    - [Cron](./ref/extensions/provided/cron.md)
+    - [Interval](./ref/extensions/provided/interval.md)
+    - [Github](./ref/extensions/provided/github.md)
 - [Common Tasks](./ref/common_tasks/README.md)
   - [Debug](./ref/common_tasks/debug.md)
 

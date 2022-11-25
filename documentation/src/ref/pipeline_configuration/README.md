@@ -43,25 +43,25 @@ err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
 
 The SDK uses a builder pattern, which allows us to simply add another function onto our Pipeline object which we can type our description into.
 
-### Add a trigger
+### Add a extension
 
-Next we'll add a trigger. Triggers allow us to automate when our pipeline's run. Triggers usually execute a pipeline for us based on some event. In this example that even is the passage of time.
+Next we'll add a extension. Extensions allow us to automate when our pipeline's run. Extensions usually execute a pipeline for us based on some event. In this example that even is the passage of time.
 
-To do this we'll use a trigger included with Gofer called the [interval](../triggers/provided/interval.md) trigger. This trigger simply counts time and executes pipeline's based on that pipeline's specific time configuration.
+To do this we'll use a extension included with Gofer called the [interval](../extensions/provided/interval.md) extension. This extension simply counts time and executes pipeline's based on that pipeline's specific time configuration.
 
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
         Description("This pipeline is purely for testing purposes.").
-        Triggers(
-            *sdk.NewTrigger("interval", "every_one_minute").WithSetting("every", "1m"),
+        Extensions(
+            *sdk.NewExtension("interval", "every_one_minute").WithSetting("every", "1m"),
     )
 ```
 
-Here you can see we create a new `WithTriggers` block and then add a single trigger `interval`. We also add a setting block. Different triggers have different settings that pipelines can pass to them. In this case, passing the setting `every` along with the value `1m` will tell interval that this pipeline should be executed every minute.
+Here you can see we create a new `WithExtensions` block and then add a single extension `interval`. We also add a setting block. Different extensions have different settings that pipelines can pass to them. In this case, passing the setting `every` along with the value `1m` will tell interval that this pipeline should be executed every minute.
 
-When this pipeline is registered, Gofer will check that a trigger named `interval` actually exists and it will then communicate with that trigger to tell it which pipeline wants to register and which configuration values it has passed along.
+When this pipeline is registered, Gofer will check that a extension named `interval` actually exists and it will then communicate with that extension to tell it which pipeline wants to register and which configuration values it has passed along.
 
-If this registration with the trigger cannot be formed the registration of the overall pipeline will fail.
+If this registration with the extension cannot be formed the registration of the overall pipeline will fail.
 
 ### Add a task
 
@@ -71,8 +71,8 @@ run on container start to just say "Hello from Gofer!".
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
         Description("This pipeline is purely for testing purposes.").
-        Triggers(
-        *sdk.NewTrigger("interval", "every_one_minute").Setting("every", "1m"),
+        Extensions(
+        *sdk.NewExtension("interval", "every_one_minute").Setting("every", "1m"),
     ).Tasks(
 		sdk.NewCustomTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
@@ -92,8 +92,8 @@ To tie a bow on it, we add the `.Finish()` function to specify that our pipeline
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
-    Triggers(
-        *sdk.NewTrigger("interval", "every_one_minute").Setting("every", "1m"),
+    Extensions(
+        *sdk.NewExtension("interval", "every_one_minute").Setting("every", "1m"),
     ).Tasks(
 		sdk.NewCustomTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
@@ -118,11 +118,11 @@ import (
 )
 
 func main() {
-	err := sdk.NewPipeline("trigger", "Trigger Pipeline").
-		Description("This pipeline shows off the various features of a simple Gofer pipeline. Triggers, Tasks, and " +
+	err := sdk.NewPipeline("extension", "Extension Pipeline").
+		Description("This pipeline shows off the various features of a simple Gofer pipeline. Extensions, Tasks, and " +
 			"dependency graphs are all tools that can be wielded to create as complicated pipelines as need be.").
-		Triggers(
-			*sdk.NewTrigger("interval", "every_one_minute").Setting("every", "1m"),
+		Extensions(
+			*sdk.NewExtension("interval", "every_one_minute").Setting("every", "1m"),
 		).Tasks(
 		sdk.NewCustomTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").

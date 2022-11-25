@@ -51,7 +51,7 @@ func commontaskList(_ *cobra.Command, _ []string) error {
 		data = append(data, []string{
 			commonTask.Name,
 			commonTask.Image,
-			cliformat.ColorizeCommonTaskStatus(cliformat.NormalizeEnumValue(commonTask.Status.String(), "Unknown")),
+			cliformat.ColorizeCommonTaskRegistrationStatus(cliformat.NormalizeEnumValue(commonTask.Status.String(), "Unknown")),
 			commonTask.Documentation,
 		})
 	}

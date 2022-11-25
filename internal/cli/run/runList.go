@@ -8,7 +8,6 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	cliformat "github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"github.com/fatih/color"
@@ -22,8 +21,8 @@ var cmdRunList = &cobra.Command{
 	Short: "List all runs",
 	Long: `List all runs.
 
-A short listing of all currently started runs.`,
-	Example: `$ gofer run list simple_test_pipeline`,
+A short listing of all pipeline runs.`,
+	Example: `$ gofer run list simple`,
 	RunE:    runList,
 	Args:    cobra.ExactArgs(1),
 }
@@ -75,20 +74,17 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	data := [][]string{}
-	for _, protoRun := range resp.Runs {
-		run := models.Run{}
-		run.FromProto(protoRun)
-
-		id := strconv.Itoa(int(run.ID))
+	for _, run := range resp.Runs {
+		id := strconv.Itoa(int(run.Id))
 
 		data = append(data, []string{
 			id,
 			cliformat.UnixMilli(run.Started, "Not yet", cl.State.Config.Detail),
 			cliformat.UnixMilli(run.Ended, "Still running", cl.State.Config.Detail),
 			cliformat.Duration(run.Started, run.Ended),
-			cliformat.ColorizeRunState(cliformat.NormalizeEnumValue(run.State, "Unknown")),
-			cliformat.ColorizeRunStatus(cliformat.NormalizeEnumValue(run.Status, "Unknown")),
-			fmt.Sprintf("%s(%s)", run.Trigger.Name, color.YellowString(run.Trigger.Label)),
+			cliformat.ColorizeRunState(cliformat.NormalizeEnumValue(run.State.String(), "Unknown")),
+			cliformat.ColorizeRunStatus(cliformat.NormalizeEnumValue(run.Status.String(), "Unknown")),
+			fmt.Sprintf("%s(%s)", run.Extension.Name, color.YellowString(run.Extension.Label)),
 		})
 	}
 
@@ -104,7 +100,7 @@ func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "State", "Status", "Triggered By"})
+	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "State", "Status", "Extensioned By"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)

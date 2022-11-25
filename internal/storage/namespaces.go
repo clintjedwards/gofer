@@ -7,8 +7,15 @@ import (
 	"strings"
 
 	qb "github.com/Masterminds/squirrel"
-	"github.com/clintjedwards/gofer/models"
 )
+
+type Namespace struct {
+	ID          string
+	Name        string
+	Description string
+	Created     int64
+	Modified    int64
+}
 
 type UpdatableNamespaceFields struct {
 	Name        *string
@@ -16,46 +23,16 @@ type UpdatableNamespaceFields struct {
 	Modified    *int64
 }
 
-func (db *DB) ListNamespaces(offset, limit int) ([]models.Namespace, error) {
+func (db *DB) ListNamespaces(conn Queryable, offset, limit int) ([]Namespace, error) {
 	if limit == 0 || limit > db.maxResultsLimit {
 		limit = db.maxResultsLimit
 	}
 
-	rows, err := qb.Select("id", "name", "description", "created", "modified").
-		From("namespaces").OrderBy("id").Limit(uint64(limit)).Offset(uint64(offset)).RunWith(db).Query()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	defer rows.Close()
+	query, args := qb.Select("id", "name", "description", "created", "modified").
+		From("namespaces").OrderBy("id").Limit(uint64(limit)).Offset(uint64(offset)).MustSql()
 
-	namespaces := []models.Namespace{}
-
-	for rows.Next() {
-		var id string
-		var name string
-		var description string
-		var created int64
-		var modified int64
-
-		err = rows.Scan(&id, &name, &description, &created, &modified)
-		if err != nil {
-			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-		}
-
-		namespaces = append(namespaces, models.Namespace{
-			ID:          id,
-			Name:        name,
-			Description: description,
-			Created:     created,
-			Modified:    modified,
-		})
-
-	}
-	err = rows.Err()
+	namespaces := []Namespace{}
+	err := conn.Select(&namespaces, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
@@ -63,10 +40,10 @@ func (db *DB) ListNamespaces(offset, limit int) ([]models.Namespace, error) {
 	return namespaces, nil
 }
 
-func (db *DB) InsertNamespace(namespace *models.Namespace) error {
+func (db *DB) InsertNamespace(conn Queryable, namespace *Namespace) error {
 	_, err := qb.Insert("namespaces").Columns("id", "name", "description", "created", "modified").Values(
 		namespace.ID, namespace.Name, namespace.Description, namespace.Created, namespace.Modified,
-	).RunWith(db).Exec()
+	).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrEntityExists
@@ -78,33 +55,24 @@ func (db *DB) InsertNamespace(namespace *models.Namespace) error {
 	return nil
 }
 
-func (db *DB) GetNamespace(id string) (models.Namespace, error) {
-	row := qb.Select("id", "name", "description", "created", "modified").
-		From("namespaces").Where(qb.Eq{"id": id}).RunWith(db).QueryRow()
+func (db *DB) GetNamespace(conn Queryable, id string) (Namespace, error) {
+	query, args := qb.Select("id", "name", "description", "created", "modified").
+		From("namespaces").Where(qb.Eq{"id": id}).MustSql()
 
-	var name string
-	var description string
-	var created int64
-	var modified int64
-	err := row.Scan(&id, &name, &description, &created, &modified)
+	namespace := Namespace{}
+	err := conn.Get(&namespace, query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.Namespace{}, ErrEntityNotFound
+			return Namespace{}, ErrEntityNotFound
 		}
 
-		return models.Namespace{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return Namespace{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return models.Namespace{
-		ID:          id,
-		Name:        name,
-		Description: description,
-		Created:     created,
-		Modified:    modified,
-	}, nil
+	return namespace, nil
 }
 
-func (db *DB) UpdateNamespace(id string, fields UpdatableNamespaceFields) error {
+func (db *DB) UpdateNamespace(conn Queryable, id string, fields UpdatableNamespaceFields) error {
 	query := qb.Update("namespaces")
 
 	if fields.Name != nil {
@@ -119,9 +87,9 @@ func (db *DB) UpdateNamespace(id string, fields UpdatableNamespaceFields) error 
 		query = query.Set("modified", fields.Modified)
 	}
 
-	_, err := query.RunWith(db).Exec()
+	_, err := query.Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
-		if strings.Contains(err.Error(), "no rows in result set") {
+		if errors.Is(err, sql.ErrNoRows) {
 			return ErrEntityNotFound
 		}
 
@@ -131,8 +99,8 @@ func (db *DB) UpdateNamespace(id string, fields UpdatableNamespaceFields) error 
 	return nil
 }
 
-func (db *DB) DeleteNamespace(id string) error {
-	_, err := qb.Delete("namespaces").Where(qb.Eq{"id": id}).RunWith(db).Exec()
+func (db *DB) DeleteNamespace(conn Queryable, id string) error {
+	_, err := qb.Delete("namespaces").Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

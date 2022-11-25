@@ -3,8 +3,8 @@ package api
 import (
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
-	"github.com/clintjedwards/gofer/models"
 )
 
 // cancelTaskRun calls upon the scheduler to terminate a specific container. The urgency of this request is

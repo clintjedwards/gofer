@@ -1,14 +1,14 @@
-# 	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer-containers/triggers/github:${semver} .
-#	docker tag ghcr.io/clintjedwards/gofer-containers/triggers/github:${semver} ghcr.io/clintjedwards/gofer-containers/triggers/github:latest
-#	docker push ghcr.io/clintjedwards/gofer-containers/triggers/github:${semver}
-#	docker push ghcr.io/clintjedwards/gofer-containers/triggers/github:latest
+# 	docker build -f extensions/github/Dockerfile -t ghcr.io/clintjedwards/gofer-containers/extensions/github:${semver} .
+#	docker tag ghcr.io/clintjedwards/gofer-containers/extensions/github:${semver} ghcr.io/clintjedwards/gofer-containers/extensions/github:latest
+#	docker push ghcr.io/clintjedwards/gofer-containers/extensions/github:${semver}
+#	docker push ghcr.io/clintjedwards/gofer-containers/extensions/github:latest
 
 ## build: build docker containers
 build: check-semver-included
-	docker build -f triggers/cron/Dockerfile -t ghcr.io/clintjedwards/gofer-containers/triggers/cron:${semver} .
-	docker tag ghcr.io/clintjedwards/gofer-containers/triggers/cron:${semver} ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest
-	docker build -f triggers/interval/Dockerfile -t ghcr.io/clintjedwards/gofer-containers/triggers/interval:${semver} .
-	docker tag ghcr.io/clintjedwards/gofer-containers/triggers/interval:${semver} ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest
+	docker build -f extensions/cron/Dockerfile -t ghcr.io/clintjedwards/gofer-containers/extensions/cron:${semver} .
+	docker tag ghcr.io/clintjedwards/gofer-containers/extensions/cron:${semver} ghcr.io/clintjedwards/gofer-containers/extensions/cron:latest
+	docker build -f extensions/interval/Dockerfile -t ghcr.io/clintjedwards/gofer-containers/extensions/interval:${semver} .
+	docker tag ghcr.io/clintjedwards/gofer-containers/extensions/interval:${semver} ghcr.io/clintjedwards/gofer-containers/extensions/interval:latest
 
 	docker build -f debug/envs/Dockerfile -t ghcr.io/clintjedwards/gofer-containers/debug/envs:${semver} .
 	docker tag ghcr.io/clintjedwards/gofer-containers/debug/envs:${semver} ghcr.io/clintjedwards/gofer-containers/debug/envs:latest
@@ -24,10 +24,10 @@ build: check-semver-included
 
 ## push: push docker to github
 push: check-semver-included
-	docker push ghcr.io/clintjedwards/gofer-containers/triggers/cron:${semver}
-	docker push ghcr.io/clintjedwards/gofer-containers/triggers/cron:latest
-	docker push ghcr.io/clintjedwards/gofer-containers/triggers/interval:${semver}
-	docker push ghcr.io/clintjedwards/gofer-containers/triggers/interval:latest
+	docker push ghcr.io/clintjedwards/gofer-containers/extensions/cron:${semver}
+	docker push ghcr.io/clintjedwards/gofer-containers/extensions/cron:latest
+	docker push ghcr.io/clintjedwards/gofer-containers/extensions/interval:${semver}
+	docker push ghcr.io/clintjedwards/gofer-containers/extensions/interval:latest
 
 	docker push ghcr.io/clintjedwards/gofer-containers/debug/envs:${semver}
 	docker push ghcr.io/clintjedwards/gofer-containers/debug/envs:latest

@@ -22,8 +22,8 @@ var cmdGlobalSecretPut = &cobra.Command{
 
 You can store both regular text values or read in entire files using the '@' prefix.
 `,
-	Example: `$ gofer secret global put simple_test_global my_key=my_value
-$ gofer secret global put simple_test_global my_key=@/test/folder/file_path`,
+	Example: `$ gofer secret global put my_key=my_value
+$ gofer secret global put my_key=@/test/folder/file_path`,
 	RunE: globalSecretStorePut,
 	Args: cobra.ExactArgs(1),
 }

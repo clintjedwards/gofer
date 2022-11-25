@@ -19,6 +19,13 @@ ifeq ($(origin .RECIPEPREFIX), undefined)
 endif
 .RECIPEPREFIX = >
 
+# Colors
+
+COLOR_GREEN=\033[0;32m
+COLOR_RED=\033[0;31m
+COLOR_BLUE=\033[0;34m
+COLOR_END=\033[0m
+
 # App Vars
 
 APP_NAME = gofer
@@ -44,7 +51,7 @@ build-protos:
 > protoc --proto_path=proto --go_out=proto/go --go_opt=paths=source_relative \
 	 --go-grpc_out=proto/go --go-grpc_opt=paths=source_relative proto/*.proto
 > cd proto/rust
-> cargo build
+> cargo build --release
 .PHONY: build-protos
 
 ## build-sdk: build rust sdk
@@ -98,37 +105,48 @@ push-docs:
 > git reset --hard origin/main
 .PHONY: push-docs
 
-# 	docker build -f triggers/github/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/github:${semver} .
-#	docker tag ghcr.io/clintjedwards/gofer/triggers/github:${semver} ghcr.io/clintjedwards/gofer/triggers/github:latest
-#	docker push ghcr.io/clintjedwards/gofer/triggers/github:${semver}
-#	docker push ghcr.io/clintjedwards/gofer/triggers/github:latest
+# 	docker build -f extensions/github/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/github:${semver} .
+#	docker tag ghcr.io/clintjedwards/gofer/extensions/github:${semver} ghcr.io/clintjedwards/gofer/extensions/github:latest
+#	docker push ghcr.io/clintjedwards/gofer/extensions/github:${semver}
+#	docker push ghcr.io/clintjedwards/gofer/extensions/github:latest
 
 ## build-containers: build docker containers
 build-containers: check-semver-included
 > cd containers
-> docker build -f triggers/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/cron:${SEMVER} .
-> docker tag ghcr.io/clintjedwards/gofer/triggers/cron:${SEMVER} ghcr.io/clintjedwards/gofer/triggers/cron:latest
-> docker build -f triggers/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/triggers/interval:${SEMVER} .
-> docker tag ghcr.io/clintjedwards/gofer/triggers/interval:${SEMVER} ghcr.io/clintjedwards/gofer/triggers/interval:latest
+> echo -e "$(COLOR_BLUE)Building Cron Extension$(COLOR_END)"
+> docker build -f extensions/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:latest
 
+> echo -e "$(COLOR_BLUE)Building Interval Extension$(COLOR_END)"
+> docker build -f extensions/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:latest
+
+> echo -e "$(COLOR_BLUE)Building Debug Container Envs$(COLOR_END)"
 > docker build -f debug/envs/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} ghcr.io/clintjedwards/gofer/debug/envs:latest
+
+> echo -e "$(COLOR_BLUE)Building Debug Container Fail$(COLOR_END)"
 > docker build -f debug/fail/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/fail:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/debug/fail:${SEMVER} ghcr.io/clintjedwards/gofer/debug/fail:latest
+
+> echo -e "$(COLOR_BLUE)Building Debug Container Log$(COLOR_END)"
 > docker build -f debug/log/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/log:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/debug/log:${SEMVER} ghcr.io/clintjedwards/gofer/debug/log:latest
+
+> echo -e "$(COLOR_BLUE)Building Debug Container Wait$(COLOR_END)"
 > docker build -f debug/wait/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} ghcr.io/clintjedwards/gofer/debug/wait:latest
 
+> echo -e "$(COLOR_BLUE)Building Common Task Container Debug$(COLOR_END)"
 > docker build -f tasks/debug/Dockerfile -t ghcr.io/clintjedwards/gofer/tasks/debug:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/tasks/debug:${SEMVER} ghcr.io/clintjedwards/gofer/tasks/debug:latest
 
 ## push-containers: push docker containers to github
 push-containers: check-semver-included
-> docker push ghcr.io/clintjedwards/gofer/triggers/cron:${SEMVER}
-> docker push ghcr.io/clintjedwards/gofer/triggers/cron:latest
-> docker push ghcr.io/clintjedwards/gofer/triggers/interval:${SEMVER}
-> docker push ghcr.io/clintjedwards/gofer/triggers/interval:latest
+> docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/extensions/cron:latest
+> docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/extensions/interval:latest
 
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:latest

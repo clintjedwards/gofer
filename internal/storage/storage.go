@@ -2,6 +2,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3" // Provides sqlite3 lib
+	"github.com/rs/zerolog/log"
 )
 
 //go:embed migrations
@@ -28,8 +30,26 @@ var (
 	ErrInternal = errors.New("storage: unknown db error")
 )
 
-func ptr[T any](v T) *T {
-	return &v
+// Queryable includes methods shared by sqlx.Tx and sqlx.DB so they can
+// be used interchangeably.
+type Queryable interface {
+	sqlx.Queryer
+	sqlx.Execer
+	GetContext(context.Context, interface{}, string, ...interface{}) error
+	SelectContext(context.Context, interface{}, string, ...interface{}) error
+	Get(interface{}, string, ...interface{}) error
+	MustExecContext(context.Context, string, ...interface{}) sql.Result
+	PreparexContext(context.Context, string) (*sqlx.Stmt, error)
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+	Select(interface{}, string, ...interface{}) error
+	QueryRow(string, ...interface{}) *sql.Row
+	PrepareNamedContext(context.Context, string) (*sqlx.NamedStmt, error)
+	PrepareNamed(string) (*sqlx.NamedStmt, error)
+	Preparex(string) (*sqlx.Stmt, error)
+	NamedExec(string, interface{}) (sql.Result, error)
+	NamedExecContext(context.Context, string, interface{}) (sql.Result, error)
+	MustExec(string, ...interface{}) sql.Result
+	NamedQuery(string, interface{}) (*sqlx.Rows, error)
 }
 
 // DB is a representation of the datastore
@@ -41,7 +61,7 @@ type DB struct {
 func mustReadFile(path string) []byte {
 	file, err := migrations.ReadFile(path)
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("could not read migrations file")
 	}
 
 	return file
@@ -73,9 +93,30 @@ func New(path string, maxResultsLimit int) (DB, error) {
 	}, nil
 }
 
-func mustRollback(tx *sql.Tx) {
-	err := tx.Rollback()
+// InsideTx is a convenience function so that callers can run multiple queries inside a transaction.
+func InsideTx(db *sqlx.DB, fn func(*sqlx.Tx) error) error {
+	tx, err := db.Beginx()
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	defer func() {
+		if v := recover(); v != nil {
+			_ = tx.Rollback()
+			panic(v)
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		if rerr := tx.Rollback(); rerr != nil {
+			err = fmt.Errorf("%w: rolling back transaction: %v", err, rerr)
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
+	}
+
+	return nil
 }

@@ -7,73 +7,51 @@ import (
 	"strings"
 
 	qb "github.com/Masterminds/squirrel"
-	"github.com/clintjedwards/gofer/models"
 )
 
-func (db *DB) ListSecretStorePipelineKeys(namespace, pipeline string) ([]models.SecretStoreKey, error) {
-	rows, err := qb.Select("key", "created").
-		From("secret_store_pipeline_keys").
-		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline}).RunWith(db).Query()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-	defer rows.Close()
-
-	pipelineKeys := []models.SecretStoreKey{}
-
-	for rows.Next() {
-		var key string
-		var created int64
-
-		err = rows.Scan(&key, &created)
-		if err != nil {
-			return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-		}
-
-		pipelineKeys = append(pipelineKeys, models.SecretStoreKey{
-			Key:     key,
-			Created: created,
-		})
-
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
-	}
-
-	return pipelineKeys, nil
+type SecretStorePipelineKey struct {
+	Namespace string
+	Pipeline  string
+	Key       string
+	Created   int64
 }
 
-func (db *DB) GetSecretStorePipelineKey(namespace, pipeline, key string) (models.SecretStoreKey, error) {
-	row := qb.Select("key", "created").
+func (db *DB) ListSecretStorePipelineKeys(conn Queryable, namespace, pipeline string) ([]SecretStorePipelineKey, error) {
+	query, args := qb.Select("namespace", "pipeline", "key", "created").
 		From("secret_store_pipeline_keys").
-		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "key": key}).RunWith(db).QueryRow()
+		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline}).MustSql()
 
-	var keyStr string
-	var created int64
+	keys := []SecretStorePipelineKey{}
+	err := conn.Select(&keys, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
 
-	err := row.Scan(&keyStr, &created)
+	return keys, nil
+}
+
+func (db *DB) GetSecretStorePipelineKey(conn Queryable, namespace, pipeline, key string) (SecretStorePipelineKey, error) {
+	query, args := qb.Select("namespace", "pipeline", "key", "created").
+		From("secret_store_pipeline_keys").
+		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "key": key}).MustSql()
+
+	secretKey := SecretStorePipelineKey{}
+	err := conn.Get(&secretKey, query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.SecretStoreKey{}, ErrEntityNotFound
+			return SecretStorePipelineKey{}, ErrEntityNotFound
 		}
 
-		return models.SecretStoreKey{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return SecretStorePipelineKey{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return models.SecretStoreKey{
-		Key:     key,
-		Created: created,
-	}, nil
+	return secretKey, nil
 }
 
-func (db *DB) InsertSecretStorePipelineKey(namespace, pipeline string, secretKey *models.SecretStoreKey, force bool) error {
+func (db *DB) InsertSecretStorePipelineKey(conn Queryable, secretKey *SecretStorePipelineKey, force bool,
+) error {
 	_, err := qb.Insert("secret_store_pipeline_keys").Columns("namespace", "pipeline", "key", "created").Values(
-		namespace, pipeline, secretKey.Key, secretKey.Created).RunWith(db).Exec()
+		secretKey.Namespace, secretKey.Pipeline, secretKey.Key, secretKey.Created).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") && !force {
 			return ErrEntityExists
@@ -94,8 +72,10 @@ func (db *DB) InsertSecretStorePipelineKey(namespace, pipeline string, secretKey
 	return nil
 }
 
-func (db *DB) DeleteSecretStorePipelineKey(namespace, pipeline string, key string) error {
-	_, err := qb.Delete("secret_store_pipeline_keys").Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "key": key}).RunWith(db).Exec()
+func (db *DB) DeleteSecretStorePipelineKey(conn Queryable, namespace, pipeline, key string) error {
+	_, err := qb.Delete("secret_store_pipeline_keys").Where(qb.Eq{
+		"namespace": namespace, "pipeline": pipeline, "key": key,
+	}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

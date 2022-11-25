@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -96,14 +96,14 @@ func systemInjectedVars(run *models.Run, task models.Task, injectToken bool) map
 //
 // There are many places a task_run could potentially get env vars from. From the outer most layer to the inner most:
 // 1) The user sets variables in their pipeline configuration for each task.
-// 2) At the time of run inception, either the trigger or the user themselves have the ability to inject extra env vars.
+// 2) At the time of run inception, either the extension or the user themselves have the ability to inject extra env vars.
 // 3) Right before the task run starts, Gofer itself might inject variables into the task run.
 //
 // The order in which the env vars are stacked are in reverse order to the above, due to that order being the best
 // for giving the user the most control over what the pipeline does:
 // 1) We first pass in the Gofer system specific envvars as these are the most replaceable on the totem pole.
 // 2) We pass in the task specific envvars defined by the user in the pipeline config.
-// 3) Lastly we pass in the run specific defined envvars. These are usually provided by either a trigger
+// 3) Lastly we pass in the run specific defined envvars. These are usually provided by either a extension
 // or the user when they attempt to start a new run manually. Since these are the most likely to be
 // edited adhoc they are treated as the most important.
 func combineVariables(run *models.Run, task models.Task) []models.Variable {
@@ -124,7 +124,7 @@ func combineVariables(run *models.Run, task models.Task) []models.Variable {
 	taskRunVars := mergeMaps(
 		systemInjectedVars, // Gofer provided env vars first.
 		taskVars,           // Then we include vars that come from the pipeline config.
-		runVars,            // Then finally vars that come from the user or the trigger.
+		runVars,            // Then finally vars that come from the user or the extension.
 	)
 
 	variables := []models.Variable{}
@@ -212,8 +212,8 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 		if err == nil {
 			// We exclude instead of include so in case sources get updated, we don't potentially
 			// leak global secrets.
-			if variable.Source != models.VariableSourceSystem && variable.Source != models.VariableSourceTrigger {
-				return nil, fmt.Errorf("invalid request of global secret %q; interpolation of global secrets not allowed in user; global secrets are only allowed for system level configs(ex. Common tasks, triggers) set by admins", key)
+			if variable.Source != models.VariableSourceSystem && variable.Source != models.VariableSourceExtension {
+				return nil, fmt.Errorf("invalid request of global secret %q; interpolation of global secrets not allowed in user; global secrets are only allowed for system level configs(ex. Common tasks, extensions) set by admins", key)
 			}
 
 			variable := variable
@@ -265,7 +265,7 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 // It then waits until the goroutine monitoring run health gets to the correct state.
 // This causes the function to block for a bit, while it waits for the correct run status.
 func (api *API) cancelRun(run *models.Run, description string, force bool) error {
-	taskRuns, err := api.db.ListTaskRuns(0, 0, run.Namespace, run.Pipeline, run.ID)
+	taskRunsRaw, err := api.db.ListPipelineTaskRuns(api.db, 0, 0, run.Namespace, run.Pipeline, run.ID)
 	if err != nil {
 		return err
 	}
@@ -273,7 +273,10 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 	// Because of how state updates work we need to wait for the run to be settled by
 	// the goroutine that controls this before we update the description.
 	for {
-		for _, taskrun := range taskRuns {
+		for _, taskrunRaw := range taskRunsRaw {
+			var taskrun models.TaskRun
+			taskrun.FromStorage(&taskrunRaw)
+
 			if taskrun.State != models.TaskRunStateRunning {
 				continue
 			}
@@ -281,15 +284,19 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 			err := api.cancelTaskRun(&taskrun, force)
 			if err != nil {
 				if errors.Is(err, scheduler.ErrNoSuchContainer) {
-					err := api.db.UpdateTaskRun(&taskrun, storage.UpdatableTaskRunFields{
-						Status: ptr(models.TaskRunStatusFailed),
-						State:  ptr(models.TaskRunStateComplete),
-						Ended:  ptr(time.Now().UnixMilli()),
-						StatusReason: &models.TaskRunStatusReason{
-							Reason:      models.TaskRunStatusReasonKindOrphaned,
-							Description: "Scheduler could not find task run when queried.",
-						},
-					})
+
+					statusReason := models.TaskRunStatusReason{
+						Reason:      models.TaskRunStatusReasonKindOrphaned,
+						Description: "Scheduler could not find task run when queried.",
+					}
+
+					err = api.db.UpdatePipelineTaskRun(api.db, taskrun.Namespace, taskrun.Pipeline, taskrun.Run,
+						taskrun.ID, storage.UpdatablePipelineTaskRunFields{
+							Status:       ptr(string(models.TaskRunStatusFailed)),
+							State:        ptr(string(models.TaskRunStateComplete)),
+							Ended:        ptr(time.Now().UnixMilli()),
+							StatusReason: ptr(string(statusReason.ToJSON())),
+						})
 					if err != nil {
 						return err
 					}
@@ -307,10 +314,13 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 			}
 		}
 
-		run, err := api.db.GetRun(run.Namespace, run.Pipeline, run.ID)
+		runRaw, err := api.db.GetPipelineRun(api.db, run.Namespace, run.Pipeline, run.ID)
 		if err != nil {
 			return err
 		}
+
+		var run models.Run
+		run.FromStorage(&runRaw)
 
 		if run.State != models.RunStateComplete {
 			time.Sleep(time.Second * 1)
@@ -323,13 +333,13 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 		}
 
 		if run.Status == models.RunStatusCancelled {
-			statusReason := &models.RunStatusReason{
+			statusReason := models.RunStatusReason{
 				Reason:      models.RunStatusReasonKindUserCancelled,
 				Description: description,
 			}
 
-			err = api.db.UpdateRun(run.Namespace, run.Pipeline, run.ID, storage.UpdatableRunFields{
-				StatusReason: statusReason,
+			err = api.db.UpdatePipelineRun(api.db, run.Namespace, run.Pipeline, run.ID, storage.UpdatablePipelineRunFields{
+				StatusReason: ptr(string(statusReason.ToJSON())),
 			})
 			if err != nil {
 				return err
@@ -393,12 +403,15 @@ func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force
 	inProgressRuns := []*models.Run{}
 
 	for inProgressRun := range inProgressRunMap {
-		run, err := api.db.GetRun(inProgressRun.namespace, inProgressRun.pipeline, inProgressRun.run)
+		runRaw, err := api.db.GetPipelineRun(api.db, inProgressRun.namespace, inProgressRun.pipeline, inProgressRun.run)
 		if err != nil {
 			log.Error().Err(err).Str("namespace", inProgressRun.namespace).Str("pipeline", inProgressRun.pipeline).
 				Int64("run", inProgressRun.run).Msg("could not retrieve run from database")
 			continue
 		}
+
+		var run models.Run
+		run.FromStorage(&runRaw)
 
 		inProgressRuns = append(inProgressRuns, &run)
 	}
@@ -422,11 +435,14 @@ func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force
 			defer wg.Done()
 			_ = api.cancelRun(run, description, force)
 			for {
-				run, err := api.db.GetRun(run.Namespace, run.Pipeline, run.ID)
+				runRaw, err := api.db.GetPipelineRun(api.db, run.Namespace, run.Pipeline, run.ID)
 				if err != nil {
 					time.Sleep(time.Second * 3)
 					continue
 				}
+
+				var run models.Run
+				run.FromStorage(&runRaw)
 
 				if run.State == models.RunStateComplete {
 					return

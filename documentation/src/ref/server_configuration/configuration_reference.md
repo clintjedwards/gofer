@@ -23,16 +23,16 @@ If examples of these values are needed you can find a sample file by using `gofe
 | task_run_logs_dir          | string            | /tmp    | The path of the directory to store task run logs. Task run logs are stored as a text file on the server.                                                                                                                                                                                                                                             |
 | task_run_log_expiry        | int               | 20      | The total amount of runs before logs of the oldest run will be deleted.                                                                                                                                                                                                                                                                              |
 | task_run_stop_timeout      | string            | 5m      | The amount of time Gofer will wait for a container to gracefully stop before sending it a SIGKILL.                                                                                                                                                                                                                                                   |
-| external_events_api        | block             | N/A     | The external events API controls webhook type interactions with triggers. HTTP requests go through the events endpoint and Gofer routes them to the proper trigger for handling.                                                                                                                                                                     |
+| external_events_api        | block             | N/A     | The external events API controls webhook type interactions with extensions. HTTP requests go through the events endpoint and Gofer routes them to the proper extension for handling.                                                                                                                                                                 |
 | object_store               | block             | N/A     | The settings for the Gofer object store. The object store assists Gofer with storing values between tasks since Gofer is by nature distributed. This helps jobs avoid having to download the same objects over and over or simply just allows tasks to share certain values.                                                                         |
-| secret_store               | block             | N/A     | The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, trigger configuration, or scheduler.                                                                                                                                             |
+| secret_store               | block             | N/A     | The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, extension configuration, or scheduler.                                                                                                                                           |
 | scheduler                  | block             | N/A     | The settings for the container orchestrator that Gofer will use to schedule workloads.                                                                                                                                                                                                                                                               |
 | server                     | block             | N/A     | Controls the settings for the Gofer API service properties.                                                                                                                                                                                                                                                                                          |
-| triggers                   | block             | N/A     | Controls settings for Gofer's trigger system. Triggers are different workflows for running pipelines usually based on some other event (like the passing of time).                                                                                                                                                                                   |
+| extensions                 | block             | N/A     | Controls settings for Gofer's extension system. Extensions are different workflows for running pipelines usually based on some other event (like the passing of time).                                                                                                                                                                               |
 
 ### External Events API (block)
 
-The external events API controls webhook type interactions with triggers. HTTP requests go through the events endpoint and Gofer routes them to the proper trigger for handling.
+The external events API controls webhook type interactions with extensions. HTTP requests go through the events endpoint and Gofer routes them to the proper extension for handling.
 
 | name   | type    | default        | description                                                                               |
 | ------ | ------- | -------------- | ----------------------------------------------------------------------------------------- |
@@ -80,7 +80,7 @@ object_store {
 
 ### Secret Store (block)
 
-The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, trigger configuration, or scheduler.
+The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, extension configuration, or scheduler.
 
 You can find [more information on the secret store block here.](../secret_store/README.md)
 
@@ -163,22 +163,22 @@ server {
 }
 ```
 
-### Triggers (block)
+### Extensions (block)
 
-Controls settings for Gofer's trigger system. Triggers are different workflows for running pipelines usually based on some other event (like the passing of time).
+Controls settings for Gofer's extension system. Extensions are different workflows for running pipelines usually based on some other event (like the passing of time).
 
-You can find [more information on the trigger block here.](../triggers/README.md)
+You can find [more information on the extension block here.](../extensions/README.md)
 
-| name                  | type    | default    | description                                                                                                                                    |
-| --------------------- | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| install_base_triggers | boolean | true       | Attempts to automatically install the `cron` and `interval` triggers on first startup.                                                         |
-| stop_timeout          | string  | 5m         | The amount of time Gofer will wait until trigger containers have stopped before sending a SIGKILL.                                             |
-| tls_cert_path         | string  | <Required> | The TLS certificate path Gofer will use for the triggers. This should be a certificate that the main Gofer service will be able to access.     |
-| tls_key_path          | string  | <Required> | The TLS certificate path key Gofer will use for the triggers. This should be a certificate that the main Gofer service will be able to access. |
+| name                    | type    | default    | description                                                                                                                                      |
+| ----------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| install_base_extensions | boolean | true       | Attempts to automatically install the `cron` and `interval` extensions on first startup.                                                         |
+| stop_timeout            | string  | 5m         | The amount of time Gofer will wait until extension containers have stopped before sending a SIGKILL.                                             |
+| tls_cert_path           | string  | <Required> | The TLS certificate path Gofer will use for the extensions. This should be a certificate that the main Gofer service will be able to access.     |
+| tls_key_path            | string  | <Required> | The TLS certificate path key Gofer will use for the extensions. This should be a certificate that the main Gofer service will be able to access. |
 
 ```hcl
-triggers {
-  install_base_triggers = true
+extensions {
+  install_base_extensions = true
   stop_timeout          = "5m"
   tls_cert_path         = "./localhost.crt"
   tls_key_path          = "./localhost.key"

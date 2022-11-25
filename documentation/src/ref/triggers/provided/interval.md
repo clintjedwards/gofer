@@ -1,22 +1,22 @@
-# Interval <small>Trigger</small>
+# Interval <small>Extension</small>
 
-Interval simply triggers the subscribed pipeline at the given interval.
+Interval simply extensions the subscribed pipeline at the given interval.
 
 ## Parameters/Pipeline Configuration
 
-- `every` <string>: Specifies the time duration between events. Unless changed via the trigger configuration, the minimum for this is 5 mins.
+- `every` <string>: Specifies the time duration between events. Unless changed via the extension configuration, the minimum for this is 5 mins.
 
 ```go
 ...
-WithTriggers(
-    *sdk.NewTrigger("interval", "every_five_mins").WithSetting("every", "5m"),
+WithExtensions(
+    *sdk.NewExtension("interval", "every_five_mins").WithSetting("every", "5m"),
 )
 ...
 ```
 
-## Trigger Configuration
+## Extension Configuration
 
-Trigger configurations are set upon trigger startup and cannot be changed afterwards without restarting said trigger.
+Extension configurations are set upon extension startup and cannot be changed afterwards without restarting said extension.
 
 | EnvVar       | Default | Description                                               |
 | ------------ | ------- | --------------------------------------------------------- |

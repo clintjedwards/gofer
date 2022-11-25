@@ -10,7 +10,7 @@ const (
 	GlobalSecretKeyFmt      = "global_secret_%s" // global_secret<key>
 	PipelineSecretKeyFmt    = "%s_%s_%s"         // <namespaceid>_<pipelineid>_<key>
 	TaskContainerIDFmt      = "%s_%s_%d_%s"      // <namespaceid>_<pipelineid>_<runid>_<taskrunid>
-	TriggerContainerIDFmt   = "trigger_%s"       // trigger_<name>
+	ExtensionContainerIDFmt = "extension_%s"     // extension_<name>
 	InstallerContainerIDFmt = "installer_%s"     // installer_<randomly-generated-value>
 	TaskRunFilePath         = "%s/%s_%s_%d_%s"   // folder/<namespaceid>_<pipelineid>_<runid>_<taskrunid>
 )
@@ -35,8 +35,8 @@ func taskContainerID(namespace, pipeline string, run int64, taskRun string) stri
 	return fmt.Sprintf(TaskContainerIDFmt, namespace, pipeline, run, taskRun)
 }
 
-func triggerContainerID(name string) string {
-	return fmt.Sprintf(TriggerContainerIDFmt, name)
+func extensionContainerID(name string) string {
+	return fmt.Sprintf(ExtensionContainerIDFmt, name)
 }
 
 func installerContainerID() string {

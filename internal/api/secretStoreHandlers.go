@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	"google.golang.org/grpc/codes"
@@ -30,7 +30,7 @@ func (api *API) GetPipelineSecret(ctx context.Context, request *proto.GetPipelin
 		return &proto.GetPipelineSecretResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	metadata, err := api.db.GetSecretStorePipelineKey(request.NamespaceId, request.PipelineId, request.Key)
+	metadata, err := api.db.GetSecretStorePipelineKey(api.db, request.NamespaceId, request.PipelineId, request.Key)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetPipelineSecretResponse{}, status.Error(codes.FailedPrecondition, "key not found")
@@ -50,8 +50,12 @@ func (api *API) GetPipelineSecret(ctx context.Context, request *proto.GetPipelin
 		}
 	}
 
+	var key models.SecretStoreKey
+	key.Key = metadata.Key
+	key.Created = metadata.Created
+
 	return &proto.GetPipelineSecretResponse{
-		Metadata: metadata.ToProto(),
+		Metadata: key.ToProto(),
 		Secret:   secret,
 	}, nil
 }
@@ -69,13 +73,16 @@ func (api *API) ListPipelineSecrets(ctx context.Context, request *proto.ListPipe
 		return &proto.ListPipelineSecretsResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	keys, err := api.db.ListSecretStorePipelineKeys(request.NamespaceId, request.PipelineId)
+	keys, err := api.db.ListSecretStorePipelineKeys(api.db, request.NamespaceId, request.PipelineId)
 	if err != nil {
 		return &proto.ListPipelineSecretsResponse{}, err
 	}
 
 	var protoKeys []*proto.SecretStoreKey
-	for _, key := range keys {
+	for _, keyRaw := range keys {
+		var key models.SecretStoreKey
+		key.Key = keyRaw.Key
+		key.Created = keyRaw.Created
 		protoKeys = append(protoKeys, key.ToProto())
 	}
 
@@ -103,7 +110,12 @@ func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelin
 
 	newSecretKey := models.NewSecretStoreKey(request.Key)
 
-	err = api.db.InsertSecretStorePipelineKey(request.NamespaceId, request.PipelineId, newSecretKey, request.Force)
+	err = api.db.InsertSecretStorePipelineKey(api.db, &storage.SecretStorePipelineKey{
+		Namespace: request.NamespaceId,
+		Pipeline:  request.PipelineId,
+		Key:       newSecretKey.Key,
+		Created:   newSecretKey.Created,
+	}, request.Force)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return &proto.PutPipelineSecretResponse{},
@@ -130,7 +142,9 @@ func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelin
 	}, nil
 }
 
-func (api *API) DeletePipelineSecret(ctx context.Context, request *proto.DeletePipelineSecretRequest) (*proto.DeletePipelineSecretResponse, error) {
+func (api *API) DeletePipelineSecret(ctx context.Context, request *proto.DeletePipelineSecretRequest) (
+	*proto.DeletePipelineSecretResponse, error,
+) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.DeletePipelineSecretResponse{},
@@ -147,7 +161,7 @@ func (api *API) DeletePipelineSecret(ctx context.Context, request *proto.DeleteP
 		return &proto.DeletePipelineSecretResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	err = api.db.DeleteSecretStorePipelineKey(request.NamespaceId, request.PipelineId, request.Key)
+	err = api.db.DeleteSecretStorePipelineKey(api.db, request.NamespaceId, request.PipelineId, request.Key)
 	if err != nil {
 		return &proto.DeletePipelineSecretResponse{}, err
 	}
@@ -169,7 +183,7 @@ func (api *API) GetGlobalSecret(ctx context.Context, request *proto.GetGlobalSec
 		return &proto.GetGlobalSecretResponse{}, status.Error(codes.FailedPrecondition, "key cannot be empty")
 	}
 
-	metadata, err := api.db.GetSecretStoreGlobalKey(request.Key)
+	metadata, err := api.db.GetSecretStoreGlobalKey(api.db, request.Key)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetGlobalSecretResponse{}, status.Error(codes.FailedPrecondition, "key not found")
@@ -189,8 +203,12 @@ func (api *API) GetGlobalSecret(ctx context.Context, request *proto.GetGlobalSec
 		}
 	}
 
+	var key models.SecretStoreKey
+	key.Key = metadata.Key
+	key.Created = metadata.Created
+
 	return &proto.GetGlobalSecretResponse{
-		Metadata: metadata.ToProto(),
+		Metadata: key.ToProto(),
 		Secret:   secret,
 	}, nil
 }
@@ -200,13 +218,16 @@ func (api *API) ListGlobalSecrets(ctx context.Context, request *proto.ListGlobal
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
 
-	keys, err := api.db.ListSecretStoreGlobalKeys()
+	keys, err := api.db.ListSecretStoreGlobalKeys(api.db)
 	if err != nil {
 		return &proto.ListGlobalSecretsResponse{}, err
 	}
 
 	var protoKeys []*proto.SecretStoreKey
-	for _, key := range keys {
+	for _, keyRaw := range keys {
+		var key models.SecretStoreKey
+		key.Key = keyRaw.Key
+		key.Created = keyRaw.Created
 		protoKeys = append(protoKeys, key.ToProto())
 	}
 
@@ -226,7 +247,10 @@ func (api *API) PutGlobalSecret(ctx context.Context, request *proto.PutGlobalSec
 
 	newSecretKey := models.NewSecretStoreKey(request.Key)
 
-	err := api.db.InsertSecretStoreGlobalKey(newSecretKey, request.Force)
+	err := api.db.InsertSecretStoreGlobalKey(api.db, &storage.SecretStoreGlobalKey{
+		Key:     newSecretKey.Key,
+		Created: newSecretKey.Created,
+	}, request.Force)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return &proto.PutGlobalSecretResponse{},
@@ -262,7 +286,7 @@ func (api *API) DeleteGlobalSecret(ctx context.Context, request *proto.DeleteGlo
 		return nil, status.Error(codes.FailedPrecondition, "key cannot be empty")
 	}
 
-	err := api.db.DeleteSecretStoreGlobalKey(request.Key)
+	err := api.db.DeleteSecretStoreGlobalKey(api.db, request.Key)
 	if err != nil {
 		return &proto.DeleteGlobalSecretResponse{}, err
 	}

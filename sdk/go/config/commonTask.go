@@ -62,13 +62,13 @@ func NewCommonTask(name, label string) *CommonTaskWrapper {
 	}
 }
 
-func (t *CommonTaskWrapper) Proto() *proto.CommonTaskConfig {
-	dependsOn := map[string]proto.CommonTaskConfig_RequiredParentStatus{}
+func (t *CommonTaskWrapper) Proto() *proto.UserCommonTaskConfig {
+	dependsOn := map[string]proto.UserCommonTaskConfig_RequiredParentStatus{}
 	for key, value := range t.CommonTask.DependsOn {
-		dependsOn[key] = proto.CommonTaskConfig_RequiredParentStatus(proto.CommonTaskConfig_RequiredParentStatus_value[string(value)])
+		dependsOn[key] = proto.UserCommonTaskConfig_RequiredParentStatus(proto.UserCommonTaskConfig_RequiredParentStatus_value[string(value)])
 	}
 
-	return &proto.CommonTaskConfig{
+	return &proto.UserCommonTaskConfig{
 		Name:           t.CommonTask.Name,
 		Label:          t.CommonTask.Label,
 		Description:    t.CommonTask.Description,

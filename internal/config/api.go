@@ -15,11 +15,16 @@ type API struct {
 	// convenient features for development. Usually turned on along side LogLevel=debug.
 	DevMode bool `hcl:"dev_mode,optional"`
 
-	// Controls the ability to trigger runs. This setting can be toggled while the server is running.
+	// Controls the ability to extension runs. This setting can be toggled while the server is running.
 	IgnorePipelineRunEvents bool `split_words:"true" hcl:"ignore_pipeline_run_events,optional"`
 
-	/// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
+	// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
 	RunParallelismLimit int `split_words:"true" hcl:"run_parallelism_limit,optional"`
+
+	// How many total versions of an individual pipelines to keep.
+	// The oldest version of a pipeline over this limit gets deleted.
+	// 0 means don't delete versions.
+	PipelineVersionLimit int `split_words:"true" hcl:"pipeline_version_limit,optional"`
 
 	// Controls how long Gofer will hold onto events before discarding them. This is important factor in disk space
 	// and memory footprint.
@@ -39,7 +44,7 @@ type API struct {
 	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
 	EventPruneIntervalHCL string `ignored:"true" hcl:"event_prune_interval,optional"`
 
-	// Log level affects the entire application's logs including launched triggers.
+	// Log level affects the entire application's logs including launched extensions.
 	LogLevel string `split_words:"true" hcl:"log_level,optional"`
 
 	// The total amount of runs before logs of the oldest log starts being deleted.
@@ -48,7 +53,7 @@ type API struct {
 	// Directory to store task run log files.
 	TaskRunLogsDir string `split_words:"true" hcl:"task_run_logs_dir,optional"`
 
-	// TaskRunStopTimeout controls the time the scheduler will wait for a normal user container(non-trigger containers)
+	// TaskRunStopTimeout controls the time the scheduler will wait for a normal user container(non-extension containers)
 	// to stop. When the timeout is reached the container will be forcefully terminated.
 	// You can use a negative duration("-1s") to convey that no timeout should be specified and the scheduler
 	// should wait however long it takes the container to respond to the terminate signal.
@@ -64,7 +69,7 @@ type API struct {
 	SecretStore       *SecretStore       `hcl:"secret_store,block"`
 	Scheduler         *Scheduler         `hcl:"scheduler,block"`
 	Server            *Server            `hcl:"server,block"`
-	Triggers          *Triggers          `hcl:"triggers,block"`
+	Extensions        *Extensions        `hcl:"extensions,block"`
 }
 
 func DefaultAPIConfig() *API {
@@ -72,6 +77,7 @@ func DefaultAPIConfig() *API {
 		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
 		RunParallelismLimit:     200,
+		PipelineVersionLimit:    5,
 		EventLogRetention:       mustParseDuration("4380h"), // 4380 hours is roughly 6 months.
 		EventPruneInterval:      mustParseDuration("3h"),
 		LogLevel:                "debug",
@@ -83,7 +89,7 @@ func DefaultAPIConfig() *API {
 		SecretStore:             DefaultSecretStoreConfig(),
 		Scheduler:               DefaultSchedulerConfig(),
 		Server:                  DefaultServerConfig(),
-		Triggers:                DefaultTriggersConfig(),
+		Extensions:              DefaultExtensionsConfig(),
 	}
 }
 
@@ -120,31 +126,31 @@ func DefaultServerConfig() *Server {
 	}
 }
 
-// Triggers represents the configuration for Gofer Triggers. Triggers are used to generate events in which pipelines
+// Extensions represents the configuration for Gofer Extensions. Extensions are used to generate events in which pipelines
 // should run.
-type Triggers struct {
-	// InstallBaseTriggers attempts to automatically install the cron and interval triggers on first startup.
-	InstallBaseTriggers bool `split_words:"true" hcl:"install_base_triggers,optional"`
+type Extensions struct {
+	// InstallBaseExtensions attempts to automatically install the cron and interval extensions on first startup.
+	InstallBaseExtensions bool `split_words:"true" hcl:"install_base_extensions,optional"`
 
-	// StopTimeout controls the time the scheduler will wait for a trigger container to stop. After this period
-	// Gofer will attempt to force stop the trigger container.
+	// StopTimeout controls the time the scheduler will wait for a extension container to stop. After this period
+	// Gofer will attempt to force stop the extension container.
 	StopTimeout time.Duration `split_words:"true"`
 
-	// StopTimeoutHCL is the HCL compatible counter part to TriggerStopTimeout. It allows the parsing of a string
+	// StopTimeoutHCL is the HCL compatible counter part to ExtensionStopTimeout. It allows the parsing of a string
 	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
 	StopTimeoutHCL string `ignored:"true" hcl:"stop_timeout,optional"`
 
-	// TLSCertPath is the file path of the trigger TLS certificate.
+	// TLSCertPath is the file path of the extension TLS certificate.
 	TLSCertPath string `split_words:"true" hcl:"tls_cert_path,optional"`
 
-	// TLSKeyPath is the file path of the trigger TLS key.
+	// TLSKeyPath is the file path of the extension TLS key.
 	TLSKeyPath string `split_words:"true" hcl:"tls_key_path,optional"`
 }
 
-func DefaultTriggersConfig() *Triggers {
-	return &Triggers{
-		InstallBaseTriggers: true,
-		StopTimeout:         mustParseDuration("5m"),
+func DefaultExtensionsConfig() *Extensions {
+	return &Extensions{
+		InstallBaseExtensions: true,
+		StopTimeout:           mustParseDuration("5m"),
 	}
 }
 
@@ -153,7 +159,7 @@ type Frontend struct {
 	Enable bool `hcl:"enable,optional"`
 }
 
-// ExternalEventsAPI controls how the settings around the HTTP service that handles external trigger events.
+// ExternalEventsAPI controls how the settings around the HTTP service that handles external extension events.
 type ExternalEventsAPI struct {
 	Enable bool `hcl:"enable,optional"`
 
@@ -221,8 +227,8 @@ func (c *API) convertDurationFromHCL() {
 		c.EventPruneInterval = mustParseDuration(c.EventPruneIntervalHCL)
 	}
 
-	if c != nil && c.Triggers.StopTimeoutHCL != "" {
-		c.Triggers.StopTimeout = mustParseDuration(c.Triggers.StopTimeoutHCL)
+	if c != nil && c.Extensions.StopTimeoutHCL != "" {
+		c.Extensions.StopTimeout = mustParseDuration(c.Extensions.StopTimeoutHCL)
 	}
 
 	if c.Scheduler != nil && c.Scheduler.Docker.PruneIntervalHCL != "" {

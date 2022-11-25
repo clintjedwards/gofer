@@ -1,14 +1,9 @@
 package pipeline
 
 import (
+	"github.com/clintjedwards/gofer/internal/cli/pipeline/config"
+	"github.com/clintjedwards/gofer/internal/cli/pipeline/extension"
 	"github.com/spf13/cobra"
-)
-
-type configLanguage string
-
-const (
-	configLanguageRust   configLanguage = "RUST"
-	configLanguageGolang configLanguage = "GOLANG"
 )
 
 var CmdPipeline = &cobra.Command{
@@ -18,4 +13,9 @@ var CmdPipeline = &cobra.Command{
 
 A "pipeline" is a directed acyclic graph of tasks that run together. A single execution of a pipeline is called a
 "run".`,
+}
+
+func init() {
+	CmdPipeline.AddCommand(extension.CmdPipelineExtension)
+	CmdPipeline.AddCommand(config.CmdPipelineConfig)
 }

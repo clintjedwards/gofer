@@ -8,10 +8,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
@@ -19,14 +20,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key string) error {
-	triggerKey := generateToken(32)
+func (api *API) startExtension(extension models.ExtensionRegistration, cert, key string) error {
+	extensionKey := generateToken(32)
 
-	// We need to first populate the triggers with their required environment variables.
+	// We need to first populate the extensions with their required environment variables.
 	// Order is important here maps later in the list will overwrite earlier maps.
 	// We first include the Gofer defined environment variables and then the operator configured environment
 	// variables.
-	systemTriggerVars := []models.Variable{
+	systemExtensionVars := []models.Variable{
 		{
 			Key:    "GOFER_PLUGIN_SYSTEM_TLS_CERT",
 			Value:  cert,
@@ -39,7 +40,7 @@ func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key strin
 		},
 		{
 			Key:    "GOFER_PLUGIN_SYSTEM_NAME",
-			Value:  trigger.Name,
+			Value:  extension.Name,
 			Source: models.VariableSourceSystem,
 		},
 		{
@@ -49,32 +50,32 @@ func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key strin
 		},
 		{
 			Key:    "GOFER_PLUGIN_SYSTEM_KEY",
-			Value:  triggerKey,
+			Value:  extensionKey,
 			Source: models.VariableSourceSystem,
 		},
 	}
 
-	log.Info().Str("name", trigger.Name).Msg("starting trigger")
+	log.Info().Str("name", extension.Name).Msg("starting extension")
 
-	systemTriggerVarsMap := convertVarsToMap(systemTriggerVars)
-	triggerVarsMap := convertVarsToMap(trigger.Variables)
-	envVars := mergeMaps(systemTriggerVarsMap, triggerVarsMap)
+	systemExtensionVarsMap := convertVarsToMap(systemExtensionVars)
+	extensionVarsMap := convertVarsToMap(extension.Variables)
+	envVars := mergeMaps(systemExtensionVarsMap, extensionVarsMap)
 
 	sc := scheduler.StartContainerRequest{
-		ID:               triggerContainerID(trigger.Name),
-		ImageName:        trigger.Image,
+		ID:               extensionContainerID(extension.Name),
+		ImageName:        extension.Image,
 		EnvVars:          envVars,
-		RegistryAuth:     trigger.RegistryAuth,
+		RegistryAuth:     extension.RegistryAuth,
 		EnableNetworking: true,
 	}
 
 	resp, err := api.scheduler.StartContainer(sc)
 	if err != nil {
-		log.Error().Err(err).Str("trigger", trigger.Name).Msg("could not start trigger")
+		log.Error().Err(err).Str("extension", extension.Name).Msg("could not start extension")
 		return err
 	}
 
-	var info *proto.TriggerInfoResponse
+	var info *proto.ExtensionInfoResponse
 
 	// For some reason I can't get GRPC's retry to properly handle this, so instead we resort to a simple for loop.
 	//
@@ -85,30 +86,30 @@ func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key strin
 	attempts := 0
 	for {
 		if attempts >= 30 {
-			log.Error().Msg("maximum amount of attempts reached for starting trigger; could not connect to trigger")
-			return fmt.Errorf("could not connect to trigger; maximum amount of attempts reached")
+			log.Error().Msg("maximum amount of attempts reached for starting extension; could not connect to extension")
+			return fmt.Errorf("could not connect to extension; maximum amount of attempts reached")
 		}
 
 		conn, err := grpcDial(resp.URL)
 		if err != nil {
-			log.Debug().Err(err).Str("trigger", trigger.Name).Msg("could not connect to trigger")
+			log.Debug().Err(err).Str("extension", extension.Name).Msg("could not connect to extension")
 			time.Sleep(time.Millisecond * 300)
 			attempts++
 			continue
 		}
 
-		client := proto.NewTriggerServiceClient(conn)
+		client := proto.NewExtensionServiceClient(conn)
 
-		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(triggerKey))
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(extensionKey))
 
-		info, err = client.Info(ctx, &proto.TriggerInfoRequest{})
+		info, err = client.Info(ctx, &proto.ExtensionInfoRequest{})
 		if err != nil {
 			if status.Code(err) == codes.Canceled {
 				return nil
 			}
 
 			conn.Close()
-			log.Debug().Err(err).Msg("failed to communicate with trigger startup")
+			log.Debug().Err(err).Msg("failed to communicate with extension startup")
 			time.Sleep(time.Millisecond * 300)
 			attempts++
 			continue
@@ -118,41 +119,43 @@ func (api *API) startTrigger(trigger models.TriggerRegistration, cert, key strin
 		break
 	}
 
-	// Add the trigger to the in-memory registry so we can refer to its variable network location later.
-	api.triggers.Set(trigger.Name, &models.Trigger{
-		Registration:  trigger,
+	// Add the extension to the in-memory registry so we can refer to its variable network location later.
+	api.extensions.Set(extension.Name, &models.Extension{
+		Registration:  extension,
 		URL:           resp.URL,
 		Started:       time.Now().UnixMilli(),
-		State:         models.TriggerStateRunning,
+		State:         models.ExtensionStateRunning,
 		Documentation: info.Documentation,
-		Key:           &triggerKey,
+		Key:           &extensionKey,
 	})
 
 	log.Info().
-		Str("kind", trigger.Name).
-		Str("url", resp.URL).Msg("started trigger")
+		Str("kind", extension.Name).
+		Str("url", resp.URL).Msg("started extension")
 
-	go api.collectLogs(triggerContainerID(trigger.Name))
+	go api.collectLogs(extensionContainerID(extension.Name))
 
 	return nil
 }
 
-// startTriggers attempts to start each trigger from config on the provided scheduler. Once scheduled it then collects
-// the initial trigger information so it can check for connectivity and store the network location.
-// This information will eventually be used in other parts of the API to communicate with said triggers.
-func (api *API) startTriggers() error {
-	cert, key, err := api.getTLSFromFile(api.config.Triggers.TLSCertPath, api.config.Triggers.TLSKeyPath)
+// startExtensions attempts to start each extension from config on the provided scheduler. Once scheduled it then collects
+// the initial extension information so it can check for connectivity and store the network location.
+// This information will eventually be used in other parts of the API to communicate with said extensions.
+func (api *API) startExtensions() error {
+	cert, key, err := api.getTLSFromFile(api.config.Extensions.TLSCertPath, api.config.Extensions.TLSKeyPath)
 	if err != nil {
 		return err
 	}
 
-	registeredTriggers, err := api.db.ListTriggerRegistrations(0, 0)
+	registeredExtensions, err := api.db.ListGlobalExtensionRegistrations(api.db, 0, 0)
 	if err != nil {
 		return err
 	}
 
-	for _, trigger := range registeredTriggers {
-		err := api.startTrigger(trigger, string(cert), string(key))
+	for _, extensionRaw := range registeredExtensions {
+		var extension models.ExtensionRegistration
+		extension.FromStorage(&extensionRaw)
+		err := api.startExtension(extension, string(cert), string(key))
 		if err != nil {
 			return err
 		}
@@ -161,24 +164,24 @@ func (api *API) startTriggers() error {
 	return nil
 }
 
-// stopTriggers sends a shutdown request to each trigger, initiating a graceful shutdown for each one.
-func (api *API) stopTriggers() {
-	for _, triggerKey := range api.triggers.Keys() {
-		trigger, exists := api.triggers.Get(triggerKey)
+// stopExtensions sends a shutdown request to each extension, initiating a graceful shutdown for each one.
+func (api *API) stopExtensions() {
+	for _, extensionKey := range api.extensions.Keys() {
+		extension, exists := api.extensions.Get(extensionKey)
 		if !exists {
 			continue
 		}
 
-		conn, err := grpcDial(trigger.URL)
+		conn, err := grpcDial(extension.URL)
 		if err != nil {
 			continue
 		}
 		defer conn.Close()
 
-		client := proto.NewTriggerServiceClient(conn)
+		client := proto.NewExtensionServiceClient(conn)
 
-		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*trigger.Key))
-		_, err = client.Shutdown(ctx, &proto.TriggerShutdownRequest{})
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*extension.Key))
+		_, err = client.Shutdown(ctx, &proto.ExtensionShutdownRequest{})
 		if err != nil {
 			continue
 		}
@@ -186,176 +189,184 @@ func (api *API) stopTriggers() {
 	}
 }
 
-// restoreTriggerSubscriptions iterates through all pipelines and subscribes them all back to their defined triggers.
-// We need to do this because of the fact that triggers are stateless and ephemeral and the only way they even know
+// restoreExtensionSubscriptions iterates through all pipelines and subscribes them all back to their defined extensions.
+// We need to do this because of the fact that extensions are stateless and ephemeral and the only way they even know
 // of the existence of pipelines is through the "subscribe" function.
-func (api *API) restoreTriggerSubscriptions() error {
+func (api *API) restoreExtensionSubscriptions() error {
 	pipelines, err := api.collectAllPipelines()
 	if err != nil {
-		return fmt.Errorf("could not restore trigger subscriptions; %w", err)
+		return fmt.Errorf("could not restore extension subscriptions; %w", err)
 	}
 
 	for _, pipeline := range pipelines {
-		for label, subscription := range pipeline.Triggers {
-			trigger, exists := api.triggers.Get(subscription.Name)
+		extensionSubscriptions, err := api.db.ListPipelineExtensionSubscriptions(api.db, pipeline.Namespace, pipeline.ID)
+		if err != nil {
+			return fmt.Errorf("could not restore extension subscriptions; %w", err)
+		}
+
+		for _, subscriptionRaw := range extensionSubscriptions {
+			var subscription models.PipelineExtensionSubscription
+			subscription.FromStorage(&subscriptionRaw)
+
+			extension, exists := api.extensions.Get(subscription.Name)
 			if !exists {
-				storageErr := api.db.UpdatePipeline(pipeline.Namespace, pipeline.ID, storage.UpdatablePipelineFields{
-					State: ptr(models.PipelineStateDisabled),
-					Errors: &[]models.PipelineError{
-						{
-							Kind: models.PipelineErrorKindTriggerSubscriptionFailure,
-							Description: fmt.Sprintf("Could not restore trigger subscription for trigger %s(%s); Trigger does not exist in Gofer's registered triggers.",
-								label, trigger.Registration.Name),
-						},
-					},
-				})
+				statusReason := models.ExtensionSubscriptionStatusReason{
+					Reason:      models.ExtensionSubscriptionStatusReasonExtensionNotFound,
+					Description: "Could not find extension while attempting to restore subscription",
+				}
+
+				storageErr := api.db.UpdatePipelineExtensionSubscription(api.db, pipeline.Namespace, pipeline.ID,
+					subscription.Name, subscription.Label, storage.UpdateablePipelineExtensionSubscriptionFields{
+						Status:       ptr(string(models.ExtensionSubscriptionStatusError)),
+						StatusReason: ptr(statusReason.ToJSON()),
+					})
 				if storageErr != nil {
 					log.Error().Err(storageErr).Msg("could not update pipeline")
 				}
-				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_name", subscription.Name).
+				log.Error().Err(err).Str("extension_label", subscription.Label).Str("extension_name", subscription.Name).
 					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
-					Msg("could not restore subscription; trigger requested does not exist within Gofer service")
+					Msg("could not restore subscription; extension requested does not exist within Gofer service")
 				continue
 			}
 
-			conn, err := grpcDial(trigger.URL)
+			conn, err := grpcDial(extension.URL)
 			if err != nil {
-				return fmt.Errorf("could not subscribe trigger %q for pipeline %q - namespace %q; %w",
+				return fmt.Errorf("could not subscribe extension %q for pipeline %q - namespace %q; %w",
 					subscription.Label, pipeline.ID, pipeline.Namespace, err)
 			}
 			defer conn.Close()
 
-			client := proto.NewTriggerServiceClient(conn)
+			client := proto.NewExtensionServiceClient(conn)
 
 			convertedSettings := convertVarsToSlice(subscription.Settings, models.VariableSourcePipelineConfig)
 			config, err := api.interpolateVars(pipeline.Namespace, pipeline.ID, nil, convertedSettings)
 			if err != nil {
-				storageErr := api.db.UpdatePipeline(pipeline.Namespace, pipeline.ID, storage.UpdatablePipelineFields{
-					State: ptr(models.PipelineStateDisabled),
-					Errors: &[]models.PipelineError{
-						{
-							Kind: models.PipelineErrorKindTriggerSubscriptionFailure,
-							Description: fmt.Sprintf("Could not restore trigger subscription for trigger %s(%s); Could not find appropriate secret in secret store for key.",
-								label, trigger.Registration.Name),
-						},
-					},
-				})
+				statusReason := models.ExtensionSubscriptionStatusReason{
+					Reason:      models.ExtensionSubscriptionStatusReasonExtensionSubscriptionFailed,
+					Description: fmt.Sprintf("Could not properly pass settings during subscription: %v", err),
+				}
+
+				storageErr := api.db.UpdatePipelineExtensionSubscription(api.db, pipeline.Namespace, pipeline.ID,
+					subscription.Name, subscription.Label, storage.UpdateablePipelineExtensionSubscriptionFields{
+						Status:       ptr(string(models.ExtensionSubscriptionStatusError)),
+						StatusReason: ptr(statusReason.ToJSON()),
+					})
 				if storageErr != nil {
 					log.Error().Err(storageErr).Msg("could not update pipeline")
 				}
-				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_name", subscription.Name).
+				log.Error().Err(err).Str("extension_label", subscription.Label).Str("extension_name", subscription.Name).
 					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
-					Msg("could not restore subscription; trigger requested does not exist within Gofer service")
+					Msg("could not restore subscription; extension requested does not exist within Gofer service")
 				continue
 			}
 
-			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*trigger.Key))
-			_, err = client.Subscribe(ctx, &proto.TriggerSubscribeRequest{
-				NamespaceId:          pipeline.Namespace,
-				PipelineTriggerLabel: label,
-				PipelineId:           pipeline.ID,
-				Config:               convertVarsToMap(config),
+			ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*extension.Key))
+			_, err = client.Subscribe(ctx, &proto.ExtensionSubscribeRequest{
+				NamespaceId:            pipeline.Namespace,
+				PipelineExtensionLabel: subscription.Label,
+				PipelineId:             pipeline.ID,
+				Config:                 convertVarsToMap(config),
 			})
 			if err != nil {
-				storageErr := api.db.UpdatePipeline(pipeline.Namespace, pipeline.ID, storage.UpdatablePipelineFields{
-					State: ptr(models.PipelineStateDisabled),
-					Errors: &[]models.PipelineError{
-						{
-							Kind: models.PipelineErrorKindTriggerSubscriptionFailure,
-							Description: fmt.Sprintf("Could not restore trigger subscription for trigger %s(%s); Could not subscribe to trigger %v.",
-								label, trigger.Registration.Name, err),
-						},
-					},
-				})
+				statusReason := models.ExtensionSubscriptionStatusReason{
+					Reason:      models.ExtensionSubscriptionStatusReasonExtensionSubscriptionFailed,
+					Description: fmt.Sprintf("Could not properly subscribe to extension: %v", err),
+				}
+
+				storageErr := api.db.UpdatePipelineExtensionSubscription(api.db, pipeline.Namespace, pipeline.ID,
+					subscription.Name, subscription.Label, storage.UpdateablePipelineExtensionSubscriptionFields{
+						Status:       ptr(string(models.ExtensionSubscriptionStatusError)),
+						StatusReason: ptr(statusReason.ToJSON()),
+					})
 				if storageErr != nil {
 					log.Error().Err(storageErr).Msg("could not update pipeline")
 				}
-				log.Error().Err(err).Str("trigger_label", subscription.Label).Str("trigger_name", subscription.Name).
+				log.Error().Err(err).Str("extension_label", subscription.Label).Str("extension_name", subscription.Name).
 					Str("pipeline", pipeline.ID).Str("namespace", pipeline.Namespace).
-					Msg("could not restore subscription; failed to contact trigger subscription endpoint")
+					Msg("could not restore subscription; failed to contact extension subscription endpoint")
 				continue
 			}
 
-			log.Debug().Str("pipeline", pipeline.ID).Str("trigger_label", subscription.Label).
-				Str("trigger_name", trigger.Registration.Name).Msg("restored subscription")
+			log.Debug().Str("pipeline", pipeline.ID).Str("extension_label", subscription.Label).
+				Str("extension_name", extension.Registration.Name).Msg("restored subscription")
 		}
 	}
 
 	return nil
 }
 
-// watchForTriggerEvents spawns a goroutine for every trigger that is responsible for collecting the trigger events
-// on that trigger. The "Watch" method for receiving events from a trigger is a blocking RPC, so each
+// watchForExtensionEvents spawns a goroutine for every extension that is responsible for collecting the extension events
+// on that extension. The "Watch" method for receiving events from a extension is a blocking RPC, so each
 // go routine essentially blocks until they receive an event and then immediately pushes it into the receiving channel.
-func (api *API) watchForTriggerEvents(ctx context.Context) {
-	for _, triggerKey := range api.triggers.Keys() {
-		trigger, exists := api.triggers.Get(triggerKey)
+func (api *API) watchForExtensionEvents(ctx context.Context) {
+	for _, extensionKey := range api.extensions.Keys() {
+		extension, exists := api.extensions.Get(extensionKey)
 		if !exists {
 			continue
 		}
 
-		go func(name string, trigger models.Trigger) {
-			conn, err := grpcDial(trigger.URL)
+		go func(name string, extension models.Extension) {
+			conn, err := grpcDial(extension.URL)
 			if err != nil {
-				log.Error().Err(err).Str("trigger", name).Msg("could not connect to trigger")
+				log.Error().Err(err).Str("extension", name).Msg("could not connect to extension")
 			}
 			defer conn.Close()
 
-			client := proto.NewTriggerServiceClient(conn)
+			client := proto.NewExtensionServiceClient(conn)
 
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					ctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+string(*trigger.Key))
-					resp, err := client.Watch(ctx, &proto.TriggerWatchRequest{})
+					ctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+string(*extension.Key))
+					resp, err := client.Watch(ctx, &proto.ExtensionWatchRequest{})
 					if err != nil {
 						if status.Code(err) == codes.Canceled {
 							return
 						}
 
-						log.Error().Err(err).Str("trigger", name).Msg("could not connect to trigger")
-						trigger.State = models.TriggerStateUnknown
-						api.triggers.Set(*trigger.Key, &trigger)
+						log.Error().Err(err).Str("extension", name).Msg("could not connect to extension")
+						extension.State = models.ExtensionStateUnknown
+						api.extensions.Set(*extension.Key, &extension)
 						time.Sleep(time.Second * 5) // Don't DOS ourselves if we can't connect
 						continue
 					}
 
-					// If the watch command didn't return an error then the trigger must be working.
-					trigger.State = models.TriggerStateRunning
-					api.triggers.Set(*trigger.Key, &trigger)
+					// If the watch command didn't return an error then the extension must be working.
+					extension.State = models.ExtensionStateRunning
+					api.extensions.Set(*extension.Key, &extension)
 
 					// We need to account for what happens if the check exits without returning anything.
-					// For instance, when the trigger gracefully shuts down it may close the channel providing
+					// For instance, when the extension gracefully shuts down it may close the channel providing
 					// events, resulting in a nil as the final object.
-					if resp.PipelineTriggerLabel == "" {
+					if resp.PipelineExtensionLabel == "" {
 						continue
 					}
 
-					log.Debug().Str("trigger", name).Interface("response", resp).Msg("new trigger event found")
+					log.Debug().Str("extension", name).Interface("response", resp).Msg("new extension event found")
 
-					result := models.TriggerResult{
+					result := models.ExtensionResult{
 						Details: resp.Details,
-						Status:  models.TriggerResultStatus(resp.Result.String()),
+						Status:  models.ExtensionResultStatus(resp.Result.String()),
 					}
 
-					go api.events.Publish(models.EventFiredTriggerEvent{
+					go api.events.Publish(models.EventFiredExtensionEvent{
 						NamespaceID: resp.NamespaceId,
 						PipelineID:  resp.PipelineId,
-						Name:        trigger.Registration.Name,
-						Label:       resp.PipelineTriggerLabel,
+						Name:        extension.Registration.Name,
+						Label:       resp.PipelineExtensionLabel,
 						Result:      result,
 						Metadata:    resp.Metadata,
 					})
 				}
 			}
-		}(triggerKey, *trigger)
+		}(extensionKey, *extension)
 	}
 }
 
-func (api *API) resolveFiredTriggerEvent(evt *models.EventFiredTriggerEvent, result models.TriggerResult, metadata map[string]string) {
-	go api.events.Publish(models.EventResolvedTriggerEvent{
+func (api *API) resolveFiredExtensionEvent(evt *models.EventFiredExtensionEvent, result models.ExtensionResult, metadata map[string]string) {
+	go api.events.Publish(models.EventResolvedExtensionEvent{
 		NamespaceID: evt.NamespaceID,
 		PipelineID:  evt.PipelineID,
 		Name:        evt.Name,
@@ -365,90 +376,119 @@ func (api *API) resolveFiredTriggerEvent(evt *models.EventFiredTriggerEvent, res
 	})
 }
 
-func (api *API) processTriggerEvent(event *models.EventFiredTriggerEvent) {
-	go api.events.Publish(models.EventProcessedTriggerEvent{
+func (api *API) processExtensionEvent(event *models.EventFiredExtensionEvent) {
+	go api.events.Publish(models.EventProcessedExtensionEvent{
 		NamespaceID: event.NamespaceID,
 		PipelineID:  event.PipelineID,
 		Name:        event.Name,
 		Label:       event.Label,
 	})
 
-	// If the trigger event status != success then we should log that and skip it.
-	if event.Result.Status != models.TriggerResultStateSuccess {
-		api.resolveFiredTriggerEvent(event, event.Result, map[string]string{})
+	// If the extension event status != success then we should log that and skip it.
+	if event.Result.Status != models.ExtensionResultStateSuccess {
+		api.resolveFiredExtensionEvent(event, event.Result, map[string]string{})
 		return
 	}
 
-	// If the pipeline isn't accepting any new runs we skip the trigger event.
+	// If the pipeline isn't accepting any new runs we skip the extension event.
 	if api.ignorePipelineRunEvents.Load() {
 		log.Debug().Msg("skipped event due to IgnorePipelineRunEvents set to false")
 
-		api.resolveFiredTriggerEvent(event, models.TriggerResult{
+		api.resolveFiredExtensionEvent(event, models.ExtensionResult{
 			Details: "API not accepting new events; This is due to operator controlled setting 'IgnorePipelineRunEvents'.",
-			Status:  models.TriggerResultStateSkipped,
+			Status:  models.ExtensionResultStateSkipped,
 		}, map[string]string{})
 		return
 	}
 
-	pipeline, err := api.db.GetPipeline(nil, event.NamespaceID, event.PipelineID)
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			log.Error().Err(err).Msg("Pipeline not found")
-			api.resolveFiredTriggerEvent(event, models.TriggerResult{
-				Details: "Could not process trigger event; pipeline not found.",
-				Status:  models.TriggerResultStateFailure,
+	var pipeline *models.Pipeline
+	var newRun *models.Run
+
+	err := storage.InsideTx(api.db.DB, func(tx *sqlx.Tx) error {
+		fullPipeline, err := api.getPipelineFromDB(event.NamespaceID, event.PipelineID, -1)
+		if err != nil {
+			if errors.Is(err, storage.ErrEntityNotFound) {
+				log.Error().Err(err).Msg("Pipeline not found")
+				api.resolveFiredExtensionEvent(event, models.ExtensionResult{
+					Details: "Could not process extension event; pipeline not found.",
+					Status:  models.ExtensionResultStateFailure,
+				}, map[string]string{})
+				return err
+			}
+
+			api.resolveFiredExtensionEvent(event, models.ExtensionResult{
+				Details: fmt.Sprintf("Internal error; %v", err),
+				Status:  models.ExtensionResultStateFailure,
 			}, map[string]string{})
-			return
+			log.Error().Err(err).Msg("could not process extension event")
+			return err
 		}
 
-		api.resolveFiredTriggerEvent(event, models.TriggerResult{
-			Details: fmt.Sprintf("Internal error; %v", err),
-			Status:  models.TriggerResultStateFailure,
-		}, map[string]string{})
-		log.Error().Err(err).Msg("could not process trigger event")
-		return
-	}
+		pipeline = fullPipeline
 
-	triggerSubscription, exists := pipeline.Triggers[event.Label]
-	if !exists {
-		log.Error().Str("trigger_label", event.Label).
-			Msg("could not process trigger event; could not find trigger label within pipeline")
-		api.resolveFiredTriggerEvent(event, models.TriggerResult{
-			Details: "Trigger subscription no longer found in pipeline config.",
-			Status:  models.TriggerResultStateFailure,
-		}, map[string]string{})
-		return
-	}
+		extensionSubscriptionRaw, err := api.db.GetPipelineExtensionSubscription(tx,
+			event.NamespaceID, event.PipelineID, event.Name, event.Label)
+		if err != nil {
+			if errors.Is(err, storage.ErrEntityNotFound) {
+				log.Error().Err(err).Msg("Extension not found")
+				api.resolveFiredExtensionEvent(event, models.ExtensionResult{
+					Details: "Extension subscription not found in pipeline config.",
+					Status:  models.ExtensionResultStateFailure,
+				}, map[string]string{})
+				return err
+			}
 
-	if pipeline.State != models.PipelineStateActive {
-		log.Debug().Str("trigger_label", event.Label).
-			Msg("skipped trigger event; pipeline is not active.")
-		api.resolveFiredTriggerEvent(event, models.TriggerResult{
-			Details: "Pipeline is not active",
-			Status:  models.TriggerResultStateSkipped,
-		}, map[string]string{})
-		return
-	}
+			log.Error().Str("extension_label", event.Label).
+				Msg("could not process extension event; could not find extension label within pipeline")
+		}
 
-	// Create the new run and retrieve it's ID.
-	newRun := models.NewRun(pipeline.Namespace, pipeline.ID, models.TriggerInfo{
-		Name:  triggerSubscription.Name,
-		Label: triggerSubscription.Label,
-	}, convertVarsToSlice(event.Metadata, models.VariableSourceTrigger))
+		if fullPipeline.Metadata.State != models.PipelineStateActive {
+			log.Debug().Str("extension_label", event.Label).Str("namespace", event.NamespaceID).
+				Str("pipeline", event.PipelineID).Int64("pipeline_version", fullPipeline.Config.Version).
+				Msg("skipped extension event; pipeline is not active.")
+			api.resolveFiredExtensionEvent(event, models.ExtensionResult{
+				Details: "Pipeline is not active",
+				Status:  models.ExtensionResultStateSkipped,
+			}, map[string]string{})
+			return err
+		}
 
-	runID, err := api.db.InsertRun(newRun)
+		latestRun, err := api.db.ListPipelineRuns(tx, 0, 1, fullPipeline.Metadata.Namespace, fullPipeline.Metadata.ID)
+		if err != nil {
+			return err
+		}
+
+		var latestRunID int64
+
+		if len(latestRun) > 1 {
+			latestRunID = latestRun[0].ID
+		}
+
+		newRunID := latestRunID + 1
+
+		// Create the new run and retrieve it's ID.
+		newRun = models.NewRun(fullPipeline.Metadata.Namespace, fullPipeline.Metadata.ID, fullPipeline.Config.Version, newRunID, models.ExtensionInfo{
+			Name:  extensionSubscriptionRaw.Name,
+			Label: extensionSubscriptionRaw.Label,
+		}, convertVarsToSlice(event.Metadata, models.VariableSourceExtension))
+
+		err = api.db.InsertPipelineRun(tx, newRun.ToStorage())
+		if err != nil {
+			log.Error().Err(err).Msg("could not insert run into db")
+			api.resolveFiredExtensionEvent(event, models.ExtensionResult{
+				Details: fmt.Sprintf("Internal error; %v", err),
+				Status:  models.ExtensionResultStateFailure,
+			}, map[string]string{})
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
-		log.Error().Err(err).Msg("could not insert run into db")
-		api.resolveFiredTriggerEvent(event, models.TriggerResult{
-			Details: fmt.Sprintf("Internal error; %v", err),
-			Status:  models.TriggerResultStateFailure,
-		}, map[string]string{})
 		return
 	}
 
-	newRun.ID = runID
-
-	runStateMachine := api.newRunStateMachine(&pipeline, newRun)
+	runStateMachine := api.newRunStateMachine(&pipeline.Metadata, &pipeline.Config, newRun)
 
 	// Make sure the pipeline is ready for a new run.
 	for runStateMachine.parallelismLimitExceeded() {
@@ -458,32 +498,32 @@ func (api *API) processTriggerEvent(event *models.EventFiredTriggerEvent) {
 	// Finally, launch the thread that will launch all the task runs for a job.
 	go runStateMachine.executeTaskTree()
 
-	api.resolveFiredTriggerEvent(event, event.Result, event.Metadata)
+	api.resolveFiredExtensionEvent(event, event.Result, event.Metadata)
 }
 
-// processTriggerEvents listens to and consumes all events from the TriggerEventReceived channel and starts the
+// processExtensionEvents listens to and consumes all events from the ExtensionEventReceived channel and starts the
 // appropriate pipeline.
-func (api *API) processTriggerEvents() error {
-	// Subscribe to all fired trigger events so we can watch for them.
-	subscription, err := api.events.Subscribe(models.EventKindFiredTriggerEvent)
+func (api *API) processExtensionEvents() error {
+	// Subscribe to all fired extension events so we can watch for them.
+	subscription, err := api.events.Subscribe(models.EventKindFiredExtensionEvent)
 	if err != nil {
-		return fmt.Errorf("could not subscribe to trigger events: %w", err)
+		return fmt.Errorf("could not subscribe to extension events: %w", err)
 	}
 	defer api.events.Unsubscribe(subscription)
 
 	for eventRaw := range subscription.Events {
-		event, ok := eventRaw.Details.(models.EventFiredTriggerEvent)
+		event, ok := eventRaw.Details.(models.EventFiredExtensionEvent)
 		if !ok {
 			continue
 		}
 
-		go api.processTriggerEvent(&event)
+		go api.processExtensionEvent(&event)
 	}
 
 	return nil
 }
 
-// collectLogs simply streams a container's log right to stderr. This is useful when pipeing trigger logs to the main
+// collectLogs simply streams a container's log right to stderr. This is useful when pipeing extension logs to the main
 // application logs. Blocks until the logs have been fully read(essentially only when the container is shutdown).
 func (api *API) collectLogs(containerID string) {
 	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{

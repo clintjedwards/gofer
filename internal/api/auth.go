@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clintjedwards/gofer/models"
+	"github.com/clintjedwards/gofer/internal/models"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -51,10 +51,14 @@ func (api *API) createNewAPIToken() (token string, hash string) {
 
 func (api *API) getAPIToken(token string) (*models.Token, error) {
 	hash := getHash(token)
-	tokenDetails, err := api.db.GetToken(hash)
+	tokenDetailsRaw, err := api.db.GetToken(api.db, hash)
 	if err != nil {
 		return nil, err
 	}
+
+	var tokenDetails models.Token
+	tokenDetails.FromStorage(&tokenDetailsRaw)
+
 	return &tokenDetails, nil
 }
 

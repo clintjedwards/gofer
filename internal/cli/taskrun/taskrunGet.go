@@ -10,7 +10,6 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -21,9 +20,9 @@ import (
 )
 
 var cmdTaskRunGet = &cobra.Command{
-	Use:     "get <pipeline> <run> <id>",
+	Use:     "get <pipeline> <run> <task_id>",
 	Short:   "Get details on a specific task run",
-	Example: `$ gofer taskrun get simple_test_pipeline 23 example_run`,
+	Example: `$ gofer taskrun get simple 23 example_task`,
 	RunE:    taskrunGet,
 	Args:    cobra.ExactArgs(3),
 }
@@ -68,10 +67,7 @@ func taskrunGet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	taskrun := models.TaskRun{}
-	taskrun.FromProto(resp.TaskRun)
-
-	cl.State.Fmt.Println(formatTaskRunInfo(&taskrun, cl.State.Config.Detail))
+	cl.State.Fmt.Println(formatTaskRunInfo(resp.TaskRun, cl.State.Config.Detail))
 	cl.State.Fmt.Finish()
 
 	return nil
@@ -83,7 +79,7 @@ type data struct {
 	Status       string
 	Started      string
 	Ended        string
-	StatusReason *models.TaskRunStatusReason
+	StatusReason *proto.TaskRunStatusReason
 	ExitCode     int64
 	Duration     string
 	Logs         []string
@@ -94,11 +90,8 @@ type data struct {
 	ImageName    string
 }
 
-func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
-	var exitCode int64
-	if taskRun.ExitCode != nil {
-		exitCode = *taskRun.ExitCode
-	}
+func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
+	exitCode := taskRun.ExitCode
 
 	faint := color.New(color.Faint).SprintfFunc()
 
@@ -108,19 +101,24 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 		"faint":   faint,
 	}
 
-	combinedVariables := taskRun.Task.GetVariables()
-	combinedVariables = append(combinedVariables, taskRun.Variables...)
 	variableMap := map[string][]string{}
 
-	// De-dupe variables that may exist in task and taskrun
-	// TODO(clintjedwards): We should re-evaluate this in the future. Not sure if we even need both var lists.
-	for _, variable := range combinedVariables {
+	for _, variable := range taskRun.Variables {
 		variableMap[variable.Key] = []string{
 			color.MagentaString("│"),
 			variable.Key,
 			color.BlueString(variable.Value),
 			faint("%s", formatSource(string(variable.Source))),
 		}
+	}
+
+	var imageName string
+
+	switch concreteTask := taskRun.Task.(type) {
+	case *proto.TaskRun_CommonTask:
+		imageName = concreteTask.CommonTask.Registration.Image
+	case *proto.TaskRun_CustomTask:
+		imageName = concreteTask.CustomTask.Image
 	}
 
 	variableList := [][]string{}
@@ -131,18 +129,21 @@ func formatTaskRunInfo(taskRun *models.TaskRun, detail bool) string {
 	variablesTable := format.GenerateGenericTable(variableList, "", 4)
 
 	data := data{
-		ID:           color.BlueString(taskRun.ID),
-		State:        format.ColorizeTaskRunState(format.NormalizeEnumValue(taskRun.State, "Unknown")),
-		Status:       format.ColorizeTaskRunStatus(format.NormalizeEnumValue(taskRun.Status, "Unknown")),
-		Started:      format.UnixMilli(taskRun.Started, "Not yet", detail),
-		Duration:     format.Duration(taskRun.Started, taskRun.Ended),
-		PipelineID:   color.BlueString(taskRun.Pipeline),
-		EnvVars:      variablesTable,
-		ExitCode:     exitCode,
-		RunID:        color.BlueString("#" + strconv.Itoa(int(taskRun.Run))),
-		StatusReason: taskRun.StatusReason,
-		TaskRunCmd:   color.CyanString(fmt.Sprintf("gofer taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.ID)),
-		ImageName:    color.BlueString(taskRun.Task.GetImage()),
+		ID:         color.BlueString(taskRun.Id),
+		State:      format.ColorizeTaskRunState(format.NormalizeEnumValue(taskRun.State.String(), "Unknown")),
+		Status:     format.ColorizeTaskRunStatus(format.NormalizeEnumValue(taskRun.Status.String(), "Unknown")),
+		Started:    format.UnixMilli(taskRun.Started, "Not yet", detail),
+		Duration:   format.Duration(taskRun.Started, taskRun.Ended),
+		PipelineID: color.BlueString(taskRun.Pipeline),
+		EnvVars:    variablesTable,
+		ExitCode:   exitCode,
+		RunID:      color.BlueString("#" + strconv.Itoa(int(taskRun.Run))),
+		TaskRunCmd: color.CyanString(fmt.Sprintf("gofer taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.Id)),
+		ImageName:  color.BlueString(imageName),
+	}
+
+	if taskRun.StatusReason.Description != "" {
+		data.StatusReason = taskRun.StatusReason
 	}
 
 	const formatTmpl = `TaskRun {{.ID}} :: {{.State}} :: {{.Status}}

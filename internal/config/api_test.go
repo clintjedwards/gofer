@@ -20,6 +20,7 @@ func TestAPISampleFromFile(t *testing.T) {
 	expected := API{
 		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
+		PipelineVersionLimit:    5,
 		EventLogRetention:       time.Hour * 4380,
 		EventLogRetentionHCL:    "4380h",
 		EventPruneInterval:      time.Hour * 3,
@@ -71,12 +72,12 @@ func TestAPISampleFromFile(t *testing.T) {
 			StorageResultsLimit: 200,
 		},
 
-		Triggers: &Triggers{
-			InstallBaseTriggers: true,
-			StopTimeout:         time.Minute * 5,
-			StopTimeoutHCL:      "5m",
-			TLSCertPath:         "./localhost.crt",
-			TLSKeyPath:          "./localhost.key",
+		Extensions: &Extensions{
+			InstallBaseExtensions: true,
+			StopTimeout:           time.Minute * 5,
+			StopTimeoutHCL:        "5m",
+			TLSCertPath:           "./localhost.crt",
+			TLSKeyPath:            "./localhost.key",
 		},
 	}
 
@@ -93,14 +94,14 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 	_ = os.Setenv("GOFER_OBJECTSTORE_RUN_OBJECT_EXPIRY", "1000")
 	_ = os.Setenv("GOFER_SCHEDULER_DOCKER_PRUNE", "false")
 	_ = os.Setenv("GOFER_SERVER_TLS_CERT_PATH", "./test")
-	_ = os.Setenv("GOFER_TRIGGERS_TLS_CERT_PATH", "./test")
+	_ = os.Setenv("GOFER_EXTENSIONS_TLS_CERT_PATH", "./test")
 	defer os.Unsetenv("GOFER_IGNORE_PIPELINE_RUN_EVENTS")
 	defer os.Unsetenv("GOFER_EXTERNAL_EVENTS_API_ENABLE")
 	defer os.Unsetenv("GOFER_DATABASE_MAX_RESULTS_LIMIT")
 	defer os.Unsetenv("GOFER_OBJECTSTORE_RUN_OBJECT_EXPIRY")
 	defer os.Unsetenv("GOFER_SCHEDULER_DOCKER_PRUNE")
 	defer os.Unsetenv("GOFER_SERVER_TLS_CERT_PATH")
-	defer os.Unsetenv("GOFER_TRIGGERS_TLS_CERT_PATH")
+	defer os.Unsetenv("GOFER_EXTENSIONS_TLS_CERT_PATH")
 
 	hclconf := API{}
 	err := hclconf.FromFile("../cli/service/sampleConfig.hcl")
@@ -116,6 +117,7 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 	expected := API{
 		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
+		PipelineVersionLimit:    5,
 		EventLogRetention:       time.Hour * 4380,
 		EventLogRetentionHCL:    "4380h",
 		EventPruneInterval:      time.Hour * 3,
@@ -167,12 +169,12 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 			StorageResultsLimit: 200,
 		},
 
-		Triggers: &Triggers{
-			InstallBaseTriggers: true,
-			StopTimeout:         time.Minute * 5,
-			StopTimeoutHCL:      "5m",
-			TLSCertPath:         "./test",
-			TLSKeyPath:          "./localhost.key",
+		Extensions: &Extensions{
+			InstallBaseExtensions: true,
+			StopTimeout:           time.Minute * 5,
+			StopTimeoutHCL:        "5m",
+			TLSCertPath:           "./test",
+			TLSKeyPath:            "./localhost.key",
 		},
 	}
 

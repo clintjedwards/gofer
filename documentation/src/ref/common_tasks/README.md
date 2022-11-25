@@ -6,7 +6,7 @@ This allows you to do potentially complicated or single use setups that make it 
 
 An example of this might be having pipelines post to Slack. Setting up a new slack bot account for each and every pipeline that would want to post to slack is cumbersome and slows down productivity. Instead, Gofer's common tasks allow you to set up a single Slack bot, set up a single task, and have each pipeline just specify that task.
 
-Common tasks work just like any other task except that they are registered just like triggers.
+Common tasks work just like any other task except that they are registered just like extensions.
 
 Common Tasks are installed by a Gofer administrator and can be used by all pipelines.
 

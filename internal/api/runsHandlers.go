@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	"github.com/clintjedwards/gofer/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
@@ -23,7 +24,7 @@ func (api *API) GetRun(ctx context.Context, request *proto.GetRunRequest) (*prot
 
 	request.NamespaceId = namespace
 
-	run, err := api.db.GetRun(request.NamespaceId, request.PipelineId, request.Id)
+	runRaw, err := api.db.GetPipelineRun(api.db, request.NamespaceId, request.PipelineId, request.Id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetRunResponse{}, status.Error(codes.FailedPrecondition, "run not found")
@@ -31,6 +32,9 @@ func (api *API) GetRun(ctx context.Context, request *proto.GetRunRequest) (*prot
 		log.Error().Err(err).Int64("Run", request.Id).Msg("could not get run")
 		return &proto.GetRunResponse{}, status.Error(codes.Internal, "failed to retrieve run from database")
 	}
+
+	var run models.Run
+	run.FromStorage(&runRaw)
 
 	return &proto.GetRunResponse{Run: run.ToProto()}, nil
 }
@@ -48,14 +52,18 @@ func (api *API) ListRuns(ctx context.Context, request *proto.ListRunsRequest) (*
 
 	request.NamespaceId = namespace
 
-	runs, err := api.db.ListRuns(nil, int(request.Offset), int(request.Limit), request.NamespaceId, request.PipelineId)
+	runsRaw, err := api.db.ListPipelineRuns(api.db, int(request.Offset), int(request.Limit), request.NamespaceId, request.PipelineId)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get runs")
 		return &proto.ListRunsResponse{}, status.Error(codes.Internal, "failed to retrieve runs from database")
 	}
 
 	protoRuns := []*proto.Run{}
-	for _, run := range runs {
+	for _, runRaw := range runsRaw {
+
+		var run models.Run
+		run.FromStorage(&runRaw)
+
 		protoRuns = append(protoRuns, run.ToProto())
 	}
 
@@ -85,52 +93,108 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "api is not accepting new events at this time")
 	}
 
-	pipeline, err := api.db.GetPipeline(nil, request.NamespaceId, request.PipelineId)
-	if err != nil {
-		if errors.Is(err, storage.ErrEntityNotFound) {
-			return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "pipeline not found")
+	var newRunID int64
+	var pipeline models.PipelineMetadata
+	var newRun *models.Run
+	var latestConfig models.PipelineConfig
+
+	err = storage.InsideTx(api.db.DB, func(tx *sqlx.Tx) error {
+		pipelineRaw, err := api.db.GetPipelineMetadata(tx, request.NamespaceId, request.PipelineId)
+		if err != nil {
+			if errors.Is(err, storage.ErrEntityNotFound) {
+				return err
+			}
+			return err
 		}
-		return &proto.StartRunResponse{}, status.Error(codes.Internal, "pipeline does not exist")
-	}
 
-	if pipeline.State != models.PipelineStateActive {
-		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "could not create run; pipeline is not active")
-	}
+		pipeline.FromStorage(&pipelineRaw)
 
-	// Create the new run and retrieve it's ID.
-	newRun := models.NewRun(request.NamespaceId, request.PipelineId, models.TriggerInfo{
-		Name:  "manual",
-		Label: "api",
-	}, convertVarsToSlice(request.Variables, models.VariableSourceRunOptions))
+		if pipeline.State != models.PipelineStateActive {
+			return ErrPipelineNotActive
+		}
 
-	runID, err := api.db.InsertRun(newRun)
+		latestConfigRaw, err := api.db.GetLatestLivePipelineConfig(tx, request.NamespaceId, pipeline.ID)
+		if err != nil {
+			if errors.Is(err, storage.ErrEntityNotFound) {
+				return ErrNoValidConfiguration
+			}
+			return err
+		}
+
+		latestVersion := latestConfigRaw.Version
+
+		commonTasks, err := api.db.ListPipelineCommonTaskSettings(tx, request.NamespaceId, pipeline.ID, latestVersion)
+		if err != nil {
+			return err
+		}
+
+		customTasks, err := api.db.ListPipelineCustomTasks(tx, request.NamespaceId, pipeline.ID, latestVersion)
+		if err != nil {
+			return err
+		}
+
+		latestConfig.FromStorage(&latestConfigRaw, &commonTasks, &customTasks)
+
+		latestRun, err := api.db.ListPipelineRuns(api.db, 0, 1, request.NamespaceId, pipeline.ID)
+		if err != nil {
+			return err
+		}
+
+		var latestRunID int64
+
+		if len(latestRun) > 0 {
+			latestRunID = latestRun[0].ID
+		}
+
+		newRunID = latestRunID + 1
+
+		// Create the new run and retrieve it's ID.
+		newRun = models.NewRun(request.NamespaceId, request.PipelineId, latestVersion, newRunID, models.ExtensionInfo{
+			Name:  "manual",
+			Label: "api",
+		}, convertVarsToSlice(request.Variables, models.VariableSourceRunOptions))
+
+		err = api.db.InsertPipelineRun(api.db, newRun.ToStorage())
+		if err != nil {
+			log.Error().Err(err).Msg("could not insert pipeline into db")
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
-		log.Error().Err(err).Msg("could not insert pipeline into db")
-		return &proto.StartRunResponse{}, status.Error(codes.Internal, "internal database error")
+		if errors.Is(err, ErrNoValidConfiguration) {
+			return nil, status.Errorf(codes.FailedPrecondition,
+				"Could not start pipeline run; no valid configuration found. Run `gofer up <path> to register a new pipeline configuration`")
+		}
+		if errors.Is(err, ErrPipelineNotActive) {
+			return &proto.StartRunResponse{}, status.Errorf(codes.FailedPrecondition,
+				"Could not start pipeline run; pipeline is not in state Active. Run `gofer pipeline enable %s`",
+				request.PipelineId)
+		}
+		return &proto.StartRunResponse{}, status.Error(codes.Internal, "could not start pipeline run")
 	}
-
-	newRun.ID = runID
 
 	// Publish that the run has started
 	go api.events.Publish(models.EventStartedRun{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
-		RunID:       runID,
+		RunID:       newRunID,
 	})
 
-	// Publish a fake trigger event for the manual run
-	go api.events.Publish(models.EventResolvedTriggerEvent{
+	// Publish a fake extension event for the manual run
+	go api.events.Publish(models.EventResolvedExtensionEvent{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
 		Name:        "manual",
 		Label:       "api",
-		Result: models.TriggerResult{
-			Details: "triggered via API",
-			Status:  models.TriggerResultStateSuccess,
+		Result: models.ExtensionResult{
+			Details: "extensioned via API",
+			Status:  models.ExtensionResultStateSuccess,
 		},
 	})
 
-	runStateMachine := api.newRunStateMachine(&pipeline, newRun)
+	runStateMachine := api.newRunStateMachine(&pipeline, &latestConfig, newRun)
 
 	// Make sure the pipeline is ready for a new run.
 	for runStateMachine.parallelismLimitExceeded() {
@@ -166,7 +230,7 @@ func (api *API) RetryRun(ctx context.Context, request *proto.RetryRunRequest) (*
 		return &proto.RetryRunResponse{}, status.Error(codes.FailedPrecondition, "run id required")
 	}
 
-	run, err := api.db.GetRun(request.NamespaceId, request.PipelineId, request.RunId)
+	runRaw, err := api.db.GetPipelineRun(api.db, request.NamespaceId, request.PipelineId, request.RunId)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.RetryRunResponse{}, status.Errorf(codes.FailedPrecondition,
@@ -176,6 +240,9 @@ func (api *API) RetryRun(ctx context.Context, request *proto.RetryRunRequest) (*
 		return &proto.RetryRunResponse{}, status.Errorf(codes.Internal,
 			"failed to retrieve run %d from database", request.RunId)
 	}
+
+	var run models.Run
+	run.FromStorage(&runRaw)
 
 	variables := map[string]string{}
 	for _, variable := range run.Variables {
@@ -217,7 +284,7 @@ func (api *API) CancelRun(ctx context.Context, request *proto.CancelRunRequest) 
 		return &proto.CancelRunResponse{}, status.Error(codes.FailedPrecondition, "run id required")
 	}
 
-	run, err := api.db.GetRun(request.NamespaceId, request.PipelineId, request.RunId)
+	runRaw, err := api.db.GetPipelineRun(api.db, request.NamespaceId, request.PipelineId, request.RunId)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.CancelRunResponse{}, status.Errorf(codes.FailedPrecondition, "run %d not found", request.RunId)
@@ -225,6 +292,9 @@ func (api *API) CancelRun(ctx context.Context, request *proto.CancelRunRequest) 
 		log.Error().Err(err).Int64("Run", request.RunId).Msg("could not get run")
 		return &proto.CancelRunResponse{}, status.Errorf(codes.Internal, "failed to retrieve run %d from database", request.RunId)
 	}
+
+	var run models.Run
+	run.FromStorage(&runRaw)
 
 	err = api.cancelRun(&run, "Run has been cancelled via API", request.Force)
 	if err != nil {

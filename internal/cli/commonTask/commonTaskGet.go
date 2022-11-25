@@ -55,7 +55,7 @@ func commonTaskGet(_ *cobra.Command, args []string) error {
 	cl.State.Fmt.Println(formatCommonTaskInfo(commontaskInfo{
 		Name:          color.YellowString(resp.CommonTask.Name),
 		Image:         resp.CommonTask.Image,
-		Status:        cliformat.ColorizeCommonTaskStatus(cliformat.NormalizeEnumValue(resp.CommonTask.Status.String(), "Unknown")),
+		Status:        cliformat.ColorizeCommonTaskRegistrationStatus(cliformat.NormalizeEnumValue(resp.CommonTask.Status.String(), "Unknown")),
 		Documentation: resp.CommonTask.Documentation,
 	}))
 	cl.State.Fmt.Finish()

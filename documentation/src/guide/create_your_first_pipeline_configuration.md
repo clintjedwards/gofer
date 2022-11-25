@@ -38,4 +38,4 @@ The configuration itself is very simple. Essentially a pipeline contains of a fe
 
 - Some basic attributes so we know what to call it and how to document it.
 - The containers we want to run are defined through [tasks]().
-- And when we want to automate when the pipeline runs automatically, we can do that through [triggers]().
+- And when we want to automate when the pipeline runs automatically, we can do that through [extensions]().

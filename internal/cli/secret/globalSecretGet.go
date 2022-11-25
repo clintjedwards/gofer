@@ -14,7 +14,7 @@ import (
 var cmdGlobalSecretGet = &cobra.Command{
 	Use:     "get <key>",
 	Short:   "Read a secret from the global secret store",
-	Example: `$ gofer global secret get simple_test_global my_key`,
+	Example: `$ gofer global secret get my_key`,
 	RunE:    globalSecretGet,
 	Args:    cobra.ExactArgs(1),
 }
