@@ -143,20 +143,30 @@ build-containers: check-semver-included
 
 ## push-containers: push docker containers to github
 push-containers: check-semver-included
+> echo -e "$(COLOR_BLUE)Push Cron Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:latest
+> echo -e "$(COLOR_BLUE)Push Internal Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/extensions/interval:latest
 
+> echo -e "$(COLOR_BLUE)Push Debug Env Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:latest
+
+> echo -e "$(COLOR_BLUE)Push Debug Fail Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/fail:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/debug/fail:latest
+
+> echo -e "$(COLOR_BLUE)Push Debug Log Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/log:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/debug/log:latest
+
+> echo -e "$(COLOR_BLUE)Push Debug Wait Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/debug/wait:latest
 
+> echo -e "$(COLOR_BLUE)Push Debug Common Task Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/tasks/debug:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/tasks/debug:latest
 
