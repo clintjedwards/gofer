@@ -30,7 +30,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.6.1
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.3.8
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
 )
