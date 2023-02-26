@@ -1,6 +1,6 @@
 # Interval <small>Extension</small>
 
-Interval simply extensions the subscribed pipeline at the given interval.
+Interval simply runs the subscribed pipeline at the given time interval continously.
 
 ## Parameters/Pipeline Configuration
 

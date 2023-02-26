@@ -13,7 +13,7 @@ wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer
 ## From Source
 
 Gofer contains protobuf assets which will not get compiled if used via `go install`.
-Alternatively we can use `make` to build ourselves an impromptu version.
+To solve for this we can use `make` to build ourselves an impromptu version.
 
 ```bash
 git clone https://github.com/clintjedwards/gofer && cd gofer

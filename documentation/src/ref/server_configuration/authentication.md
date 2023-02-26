@@ -12,7 +12,7 @@ The first type of token is a management token. Management tokens essentially act
 
 It is important to be extremely careful about where your management tokens end up and how they are used.
 
-Other than system administration, the main use of management tokens are the creation of new tokens. You can explore token creation though [the CLI.](../../cli/README.md)
+Other than system administration, the main use of management tokens are the creation of new tokens. You can explore token creation though [the CLI.](../../cli/index.html)
 
 It is advised that you use a single management token as the root token by which you create all user tokens.
 
@@ -32,4 +32,4 @@ md := metadata.Pairs("Authorization", "Bearer "+<token>)
 
 ## How to auth via the CLI
 
-The Gofer CLI accepts [many ways setting a token once you have one.](../../cli/configuration.md)
+The Gofer CLI accepts [many ways of setting a token once you have one.](../../cli/configuration.md)

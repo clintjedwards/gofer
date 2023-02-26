@@ -7,7 +7,7 @@ Now we will register your newly created pipeline configuration with Gofer!
 From your terminal, lets use the Gofer binary to run the following command, pointing Gofer at your newly created pipeline folder:
 
 ```bash
-gofer pipeline create ./tmp/simple_pipeline
+gofer up ./tmp/simple_pipeline
 ```
 
 ## Examine created pipeline
@@ -28,7 +28,7 @@ You should have received a success message and some suggested commands:
 We can view the details of our new pipeline by running:
 
 ```bash
-gofer pipeline get example_pipeline
+gofer pipeline get simple
 ```
 
 If you ever forget your pipeline ID you can list all pipelines that you own by using:

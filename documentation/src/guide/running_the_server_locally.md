@@ -8,7 +8,7 @@ debug "what would happen if?" questions that might come up during the creation o
 
 ## Install Docker
 
-The way in which Gofer runs containers is called a [Scheduler](../ref/scheduler/README.md). When deploying Gofer at scale we can deploy it with a more serious container scheduler ([Nomad](https://www.nomadproject.io/), [Kubernetes](https://kubernetes.io/)) but for now we're just going to use the default local docker scheduler included. This simply uses your local instance of [docker](../ref/scheduler/docker.md) instance to run containers.
+The way in which Gofer runs containers is called a [Scheduler](../ref/scheduler/index.html). When deploying Gofer at scale we can deploy it with a more serious container scheduler ([Nomad](https://www.nomadproject.io/), [Kubernetes](https://kubernetes.io/)) but for now we're just going to use the default local docker scheduler included. This simply uses your local instance of [docker](../ref/scheduler/docker.md) instance to run containers.
 
 But before we use your local docker service... you have to have one in the first place. If you don't have docker installed, the installation is quick. Rather than covering the specifics here you can instead find a guide on how to install docker for your operating system [on its documentation site.](https://docs.docker.com/get-docker/)
 

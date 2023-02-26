@@ -9,3 +9,6 @@ description = "Gofer documentation"
 [output.html]
 
 [output.linkcheck]
+# Keep this until [this bug](https://github.com/rust-lang/mdBook/issues/984) gets fixed
+exclude = [ 'index\.html' ]
+

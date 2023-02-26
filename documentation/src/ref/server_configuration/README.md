@@ -51,7 +51,7 @@ The values below should be changed depending on your environment; leaving them a
 
 You can find the most recent releases of Gofer on the [github releases page.](https://github.com/clintjedwards/gofer/releases).
 
-Simply use whatever configuration management system you're most familiar with to place the binary on your chosen VPS and manage it. You can find a quick and dirty `wget` command to pull the latest version in the [getting started documentation.](../../guide/README.md)
+Simply use whatever configuration management system you're most familiar with to place the binary on your chosen VPS and manage it. You can find a quick and dirty `wget` command to pull the latest version in the [getting started documentation.](../../guide/index.html)
 
 As an example a simple systemd service file setup to run Gofer is show below:
 

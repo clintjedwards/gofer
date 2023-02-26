@@ -4,7 +4,9 @@ This page provides various tips on how to troubleshoot and find issues/errors wi
 
 ## Debugging extensions
 
-Extensions are simply long running docker containers that internally wait for an event to happen and then communicate with Gofer through a long GRPC poll on what should be the result of that event.
+Extensions are simply long running docker containers that internally wait for an event to happen and then communicate with Gofer it's API.
+
+Debugging information coming soon.
 
 <!-- TODO(clintjedwards): Provide a debug Gofer extension-->
 

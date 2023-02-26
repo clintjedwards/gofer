@@ -52,7 +52,7 @@ external_events_api {
 
 The settings for the Gofer object store. The object store assists Gofer with storing values between tasks since Gofer is by nature distributed. This helps jobs avoid having to download the same objects over and over or simply just allows tasks to share certain values.
 
-You can find [more information on the object store block here.](../object_store/README.md)
+You can find [more information on the object store block here.](../object_store/index.html)
 
 | name                  | type   | default | description                                                                                                                                                                                                                                                                                                          |
 | --------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -82,7 +82,7 @@ object_store {
 
 The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, extension configuration, or scheduler.
 
-You can find [more information on the secret store block here.](../secret_store/README.md)
+You can find [more information on the secret store block here.](../secret_store/index.html)
 
 | name   | type   | default | description                                                                      |
 | ------ | ------ | ------- | -------------------------------------------------------------------------------- |
@@ -112,7 +112,7 @@ secret_store {
 
 The settings for the container orchestrator that Gofer will use to schedule workloads.
 
-You can find [more information on the scheduler block here.](../scheduler/README.md)
+You can find [more information on the scheduler block here.](../scheduler/index.html)
 
 | name   | type   | default | description                                                                                                                                               |
 | ------ | ------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -167,7 +167,7 @@ server {
 
 Controls settings for Gofer's extension system. Extensions are different workflows for running pipelines usually based on some other event (like the passing of time).
 
-You can find [more information on the extension block here.](../extensions/README.md)
+You can find [more information on the extension block here.](../extensions/index.html)
 
 | name                    | type    | default    | description                                                                                                                                      |
 | ----------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |

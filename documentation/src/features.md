@@ -43,11 +43,11 @@ Extensions are brought up alongside Gofer as long-running docker containers that
 
 ## Object Store
 
-Gofer provides a built in [object store](./ref/object_store/README.md) you can access with the Gofer CLI. This object store provides a caching and data transfer mechanism so you can pass values from one container to the next, but also store objects that you might need for all containers.
+Gofer provides a built in [object store](./ref/object_store/index.html) you can access with the Gofer CLI. This object store provides a caching and data transfer mechanism so you can pass values from one container to the next, but also store objects that you might need for all containers.
 
 ## Secret Store
 
-Gofer provides a built in [secret store](./ref/secret_store/README.md) you can access with the Gofer CLI. This secret store provides a way to pass secret values needed by your pipeline configuration into Gofer.
+Gofer provides a built in [secret store](./ref/secret_store/index.html) you can access with the Gofer CLI. This secret store provides a way to pass secret values needed by your pipeline configuration into Gofer.
 
 ## Events
 

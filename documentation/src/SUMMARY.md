@@ -18,7 +18,7 @@
   - [Start a Run](./guide/start_a_run.md)
   - [What's Next?](./guide/whats_next.md)
 
-# Extension Reference
+# Reference
 
 - [Pipeline Configuration](./ref/pipeline_configuration/README.md)
   - [Custom Tasks](./ref/pipeline_configuration/custom_tasks.md)

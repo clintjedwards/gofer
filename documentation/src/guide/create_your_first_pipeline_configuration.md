@@ -36,6 +36,22 @@ The pipeline we generated above gives you a very simple pipeline with a few pre-
 
 The configuration itself is very simple. Essentially a pipeline contains of a few parts:
 
-- Some basic attributes so we know what to call it and how to document it.
-- The containers we want to run are defined through [tasks]().
-- And when we want to automate when the pipeline runs automatically, we can do that through [extensions]().
+#### > Some basic attributes so we know what to call it and how to document it.
+
+```go
+err := sdk.NewPipeline("simple", "Simple Pipeline").
+		Description("This pipeline shows off a very simple Gofer pipeline that simply pulls in " +
+...
+```
+
+#### > The containers we want to run are defined through [tasks](../ref/pipeline_configuration/custom_tasks.md).
+
+```go
+...
+sdk.NewCustomTask("simple_task", "ubuntu:latest").
+    Description("This task simply prints our hello-world message and exits!").
+    Command("echo", "Hello from Gofer!").Variable("test", "sample"),
+...
+```
+
+#### > And when we want to automate when the pipeline runs automatically, we can do that through [extensions](../ref/extensions/index.html).

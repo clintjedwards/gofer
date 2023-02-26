@@ -16,52 +16,32 @@ Each execution of a pipeline is a run and every run consists of one or more task
 
 Creating a pipeline involves using [Gofer's SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk) currently written in Go or Rust.
 
-Extensive documentation can be found on the [SDK's reference page](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk/config). There you will find most of the features and idiosyncrasies available to you when creating a pipeline.
+Extensive documentation can be found on the [SDK's reference page](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk). There you will find most of the features and idiosyncrasies available to you when creating a pipeline.
 
 ## Small Walkthrough
 
-To introduce some of the concepts slowly, lets build a pipeline step by step. We'll be using Go as our pipeline configuration language and this documentation assumes you've already set up your project and are operating in a `main.go` file.
+To introduce some of the concepts slowly, lets build a pipeline step by step. We'll be using Go as our pipeline configuration language and this documentation assumes you've already set up a new Go project and are operating in a `main.go` file. If you haven't you can set up one [following the guide instructions.](../../guide/create_your_first_pipeline_configuration.md)
 
 ### A Simple Pipeline
 
 Every pipeline is initialized with a simple pipeline declaration. It's here that we will name our pipeline, giving it a machine referable ID and a human referable name.
 
 ```go
-err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline")
+err := sdk.NewPipeline("simple", "My Simple Pipeline")
 ```
 
-It's important to note here that while your human readable name ("My Simple Pipeline" in this case) can contain a large amount of characters the ID can only container alphanumeric letters, numbers, and underscores. Any other characters will result in an error when attempting to register the pipeline.
+It's important to note here that while your human readable name ("My Simple Pipeline" in this case) can contain a large array of characters the ID can only container alphanumeric letters, numbers, and underscores. Any other characters will result in an error when attempting to register the pipeline.
 
 ### Add a Description
 
 Next we'll add a simple description to remind us what this pipeline is used for.
 
 ```go
-err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
+err := sdk.NewPipeline("simple", "My Simple Pipeline").
         Description("This pipeline is purely for testing purposes.")
 ```
 
 The SDK uses a builder pattern, which allows us to simply add another function onto our Pipeline object which we can type our description into.
-
-### Add a extension
-
-Next we'll add a extension. Extensions allow us to automate when our pipeline's run. Extensions usually execute a pipeline for us based on some event. In this example that even is the passage of time.
-
-To do this we'll use a extension included with Gofer called the [interval](../extensions/provided/interval.md) extension. This extension simply counts time and executes pipeline's based on that pipeline's specific time configuration.
-
-```go
-err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
-        Description("This pipeline is purely for testing purposes.").
-        Extensions(
-            *sdk.NewExtension("interval", "every_one_minute").WithSetting("every", "1m"),
-    )
-```
-
-Here you can see we create a new `WithExtensions` block and then add a single extension `interval`. We also add a setting block. Different extensions have different settings that pipelines can pass to them. In this case, passing the setting `every` along with the value `1m` will tell interval that this pipeline should be executed every minute.
-
-When this pipeline is registered, Gofer will check that a extension named `interval` actually exists and it will then communicate with that extension to tell it which pipeline wants to register and which configuration values it has passed along.
-
-If this registration with the extension cannot be formed the registration of the overall pipeline will fail.
 
 ### Add a task
 
@@ -69,12 +49,9 @@ Lastly let's add a task(container) to our pipeline. We'll add a simple ubuntu co
 run on container start to just say "Hello from Gofer!".
 
 ```go
-err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
+err := sdk.NewPipeline("simple", "My Simple Pipeline").
         Description("This pipeline is purely for testing purposes.").
-        Extensions(
-        *sdk.NewExtension("interval", "every_one_minute").Setting("every", "1m"),
-    ).Tasks(
-		sdk.NewCustomTask("simple_task", "ubuntu:latest").
+        Tasks(sdk.NewCustomTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!"),
     )
@@ -92,10 +69,7 @@ To tie a bow on it, we add the `.Finish()` function to specify that our pipeline
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
-    Extensions(
-        *sdk.NewExtension("interval", "every_one_minute").Setting("every", "1m"),
-    ).Tasks(
-		sdk.NewCustomTask("simple_task", "ubuntu:latest").
+    Tasks(sdk.NewCustomTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!"),
     ).Finish()
@@ -109,29 +83,7 @@ a protobuf binary output which Gofer uses to pass to the server.
 ## Full Example
 
 ```go
-package main
-
-import (
-	"log"
-
-	sdk "github.com/clintjedwards/gofer/sdk/go/config"
-)
-
-func main() {
-	err := sdk.NewPipeline("extension", "Extension Pipeline").
-		Description("This pipeline shows off the various features of a simple Gofer pipeline. Extensions, Tasks, and " +
-			"dependency graphs are all tools that can be wielded to create as complicated pipelines as need be.").
-		Extensions(
-			*sdk.NewExtension("interval", "every_one_minute").Setting("every", "1m"),
-		).Tasks(
-		sdk.NewCustomTask("simple_task", "ubuntu:latest").
-			Description("This task simply prints our hello-world message and exists!").
-			Command("echo", "Hello from Gofer!"),
-	).Finish()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+{{#include ../../../../examplePipelines/go/simple/main.go}}
 ```
 
 ## Extra Examples
@@ -139,7 +91,7 @@ func main() {
 ### Auto Inject API Tokens
 
 Gofer has the ability to auto-create and inject a token into your tasks. This is helpful if you
-want to use the [Gofer CLI](../../cli/README.md) or the Gofer API to communicate with Gofer at
+want to use the [Gofer CLI](../../cli/index.html) or the Gofer API to communicate with Gofer at
 some point in your task.
 
 You can tell Gofer to do this by using the `InjectAPIToken` function for a particular task.

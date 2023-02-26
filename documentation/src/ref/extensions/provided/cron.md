@@ -1,6 +1,6 @@
-# Cron <small>Extensions</small>
+# Cron <small>Extension</small>
 
-Cron allows users to schedule events on long term intervals and specific days.
+Cron allows users to schedule pipeline runs on long term intervals and specific days.
 
 It uses a stripped down version of the cron syntax to do so:
 

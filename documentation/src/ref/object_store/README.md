@@ -1,6 +1,6 @@
 # Object Store
 
-Gofer provides an object store as a way to share values and objects between containers. It can also be used as a cache. It is common for one container to run, generate an artifact or values, and then store that object in the object store for the next container or next run. The object store can be accessed through the [Gofer CLI](../../cli/README.md) or through the normal Gofer API.
+Gofer provides an object store as a way to share values and objects between containers. It can also be used as a cache. It is common for one container to run, generate an artifact or values, and then store that object in the object store for the next container or next run. The object store can be accessed through the [Gofer CLI](../../cli/index.html) or through the normal Gofer API.
 
 Gofer divides the objects stored into two different lifetime groups:
 

@@ -171,3 +171,8 @@ We can also create bespoke common tasks that do this.
 - Don't forget documentation
 - Think about redoing conf with kanfo
 - Update container documentation links
+- Now that extensions can do anything, maybe it's time to change the way we interact with them.
+  Instead of Gofer watching for each extension's ping, maybe they just hit the API if they have something
+  to say. This makes it so extensions aren't so snowflaky and are just apis that Gofer can talk to.
+  It also opens up the possibility for external extensions that Gofer just communicates with remotely without
+  spinning up any docker container.
