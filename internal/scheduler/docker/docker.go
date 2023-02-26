@@ -220,7 +220,9 @@ func (orch *Orchestrator) StopContainer(req scheduler.StopContainerRequest) erro
 	orch.cancellations.cancelled[req.ID] = time.Now()
 	orch.cancellations.Unlock()
 
-	err := orch.ContainerStop(ctx, req.ID, &req.Timeout)
+	timeout := int(req.Timeout.Seconds())
+
+	err := orch.ContainerStop(ctx, req.ID, container.StopOptions{Timeout: &timeout})
 	if err != nil {
 		if strings.Contains(err.Error(), "No such container") {
 			return scheduler.ErrNoSuchContainer
