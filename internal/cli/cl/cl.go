@@ -126,7 +126,7 @@ func (s *Harness) NewFormatter() {
 }
 
 func (s *Harness) NewConfig(configPath string) {
-	config, err := config.InitCLIConfig(configPath)
+	config, err := config.InitCLIConfig(configPath, true)
 	if err != nil {
 		log.Fatal(err)
 	}

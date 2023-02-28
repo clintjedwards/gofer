@@ -30,7 +30,7 @@ func serverStart(cmd *cobra.Command, _ []string) error {
 	cl.State.Fmt.Finish()
 
 	configPath, _ := cmd.Flags().GetString("config")
-	conf, err := config.InitAPIConfig(configPath)
+	conf, err := config.InitAPIConfig(configPath, true, true)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error in config initialization")
 	}

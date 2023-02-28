@@ -8,11 +8,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// Tests that our sample server config is still valid. This test catches any extraneous parameters
-// due to how the HCL parsing works and should also catch any errant types.
-func TestAPISampleFromFile(t *testing.T) {
-	hclconf := API{}
-	err := hclconf.FromFile("../cli/service/sampleConfig.hcl")
+func TestInitAPIConfigAgainstSample(t *testing.T) {
+	config, err := InitAPIConfig("../cli/service/sampleConfig.hcl", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,16 +17,14 @@ func TestAPISampleFromFile(t *testing.T) {
 	expected := API{
 		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
+		RunParallelismLimit:     200,
 		PipelineVersionLimit:    5,
 		EventLogRetention:       time.Hour * 4380,
-		EventLogRetentionHCL:    "4380h",
 		EventPruneInterval:      time.Hour * 3,
-		EventPruneIntervalHCL:   "3h",
 		LogLevel:                "info",
 		TaskRunLogExpiry:        50,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      time.Minute * 5,
-		TaskRunStopTimeoutHCL:   "5m",
 
 		ExternalEventsAPI: &ExternalEventsAPI{
 			Enable: true,
@@ -56,16 +51,14 @@ func TestAPISampleFromFile(t *testing.T) {
 		Scheduler: &Scheduler{
 			Engine: "docker",
 			Docker: &Docker{
-				Prune:            true,
-				PruneInterval:    time.Hour * 24,
-				PruneIntervalHCL: "24h",
+				Prune:         true,
+				PruneInterval: time.Hour * 24,
 			},
 		},
 
 		Server: &Server{
 			Host:                "localhost:8080",
 			ShutdownTimeout:     time.Second * 15,
-			ShutdownTimeoutHCL:  "15s",
 			TLSCertPath:         "./localhost.crt",
 			TLSKeyPath:          "./localhost.key",
 			StoragePath:         "/tmp/gofer.db",
@@ -75,26 +68,24 @@ func TestAPISampleFromFile(t *testing.T) {
 		Extensions: &Extensions{
 			InstallBaseExtensions: true,
 			StopTimeout:           time.Minute * 5,
-			StopTimeoutHCL:        "5m",
 			TLSCertPath:           "./localhost.crt",
 			TLSKeyPath:            "./localhost.key",
 		},
 	}
 
-	diff := cmp.Diff(expected, hclconf)
+	diff := cmp.Diff(expected, *config)
 	if diff != "" {
 		t.Errorf("result is different than expected(-want +got):\n%s", diff)
 	}
 }
 
-func TestAPISampleOverwriteWithEnvs(t *testing.T) {
-	_ = os.Setenv("GOFER_IGNORE_PIPELINE_RUN_EVENTS", "false")
-	_ = os.Setenv("GOFER_EXTERNAL_EVENTS_API_ENABLE", "false")
-	_ = os.Setenv("GOFER_DATABASE_MAX_RESULTS_LIMIT", "1000")
-	_ = os.Setenv("GOFER_OBJECTSTORE_RUN_OBJECT_EXPIRY", "1000")
-	_ = os.Setenv("GOFER_SCHEDULER_DOCKER_PRUNE", "false")
-	_ = os.Setenv("GOFER_SERVER_TLS_CERT_PATH", "./test")
-	_ = os.Setenv("GOFER_EXTENSIONS_TLS_CERT_PATH", "./test")
+func TestInitAPIConfigAgainstSampleOverwriteWithEnvs(t *testing.T) {
+	_ = os.Setenv("GOFER_IGNORE_PIPELINE_RUN_EVENTS", "true")
+	_ = os.Setenv("GOFER_EXTERNAL_EVENTS_API__ENABLE", "true")
+	_ = os.Setenv("GOFER_OBJECT_STORE__RUN_OBJECT_EXPIRY", "1000")
+	_ = os.Setenv("GOFER_SCHEDULER__DOCKER__PRUNE", "false")
+	_ = os.Setenv("GOFER_SERVER__TLS_CERT_PATH", "./test")
+	_ = os.Setenv("GOFER_EXTENSIONS__TLS_CERT_PATH", "./test")
 	defer os.Unsetenv("GOFER_IGNORE_PIPELINE_RUN_EVENTS")
 	defer os.Unsetenv("GOFER_EXTERNAL_EVENTS_API_ENABLE")
 	defer os.Unsetenv("GOFER_DATABASE_MAX_RESULTS_LIMIT")
@@ -103,33 +94,25 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 	defer os.Unsetenv("GOFER_SERVER_TLS_CERT_PATH")
 	defer os.Unsetenv("GOFER_EXTENSIONS_TLS_CERT_PATH")
 
-	hclconf := API{}
-	err := hclconf.FromFile("../cli/service/sampleConfig.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = hclconf.FromEnv()
+	config, err := InitAPIConfig("../cli/service/sampleConfig.hcl", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	expected := API{
 		DevMode:                 false,
-		IgnorePipelineRunEvents: false,
+		IgnorePipelineRunEvents: true,
+		RunParallelismLimit:     200,
 		PipelineVersionLimit:    5,
 		EventLogRetention:       time.Hour * 4380,
-		EventLogRetentionHCL:    "4380h",
 		EventPruneInterval:      time.Hour * 3,
-		EventPruneIntervalHCL:   "3h",
 		LogLevel:                "info",
 		TaskRunLogExpiry:        50,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      time.Minute * 5,
-		TaskRunStopTimeoutHCL:   "5m",
 
 		ExternalEventsAPI: &ExternalEventsAPI{
-			Enable: false,
+			Enable: true,
 			Host:   "localhost:8081",
 		},
 
@@ -153,16 +136,14 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		Scheduler: &Scheduler{
 			Engine: "docker",
 			Docker: &Docker{
-				Prune:            false,
-				PruneInterval:    time.Hour * 24,
-				PruneIntervalHCL: "24h",
+				Prune:         false,
+				PruneInterval: time.Hour * 24,
 			},
 		},
 
 		Server: &Server{
 			Host:                "localhost:8080",
 			ShutdownTimeout:     time.Second * 15,
-			ShutdownTimeoutHCL:  "15s",
 			TLSCertPath:         "./test",
 			TLSKeyPath:          "./localhost.key",
 			StoragePath:         "/tmp/gofer.db",
@@ -172,13 +153,12 @@ func TestAPISampleOverwriteWithEnvs(t *testing.T) {
 		Extensions: &Extensions{
 			InstallBaseExtensions: true,
 			StopTimeout:           time.Minute * 5,
-			StopTimeoutHCL:        "5m",
 			TLSCertPath:           "./test",
 			TLSKeyPath:            "./localhost.key",
 		},
 	}
 
-	diff := cmp.Diff(expected, hclconf)
+	diff := cmp.Diff(expected, *config)
 	if diff != "" {
 		t.Errorf("result is different than expected(-want +got):\n%s", diff)
 	}

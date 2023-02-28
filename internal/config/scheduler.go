@@ -6,8 +6,8 @@ import "time"
 type Scheduler struct {
 	// The database engine used by the scheduler
 	// possible values are: docker
-	Engine string  `hcl:"engine,optional"`
-	Docker *Docker `hcl:"docker,block"`
+	Engine string  `koanf:"engine"`
+	Docker *Docker `koanf:"docker"`
 }
 
 func DefaultSchedulerConfig() *Scheduler {
@@ -19,14 +19,10 @@ func DefaultSchedulerConfig() *Scheduler {
 
 type Docker struct {
 	// Prune runs a reoccuring `docker system prune` job to avoid filling the local disk with docker images.
-	Prune bool `hcl:"prune,optional"`
+	Prune bool `koanf:"prune"`
 
 	// The period of time in between runs of `docker system prune`
-	PruneInterval time.Duration `split_words:"true"`
-
-	// PruneIntervalHCL is the HCL compatible counter part to PruneInterval. It allows the parsing of a string
-	// to a time.Duration since HCL does not support parsing directly into a time.Duration.
-	PruneIntervalHCL string `ignored:"true" hcl:"prune_interval,optional"`
+	PruneInterval time.Duration `koanf:"prune_interval"`
 }
 
 func DefaultDockerConfig() *Docker {

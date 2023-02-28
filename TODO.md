@@ -143,7 +143,6 @@ We can also create bespoke common tasks that do this.
 
 ### On the floor
 
-- Think about redoing conf with kanfo
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.
   Instead of Gofer watching for each extension's ping, maybe they just hit the API if they have something
   to say. This makes it so extensions aren't so snowflaky and are just apis that Gofer can talk to.
@@ -155,3 +154,4 @@ We can also create bespoke common tasks that do this.
   - For instance: EventStartedDeployPipeline instead of EventStartedPipelineDeploy
 - Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of large git repos is the biggest pain point here.
   - To give people the ability to cache certain important items like repositories we can create a special ubuntu container with a fuse file system. We can then allow people to use this container to connect back to the object fs and make common tasks like storing your repo easy.
+    Because we use the new config parser we probably need to write the printenv by hand.

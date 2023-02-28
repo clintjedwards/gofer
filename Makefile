@@ -63,7 +63,7 @@ build-sdk:
 ## run: build application and run server
 run:
 > export GOFER_DEBUG=true
-> export GOFER_DEVMODE=true
+> export GOFER_DEV_MODE=true
 > export SEMVER=0.0.0
 > go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
 > /tmp/${APP_NAME} service start
@@ -72,7 +72,7 @@ run:
 ## run-race: build application and run server with race detector
 run-race:
 > export GOFER_DEBUG=true
-> export GOFER_DEVMODE=true
+> export GOFER_DEV_MODE=true
 > export SEMVER=0.0.0
 > go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
 > /tmp/${APP_NAME} service start

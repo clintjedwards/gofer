@@ -7,7 +7,7 @@
 // All environment variables are prefixed with "GOFER". Ex: GOFER_DEBUG=true
 //
 // Most envvar configuration abides by common envvar string=string formatting: Ex. `export GOFER_DEBUG=true`.
-// Complex envvars like "Extensions" for example take a json string as value.
+// Complex envvars might take a json string as value.
 //
 //	Example: export GOFER_EXTENSIONS="{"name":"test"},{"name":"test2"}"
 //
