@@ -46,7 +46,7 @@ func (t *extension) checkTimeFrames() {
 	for _, subscription := range t.subscriptions {
 		if subscription.timeframe.Able(time.Now()) {
 			t.events <- &proto.ExtensionWatchResponse{
-				Details: fmt.Sprintf("Extensioned due to current time %q being within the timeframe expression %q",
+				Details: fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q",
 					time.Now().Format(time.RFC1123), subscription.timeframe.Expression),
 				NamespaceId:            subscription.namespace,
 				PipelineId:             subscription.pipeline,

@@ -100,7 +100,7 @@ func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "State", "Status", "Extensioned By"})
+	table.SetHeader([]string{"ID", "Started", "Ended", "Duration", "State", "Status", "Triggered By"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)

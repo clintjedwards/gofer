@@ -90,7 +90,7 @@ func TestSimpleConfigSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := proto.PipelineConfig{}
+	got := proto.UserPipelineConfig{}
 	err = pb.Unmarshal(buf.Bytes(), &got)
 	if err != nil {
 		t.Fatal(err)

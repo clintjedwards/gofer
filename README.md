@@ -112,7 +112,7 @@ In order to do this VHS has to run the commands so we must start the server firs
 ```bash
 rm -rf /tmp/gofer* # Start with a fresh database
 make run # Start the server in dev mode
-cd documentation/book/src/assets
+cd documentation/src/assets
 vhs < demo.tape # this will start running commands against the server and output the gif as demo.gif.
 ```
 
@@ -136,7 +136,7 @@ The current landscape for running short-term jobs is heavily splintered and coul
 
 This is actually a good thing in most cases and something that most small companies should embrace. The guarantees and structure of gitops is useful for building and testing software.
 
-Eventually as your workload grows though, you'll start to notice that tying your short-term job runner to gitops leaves a few holes in the proper management of those jobs. Gitops works for your code builds, but what about things in different shapes? Performing needful actions on a schedule (or a extension) like database backups, port scanning, or maybe just smoke testing leaves something to be desired from the gitops model.
+Eventually as your workload grows though, you'll start to notice that tying your short-term job runner to gitops leaves a few holes in the proper management of those jobs. Gitops works for your code builds, but what about things in different shapes? Performing needful actions on a schedule (or an event) like database backups, port scanning, or maybe just smoke testing leaves something to be desired from the gitops model.
 
 **Let's take a look at an example:**
 

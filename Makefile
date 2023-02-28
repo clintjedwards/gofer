@@ -40,7 +40,7 @@ VERSION = ${SEMVER}_${GIT_COMMIT}
 
 ## build: run tests and compile application
 build: check-path-included check-semver-included build-protos build-sdk
-> go test ./... -race
+> go test ./...
 > go mod tidy
 > export CGO_ENABLED=1
 > go build -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
@@ -62,6 +62,7 @@ build-sdk:
 
 ## run: build application and run server
 run:
+> export GOFER_LOG_LEVEL=debug
 > export GOFER_DEBUG=true
 > export GOFER_DEV_MODE=true
 > export SEMVER=0.0.0

@@ -189,7 +189,7 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 		Name:        "manual",
 		Label:       "api",
 		Result: models.ExtensionResult{
-			Details: "extensioned via API",
+			Details: "triggered via API",
 			Status:  models.ExtensionResultStateSuccess,
 		},
 	})

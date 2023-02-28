@@ -132,7 +132,7 @@ func (t *extension) startInterval(ctx context.Context, namespace, pipeline strin
 			return
 		case <-time.After(duration):
 			t.events <- &proto.ExtensionWatchResponse{
-				Details:                "Extensioned due to the passage of time.",
+				Details:                "Triggered due to the passage of time.",
 				PipelineExtensionLabel: pipelineExtensionLabel,
 				NamespaceId:            namespace,
 				PipelineId:             pipeline,

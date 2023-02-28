@@ -43,8 +43,8 @@
 Output demo.gif
 
 Set FontSize 24
-Set Width 1200
-Set Height 600
+Set Width 1300
+Set Height 700
 Set Theme { "name": "Eastwood", "black": "#424242", "red": "#ff7675", "green": "#badc58", "yellow": "#ffeaa7", "blue": "#74b9ff", "purple": "#cc99cc", "cyan": "#81ecec", "white": "#d3d0c8", "brightBlack": "#c4c2bb", "brightRed": "#ff7675", "brightGreen": "#badc58", "brightYellow": "#ffeaa7", "brightBlue": "#74b9ff", "brightPurple": "#cc99cc", "brightCyan": "#81ecec", "brightWhite": "#d3d0c8", "background": "#424242", "foreground": "#d3d0c8", "selectionBackground": "#74b9ff", "cursorColor": "#d3d0c8" }
 
 Type "gofer -v"
@@ -53,13 +53,13 @@ Enter
 
 Sleep 500ms
 
-Type "gofer pipeline list"
+Type "pwd"
 
 Enter
 
 Sleep 500ms
 
-Type "gofer pipeline create ~/Documents/gofer/examplePipelines/go/simple"
+Type "gofer up"
 
 Enter
 

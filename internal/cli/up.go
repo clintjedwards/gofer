@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/fs"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,10 +38,10 @@ If pipeline does not exist this will create a new one.
 Requires a pipeline configuration file. You can find documentation on how to
 create/manage your pipeline configuration file
 [here](https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html).`,
-	Example: `$ gofer up ./example_pipelines/rust/simple
+	Example: `$ gofer up
+$ gofer up ./example_pipelines/rust/simple
 $ gofer up ./example_pipelines/go/simple`,
 	RunE: pipelineRegister,
-	Args: cobra.ExactArgs(1),
 }
 
 func init() {
@@ -61,27 +61,23 @@ func detectLanguage(path string) (configLanguage, error) {
 
 	var lang configLanguage
 
-	_ = filepath.WalkDir(path, func(_ string, d fs.DirEntry, _ error) error {
-		info, err := d.Info()
-		if err != nil {
-			return nil
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return "", fmt.Errorf("could not list files in directory")
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
 		}
 
-		if info.IsDir() {
-			return nil
-		}
-
-		switch info.Name() {
-		case "Cargo.toml":
+		switch strings.ToLower(file.Name()) {
+		case "cargo.toml":
 			lang = configLanguageRust
-			return fmt.Errorf("found language")
 		case "go.mod":
 			lang = configLanguageGolang
-			return fmt.Errorf("found language")
 		}
-
-		return nil
-	})
+	}
 
 	if lang == "" {
 		return lang, fmt.Errorf("no 'Cargo.toml' or 'go.mod' found")
@@ -110,7 +106,12 @@ func rustCmdString(path string) string {
 }
 
 func pipelineRegister(cmd *cobra.Command, args []string) error {
-	path := args[0]
+	path := "."
+
+	// If the user entered a path, default to that instead.
+	if len(args) > 0 {
+		path = args[0]
+	}
 
 	cl.State.Fmt.Print("Registering pipeline")
 
@@ -130,7 +131,7 @@ func pipelineRegister(cmd *cobra.Command, args []string) error {
 
 	language, err := detectLanguage(absolutePath)
 	if err != nil {
-		cl.State.Fmt.PrintErr(fmt.Sprintf("could not determine language for %q; %v", path, err))
+		cl.State.Fmt.PrintErr(fmt.Sprintf("could not determine language for path %q; %v", path, err))
 		cl.State.Fmt.Finish()
 		return err
 	}

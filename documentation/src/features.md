@@ -33,9 +33,9 @@ Gofer allows you to separate out your pipelines into different namespaces, allow
 
 ## Extensions
 
-Extensions are the way users can automate their pipelines by waiting on bespoke events (like the passage of time).
+Extensions are the way users can add extra functionality to their pipelines. For instance the ability to automate their pipelines by waiting on bespoke events (like the passage of time).
 
-Gofer supports any extension you can imagine by making extensions pluggable and portable[^3]! Extensions are nothing more than docker containers themselves that talk to the main process when its time for a pipeline to be extensioned.
+Extensions are nothing more than docker containers themselves that talk to the main process when they require activity.
 
 Gofer out of the box provides some default extensions like [cron](./ref/extensions/provided/cron.md) and [interval](./ref/extensions/provided/interval.md). But even more powerful than that, it accepts any type of extension you can think up and code using the included [SDK](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk).
 

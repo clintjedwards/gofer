@@ -153,7 +153,7 @@ func formatRunInfo(run *proto.Run, taskRuns []*proto.TaskRun, detail bool) strin
 
 	const formatTmpl = `Run {{.ID}} for Pipeline {{.PipelineID}} :: {{.State}} :: {{.Status}}
 
-  Extensioned via {{.ExtensionName}} ({{.ExtensionLabel}}) {{.Started}} and ran for {{.Duration}}
+  Triggered via {{.ExtensionName}} ({{.ExtensionLabel}}) {{.Started}} and ran for {{.Duration}}
   {{- if .TaskRuns}}
 
   🗒 Task Runs
