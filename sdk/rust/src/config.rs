@@ -1,6 +1,8 @@
 use crate::{dag::DAGError, dag::Dag, validate_identifier, validate_variables};
 use downcast_rs::{impl_downcast, Downcast};
-use gofer_proto::{CommonTaskConfig, CustomTaskConfig, PipelineConfig, PipelineTaskConfig};
+use gofer_proto::{
+    UserCommonTaskConfig, UserCustomTaskConfig, UserPipelineConfig, UserPipelineTaskConfig,
+};
 use prost::Message;
 use std::{collections::HashMap, io::Write};
 use strum::{Display, EnumString};
@@ -159,8 +161,8 @@ impl Pipeline {
         Ok(())
     }
 
-    fn proto(&self) -> PipelineConfig {
-        let mut tasks: Vec<PipelineTaskConfig> = vec![];
+    fn proto(&self) -> UserPipelineConfig {
+        let mut tasks: Vec<UserPipelineTaskConfig> = vec![];
 
         for task in &self.tasks {
             match task.kind() {
@@ -170,8 +172,8 @@ impl Pipeline {
                 TaskKind::Common => {
                     let common_task = task.downcast_ref::<CommonTask>().expect("Could not unwrap task properly; This should never happen; Please report this error.");
 
-                    tasks.push(PipelineTaskConfig {
-                        task: Some(gofer_proto::pipeline_task_config::Task::CommonTask(
+                    tasks.push(UserPipelineTaskConfig {
+                        task: Some(gofer_proto::user_pipeline_task_config::Task::CommonTask(
                             common_task.proto(),
                         )),
                     })
@@ -179,8 +181,8 @@ impl Pipeline {
                 TaskKind::Custom => {
                     let custom_task = task.downcast_ref::<CustomTask>().expect("Could not unwrap task properly; This should never happen; Please report this error.");
 
-                    tasks.push(PipelineTaskConfig {
-                        task: Some(gofer_proto::pipeline_task_config::Task::CustomTask(
+                    tasks.push(UserPipelineTaskConfig {
+                        task: Some(gofer_proto::user_pipeline_task_config::Task::CustomTask(
                             custom_task.proto(),
                         )),
                     })
@@ -188,7 +190,7 @@ impl Pipeline {
             }
         }
 
-        PipelineConfig {
+        UserPipelineConfig {
             id: self.id.clone(),
             name: self.name.clone(),
             description: self.description.clone().unwrap_or_default(),
@@ -276,28 +278,28 @@ impl CommonTask {
         self
     }
 
-    fn proto(&self) -> CommonTaskConfig {
+    fn proto(&self) -> UserCommonTaskConfig {
         let mut depends_on: HashMap<String, i32> = HashMap::new();
         for (key, value) in &self.depends_on {
             let value = match value {
                 RequiredParentStatus::Unknown => {
-                    gofer_proto::common_task_config::RequiredParentStatus::Unknown
+                    gofer_proto::user_common_task_config::RequiredParentStatus::Unknown
                 }
                 RequiredParentStatus::Any => {
-                    gofer_proto::common_task_config::RequiredParentStatus::Any
+                    gofer_proto::user_common_task_config::RequiredParentStatus::Any
                 }
                 RequiredParentStatus::Success => {
-                    gofer_proto::common_task_config::RequiredParentStatus::Success
+                    gofer_proto::user_common_task_config::RequiredParentStatus::Success
                 }
                 RequiredParentStatus::Failure => {
-                    gofer_proto::common_task_config::RequiredParentStatus::Failure
+                    gofer_proto::user_common_task_config::RequiredParentStatus::Failure
                 }
             };
 
             depends_on.insert(key.clone(), value.into());
         }
 
-        CommonTaskConfig {
+        UserCommonTaskConfig {
             name: self.name.clone(),
             label: self.label.clone(),
             description: self.description.clone().unwrap_or_default(),
@@ -424,28 +426,28 @@ impl CustomTask {
         self
     }
 
-    fn proto(&self) -> CustomTaskConfig {
+    fn proto(&self) -> UserCustomTaskConfig {
         let mut depends_on: HashMap<String, i32> = HashMap::new();
         for (key, value) in &self.depends_on {
             let value = match value {
                 RequiredParentStatus::Unknown => {
-                    gofer_proto::custom_task_config::RequiredParentStatus::Unknown
+                    gofer_proto::user_custom_task_config::RequiredParentStatus::Unknown
                 }
                 RequiredParentStatus::Any => {
-                    gofer_proto::custom_task_config::RequiredParentStatus::Any
+                    gofer_proto::user_custom_task_config::RequiredParentStatus::Any
                 }
                 RequiredParentStatus::Success => {
-                    gofer_proto::custom_task_config::RequiredParentStatus::Success
+                    gofer_proto::user_custom_task_config::RequiredParentStatus::Success
                 }
                 RequiredParentStatus::Failure => {
-                    gofer_proto::custom_task_config::RequiredParentStatus::Failure
+                    gofer_proto::user_custom_task_config::RequiredParentStatus::Failure
                 }
             };
 
             depends_on.insert(key.clone(), value.into());
         }
 
-        CustomTaskConfig {
+        UserCustomTaskConfig {
             id: self.id.clone(),
             description: self.description.clone().unwrap_or_default(),
             image: self.image.clone(),
