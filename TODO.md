@@ -143,6 +143,7 @@ We can also create bespoke common tasks that do this.
 
 ### On the floor
 
+- We need to document the environment variables now that we changed the package out.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.
   Instead of Gofer watching for each extension's ping, maybe they just hit the API if they have something
   to say. This makes it so extensions aren't so snowflaky and are just apis that Gofer can talk to.

@@ -14,12 +14,6 @@
 // You can print out a current description of current environment variable configuration by using the cli command:
 //
 //	`gofer service printenv`
-//
-// Note: Even though this package uses the envconfig package it is incorrect to use the 'default' struct tags as that
-// will cause incorrect overwriting of user defined configurations.
-//
-// Note: Because of the idiosyncrasies of how hcl conversion works certain advanced types like `time.Duration` need to
-// have a sister variable that we read in through hcl via another type and convert to the actual wanted type.
 package config
 
 import (

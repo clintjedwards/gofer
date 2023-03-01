@@ -87,12 +87,11 @@ func TestInitAPIConfigAgainstSampleOverwriteWithEnvs(t *testing.T) {
 	_ = os.Setenv("GOFER_SERVER__TLS_CERT_PATH", "./test")
 	_ = os.Setenv("GOFER_EXTENSIONS__TLS_CERT_PATH", "./test")
 	defer os.Unsetenv("GOFER_IGNORE_PIPELINE_RUN_EVENTS")
-	defer os.Unsetenv("GOFER_EXTERNAL_EVENTS_API_ENABLE")
-	defer os.Unsetenv("GOFER_DATABASE_MAX_RESULTS_LIMIT")
-	defer os.Unsetenv("GOFER_OBJECTSTORE_RUN_OBJECT_EXPIRY")
-	defer os.Unsetenv("GOFER_SCHEDULER_DOCKER_PRUNE")
-	defer os.Unsetenv("GOFER_SERVER_TLS_CERT_PATH")
-	defer os.Unsetenv("GOFER_EXTENSIONS_TLS_CERT_PATH")
+	defer os.Unsetenv("GOFER_EXTERNAL_EVENTS_API__ENABLE")
+	defer os.Unsetenv("GOFER_OBJECT_STORE__RUN_OBJECT_EXPIRY")
+	defer os.Unsetenv("GOFER_SCHEDULER__DOCKER__PRUNE")
+	defer os.Unsetenv("GOFER_SERVER__TLS_CERT_PATH")
+	defer os.Unsetenv("GOFER_EXTENSIONS__TLS_CERT_PATH")
 
 	config, err := InitAPIConfig("../cli/service/sampleConfig.hcl", false, false)
 	if err != nil {
