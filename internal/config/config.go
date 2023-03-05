@@ -20,7 +20,11 @@ import (
 	"errors"
 	"log"
 	"os"
+	"reflect"
+	"strings"
 	"time"
+
+	"github.com/fatih/structs"
 )
 
 func mustParseDuration(duration string) time.Duration {
@@ -52,4 +56,20 @@ func searchFilePaths(paths ...string) string {
 	}
 
 	return ""
+}
+
+func getEnvVarsFromStruct(prefix string, fields []*structs.Field) []string {
+	output := []string{}
+
+	for _, field := range fields {
+		tag := field.Tag("koanf")
+		if field.Kind() == reflect.Pointer {
+			output = append(output, getEnvVarsFromStruct(strings.ToUpper(prefix+tag+"__"), field.Fields())...)
+			continue
+		}
+
+		output = append(output, strings.ToUpper(prefix+tag))
+	}
+
+	return output
 }

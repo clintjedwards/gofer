@@ -2,6 +2,7 @@ package service
 
 import (
 	"os"
+	"strings"
 
 	"github.com/clintjedwards/gofer/internal/app"
 	"github.com/clintjedwards/gofer/internal/cli/cl"
@@ -18,7 +19,15 @@ var cmdServiceStart = &cobra.Command{
 	Long: `Start the Gofer GRPC/HTTP combined server.
 
 Gofer runs as a GRPC backend combined with GRPC-WEB/HTTP. Running this command attempts to start the long
-running service. This command will block and only gracefully stop on SIGINT or SIGTERM signals`,
+running service. This command will block and only gracefully stop on SIGINT or SIGTERM signals
+
+## Configuration
+
+The Gofer service accepts configuration in many forms. Read more here: https://clintjedwards.com/gofer/ref/server_configuration/index.html
+
+### List of Environment Variables
+
+` + strings.Join(config.GetAPIEnvVars(), "\n"),
 	RunE: serverStart,
 }
 

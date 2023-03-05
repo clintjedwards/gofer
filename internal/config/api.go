@@ -3,10 +3,11 @@ package config
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/kelseyhightower/envconfig"
+	"github.com/fatih/structs"
 	"github.com/knadh/koanf/parsers/hcl"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
@@ -238,13 +239,24 @@ func (c *API) validate() error {
 	return nil
 }
 
-func PrintAPIEnvs() error {
-	var config API
-	err := envconfig.Usage("gofer", &config)
-	if err != nil {
-		return err
+func GetAPIEnvVars() []string {
+	api := API{
+		ExternalEventsAPI: &ExternalEventsAPI{},
+		ObjectStore: &ObjectStore{
+			Sqlite: &Sqlite{},
+		},
+		SecretStore: &SecretStore{
+			Sqlite: &SqliteSecret{},
+		},
+		Scheduler: &Scheduler{
+			Docker: &Docker{},
+		},
+		Server:     &Server{},
+		Extensions: &Extensions{},
 	}
-	fmt.Println("GOFER_CONFIG_PATH")
+	fields := structs.Fields(api)
 
-	return nil
+	vars := getEnvVarsFromStruct("GOFER_", fields)
+	sort.Strings(vars)
+	return vars
 }

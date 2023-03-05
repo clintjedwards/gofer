@@ -16,10 +16,10 @@ First you will need to properly configure the Gofer service.
 
 Gofer accepts configuration through environment variables or a configuration file. If a configuration key is set both in an environment variable and in a configuration file, the value of the environment variable's value will be the final value.
 
-You can view a list of environment variables Gofer takes by using the `gofer service printenv` command. It's important to note that each environment variable starts with a prefix of `GOFER_`. So setting the `host` configuration can be set as:
+You can view a list of environment variables Gofer takes by using the `gofer service start -h` command. It's important to note that each environment variable starts with a prefix of `GOFER_`. So setting the `host` configuration can be set as:
 
 ```bash
-export GOFER_HOST=localhost:8080
+export GOFER_SERVER__HOST=localhost:8080
 ```
 
 #### Configuration file
@@ -67,7 +67,7 @@ You will notice upon service start that the Gofer CLI is unable to make any requ
 
 You will first need to handle the problem of auth. Every request to Gofer must use an API key so Gofer can appropriately direct requests.
 
-More information about auth in general terms [can be found here.](../../cli/configuration.md)
+More information about auth in general terms [can be found here.](./authentication.md)
 
 To create your root management token use the command: `gofer service token bootstrap`
 

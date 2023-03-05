@@ -1,6 +1,6 @@
 # Configuration
 
-The Gofer CLI accepts configuration through flags, environment variables, or configuration file.
+The Gofer CLI accepts configuration through flags, environment variables, or a configuration file.
 
 When multiple configuration sources are used the hierarchy is (from lowest to highest) config file values -> environment variables -> flags. Meaning that if you give the same configurations different values through a configuration file and through flags, the value given in the flag will prevail.
 
@@ -20,13 +20,11 @@ export GOFER_CLI_TOKEN=mysupersecrettoken
 gofer service token whoami
 ```
 
-The most up to date list of possible environment variables [exists here](https://github.com/clintjedwards/gofer/blob/main/internal/config/cli.go#L11)
+Each environment variable available is just the flag with a prefix of `GOFER_CLI`.
 
-> Remember that any environment variable found within the above struct is prefixed with `GOFER_CLI_`. So for example to set a new `host` variable you would write:
->
-> ```bash
-> export GOFER_CLI_HOST=localhost:8080
-> ```
+```bash
+export GOFER_CLI_HOST=localhost:8080
+```
 
 ## Configuration file
 
@@ -42,11 +40,26 @@ You can put your CLI configuration file in any of the following locations and Go
 
 ### Configuration file options
 
-The options available in the configuration file are the same as possible environment variables. To find the most up to date values you can use [the code here](https://github.com/clintjedwards/gofer/blob/main/internal/config/cli.go#L11). For convenience, a possible out of date list and explanation is listed below:
+The options available in the configuration file are the same as the global flags:
+
+```bash
+gofer -h
+
+...
+Flags:
+   --detail
+...
+
+# The flag 'detail' maps back to the configuration file as the same name
+
+# gofer.hcl
+detail = false
+```
 
 | configuration | type   | description                                                                                                                          |
 | ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | namespace     | string | The namespace ID of the namespace you'd like to default to. This is used to target specific namespaces when there might be multiple. |
+| detail        | string | Show extra detail for some commands (ex. Exact time instead of humanized)                                                            |
 | format        | string | Can be one of three values: `pretty`, `json`, `silent`. Controls the output of CLI commands.                                         |
 | host          | string | The URL of the Gofer server; used to point the CLI and that correct host.                                                            |
 | no_color      | bool   | Turns off color globally for all CLI commands.                                                                                       |
@@ -57,6 +70,7 @@ The options available in the configuration file are the same as possible environ
 ```hcl
 // /home/clintjedwards/.gofer.hcl
 namespace = "myNamespace"
+detail    = false
 format    = "pretty"
 host      = "localhost:8080"
 no_color  = false

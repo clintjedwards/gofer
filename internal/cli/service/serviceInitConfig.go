@@ -12,8 +12,8 @@ import (
 
 var cmdServiceInitConfig = &cobra.Command{
 	Use:   "init-config",
-	Short: "Create example gofer config file.",
-	Long: `Create example gofer config file.
+	Short: "Create example Gofer server config file.",
+	Long: `Create example Gofer server config file.
 
 This file can be used as a example starting point and be customized further. This file should not
 be used to run production versions of Gofer as it is inherently insecure.

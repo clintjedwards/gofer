@@ -3,8 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
+	"github.com/fatih/structs"
 	"github.com/knadh/koanf/parsers/hcl"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
@@ -75,8 +77,8 @@ func InitCLIConfig(flagPath string, loadDefaults bool) (*CLI, error) {
 		}
 	}
 
-	err := configParser.Load(env.Provider("GOFER_", "__", func(s string) string {
-		newStr := strings.TrimPrefix(s, "GOFER_")
+	err := configParser.Load(env.Provider("GOFER_CLI_", "__", func(s string) string {
+		newStr := strings.TrimPrefix(s, "GOFER_CLI_")
 		newStr = strings.ToLower(newStr)
 		return newStr
 	}), nil)
@@ -90,4 +92,10 @@ func InitCLIConfig(flagPath string, loadDefaults bool) (*CLI, error) {
 	}
 
 	return config, nil
+}
+
+func GetCLIEnvVars() []string {
+	vars := getEnvVarsFromStruct("GOFER_CLI_", structs.Fields(CLI{}))
+	sort.Strings(vars)
+	return vars
 }

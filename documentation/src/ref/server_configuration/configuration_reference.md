@@ -2,9 +2,9 @@
 
 Gofer has a variety of parameters that can be specified via environment variables or the configuration file.
 
-To view a listing of the possible environment variables use: `gofer service printenv`.
+To view a list of all possible environment variables simply type: `gofer service start -h`.
 
-The most up to date config file values can be found by [reading the code](https://github.com/clintjedwards/gofer/blob/main/internal/config/api.go#L14), but a best effort key and description list is given below.
+The most up to date config file values can be found by [reading the code](https://github.com/clintjedwards/gofer/blob/main/internal/config/api.go#L14) or running the command above, but a best effort key and description list is given below.
 
 If examples of these values are needed you can find a sample file by using `gofer service init-config`.
 
