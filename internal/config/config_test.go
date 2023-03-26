@@ -10,6 +10,7 @@ import (
 // pointers with zero values.
 func TestGetEnvvarsFromStruct(t *testing.T) {
 	api := API{
+		Development:       &Development{},
 		ExternalEventsAPI: &ExternalEventsAPI{},
 		ObjectStore: &ObjectStore{
 			Sqlite: &Sqlite{},

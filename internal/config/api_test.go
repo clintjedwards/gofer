@@ -9,13 +9,12 @@ import (
 )
 
 func TestInitAPIConfigAgainstSample(t *testing.T) {
-	config, err := InitAPIConfig("../cli/service/sampleConfig.hcl", false, false)
+	config, err := InitAPIConfig("../cli/service/sampleConfig.hcl", false, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	expected := API{
-		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
 		RunParallelismLimit:     200,
 		PipelineVersionLimit:    5,
@@ -93,13 +92,12 @@ func TestInitAPIConfigAgainstSampleOverwriteWithEnvs(t *testing.T) {
 	defer os.Unsetenv("GOFER_SERVER__TLS_CERT_PATH")
 	defer os.Unsetenv("GOFER_EXTENSIONS__TLS_CERT_PATH")
 
-	config, err := InitAPIConfig("../cli/service/sampleConfig.hcl", false, false)
+	config, err := InitAPIConfig("../cli/service/sampleConfig.hcl", false, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	expected := API{
-		DevMode:                 false,
 		IgnorePipelineRunEvents: true,
 		RunParallelismLimit:     200,
 		PipelineVersionLimit:    5,

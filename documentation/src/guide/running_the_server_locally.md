@@ -17,7 +17,7 @@ But before we use your local docker service... you have to have one in the first
 By default the Gofer binary is able to run the server in development mode. Simply start the service by:
 
 ```bash
-gofer service start
+gofer service start --dev-mode
 ```
 
 > 🪧 The Gofer CLI has many useful commands, try running `gofer -h` to see a full listing.

@@ -17,6 +17,6 @@ To solve for this we can use `make` to build ourselves an impromptu version.
 
 ```bash
 git clone https://github.com/clintjedwards/gofer && cd gofer
-make build path=/tmp/gofer
+make build OUTPUT=/tmp/gofer SEMVER=0.0.dev
 /tmp/gofer --version
 ```

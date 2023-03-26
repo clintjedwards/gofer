@@ -32,6 +32,8 @@ The Gofer service accepts configuration in many forms. Read more here: https://c
 }
 
 func init() {
+	cmdServiceStart.Flags().BoolP("dev-mode", "d", false, "Alters several feature flags such that development is easy. "+
+		"This is not to be used in production and may turn off features that are useful for even development like authentication")
 	CmdService.AddCommand(cmdServiceStart)
 }
 
@@ -39,12 +41,13 @@ func serverStart(cmd *cobra.Command, _ []string) error {
 	cl.State.Fmt.Finish()
 
 	configPath, _ := cmd.Flags().GetString("config")
-	conf, err := config.InitAPIConfig(configPath, true, true)
+	devMode, _ := cmd.Flags().GetBool("dev-mode")
+	conf, err := config.InitAPIConfig(configPath, true, true, devMode)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error in config initialization")
 	}
 
-	setupLogging(conf.LogLevel, conf.DevMode)
+	setupLogging(conf.LogLevel, conf.Development.PrettyLogging)
 	app.StartServices(conf)
 
 	return nil

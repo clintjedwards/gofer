@@ -1,7 +1,6 @@
 // Gofer Service configuration file is used as an alternative to providing the server configurations via envvars.
 // You can find an explanation of these configuration variables and where to put this file so the server can read this
 // file in the documenation: https://clintjedwards.com/gofer/ref/server_configuration/index.html
-dev_mode                   = false
 ignore_pipeline_run_events = false
 run_parallelism_limit      = 200
 pipeline_version_limit     = 5

@@ -20,9 +20,8 @@ func (api *API) GetSystemInfo(context context.Context, request *proto.GetSystemI
 	version, commit := parseVersion(appVersion)
 
 	return &proto.GetSystemInfoResponse{
-		Commit:         commit,
-		DevModeEnabled: api.config.DevMode,
-		Semver:         version,
+		Commit: commit,
+		Semver: version,
 	}, nil
 }
 

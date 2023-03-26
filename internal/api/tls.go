@@ -24,7 +24,7 @@ func (api *API) generateTLSConfig(certPath, keyPath string) (*tls.Config, error)
 	var serverCert tls.Certificate
 	var err error
 
-	if api.config.DevMode && certPath == "" {
+	if api.config.Development.UseLocalhostTLS && certPath == "" {
 		serverCert, err = tls.X509KeyPair(devtlscert, devtlskey)
 		if err != nil {
 			return nil, err
@@ -51,7 +51,7 @@ func (api *API) generateTLSConfig(certPath, keyPath string) (*tls.Config, error)
 // getTLSFiles returns certificates suppled from file paths. If server is in devmode and no cert is provided
 // it instead loads certificates from embedded files for ease of development.
 func (api *API) getTLSFromFile(certPath, keyPath string) (cert, key []byte, err error) {
-	if api.config.DevMode && certPath == "" {
+	if api.config.Development.UseLocalhostTLS && certPath == "" {
 		return devtlscert, devtlskey, nil
 	}
 

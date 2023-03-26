@@ -16,10 +16,6 @@ import (
 
 // API defines config settings for the gofer server
 type API struct {
-	// DevMode turns on humanized debug messages, extra debug logging for the web server and other
-	// convenient features for development. Usually turned on along side LogLevel=debug.
-	DevMode bool `koanf:"dev_mode"`
-
 	// Controls the ability to extension runs. This setting can be toggled while the server is running.
 	IgnorePipelineRunEvents bool `koanf:"ignore_pipeline_run_events"`
 
@@ -57,17 +53,17 @@ type API struct {
 	// This is usually passed to the scheduler when a request to cancel a task run is being made.
 	TaskRunStopTimeout time.Duration `koanf:"task_run_stop_timeout"`
 
+	Development       *Development       `koanf:"development"`
+	Extensions        *Extensions        `koanf:"extensions"`
 	ExternalEventsAPI *ExternalEventsAPI `koanf:"external_events_api"`
 	ObjectStore       *ObjectStore       `koanf:"object_store"`
-	SecretStore       *SecretStore       `koanf:"secret_store"`
 	Scheduler         *Scheduler         `koanf:"scheduler"`
+	SecretStore       *SecretStore       `koanf:"secret_store"`
 	Server            *Server            `koanf:"server"`
-	Extensions        *Extensions        `koanf:"extensions"`
 }
 
 func DefaultAPIConfig() *API {
 	return &API{
-		DevMode:                 false,
 		IgnorePipelineRunEvents: false,
 		RunParallelismLimit:     200,
 		PipelineVersionLimit:    5,
@@ -77,12 +73,38 @@ func DefaultAPIConfig() *API {
 		TaskRunLogExpiry:        50,
 		TaskRunLogsDir:          "/tmp",
 		TaskRunStopTimeout:      mustParseDuration("5m"),
+		Development:             DefaultDevelopmentConfig(),
+		Extensions:              DefaultExtensionsConfig(),
 		ExternalEventsAPI:       DefaultExternalEventsAPIConfig(),
 		ObjectStore:             DefaultObjectStoreConfig(),
-		SecretStore:             DefaultSecretStoreConfig(),
 		Scheduler:               DefaultSchedulerConfig(),
+		SecretStore:             DefaultSecretStoreConfig(),
 		Server:                  DefaultServerConfig(),
-		Extensions:              DefaultExtensionsConfig(),
+	}
+}
+
+type Development struct {
+	PrettyLogging     bool `koanf:"pretty_logging"`
+	BypassAuth        bool `koanf:"bypass_auth"`
+	UseLocalhostTLS   bool `koanf:"use_localhost_tls"`
+	DefaultEncryption bool `koanf:"default_encryption"`
+}
+
+func DefaultDevelopmentConfig() *Development {
+	return &Development{
+		PrettyLogging:     false,
+		BypassAuth:        false,
+		UseLocalhostTLS:   false,
+		DefaultEncryption: false,
+	}
+}
+
+func FullDevelopmentConfig() *Development {
+	return &Development{
+		PrettyLogging:     true,
+		BypassAuth:        true,
+		UseLocalhostTLS:   true,
+		DefaultEncryption: true,
 	}
 }
 
@@ -172,12 +194,16 @@ func DefaultExternalEventsAPIConfig() *ExternalEventsAPI {
 // Whether or not we use the configuration file we then search the environment for all environment variables:
 //   - Environment variables are loaded after the config file and therefore overwrite any conflicting keys.
 //   - All configuration that goes into a configuration file can also be used as an environment variable.
-func InitAPIConfig(userDefinedPath string, loadDefaults, validate bool) (*API, error) {
+func InitAPIConfig(userDefinedPath string, loadDefaults, validate, devMode bool) (*API, error) {
 	var config *API
 
 	// First we initiate the default values for the config.
 	if loadDefaults {
 		config = DefaultAPIConfig()
+	}
+
+	if devMode {
+		config.Development = FullDevelopmentConfig()
 	}
 
 	possibleConfigPaths := []string{userDefinedPath, "/etc/gofer/gofer.hcl"}
@@ -231,7 +257,7 @@ func (c *API) validate() error {
 			return fmt.Errorf("encryption_key must be a 32 character random string")
 		}
 
-		if !c.DevMode && c.SecretStore.Sqlite.EncryptionKey == "changemechangemechangemechangeme" {
+		if !c.Development.DefaultEncryption && c.SecretStore.Sqlite.EncryptionKey == "changemechangemechangemechangeme" {
 			return fmt.Errorf("encryption_key cannot be left as default; must be changed to a 32 character random string")
 		}
 	}
@@ -241,6 +267,7 @@ func (c *API) validate() error {
 
 func GetAPIEnvVars() []string {
 	api := API{
+		Development:       &Development{},
 		ExternalEventsAPI: &ExternalEventsAPI{},
 		ObjectStore: &ObjectStore{
 			Sqlite: &Sqlite{},

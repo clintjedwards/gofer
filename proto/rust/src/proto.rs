@@ -710,9 +710,7 @@ pub struct GetSystemInfoRequest {
 pub struct GetSystemInfoResponse {
     #[prost(string, tag="1")]
     pub commit: ::prost::alloc::string::String,
-    #[prost(bool, tag="2")]
-    pub dev_mode_enabled: bool,
-    #[prost(string, tag="3")]
+    #[prost(string, tag="2")]
     pub semver: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

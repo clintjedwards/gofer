@@ -80,8 +80,9 @@ Gofer uses flags, env vars, and files to manage configuration (in order of most 
 In case you want to run without the make file simply run:
 
 ```bash
-go build -o /tmp/gofer
-DEBUG=true; SEMVER=0.0.0; /tmp/gofer service start
+export GOFER_LOG_LEVEL=debug
+go build -o /tmp/$gofer
+/tmp/gofer service start --dev-mode
 ```
 
 ### Editing Protobufs

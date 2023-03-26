@@ -12,8 +12,7 @@ import "gofer_message_sdk.proto";
 message GetSystemInfoRequest {}
 message GetSystemInfoResponse {
   string commit = 1;
-  bool dev_mode_enabled = 2;
-  string semver = 3;
+  string semver = 2;
 }
 
 message RepairOrphanRequest {
