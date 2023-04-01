@@ -178,6 +178,7 @@ CREATE INDEX idx_secret_pipeline_keys_created ON secret_store_pipeline_keys (cre
 
 CREATE TABLE IF NOT EXISTS secret_store_global_keys(
     key           TEXT    NOT NULL,
+    namespaces    TEXT    NOT NULL,
     created       INTEGER NOT NULL,
     PRIMARY KEY (key)
 ) STRICT;

@@ -145,7 +145,15 @@ We can also create bespoke common tasks that do this.
 
 ### On the floor
 
-- We need to document the environment variables now that we changed the package out.
+- Global secret namespaces are implemented on the storage level. Now it needs to be enforced at the run level.
+  When we populate secrets we need to make sure the pipeline is in the allowed namespaces.
+
+  - We also need to support regex for namespaces and tell the CLI that you can do this. Users should be able
+    to allow all namespaces with a particular prefix to inherit global secrets.
+  - We also need to check that secrets are automatically redacted from task-run logs.
+
+- We can possibly get rid of common tasks now that the extensions work how they do. To do this I think we would also
+  need to bolster the global secrets feature to support giving keys to only pipelines within a certain namespace.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.
   Instead of Gofer watching for each extension's ping, maybe they just hit the API if they have something
   to say. This makes it so extensions aren't so snowflaky and are just apis that Gofer can talk to.
@@ -162,6 +170,5 @@ We can also create bespoke common tasks that do this.
     github trigger downloading the repo, updating it, switching the branch, and then pushing that back up....only to be downloaded by the user in the near future.
   - instead of downloading and updating, just make the Github trigger cache the repo locally, when a user needs it we just make sure it's up to date, and upload it to the path, the user can then just download from that path
   - We can possibly do smarter things here also, like only write the files from the extension that have changed from a base version of the git repository, Do copy on write to the container. All hard problems that sounds interesting.
-- Because we use the new config parser we probably need to write the printenv by hand.
-  - https://fly.io/docs/litefs/getting-started/ You can actually just pull files straight from docker kekw
+- https://fly.io/docs/litefs/getting-started/ You can actually just pull files straight from docker kekw
 - In the CLI as the user a question with a prompt like ?
