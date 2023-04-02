@@ -671,7 +671,8 @@ message ListGlobalSecretsResponse { repeated SecretStoreKey keys = 1; }
 message PutGlobalSecretRequest {
   string key = 1;
   string content = 2;
-  bool force = 3; // Overwrites an already existing value.
+  repeated string namespaces = 3;
+  bool force = 4; // Overwrites an already existing value.
 }
 message PutGlobalSecretResponse {
   // The number of bytes uploaded.

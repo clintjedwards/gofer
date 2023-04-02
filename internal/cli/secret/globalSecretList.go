@@ -50,6 +50,7 @@ func globalSecretStoreList(_ *cobra.Command, _ []string) error {
 	for _, key := range resp.Keys {
 		data = append(data, []string{
 			key.Key,
+			strings.Join(key.Namespaces, ", "),
 			format.UnixMilli(key.Created, "Never", cl.State.Config.Detail),
 		})
 	}
@@ -65,7 +66,7 @@ func formatGlobalTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"Key", "Created"})
+	table.SetHeader([]string{"Key", "Namespaces", "Created"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)
@@ -80,9 +81,11 @@ func formatGlobalTable(data [][]string, color bool) string {
 		table.SetHeaderColor(
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
+			tablewriter.Color(tablewriter.FgBlueColor),
 		)
 		table.SetColumnColor(
 			tablewriter.Color(tablewriter.FgYellowColor),
+			tablewriter.Color(0),
 			tablewriter.Color(0),
 		)
 	}

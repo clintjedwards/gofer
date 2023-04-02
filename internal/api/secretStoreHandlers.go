@@ -108,7 +108,7 @@ func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelin
 		return &proto.PutPipelineSecretResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	newSecretKey := models.NewSecretStoreKey(request.Key)
+	newSecretKey := models.NewSecretStoreKey(request.Key, []string{})
 
 	err = api.db.InsertSecretStorePipelineKey(api.db, &storage.SecretStorePipelineKey{
 		Namespace: request.NamespaceId,
@@ -204,8 +204,7 @@ func (api *API) GetGlobalSecret(ctx context.Context, request *proto.GetGlobalSec
 	}
 
 	var key models.SecretStoreKey
-	key.Key = metadata.Key
-	key.Created = metadata.Created
+	key.FromGlobalSecretKeyStorage(&metadata)
 
 	return &proto.GetGlobalSecretResponse{
 		Metadata: key.ToProto(),
@@ -226,8 +225,7 @@ func (api *API) ListGlobalSecrets(ctx context.Context, request *proto.ListGlobal
 	var protoKeys []*proto.SecretStoreKey
 	for _, keyRaw := range keys {
 		var key models.SecretStoreKey
-		key.Key = keyRaw.Key
-		key.Created = keyRaw.Created
+		key.FromGlobalSecretKeyStorage(&keyRaw)
 		protoKeys = append(protoKeys, key.ToProto())
 	}
 
@@ -245,12 +243,9 @@ func (api *API) PutGlobalSecret(ctx context.Context, request *proto.PutGlobalSec
 		return nil, status.Error(codes.FailedPrecondition, "key cannot be empty")
 	}
 
-	newSecretKey := models.NewSecretStoreKey(request.Key)
+	newSecretKey := models.NewSecretStoreKey(request.Key, request.Namespaces)
 
-	err := api.db.InsertSecretStoreGlobalKey(api.db, &storage.SecretStoreGlobalKey{
-		Key:     newSecretKey.Key,
-		Created: newSecretKey.Created,
-	}, request.Force)
+	err := api.db.InsertSecretStoreGlobalKey(api.db, newSecretKey.ToGlobalSecretKeyStorage(), request.Force)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return &proto.PutGlobalSecretResponse{},

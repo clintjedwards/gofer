@@ -365,7 +365,8 @@ message ExtensionResult {
 
 message SecretStoreKey {
   string key = 1;
-  int64 created = 2;
+  repeated string namespaces = 2;
+  int64 created = 3;
 }
 
 message ObjectStoreKey {
