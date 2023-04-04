@@ -42,15 +42,5 @@ fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
 }
 
 fn validate_variables(variables: HashMap<String, String>) -> Result<(), ConfigError> {
-    for (key, value) in &variables {
-        if value.starts_with("global_secret") {
-            return Err(ConfigError::InvalidArgument {
-                argument: key.to_string(),
-                value: value.to_string(),
-                description: "cannot use global secrets in pipeline configs; global secrets are only allowed for system level configs set up by Gofer administrators".to_string()
-            });
-        }
-    }
-
     Ok(())
 }

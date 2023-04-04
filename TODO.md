@@ -96,6 +96,7 @@ We can also create bespoke common tasks that do this.
   inject namespace and pipeline.
 - We need to refactor logging for some routes to build on top of each other so that they we automatically get things
   like namespace, pipeline.
+- Terraform provider for installing extensions.
 
 ### General
 
@@ -172,3 +173,6 @@ We can also create bespoke common tasks that do this.
   - We can possibly do smarter things here also, like only write the files from the extension that have changed from a base version of the git repository, Do copy on write to the container. All hard problems that sounds interesting.
 - https://fly.io/docs/litefs/getting-started/ You can actually just pull files straight from docker kekw
 - In the CLI as the user a question with a prompt like ?
+- Update the CLI to make extension sub say `gofer pipeline extend <params here>`
+- We need to address all the minor bugs around namespaces and pipelines and their existance when calling upon the api
+- Global secret force replace does not work, probably should just change to and update.

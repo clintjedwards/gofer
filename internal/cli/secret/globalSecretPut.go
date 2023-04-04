@@ -44,7 +44,7 @@ $ gofer secret global put my_key=@/test/folder/file_path -n "ops-*"`,
 }
 
 func init() {
-	cmdGlobalSecretPut.Flags().StringSliceP("namespaces", "n", []string{"*"}, "list of namespaces allowed to access this secret")
+	cmdGlobalSecretPut.Flags().StringSliceP("namespaces", "n", []string{".*"}, "list of namespaces allowed to access this secret")
 	cmdGlobalSecretPut.Flags().BoolP("force", "f", false, "replace value if exists")
 	CmdGlobalSecret.AddCommand(cmdGlobalSecretPut)
 }

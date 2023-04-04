@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
@@ -207,6 +206,11 @@ func PipelineSecret(key string) string {
 	return fmt.Sprintf("pipeline_secret{{%s}}", key)
 }
 
+// Convenience function to insert global secret values.
+func GlobalSecret(key string) string {
+	return fmt.Sprintf("global_secret{{%s}}", key)
+}
+
 // Convenience function to insert pipeline object values.
 func PipelineObject(key string) string {
 	return fmt.Sprintf("pipeline_object{{%s}}", key)
@@ -243,12 +247,6 @@ func validateIdentifier(arg, value string) error {
 // as this will fail the pipeline.
 func validateVariables(variables map[string]string) error {
 	// TODO(clintjedwards): We should check to make sure that "interpolatevars" function in the main program will work here.
-
-	for _, variable := range variables {
-		if strings.HasPrefix(variable, "global_secret") {
-			return fmt.Errorf("invalid variable %q; cannot use global secrets in pipeline configs; global secrets are only allowed for system level configs set up by Gofer administrators", variable)
-		}
-	}
 
 	return nil
 }

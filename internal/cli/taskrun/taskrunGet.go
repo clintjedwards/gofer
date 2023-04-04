@@ -148,20 +148,21 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 
 	const formatTmpl = `TaskRun {{.ID}} :: {{.State}} :: {{.Status}}
 
-  {{magenta "│"}} Parent Pipeline: {{.PipelineID}}
-  {{magenta "├─"}} Parent Run: {{.RunID}}
-  {{magenta "├──"}} Task ID: {{.ID}}
-  {{magenta "│"}} Started {{.Started}} and ran for {{.Duration}}
- {{if .ImageName}} {{magenta "│"}} Image {{.ImageName}} {{- end}}
- {{if .ExitCode}} {{magenta "│"}} Exit Code: {{.ExitCode}} {{- end}}
+   {{magenta "│"}} Parent Pipeline: {{.PipelineID}}
+   {{magenta "├─"}} Parent Run: {{.RunID}}
+   {{magenta "├──"}} Task ID: {{.ID}}
+   {{magenta "│"}} Started {{.Started}} and ran for {{.Duration}}
+  {{if .ImageName}} {{magenta "│"}} Image {{.ImageName}} {{- end}}
+  {{if .ExitCode}} {{magenta "│"}} Exit Code: {{.ExitCode}} {{- end}}
 {{- if .StatusReason}}
 
-  Status Details:
-    {{magenta "│"}} Reason: {{.StatusReason.Reason}}
-    {{magenta "│"}} Description: {{.StatusReason.Description}}
-{{- end }}
+ Status Details:
+   {{magenta "│"}} Reason: {{.StatusReason.Reason}}
+   {{magenta "│"}} Description: {{.StatusReason.Description}}
+{{ end }}
+
 {{- if .EnvVars}}
-  $ Environment Variables:
+ $ Environment Variables:
 {{.EnvVars}}
 {{- end}}
 * Use '{{.TaskRunCmd}}' to view logs.`

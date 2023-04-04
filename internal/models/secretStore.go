@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"regexp"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
@@ -21,6 +22,39 @@ func NewSecretStoreKey(key string, namespaces []string) *SecretStoreKey {
 		Namespaces: namespaces,
 		Created:    time.Now().UnixMilli(),
 	}
+}
+
+// Checks a global secret key's namespace list to confirm it actually does match a given namespace.
+// It loops through the namespaces list and tries to evaluate regexps when it can.
+func (s *SecretStoreKey) IsAllowedNamespace(namespace string) bool {
+	for _, namespaceFilter := range s.Namespaces {
+		// Check if the string is a valid regex
+		isRegex := false
+		_, err := regexp.Compile(namespaceFilter)
+		if err == nil {
+			isRegex = true
+		}
+
+		if isRegex {
+			matched, err := regexp.MatchString(namespaceFilter, namespace)
+			if err != nil {
+				log.Err(err).Msg("Could not match regex during check global secret namespaces")
+				return false
+			}
+
+			if !matched {
+				return false
+			}
+
+			return true
+		}
+
+		if namespaceFilter == namespace {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *SecretStoreKey) ToProto() *proto.SecretStoreKey {

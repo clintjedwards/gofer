@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/models"
+	"github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/scheduler"
+	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/rs/zerolog/log"
 )
@@ -36,10 +38,10 @@ const (
 // If an interpolation was found we returns some, if not we return none.
 //
 // Currently the supported interpolation syntaxes are:
-// `pipeline_secret{{ example }} for inserting from the pipeline secret store`
-// `global_secret{{ example }} for inserting from the global secret store`
-// `pipeline_object{{ example }}` for inserting from the pipeline object store.
-// `run_object{{ example }}` for inserting from the run object store.
+//   - `pipeline_secret{{ example }}` for inserting from the pipeline secret store.
+//   - `global_secret{{ example }}` for inserting from the global secret store.
+//   - `pipeline_object{{ example }}` for inserting from the pipeline object store.
+//   - `run_object{{ example }}` for inserting from the run object store.
 func parseInterpolationSyntax(kind InterpolationKind, input string) (string, error) {
 	variable := strings.TrimSpace(input)
 	interpolationPrefix := fmt.Sprintf("%s{{", strings.ToLower(string(kind)))
@@ -200,6 +202,9 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 			variable := variable
 			value, err := api.secretStore.GetSecret(pipelineSecretKey(namespace, pipeline, key))
 			if err != nil {
+				if errors.Is(err, secretStore.ErrEntityNotFound) {
+					return nil, fmt.Errorf("could not find pipeline secret %q", key)
+				}
 				return nil, err
 			}
 
@@ -210,15 +215,27 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 
 		key, err = parseInterpolationSyntax(InterpolationKindGlobalSecret, variable.Value)
 		if err == nil {
-			// We exclude instead of include so in case sources get updated, we don't potentially
-			// leak global secrets.
-			if variable.Source != models.VariableSourceSystem && variable.Source != models.VariableSourceExtension {
-				return nil, fmt.Errorf("invalid request of global secret %q; interpolation of global secrets not allowed in user; global secrets are only allowed for system level configs(ex. Common tasks, extensions) set by admins", key)
+			keyMetadataRaw, err := api.db.GetSecretStoreGlobalKey(api.db, key)
+			if err != nil {
+				if errors.Is(err, storage.ErrEntityNotFound) {
+					return nil, fmt.Errorf("could not find global secret %q", key)
+				}
+				return nil, err
+			}
+
+			keyMetadata := models.SecretStoreKey{}
+			keyMetadata.FromGlobalSecretKeyStorage(&keyMetadataRaw)
+			if !keyMetadata.IsAllowedNamespace(namespace) {
+				return nil, fmt.Errorf("global secret %q cannot be used in this current namespace. Valid namespaces: %v",
+					key, keyMetadata.Namespaces)
 			}
 
 			variable := variable
 			value, err := api.secretStore.GetSecret(globalSecretKey(key))
 			if err != nil {
+				if errors.Is(err, secretStore.ErrEntityNotFound) {
+					return nil, fmt.Errorf("could not find global secret %q", key)
+				}
 				return nil, err
 			}
 
@@ -232,6 +249,9 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 			variable := variable
 			value, err := api.objectStore.GetObject(pipelineObjectKey(namespace, pipeline, key))
 			if err != nil {
+				if errors.Is(err, objectStore.ErrEntityNotFound) {
+					return nil, fmt.Errorf("could not find pipeline object %q", key)
+				}
 				return nil, err
 			}
 
@@ -246,6 +266,9 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 				variable := variable
 				value, err := api.objectStore.GetObject(runObjectKey(namespace, pipeline, *run, key))
 				if err != nil {
+					if errors.Is(err, objectStore.ErrEntityNotFound) {
+						return nil, fmt.Errorf("could not find run object %q", key)
+					}
 					return nil, err
 				}
 

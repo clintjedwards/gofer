@@ -201,15 +201,19 @@ impl Pipeline {
 }
 
 pub fn pipeline_secret(key: &str) -> String {
-    format!("pipeline_secret{{{}}}", key)
+    format!("pipeline_secret{{{key}}}")
+}
+
+pub fn global_secret(key: &str) -> String {
+    format!("global_secret{{{key}}}")
 }
 
 pub fn pipeline_object(key: &str) -> String {
-    format!("pipeline_object{{{}}}", key)
+    format!("pipeline_object{{{key}}}")
 }
 
 pub fn run_object(key: &str) -> String {
-    format!("run_object{{{}}}", key)
+    format!("run_object{{{key}}}")
 }
 
 #[derive(Debug)]
