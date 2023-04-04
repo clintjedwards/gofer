@@ -108,10 +108,7 @@ func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelin
 		return &proto.PutPipelineSecretResponse{}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	// We overload the NewSecretStoreKey method to support both global and pipeline.
-	// As such it doesn't actually need the two end parameters and as such we just set them
-	// to the zero value and ignore them.
-	newSecretKey := models.NewSecretStoreKey(request.Key, []string{}, false)
+	newSecretKey := models.NewSecretStoreKey(request.Key, []string{})
 
 	err = api.db.InsertSecretStorePipelineKey(api.db, &storage.SecretStorePipelineKey{
 		Namespace: request.NamespaceId,
@@ -246,7 +243,7 @@ func (api *API) PutGlobalSecret(ctx context.Context, request *proto.PutGlobalSec
 		return nil, status.Error(codes.FailedPrecondition, "key cannot be empty")
 	}
 
-	newSecretKey := models.NewSecretStoreKey(request.Key, request.Namespaces, request.ExtensionsOnly)
+	newSecretKey := models.NewSecretStoreKey(request.Key, request.Namespaces)
 
 	err := api.db.InsertSecretStoreGlobalKey(api.db, newSecretKey.ToGlobalSecretKeyStorage(), request.Force)
 	if err != nil {

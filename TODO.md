@@ -151,8 +151,6 @@ We can also create bespoke common tasks that do this.
   - We also need to support regex for namespaces and tell the CLI that you can do this. Users should be able
     to allow all namespaces with a particular prefix to inherit global secrets.
   - We also need to check that secrets are automatically redacted from task-run logs.
-  - Add a boolean to global secrets to determine if they can be used in custom tasks or are they purely for use
-    in extensions.
 
 - We can possibly get rid of common tasks now that the extensions work how they do. To do this I think we would also
   need to bolster the global secrets feature to support giving keys to only pipelines within a certain namespace.

@@ -17,10 +17,9 @@ func TestCRUDSecretStoreGlobalKeys(t *testing.T) {
 	defer os.Remove(path)
 
 	key := SecretStoreGlobalKey{
-		Key:            "test_key",
-		Namespaces:     "namespace,test",
-		ExtensionsOnly: false,
-		Created:        0,
+		Key:        "test_key",
+		Namespaces: "namespace,test",
+		Created:    0,
 	}
 
 	err = db.InsertSecretStoreGlobalKey(db, &key, false)
@@ -51,11 +50,9 @@ func TestCRUDSecretStoreGlobalKeys(t *testing.T) {
 	}
 
 	key.Namespaces = "namespace,test2"
-	key.ExtensionsOnly = true
 
 	err = db.UpdateSecretStoreGlobalKey(db, key.Key, UpdatableSecretStoreGlobalKeyFields{
-		Namespaces:     &key.Namespaces,
-		ExtensionsOnly: &key.ExtensionsOnly,
+		Namespaces: &key.Namespaces,
 	})
 	if err != nil {
 		t.Fatal(err)

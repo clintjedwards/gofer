@@ -177,10 +177,9 @@ CREATE TABLE IF NOT EXISTS secret_store_pipeline_keys(
 CREATE INDEX idx_secret_pipeline_keys_created ON secret_store_pipeline_keys (created);
 
 CREATE TABLE IF NOT EXISTS secret_store_global_keys(
-    key              TEXT    NOT NULL,
-    namespaces       TEXT    NOT NULL,
-    created          INTEGER NOT NULL,
-    extensions_only  INTEGER NOT NULL CHECK (extensions_only IN (0, 1)),
+    key           TEXT    NOT NULL,
+    namespaces    TEXT    NOT NULL,
+    created       INTEGER NOT NULL,
     PRIMARY KEY (key)
 ) STRICT;
 
