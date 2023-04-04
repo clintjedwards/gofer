@@ -10,24 +10,27 @@ import (
 )
 
 type SecretStoreKey struct {
-	Key        string   `json:"key"`
-	Namespaces []string `json:"namespaces"`
-	Created    int64    `json:"created"`
+	Key            string   `json:"key"`
+	Namespaces     []string `json:"namespaces"`
+	ExtensionsOnly bool     `json:"extensions-only"`
+	Created        int64    `json:"created"`
 }
 
-func NewSecretStoreKey(key string, namespaces []string) *SecretStoreKey {
+func NewSecretStoreKey(key string, namespaces []string, extensionsOnly bool) *SecretStoreKey {
 	return &SecretStoreKey{
-		Key:        key,
-		Namespaces: namespaces,
-		Created:    time.Now().UnixMilli(),
+		Key:            key,
+		Namespaces:     namespaces,
+		ExtensionsOnly: extensionsOnly,
+		Created:        time.Now().UnixMilli(),
 	}
 }
 
 func (s *SecretStoreKey) ToProto() *proto.SecretStoreKey {
 	return &proto.SecretStoreKey{
-		Key:        s.Key,
-		Namespaces: s.Namespaces,
-		Created:    s.Created,
+		Key:            s.Key,
+		Namespaces:     s.Namespaces,
+		ExtensionsOnly: s.ExtensionsOnly,
+		Created:        s.Created,
 	}
 }
 
@@ -40,6 +43,7 @@ func (s *SecretStoreKey) FromGlobalSecretKeyStorage(sn *storage.SecretStoreGloba
 
 	s.Key = sn.Key
 	s.Namespaces = namespaces
+	s.ExtensionsOnly = sn.ExtensionsOnly
 	s.Created = sn.Created
 }
 
@@ -50,8 +54,9 @@ func (s *SecretStoreKey) ToGlobalSecretKeyStorage() *storage.SecretStoreGlobalKe
 	}
 
 	return &storage.SecretStoreGlobalKey{
-		Key:        s.Key,
-		Namespaces: string(namespacesRaw),
-		Created:    s.Created,
+		Key:            s.Key,
+		Namespaces:     string(namespacesRaw),
+		ExtensionsOnly: s.ExtensionsOnly,
+		Created:        s.Created,
 	}
 }

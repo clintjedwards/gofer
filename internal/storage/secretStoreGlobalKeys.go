@@ -10,17 +10,19 @@ import (
 )
 
 type SecretStoreGlobalKey struct {
-	Key        string
-	Namespaces string
-	Created    int64
+	Key            string `db:"key"`
+	Namespaces     string `db:"namespaces"`
+	ExtensionsOnly bool   `db:"extensions_only"`
+	Created        int64  `db:"created"`
 }
 
 type UpdatableSecretStoreGlobalKeyFields struct {
-	Namespaces *string
+	Namespaces     *string
+	ExtensionsOnly *bool
 }
 
 func (db *DB) ListSecretStoreGlobalKeys(conn Queryable) ([]SecretStoreGlobalKey, error) {
-	query, args := qb.Select("key", "namespaces", "created").From("secret_store_global_keys").MustSql()
+	query, args := qb.Select("key", "namespaces", "extensions_only", "created").From("secret_store_global_keys").MustSql()
 
 	keys := []SecretStoreGlobalKey{}
 	err := conn.Select(&keys, query, args...)
@@ -32,7 +34,7 @@ func (db *DB) ListSecretStoreGlobalKeys(conn Queryable) ([]SecretStoreGlobalKey,
 }
 
 func (db *DB) GetSecretStoreGlobalKey(conn Queryable, key string) (SecretStoreGlobalKey, error) {
-	query, args := qb.Select("key", "namespaces", "created").From("secret_store_global_keys").Where(qb.Eq{"key": key}).MustSql()
+	query, args := qb.Select("key", "namespaces", "extensions_only", "created").From("secret_store_global_keys").Where(qb.Eq{"key": key}).MustSql()
 
 	secretKey := SecretStoreGlobalKey{}
 	err := conn.Get(&secretKey, query, args...)
@@ -48,8 +50,8 @@ func (db *DB) GetSecretStoreGlobalKey(conn Queryable, key string) (SecretStoreGl
 }
 
 func (db *DB) InsertSecretStoreGlobalKey(conn Queryable, secretKey *SecretStoreGlobalKey, force bool) error {
-	_, err := qb.Insert("secret_store_global_keys").Columns("key", "namespaces", "created").
-		Values(secretKey.Key, secretKey.Namespaces, secretKey.Created).RunWith(conn).Exec()
+	_, err := qb.Insert("secret_store_global_keys").Columns("key", "namespaces", "extensions_only", "created").
+		Values(secretKey.Key, secretKey.Namespaces, secretKey.ExtensionsOnly, secretKey.Created).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") && !force {
 			return ErrEntityExists
@@ -75,6 +77,10 @@ func (db *DB) UpdateSecretStoreGlobalKey(conn Queryable, key string, fields Upda
 
 	if fields.Namespaces != nil {
 		query = query.Set("namespaces", fields.Namespaces)
+	}
+
+	if fields.ExtensionsOnly != nil {
+		query = query.Set("extensions_only", fields.ExtensionsOnly)
 	}
 
 	_, err := query.Where(qb.Eq{"key": key}).RunWith(conn).Exec()

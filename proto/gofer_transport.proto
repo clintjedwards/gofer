@@ -672,7 +672,8 @@ message PutGlobalSecretRequest {
   string key = 1;
   string content = 2;
   repeated string namespaces = 3;
-  bool force = 4; // Overwrites an already existing value.
+  bool extensions_only = 4;
+  bool force = 5; // Overwrites an already existing value.
 }
 message PutGlobalSecretResponse {
   // The number of bytes uploaded.

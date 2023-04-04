@@ -46,6 +46,7 @@ $ gofer secret global put my_key=@/test/folder/file_path -n "ops-*"`,
 func init() {
 	cmdGlobalSecretPut.Flags().StringSliceP("namespaces", "n", []string{"*"}, "list of namespaces allowed to access this secret")
 	cmdGlobalSecretPut.Flags().BoolP("force", "f", false, "replace value if exists")
+	cmdGlobalSecretPut.Flags().BoolP("extensions-only", "e", true, "constrain global secret to only be used in extensions")
 	CmdGlobalSecret.AddCommand(cmdGlobalSecretPut)
 }
 
@@ -65,6 +66,12 @@ func globalSecretStorePut(cmd *cobra.Command, args []string) error {
 	}
 
 	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	extensionsOnly, err := cmd.Flags().GetBool("extensions-only")
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -102,10 +109,11 @@ func globalSecretStorePut(cmd *cobra.Command, args []string) error {
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	resp, err := client.PutGlobalSecret(ctx, &proto.PutGlobalSecretRequest{
-		Key:        key,
-		Content:    secret.String(),
-		Namespaces: namespaces,
-		Force:      force,
+		Key:            key,
+		Content:        secret.String(),
+		Namespaces:     namespaces,
+		ExtensionsOnly: extensionsOnly,
+		Force:          force,
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not upload object: %v", err))

@@ -3,6 +3,7 @@ package secret
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
@@ -51,6 +52,7 @@ func globalSecretStoreList(_ *cobra.Command, _ []string) error {
 		data = append(data, []string{
 			key.Key,
 			strings.Join(key.Namespaces, ", "),
+			strconv.FormatBool(key.ExtensionsOnly),
 			format.UnixMilli(key.Created, "Never", cl.State.Config.Detail),
 		})
 	}
@@ -66,7 +68,7 @@ func formatGlobalTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"Key", "Namespaces", "Created"})
+	table.SetHeader([]string{"Key", "Namespaces", "Extensions Only", "Created"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)
@@ -82,9 +84,11 @@ func formatGlobalTable(data [][]string, color bool) string {
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
+			tablewriter.Color(tablewriter.FgBlueColor),
 		)
 		table.SetColumnColor(
 			tablewriter.Color(tablewriter.FgYellowColor),
+			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),
 		)
