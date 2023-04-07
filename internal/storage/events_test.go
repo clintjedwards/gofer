@@ -16,7 +16,7 @@ func TestCRUDEvents(t *testing.T) {
 	defer os.Remove(path)
 
 	event := Event{
-		Kind:    "Kind",
+		Type:    "Kind",
 		Details: "Some detail",
 		Emitted: 0,
 	}

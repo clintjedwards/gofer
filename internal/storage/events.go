@@ -11,7 +11,7 @@ import (
 
 type Event struct {
 	ID      int64
-	Kind    string
+	Type    string
 	Details string
 	Emitted int64
 }
@@ -28,7 +28,7 @@ func (db *DB) ListEvents(conn Queryable, offset, limit int, reverse bool) ([]Eve
 		orderByStr = "id DESC"
 	}
 
-	query, args := qb.Select("id", "kind", "details", "emitted").From("events").
+	query, args := qb.Select("id", "type", "details", "emitted").From("events").
 		OrderBy(orderByStr).
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).
@@ -44,8 +44,8 @@ func (db *DB) ListEvents(conn Queryable, offset, limit int, reverse bool) ([]Eve
 }
 
 func (db *DB) InsertEvent(conn Queryable, event *Event) (int64, error) {
-	result, err := qb.Insert("events").Columns("kind", "details", "emitted").
-		Values(event.Kind, event.Details, event.Emitted).RunWith(conn).Exec()
+	result, err := qb.Insert("events").Columns("type", "details", "emitted").
+		Values(event.Type, event.Details, event.Emitted).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return 0, ErrEntityExists
@@ -58,7 +58,7 @@ func (db *DB) InsertEvent(conn Queryable, event *Event) (int64, error) {
 }
 
 func (db *DB) GetEvent(conn Queryable, id int64) (Event, error) {
-	query, args := qb.Select("id", "kind", "details", "emitted").
+	query, args := qb.Select("id", "type", "details", "emitted").
 		From("events").Where(qb.Eq{"id": id}).MustSql()
 
 	event := Event{}

@@ -324,7 +324,7 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 						return err
 					}
 
-					go api.events.Publish(models.EventCompletedTaskRun{
+					go api.events.Publish(models.EventTaskRunCompleted{
 						NamespaceID: taskrun.Namespace,
 						PipelineID:  taskrun.Pipeline,
 						RunID:       taskrun.Run,
@@ -388,7 +388,7 @@ func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force
 	// Search events for any orphan runs.
 	for event := range events {
 		switch evt := event.Details.(type) {
-		case *models.EventStartedRun:
+		case *models.EventRunStarted:
 			key := runkey{
 				namespace: evt.NamespaceID,
 				pipeline:  evt.PipelineID,
@@ -405,7 +405,7 @@ func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force
 				inProgressRunMap[key] = struct{}{}
 			}
 
-		case *models.EventCompletedRun:
+		case *models.EventRunCompleted:
 			_, exists := inProgressRunMap[runkey{
 				namespace: evt.NamespaceID,
 				pipeline:  evt.PipelineID,

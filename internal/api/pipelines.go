@@ -145,7 +145,7 @@ func (api *API) disablePipeline(pipeline *models.PipelineMetadata) error {
 		return err
 	}
 
-	go api.events.Publish(models.EventDisabledPipeline{
+	go api.events.Publish(models.EventPipelineDisabled{
 		NamespaceID: pipeline.Namespace,
 		PipelineID:  pipeline.ID,
 	})

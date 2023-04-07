@@ -41,7 +41,7 @@ func (api *API) GetEvent(ctx context.Context, request *proto.GetEventRequest) (*
 func (api *API) ListEvents(request *proto.ListEventsRequest, stream proto.Gofer_ListEventsServer) error {
 	historicalEvents := api.events.GetAll(request.Reverse)
 
-	subscription, err := api.events.Subscribe(models.EventKindAny)
+	subscription, err := api.events.Subscribe(models.EventTypeAny)
 	if err != nil {
 		return status.Errorf(codes.Internal, "could not subscribe to event stream: %v", err)
 	}

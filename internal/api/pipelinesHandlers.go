@@ -133,7 +133,7 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 			status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
 	}
 
-	go api.events.Publish(models.EventEnabledPipeline{
+	go api.events.Publish(models.EventPipelineEnabled{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.Id,
 	})
@@ -252,7 +252,7 @@ func (api *API) DeployPipeline(ctx context.Context, request *proto.DeployPipelin
 	}
 
 	// Step 2: Officially start the deployment.
-	go api.events.Publish(models.EventStartedDeployPipeline{
+	go api.events.Publish(models.EventPipelineDeployStarted{
 		NamespaceID:  request.NamespaceId,
 		PipelineID:   request.Id,
 		StartVersion: startVersion,
@@ -338,7 +338,7 @@ func (api *API) DeployPipeline(ctx context.Context, request *proto.DeployPipelin
 	}
 
 	// Lastly: We're done. So now we just need to complete the deployment.
-	go api.events.Publish(models.EventCompletedDeployPipeline{
+	go api.events.Publish(models.EventPipelineDeployCompleted{
 		NamespaceID:  request.NamespaceId,
 		PipelineID:   request.Id,
 		StartVersion: startVersion,
@@ -376,7 +376,7 @@ func (api *API) DeletePipeline(ctx context.Context, request *proto.DeletePipelin
 		return &proto.DeletePipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
 	}
 
-	go api.events.Publish(models.EventDeletedPipeline{
+	go api.events.Publish(models.EventPipelineDeleted{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.Id,
 	})

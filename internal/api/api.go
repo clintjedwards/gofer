@@ -376,7 +376,7 @@ func (api *API) createDefaultNamespace() error {
 		return err
 	}
 
-	api.events.Publish(models.EventCreatedNamespace{
+	api.events.Publish(models.EventNamespaceCreated{
 		NamespaceID: namespace.ID,
 	})
 
@@ -411,13 +411,13 @@ func (api *API) findOrphans() {
 
 	// Search events for any orphan runs.
 	for event := range events {
-		switch event.Kind {
-		case models.EventKindStartedRun:
+		switch event.Type {
+		case models.EventTypeRunStarted:
 			// This causes the data race alert to be angry,
 			// but in theory it should be fine as we only read and write from
 			// the var once. Need to find a way to pass trait objects without
 			// Go complaining that other things can access them.
-			evt, ok := event.Details.(*models.EventStartedRun)
+			evt, ok := event.Details.(*models.EventRunStarted)
 			if !ok {
 				log.Error().Interface("event", event).Msg("could not decode event into correct type")
 				continue
@@ -437,8 +437,8 @@ func (api *API) findOrphans() {
 				}] = struct{}{}
 			}
 
-		case models.EventKindCompletedRun:
-			evt, ok := event.Details.(*models.EventCompletedRun)
+		case models.EventTypeRunCompleted:
+			evt, ok := event.Details.(*models.EventRunCompleted)
 			if !ok {
 				log.Error().Interface("event", event).Msg("could not decode event into correct type")
 				continue

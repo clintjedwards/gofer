@@ -87,7 +87,7 @@ func (api *API) CreateNamespace(ctx context.Context, request *proto.CreateNamesp
 			status.Error(codes.Internal, "could not insert namespace")
 	}
 
-	go api.events.Publish(models.EventCreatedNamespace{
+	go api.events.Publish(models.EventNamespaceCreated{
 		NamespaceID: newNamespace.ID,
 	})
 
@@ -138,7 +138,7 @@ func (api *API) DeleteNamespace(ctx context.Context, request *proto.DeleteNamesp
 		return &proto.DeleteNamespaceResponse{}, err
 	}
 
-	go api.events.Publish(models.EventDeletedNamespace{
+	go api.events.Publish(models.EventNamespaceDeleted{
 		NamespaceID: request.Id,
 	})
 

@@ -85,13 +85,13 @@ func (api *API) RegisterPipelineConfig(ctx context.Context, request *proto.Regis
 	}
 
 	if config.Version == 1 {
-		go api.events.Publish(models.EventRegisteredPipeline{
+		go api.events.Publish(models.EventPipelineRegistered{
 			NamespaceID: metadata.Namespace,
 			PipelineID:  metadata.ID,
 		})
 	}
 
-	go api.events.Publish(models.EventRegisteredPipelineConfig{
+	go api.events.Publish(models.EventPipelineConfigRegistered{
 		NamespaceID: metadata.Namespace,
 		PipelineID:  metadata.ID,
 		Version:     config.Version,
@@ -231,7 +231,7 @@ func (api *API) DeletePipelineConfig(ctx context.Context, request *proto.DeleteP
 		return &proto.DeletePipelineConfigResponse{}, status.Error(codes.Internal, "failed to retrieve config from database")
 	}
 
-	go api.events.Publish(models.EventDeletedPipelineConfig{
+	go api.events.Publish(models.EventPipelineConfigDeleted{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
 		Version:     request.Version,

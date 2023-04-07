@@ -22,7 +22,7 @@ var (
 // Subscription is a representation of a new Subscription to a certain topic.
 type Subscription struct {
 	id     string
-	kind   models.EventKind
+	kind   models.EventType
 	Events chan models.Event
 }
 
@@ -32,7 +32,7 @@ func generateID(length int) string {
 	return fmt.Sprintf("%x", b)
 }
 
-func newSubscriber(kind models.EventKind, channel chan models.Event) Subscription {
+func newSubscriber(kind models.EventType, channel chan models.Event) Subscription {
 	return Subscription{
 		id:     generateID(5),
 		kind:   kind,
@@ -47,7 +47,7 @@ type EventBus struct {
 	// storage layer for persistance. Events are capped at a particular size.
 	storage     storage.DB
 	retention   time.Duration
-	subscribers map[models.EventKind][]Subscription // channel tracking per subscriber
+	subscribers map[models.EventType][]Subscription // channel tracking per subscriber
 }
 
 // New create a new instance of the eventbus and populates the log from disk.
@@ -55,7 +55,7 @@ func New(storage storage.DB, retention time.Duration, pruneInterval time.Duratio
 	eb := &EventBus{
 		storage:     storage,
 		retention:   retention,
-		subscribers: map[models.EventKind][]Subscription{},
+		subscribers: map[models.EventType][]Subscription{},
 	}
 
 	go func() {
@@ -65,16 +65,16 @@ func New(storage storage.DB, retention time.Duration, pruneInterval time.Duratio
 		}
 	}()
 
-	for eventKind := range models.EventKindMap {
+	for eventKind := range models.EventTypeMap {
 		eb.subscribers[eventKind] = []Subscription{}
 	}
-	eb.subscribers[models.EventKindAny] = []Subscription{}
+	eb.subscribers[models.EventTypeAny] = []Subscription{}
 
 	return eb, nil
 }
 
 // Subscribe returns a channel in which the caller can listen for all events of a particular type.
-func (eb *EventBus) Subscribe(kind models.EventKind) (Subscription, error) {
+func (eb *EventBus) Subscribe(kind models.EventType) (Subscription, error) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
 
@@ -113,7 +113,7 @@ func (eb *EventBus) Unsubscribe(sub Subscription) {
 }
 
 // Publish allows caller to emit a new event to the eventbus. Might block until it can publish to all listeners.
-func (eb *EventBus) Publish(evt models.EventKindDetails) int64 {
+func (eb *EventBus) Publish(evt models.EventTypeDetails) int64 {
 	event := models.NewEvent(evt)
 
 	id, err := eb.storage.InsertEvent(eb.storage, event.ToStorage())
@@ -128,13 +128,13 @@ func (eb *EventBus) Publish(evt models.EventKindDetails) int64 {
 
 	listeners, exists := eb.subscribers[evt.Kind()]
 	if !exists {
-		log.Error().Err(ErrEventKindNotFound).Msgf("event kind %q not found; This usually means that an event is missing from the EventKindMap object.", evt.Kind())
+		log.Error().Err(ErrEventKindNotFound).Msgf("event type %q not found; This usually means that an event is missing from the EventTypeMap object.", evt.Kind())
 		return 0
 	}
 
-	anyListeners, exists := eb.subscribers[models.EventKindAny]
+	anyListeners, exists := eb.subscribers[models.EventTypeAny]
 	if !exists {
-		log.Error().Err(ErrEventKindNotFound).Msgf("event kind %q not found", models.EventKindAny)
+		log.Error().Err(ErrEventKindNotFound).Msgf("event type %q not found", models.EventTypeAny)
 		return 0
 	}
 

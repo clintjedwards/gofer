@@ -79,7 +79,7 @@ func (api *API) CreatePipelineExtensionSubscription(ctx context.Context, request
 		return nil, status.Errorf(codes.Internal, "could not subscribe to extension;  %v", err.Error())
 	}
 
-	go api.events.Publish(models.EventCompletedExtensionSubscriptionPipeline{
+	go api.events.Publish(models.EventPipelineExtensionSubscription{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
 		Label:       request.ExtensionLabel,
@@ -279,7 +279,7 @@ func (api *API) DeletePipelineExtensionSubscription(ctx context.Context, request
 		return nil, status.Errorf(codes.FailedPrecondition, "could not subscribe to extension removal;  %v", err.Error())
 	}
 
-	go api.events.Publish(models.EventCompletedExtensionSubscriptionRemovalPipeline{
+	go api.events.Publish(models.EventPipelineExtensionUnsubscription{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
 		Label:       request.ExtensionLabel,

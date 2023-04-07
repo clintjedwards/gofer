@@ -127,11 +127,6 @@ func (api *API) InstallCommonTask(ctx context.Context, request *proto.InstallCom
 		Documentation: request.Documentation,
 	})
 
-	go api.events.Publish(models.EventInstalledCommonTask{
-		Name:  request.Name,
-		Image: request.Image,
-	})
-
 	return &proto.InstallCommonTaskResponse{}, nil
 }
 
@@ -143,12 +138,6 @@ func (api *API) UninstallCommonTask(ctx context.Context, request *proto.Uninstal
 		log.Error().Err(err).Msg("could not delete common task registration")
 		return &proto.UninstallCommonTaskResponse{}, status.Errorf(codes.Internal, "could not delete common task registration: %v", err)
 	}
-
-	go api.events.Publish(models.EventUninstalledCommonTask{
-		Name: request.Name,
-	})
-
-	// TODO(clintjedwards): We should alert all users that previously had registrations that they need to fix their pipeline.
 
 	return &proto.UninstallCommonTaskResponse{}, nil
 }

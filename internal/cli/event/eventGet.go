@@ -79,7 +79,12 @@ type data struct {
 }
 
 func formatEvent(event *proto.GetEventResponse, detail bool) (string, error) {
-	evnt := constructEvent(event.Event)
+	evnt := Event{
+		Type:    event.Event.Type,
+		ID:      event.Event.Id,
+		Emitted: event.Event.Emitted,
+		Details: event.Event.Details,
+	}
 
 	details := map[string]interface{}{}
 	err := json.Unmarshal([]byte(evnt.Details), &details)
@@ -93,7 +98,7 @@ func formatEvent(event *proto.GetEventResponse, detail bool) (string, error) {
 	}
 
 	data := data{
-		Kind:    color.BlueString(formatEventKind(evnt.Kind)),
+		Kind:    color.BlueString(formatEventKind(evnt.Type)),
 		Emitted: format.UnixMilli(evnt.Emitted, "Unknown", detail),
 		ID:      color.YellowString(fmt.Sprintf("%d", evnt.ID)),
 		Details: fmttedDetails,

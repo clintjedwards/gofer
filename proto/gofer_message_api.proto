@@ -333,7 +333,7 @@ message CommonTaskRegistration {
 
 message Event {
   int64 id = 1;
-  string kind = 2;    // What type of event
+  string type = 2; // What type of event
   string details = 3; // Json output of the event
   int64 emitted = 4;
 }

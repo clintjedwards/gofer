@@ -177,7 +177,7 @@ func (api *API) InstallExtension(ctx context.Context, request *proto.InstallExte
 		return &proto.InstallExtensionResponse{}, status.Errorf(codes.Internal, "extension could not be installed; %v", err)
 	}
 
-	go api.events.Publish(models.EventInstalledExtension{
+	go api.events.Publish(models.EventExtensionInstalled{
 		Name:  request.Name,
 		Image: request.Image,
 	})
@@ -201,7 +201,7 @@ func (api *API) UninstallExtension(ctx context.Context, request *proto.Uninstall
 		return &proto.UninstallExtensionResponse{}, status.Error(codes.Internal, "error deleting extension registration")
 	}
 
-	go api.events.Publish(models.EventUninstalledExtension{
+	go api.events.Publish(models.EventExtensionUninstalled{
 		Name: request.Name,
 	})
 

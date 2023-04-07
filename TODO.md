@@ -146,24 +146,13 @@ We can also create bespoke common tasks that do this.
 
 ### On the floor
 
-- Global secret namespaces are implemented on the storage level. Now it needs to be enforced at the run level.
-  When we populate secrets we need to make sure the pipeline is in the allowed namespaces.
-
-  - We also need to support regex for namespaces and tell the CLI that you can do this. Users should be able
-    to allow all namespaces with a particular prefix to inherit global secrets.
-  - We also need to check that secrets are automatically redacted from task-run logs.
-
-- We can possibly get rid of common tasks now that the extensions work how they do. To do this I think we would also
-  need to bolster the global secrets feature to support giving keys to only pipelines within a certain namespace.
+- We can possibly get rid of common tasks now that the extensions work how they do.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.
   Instead of Gofer watching for each extension's ping, maybe they just hit the API if they have something
   to say. This makes it so extensions aren't so snowflaky and are just apis that Gofer can talk to.
   It also opens up the possibility for external extensions that Gofer just communicates with remotely without
   spinning up any docker container.
-- Think more about event naming, right now the naming is kinda weird because we're trying events to the objects that we normally
-  work with like pipelines and runs. Maybe that grouping should be in documentation only? Including it in the name can make for
-  awkward confusing names.
-  - For instance: EventStartedDeployPipeline instead of EventStartedPipelineDeploy
+  - Fix events in cli listing
 - Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of large git repos is the biggest pain point here.
 - To give people the ability to cache certain important items like repositories we can create a special ubuntu container with a fuse file system. We can then allow people to use this container to connect back to the object fs and make common tasks like storing your repo easy.
   - The hard part about this is for git repos. If we have one user who has checked out a branch we now have to implement a copy on write situation.

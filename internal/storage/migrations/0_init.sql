@@ -212,7 +212,7 @@ CREATE INDEX idx_taskruns_started ON pipeline_task_runs (started);
 
 CREATE TABLE IF NOT EXISTS events (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    kind     TEXT    NOT NULL,
+    type     TEXT    NOT NULL,
     details  TEXT    NOT NULL,
     emitted  INTEGER NOT NULL
 ) STRICT;

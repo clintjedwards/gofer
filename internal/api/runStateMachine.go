@@ -65,7 +65,7 @@ func (r *RunStateMachine) setTaskRunFinished(id string, code *int64,
 		return err
 	}
 
-	go r.API.events.Publish(models.EventCompletedTaskRun{
+	go r.API.events.Publish(models.EventTaskRunCompleted{
 		NamespaceID: taskRun.Namespace,
 		PipelineID:  taskRun.Pipeline,
 		RunID:       taskRun.Run,
@@ -87,7 +87,7 @@ func (r *RunStateMachine) setRunFinished(status models.RunStatus, reason *models
 		return err
 	}
 
-	go r.API.events.Publish(models.EventCompletedRun{
+	go r.API.events.Publish(models.EventRunCompleted{
 		NamespaceID: r.Run.Namespace,
 		PipelineID:  r.Run.Pipeline,
 		RunID:       r.Run.ID,
@@ -541,7 +541,7 @@ func (r *RunStateMachine) handleRunObjectExpiry() {
 		return
 	}
 
-	r.API.events.Publish(models.EventExpiredRunObjects{
+	r.API.events.Publish(models.EventRunObjectsExpired{
 		NamespaceID: r.Pipeline.Namespace,
 		PipelineID:  r.Pipeline.ID,
 		RunID:       expiredRun.ID,
@@ -670,7 +670,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 			}
 
 			// Alert the event bus that a new task run is being started.
-			go r.API.events.Publish(models.EventCreatedTaskRun{
+			go r.API.events.Publish(models.EventTaskRunCreated{
 				NamespaceID: r.Pipeline.Namespace,
 				PipelineID:  r.Pipeline.ID,
 				RunID:       r.Run.ID,
@@ -701,7 +701,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 		}
 
 		// Alert the event bus that a new task run is being started.
-		go r.API.events.Publish(models.EventCreatedTaskRun{
+		go r.API.events.Publish(models.EventTaskRunCreated{
 			NamespaceID: r.Pipeline.Namespace,
 			PipelineID:  r.Pipeline.ID,
 			RunID:       r.Run.ID,
@@ -813,7 +813,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 		return
 	}
 
-	go r.API.events.Publish(models.EventStartedTaskRun{
+	go r.API.events.Publish(models.EventTaskRunStarted{
 		NamespaceID: r.Pipeline.Namespace,
 		PipelineID:  r.Pipeline.ID,
 		RunID:       r.Run.ID,

@@ -13,7 +13,6 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/fatih/color"
-	"github.com/fatih/structs"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
@@ -36,7 +35,7 @@ func init() {
 }
 
 type Event struct {
-	Kind    string
+	Type    string
 	ID      int64
 	Emitted int64
 	Details string
@@ -87,34 +86,22 @@ func eventList(cmd *cobra.Command, _ []string) error {
 			break
 		}
 
-		event := constructEvent(resp.Event)
+		event := Event{
+			Type:    resp.Event.Type,
+			ID:      resp.Event.Id,
+			Emitted: resp.Event.Emitted,
+			Details: resp.Event.Details,
+		}
 
 		cl.State.Fmt.Println(fmt.Sprintf("[%s] %s %s: %v",
 			color.YellowString(fmt.Sprint(event.ID)),
 			format.UnixMilli(event.Emitted, "Unknown", cl.State.Config.Detail),
-			color.BlueString(formatEventKind(string(event.Kind))), event.Details))
+			color.BlueString(formatEventKind(string(event.Type))), event.Details))
 	}
 
 	cl.State.Fmt.Finish()
 
 	return nil
-}
-
-func constructEvent(event *proto.Event) Event {
-	// We're doing hacks here because I refuse to build long switch chains
-	convertedMap := structs.Map(event)
-
-	kind := convertedMap["Kind"].(string)
-	id := convertedMap["Id"].(int64)
-	emitted := convertedMap["Emitted"].(int64)
-	details := convertedMap["Details"].(string)
-
-	return Event{
-		Kind:    kind,
-		ID:      id,
-		Emitted: emitted,
-		Details: details,
-	}
 }
 
 func formatEventKind(kind string) string {

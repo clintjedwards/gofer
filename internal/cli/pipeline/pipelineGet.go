@@ -3,13 +3,10 @@ package pipeline
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
@@ -86,7 +83,7 @@ func recentEvents(client proto.GoferClient, namespace, pipeline, extensionLabel 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resp, err := client.ListEvents(ctx, &proto.ListEventsRequest{
+	_, err := client.ListEvents(ctx, &proto.ListEventsRequest{
 		Reverse: true,
 	})
 	if err != nil {
@@ -95,42 +92,42 @@ func recentEvents(client proto.GoferClient, namespace, pipeline, extensionLabel 
 
 	events := []models.Event{}
 
-	count := 0
-	for count < limit {
-		response, err := resp.Recv()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
+	// count := 0
+	// for count < limit {
+	// 	response, err := resp.Recv()
+	// 	if err != nil {
+	// 		if err == io.EOF {
+	// 			break
+	// 		}
+	// 		return nil, err
+	// 	}
 
-		if !strings.EqualFold(response.Event.Kind, string(models.EventKindResolvedExtensionEvent)) {
-			continue
-		}
+	// 	if !strings.EqualFold(response.Event.Type, string(models.EventTypeExtensionResolvedExtensionEvent)) {
+	// 		continue
+	// 	}
 
-		details := models.EventResolvedExtensionEvent{}
-		err = json.Unmarshal([]byte(response.Event.Details), &details)
-		if err != nil {
-			return nil, err
-		}
+	// 	details := models.EventResolvedExtensionEvent{}
+	// 	err = json.Unmarshal([]byte(response.Event.Details), &details)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		if details.NamespaceID != namespace ||
-			details.PipelineID != pipeline ||
-			details.Label != extensionLabel {
-			continue
-		}
+	// 	if details.NamespaceID != namespace ||
+	// 		details.PipelineID != pipeline ||
+	// 		details.Label != extensionLabel {
+	// 		continue
+	// 	}
 
-		concreteEvent := models.Event{
-			ID:      response.Event.Id,
-			Kind:    models.EventKind(response.Event.Kind),
-			Details: details,
-			Emitted: response.Event.Emitted,
-		}
+	// 	concreteEvent := models.Event{
+	// 		ID:      response.Event.Id,
+	// 		Type:    models.EventType(response.Event.Type),
+	// 		Details: details,
+	// 		Emitted: response.Event.Emitted,
+	// 	}
 
-		events = append(events, concreteEvent)
-		count++
-	}
+	// 	events = append(events, concreteEvent)
+	// 	count++
+	// }
 
 	return events, nil
 }
@@ -198,10 +195,10 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 		eventDataList := [][]string{}
 		for _, event := range recentEvents {
 			details := ""
-			evtDetail, ok := event.Details.(models.EventResolvedExtensionEvent)
-			if ok {
-				details = evtDetail.Result.Details
-			}
+			// evtDetail, ok := event.Details.(models.EventResolvedExtensionEvent)
+			// if ok {
+			// 	details = evtDetail.Result.Details
+			// }
 
 			eventDataList = append(eventDataList, []string{
 				format.UnixMilli(event.Emitted, "Never", detail), details,

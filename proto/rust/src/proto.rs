@@ -548,7 +548,7 @@ pub struct Event {
     pub id: i64,
     /// What type of event
     #[prost(string, tag="2")]
-    pub kind: ::prost::alloc::string::String,
+    pub r#type: ::prost::alloc::string::String,
     /// Json output of the event
     #[prost(string, tag="3")]
     pub details: ::prost::alloc::string::String,
@@ -602,7 +602,9 @@ pub mod extension_result {
 pub struct SecretStoreKey {
     #[prost(string, tag="1")]
     pub key: ::prost::alloc::string::String,
-    #[prost(int64, tag="2")]
+    #[prost(string, repeated, tag="2")]
+    pub namespaces: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(int64, tag="3")]
     pub created: i64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1927,8 +1929,10 @@ pub struct PutGlobalSecretRequest {
     pub key: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub content: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag="3")]
+    pub namespaces: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Overwrites an already existing value.
-    #[prost(bool, tag="3")]
+    #[prost(bool, tag="4")]
     pub force: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

@@ -176,22 +176,10 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 	}
 
 	// Publish that the run has started
-	go api.events.Publish(models.EventStartedRun{
+	go api.events.Publish(models.EventRunStarted{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
 		RunID:       newRunID,
-	})
-
-	// Publish a fake extension event for the manual run
-	go api.events.Publish(models.EventResolvedExtensionEvent{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.PipelineId,
-		Name:        "manual",
-		Label:       "api",
-		Result: models.ExtensionResult{
-			Details: "triggered via API",
-			Status:  models.ExtensionResultStateSuccess,
-		},
 	})
 
 	runStateMachine := api.newRunStateMachine(&pipeline, &latestConfig, newRun)
