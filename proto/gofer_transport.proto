@@ -454,33 +454,6 @@ message GetCommonTaskInstallInstructionsResponse { string instructions = 1; }
 
 ////////////// Extension Service Transport Models //////////////
 
-message ExtensionWatchRequest {}
-message ExtensionWatchResponse {
-  // The extension can choose to give extra details about the specific extension
-  // event result in the form of a string description.
-  string details = 1;
-
-  // Unique identifier for namespace.
-  string namespace_id = 2;
-
-  // Unique identifier for pipeline.
-  string pipeline_id = 3;
-
-  // Unique id of extension instance.
-  string pipeline_extension_label = 4;
-
-  enum Result {
-    UNKNOWN = 0;
-    SUCCESS = 1;
-    FAILURE = 2;
-    SKIPPED = 3;
-  }
-  Result result = 5;
-
-  // Metadata is passed to the tasks as extra environment variables.
-  map<string, string> metadata = 6;
-}
-
 message ExtensionInfoRequest {}
 message ExtensionInfoResponse {
   // kind corresponds a unique extension identifier, this is passed as a envvar

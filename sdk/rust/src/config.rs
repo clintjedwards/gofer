@@ -246,7 +246,7 @@ impl CommonTask {
 
     pub fn setting(mut self, key: &str, value: &str) -> Self {
         self.settings.insert(
-            format!("GOFER_PLUGIN_PARAM_{}", key.to_uppercase()),
+            format!("GOFER_EXTENSION_PARAM_{}", key.to_uppercase()),
             value.to_string(),
         );
         self
@@ -389,7 +389,7 @@ impl CustomTask {
 
     pub fn variable(mut self, key: &str, value: &str) -> Self {
         self.variables.insert(
-            format!("GOFER_PLUGIN_PARAM_{}", key.to_uppercase()),
+            format!("GOFER_EXTENSION_PARAM_{}", key.to_uppercase()),
             value.to_string(),
         );
         self
@@ -400,7 +400,7 @@ impl CustomTask {
             .iter()
             .map(|(key, value)| {
                 (
-                    format!("GOFER_PLUGIN_PARAM_{}", key.to_uppercase()),
+                    format!("GOFER_EXTENSION_PARAM_{}", key.to_uppercase()),
                     value.clone(),
                 )
             })

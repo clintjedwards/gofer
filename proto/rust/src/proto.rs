@@ -1554,41 +1554,6 @@ pub struct GetCommonTaskInstallInstructionsResponse {
 ////////////// Extension Service Transport Models //////////////
 
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExtensionWatchRequest {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExtensionWatchResponse {
-    /// The extension can choose to give extra details about the specific extension
-    /// event result in the form of a string description.
-    #[prost(string, tag="1")]
-    pub details: ::prost::alloc::string::String,
-    /// Unique identifier for namespace.
-    #[prost(string, tag="2")]
-    pub namespace_id: ::prost::alloc::string::String,
-    /// Unique identifier for pipeline.
-    #[prost(string, tag="3")]
-    pub pipeline_id: ::prost::alloc::string::String,
-    /// Unique id of extension instance.
-    #[prost(string, tag="4")]
-    pub pipeline_extension_label: ::prost::alloc::string::String,
-    #[prost(enumeration="extension_watch_response::Result", tag="5")]
-    pub result: i32,
-    /// Metadata is passed to the tasks as extra environment variables.
-    #[prost(map="string, string", tag="6")]
-    pub metadata: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
-}
-/// Nested message and enum types in `ExtensionWatchResponse`.
-pub mod extension_watch_response {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Result {
-        Unknown = 0,
-        Success = 1,
-        Failure = 2,
-        Skipped = 3,
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExtensionInfoRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -3673,27 +3638,6 @@ pub mod extension_service_client {
         pub fn accept_gzip(mut self) -> Self {
             self.inner = self.inner.accept_gzip();
             self
-        }
-        /// Watch blocks until the extension has a pipeline that should be run, then it
-        /// returns.
-        pub async fn watch(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ExtensionWatchRequest>,
-        ) -> Result<tonic::Response<super::ExtensionWatchResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.ExtensionService/Watch",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
         }
         /// Info returns information on the specific plugin
         pub async fn info(
@@ -7422,12 +7366,6 @@ pub mod extension_service_server {
     ///Generated trait containing gRPC methods that should be implemented for use with ExtensionServiceServer.
     #[async_trait]
     pub trait ExtensionService: Send + Sync + 'static {
-        /// Watch blocks until the extension has a pipeline that should be run, then it
-        /// returns.
-        async fn watch(
-            &self,
-            request: tonic::Request<super::ExtensionWatchRequest>,
-        ) -> Result<tonic::Response<super::ExtensionWatchResponse>, tonic::Status>;
         /// Info returns information on the specific plugin
         async fn info(
             &self,
@@ -7512,44 +7450,6 @@ pub mod extension_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/proto.ExtensionService/Watch" => {
-                    #[allow(non_camel_case_types)]
-                    struct WatchSvc<T: ExtensionService>(pub Arc<T>);
-                    impl<
-                        T: ExtensionService,
-                    > tonic::server::UnaryService<super::ExtensionWatchRequest>
-                    for WatchSvc<T> {
-                        type Response = super::ExtensionWatchResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ExtensionWatchRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).watch(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = WatchSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/proto.ExtensionService/Info" => {
                     #[allow(non_camel_case_types)]
                     struct InfoSvc<T: ExtensionService>(pub Arc<T>);

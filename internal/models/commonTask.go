@@ -180,7 +180,7 @@ func (c *CommonTaskRegistration) FromInstallCommonTaskRequest(proto *proto.Insta
 	variables := []Variable{}
 	for key, value := range proto.Variables {
 		variables = append(variables, Variable{
-			Key:    fmt.Sprintf("GOFER_PLUGIN_CONFIG_%s", strings.ToUpper(key)),
+			Key:    fmt.Sprintf("GOFER_EXTENSION_CONFIG_%s", strings.ToUpper(key)),
 			Value:  value,
 			Source: VariableSourceSystem,
 		})

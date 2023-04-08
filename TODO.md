@@ -137,14 +137,16 @@ We can also create bespoke common tasks that do this.
   - We are forgoing having cli spit out Json due to gofer having an API, the cli is meant for humans and shouldn't be used by programs.
 - Write copius notes on commontasks and extensions layout. The difference between user passed config and system passed config. And suggest a way to collect those.
   - Gofer passes them one set of env vars from the gofer system itself
-    These are prefixed with `gofer_plugin_system_{var}`
+    These are prefixed with `gofer_extension_system_{var}`
   - Gofer then passes them another set of env vars from the admin that was set up through registration.
-    These are prefixed with `gofer_plugin_config_{var}`
+    These are prefixed with `gofer_extension_config_{var}`
   - Gofer then passes them another set of env vars from the user's own config.
-    These are prefixed with `gofer_plugin_param_{var}`
+    These are prefixed with `gofer_extension_param_{var}`
 - Write better documentation on how to spin Gofer up locally so you can test out your pipeline.
 
 ### On the floor
+
+- StartRun needs a startedBY field and a Reason field.
 
 - We can possibly get rid of common tasks now that the extensions work how they do.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.

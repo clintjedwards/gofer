@@ -3133,9 +3133,6 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ExtensionServiceClient interface {
-	// Watch blocks until the extension has a pipeline that should be run, then it
-	// returns.
-	Watch(ctx context.Context, in *ExtensionWatchRequest, opts ...grpc.CallOption) (*ExtensionWatchResponse, error)
 	// Info returns information on the specific plugin
 	Info(ctx context.Context, in *ExtensionInfoRequest, opts ...grpc.CallOption) (*ExtensionInfoResponse, error)
 	// Subscribe allows a extension to keep track of all pipelines currently
@@ -3162,15 +3159,6 @@ type extensionServiceClient struct {
 
 func NewExtensionServiceClient(cc grpc.ClientConnInterface) ExtensionServiceClient {
 	return &extensionServiceClient{cc}
-}
-
-func (c *extensionServiceClient) Watch(ctx context.Context, in *ExtensionWatchRequest, opts ...grpc.CallOption) (*ExtensionWatchResponse, error) {
-	out := new(ExtensionWatchResponse)
-	err := c.cc.Invoke(ctx, "/proto.ExtensionService/Watch", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *extensionServiceClient) Info(ctx context.Context, in *ExtensionInfoRequest, opts ...grpc.CallOption) (*ExtensionInfoResponse, error) {
@@ -3222,9 +3210,6 @@ func (c *extensionServiceClient) ExternalEvent(ctx context.Context, in *Extensio
 // All implementations must embed UnimplementedExtensionServiceServer
 // for forward compatibility
 type ExtensionServiceServer interface {
-	// Watch blocks until the extension has a pipeline that should be run, then it
-	// returns.
-	Watch(context.Context, *ExtensionWatchRequest) (*ExtensionWatchResponse, error)
 	// Info returns information on the specific plugin
 	Info(context.Context, *ExtensionInfoRequest) (*ExtensionInfoResponse, error)
 	// Subscribe allows a extension to keep track of all pipelines currently
@@ -3250,9 +3235,6 @@ type ExtensionServiceServer interface {
 type UnimplementedExtensionServiceServer struct {
 }
 
-func (UnimplementedExtensionServiceServer) Watch(context.Context, *ExtensionWatchRequest) (*ExtensionWatchResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Watch not implemented")
-}
 func (UnimplementedExtensionServiceServer) Info(context.Context, *ExtensionInfoRequest) (*ExtensionInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
 }
@@ -3279,24 +3261,6 @@ type UnsafeExtensionServiceServer interface {
 
 func RegisterExtensionServiceServer(s grpc.ServiceRegistrar, srv ExtensionServiceServer) {
 	s.RegisterService(&ExtensionService_ServiceDesc, srv)
-}
-
-func _ExtensionService_Watch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExtensionWatchRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ExtensionServiceServer).Watch(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.ExtensionService/Watch",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExtensionServiceServer).Watch(ctx, req.(*ExtensionWatchRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _ExtensionService_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -3396,10 +3360,6 @@ var ExtensionService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.ExtensionService",
 	HandlerType: (*ExtensionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Watch",
-			Handler:    _ExtensionService_Watch_Handler,
-		},
 		{
 			MethodName: "Info",
 			Handler:    _ExtensionService_Info_Handler,

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	// The proto package provides some data structures that we'll need to return to our interface.
+
 	proto "github.com/clintjedwards/gofer/proto/go"
 
 	// The plugins package contains a bunch of convenience functions that we use to build our extension.
@@ -81,10 +82,6 @@ type extension struct {
 	// is very useful.
 	quitAllSubscriptions context.CancelFunc
 
-	// The events channel is simply a store for extension events.
-	// It keeps them until Gofer calls the Watch function and requests them.
-	events chan *proto.ExtensionWatchResponse
-
 	// The parent context is stored here so that we have a common parent for all goroutines we spin up.
 	// This enables us to manipulate all goroutines at the same time.
 	parentContext context.Context
@@ -99,7 +96,7 @@ type extension struct {
 // that was passed to it and generally gets the extension ready to take requests.
 func newExtension() (*extension, error) {
 	// The GetConfig function wrap our `min duration` config and retrieves it from the environment.
-	// Extension config environment variables are passed in as "GOFER_PLUGIN_CONFIG_%s" so that they don't conflict
+	// Extension config environment variables are passed in as "GOFER_EXTENSION_CONFIG_%s" so that they don't conflict
 	// with any other environment variables that might be around.
 	minDurationStr := sdk.GetConfig(ConfigMinDuration)
 	minDuration := time.Minute * 1
@@ -115,7 +112,6 @@ func newExtension() (*extension, error) {
 
 	return &extension{
 		minDuration:          minDuration,
-		events:               make(chan *proto.ExtensionWatchResponse, 100),
 		quitAllSubscriptions: cancel,
 		parentContext:        ctx,
 		subscriptions:        map[subscriptionID]*subscription{},
@@ -124,23 +120,36 @@ func newExtension() (*extension, error) {
 
 // startInterval is the main logic of what enables the interval extension to work. Each pipeline that is subscribed runs
 // this function which simply waits for the set duration and then pushes a "WatchResponse" event into the extension's main channel.
-func (t *extension) startInterval(ctx context.Context, namespace, pipeline string, pipelineExtensionLabel string, duration time.Duration,
+func (e *extension) startInterval(ctx context.Context, namespace, pipeline string, pipelineExtensionLabel string, duration time.Duration,
 ) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(duration):
-			t.events <- &proto.ExtensionWatchResponse{
-				Details:                "Triggered due to the passage of time.",
-				PipelineExtensionLabel: pipelineExtensionLabel,
-				NamespaceId:            namespace,
-				PipelineId:             pipeline,
-				Result:                 proto.ExtensionWatchResponse_SUCCESS,
-				Metadata:               map[string]string{},
+			client, ctx, err := sdk.Connect()
+			if err != nil {
+				log.Error().Str("namespaceID", namespace).Str("pipelineID", pipeline).
+					Str("extension_label", pipelineExtensionLabel).Msg("could not connect to Gofer")
+
+				continue
 			}
-			log.Debug().Str("namespaceID", namespace).Str("pipelineID", pipeline).
-				Str("extension_label", pipelineExtensionLabel).Msg("new tick for specified interval; new event spawned")
+
+			resp, err := client.StartRun(ctx, &proto.StartRunRequest{
+				NamespaceId: namespace,
+				PipelineId:  pipeline,
+				Variables:   map[string]string{},
+			})
+			if err != nil {
+				log.Error().Str("namespaceID", namespace).Str("pipelineID", pipeline).
+					Str("extension_label", pipelineExtensionLabel).Msg("could not start new run")
+
+				continue
+			}
+
+			log.Debug().Str("namespace_id", namespace).Str("pipeline_id", pipeline).
+				Str("extension_label", pipelineExtensionLabel).Int64("run_id", resp.Run.Id).
+				Msg("new tick for specified interval; new event spawned")
 		}
 	}
 }
@@ -151,7 +160,7 @@ func (t *extension) startInterval(ctx context.Context, namespace, pipeline strin
 //   - We validate the parameters.
 //   - We create a new subscription object and enter it into our map.
 //   - We call the `startInterval` function in a goroutine for that specific pipeline and return.
-func (t *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
+func (e *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
 	interval, exists := request.Config[strings.ToUpper(ParameterEvery)]
 	if !exists {
 		return nil, fmt.Errorf("could not find required configuration parameter %q; received config params: %+v", ParameterEvery, request.Config)
@@ -162,8 +171,8 @@ func (t *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubsc
 		return nil, fmt.Errorf("could not parse interval string: %w", err)
 	}
 
-	if duration < t.minDuration {
-		return nil, fmt.Errorf("durations cannot be less than %s", t.minDuration)
+	if duration < e.minDuration {
+		return nil, fmt.Errorf("durations cannot be less than %s", e.minDuration)
 	}
 
 	subID := subscriptionID{
@@ -174,44 +183,33 @@ func (t *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubsc
 
 	// It is perfectly possible for Gofer to attempt to subscribe an already subscribed pipeline. In this case,
 	// we can simply ignore the request.
-	_, exists = t.subscriptions[subID]
+	_, exists = e.subscriptions[subID]
 	if exists {
 		log.Debug().Str("namespace_id", request.NamespaceId).Str("extension_label", request.PipelineExtensionLabel).
 			Str("pipeline_id", request.PipelineId).Msg("pipeline already subscribed; ignoring request")
 		return &proto.ExtensionSubscribeResponse{}, nil
 	}
 
-	subctx, quit := context.WithCancel(t.parentContext)
-	t.subscriptions[subID] = &subscription{
+	subctx, quit := context.WithCancel(e.parentContext)
+	e.subscriptions[subID] = &subscription{
 		namespace:              request.NamespaceId,
 		pipeline:               request.PipelineId,
 		pipelineExtensionLabel: request.PipelineExtensionLabel,
 		quit:                   quit,
 	}
 
-	go t.startInterval(subctx, request.NamespaceId, request.PipelineId, request.PipelineExtensionLabel, duration)
+	go e.startInterval(subctx, request.NamespaceId, request.PipelineId, request.PipelineExtensionLabel, duration)
 
 	log.Debug().Str("namespace_id", request.NamespaceId).Str("extension_label", request.PipelineExtensionLabel).
 		Str("pipeline_id", request.PipelineId).Msg("subscribed pipeline")
 	return &proto.ExtensionSubscribeResponse{}, nil
 }
 
-// Gofer continuously calls the watch endpoint to receive events from the Extension. Below we simply block until we
-// are told to shutdown or we have an event to give.
-func (t *extension) Watch(ctx context.Context, request *proto.ExtensionWatchRequest) (*proto.ExtensionWatchResponse, error) {
-	select {
-	case <-ctx.Done():
-		return &proto.ExtensionWatchResponse{}, nil
-	case event := <-t.events:
-		return event, nil
-	}
-}
-
 // Pipelines change and this means that sometimes they will no longer want to be executed by a particular extension or maybe
 // they want to change the previous settings on that extension. Because of this we need a way to remove pipelines that were
 // previously subscribed.
-func (t *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error) {
-	subscription, exists := t.subscriptions[subscriptionID{
+func (e *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error) {
+	subscription, exists := e.subscriptions[subscriptionID{
 		namespace:              request.NamespaceId,
 		pipeline:               request.PipelineId,
 		pipelineExtensionLabel: request.PipelineExtensionLabel,
@@ -226,7 +224,7 @@ func (t *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUns
 	}
 
 	subscription.quit()
-	delete(t.subscriptions, subscriptionID{
+	delete(e.subscriptions, subscriptionID{
 		namespace:              request.NamespaceId,
 		pipeline:               request.PipelineId,
 		pipelineExtensionLabel: request.PipelineExtensionLabel,
@@ -236,7 +234,7 @@ func (t *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUns
 
 // Info is mostly used as a health check endpoint. It returns some basic info about a extension, the most important
 // being where to get more documentation about that specific extension.
-func (t *extension) Info(ctx context.Context, request *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
+func (e *extension) Info(ctx context.Context, request *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
 	return sdk.InfoResponse("https://clintjedwards.com/gofer/ref/extensions/provided/interval.html")
 }
 
@@ -244,16 +242,15 @@ func (t *extension) Info(ctx context.Context, request *proto.ExtensionInfoReques
 // This system is set up to facilitate webhook interactions like those that occur for github
 // (A user pushes a branch, Gofer gets an event from github).
 // The ExternalEvent will come with a payload which the extension can then authenticate, process, and take action on.
-func (t *extension) ExternalEvent(ctx context.Context, request *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error) {
+func (e *extension) ExternalEvent(ctx context.Context, request *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error) {
 	return &proto.ExtensionExternalEventResponse{}, nil
 }
 
 // A graceful shutdown for a extension should clean up any resources it was working with that might be left hanging.
 // Sometimes that means sending requests to third parties that it is shutting down, sometimes that just means
 // reaping its personal goroutines.
-func (t *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error) {
-	t.quitAllSubscriptions()
-	close(t.events)
+func (e *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error) {
+	e.quitAllSubscriptions()
 
 	return &proto.ExtensionShutdownResponse{}, nil
 }

@@ -64,27 +64,27 @@ func (api *API) GetExtensionInstallInstructions(ctx context.Context, request *pr
 	// variables.
 	systemExtensionVars := []models.Variable{
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_TLS_CERT",
+			Key:    "GOFER_EXTENSION_SYSTEM_TLS_CERT",
 			Value:  string(cert),
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_TLS_KEY",
+			Key:    "GOFER_EXTENSION_SYSTEM_TLS_KEY",
 			Value:  string(key),
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_NAME",
+			Key:    "GOFER_EXTENSION_SYSTEM_NAME",
 			Value:  "Installer",
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_LOG_LEVEL",
+			Key:    "GOFER_EXTENSION_SYSTEM_LOG_LEVEL",
 			Value:  api.config.LogLevel,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_KEY",
+			Key:    "GOFER_EXTENSION_SYSTEM_KEY",
 			Value:  extensionKey,
 			Source: models.VariableSourceSystem,
 		},

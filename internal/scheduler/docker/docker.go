@@ -156,7 +156,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 	hostConfig := &container.HostConfig{}
 
 	if req.EnableNetworking {
-		port, err := nat.NewPort("tcp", "8080")
+		port, err := nat.NewPort("tcp", "8081")
 		if err != nil {
 			return scheduler.StartContainerResponse{}, err
 		}
@@ -168,7 +168,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		}
 
 		hostConfig.PortBindings = nat.PortMap{
-			"8080/tcp": []nat.PortBinding{
+			"8081/tcp": []nat.PortBinding{
 				hostPortMap,
 			},
 		}
@@ -205,7 +205,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		HostPort: "",
 	}
 	if req.EnableNetworking {
-		rawHostPort = containerInfo.NetworkSettings.Ports["8080/tcp"][0]
+		rawHostPort = containerInfo.NetworkSettings.Ports["8081/tcp"][0]
 	}
 
 	return scheduler.StartContainerResponse{

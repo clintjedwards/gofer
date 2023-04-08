@@ -433,42 +433,37 @@ var file_gofer_proto_rawDesc = []byte{
 	0x74, 0x73, 0x12, 0x18, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x45,
 	0x76, 0x65, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x30, 0x01, 0x32, 0xf2, 0x03, 0x0a, 0x10, 0x45, 0x78,
-	0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x44,
-	0x0a, 0x05, 0x57, 0x61, 0x74, 0x63, 0x68, 0x12, 0x1c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x57, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78,
-	0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x57, 0x61, 0x74, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x41, 0x0a, 0x04, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1b, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e,
-	0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x66, 0x6f, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x50, 0x0a, 0x09, 0x53, 0x75, 0x62, 0x73, 0x63,
-	0x72, 0x69, 0x62, 0x65, 0x12, 0x20, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74,
-	0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45,
-	0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62,
-	0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x56, 0x0a, 0x0b, 0x55, 0x6e, 0x73,
-	0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73,
-	0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x55, 0x6e,
-	0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x4d, 0x0a, 0x08, 0x53, 0x68, 0x75, 0x74, 0x64, 0x6f, 0x77, 0x6e, 0x12, 0x1f, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53,
-	0x68, 0x75, 0x74, 0x64, 0x6f, 0x77, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x30, 0x01, 0x32, 0xac, 0x03, 0x0a, 0x10, 0x45, 0x78,
+	0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x41,
+	0x0a, 0x04, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1b, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45,
+	0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x50, 0x0a, 0x09, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x12, 0x20,
 	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e,
-	0x53, 0x68, 0x75, 0x74, 0x64, 0x6f, 0x77, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x12, 0x5c, 0x0a, 0x0d, 0x45, 0x78, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x45, 0x76, 0x65, 0x6e,
-	0x74, 0x12, 0x24, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x21, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69,
+	0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x56, 0x0a, 0x0b, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69,
+	0x62, 0x65, 0x12, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e,
+	0x73, 0x69, 0x6f, 0x6e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45,
+	0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72,
+	0x69, 0x62, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x4d, 0x0a, 0x08, 0x53,
+	0x68, 0x75, 0x74, 0x64, 0x6f, 0x77, 0x6e, 0x12, 0x1f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
+	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x68, 0x75, 0x74, 0x64, 0x6f, 0x77,
+	0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x68, 0x75, 0x74, 0x64, 0x6f,
+	0x77, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x5c, 0x0a, 0x0d, 0x45, 0x78,
+	0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x24, 0x2e, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x78, 0x74,
+	0x65, 0x72, 0x6e, 0x61, 0x6c, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x25, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
 	0x69, 0x6f, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x45, 0x76, 0x65, 0x6e, 0x74,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x72, 0x6e, 0x61,
-	0x6c, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x29,
-	0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69,
-	0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77, 0x61, 0x72, 0x64, 0x73, 0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72,
-	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68,
+	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77,
+	0x61, 0x72, 0x64, 0x73, 0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x2f, 0x67, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var file_gofer_proto_goTypes = []interface{}{
@@ -548,94 +543,92 @@ var file_gofer_proto_goTypes = []interface{}{
 	(*DeleteGlobalSecretRequest)(nil),                    // 73: proto.DeleteGlobalSecretRequest
 	(*GetEventRequest)(nil),                              // 74: proto.GetEventRequest
 	(*ListEventsRequest)(nil),                            // 75: proto.ListEventsRequest
-	(*ExtensionWatchRequest)(nil),                        // 76: proto.ExtensionWatchRequest
-	(*ExtensionInfoRequest)(nil),                         // 77: proto.ExtensionInfoRequest
-	(*ExtensionSubscribeRequest)(nil),                    // 78: proto.ExtensionSubscribeRequest
-	(*ExtensionUnsubscribeRequest)(nil),                  // 79: proto.ExtensionUnsubscribeRequest
-	(*ExtensionShutdownRequest)(nil),                     // 80: proto.ExtensionShutdownRequest
-	(*ExtensionExternalEventRequest)(nil),                // 81: proto.ExtensionExternalEventRequest
-	(*GetSystemInfoResponse)(nil),                        // 82: proto.GetSystemInfoResponse
-	(*RepairOrphanResponse)(nil),                         // 83: proto.RepairOrphanResponse
-	(*ToggleEventIngressResponse)(nil),                   // 84: proto.ToggleEventIngressResponse
-	(*CreateTokenResponse)(nil),                          // 85: proto.CreateTokenResponse
-	(*BootstrapTokenResponse)(nil),                       // 86: proto.BootstrapTokenResponse
-	(*ListTokensResponse)(nil),                           // 87: proto.ListTokensResponse
-	(*GetTokenResponse)(nil),                             // 88: proto.GetTokenResponse
-	(*EnableTokenResponse)(nil),                          // 89: proto.EnableTokenResponse
-	(*DisableTokenResponse)(nil),                         // 90: proto.DisableTokenResponse
-	(*DeleteTokenResponse)(nil),                          // 91: proto.DeleteTokenResponse
-	(*ListNamespacesResponse)(nil),                       // 92: proto.ListNamespacesResponse
-	(*CreateNamespaceResponse)(nil),                      // 93: proto.CreateNamespaceResponse
-	(*GetNamespaceResponse)(nil),                         // 94: proto.GetNamespaceResponse
-	(*UpdateNamespaceResponse)(nil),                      // 95: proto.UpdateNamespaceResponse
-	(*DeleteNamespaceResponse)(nil),                      // 96: proto.DeleteNamespaceResponse
-	(*GetPipelineResponse)(nil),                          // 97: proto.GetPipelineResponse
-	(*ListPipelinesResponse)(nil),                        // 98: proto.ListPipelinesResponse
-	(*EnablePipelineResponse)(nil),                       // 99: proto.EnablePipelineResponse
-	(*DisablePipelineResponse)(nil),                      // 100: proto.DisablePipelineResponse
-	(*DeployPipelineResponse)(nil),                       // 101: proto.DeployPipelineResponse
-	(*DeletePipelineResponse)(nil),                       // 102: proto.DeletePipelineResponse
-	(*RegisterPipelineConfigResponse)(nil),               // 103: proto.RegisterPipelineConfigResponse
-	(*ListPipelineConfigsResponse)(nil),                  // 104: proto.ListPipelineConfigsResponse
-	(*GetPipelineConfigResponse)(nil),                    // 105: proto.GetPipelineConfigResponse
-	(*DeletePipelineConfigResponse)(nil),                 // 106: proto.DeletePipelineConfigResponse
-	(*CreatePipelineExtensionSubscriptionResponse)(nil),  // 107: proto.CreatePipelineExtensionSubscriptionResponse
-	(*ListPipelineExtensionSubscriptionsResponse)(nil),   // 108: proto.ListPipelineExtensionSubscriptionsResponse
-	(*GetPipelineExtensionSubscriptionResponse)(nil),     // 109: proto.GetPipelineExtensionSubscriptionResponse
-	(*EnablePipelineExtensionSubscriptionResponse)(nil),  // 110: proto.EnablePipelineExtensionSubscriptionResponse
-	(*DisablePipelineExtensionSubscriptionResponse)(nil), // 111: proto.DisablePipelineExtensionSubscriptionResponse
-	(*DeletePipelineExtensionSubscriptionResponse)(nil),  // 112: proto.DeletePipelineExtensionSubscriptionResponse
-	(*ListDeploymentsResponse)(nil),                      // 113: proto.ListDeploymentsResponse
-	(*GetDeploymentResponse)(nil),                        // 114: proto.GetDeploymentResponse
-	(*GetRunResponse)(nil),                               // 115: proto.GetRunResponse
-	(*ListRunsResponse)(nil),                             // 116: proto.ListRunsResponse
-	(*StartRunResponse)(nil),                             // 117: proto.StartRunResponse
-	(*RetryRunResponse)(nil),                             // 118: proto.RetryRunResponse
-	(*CancelRunResponse)(nil),                            // 119: proto.CancelRunResponse
-	(*CancelAllRunsResponse)(nil),                        // 120: proto.CancelAllRunsResponse
-	(*GetTaskRunResponse)(nil),                           // 121: proto.GetTaskRunResponse
-	(*ListTaskRunsResponse)(nil),                         // 122: proto.ListTaskRunsResponse
-	(*CancelTaskRunResponse)(nil),                        // 123: proto.CancelTaskRunResponse
-	(*GetTaskRunLogsResponse)(nil),                       // 124: proto.GetTaskRunLogsResponse
-	(*DeleteTaskRunLogsResponse)(nil),                    // 125: proto.DeleteTaskRunLogsResponse
-	(*GetExtensionResponse)(nil),                         // 126: proto.GetExtensionResponse
-	(*ListExtensionsResponse)(nil),                       // 127: proto.ListExtensionsResponse
-	(*GetExtensionInstallInstructionsResponse)(nil),      // 128: proto.GetExtensionInstallInstructionsResponse
-	(*InstallExtensionResponse)(nil),                     // 129: proto.InstallExtensionResponse
-	(*UninstallExtensionResponse)(nil),                   // 130: proto.UninstallExtensionResponse
-	(*EnableExtensionResponse)(nil),                      // 131: proto.EnableExtensionResponse
-	(*DisableExtensionResponse)(nil),                     // 132: proto.DisableExtensionResponse
-	(*GetCommonTaskResponse)(nil),                        // 133: proto.GetCommonTaskResponse
-	(*ListCommonTasksResponse)(nil),                      // 134: proto.ListCommonTasksResponse
-	(*GetCommonTaskInstallInstructionsResponse)(nil),     // 135: proto.GetCommonTaskInstallInstructionsResponse
-	(*InstallCommonTaskResponse)(nil),                    // 136: proto.InstallCommonTaskResponse
-	(*UninstallCommonTaskResponse)(nil),                  // 137: proto.UninstallCommonTaskResponse
-	(*EnableCommonTaskResponse)(nil),                     // 138: proto.EnableCommonTaskResponse
-	(*DisableCommonTaskResponse)(nil),                    // 139: proto.DisableCommonTaskResponse
-	(*ListPipelineObjectsResponse)(nil),                  // 140: proto.ListPipelineObjectsResponse
-	(*GetPipelineObjectResponse)(nil),                    // 141: proto.GetPipelineObjectResponse
-	(*PutPipelineObjectResponse)(nil),                    // 142: proto.PutPipelineObjectResponse
-	(*DeletePipelineObjectResponse)(nil),                 // 143: proto.DeletePipelineObjectResponse
-	(*ListRunObjectsResponse)(nil),                       // 144: proto.ListRunObjectsResponse
-	(*GetRunObjectResponse)(nil),                         // 145: proto.GetRunObjectResponse
-	(*PutRunObjectResponse)(nil),                         // 146: proto.PutRunObjectResponse
-	(*DeleteRunObjectResponse)(nil),                      // 147: proto.DeleteRunObjectResponse
-	(*GetPipelineSecretResponse)(nil),                    // 148: proto.GetPipelineSecretResponse
-	(*ListPipelineSecretsResponse)(nil),                  // 149: proto.ListPipelineSecretsResponse
-	(*PutPipelineSecretResponse)(nil),                    // 150: proto.PutPipelineSecretResponse
-	(*DeletePipelineSecretResponse)(nil),                 // 151: proto.DeletePipelineSecretResponse
-	(*GetGlobalSecretResponse)(nil),                      // 152: proto.GetGlobalSecretResponse
-	(*ListGlobalSecretsResponse)(nil),                    // 153: proto.ListGlobalSecretsResponse
-	(*PutGlobalSecretResponse)(nil),                      // 154: proto.PutGlobalSecretResponse
-	(*DeleteGlobalSecretResponse)(nil),                   // 155: proto.DeleteGlobalSecretResponse
-	(*GetEventResponse)(nil),                             // 156: proto.GetEventResponse
-	(*ListEventsResponse)(nil),                           // 157: proto.ListEventsResponse
-	(*ExtensionWatchResponse)(nil),                       // 158: proto.ExtensionWatchResponse
-	(*ExtensionInfoResponse)(nil),                        // 159: proto.ExtensionInfoResponse
-	(*ExtensionSubscribeResponse)(nil),                   // 160: proto.ExtensionSubscribeResponse
-	(*ExtensionUnsubscribeResponse)(nil),                 // 161: proto.ExtensionUnsubscribeResponse
-	(*ExtensionShutdownResponse)(nil),                    // 162: proto.ExtensionShutdownResponse
-	(*ExtensionExternalEventResponse)(nil),               // 163: proto.ExtensionExternalEventResponse
+	(*ExtensionInfoRequest)(nil),                         // 76: proto.ExtensionInfoRequest
+	(*ExtensionSubscribeRequest)(nil),                    // 77: proto.ExtensionSubscribeRequest
+	(*ExtensionUnsubscribeRequest)(nil),                  // 78: proto.ExtensionUnsubscribeRequest
+	(*ExtensionShutdownRequest)(nil),                     // 79: proto.ExtensionShutdownRequest
+	(*ExtensionExternalEventRequest)(nil),                // 80: proto.ExtensionExternalEventRequest
+	(*GetSystemInfoResponse)(nil),                        // 81: proto.GetSystemInfoResponse
+	(*RepairOrphanResponse)(nil),                         // 82: proto.RepairOrphanResponse
+	(*ToggleEventIngressResponse)(nil),                   // 83: proto.ToggleEventIngressResponse
+	(*CreateTokenResponse)(nil),                          // 84: proto.CreateTokenResponse
+	(*BootstrapTokenResponse)(nil),                       // 85: proto.BootstrapTokenResponse
+	(*ListTokensResponse)(nil),                           // 86: proto.ListTokensResponse
+	(*GetTokenResponse)(nil),                             // 87: proto.GetTokenResponse
+	(*EnableTokenResponse)(nil),                          // 88: proto.EnableTokenResponse
+	(*DisableTokenResponse)(nil),                         // 89: proto.DisableTokenResponse
+	(*DeleteTokenResponse)(nil),                          // 90: proto.DeleteTokenResponse
+	(*ListNamespacesResponse)(nil),                       // 91: proto.ListNamespacesResponse
+	(*CreateNamespaceResponse)(nil),                      // 92: proto.CreateNamespaceResponse
+	(*GetNamespaceResponse)(nil),                         // 93: proto.GetNamespaceResponse
+	(*UpdateNamespaceResponse)(nil),                      // 94: proto.UpdateNamespaceResponse
+	(*DeleteNamespaceResponse)(nil),                      // 95: proto.DeleteNamespaceResponse
+	(*GetPipelineResponse)(nil),                          // 96: proto.GetPipelineResponse
+	(*ListPipelinesResponse)(nil),                        // 97: proto.ListPipelinesResponse
+	(*EnablePipelineResponse)(nil),                       // 98: proto.EnablePipelineResponse
+	(*DisablePipelineResponse)(nil),                      // 99: proto.DisablePipelineResponse
+	(*DeployPipelineResponse)(nil),                       // 100: proto.DeployPipelineResponse
+	(*DeletePipelineResponse)(nil),                       // 101: proto.DeletePipelineResponse
+	(*RegisterPipelineConfigResponse)(nil),               // 102: proto.RegisterPipelineConfigResponse
+	(*ListPipelineConfigsResponse)(nil),                  // 103: proto.ListPipelineConfigsResponse
+	(*GetPipelineConfigResponse)(nil),                    // 104: proto.GetPipelineConfigResponse
+	(*DeletePipelineConfigResponse)(nil),                 // 105: proto.DeletePipelineConfigResponse
+	(*CreatePipelineExtensionSubscriptionResponse)(nil),  // 106: proto.CreatePipelineExtensionSubscriptionResponse
+	(*ListPipelineExtensionSubscriptionsResponse)(nil),   // 107: proto.ListPipelineExtensionSubscriptionsResponse
+	(*GetPipelineExtensionSubscriptionResponse)(nil),     // 108: proto.GetPipelineExtensionSubscriptionResponse
+	(*EnablePipelineExtensionSubscriptionResponse)(nil),  // 109: proto.EnablePipelineExtensionSubscriptionResponse
+	(*DisablePipelineExtensionSubscriptionResponse)(nil), // 110: proto.DisablePipelineExtensionSubscriptionResponse
+	(*DeletePipelineExtensionSubscriptionResponse)(nil),  // 111: proto.DeletePipelineExtensionSubscriptionResponse
+	(*ListDeploymentsResponse)(nil),                      // 112: proto.ListDeploymentsResponse
+	(*GetDeploymentResponse)(nil),                        // 113: proto.GetDeploymentResponse
+	(*GetRunResponse)(nil),                               // 114: proto.GetRunResponse
+	(*ListRunsResponse)(nil),                             // 115: proto.ListRunsResponse
+	(*StartRunResponse)(nil),                             // 116: proto.StartRunResponse
+	(*RetryRunResponse)(nil),                             // 117: proto.RetryRunResponse
+	(*CancelRunResponse)(nil),                            // 118: proto.CancelRunResponse
+	(*CancelAllRunsResponse)(nil),                        // 119: proto.CancelAllRunsResponse
+	(*GetTaskRunResponse)(nil),                           // 120: proto.GetTaskRunResponse
+	(*ListTaskRunsResponse)(nil),                         // 121: proto.ListTaskRunsResponse
+	(*CancelTaskRunResponse)(nil),                        // 122: proto.CancelTaskRunResponse
+	(*GetTaskRunLogsResponse)(nil),                       // 123: proto.GetTaskRunLogsResponse
+	(*DeleteTaskRunLogsResponse)(nil),                    // 124: proto.DeleteTaskRunLogsResponse
+	(*GetExtensionResponse)(nil),                         // 125: proto.GetExtensionResponse
+	(*ListExtensionsResponse)(nil),                       // 126: proto.ListExtensionsResponse
+	(*GetExtensionInstallInstructionsResponse)(nil),      // 127: proto.GetExtensionInstallInstructionsResponse
+	(*InstallExtensionResponse)(nil),                     // 128: proto.InstallExtensionResponse
+	(*UninstallExtensionResponse)(nil),                   // 129: proto.UninstallExtensionResponse
+	(*EnableExtensionResponse)(nil),                      // 130: proto.EnableExtensionResponse
+	(*DisableExtensionResponse)(nil),                     // 131: proto.DisableExtensionResponse
+	(*GetCommonTaskResponse)(nil),                        // 132: proto.GetCommonTaskResponse
+	(*ListCommonTasksResponse)(nil),                      // 133: proto.ListCommonTasksResponse
+	(*GetCommonTaskInstallInstructionsResponse)(nil),     // 134: proto.GetCommonTaskInstallInstructionsResponse
+	(*InstallCommonTaskResponse)(nil),                    // 135: proto.InstallCommonTaskResponse
+	(*UninstallCommonTaskResponse)(nil),                  // 136: proto.UninstallCommonTaskResponse
+	(*EnableCommonTaskResponse)(nil),                     // 137: proto.EnableCommonTaskResponse
+	(*DisableCommonTaskResponse)(nil),                    // 138: proto.DisableCommonTaskResponse
+	(*ListPipelineObjectsResponse)(nil),                  // 139: proto.ListPipelineObjectsResponse
+	(*GetPipelineObjectResponse)(nil),                    // 140: proto.GetPipelineObjectResponse
+	(*PutPipelineObjectResponse)(nil),                    // 141: proto.PutPipelineObjectResponse
+	(*DeletePipelineObjectResponse)(nil),                 // 142: proto.DeletePipelineObjectResponse
+	(*ListRunObjectsResponse)(nil),                       // 143: proto.ListRunObjectsResponse
+	(*GetRunObjectResponse)(nil),                         // 144: proto.GetRunObjectResponse
+	(*PutRunObjectResponse)(nil),                         // 145: proto.PutRunObjectResponse
+	(*DeleteRunObjectResponse)(nil),                      // 146: proto.DeleteRunObjectResponse
+	(*GetPipelineSecretResponse)(nil),                    // 147: proto.GetPipelineSecretResponse
+	(*ListPipelineSecretsResponse)(nil),                  // 148: proto.ListPipelineSecretsResponse
+	(*PutPipelineSecretResponse)(nil),                    // 149: proto.PutPipelineSecretResponse
+	(*DeletePipelineSecretResponse)(nil),                 // 150: proto.DeletePipelineSecretResponse
+	(*GetGlobalSecretResponse)(nil),                      // 151: proto.GetGlobalSecretResponse
+	(*ListGlobalSecretsResponse)(nil),                    // 152: proto.ListGlobalSecretsResponse
+	(*PutGlobalSecretResponse)(nil),                      // 153: proto.PutGlobalSecretResponse
+	(*DeleteGlobalSecretResponse)(nil),                   // 154: proto.DeleteGlobalSecretResponse
+	(*GetEventResponse)(nil),                             // 155: proto.GetEventResponse
+	(*ListEventsResponse)(nil),                           // 156: proto.ListEventsResponse
+	(*ExtensionInfoResponse)(nil),                        // 157: proto.ExtensionInfoResponse
+	(*ExtensionSubscribeResponse)(nil),                   // 158: proto.ExtensionSubscribeResponse
+	(*ExtensionUnsubscribeResponse)(nil),                 // 159: proto.ExtensionUnsubscribeResponse
+	(*ExtensionShutdownResponse)(nil),                    // 160: proto.ExtensionShutdownResponse
+	(*ExtensionExternalEventResponse)(nil),               // 161: proto.ExtensionExternalEventResponse
 }
 var file_gofer_proto_depIdxs = []int32{
 	0,   // 0: proto.Gofer.GetSystemInfo:input_type -> proto.GetSystemInfoRequest
@@ -714,96 +707,94 @@ var file_gofer_proto_depIdxs = []int32{
 	73,  // 73: proto.Gofer.DeleteGlobalSecret:input_type -> proto.DeleteGlobalSecretRequest
 	74,  // 74: proto.Gofer.GetEvent:input_type -> proto.GetEventRequest
 	75,  // 75: proto.Gofer.ListEvents:input_type -> proto.ListEventsRequest
-	76,  // 76: proto.ExtensionService.Watch:input_type -> proto.ExtensionWatchRequest
-	77,  // 77: proto.ExtensionService.Info:input_type -> proto.ExtensionInfoRequest
-	78,  // 78: proto.ExtensionService.Subscribe:input_type -> proto.ExtensionSubscribeRequest
-	79,  // 79: proto.ExtensionService.Unsubscribe:input_type -> proto.ExtensionUnsubscribeRequest
-	80,  // 80: proto.ExtensionService.Shutdown:input_type -> proto.ExtensionShutdownRequest
-	81,  // 81: proto.ExtensionService.ExternalEvent:input_type -> proto.ExtensionExternalEventRequest
-	82,  // 82: proto.Gofer.GetSystemInfo:output_type -> proto.GetSystemInfoResponse
-	83,  // 83: proto.Gofer.RepairOrphan:output_type -> proto.RepairOrphanResponse
-	84,  // 84: proto.Gofer.ToggleEventIngress:output_type -> proto.ToggleEventIngressResponse
-	85,  // 85: proto.Gofer.CreateToken:output_type -> proto.CreateTokenResponse
-	86,  // 86: proto.Gofer.BootstrapToken:output_type -> proto.BootstrapTokenResponse
-	87,  // 87: proto.Gofer.ListTokens:output_type -> proto.ListTokensResponse
-	88,  // 88: proto.Gofer.GetToken:output_type -> proto.GetTokenResponse
-	89,  // 89: proto.Gofer.EnableToken:output_type -> proto.EnableTokenResponse
-	90,  // 90: proto.Gofer.DisableToken:output_type -> proto.DisableTokenResponse
-	91,  // 91: proto.Gofer.DeleteToken:output_type -> proto.DeleteTokenResponse
-	92,  // 92: proto.Gofer.ListNamespaces:output_type -> proto.ListNamespacesResponse
-	93,  // 93: proto.Gofer.CreateNamespace:output_type -> proto.CreateNamespaceResponse
-	94,  // 94: proto.Gofer.GetNamespace:output_type -> proto.GetNamespaceResponse
-	95,  // 95: proto.Gofer.UpdateNamespace:output_type -> proto.UpdateNamespaceResponse
-	96,  // 96: proto.Gofer.DeleteNamespace:output_type -> proto.DeleteNamespaceResponse
-	97,  // 97: proto.Gofer.GetPipeline:output_type -> proto.GetPipelineResponse
-	98,  // 98: proto.Gofer.ListPipelines:output_type -> proto.ListPipelinesResponse
-	99,  // 99: proto.Gofer.EnablePipeline:output_type -> proto.EnablePipelineResponse
-	100, // 100: proto.Gofer.DisablePipeline:output_type -> proto.DisablePipelineResponse
-	101, // 101: proto.Gofer.DeployPipeline:output_type -> proto.DeployPipelineResponse
-	102, // 102: proto.Gofer.DeletePipeline:output_type -> proto.DeletePipelineResponse
-	103, // 103: proto.Gofer.RegisterPipelineConfig:output_type -> proto.RegisterPipelineConfigResponse
-	104, // 104: proto.Gofer.ListPipelineConfigs:output_type -> proto.ListPipelineConfigsResponse
-	105, // 105: proto.Gofer.GetPipelineConfig:output_type -> proto.GetPipelineConfigResponse
-	106, // 106: proto.Gofer.DeletePipelineConfig:output_type -> proto.DeletePipelineConfigResponse
-	107, // 107: proto.Gofer.CreatePipelineExtensionSubscription:output_type -> proto.CreatePipelineExtensionSubscriptionResponse
-	108, // 108: proto.Gofer.ListPipelineExtensionSubscriptions:output_type -> proto.ListPipelineExtensionSubscriptionsResponse
-	109, // 109: proto.Gofer.GetPipelineExtensionSubscription:output_type -> proto.GetPipelineExtensionSubscriptionResponse
-	110, // 110: proto.Gofer.EnablePipelineExtensionSubscription:output_type -> proto.EnablePipelineExtensionSubscriptionResponse
-	111, // 111: proto.Gofer.DisablePipelineExtensionSubscription:output_type -> proto.DisablePipelineExtensionSubscriptionResponse
-	112, // 112: proto.Gofer.DeletePipelineExtensionSubscription:output_type -> proto.DeletePipelineExtensionSubscriptionResponse
-	113, // 113: proto.Gofer.ListDeployments:output_type -> proto.ListDeploymentsResponse
-	114, // 114: proto.Gofer.GetDeployment:output_type -> proto.GetDeploymentResponse
-	115, // 115: proto.Gofer.GetRun:output_type -> proto.GetRunResponse
-	116, // 116: proto.Gofer.ListRuns:output_type -> proto.ListRunsResponse
-	117, // 117: proto.Gofer.StartRun:output_type -> proto.StartRunResponse
-	118, // 118: proto.Gofer.RetryRun:output_type -> proto.RetryRunResponse
-	119, // 119: proto.Gofer.CancelRun:output_type -> proto.CancelRunResponse
-	120, // 120: proto.Gofer.CancelAllRuns:output_type -> proto.CancelAllRunsResponse
-	121, // 121: proto.Gofer.GetTaskRun:output_type -> proto.GetTaskRunResponse
-	122, // 122: proto.Gofer.ListTaskRuns:output_type -> proto.ListTaskRunsResponse
-	123, // 123: proto.Gofer.CancelTaskRun:output_type -> proto.CancelTaskRunResponse
-	124, // 124: proto.Gofer.GetTaskRunLogs:output_type -> proto.GetTaskRunLogsResponse
-	125, // 125: proto.Gofer.DeleteTaskRunLogs:output_type -> proto.DeleteTaskRunLogsResponse
-	126, // 126: proto.Gofer.GetExtension:output_type -> proto.GetExtensionResponse
-	127, // 127: proto.Gofer.ListExtensions:output_type -> proto.ListExtensionsResponse
-	128, // 128: proto.Gofer.GetExtensionInstallInstructions:output_type -> proto.GetExtensionInstallInstructionsResponse
-	129, // 129: proto.Gofer.InstallExtension:output_type -> proto.InstallExtensionResponse
-	130, // 130: proto.Gofer.UninstallExtension:output_type -> proto.UninstallExtensionResponse
-	131, // 131: proto.Gofer.EnableExtension:output_type -> proto.EnableExtensionResponse
-	132, // 132: proto.Gofer.DisableExtension:output_type -> proto.DisableExtensionResponse
-	133, // 133: proto.Gofer.GetCommonTask:output_type -> proto.GetCommonTaskResponse
-	134, // 134: proto.Gofer.ListCommonTasks:output_type -> proto.ListCommonTasksResponse
-	135, // 135: proto.Gofer.GetCommonTaskInstallInstructions:output_type -> proto.GetCommonTaskInstallInstructionsResponse
-	136, // 136: proto.Gofer.InstallCommonTask:output_type -> proto.InstallCommonTaskResponse
-	137, // 137: proto.Gofer.UninstallCommonTask:output_type -> proto.UninstallCommonTaskResponse
-	138, // 138: proto.Gofer.EnableCommonTask:output_type -> proto.EnableCommonTaskResponse
-	139, // 139: proto.Gofer.DisableCommonTask:output_type -> proto.DisableCommonTaskResponse
-	140, // 140: proto.Gofer.ListPipelineObjects:output_type -> proto.ListPipelineObjectsResponse
-	141, // 141: proto.Gofer.GetPipelineObject:output_type -> proto.GetPipelineObjectResponse
-	142, // 142: proto.Gofer.PutPipelineObject:output_type -> proto.PutPipelineObjectResponse
-	143, // 143: proto.Gofer.DeletePipelineObject:output_type -> proto.DeletePipelineObjectResponse
-	144, // 144: proto.Gofer.ListRunObjects:output_type -> proto.ListRunObjectsResponse
-	145, // 145: proto.Gofer.GetRunObject:output_type -> proto.GetRunObjectResponse
-	146, // 146: proto.Gofer.PutRunObject:output_type -> proto.PutRunObjectResponse
-	147, // 147: proto.Gofer.DeleteRunObject:output_type -> proto.DeleteRunObjectResponse
-	148, // 148: proto.Gofer.GetPipelineSecret:output_type -> proto.GetPipelineSecretResponse
-	149, // 149: proto.Gofer.ListPipelineSecrets:output_type -> proto.ListPipelineSecretsResponse
-	150, // 150: proto.Gofer.PutPipelineSecret:output_type -> proto.PutPipelineSecretResponse
-	151, // 151: proto.Gofer.DeletePipelineSecret:output_type -> proto.DeletePipelineSecretResponse
-	152, // 152: proto.Gofer.GetGlobalSecret:output_type -> proto.GetGlobalSecretResponse
-	153, // 153: proto.Gofer.ListGlobalSecrets:output_type -> proto.ListGlobalSecretsResponse
-	154, // 154: proto.Gofer.PutGlobalSecret:output_type -> proto.PutGlobalSecretResponse
-	155, // 155: proto.Gofer.DeleteGlobalSecret:output_type -> proto.DeleteGlobalSecretResponse
-	156, // 156: proto.Gofer.GetEvent:output_type -> proto.GetEventResponse
-	157, // 157: proto.Gofer.ListEvents:output_type -> proto.ListEventsResponse
-	158, // 158: proto.ExtensionService.Watch:output_type -> proto.ExtensionWatchResponse
-	159, // 159: proto.ExtensionService.Info:output_type -> proto.ExtensionInfoResponse
-	160, // 160: proto.ExtensionService.Subscribe:output_type -> proto.ExtensionSubscribeResponse
-	161, // 161: proto.ExtensionService.Unsubscribe:output_type -> proto.ExtensionUnsubscribeResponse
-	162, // 162: proto.ExtensionService.Shutdown:output_type -> proto.ExtensionShutdownResponse
-	163, // 163: proto.ExtensionService.ExternalEvent:output_type -> proto.ExtensionExternalEventResponse
-	82,  // [82:164] is the sub-list for method output_type
-	0,   // [0:82] is the sub-list for method input_type
+	76,  // 76: proto.ExtensionService.Info:input_type -> proto.ExtensionInfoRequest
+	77,  // 77: proto.ExtensionService.Subscribe:input_type -> proto.ExtensionSubscribeRequest
+	78,  // 78: proto.ExtensionService.Unsubscribe:input_type -> proto.ExtensionUnsubscribeRequest
+	79,  // 79: proto.ExtensionService.Shutdown:input_type -> proto.ExtensionShutdownRequest
+	80,  // 80: proto.ExtensionService.ExternalEvent:input_type -> proto.ExtensionExternalEventRequest
+	81,  // 81: proto.Gofer.GetSystemInfo:output_type -> proto.GetSystemInfoResponse
+	82,  // 82: proto.Gofer.RepairOrphan:output_type -> proto.RepairOrphanResponse
+	83,  // 83: proto.Gofer.ToggleEventIngress:output_type -> proto.ToggleEventIngressResponse
+	84,  // 84: proto.Gofer.CreateToken:output_type -> proto.CreateTokenResponse
+	85,  // 85: proto.Gofer.BootstrapToken:output_type -> proto.BootstrapTokenResponse
+	86,  // 86: proto.Gofer.ListTokens:output_type -> proto.ListTokensResponse
+	87,  // 87: proto.Gofer.GetToken:output_type -> proto.GetTokenResponse
+	88,  // 88: proto.Gofer.EnableToken:output_type -> proto.EnableTokenResponse
+	89,  // 89: proto.Gofer.DisableToken:output_type -> proto.DisableTokenResponse
+	90,  // 90: proto.Gofer.DeleteToken:output_type -> proto.DeleteTokenResponse
+	91,  // 91: proto.Gofer.ListNamespaces:output_type -> proto.ListNamespacesResponse
+	92,  // 92: proto.Gofer.CreateNamespace:output_type -> proto.CreateNamespaceResponse
+	93,  // 93: proto.Gofer.GetNamespace:output_type -> proto.GetNamespaceResponse
+	94,  // 94: proto.Gofer.UpdateNamespace:output_type -> proto.UpdateNamespaceResponse
+	95,  // 95: proto.Gofer.DeleteNamespace:output_type -> proto.DeleteNamespaceResponse
+	96,  // 96: proto.Gofer.GetPipeline:output_type -> proto.GetPipelineResponse
+	97,  // 97: proto.Gofer.ListPipelines:output_type -> proto.ListPipelinesResponse
+	98,  // 98: proto.Gofer.EnablePipeline:output_type -> proto.EnablePipelineResponse
+	99,  // 99: proto.Gofer.DisablePipeline:output_type -> proto.DisablePipelineResponse
+	100, // 100: proto.Gofer.DeployPipeline:output_type -> proto.DeployPipelineResponse
+	101, // 101: proto.Gofer.DeletePipeline:output_type -> proto.DeletePipelineResponse
+	102, // 102: proto.Gofer.RegisterPipelineConfig:output_type -> proto.RegisterPipelineConfigResponse
+	103, // 103: proto.Gofer.ListPipelineConfigs:output_type -> proto.ListPipelineConfigsResponse
+	104, // 104: proto.Gofer.GetPipelineConfig:output_type -> proto.GetPipelineConfigResponse
+	105, // 105: proto.Gofer.DeletePipelineConfig:output_type -> proto.DeletePipelineConfigResponse
+	106, // 106: proto.Gofer.CreatePipelineExtensionSubscription:output_type -> proto.CreatePipelineExtensionSubscriptionResponse
+	107, // 107: proto.Gofer.ListPipelineExtensionSubscriptions:output_type -> proto.ListPipelineExtensionSubscriptionsResponse
+	108, // 108: proto.Gofer.GetPipelineExtensionSubscription:output_type -> proto.GetPipelineExtensionSubscriptionResponse
+	109, // 109: proto.Gofer.EnablePipelineExtensionSubscription:output_type -> proto.EnablePipelineExtensionSubscriptionResponse
+	110, // 110: proto.Gofer.DisablePipelineExtensionSubscription:output_type -> proto.DisablePipelineExtensionSubscriptionResponse
+	111, // 111: proto.Gofer.DeletePipelineExtensionSubscription:output_type -> proto.DeletePipelineExtensionSubscriptionResponse
+	112, // 112: proto.Gofer.ListDeployments:output_type -> proto.ListDeploymentsResponse
+	113, // 113: proto.Gofer.GetDeployment:output_type -> proto.GetDeploymentResponse
+	114, // 114: proto.Gofer.GetRun:output_type -> proto.GetRunResponse
+	115, // 115: proto.Gofer.ListRuns:output_type -> proto.ListRunsResponse
+	116, // 116: proto.Gofer.StartRun:output_type -> proto.StartRunResponse
+	117, // 117: proto.Gofer.RetryRun:output_type -> proto.RetryRunResponse
+	118, // 118: proto.Gofer.CancelRun:output_type -> proto.CancelRunResponse
+	119, // 119: proto.Gofer.CancelAllRuns:output_type -> proto.CancelAllRunsResponse
+	120, // 120: proto.Gofer.GetTaskRun:output_type -> proto.GetTaskRunResponse
+	121, // 121: proto.Gofer.ListTaskRuns:output_type -> proto.ListTaskRunsResponse
+	122, // 122: proto.Gofer.CancelTaskRun:output_type -> proto.CancelTaskRunResponse
+	123, // 123: proto.Gofer.GetTaskRunLogs:output_type -> proto.GetTaskRunLogsResponse
+	124, // 124: proto.Gofer.DeleteTaskRunLogs:output_type -> proto.DeleteTaskRunLogsResponse
+	125, // 125: proto.Gofer.GetExtension:output_type -> proto.GetExtensionResponse
+	126, // 126: proto.Gofer.ListExtensions:output_type -> proto.ListExtensionsResponse
+	127, // 127: proto.Gofer.GetExtensionInstallInstructions:output_type -> proto.GetExtensionInstallInstructionsResponse
+	128, // 128: proto.Gofer.InstallExtension:output_type -> proto.InstallExtensionResponse
+	129, // 129: proto.Gofer.UninstallExtension:output_type -> proto.UninstallExtensionResponse
+	130, // 130: proto.Gofer.EnableExtension:output_type -> proto.EnableExtensionResponse
+	131, // 131: proto.Gofer.DisableExtension:output_type -> proto.DisableExtensionResponse
+	132, // 132: proto.Gofer.GetCommonTask:output_type -> proto.GetCommonTaskResponse
+	133, // 133: proto.Gofer.ListCommonTasks:output_type -> proto.ListCommonTasksResponse
+	134, // 134: proto.Gofer.GetCommonTaskInstallInstructions:output_type -> proto.GetCommonTaskInstallInstructionsResponse
+	135, // 135: proto.Gofer.InstallCommonTask:output_type -> proto.InstallCommonTaskResponse
+	136, // 136: proto.Gofer.UninstallCommonTask:output_type -> proto.UninstallCommonTaskResponse
+	137, // 137: proto.Gofer.EnableCommonTask:output_type -> proto.EnableCommonTaskResponse
+	138, // 138: proto.Gofer.DisableCommonTask:output_type -> proto.DisableCommonTaskResponse
+	139, // 139: proto.Gofer.ListPipelineObjects:output_type -> proto.ListPipelineObjectsResponse
+	140, // 140: proto.Gofer.GetPipelineObject:output_type -> proto.GetPipelineObjectResponse
+	141, // 141: proto.Gofer.PutPipelineObject:output_type -> proto.PutPipelineObjectResponse
+	142, // 142: proto.Gofer.DeletePipelineObject:output_type -> proto.DeletePipelineObjectResponse
+	143, // 143: proto.Gofer.ListRunObjects:output_type -> proto.ListRunObjectsResponse
+	144, // 144: proto.Gofer.GetRunObject:output_type -> proto.GetRunObjectResponse
+	145, // 145: proto.Gofer.PutRunObject:output_type -> proto.PutRunObjectResponse
+	146, // 146: proto.Gofer.DeleteRunObject:output_type -> proto.DeleteRunObjectResponse
+	147, // 147: proto.Gofer.GetPipelineSecret:output_type -> proto.GetPipelineSecretResponse
+	148, // 148: proto.Gofer.ListPipelineSecrets:output_type -> proto.ListPipelineSecretsResponse
+	149, // 149: proto.Gofer.PutPipelineSecret:output_type -> proto.PutPipelineSecretResponse
+	150, // 150: proto.Gofer.DeletePipelineSecret:output_type -> proto.DeletePipelineSecretResponse
+	151, // 151: proto.Gofer.GetGlobalSecret:output_type -> proto.GetGlobalSecretResponse
+	152, // 152: proto.Gofer.ListGlobalSecrets:output_type -> proto.ListGlobalSecretsResponse
+	153, // 153: proto.Gofer.PutGlobalSecret:output_type -> proto.PutGlobalSecretResponse
+	154, // 154: proto.Gofer.DeleteGlobalSecret:output_type -> proto.DeleteGlobalSecretResponse
+	155, // 155: proto.Gofer.GetEvent:output_type -> proto.GetEventResponse
+	156, // 156: proto.Gofer.ListEvents:output_type -> proto.ListEventsResponse
+	157, // 157: proto.ExtensionService.Info:output_type -> proto.ExtensionInfoResponse
+	158, // 158: proto.ExtensionService.Subscribe:output_type -> proto.ExtensionSubscribeResponse
+	159, // 159: proto.ExtensionService.Unsubscribe:output_type -> proto.ExtensionUnsubscribeResponse
+	160, // 160: proto.ExtensionService.Shutdown:output_type -> proto.ExtensionShutdownResponse
+	161, // 161: proto.ExtensionService.ExternalEvent:output_type -> proto.ExtensionExternalEventResponse
+	81,  // [81:162] is the sub-list for method output_type
+	0,   // [0:81] is the sub-list for method input_type
 	0,   // [0:0] is the sub-list for extension type_name
 	0,   // [0:0] is the sub-list for extension extendee
 	0,   // [0:0] is the sub-list for field type_name

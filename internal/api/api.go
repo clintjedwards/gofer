@@ -181,16 +181,6 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 	// a run was currently in progress.
 	go newAPI.findOrphans()
 
-	// These two functions are responsible for gofer's extension event loop system. The first launches goroutines that
-	// consumes events from extensions and the latter processes them into pipeline runs.
-	newAPI.watchForExtensionEvents(newAPI.context.ctx)
-	go func() {
-		err := newAPI.processExtensionEvents()
-		if err != nil {
-			log.Fatal().Err(err).Msg("could nto process extension events")
-		}
-	}()
-
 	return newAPI, nil
 }
 

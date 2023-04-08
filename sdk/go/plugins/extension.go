@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
@@ -30,30 +31,22 @@ import (
 // provides the caller with a clear interface to implement and allows this package to bake in common
 // functionality among all extensions.
 type ExtensionServiceInterface interface {
-	// Watch blocks until the extension has a pipeline that should be run, then it returns. This is ideal for setting
-	// the watch endpoint as an channel result.
-	Watch(context.Context, *proto.ExtensionWatchRequest) (*proto.ExtensionWatchResponse, error)
-
 	// Info returns information on the specific plugin
 	Info(context.Context, *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error)
 
-	// Subscribe allows a extension to keep track of all pipelines currently
-	// dependant on that extension so that we can extension them at appropriate times.
+	// Subscribe registers a pipeline with said extension to provide the extension's functionality.
 	Subscribe(context.Context, *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error)
 
-	// Unsubscribe allows pipelines to remove their extension subscriptions. This is
-	// useful if the pipeline no longer needs to be notified about a specific
-	// extension automation.
+	// Unsubscribe allows pipelines to remove their extension subscriptions.
 	Unsubscribe(context.Context, *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error)
 
 	// Shutdown tells the extension to cleanup and gracefully shutdown. If a extension
-	// does not shutdown in a time defined by the gofer API the extension will
+	// does not shutdown in a time defined by the Gofer API the extension will
 	// instead be Force shutdown(SIGKILL). This is to say that all extensions should
 	// lean toward quick cleanups and shutdowns.
 	Shutdown(context.Context, *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error)
 
-	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
-	// webhooks.
+	// ExternalEvent are json blobs of Gofer's /events endpoint. Normally webhooks.
 	ExternalEvent(context.Context, *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error)
 }
 
@@ -70,19 +63,6 @@ type extension struct {
 	proto.UnsafeExtensionServiceServer
 }
 
-func (t *extension) Watch(ctx context.Context, req *proto.ExtensionWatchRequest) (*proto.ExtensionWatchResponse, error) {
-	resp, err := t.impl.Watch(ctx, req)
-	if err != nil {
-		return &proto.ExtensionWatchResponse{}, err
-	}
-
-	if resp == nil {
-		return &proto.ExtensionWatchResponse{}, nil
-	}
-
-	return resp, nil
-}
-
 func (t *extension) Info(ctx context.Context, req *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
 	resp, err := t.impl.Info(ctx, req)
 	if err != nil {
@@ -93,7 +73,7 @@ func (t *extension) Info(ctx context.Context, req *proto.ExtensionInfoRequest) (
 		return &proto.ExtensionInfoResponse{}, nil
 	}
 
-	resp.Name = os.Getenv("GOFER_PLUGIN_SYSTEM_NAME")
+	resp.Name = os.Getenv("GOFER_EXTENSION_SYSTEM_NAME")
 
 	return resp, nil
 }
@@ -166,9 +146,44 @@ func NewExtension(service ExtensionServiceInterface, installInstructions Install
 	}
 }
 
+// Connect to Gofer's API
+func Connect() (proto.GoferClient, context.Context, error) {
+	goferHost := os.Getenv("GOFER_EXTENSION_SYSTEM_GOFER_HOST")
+
+	host, port, _ := strings.Cut(goferHost, ":")
+
+	// If we are not given a port we assume that port is 443
+	if port == "" {
+		port = "443"
+	}
+
+	var opt []grpc.DialOption
+	var tlsConf *tls.Config
+	if host == "localhost" || host == "127.0.0.1" {
+		tlsConf = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
+
+	opt = append(opt, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), opt...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not connect to server: %w", err)
+	}
+
+	client := proto.NewGoferClient(conn)
+
+	key := os.Getenv("GOFER_EXTENSION_SYSTEM_KEY")
+
+	md := metadata.Pairs("Authorization", "Bearer "+key)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	return client, ctx, nil
+}
+
 // newExtensionServer starts the provided extension service
 func newExtensionServer(impl ExtensionServiceInterface) {
-	config, err := getExtensionConfig()
+	config, err := GetExtensionSystemConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not get environment variables for config")
 	}
@@ -185,7 +200,7 @@ func newExtensionServer(impl ExtensionServiceInterface) {
 
 // getTLS finds the certificates which are appropriate and
 func getTLS() *tls.Config {
-	config, _ := getExtensionConfig()
+	config, _ := GetExtensionSystemConfig()
 
 	serverCert, err := tls.X509KeyPair([]byte(config.TLSCert), []byte(config.TLSKey))
 	if err != nil {
@@ -216,7 +231,7 @@ func (t *extension) authFunc(ctx context.Context) (context.Context, error) {
 
 // run creates a grpc server with all the proper settings; TLS enabled
 func (t *extension) run() {
-	config, _ := getExtensionConfig()
+	config, _ := GetExtensionSystemConfig()
 
 	server := grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(getTLS())),
@@ -268,7 +283,7 @@ func (t *extension) run() {
 }
 
 // Used by the sdk to get environment variables that are required by all extensions.
-type internalExtensionConfig struct {
+type ExtensionSystemConfig struct {
 	// Key is the auth key passed by the main gofer application to prevent other
 	// actors from attempting to communicate with the extensions.
 	Key  string `required:"true" json:"-"`
@@ -276,20 +291,21 @@ type internalExtensionConfig struct {
 	// Possible values "debug", "info", "warn", "error", "fatal", "panic"
 	LogLevel string `split_words:"true" default:"info"`
 	// Contains the raw bytes for a TLS cert used by the extension to authenticate clients.
-	TLSCert string `split_words:"true" required:"true" json:"-"`
-	TLSKey  string `split_words:"true" required:"true" json:"-"`
-	Host    string `default:"0.0.0.0:8080"`
+	TLSCert   string `split_words:"true" required:"true" json:"-"`
+	TLSKey    string `split_words:"true" required:"true" json:"-"`
+	Host      string `default:"0.0.0.0:8081"`
+	GoferHost string `split_words:"true" default:"172.17.0.1:8080"`
 }
 
-// getExtensionConfig returns environment variables that all extensions require.
-func getExtensionConfig() (*internalExtensionConfig, error) {
-	config := internalExtensionConfig{}
-	err := envconfig.Process("gofer_plugin_system", &config)
+// GetExtensionSystemConfig returns environment variables that all extensions require. aka "System variables"
+func GetExtensionSystemConfig() (ExtensionSystemConfig, error) {
+	config := ExtensionSystemConfig{}
+	err := envconfig.Process("gofer_extension_system", &config)
 	if err != nil {
-		return nil, err
+		return ExtensionSystemConfig{}, err
 	}
 
-	return &config, nil
+	return config, nil
 }
 
 // setupLogging inits a global logging configuration that is used by all extensions.
@@ -327,20 +343,20 @@ func parseLogLevel(loglevel string) zerolog.Level {
 // It simply puts the needed config in the correct format to be retrieved from the environment
 // so the caller doesn't have to.
 func GetConfig(variableName string) string {
-	return os.Getenv(fmt.Sprintf("GOFER_PLUGIN_CONFIG_%s", strings.ToUpper(variableName)))
+	return os.Getenv(fmt.Sprintf("GOFER_EXTENSION_CONFIG_%s", strings.ToUpper(variableName)))
 }
 
 // GetParameters is a convenience function that returns extension/commonTask config values from the environment.
 // It simply puts the needed config in the correct format to be retrieved from the environment
 // so the caller doesn't have to.
 func GetParameter(variableName string) string {
-	return os.Getenv(fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(variableName)))
+	return os.Getenv(fmt.Sprintf("GOFER_EXTENSION_PARAM_%s", strings.ToUpper(variableName)))
 }
 
 // InfoResponse is a convenience function for the Info interface function response.
 func InfoResponse(documentationLink string) (*proto.ExtensionInfoResponse, error) {
 	return &proto.ExtensionInfoResponse{
-		Name:          os.Getenv("GOFER_PLUGIN_SYSTEM_NAME"),
+		Name:          os.Getenv("GOFER_EXTENSION_SYSTEM_NAME"),
 		Documentation: documentationLink,
 	}, nil
 }

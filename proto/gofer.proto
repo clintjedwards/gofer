@@ -401,10 +401,6 @@ service Gofer {
 }
 
 service ExtensionService {
-  // Watch blocks until the extension has a pipeline that should be run, then it
-  // returns.
-  rpc Watch(ExtensionWatchRequest) returns (ExtensionWatchResponse);
-
   // Info returns information on the specific plugin
   rpc Info(ExtensionInfoRequest) returns (ExtensionInfoResponse);
 

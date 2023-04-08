@@ -27,27 +27,27 @@ func (api *API) startExtension(extension models.ExtensionRegistration, cert, key
 	// variables.
 	systemExtensionVars := []models.Variable{
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_TLS_CERT",
+			Key:    "GOFER_EXTENSION_SYSTEM_TLS_CERT",
 			Value:  cert,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_TLS_KEY",
+			Key:    "GOFER_EXTENSION_SYSTEM_TLS_KEY",
 			Value:  key,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_NAME",
+			Key:    "GOFER_EXTENSION_SYSTEM_NAME",
 			Value:  extension.Name,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_LOG_LEVEL",
+			Key:    "GOFER_EXTENSION_SYSTEM_LOG_LEVEL",
 			Value:  api.config.LogLevel,
 			Source: models.VariableSourceSystem,
 		},
 		{
-			Key:    "GOFER_PLUGIN_SYSTEM_KEY",
+			Key:    "GOFER_EXTENSION_SYSTEM_KEY",
 			Value:  extensionKey,
 			Source: models.VariableSourceSystem,
 		},
@@ -291,206 +291,6 @@ func (api *API) restoreExtensionSubscriptions() error {
 	}
 
 	return nil
-}
-
-// watchForExtensionEvents spawns a goroutine for every extension that is responsible for collecting the extension events
-// on that extension. The "Watch" method for receiving events from a extension is a blocking RPC, so each
-// go routine essentially blocks until they receive an event and then immediately pushes it into the receiving channel.
-func (api *API) watchForExtensionEvents(ctx context.Context) {
-	for _, extensionKey := range api.extensions.Keys() {
-		extension, exists := api.extensions.Get(extensionKey)
-		if !exists {
-			continue
-		}
-
-		go func(name string, extension models.Extension) {
-			conn, err := grpcDial(extension.URL)
-			if err != nil {
-				log.Error().Err(err).Str("extension", name).Msg("could not connect to extension")
-			}
-			defer conn.Close()
-
-			client := proto.NewExtensionServiceClient(conn)
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					ctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+string(*extension.Key))
-					resp, err := client.Watch(ctx, &proto.ExtensionWatchRequest{})
-					if err != nil {
-						if status.Code(err) == codes.Canceled {
-							return
-						}
-
-						log.Error().Err(err).Str("extension", name).Msg("could not connect to extension")
-						extension.State = models.ExtensionStateUnknown
-						api.extensions.Set(*extension.Key, &extension)
-						time.Sleep(time.Second * 5) // Don't DOS ourselves if we can't connect
-						continue
-					}
-
-					// If the watch command didn't return an error then the extension must be working.
-					extension.State = models.ExtensionStateRunning
-					api.extensions.Set(*extension.Key, &extension)
-
-					// We need to account for what happens if the check exits without returning anything.
-					// For instance, when the extension gracefully shuts down it may close the channel providing
-					// events, resulting in a nil as the final object.
-					if resp.PipelineExtensionLabel == "" {
-						continue
-					}
-
-					log.Debug().Str("extension", name).Interface("response", resp).Msg("new extension event found")
-				}
-			}
-		}(extensionKey, *extension)
-	}
-}
-
-func (api *API) processExtensionEvent() {
-	return
-
-	// // If the extension event status != success then we should log that and skip it.
-	// if event.Result.Status != models.ExtensionResultStateSuccess {
-	// 	api.resolveFiredExtensionEvent(event, event.Result, map[string]string{})
-	// 	return
-	// }
-
-	// // If the pipeline isn't accepting any new runs we skip the extension event.
-	// if api.ignorePipelineRunEvents.Load() {
-	// 	log.Debug().Msg("skipped event due to IgnorePipelineRunEvents set to false")
-
-	// 	api.resolveFiredExtensionEvent(event, models.ExtensionResult{
-	// 		Details: "API not accepting new events; This is due to operator controlled setting 'IgnorePipelineRunEvents'.",
-	// 		Status:  models.ExtensionResultStateSkipped,
-	// 	}, map[string]string{})
-	// 	return
-	// }
-
-	// var pipeline *models.Pipeline
-	// var newRun *models.Run
-
-	// err := storage.InsideTx(api.db.DB, func(tx *sqlx.Tx) error {
-	// 	fullPipeline, err := api.getPipelineFromDB(event.NamespaceID, event.PipelineID, -1)
-	// 	if err != nil {
-	// 		if errors.Is(err, storage.ErrEntityNotFound) {
-	// 			log.Error().Err(err).Msg("Pipeline not found")
-	// 			api.resolveFiredExtensionEvent(event, models.ExtensionResult{
-	// 				Details: "Could not process extension event; pipeline not found.",
-	// 				Status:  models.ExtensionResultStateFailure,
-	// 			}, map[string]string{})
-	// 			return err
-	// 		}
-
-	// 		api.resolveFiredExtensionEvent(event, models.ExtensionResult{
-	// 			Details: fmt.Sprintf("Internal error; %v", err),
-	// 			Status:  models.ExtensionResultStateFailure,
-	// 		}, map[string]string{})
-	// 		log.Error().Err(err).Msg("could not process extension event")
-	// 		return err
-	// 	}
-
-	// 	pipeline = fullPipeline
-
-	// 	extensionSubscriptionRaw, err := api.db.GetPipelineExtensionSubscription(tx,
-	// 		event.NamespaceID, event.PipelineID, event.Name, event.Label)
-	// 	if err != nil {
-	// 		if errors.Is(err, storage.ErrEntityNotFound) {
-	// 			log.Error().Err(err).Msg("Extension not found")
-	// 			api.resolveFiredExtensionEvent(event, models.ExtensionResult{
-	// 				Details: "Extension subscription not found in pipeline config.",
-	// 				Status:  models.ExtensionResultStateFailure,
-	// 			}, map[string]string{})
-	// 			return err
-	// 		}
-
-	// 		log.Error().Str("extension_label", event.Label).
-	// 			Msg("could not process extension event; could not find extension label within pipeline")
-	// 	}
-
-	// 	if fullPipeline.Metadata.State != models.PipelineStateActive {
-	// 		log.Debug().Str("extension_label", event.Label).Str("namespace", event.NamespaceID).
-	// 			Str("pipeline", event.PipelineID).Int64("pipeline_version", fullPipeline.Config.Version).
-	// 			Msg("skipped extension event; pipeline is not active.")
-	// 		api.resolveFiredExtensionEvent(event, models.ExtensionResult{
-	// 			Details: "Pipeline is not active",
-	// 			Status:  models.ExtensionResultStateSkipped,
-	// 		}, map[string]string{})
-	// 		return err
-	// 	}
-
-	// 	latestRun, err := api.db.ListPipelineRuns(tx, 0, 1, fullPipeline.Metadata.Namespace, fullPipeline.Metadata.ID)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	var latestRunID int64
-
-	// 	if len(latestRun) > 1 {
-	// 		latestRunID = latestRun[0].ID
-	// 	}
-
-	// 	newRunID := latestRunID + 1
-
-	// 	// Create the new run and retrieve it's ID.
-	// 	newRun = models.NewRun(fullPipeline.Metadata.Namespace, fullPipeline.Metadata.ID, fullPipeline.Config.Version, newRunID, models.ExtensionInfo{
-	// 		Name:  extensionSubscriptionRaw.Name,
-	// 		Label: extensionSubscriptionRaw.Label,
-	// 	}, convertVarsToSlice(event.Metadata, models.VariableSourceExtension))
-
-	// 	err = api.db.InsertPipelineRun(tx, newRun.ToStorage())
-	// 	if err != nil {
-	// 		log.Error().Err(err).Msg("could not insert run into db")
-	// 		api.resolveFiredExtensionEvent(event, models.ExtensionResult{
-	// 			Details: fmt.Sprintf("Internal error; %v", err),
-	// 			Status:  models.ExtensionResultStateFailure,
-	// 		}, map[string]string{})
-	// 		return err
-	// 	}
-
-	// 	return nil
-	// })
-	// if err != nil {
-	// 	return
-	// }
-
-	// runStateMachine := api.newRunStateMachine(&pipeline.Metadata, &pipeline.Config, newRun)
-
-	// // Make sure the pipeline is ready for a new run.
-	// for runStateMachine.parallelismLimitExceeded() {
-	// 	time.Sleep(time.Second * 1)
-	// }
-
-	// // Finally, launch the thread that will launch all the task runs for a job.
-	// go runStateMachine.executeTaskTree()
-
-	// api.resolveFiredExtensionEvent(event, event.Result, event.Metadata)
-}
-
-// processExtensionEvents listens to and consumes all events from the ExtensionEventReceived channel and starts the
-// appropriate pipeline.
-func (api *API) processExtensionEvents() error {
-	return nil
-
-	// // Subscribe to all fired extension events so we can watch for them.
-	// subscription, err := api.events.Subscribe(models.EventKindFiredExtensionEvent)
-	// if err != nil {
-	// 	return fmt.Errorf("could not subscribe to extension events: %w", err)
-	// }
-	// defer api.events.Unsubscribe(subscription)
-
-	// for eventRaw := range subscription.Events {
-	// 	event, ok := eventRaw.Details.(models.EventFiredExtensionEvent)
-	// 	if !ok {
-	// 		continue
-	// 	}
-
-	// 	go api.processExtensionEvent(&event)
-	// }
-
-	// return nil
 }
 
 // collectLogs simply streams a container's log right to stderr. This is useful when pipeing extension logs to the main

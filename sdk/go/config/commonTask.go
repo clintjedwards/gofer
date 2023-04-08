@@ -110,7 +110,7 @@ func (t *CommonTaskWrapper) DependsOnMany(dependsOn map[string]RequiredParentSta
 // Make sure to read the common task's readme in order to understand which settings and their
 // associated values are accepted.
 func (t *CommonTaskWrapper) Setting(key, value string) *CommonTaskWrapper {
-	t.CommonTask.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
+	t.CommonTask.Settings[fmt.Sprintf("GOFER_EXTENSION_PARAM_%s", strings.ToUpper(key))] = value
 	return t
 }
 
@@ -119,7 +119,7 @@ func (t *CommonTaskWrapper) Setting(key, value string) *CommonTaskWrapper {
 // associated values are accepted.
 func (t *CommonTaskWrapper) Settings(settings map[string]string) *CommonTaskWrapper {
 	for key, value := range settings {
-		t.CommonTask.Settings[fmt.Sprintf("GOFER_PLUGIN_PARAM_%s", strings.ToUpper(key))] = value
+		t.CommonTask.Settings[fmt.Sprintf("GOFER_EXTENSION_PARAM_%s", strings.ToUpper(key))] = value
 	}
 	return t
 }

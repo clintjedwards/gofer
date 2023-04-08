@@ -32,31 +32,42 @@ type subscriptionID struct {
 }
 
 type extension struct {
-	events        chan *proto.ExtensionWatchResponse
 	subscriptions map[subscriptionID]*subscription
 }
 
 func newExtension() *extension {
-	return &extension{
-		events: make(chan *proto.ExtensionWatchResponse, 100),
-	}
+	return &extension{}
 }
 
 func (t *extension) checkTimeFrames() {
 	for _, subscription := range t.subscriptions {
 		if subscription.timeframe.Able(time.Now()) {
-			t.events <- &proto.ExtensionWatchResponse{
-				Details: fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q",
-					time.Now().Format(time.RFC1123), subscription.timeframe.Expression),
-				NamespaceId:            subscription.namespace,
-				PipelineId:             subscription.pipeline,
-				PipelineExtensionLabel: subscription.pipelineExtensionLabel,
-				Result:                 proto.ExtensionWatchResponse_SUCCESS,
-				Metadata:               map[string]string{},
+			client, ctx, err := sdk.Connect()
+			if err != nil {
+				log.Error().Str("namespace_id", subscription.namespace).Str("pipeline_id", subscription.pipeline).
+					Str("extension_label", subscription.pipelineExtensionLabel).Msg("could not connect to Gofer")
+
+				continue
 			}
 
+			resp, err := client.StartRun(ctx, &proto.StartRunRequest{
+				NamespaceId: subscription.namespace,
+				PipelineId:  subscription.pipeline,
+				Variables:   map[string]string{},
+			})
+			if err != nil {
+				log.Error().Str("namespaceID", subscription.namespace).Str("pipelineID", subscription.pipeline).
+					Str("extension_label", subscription.pipelineExtensionLabel).Msg("could not start new run")
+
+				continue
+			}
+
+			// fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q",
+			// time.Now().Format(time.RFC1123), subscription.timeframe.Expression)
+
 			log.Debug().Str("extension_label", subscription.pipelineExtensionLabel).Str("pipeline_id", subscription.pipeline).
-				Str("namespace_id", subscription.namespace).Msg("Pipeline within timeframe; new event spawned")
+				Str("namespace_id", subscription.namespace).Int64("run_id", resp.Run.Id).
+				Msg("Pipeline within timeframe; new event spawned")
 		}
 	}
 }
@@ -116,15 +127,6 @@ func (t *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUns
 	return &proto.ExtensionUnsubscribeResponse{}, nil
 }
 
-func (t *extension) Watch(ctx context.Context, request *proto.ExtensionWatchRequest) (*proto.ExtensionWatchResponse, error) {
-	select {
-	case <-ctx.Done():
-		return &proto.ExtensionWatchResponse{}, nil
-	case event := <-t.events:
-		return event, nil
-	}
-}
-
 func (t *extension) Info(ctx context.Context, request *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
 	registered := []string{}
 	for _, sub := range t.subscriptions {
@@ -139,7 +141,6 @@ func (t *extension) Info(ctx context.Context, request *proto.ExtensionInfoReques
 }
 
 func (t *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error) {
-	close(t.events)
 	return &proto.ExtensionShutdownResponse{}, nil
 }
 
