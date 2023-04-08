@@ -110,6 +110,9 @@ func FullDevelopmentConfig() *Development {
 
 // Server represents lower level HTTP/GRPC server settings.
 type Server struct {
+	// URL where the Gofer server is located. Shared with entities that need to talk to the Gofer API.
+	Address string `koanf:"address"`
+
 	// URL for the server to bind to. Ex: localhost:8080
 	Host string `koanf:"host"`
 
@@ -130,7 +133,8 @@ type Server struct {
 // settings.
 func DefaultServerConfig() *Server {
 	return &Server{
-		Host:                "localhost:8080",
+		Address:             "172.17.0.1:8080",
+		Host:                "0.0.0.0:8080",
 		ShutdownTimeout:     mustParseDuration("15s"),
 		StoragePath:         "/tmp/gofer.db",
 		StorageResultsLimit: 200,

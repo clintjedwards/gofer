@@ -10,6 +10,7 @@ import (
 )
 
 type Token struct {
+	ID         int64
 	Hash       string
 	Created    int64
 	Kind       string
@@ -24,7 +25,7 @@ func (db *DB) ListTokens(conn Queryable, offset, limit int) ([]Token, error) {
 		limit = db.maxResultsLimit
 	}
 
-	query, args := qb.Select("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
+	query, args := qb.Select("id", "hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
 		From("tokens").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).MustSql()
@@ -38,22 +39,39 @@ func (db *DB) ListTokens(conn Queryable, offset, limit int) ([]Token, error) {
 	return tokens, nil
 }
 
-func (db *DB) InsertToken(conn Queryable, tr *Token) error {
-	_, err := qb.Insert("tokens").Columns("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
+func (db *DB) InsertToken(conn Queryable, tr *Token) (int64, error) {
+	result, err := qb.Insert("tokens").Columns("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
 		Values(tr.Hash, tr.Created, tr.Kind, tr.Namespaces, tr.Metadata, tr.Expires, tr.Disabled).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			return ErrEntityExists
+			return 0, ErrEntityExists
 		}
 
-		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return 0, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return nil
+	return result.LastInsertId()
 }
 
-func (db *DB) GetToken(conn Queryable, hashStr string) (Token, error) {
-	query, args := qb.Select("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
+func (db *DB) GetTokenByID(conn Queryable, id int64) (Token, error) {
+	query, args := qb.Select("id", "hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
+		From("tokens").Where(qb.Eq{"id": id}).MustSql()
+
+	token := Token{}
+	err := conn.Get(&token, query, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Token{}, ErrEntityNotFound
+		}
+
+		return Token{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return token, nil
+}
+
+func (db *DB) GetTokenByHash(conn Queryable, hashStr string) (Token, error) {
+	query, args := qb.Select("id", "hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
 		From("tokens").Where(qb.Eq{"hash": hashStr}).MustSql()
 
 	token := Token{}
@@ -99,8 +117,21 @@ func (db *DB) DisableToken(conn Queryable, hashStr string) error {
 	return nil
 }
 
-func (db *DB) DeleteToken(conn Queryable, hash string) error {
+func (db *DB) DeleteTokenByHash(conn Queryable, hash string) error {
 	_, err := qb.Delete("tokens").Where(qb.Eq{"hash": hash}).RunWith(conn).Exec()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+
+		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return nil
+}
+
+func (db *DB) DeleteTokenByID(conn Queryable, id int64) error {
+	_, err := qb.Delete("tokens").Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

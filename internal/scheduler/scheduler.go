@@ -31,6 +31,13 @@ const (
 	ContainerStateCancelled  ContainerState = "CANCELLED" // Task was cancelled by request.
 )
 
+type Networking struct {
+	// The bind port of the internal application within the container.
+	// This allows us to specify which ports extensions come up on
+	// and enables downstream schedulers to properly account for that and port map correctly.
+	Port int
+}
+
 // ErrNoSuchContainer is returned when a container requested could not be located on the scheduler.
 var ErrNoSuchContainer = errors.New("scheduler: entity not found")
 
@@ -52,9 +59,9 @@ type StartContainerRequest struct {
 	AlwaysPull bool
 
 	// Networking is used to communicate to the container via RPC. This is only needed by extensions.
-	EnableNetworking bool
-	Entrypoint       *[]string
-	Command          *[]string
+	Networking *Networking
+	Entrypoint *[]string
+	Command    *[]string
 }
 
 type StartContainerResponse struct {

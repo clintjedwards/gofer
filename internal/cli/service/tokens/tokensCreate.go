@@ -21,7 +21,7 @@ var cmdTokensCreate = &cobra.Command{
 
 func init() {
 	cmdTokensCreate.Flags().StringP("expiry", "e", "24h", "set the expiration time of the key. This value uses golang time durations such as '300ms', '1.5h' or '2h45m'. https://pkg.go.dev/time#ParseDuration")
-	cmdTokensCreate.Flags().StringSliceP("namespaces", "n", []string{"default"}, "namespaces this key will have access to. If not specified namespace is default")
+	cmdTokensCreate.Flags().StringSliceP("namespaces", "n", []string{"default"}, "namespaces this key will have access to. If not specified namespace is 'default'. Namespace string can be regex for multiple and continual matching.")
 	cmdTokensCreate.Flags().StringSliceP("metadata", "m", []string{}, "metadata about the token, useful for attaching a name, team, and other details. Format = key:value")
 	CmdTokens.AddCommand(cmdTokensCreate)
 }

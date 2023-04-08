@@ -333,7 +333,7 @@ message CommonTaskRegistration {
 
 message Event {
   int64 id = 1;
-  string type = 2; // What type of event
+  string type = 2;    // What type of event
   string details = 3; // Json output of the event
   int64 emitted = 4;
 }
@@ -346,6 +346,8 @@ message Token {
     CLIENT = 2;
   }
   Kind kind = 2;
+
+  // Accepts either direct namespace list or regex
   repeated string namespaces = 3;
   map<string, string> metadata = 4;
   int64 expires = 5;

@@ -22,6 +22,7 @@ func TestCRUDGlobalExtensionRegistrations(t *testing.T) {
 		Variables:    "test_vars",
 		Created:      0,
 		Status:       "ACTIVE",
+		KeyID:        1,
 	}
 
 	err = db.InsertGlobalExtensionRegistration(db, &reg)

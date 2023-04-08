@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -155,8 +156,10 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 
 	hostConfig := &container.HostConfig{}
 
-	if req.EnableNetworking {
-		port, err := nat.NewPort("tcp", "8081")
+	portBindName := fmt.Sprintf("%d/tcp", req.Networking.Port)
+
+	if req.Networking != nil {
+		port, err := nat.NewPort("tcp", strconv.Itoa(req.Networking.Port))
 		if err != nil {
 			return scheduler.StartContainerResponse{}, err
 		}
@@ -168,7 +171,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		}
 
 		hostConfig.PortBindings = nat.PortMap{
-			"8081/tcp": []nat.PortBinding{
+			nat.Port(portBindName): []nat.PortBinding{
 				hostPortMap,
 			},
 		}
@@ -196,7 +199,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		return scheduler.StartContainerResponse{}, err
 	}
 
-	if len(containerInfo.NetworkSettings.Ports) == 0 && req.EnableNetworking {
+	if len(containerInfo.NetworkSettings.Ports) == 0 && req.Networking != nil {
 		return scheduler.StartContainerResponse{}, fmt.Errorf("could not start container; check logs for errors")
 	}
 
@@ -204,8 +207,8 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		HostIP:   "",
 		HostPort: "",
 	}
-	if req.EnableNetworking {
-		rawHostPort = containerInfo.NetworkSettings.Ports["8081/tcp"][0]
+	if req.Networking != nil {
+		rawHostPort = containerInfo.NetworkSettings.Ports[nat.Port(portBindName)][0]
 	}
 
 	return scheduler.StartContainerResponse{
