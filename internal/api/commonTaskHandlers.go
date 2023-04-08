@@ -57,13 +57,13 @@ func (api *API) GetCommonTaskInstallInstructions(ctx context.Context, request *p
 	containerID := installerContainerID()
 
 	sc := scheduler.StartContainerRequest{
-		ID:               containerID,
-		ImageName:        request.Image,
-		EnvVars:          map[string]string{},
-		RegistryAuth:     registryAuth,
-		AlwaysPull:       true,
-		EnableNetworking: false,
-		Entrypoint:       &[]string{"./commontask", "installer"},
+		ID:           containerID,
+		ImageName:    request.Image,
+		EnvVars:      map[string]string{},
+		RegistryAuth: registryAuth,
+		AlwaysPull:   true,
+		Networking:   nil,
+		Entrypoint:   &[]string{"./commontask", "installer"},
 	}
 
 	_, err := api.scheduler.StartContainer(sc)

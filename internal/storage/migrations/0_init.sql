@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS global_extension_registrations (
     variables     TEXT    NOT NULL,
     created       INTEGER NOT NULL,
     status        TEXT    NOT NULL,
+    key_id        INTEGER NOT NULL,
     PRIMARY KEY (name)
 ) STRICT;
 
@@ -218,12 +219,15 @@ CREATE TABLE IF NOT EXISTS events (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS tokens (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
     hash        TEXT    NOT NULL,
     created     INTEGER NOT NULL,
     kind        TEXT    NOT NULL,
     namespaces  TEXT    NOT NULL,
     metadata    TEXT    NOT NULL,
     expires     INTEGER NOT NULL,
-    disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1)),
-    PRIMARY KEY (hash)
+    disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1))
 ) STRICT;
+
+CREATE INDEX idx_tokens_hash ON tokens (hash);
+

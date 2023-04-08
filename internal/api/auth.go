@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -51,7 +52,7 @@ func (api *API) createNewAPIToken() (token string, hash string) {
 
 func (api *API) getAPIToken(token string) (*models.Token, error) {
 	hash := getHash(token)
-	tokenDetailsRaw, err := api.db.GetToken(api.db, hash)
+	tokenDetailsRaw, err := api.db.GetTokenByHash(api.db, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +129,30 @@ func hasNamespaceAccess(ctx context.Context, namespace string) bool {
 		log.Error().Msg("namespace field missing from context in request")
 		return false
 	}
-	for _, space := range namespaces {
-		if namespace == space {
+
+	for _, namespaceFilter := range namespaces {
+		// Check if the string is a valid regex
+		isRegex := false
+		_, err := regexp.Compile(namespaceFilter)
+		if err == nil {
+			isRegex = true
+		}
+
+		if isRegex {
+			matched, err := regexp.MatchString(namespaceFilter, namespace)
+			if err != nil {
+				log.Err(err).Msg("Could not match regex during check auth namespaces")
+				return false
+			}
+
+			if !matched {
+				return false
+			}
+
+			return true
+		}
+
+		if namespaceFilter == namespace {
 			return true
 		}
 	}

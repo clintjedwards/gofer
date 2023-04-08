@@ -22,7 +22,7 @@ type Token struct {
 	Hash       string            `json:"hash"`       // SHA-256 hash of the secret ID.
 	Created    int64             `json:"created"`    // Create time in epoch millisecond
 	Kind       TokenKind         `json:"kind"`       // The type of token. Management tokens are essentially root.
-	Namespaces []string          `json:"namespaces"` // List of namespaces this token has access to.
+	Namespaces []string          `json:"namespaces"` // List of namespaces this token has access to, strings in this list might be a regex.
 	Metadata   map[string]string `json:"metadata"`   // Extra information about this token in label form.
 	Expires    int64             `json:"expiry"`     // When the token would expire.
 	Disabled   bool              `json:"disabled"`   // Disabled tokens cannot be used.

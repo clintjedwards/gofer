@@ -11,6 +11,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
@@ -18,8 +19,31 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) startExtension(extension models.ExtensionRegistration, cert, key string) error {
-	extensionKey := generateToken(32)
+func (api *API) startExtension(extension models.ExtensionRegistration, tlsCert, tlsKey string) error {
+	// Regenerate token on every run so we can share the token with the container.
+	token, hash := api.createNewAPIToken()
+	newToken := models.NewToken(hash, models.TokenKindClient, []string{".*"}, map[string]string{"extension_token": "true"}, time.Hour*876600)
+
+	err := storage.InsideTx(api.db.DB, func(tx *sqlx.Tx) error {
+		_ = api.db.DeleteTokenByID(tx, extension.KeyID)
+
+		keyID, err := api.db.InsertToken(tx, newToken.ToStorage())
+		if err != nil {
+			return err
+		}
+
+		err = api.db.UpdateGlobalExtensionRegistration(tx, extension.Name, storage.UpdatableGlobalExtensionRegistrationFields{
+			KeyID: &keyID,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("could not create new token while starting extension; %w", err)
+	}
 
 	// We need to first populate the extensions with their required environment variables.
 	// Order is important here maps later in the list will overwrite earlier maps.
@@ -28,12 +52,12 @@ func (api *API) startExtension(extension models.ExtensionRegistration, cert, key
 	systemExtensionVars := []models.Variable{
 		{
 			Key:    "GOFER_EXTENSION_SYSTEM_TLS_CERT",
-			Value:  cert,
+			Value:  tlsCert,
 			Source: models.VariableSourceSystem,
 		},
 		{
 			Key:    "GOFER_EXTENSION_SYSTEM_TLS_KEY",
-			Value:  key,
+			Value:  tlsKey,
 			Source: models.VariableSourceSystem,
 		},
 		{
@@ -48,7 +72,17 @@ func (api *API) startExtension(extension models.ExtensionRegistration, cert, key
 		},
 		{
 			Key:    "GOFER_EXTENSION_SYSTEM_KEY",
-			Value:  extensionKey,
+			Value:  token,
+			Source: models.VariableSourceSystem,
+		},
+		{
+			Key:    "GOFER_EXTENSION_SYSTEM_GOFER_HOST",
+			Value:  api.config.Server.Address,
+			Source: models.VariableSourceSystem,
+		},
+		{
+			Key:    "GOFER_EXTENSION_SYSTEM_HOST",
+			Value:  "0.0.0.0:8082",
 			Source: models.VariableSourceSystem,
 		},
 	}
@@ -60,11 +94,13 @@ func (api *API) startExtension(extension models.ExtensionRegistration, cert, key
 	envVars := mergeMaps(systemExtensionVarsMap, extensionVarsMap)
 
 	sc := scheduler.StartContainerRequest{
-		ID:               extensionContainerID(extension.Name),
-		ImageName:        extension.Image,
-		EnvVars:          envVars,
-		RegistryAuth:     extension.RegistryAuth,
-		EnableNetworking: true,
+		ID:           extensionContainerID(extension.Name),
+		ImageName:    extension.Image,
+		EnvVars:      envVars,
+		RegistryAuth: extension.RegistryAuth,
+		Networking: &scheduler.Networking{
+			Port: 8082,
+		},
 	}
 
 	resp, err := api.scheduler.StartContainer(sc)
@@ -98,7 +134,7 @@ func (api *API) startExtension(extension models.ExtensionRegistration, cert, key
 
 		client := proto.NewExtensionServiceClient(conn)
 
-		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(extensionKey))
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(token))
 
 		info, err = client.Info(ctx, &proto.ExtensionInfoRequest{})
 		if err != nil {
@@ -124,12 +160,10 @@ func (api *API) startExtension(extension models.ExtensionRegistration, cert, key
 		Started:       time.Now().UnixMilli(),
 		State:         models.ExtensionStateRunning,
 		Documentation: info.Documentation,
-		Key:           &extensionKey,
+		Key:           &token,
 	})
 
-	log.Info().
-		Str("kind", extension.Name).
-		Str("url", resp.URL).Msg("started extension")
+	log.Info().Str("kind", extension.Name).Str("url", resp.URL).Msg("started extension")
 
 	go api.collectLogs(extensionContainerID(extension.Name))
 

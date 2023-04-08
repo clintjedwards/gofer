@@ -63,6 +63,7 @@ type ExtensionRegistration struct {
 	Variables    []Variable      `json:"variables"`
 	Created      int64           `json:"created"`
 	Status       ExtensionStatus `json:"status"`
+	KeyID        int64           `json:"key_id"`
 }
 
 func (c *ExtensionRegistration) FromInstallExtensionRequest(proto *proto.InstallExtensionRequest) {
@@ -114,6 +115,7 @@ func (c *ExtensionRegistration) ToStorage() *storage.GlobalExtensionRegistration
 		Variables:    variables,
 		Created:      c.Created,
 		Status:       string(c.Status),
+		KeyID:        c.KeyID,
 	}
 	return storage
 }
@@ -143,6 +145,7 @@ func (c *ExtensionRegistration) FromStorage(tr *storage.GlobalExtensionRegistrat
 	c.Variables = variables
 	c.Created = tr.Created
 	c.Status = ExtensionStatus(tr.Status)
+	c.KeyID = tr.KeyID
 }
 
 type ExtensionSubscriptionStatus string

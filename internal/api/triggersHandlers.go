@@ -56,6 +56,7 @@ func (api *API) GetExtensionInstallInstructions(ctx context.Context, request *pr
 			status.Errorf(codes.Internal, "could not obtain proper TLS for extension certifications; %v", err)
 	}
 
+	// TODO(clintjedwards):
 	extensionKey := generateToken(32)
 
 	// We need to first populate the extensions with their required environment variables.
@@ -101,13 +102,13 @@ func (api *API) GetExtensionInstallInstructions(ctx context.Context, request *pr
 	containerID := installerContainerID()
 
 	sc := scheduler.StartContainerRequest{
-		ID:               containerID,
-		ImageName:        request.Image,
-		EnvVars:          convertVarsToMap(systemExtensionVars),
-		RegistryAuth:     registryAuth,
-		AlwaysPull:       true,
-		EnableNetworking: false,
-		Entrypoint:       &[]string{"./extension", "installer"},
+		ID:           containerID,
+		ImageName:    request.Image,
+		EnvVars:      convertVarsToMap(systemExtensionVars),
+		RegistryAuth: registryAuth,
+		AlwaysPull:   true,
+		Networking:   nil,
+		Entrypoint:   &[]string{"./extension", "installer"},
 	}
 
 	_, err = api.scheduler.StartContainer(sc)

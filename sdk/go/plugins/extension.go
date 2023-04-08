@@ -149,6 +149,7 @@ func NewExtension(service ExtensionServiceInterface, installInstructions Install
 // Connect to Gofer's API
 func Connect() (proto.GoferClient, context.Context, error) {
 	goferHost := os.Getenv("GOFER_EXTENSION_SYSTEM_GOFER_HOST")
+	skipTLSVerify := os.Getenv("GOFER_EXTENSION_SYSTEM_SKIP_TLS_VERIFY")
 
 	host, port, _ := strings.Cut(goferHost, ":")
 
@@ -159,7 +160,8 @@ func Connect() (proto.GoferClient, context.Context, error) {
 
 	var opt []grpc.DialOption
 	var tlsConf *tls.Config
-	if host == "localhost" || host == "127.0.0.1" {
+
+	if skipTLSVerify == "true" {
 		tlsConf = &tls.Config{
 			InsecureSkipVerify: true,
 		}
@@ -288,13 +290,18 @@ type ExtensionSystemConfig struct {
 	// actors from attempting to communicate with the extensions.
 	Key  string `required:"true" json:"-"`
 	Name string `required:"true"`
+
 	// Possible values "debug", "info", "warn", "error", "fatal", "panic"
 	LogLevel string `split_words:"true" default:"info"`
+
 	// Contains the raw bytes for a TLS cert used by the extension to authenticate clients.
-	TLSCert   string `split_words:"true" required:"true" json:"-"`
-	TLSKey    string `split_words:"true" required:"true" json:"-"`
-	Host      string `default:"0.0.0.0:8081"`
-	GoferHost string `split_words:"true" default:"172.17.0.1:8080"`
+	TLSCert string `split_words:"true" required:"true" json:"-"`
+	TLSKey  string `split_words:"true" required:"true" json:"-"`
+
+	// Skip verification of TLS cert; useful for development.
+	SkipTLSVerify bool   `split_words:"true" default:"false"`
+	Host          string `default:"0.0.0.0:8082"`
+	GoferHost     string `split_words:"true" default:"localhost:8080"`
 }
 
 // GetExtensionSystemConfig returns environment variables that all extensions require. aka "System variables"

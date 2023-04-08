@@ -98,7 +98,7 @@ func (api *API) CreateToken(ctx context.Context, request *proto.CreateTokenReque
 
 	newToken := models.NewToken(hash, kind, request.Namespaces, request.Metadata, expires)
 
-	err = api.db.InsertToken(api.db, newToken.ToStorage())
+	_, err = api.db.InsertToken(api.db, newToken.ToStorage())
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.CreateTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)
@@ -165,7 +165,7 @@ func (api *API) GetToken(ctx context.Context, request *proto.GetTokenRequest) (*
 	}
 
 	hash := getHash(request.Token)
-	tokenRaw, err := api.db.GetToken(api.db, hash)
+	tokenRaw, err := api.db.GetTokenByHash(api.db, hash)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
 			return &proto.GetTokenResponse{}, status.Error(codes.FailedPrecondition, "token not found")
@@ -236,7 +236,7 @@ func (api *API) DeleteToken(ctx context.Context, request *proto.DeleteTokenReque
 	}
 
 	hash := getHash(request.Token)
-	err := api.db.DeleteToken(api.db, hash)
+	err := api.db.DeleteTokenByHash(api.db, hash)
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.DeleteTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)
@@ -261,7 +261,7 @@ func (api *API) BootstrapToken(ctx context.Context, request *proto.BootstrapToke
 		"bootstrap_token": "true",
 	}, time.Hour*876600)
 
-	err = api.db.InsertToken(api.db, newToken.ToStorage())
+	_, err = api.db.InsertToken(api.db, newToken.ToStorage())
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.BootstrapTokenResponse{}, status.Errorf(codes.Internal, "could not save token to storage: %v", err)

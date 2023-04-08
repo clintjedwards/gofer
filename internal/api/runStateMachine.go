@@ -143,7 +143,7 @@ func (r *RunStateMachine) createAutoInjectToken() {
 			"description": "This token was automatically created by Gofer API at the user's request. Visit https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html#auto-inject-api-tokens to learn more.",
 		}, time.Hour*48)
 
-		err := r.API.db.InsertToken(r.API.db, newToken.ToStorage())
+		_, err := r.API.db.InsertToken(r.API.db, newToken.ToStorage())
 		if err != nil {
 			log.Error().Err(err).Msg("could not save token to storage")
 		}
@@ -786,14 +786,14 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 	containerName := taskContainerID(r.Pipeline.Namespace, r.Pipeline.ID, r.Run.ID, newTaskRun.ID)
 
 	_, err = r.API.scheduler.StartContainer(scheduler.StartContainerRequest{
-		ID:               containerName,
-		ImageName:        newTaskRun.Task.GetImage(),
-		EnvVars:          preparedEnvVars,
-		RegistryAuth:     newTaskRun.Task.GetRegistryAuth(),
-		AlwaysPull:       false,
-		EnableNetworking: false,
-		Entrypoint:       newTaskRun.Task.GetEntrypoint(),
-		Command:          newTaskRun.Task.GetCommand(),
+		ID:           containerName,
+		ImageName:    newTaskRun.Task.GetImage(),
+		EnvVars:      preparedEnvVars,
+		RegistryAuth: newTaskRun.Task.GetRegistryAuth(),
+		AlwaysPull:   false,
+		Networking:   nil,
+		Entrypoint:   newTaskRun.Task.GetEntrypoint(),
+		Command:      newTaskRun.Task.GetCommand(),
 	})
 	if err != nil {
 		_ = r.setTaskRunFinished(newTaskRun.ID, nil, models.TaskRunStatusFailed, &models.TaskRunStatusReason{

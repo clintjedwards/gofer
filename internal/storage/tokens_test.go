@@ -26,10 +26,16 @@ func TestCRUDTokens(t *testing.T) {
 		Disabled:   true,
 	}
 
-	err = db.InsertToken(db, &token)
+	id, err := db.InsertToken(db, &token)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if id != 1 {
+		t.Fatalf("id is incorrect integer")
+	}
+
+	token.ID = id
 
 	tokens, err := db.ListTokens(db, 0, 0)
 	if err != nil {
@@ -44,7 +50,7 @@ func TestCRUDTokens(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	fetchedToken, err := db.GetToken(db, token.Hash)
+	fetchedToken, err := db.GetTokenByHash(db, token.Hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +66,7 @@ func TestCRUDTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fetchedToken, err = db.GetToken(db, token.Hash)
+	fetchedToken, err = db.GetTokenByHash(db, token.Hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +82,7 @@ func TestCRUDTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fetchedToken, err = db.GetToken(db, token.Hash)
+	fetchedToken, err = db.GetTokenByHash(db, token.Hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,12 +91,12 @@ func TestCRUDTokens(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	err = db.DeleteToken(db, token.Hash)
+	err = db.DeleteTokenByHash(db, token.Hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = db.GetToken(db, token.Hash)
+	_, err = db.GetTokenByHash(db, token.Hash)
 	if !errors.Is(err, ErrEntityNotFound) {
 		t.Fatal("expected error Not Found; found alternate error")
 	}

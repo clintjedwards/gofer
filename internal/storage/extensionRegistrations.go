@@ -16,6 +16,7 @@ type GlobalExtensionRegistration struct {
 	Variables    string
 	Created      int64
 	Status       string
+	KeyID        int64 `db:"key_id"`
 }
 
 type UpdatableGlobalExtensionRegistrationFields struct {
@@ -23,6 +24,7 @@ type UpdatableGlobalExtensionRegistrationFields struct {
 	RegistryAuth *string
 	Variables    *string
 	Status       *string
+	KeyID        *int64
 }
 
 func (db *DB) ListGlobalExtensionRegistrations(conn Queryable, offset, limit int) ([]GlobalExtensionRegistration, error) {
@@ -30,7 +32,7 @@ func (db *DB) ListGlobalExtensionRegistrations(conn Queryable, offset, limit int
 		limit = db.maxResultsLimit
 	}
 
-	query, args := qb.Select("name", "image", "registry_auth", "variables", "created", "status").
+	query, args := qb.Select("name", "image", "registry_auth", "variables", "created", "status", "key_id").
 		From("global_extension_registrations").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).MustSql()
@@ -46,7 +48,8 @@ func (db *DB) ListGlobalExtensionRegistrations(conn Queryable, offset, limit int
 
 func (db *DB) InsertGlobalExtensionRegistration(conn Queryable, tr *GlobalExtensionRegistration) error {
 	_, err := qb.Insert("global_extension_registrations").Columns("name", "image", "registry_auth", "variables", "created",
-		"status").Values(tr.Name, tr.Image, tr.RegistryAuth, tr.Variables, tr.Created, tr.Status).RunWith(conn).Exec()
+		"status", "key_id").Values(tr.Name, tr.Image, tr.RegistryAuth, tr.Variables, tr.Created, tr.Status, tr.KeyID).
+		RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrEntityExists
@@ -59,7 +62,7 @@ func (db *DB) InsertGlobalExtensionRegistration(conn Queryable, tr *GlobalExtens
 }
 
 func (db *DB) GetGlobalExtensionRegistration(conn Queryable, name string) (GlobalExtensionRegistration, error) {
-	query, args := qb.Select("name", "image", "registry_auth", "variables", "created", "status").
+	query, args := qb.Select("name", "image", "registry_auth", "variables", "created", "status", "key_id").
 		From("global_extension_registrations").Where(qb.Eq{"name": name}).MustSql()
 
 	reg := GlobalExtensionRegistration{}
@@ -92,6 +95,10 @@ func (db *DB) UpdateGlobalExtensionRegistration(conn Queryable, name string, fie
 
 	if fields.Status != nil {
 		query = query.Set("status", fields.Status)
+	}
+
+	if fields.KeyID != nil {
+		query = query.Set("key_id", fields.KeyID)
 	}
 
 	_, err := query.Where(qb.Eq{"name": name}).RunWith(conn).Exec()

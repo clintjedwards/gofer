@@ -129,7 +129,7 @@ func (e *extension) startInterval(ctx context.Context, namespace, pipeline strin
 		case <-time.After(duration):
 			client, ctx, err := sdk.Connect()
 			if err != nil {
-				log.Error().Str("namespaceID", namespace).Str("pipelineID", pipeline).
+				log.Error().Err(err).Str("namespaceID", namespace).Str("pipelineID", pipeline).
 					Str("extension_label", pipelineExtensionLabel).Msg("could not connect to Gofer")
 
 				continue
@@ -141,7 +141,7 @@ func (e *extension) startInterval(ctx context.Context, namespace, pipeline strin
 				Variables:   map[string]string{},
 			})
 			if err != nil {
-				log.Error().Str("namespaceID", namespace).Str("pipelineID", pipeline).
+				log.Error().Err(err).Str("namespaceID", namespace).Str("pipelineID", pipeline).
 					Str("extension_label", pipelineExtensionLabel).Msg("could not start new run")
 
 				continue
