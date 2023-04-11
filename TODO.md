@@ -152,6 +152,7 @@ We can also create bespoke common tasks that do this.
 - Update Rust sdk with new changes.
 - triggerhandlers line 48 needs to be updated
 - Document extension system env vars
+- Make extension say cli extend.
 
 - We can possibly get rid of common tasks now that the extensions work how they do.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.

@@ -84,27 +84,35 @@ func DefaultAPIConfig() *API {
 }
 
 type Development struct {
-	PrettyLogging     bool `koanf:"pretty_logging"`
-	BypassAuth        bool `koanf:"bypass_auth"`
-	UseLocalhostTLS   bool `koanf:"use_localhost_tls"`
+	PrettyLogging   bool `koanf:"pretty_logging"`
+	BypassAuth      bool `koanf:"bypass_auth"`
+	UseLocalhostTLS bool `koanf:"use_localhost_tls"`
+
+	// Use a pre-filled insecure encryption key.
 	DefaultEncryption bool `koanf:"default_encryption"`
+
+	// Pass the "skip_tls_verify" environment variable to extensions
+	// so that they can talk to Gofer without verifying the cert.
+	ExtensionSkipTLSVerify bool `koanf:"extension_skip_tls_verify"`
 }
 
 func DefaultDevelopmentConfig() *Development {
 	return &Development{
-		PrettyLogging:     false,
-		BypassAuth:        false,
-		UseLocalhostTLS:   false,
-		DefaultEncryption: false,
+		PrettyLogging:          false,
+		BypassAuth:             false,
+		UseLocalhostTLS:        false,
+		DefaultEncryption:      false,
+		ExtensionSkipTLSVerify: false,
 	}
 }
 
 func FullDevelopmentConfig() *Development {
 	return &Development{
-		PrettyLogging:     true,
-		BypassAuth:        true,
-		UseLocalhostTLS:   true,
-		DefaultEncryption: true,
+		PrettyLogging:          true,
+		BypassAuth:             true,
+		UseLocalhostTLS:        true,
+		DefaultEncryption:      true,
+		ExtensionSkipTLSVerify: true,
 	}
 }
 

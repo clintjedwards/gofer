@@ -87,6 +87,14 @@ func (api *API) startExtension(extension models.ExtensionRegistration, tlsCert, 
 		},
 	}
 
+	if api.config.Development.ExtensionSkipTLSVerify {
+		systemExtensionVars = append(systemExtensionVars, models.Variable{
+			Key:    "GOFER_EXTENSION_SYSTEM_SKIP_TLS_VERIFY",
+			Value:  "true",
+			Source: models.VariableSourceSystem,
+		})
+	}
+
 	log.Info().Str("name", extension.Name).Msg("starting extension")
 
 	systemExtensionVarsMap := convertVarsToMap(systemExtensionVars)

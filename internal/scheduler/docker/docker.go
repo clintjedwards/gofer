@@ -156,8 +156,6 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 
 	hostConfig := &container.HostConfig{}
 
-	portBindName := fmt.Sprintf("%d/tcp", req.Networking.Port)
-
 	if req.Networking != nil {
 		port, err := nat.NewPort("tcp", strconv.Itoa(req.Networking.Port))
 		if err != nil {
@@ -171,7 +169,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		}
 
 		hostConfig.PortBindings = nat.PortMap{
-			nat.Port(portBindName): []nat.PortBinding{
+			nat.Port(fmt.Sprintf("%d/tcp", req.Networking.Port)): []nat.PortBinding{
 				hostPortMap,
 			},
 		}
@@ -208,7 +206,7 @@ func (orch *Orchestrator) StartContainer(req scheduler.StartContainerRequest) (s
 		HostPort: "",
 	}
 	if req.Networking != nil {
-		rawHostPort = containerInfo.NetworkSettings.Ports[nat.Port(portBindName)][0]
+		rawHostPort = containerInfo.NetworkSettings.Ports[nat.Port(fmt.Sprintf("%d/tcp", req.Networking.Port))][0]
 	}
 
 	return scheduler.StartContainerResponse{

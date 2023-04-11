@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/clintjedwards/avail/v2 v2.0.1
-	github.com/clintjedwards/gofer v0.4.2-0.20230408010924-85d2dadefd24
+	github.com/clintjedwards/gofer v0.4.2-0.20230411034120-b3a5c709ead0
 	github.com/rs/zerolog v1.29.0
 )
 
@@ -18,7 +18,7 @@ require (
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
-	google.golang.org/genproto v0.0.0-20230403163135-c38d8f061ccd // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.54.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 )
