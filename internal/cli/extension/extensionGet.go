@@ -83,7 +83,9 @@ Endpoint: {{.URL}}
 
 {{- if .Documentation }}
 
-Documentation: {{.Documentation}}
+Documentation:
+
+{{.Documentation}}
 {{- else}}
 
 No Documentation found

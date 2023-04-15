@@ -35,7 +35,7 @@ type Extension struct {
 	URL           string         `json:"url"`
 	Started       int64          `json:"started"` // The start time of the extension in epoch milliseconds.
 	State         ExtensionState `json:"state"`
-	Documentation string         `json:"documentation"` // The documentation link for this specific extension.
+	Documentation string         `json:"documentation"` // The documentation for this specific extension.
 	// Key is a extension's authentication key used to validate requests from the Gofer main service.
 	// On every request the Gofer service passes this key so that it is impossible for other service to contact
 	// and manipulate extensions directly.

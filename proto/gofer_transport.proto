@@ -464,7 +464,7 @@ message ExtensionInfoResponse {
   // extension container.
   string name = 1;
 
-  // Extensions are allowed to provide a link to more extensive documentation on
+  // Extensions are allowed to provide more extensive documentation on
   // how to use and configure them.
   string documentation = 2;
 

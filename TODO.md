@@ -151,7 +151,6 @@ We can also create bespoke common tasks that do this.
 
 - Update Rust sdk with new changes.
 - Pipeline Get is missing recent events.
-- Allow Extensions to give in-app documentation.
 
 - We can possibly get rid of common tasks now that the extensions work how they do.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.

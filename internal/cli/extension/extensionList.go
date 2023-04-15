@@ -53,7 +53,6 @@ func extensionList(_ *cobra.Command, _ []string) error {
 			extension.Url,
 			cliformat.ColorizeExtensionState(cliformat.NormalizeEnumValue(extension.State.String(), "Unknown")),
 			cliformat.ColorizeExtensionStatus(cliformat.NormalizeEnumValue(extension.Status.String(), "Unknown")),
-			extension.Documentation,
 		})
 	}
 
@@ -69,7 +68,7 @@ func formatTable(data [][]string, color bool) string {
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
 
-	table.SetHeader([]string{"Name", "URL", "State", "Status", "Documentation Link"})
+	table.SetHeader([]string{"Name", "URL", "State", "Status"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(true)
@@ -86,11 +85,9 @@ func formatTable(data [][]string, color bool) string {
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
 			tablewriter.Color(tablewriter.FgBlueColor),
-			tablewriter.Color(tablewriter.FgBlueColor),
 		)
 		table.SetColumnColor(
 			tablewriter.Color(tablewriter.FgYellowColor),
-			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),
 			tablewriter.Color(0),
