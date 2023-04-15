@@ -226,7 +226,7 @@ pub struct Run {
     #[prost(message, optional, tag="9")]
     pub status_reason: ::core::option::Option<RunStatusReason>,
     #[prost(message, optional, tag="10")]
-    pub extension: ::core::option::Option<run::RunExtensionInfo>,
+    pub initiator: ::core::option::Option<Initiator>,
     #[prost(message, repeated, tag="11")]
     pub variables: ::prost::alloc::vec::Vec<Variable>,
     #[prost(bool, tag="12")]
@@ -234,13 +234,6 @@ pub struct Run {
 }
 /// Nested message and enum types in `Run`.
 pub mod run {
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct RunExtensionInfo {
-        #[prost(string, tag="1")]
-        pub name: ::prost::alloc::string::String,
-        #[prost(string, tag="2")]
-        pub label: ::prost::alloc::string::String,
-    }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RunState {
@@ -561,6 +554,7 @@ pub struct Token {
     pub created: i64,
     #[prost(enumeration="token::Kind", tag="2")]
     pub kind: i32,
+    /// Accepts either direct namespace list or regex
     #[prost(string, repeated, tag="3")]
     pub namespaces: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(map="string, string", tag="4")]
@@ -613,6 +607,15 @@ pub struct ObjectStoreKey {
     pub key: ::prost::alloc::string::String,
     #[prost(int64, tag="2")]
     pub created: i64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Initiator {
+    #[prost(bool, tag="1")]
+    pub is_bot: bool,
+    #[prost(string, tag="2")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub reason: ::prost::alloc::string::String,
 }
 // These protobufs contain protos used within the SDK. These models are usually
 // inputs for the API, used by the extension(CLI in this case).
@@ -1249,6 +1252,9 @@ pub struct StartRunRequest {
     /// overrides all other environment variables if there is a name collision.
     #[prost(map="string, string", tag="3")]
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    /// Who started the run and for what purpose?
+    #[prost(message, optional, tag="4")]
+    pub initiator: ::core::option::Option<Initiator>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StartRunResponse {
@@ -1265,6 +1271,9 @@ pub struct RetryRunRequest {
     /// Run ID
     #[prost(int64, tag="3")]
     pub run_id: i64,
+    /// Who started the run and for what purpose?
+    #[prost(message, optional, tag="4")]
+    pub initiator: ::core::option::Option<Initiator>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RetryRunResponse {

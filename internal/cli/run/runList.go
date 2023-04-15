@@ -84,7 +84,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			cliformat.Duration(run.Started, run.Ended),
 			cliformat.ColorizeRunState(cliformat.NormalizeEnumValue(run.State.String(), "Unknown")),
 			cliformat.ColorizeRunStatus(cliformat.NormalizeEnumValue(run.Status.String(), "Unknown")),
-			fmt.Sprintf("%s(%s)", run.Extension.Name, color.YellowString(run.Extension.Label)),
+			run.Initiator.Name,
 		})
 	}
 

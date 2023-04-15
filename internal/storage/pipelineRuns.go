@@ -19,7 +19,7 @@ type PipelineRun struct {
 	State                 string
 	Status                string
 	StatusReason          string `db:"status_reason"`
-	Extension             string
+	Initiator             string
 	Variables             string
 	StoreObjectsExpired   bool `db:"store_objects_expired"`
 }
@@ -39,7 +39,7 @@ func (db *DB) ListPipelineRuns(conn Queryable, offset, limit int, namespace, pip
 	}
 
 	query, args := qb.Select("namespace", "pipeline", "pipeline_config_version", "id", "started", "ended", "state",
-		"status", "status_reason", "extension", "variables", "store_objects_expired").
+		"status", "status_reason", "initiator", "variables", "store_objects_expired").
 		From("pipeline_runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline}).
 		OrderBy("id DESC").
@@ -57,9 +57,9 @@ func (db *DB) ListPipelineRuns(conn Queryable, offset, limit int, namespace, pip
 
 func (db *DB) InsertPipelineRun(conn Queryable, run *PipelineRun) error {
 	_, err := qb.Insert("pipeline_runs").Columns("namespace", "pipeline", "pipeline_config_version", "id", "started",
-		"ended", "state", "status", "status_reason", "extension", "variables", "store_objects_expired").Values(
+		"ended", "state", "status", "status_reason", "initiator", "variables", "store_objects_expired").Values(
 		run.Namespace, run.Pipeline, run.PipelineConfigVersion, run.ID, run.Started, run.Ended, run.State,
-		run.Status, run.StatusReason, run.Extension, run.Variables, run.StoreObjectsExpired,
+		run.Status, run.StatusReason, run.Initiator, run.Variables, run.StoreObjectsExpired,
 	).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -74,7 +74,7 @@ func (db *DB) InsertPipelineRun(conn Queryable, run *PipelineRun) error {
 
 func (db *DB) GetPipelineRun(conn Queryable, namespace, pipeline string, id int64) (PipelineRun, error) {
 	query, args := qb.Select("namespace", "pipeline", "pipeline_config_version", "id", "started", "ended", "state", "status",
-		"status_reason", "extension", "variables", "store_objects_expired").
+		"status_reason", "initiator", "variables", "store_objects_expired").
 		From("pipeline_runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "id": id}).MustSql()
 
@@ -93,7 +93,7 @@ func (db *DB) GetPipelineRun(conn Queryable, namespace, pipeline string, id int6
 
 func (db *DB) GetLatestPipelineRun(conn Queryable, namespace, pipeline string) (PipelineRun, error) {
 	query, args := qb.Select("namespace", "pipeline", "pipeline_config_version", "id", "started", "ended", "state",
-		"status", "status_reason", "extension", "variables", "store_objects_expired").
+		"status", "status_reason", "initiator", "variables", "store_objects_expired").
 		From("pipeline_runs").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline}).
 		OrderBy("id DESC").

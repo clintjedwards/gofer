@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
     state                   TEXT    NOT NULL,
     status                  TEXT    NOT NULL,
     status_reason           TEXT    NOT NULL,
-    extension                 TEXT    NOT NULL,
+    initiator               TEXT    NOT NULL,
     variables               TEXT    NOT NULL,
     store_objects_expired   INTEGER NOT NULL CHECK (store_objects_expired IN (0, 1)),
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,

@@ -56,7 +56,7 @@ func (api *API) GetExtensionInstallInstructions(ctx context.Context, request *pr
 			status.Errorf(codes.Internal, "could not obtain proper TLS for extension certifications; %v", err)
 	}
 
-	// TODO(clintjedwards):
+	// Temporary key since we don't need to continually talk to the container.
 	extensionKey := generateToken(32)
 
 	// We need to first populate the extensions with their required environment variables.

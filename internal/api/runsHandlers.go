@@ -77,6 +77,14 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
+	if request.Initiator == nil {
+		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "initiator required")
+	}
+
+	if request.Initiator.Name == "" {
+		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "initiator name required")
+	}
+
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.StartRunResponse{},
@@ -148,11 +156,12 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 
 		newRunID = latestRunID + 1
 
+		initiator := models.Initiator{}
+		initiator.FromProto(request.Initiator)
+
 		// Create the new run and retrieve it's ID.
-		newRun = models.NewRun(request.NamespaceId, request.PipelineId, latestVersion, newRunID, models.ExtensionInfo{
-			Name:  "manual",
-			Label: "api",
-		}, convertVarsToSlice(request.Variables, models.VariableSourceRunOptions))
+		newRun = models.NewRun(request.NamespaceId, request.PipelineId, latestVersion, newRunID, initiator,
+			convertVarsToSlice(request.Variables, models.VariableSourceRunOptions))
 
 		err = api.db.InsertPipelineRun(api.db, newRun.ToStorage())
 		if err != nil {

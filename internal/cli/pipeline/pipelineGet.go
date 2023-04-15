@@ -174,7 +174,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 	for _, run := range recentRuns {
 		recentRunList = append(recentRunList, []string{
 			color.BlueString("• Run #" + strconv.Itoa(int(run.Id))),
-			fmt.Sprintf("%s by %s %s", format.UnixMilli(run.Started, "Not yet", detail), color.CyanString(run.Extension.Label), color.YellowString(run.Extension.Name)),
+			fmt.Sprintf("%s by %s", format.UnixMilli(run.Started, "Not yet", detail), color.CyanString(run.Initiator.Name)),
 			fmt.Sprintf("%s %s", formatStatePrefix(run.State), format.Duration(run.Started, run.Ended)),
 			format.ColorizeRunState(format.NormalizeEnumValue(run.State.String(), "Unknown")),
 			format.ColorizeRunStatus(format.NormalizeEnumValue(run.Status.String(), "Unknown")),

@@ -65,6 +65,10 @@ func runStart(cmd *cobra.Command, args []string) error {
 		NamespaceId: cl.State.Config.Namespace,
 		PipelineId:  pipelineID,
 		Variables:   variables,
+		Initiator: &proto.Initiator{
+			Type: proto.Initiator_HUMAN,
+			Name: "cli",
+		},
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not start run: %v", err))

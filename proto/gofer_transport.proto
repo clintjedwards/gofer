@@ -300,13 +300,15 @@ message StartRunRequest {
   // variables allows for the replacement of task environment variables, it
   // overrides all other environment variables if there is a name collision.
   map<string, string> variables = 3;
+  Initiator initiator = 4; // Who started the run and for what purpose?
 }
 message StartRunResponse { Run run = 1; }
 
 message RetryRunRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;
-  int64 run_id = 3; // Run ID
+  int64 run_id = 3;        // Run ID
+  Initiator initiator = 4; // Who started the run and for what purpose?
 }
 message RetryRunResponse { Run run = 1; }
 

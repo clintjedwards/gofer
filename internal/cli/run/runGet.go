@@ -88,8 +88,8 @@ type data struct {
 	Started        string
 	Duration       string
 	PipelineID     string
-	ExtensionLabel string
-	ExtensionName  string
+	InitiatorType  string
+	InitiatorName  string
 	ObjectsExpired bool
 	TaskRuns       []taskRunData
 }
@@ -138,6 +138,8 @@ func formatRunInfo(run *proto.Run, taskRuns []*proto.TaskRun, detail bool) strin
 		taskRunList = append(taskRunList, data)
 	}
 
+	faint := color.New(color.Faint).SprintfFunc()
+
 	data := data{
 		ID:             color.BlueString("#" + strconv.Itoa(int(run.Id))),
 		Status:         format.ColorizeRunStatus(format.NormalizeEnumValue(run.Status.String(), "Unknown")),
@@ -145,15 +147,15 @@ func formatRunInfo(run *proto.Run, taskRuns []*proto.TaskRun, detail bool) strin
 		Started:        format.UnixMilli(run.Started, "Not yet", detail),
 		Duration:       format.Duration(run.Started, run.Ended),
 		PipelineID:     color.BlueString(run.Pipeline),
-		ExtensionName:  color.CyanString(run.Extension.Name),
-		ExtensionLabel: color.YellowString(run.Extension.Label),
+		InitiatorType:  faint("(" + format.NormalizeEnumValue(run.Initiator.Type.String(), "Unknown") + ")"),
+		InitiatorName:  color.CyanString(run.Initiator.Name),
 		ObjectsExpired: run.StoreObjectsExpired,
 		TaskRuns:       taskRunList,
 	}
 
 	const formatTmpl = `Run {{.ID}} for Pipeline {{.PipelineID}} :: {{.State}} :: {{.Status}}
 
-  Triggered via {{.ExtensionName}} ({{.ExtensionLabel}}) {{.Started}} and ran for {{.Duration}}
+  Initiated by {{.InitiatorName}} {{.InitiatorType}} {{.Started}} and ran for {{.Duration}}
   {{- if .TaskRuns}}
 
   🗒 Task Runs

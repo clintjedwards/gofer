@@ -71,19 +71,35 @@ func (r *RunStatusReason) ToProto() *proto.RunStatusReason {
 	}
 }
 
+type InitiatorType string
+
+const (
+	// Gofer has no idea who was the initiator.
+	InitiatorTypeUnknown   InitiatorType = "UNKNOWN"
+	InitiatorTypeBot       InitiatorType = "BOT"
+	InitiatorTypeHuman     InitiatorType = "HUMAN"
+	InitiatorTypeExtension InitiatorType = "EXTENSION"
+)
+
 // Information about which extension was responsible for the run's execution.
-type ExtensionInfo struct {
-	Name string // The extension kind responsible for starting the run.
-	// The extension label responsible for starting the run. The label is a user chosen name
-	// for the extension to differentiate it from other pipeline extensions of the same kind.
-	Label string
+type Initiator struct {
+	Type   InitiatorType `json:"type"`
+	Name   string        `json:"name"`
+	Reason string        `json:"reason"`
 }
 
-func (t *ExtensionInfo) ToProto() *proto.Run_RunExtensionInfo {
-	return &proto.Run_RunExtensionInfo{
-		Name:  t.Name,
-		Label: t.Label,
+func (t *Initiator) ToProto() *proto.Initiator {
+	return &proto.Initiator{
+		Type:   proto.Initiator_Type(proto.Initiator_Type_value[string(t.Type)]),
+		Name:   t.Name,
+		Reason: t.Reason,
 	}
+}
+
+func (t *Initiator) FromProto(proto *proto.Initiator) {
+	t.Type = InitiatorType(proto.Type.String())
+	t.Name = proto.Name
+	t.Reason = proto.Reason
 }
 
 // A run is one or more tasks being executed on behalf of some extension.
@@ -98,12 +114,12 @@ type Run struct {
 	State               RunState         `json:"state"`                 // The current state of the run.
 	Status              RunStatus        `json:"status"`                // The current status of the run.
 	StatusReason        *RunStatusReason `json:"status_reason"`         // Contains more information about a run's current status.
-	Extension           ExtensionInfo    `json:"extension"`             // Information about which extension was responsible for the run's execution.
+	Initiator           Initiator        `json:"initiator"`             // Information who started the run and why.
 	Variables           []Variable       `json:"variables"`             // Environment variables to be injected into each child task run. These are usually injected by the extension.
 	StoreObjectsExpired bool             `json:"store_objects_expired"` // Tracks whether objects for this run have expired already.
 }
 
-func NewRun(namespace, pipeline string, version, id int64, extension ExtensionInfo, variables []Variable) *Run {
+func NewRun(namespace, pipeline string, version, id int64, initiator Initiator, variables []Variable) *Run {
 	return &Run{
 		Namespace:           namespace,
 		Pipeline:            pipeline,
@@ -114,7 +130,7 @@ func NewRun(namespace, pipeline string, version, id int64, extension ExtensionIn
 		State:               RunStatePending,
 		Status:              RunStatusUnknown,
 		StatusReason:        nil,
-		Extension:           extension,
+		Initiator:           initiator,
 		Variables:           variables,
 		StoreObjectsExpired: false,
 	}
@@ -141,14 +157,14 @@ func (r *Run) ToProto() *proto.Run {
 		State:               proto.Run_RunState(proto.Run_RunState_value[string(r.State)]),
 		Status:              proto.Run_RunStatus(proto.Run_RunStatus_value[string(r.Status)]),
 		StatusReason:        statusReason,
-		Extension:           r.Extension.ToProto(),
+		Initiator:           r.Initiator.ToProto(),
 		Variables:           variables,
 		StoreObjectsExpired: r.StoreObjectsExpired,
 	}
 }
 
 func (r *Run) ToStorage() *storage.PipelineRun {
-	extension, err := json.Marshal(r.Extension)
+	initiator, err := json.Marshal(r.Initiator)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
@@ -168,7 +184,7 @@ func (r *Run) ToStorage() *storage.PipelineRun {
 		State:                 string(r.State),
 		Status:                string(r.Status),
 		StatusReason:          r.StatusReason.ToJSON(),
-		Extension:             string(extension),
+		Initiator:             string(initiator),
 		Variables:             string(variables),
 		StoreObjectsExpired:   r.StoreObjectsExpired,
 	}
@@ -181,8 +197,8 @@ func (r *Run) FromStorage(storage *storage.PipelineRun) {
 		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
 
-	var extension ExtensionInfo
-	err = json.Unmarshal([]byte(storage.Extension), &extension)
+	var initiator Initiator
+	err = json.Unmarshal([]byte(storage.Initiator), &initiator)
 	if err != nil {
 		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
@@ -202,7 +218,7 @@ func (r *Run) FromStorage(storage *storage.PipelineRun) {
 	r.State = RunState(storage.State)
 	r.Status = RunStatus(storage.Status)
 	r.StatusReason = &statusReason
-	r.Extension = extension
+	r.Initiator = initiator
 	r.Variables = variables
 	r.StoreObjectsExpired = storage.StoreObjectsExpired
 }

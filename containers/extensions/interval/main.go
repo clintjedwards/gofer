@@ -135,10 +135,17 @@ func (e *extension) startInterval(ctx context.Context, namespace, pipeline strin
 				continue
 			}
 
+			config, _ := sdk.GetExtensionSystemConfig()
+
 			resp, err := client.StartRun(ctx, &proto.StartRunRequest{
 				NamespaceId: namespace,
 				PipelineId:  pipeline,
 				Variables:   map[string]string{},
+				Initiator: &proto.Initiator{
+					Type:   proto.Initiator_EXTENSION,
+					Name:   fmt.Sprintf("%s (%s)", config.Name, pipelineExtensionLabel),
+					Reason: "Triggered due to the passage of time",
+				},
 			})
 			if err != nil {
 				log.Error().Err(err).Str("namespaceID", namespace).Str("pipelineID", pipeline).

@@ -66,7 +66,7 @@ func TestCRUDPipelineRuns(t *testing.T) {
 		State:                 "STATE_STRING",
 		Status:                "STATUS_STRING",
 		StatusReason:          "STATUS_REASON_STRING",
-		Extension:             "EXTENSION_STRING",
+		Initiator:             "EXTENSION_STRING",
 		Variables:             "VARIABLES_STRING",
 		StoreObjectsExpired:   false,
 	}

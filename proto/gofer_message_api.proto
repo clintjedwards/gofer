@@ -153,11 +153,7 @@ message Run {
   }
   RunStatus status = 8;
   RunStatusReason status_reason = 9;
-  message RunExtensionInfo {
-    string name = 1;
-    string label = 2;
-  }
-  RunExtensionInfo extension = 10;
+  Initiator initiator = 10;
   repeated Variable variables = 11;
   bool store_objects_expired = 12;
 }
@@ -374,4 +370,16 @@ message SecretStoreKey {
 message ObjectStoreKey {
   string key = 1;
   int64 created = 2;
+}
+
+message Initiator {
+  enum Type {
+    UNKNOWN = 0;
+    BOT = 1;
+    HUMAN = 2;
+    EXTENSION = 3;
+  }
+  Type type = 1;
+  string name = 2;
+  string reason = 3;
 }

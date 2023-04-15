@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -50,10 +49,17 @@ func (t *extension) checkTimeFrames() {
 				continue
 			}
 
+			config, _ := sdk.GetExtensionSystemConfig()
+
 			resp, err := client.StartRun(ctx, &proto.StartRunRequest{
 				NamespaceId: subscription.namespace,
 				PipelineId:  subscription.pipeline,
 				Variables:   map[string]string{},
+				Initiator: &proto.Initiator{
+					Type:   proto.Initiator_EXTENSION,
+					Name:   fmt.Sprintf("%s (%s)", config.Name, subscription.pipelineExtensionLabel),
+					Reason: fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q", time.Now().Format(time.RFC1123), subscription.timeframe.Expression),
+				},
 			})
 			if err != nil {
 				log.Error().Str("namespaceID", subscription.namespace).Str("pipelineID", subscription.pipeline).
@@ -61,9 +67,6 @@ func (t *extension) checkTimeFrames() {
 
 				continue
 			}
-
-			// fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q",
-			// time.Now().Format(time.RFC1123), subscription.timeframe.Expression)
 
 			log.Debug().Str("extension_label", subscription.pipelineExtensionLabel).Str("pipeline_id", subscription.pipeline).
 				Str("namespace_id", subscription.namespace).Int64("run_id", resp.Run.Id).
@@ -133,8 +136,10 @@ func (t *extension) Info(ctx context.Context, request *proto.ExtensionInfoReques
 		registered = append(registered, fmt.Sprintf("%s/%s", sub.namespace, sub.pipeline))
 	}
 
+	config, _ := sdk.GetExtensionSystemConfig()
+
 	return &proto.ExtensionInfoResponse{
-		Name:          os.Getenv("GOFER_EXTENSION_NAME"),
+		Name:          config.Name,
 		Documentation: "https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
 		Registered:    registered,
 	}, nil
