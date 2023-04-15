@@ -1,4 +1,4 @@
-package extension
+package pipeline
 
 import (
 	"context"
@@ -7,13 +7,14 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	proto "github.com/clintjedwards/gofer/proto/go"
+
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
 
-var cmdPipelineExtensionSub = &cobra.Command{
-	Use:   "sub <pipeline_id> <name> <label>",
-	Short: "Subscribe a pipeline to a extension",
+var cmdPipelineExtend = &cobra.Command{
+	Use:   "extend <pipeline> <name> <label>",
+	Short: "Subscribe a pipeline to an extension",
 	Long: `Subscribe a pipeline to a extension.
 
 Extensions extend the functionality of your pipeline, allowing it to do many things like automatically run based on
@@ -32,16 +33,16 @@ ex. gofer pipeline extend simple interval every_5_seconds -s every="5s"
 Passing the config 'every="5s"' as the config parameter required`,
 	Example: `$ gofer pipeline extend simple interval every_5_seconds
 $ gofer pipeline extend simple interval every_5_seconds -s every="5s"`,
-	RunE: pipelineExtensionSub,
+	RunE: pipelineExtend,
 	Args: cobra.ExactArgs(3),
 }
 
 func init() {
-	cmdPipelineExtensionSub.Flags().StringSliceP("setting", "s", []string{}, "set pipeline extension setting")
-	CmdPipelineExtension.AddCommand(cmdPipelineExtensionSub)
+	cmdPipelineExtend.Flags().StringSliceP("setting", "s", []string{}, "set pipeline extension setting")
+	CmdPipeline.AddCommand(cmdPipelineExtend)
 }
 
-func pipelineExtensionSub(cmd *cobra.Command, args []string) error {
+func pipelineExtend(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name := args[1]
 	label := args[2]

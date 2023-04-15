@@ -282,10 +282,10 @@ func pipelineRegister(cmd *cobra.Command, args []string) error {
 
 	cl.State.Fmt.Println(fmt.Sprintf("\n  View details of your pipeline: %s",
 		color.YellowString("gofer pipeline get %s", config.Pipeline.Metadata.Id)))
-	cl.State.Fmt.Println(fmt.Sprintf("  Start a new run: %s", color.YellowString("gofer run start %s", config.Pipeline.Metadata.Id)))
+	cl.State.Fmt.Println(fmt.Sprintf("  Start a new run: %s", color.YellowString("gofer pipeline run %s", config.Pipeline.Metadata.Id)))
 
 	if config.Pipeline.Config.Version == 1 {
-		cl.State.Fmt.Println(fmt.Sprintf("  Subscribe to a extension: %s", color.YellowString("gofer pipeline extension sub %s <extension_name> <extension_label>", config.Pipeline.Metadata.Id)))
+		cl.State.Fmt.Println(fmt.Sprintf("  Subscribe to a extension: %s", color.YellowString("gofer pipeline extend %s <extension_name> <extension_label>", config.Pipeline.Metadata.Id)))
 	}
 	cl.State.Fmt.Finish()
 

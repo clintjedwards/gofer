@@ -144,15 +144,14 @@ We can also create bespoke common tasks that do this.
   - Gofer then passes them another set of env vars from the user's own config.
     These are prefixed with `gofer_extension_param_{var}`
 - Write better documentation on how to spin Gofer up locally so you can test out your pipeline.
+- Add documentation for new token namespaces
+- Document extension system env vars
 
 ### On the floor
 
-- Add documentation for new token namespaces
 - Update Rust sdk with new changes.
-- triggerhandlers line 48 needs to be updated
-- Document extension system env vars
-- Make extension say cli extend.
 - Pipeline Get is missing recent events.
+- Allow Extensions to give in-app documentation.
 
 - We can possibly get rid of common tasks now that the extensions work how they do.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.

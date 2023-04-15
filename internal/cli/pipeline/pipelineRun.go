@@ -64,6 +64,11 @@ func pipelineRun(cmd *cobra.Command, args []string) error {
 	resp, err := client.StartRun(ctx, &proto.StartRunRequest{
 		NamespaceId: cl.State.Config.Namespace,
 		PipelineId:  pipelineID,
+		Variables:   variables,
+		Initiator: &proto.Initiator{
+			Type: proto.Initiator_HUMAN,
+			Name: "cli",
+		},
 	})
 	if err != nil {
 		cl.State.Fmt.PrintErr(fmt.Sprintf("could not start run: %v", err))
