@@ -610,12 +610,23 @@ pub struct ObjectStoreKey {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Initiator {
-    #[prost(bool, tag="1")]
-    pub is_bot: bool,
+    #[prost(enumeration="initiator::Type", tag="1")]
+    pub r#type: i32,
     #[prost(string, tag="2")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag="3")]
     pub reason: ::prost::alloc::string::String,
+}
+/// Nested message and enum types in `Initiator`.
+pub mod initiator {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Type {
+        Unknown = 0,
+        Bot = 1,
+        Human = 2,
+        Extension = 3,
+    }
 }
 // These protobufs contain protos used within the SDK. These models are usually
 // inputs for the API, used by the extension(CLI in this case).
@@ -1573,7 +1584,7 @@ pub struct ExtensionInfoResponse {
     /// extension container.
     #[prost(string, tag="1")]
     pub name: ::prost::alloc::string::String,
-    /// Extensions are allowed to provide a link to more extensive documentation on
+    /// Extensions are allowed to provide more extensive documentation on
     /// how to use and configure them.
     #[prost(string, tag="2")]
     pub documentation: ::prost::alloc::string::String,

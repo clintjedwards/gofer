@@ -14,10 +14,6 @@ pub enum ExtensionError {
 /// provides the caller with a clear interface to implement and allows this package to bake in common
 /// functionality among all extensions.
 trait Extension {
-    /// Blocks until the extension has a pipeline that should be run, then it returns. This is ideal for
-    /// setting the check endpoint as a channel result.
-    fn watch(req: ExtensionWatchRequest) -> Result<ExtensionWatchResponse, ExtensionError>;
-
     /// Returns information on the specific extension plugin. Used as a startup health endpoint by the main
     /// Gofer process.
     fn info(req: ExtensionInfoRequest) -> Result<ExtensionInfoResponse, ExtensionError>;
