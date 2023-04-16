@@ -117,7 +117,7 @@ func overlayGlobalFlags(cmd *cobra.Command) {
 }
 
 func (s *Harness) NewFormatter() {
-	clifmt, err := polyfmt.NewFormatter(polyfmt.Mode(s.Config.Format), false)
+	clifmt, err := polyfmt.NewFormatter(polyfmt.Mode(s.Config.Format), polyfmt.DefaultOptions())
 	if err != nil {
 		log.Fatal(err)
 	}
