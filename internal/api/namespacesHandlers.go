@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -87,7 +88,7 @@ func (api *API) CreateNamespace(ctx context.Context, request *proto.CreateNamesp
 			status.Error(codes.Internal, "could not insert namespace")
 	}
 
-	go api.events.Publish(models.EventNamespaceCreated{
+	go api.events.Publish(events.EventNamespaceCreated{
 		NamespaceID: newNamespace.ID,
 	})
 
@@ -138,7 +139,7 @@ func (api *API) DeleteNamespace(ctx context.Context, request *proto.DeleteNamesp
 		return &proto.DeleteNamespaceResponse{}, err
 	}
 
-	go api.events.Publish(models.EventNamespaceDeleted{
+	go api.events.Publish(events.EventNamespaceDeleted{
 		NamespaceID: request.Id,
 	})
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/scheduler"
@@ -324,12 +325,12 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 						return err
 					}
 
-					go api.events.Publish(models.EventTaskRunCompleted{
+					go api.events.Publish(events.EventTaskRunCompleted{
 						NamespaceID: taskrun.Namespace,
 						PipelineID:  taskrun.Pipeline,
 						RunID:       taskrun.Run,
 						TaskRunID:   taskrun.ID,
-						Status:      models.TaskRunStatusFailed,
+						Status:      string(models.TaskRunStatusFailed),
 					})
 
 					return nil
@@ -381,14 +382,14 @@ func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force
 		run       int64
 	}
 
-	// Collect all events.
-	events := api.events.GetAll(false)
+	// Collect all eventList.
+	eventList := api.events.GetAll(false)
 	inProgressRunMap := map[runkey]struct{}{}
 
 	// Search events for any orphan runs.
-	for event := range events {
+	for event := range eventList {
 		switch evt := event.Details.(type) {
-		case *models.EventRunStarted:
+		case *events.EventRunStarted:
 			key := runkey{
 				namespace: evt.NamespaceID,
 				pipeline:  evt.PipelineID,
@@ -405,7 +406,7 @@ func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force
 				inProgressRunMap[key] = struct{}{}
 			}
 
-		case *models.EventRunCompleted:
+		case *events.EventRunCompleted:
 			_, exists := inProgressRunMap[runkey{
 				namespace: evt.NamespaceID,
 				pipeline:  evt.PipelineID,

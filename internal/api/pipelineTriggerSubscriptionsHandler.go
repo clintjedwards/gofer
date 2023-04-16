@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -79,7 +80,7 @@ func (api *API) CreatePipelineExtensionSubscription(ctx context.Context, request
 		return nil, status.Errorf(codes.Internal, "could not subscribe to extension;  %v", err.Error())
 	}
 
-	go api.events.Publish(models.EventPipelineExtensionSubscription{
+	go api.events.Publish(events.EventPipelineExtensionSubscription{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
 		Label:       request.ExtensionLabel,
@@ -279,7 +280,7 @@ func (api *API) DeletePipelineExtensionSubscription(ctx context.Context, request
 		return nil, status.Errorf(codes.FailedPrecondition, "could not subscribe to extension removal;  %v", err.Error())
 	}
 
-	go api.events.Publish(models.EventPipelineExtensionUnsubscription{
+	go api.events.Publish(events.EventPipelineExtensionUnsubscription{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.PipelineId,
 		Label:       request.ExtensionLabel,

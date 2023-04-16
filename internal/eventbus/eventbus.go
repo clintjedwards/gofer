@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/rs/zerolog/log"
@@ -22,8 +23,8 @@ var (
 // Subscription is a representation of a new Subscription to a certain topic.
 type Subscription struct {
 	id     string
-	kind   models.EventType
-	Events chan models.Event
+	kind   events.EventType
+	Events chan events.Event
 }
 
 func generateID(length int) string {
@@ -32,7 +33,7 @@ func generateID(length int) string {
 	return fmt.Sprintf("%x", b)
 }
 
-func newSubscriber(kind models.EventType, channel chan models.Event) Subscription {
+func newSubscriber(kind events.EventType, channel chan events.Event) Subscription {
 	return Subscription{
 		id:     generateID(5),
 		kind:   kind,
@@ -47,7 +48,7 @@ type EventBus struct {
 	// storage layer for persistance. Events are capped at a particular size.
 	storage     storage.DB
 	retention   time.Duration
-	subscribers map[models.EventType][]Subscription // channel tracking per subscriber
+	subscribers map[events.EventType][]Subscription // channel tracking per subscriber
 }
 
 // New create a new instance of the eventbus and populates the log from disk.
@@ -55,7 +56,7 @@ func New(storage storage.DB, retention time.Duration, pruneInterval time.Duratio
 	eb := &EventBus{
 		storage:     storage,
 		retention:   retention,
-		subscribers: map[models.EventType][]Subscription{},
+		subscribers: map[events.EventType][]Subscription{},
 	}
 
 	go func() {
@@ -65,16 +66,16 @@ func New(storage storage.DB, retention time.Duration, pruneInterval time.Duratio
 		}
 	}()
 
-	for eventKind := range models.EventTypeMap {
+	for eventKind := range events.EventTypeMap {
 		eb.subscribers[eventKind] = []Subscription{}
 	}
-	eb.subscribers[models.EventTypeAny] = []Subscription{}
+	eb.subscribers[events.EventTypeAny] = []Subscription{}
 
 	return eb, nil
 }
 
 // Subscribe returns a channel in which the caller can listen for all events of a particular type.
-func (eb *EventBus) Subscribe(kind models.EventType) (Subscription, error) {
+func (eb *EventBus) Subscribe(kind events.EventType) (Subscription, error) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
 
@@ -83,7 +84,7 @@ func (eb *EventBus) Subscribe(kind models.EventType) (Subscription, error) {
 		return Subscription{}, fmt.Errorf("event kind %q not found: %w", kind, ErrEventKindNotFound)
 	}
 
-	newSub := newSubscriber(kind, make(chan models.Event, 10))
+	newSub := newSubscriber(kind, make(chan events.Event, 10))
 
 	listeners = append(listeners, newSub)
 	eb.subscribers[kind] = listeners
@@ -113,8 +114,9 @@ func (eb *EventBus) Unsubscribe(sub Subscription) {
 }
 
 // Publish allows caller to emit a new event to the eventbus. Might block until it can publish to all listeners.
-func (eb *EventBus) Publish(evt models.EventTypeDetails) int64 {
-	event := models.NewEvent(evt)
+func (eb *EventBus) Publish(evt events.EventTypeDetails) int64 {
+	eventRaw := events.NewEvent(evt)
+	event := models.FromEvent(eventRaw)
 
 	id, err := eb.storage.InsertEvent(eb.storage, event.ToStorage())
 	if err != nil {
@@ -132,9 +134,9 @@ func (eb *EventBus) Publish(evt models.EventTypeDetails) int64 {
 		return 0
 	}
 
-	anyListeners, exists := eb.subscribers[models.EventTypeAny]
+	anyListeners, exists := eb.subscribers[events.EventTypeAny]
 	if !exists {
-		log.Error().Err(ErrEventKindNotFound).Msgf("event type %q not found", models.EventTypeAny)
+		log.Error().Err(ErrEventKindNotFound).Msgf("event type %q not found", events.EventTypeAny)
 		return 0
 	}
 
@@ -142,11 +144,11 @@ func (eb *EventBus) Publish(evt models.EventTypeDetails) int64 {
 	// Doing so leads to races where an event published after might actually be published before another.
 	// This is due to goroutine scheduling.
 	for _, anyListener := range anyListeners {
-		anyListener.Events <- *event
+		anyListener.Events <- event.Event
 	}
 
 	for _, subscription := range listeners {
-		subscription.Events <- *event
+		subscription.Events <- event.Event
 	}
 
 	log.Debug().Interface("event", event).Msg("new event published")
@@ -155,8 +157,8 @@ func (eb *EventBus) Publish(evt models.EventTypeDetails) int64 {
 }
 
 // GetAll returns all events. Returns events from oldest to newest unless reverse parameter is set.
-func (eb *EventBus) GetAll(reverse bool) <-chan models.Event {
-	events := make(chan models.Event, 10)
+func (eb *EventBus) GetAll(reverse bool) <-chan events.Event {
+	events := make(chan events.Event, 10)
 
 	go func() {
 		offset := 0
@@ -178,7 +180,7 @@ func (eb *EventBus) GetAll(reverse bool) <-chan models.Event {
 				event := models.Event{}
 				event.FromStorage(&rawEvent)
 
-				events <- event
+				events <- event.Event
 			}
 
 			offset += 10
@@ -189,19 +191,19 @@ func (eb *EventBus) GetAll(reverse bool) <-chan models.Event {
 }
 
 // Get returns a single event by id. Returns a eventbus.ErrEventNotFound if the event could not be located.
-func (eb *EventBus) Get(id int64) (models.Event, error) {
+func (eb *EventBus) Get(id int64) (events.Event, error) {
 	rawEvent, err := eb.storage.GetEvent(eb.storage, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityNotFound) {
-			return models.Event{}, ErrEventNotFound
+			return events.Event{}, ErrEventNotFound
 		}
-		return models.Event{}, err
+		return events.Event{}, err
 	}
 
 	event := models.Event{}
 	event.FromStorage(&rawEvent)
 
-	return event, nil
+	return event.Event, nil
 }
 
 func (eb *EventBus) pruneEvents() {
@@ -220,7 +222,7 @@ func (eb *EventBus) pruneEvents() {
 			event := models.Event{}
 			event.FromStorage(&rawEvent)
 
-			if isPastCutDate(event, eb.retention) {
+			if isPastCutDate(event.Event, eb.retention) {
 				log.Debug().Int64("event_id", event.ID).Dur("retention", eb.retention).
 					Int64("emitted", event.Emitted).
 					Int64("current_time", time.Now().UnixMilli()).Msg("removed event past retention")
@@ -245,7 +247,7 @@ func (eb *EventBus) pruneEvents() {
 	}
 }
 
-func isPastCutDate(event models.Event, limit time.Duration) bool {
+func isPastCutDate(event events.Event, limit time.Duration) bool {
 	cut := time.Now().Add(-limit) // Even though this function says add, we're actually subtracting time.
 
 	return event.Emitted < cut.UnixMilli()

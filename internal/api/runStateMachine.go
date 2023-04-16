@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
@@ -65,12 +66,12 @@ func (r *RunStateMachine) setTaskRunFinished(id string, code *int64,
 		return err
 	}
 
-	go r.API.events.Publish(models.EventTaskRunCompleted{
+	go r.API.events.Publish(events.EventTaskRunCompleted{
 		NamespaceID: taskRun.Namespace,
 		PipelineID:  taskRun.Pipeline,
 		RunID:       taskRun.Run,
 		TaskRunID:   taskRun.ID,
-		Status:      taskRun.Status,
+		Status:      string(taskRun.Status),
 	})
 
 	return nil
@@ -87,11 +88,13 @@ func (r *RunStateMachine) setRunFinished(status models.RunStatus, reason *models
 		return err
 	}
 
-	go r.API.events.Publish(models.EventRunCompleted{
-		NamespaceID: r.Run.Namespace,
-		PipelineID:  r.Run.Pipeline,
-		RunID:       r.Run.ID,
-		Status:      status,
+	go r.API.events.Publish(events.EventRunCompleted{
+		NamespaceID:   r.Run.Namespace,
+		PipelineID:    r.Run.Pipeline,
+		RunID:         r.Run.ID,
+		Status:        string(status),
+		InitiatorType: string(r.Run.Initiator.Type),
+		InitiatorName: r.Run.Initiator.Name,
 	})
 
 	return nil
@@ -541,7 +544,7 @@ func (r *RunStateMachine) handleRunObjectExpiry() {
 		return
 	}
 
-	r.API.events.Publish(models.EventRunObjectsExpired{
+	r.API.events.Publish(events.EventRunObjectsExpired{
 		NamespaceID: r.Pipeline.Namespace,
 		PipelineID:  r.Pipeline.ID,
 		RunID:       expiredRun.ID,
@@ -670,7 +673,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 			}
 
 			// Alert the event bus that a new task run is being started.
-			go r.API.events.Publish(models.EventTaskRunCreated{
+			go r.API.events.Publish(events.EventTaskRunCreated{
 				NamespaceID: r.Pipeline.Namespace,
 				PipelineID:  r.Pipeline.ID,
 				RunID:       r.Run.ID,
@@ -701,7 +704,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 		}
 
 		// Alert the event bus that a new task run is being started.
-		go r.API.events.Publish(models.EventTaskRunCreated{
+		go r.API.events.Publish(events.EventTaskRunCreated{
 			NamespaceID: r.Pipeline.Namespace,
 			PipelineID:  r.Pipeline.ID,
 			RunID:       r.Run.ID,
@@ -813,7 +816,7 @@ func (r *RunStateMachine) launchTaskRun(task models.Task, register bool) {
 		return
 	}
 
-	go r.API.events.Publish(models.EventTaskRunStarted{
+	go r.API.events.Publish(events.EventTaskRunStarted{
 		NamespaceID: r.Pipeline.Namespace,
 		PipelineID:  r.Pipeline.ID,
 		RunID:       r.Run.ID,

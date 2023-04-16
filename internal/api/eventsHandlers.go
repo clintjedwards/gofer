@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/eventbus"
 	"github.com/clintjedwards/gofer/internal/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -18,7 +19,7 @@ func (api *API) GetEvent(ctx context.Context, request *proto.GetEventRequest) (*
 		return &proto.GetEventResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
 
-	event, err := api.events.Get(request.Id)
+	eventRaw, err := api.events.Get(request.Id)
 	if err != nil {
 		if errors.Is(err, eventbus.ErrEventNotFound) {
 			return &proto.GetEventResponse{}, status.Error(codes.FailedPrecondition, "event not found")
@@ -27,6 +28,7 @@ func (api *API) GetEvent(ctx context.Context, request *proto.GetEventRequest) (*
 		return &proto.GetEventResponse{}, status.Error(codes.Internal, "failed to retrieve event from database")
 	}
 
+	event := models.FromEvent(&eventRaw)
 	protoEvent, err := event.ToProto()
 	if err != nil {
 		log.Error().Err(err).Msg("could not encode proto event")
@@ -41,7 +43,7 @@ func (api *API) GetEvent(ctx context.Context, request *proto.GetEventRequest) (*
 func (api *API) ListEvents(request *proto.ListEventsRequest, stream proto.Gofer_ListEventsServer) error {
 	historicalEvents := api.events.GetAll(request.Reverse)
 
-	subscription, err := api.events.Subscribe(models.EventTypeAny)
+	subscription, err := api.events.Subscribe(events.EventTypeAny)
 	if err != nil {
 		return status.Errorf(codes.Internal, "could not subscribe to event stream: %v", err)
 	}
@@ -55,11 +57,12 @@ historicalLoop:
 			return nil
 		case <-api.context.ctx.Done():
 			return nil
-		case event, more := <-historicalEvents:
+		case eventRaw, more := <-historicalEvents:
 			if !more {
 				break historicalLoop
 			}
 
+			event := models.FromEvent(&eventRaw)
 			protoEvent, err := event.ToProto()
 			if err != nil {
 				if status.Code(err) == codes.Unavailable {
@@ -92,11 +95,12 @@ historicalLoop:
 			return nil
 		case <-api.context.ctx.Done():
 			return nil
-		case event, more := <-subscription.Events:
+		case eventRaw, more := <-subscription.Events:
 			if !more {
 				return nil
 			}
 
+			event := models.FromEvent(&eventRaw)
 			protoEvent, err := event.ToProto()
 			if err != nil {
 				if status.Code(err) == codes.Unavailable {

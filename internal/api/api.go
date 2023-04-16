@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/eventbus"
 	"github.com/clintjedwards/gofer/internal/models"
@@ -366,7 +367,7 @@ func (api *API) createDefaultNamespace() error {
 		return err
 	}
 
-	api.events.Publish(models.EventNamespaceCreated{
+	api.events.Publish(events.EventNamespaceCreated{
 		NamespaceID: namespace.ID,
 	})
 
@@ -395,19 +396,19 @@ func (api *API) findOrphans() {
 		run       int64
 	}
 
-	// Collect all events.
-	events := api.events.GetAll(false)
+	// Collect all eventList.
+	eventList := api.events.GetAll(false)
 	orphanedRuns := map[orphankey]struct{}{}
 
 	// Search events for any orphan runs.
-	for event := range events {
+	for event := range eventList {
 		switch event.Type {
-		case models.EventTypeRunStarted:
+		case events.EventTypeRunStarted:
 			// This causes the data race alert to be angry,
 			// but in theory it should be fine as we only read and write from
 			// the var once. Need to find a way to pass trait objects without
 			// Go complaining that other things can access them.
-			evt, ok := event.Details.(*models.EventRunStarted)
+			evt, ok := event.Details.(*events.EventRunStarted)
 			if !ok {
 				log.Error().Interface("event", event).Msg("could not decode event into correct type")
 				continue
@@ -427,8 +428,8 @@ func (api *API) findOrphans() {
 				}] = struct{}{}
 			}
 
-		case models.EventTypeRunCompleted:
-			evt, ok := event.Details.(*models.EventRunCompleted)
+		case events.EventTypeRunCompleted:
+			evt, ok := event.Details.(*events.EventRunCompleted)
 			if !ok {
 				log.Error().Interface("event", event).Msg("could not decode event into correct type")
 				continue

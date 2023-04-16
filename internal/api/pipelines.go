@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -145,7 +146,7 @@ func (api *API) disablePipeline(pipeline *models.PipelineMetadata) error {
 		return err
 	}
 
-	go api.events.Publish(models.EventPipelineDisabled{
+	go api.events.Publish(events.EventPipelineDisabled{
 		NamespaceID: pipeline.Namespace,
 		PipelineID:  pipeline.ID,
 	})

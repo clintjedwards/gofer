@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -133,7 +134,7 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 			status.Errorf(codes.Internal, "could not save updated pipeline %q", request.Id)
 	}
 
-	go api.events.Publish(models.EventPipelineEnabled{
+	go api.events.Publish(events.EventPipelineEnabled{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.Id,
 	})
@@ -252,7 +253,7 @@ func (api *API) DeployPipeline(ctx context.Context, request *proto.DeployPipelin
 	}
 
 	// Step 2: Officially start the deployment.
-	go api.events.Publish(models.EventPipelineDeployStarted{
+	go api.events.Publish(events.EventPipelineDeployStarted{
 		NamespaceID:  request.NamespaceId,
 		PipelineID:   request.Id,
 		StartVersion: startVersion,
@@ -338,7 +339,7 @@ func (api *API) DeployPipeline(ctx context.Context, request *proto.DeployPipelin
 	}
 
 	// Lastly: We're done. So now we just need to complete the deployment.
-	go api.events.Publish(models.EventPipelineDeployCompleted{
+	go api.events.Publish(events.EventPipelineDeployCompleted{
 		NamespaceID:  request.NamespaceId,
 		PipelineID:   request.Id,
 		StartVersion: startVersion,
@@ -376,7 +377,7 @@ func (api *API) DeletePipeline(ctx context.Context, request *proto.DeletePipelin
 		return &proto.DeletePipelineResponse{}, status.Error(codes.Internal, "failed to retrieve pipeline from database")
 	}
 
-	go api.events.Publish(models.EventPipelineDeleted{
+	go api.events.Publish(events.EventPipelineDeleted{
 		NamespaceID: request.NamespaceId,
 		PipelineID:  request.Id,
 	})

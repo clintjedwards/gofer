@@ -10,7 +10,6 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	"github.com/clintjedwards/gofer/internal/cli/format"
-	"github.com/clintjedwards/gofer/internal/models"
 	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/fatih/color"
 
@@ -79,59 +78,6 @@ func pipelineGet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func recentEvents(client proto.GoferClient, namespace, pipeline, extensionLabel string, limit int) ([]models.Event, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	_, err := client.ListEvents(ctx, &proto.ListEventsRequest{
-		Reverse: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	events := []models.Event{}
-
-	// count := 0
-	// for count < limit {
-	// 	response, err := resp.Recv()
-	// 	if err != nil {
-	// 		if err == io.EOF {
-	// 			break
-	// 		}
-	// 		return nil, err
-	// 	}
-
-	// 	if !strings.EqualFold(response.Event.Type, string(models.EventTypeExtensionResolvedExtensionEvent)) {
-	// 		continue
-	// 	}
-
-	// 	details := models.EventResolvedExtensionEvent{}
-	// 	err = json.Unmarshal([]byte(response.Event.Details), &details)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	if details.NamespaceID != namespace ||
-	// 		details.PipelineID != pipeline ||
-	// 		details.Label != extensionLabel {
-	// 		continue
-	// 	}
-
-	// 	concreteEvent := models.Event{
-	// 		ID:      response.Event.Id,
-	// 		Type:    models.EventType(response.Event.Type),
-	// 		Details: details,
-	// 		Emitted: response.Event.Emitted,
-	// 	}
-
-	// 	events = append(events, concreteEvent)
-	// 	count++
-	// }
-
-	return events, nil
-}
-
 type data struct {
 	ID          string
 	Name        string
@@ -154,7 +100,6 @@ type taskData struct {
 type extensionData struct {
 	Label    string
 	Name     string
-	Events   string
 	Settings map[string]string
 	State    string
 }
@@ -173,7 +118,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 	recentRunHealth := []proto.Run_RunStatus{}
 	for _, run := range recentRuns {
 		recentRunList = append(recentRunList, []string{
-			color.BlueString("• Run #" + strconv.Itoa(int(run.Id))),
+			color.BlueString("(" + strconv.Itoa(int(run.Id)) + ")"),
 			fmt.Sprintf("%s by %s", format.UnixMilli(run.Started, "Not yet", detail), color.CyanString(run.Initiator.Name)),
 			fmt.Sprintf("%s %s", formatStatePrefix(run.State), format.Duration(run.Started, run.Ended)),
 			format.ColorizeRunState(format.NormalizeEnumValue(run.State.String(), "Unknown")),
@@ -187,30 +132,9 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 
 	extensionDataList := []extensionData{}
 	for _, extension := range extensions {
-		recentEvents, err := recentEvents(client, extension.Namespace, extension.Pipeline, extension.Label, 5)
-		if err != nil {
-			return "", fmt.Errorf("could not get event data: %v", err)
-		}
-
-		eventDataList := [][]string{}
-		for _, event := range recentEvents {
-			details := ""
-			// evtDetail, ok := event.Details.(models.EventResolvedExtensionEvent)
-			// if ok {
-			// 	details = evtDetail.Result.Details
-			// }
-
-			eventDataList = append(eventDataList, []string{
-				format.UnixMilli(event.Emitted, "Never", detail), details,
-			})
-		}
-
-		eventDataTable := format.GenerateGenericTable(eventDataList, "|", 7)
-
 		extensionDataList = append(extensionDataList, extensionData{
 			Label:    color.BlueString(extension.Label),
 			Name:     color.YellowString(extension.Name),
-			Events:   eventDataTable,
 			Settings: extension.Settings,
 		})
 	}
@@ -249,7 +173,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 
 	const formatTmpl = `[{{.ID}}] {{.Name}} :: {{.State}}
 
-  {{.Description}}
+{{.Description}}
   {{- if .RecentRuns}}
   📦 Recent Runs
 {{.RecentRuns}}
@@ -270,8 +194,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 
   🗘 Attached Extensions:
     {{- range $extension := .Extensions}}
-    ⟳ {{ $extension.Label }} ({{ $extension.Name }}) {{if $extension.Events }}recent events:{{- end }}
-{{ $extension.Events }}
+    ⟳ {{ $extension.Label }} ({{ $extension.Name }})
     {{- end -}}
   {{- end}}
 

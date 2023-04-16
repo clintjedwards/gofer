@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
@@ -185,10 +186,12 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 	}
 
 	// Publish that the run has started
-	go api.events.Publish(models.EventRunStarted{
-		NamespaceID: request.NamespaceId,
-		PipelineID:  request.PipelineId,
-		RunID:       newRunID,
+	go api.events.Publish(events.EventRunStarted{
+		NamespaceID:   request.NamespaceId,
+		PipelineID:    request.PipelineId,
+		RunID:         newRunID,
+		InitiatorType: string(newRun.Initiator.Type),
+		InitiatorName: newRun.Initiator.Name,
 	})
 
 	runStateMachine := api.newRunStateMachine(&pipeline, &latestConfig, newRun)

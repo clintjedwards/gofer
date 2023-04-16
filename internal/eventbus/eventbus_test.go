@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clintjedwards/gofer/internal/models"
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/storage"
 )
 
@@ -36,7 +36,7 @@ func TestPublish(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id := eb.Publish(models.EventNamespaceCreated{
+	id := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace",
 	})
 
@@ -64,18 +64,18 @@ func TestSubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sub, err := eb.Subscribe(models.EventTypeNamespaceCreated)
+	sub, err := eb.Subscribe(events.EventTypeNamespaceCreated)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_1",
 	})
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_2",
 	})
-	thirdEventID := eb.Publish(models.EventNamespaceCreated{
+	thirdEventID := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_3",
 	})
 
@@ -101,19 +101,19 @@ func TestUnsubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sub, err := eb.Subscribe(models.EventTypeNamespaceCreated)
+	sub, err := eb.Subscribe(events.EventTypeNamespaceCreated)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_1",
 	})
 
 	eb.Unsubscribe(sub)
 
-	if len(eb.subscribers[models.EventTypeNamespaceCreated]) != 0 {
-		t.Errorf("Unsubscribe not successful: %+v", eb.subscribers[models.EventTypeNamespaceCreated])
+	if len(eb.subscribers[events.EventTypeNamespaceCreated]) != 0 {
+		t.Errorf("Unsubscribe not successful: %+v", eb.subscribers[events.EventTypeNamespaceCreated])
 	}
 }
 
@@ -130,19 +130,19 @@ func TestGetAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	firstEventID := eb.Publish(models.EventNamespaceCreated{
+	firstEventID := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_1",
 	})
-	secondEventID := eb.Publish(models.EventNamespaceCreated{
+	secondEventID := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_2",
 	})
-	thirdEventID := eb.Publish(models.EventNamespaceCreated{
+	thirdEventID := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_3",
 	})
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_4",
 	})
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_5",
 	})
 
@@ -182,7 +182,7 @@ func TestGetAllOffset(t *testing.T) {
 
 	eventIDsList := []int64{}
 	for i := 0; i < 20; i++ {
-		id := eb.Publish(models.EventNamespaceCreated{
+		id := eb.Publish(events.EventNamespaceCreated{
 			NamespaceID: "test_namespace",
 		})
 		eventIDsList = append(eventIDsList, id)
@@ -214,19 +214,19 @@ func TestGetAllReverse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_1",
 	})
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_2",
 	})
-	thirdEventID := eb.Publish(models.EventNamespaceCreated{
+	thirdEventID := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_3",
 	})
-	fourthEventID := eb.Publish(models.EventNamespaceCreated{
+	fourthEventID := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_4",
 	})
-	fifthEventID := eb.Publish(models.EventNamespaceCreated{
+	fifthEventID := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_5",
 	})
 
@@ -266,7 +266,7 @@ func TestGetAllReverseOffset(t *testing.T) {
 
 	eventIDsList := []int64{}
 	for i := 0; i < 20; i++ {
-		id := eb.Publish(models.EventNamespaceCreated{
+		id := eb.Publish(events.EventNamespaceCreated{
 			NamespaceID: "test_namespace_5",
 		})
 		eventIDsList = append(eventIDsList, id)
@@ -298,13 +298,13 @@ func TestPruneEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id1 := eb.Publish(models.EventNamespaceCreated{
+	id1 := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_1",
 	})
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_2",
 	})
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_3",
 	})
 
@@ -312,10 +312,10 @@ func TestPruneEvents(t *testing.T) {
 
 	eb.pruneEvents()
 
-	id4 := eb.Publish(models.EventNamespaceCreated{
+	id4 := eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_4",
 	})
-	eb.Publish(models.EventNamespaceCreated{
+	eb.Publish(events.EventNamespaceCreated{
 		NamespaceID: "test_namespace_5",
 	})
 

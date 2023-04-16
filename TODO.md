@@ -149,9 +149,6 @@ We can also create bespoke common tasks that do this.
 
 ### On the floor
 
-- Update Rust sdk with new changes.
-- Pipeline Get is missing recent events.
-
 - We can possibly get rid of common tasks now that the extensions work how they do.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.
   Instead of Gofer watching for each extension's ping, maybe they just hit the API if they have something

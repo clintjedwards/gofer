@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
@@ -178,7 +179,7 @@ func (api *API) InstallExtension(ctx context.Context, request *proto.InstallExte
 		return &proto.InstallExtensionResponse{}, status.Errorf(codes.Internal, "extension could not be installed; %v", err)
 	}
 
-	go api.events.Publish(models.EventExtensionInstalled{
+	go api.events.Publish(events.EventExtensionInstalled{
 		Name:  request.Name,
 		Image: request.Image,
 	})
@@ -202,11 +203,9 @@ func (api *API) UninstallExtension(ctx context.Context, request *proto.Uninstall
 		return &proto.UninstallExtensionResponse{}, status.Error(codes.Internal, "error deleting extension registration")
 	}
 
-	go api.events.Publish(models.EventExtensionUninstalled{
+	go api.events.Publish(events.EventExtensionUninstalled{
 		Name: request.Name,
 	})
-
-	// TODO(clintjedwards): We should alert all users that previously had registrations that they need to fix their pipeline.
 
 	return &proto.UninstallExtensionResponse{}, nil
 }
