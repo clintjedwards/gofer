@@ -21,7 +21,7 @@
 # Reference
 
 - [Pipeline Configuration](./ref/pipeline_configuration/README.md)
-  - [Custom Tasks](./ref/pipeline_configuration/custom_tasks.md)
+  - [Tasks](./ref/pipeline_configuration/tasks.md)
 - [Server Configuration](./ref/server_configuration/README.md)
   - [Configuration Reference](./ref/server_configuration/configuration_reference.md)
   - [Authentication](./ref/server_configuration/authentication.md)
@@ -37,8 +37,6 @@
     - [Cron](./ref/extensions/provided/cron.md)
     - [Interval](./ref/extensions/provided/interval.md)
     - [Github](./ref/extensions/provided/github.md)
-- [Common Tasks](./ref/common_tasks/README.md)
-  - [Debug](./ref/common_tasks/debug.md)
 
 # CLI
 

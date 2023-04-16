@@ -24,7 +24,7 @@ import (
 	// The plugins package contains a bunch of convenience functions that we use to build our extension.
 	// It is possible to build a extension without using the SDK, but the SDK makes the process much
 	// less cumbersome.
-	sdk "github.com/clintjedwards/gofer/sdk/go/plugins"
+	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
 
 	// Golang doesn't have a standardized logging interface and as such Gofer extensions can technically
 	// use any logging package, but because Gofer and provided extensions use zerolog, it is heavily encouraged

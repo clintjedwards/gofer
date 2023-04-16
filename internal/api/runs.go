@@ -70,12 +70,12 @@ func systemInjectedVars(run *models.Run, task models.Task, injectToken bool) map
 		},
 		"GOFER_TASK_ID": {
 			Key:    "GOFER_TASK_ID",
-			Value:  task.GetID(),
+			Value:  task.ID,
 			Source: models.VariableSourceSystem,
 		},
 		"GOFER_TASK_IMAGE": {
 			Key:    "GOFER_TASK_IMAGE",
-			Value:  task.GetImage(),
+			Value:  task.Image,
 			Source: models.VariableSourceSystem,
 		},
 	}
@@ -110,10 +110,10 @@ func systemInjectedVars(run *models.Run, task models.Task, injectToken bool) map
 // or the user when they attempt to start a new run manually. Since these are the most likely to be
 // edited adhoc they are treated as the most important.
 func combineVariables(run *models.Run, task models.Task) []models.Variable {
-	systemInjectedVars := systemInjectedVars(run, task, task.GetInjectAPIToken())
+	systemInjectedVars := systemInjectedVars(run, task, task.InjectAPIToken)
 
 	taskVars := map[string]*models.Variable{}
-	for _, variable := range task.GetVariables() {
+	for _, variable := range task.Variables {
 		variable := variable
 		taskVars[strings.ToUpper(variable.Key)] = &variable
 	}

@@ -1,22 +1,22 @@
-# Custom Tasks
+# Tasks
 
-Gofer's abstraction for running a container is called a Task. Specifically Custom Tasks are containers you point Gofer to and configure to perform some workload.
+Gofer's abstraction for running a container is called a Task. Specifically Tasks are containers you point Gofer to and configure to perform some workload.
 
-A Custom Task can be any Docker container you want to run. In the [Getting Started](../../guide/create_your_first_pipeline_configuration.md) example we take a regular standard `ubuntu:latest` container and customize it to run a passed in bash script.
+A Task can be any Docker container you want to run. In the [Getting Started](../../guide/create_your_first_pipeline_configuration.md) example we take a regular standard `ubuntu:latest` container and customize it to run a passed in bash script.
 
 ```go
-WithTasks(
-    sdk.NewCustomTask("simple_task", "ubuntu:latest").
+Tasks(
+    sdk.NewTask("simple_task", "ubuntu:latest").
         WithDescription("This task simply prints our hello-world message and exists!").
         WithCommand("echo", "Hello from Gofer!"),
 )
 ```
 
-## Custom Task Environment Variables and Configuration
+## Task Environment Variables and Configuration
 
 Gofer handles container configuration [the cloud native way](https://12factor.net/config). That is to say every configuration is passed in as an environment variable. This allows for many advantages, the greatest of which is standardization.
 
-As a user, [you pass your configuration in via the `Variable(s)`](https://pkg.go.dev/github.com/clintjedwards/gofer@v0.3.0/sdk/go/config#CustomTaskConfig.WithVariables) flavor of functions in your pipeline-config.
+As a user, [you pass your configuration in via the `Variable(s)`](https://pkg.go.dev/github.com/clintjedwards/gofer@v0.3.0/sdk/go/config#TaskConfig.Variables) flavor of functions in your pipeline-config.
 
 When a container is run by Gofer, the Gofer scheduler has the potential to pass in configuration from multiple sources[^1]:
 

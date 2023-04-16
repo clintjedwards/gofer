@@ -112,15 +112,6 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 		}
 	}
 
-	var imageName string
-
-	switch concreteTask := taskRun.Task.(type) {
-	case *proto.TaskRun_CommonTask:
-		imageName = concreteTask.CommonTask.Registration.Image
-	case *proto.TaskRun_CustomTask:
-		imageName = concreteTask.CustomTask.Image
-	}
-
 	variableList := [][]string{}
 	for _, variable := range variableMap {
 		variableList = append(variableList, variable)
@@ -139,7 +130,7 @@ func formatTaskRunInfo(taskRun *proto.TaskRun, detail bool) string {
 		ExitCode:   exitCode,
 		RunID:      color.BlueString("#" + strconv.Itoa(int(taskRun.Run))),
 		TaskRunCmd: color.CyanString(fmt.Sprintf("gofer taskrun logs %s %d %s", taskRun.Pipeline, taskRun.Run, taskRun.Id)),
-		ImageName:  color.BlueString(imageName),
+		ImageName:  color.BlueString(taskRun.Task.Image),
 	}
 
 	if taskRun.StatusReason.Description != "" {

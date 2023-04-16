@@ -221,19 +221,6 @@ func ColorizePipelineExtensionSubscriptionStatus(status string) string {
 	}
 }
 
-func ColorizeCommonTaskRegistrationStatus(status string) string {
-	switch strings.ToUpper(status) {
-	case proto.CommonTaskRegistration_UNKNOWN.String():
-		return color.YellowString(status)
-	case proto.CommonTaskRegistration_ENABLED.String():
-		return color.GreenString(status)
-	case proto.CommonTaskRegistration_DISABLED.String():
-		return color.YellowString(status)
-	default:
-		return status
-	}
-}
-
 func SliceJoin(slice []string, msg string) string {
 	if len(slice) == 0 {
 		return msg
@@ -279,17 +266,7 @@ func Health(states []proto.Run_RunStatus, emoji bool) string {
 	return color.GreenString(healthString + "Good")
 }
 
-// Used to limit the types that can be passed to the dependencies function to only types that can be
-// retrieved by calling "DependsOn" for tasks.
-type DependencyConstraint interface {
-	proto.CustomTask_RequiredParentStatus | proto.PipelineCommonTaskSettings_RequiredParentStatus
-	String() string
-}
-
-// This function is generic only because tasks are generic. Because a task can be either a common task
-// or a custom task it's useful to have a function that can work with both types and their dependency
-// enums (which are exactly the same).
-func Dependencies[T DependencyConstraint](dependencies map[string]T) []string {
+func Dependencies(dependencies map[string]proto.Task_RequiredParentStatus) []string {
 	result := []string{}
 	any := []string{}
 	successful := []string{}
@@ -297,13 +274,13 @@ func Dependencies[T DependencyConstraint](dependencies map[string]T) []string {
 
 	for name, state := range dependencies {
 		switch state.String() {
-		case proto.CustomTask_ANY.String():
+		case proto.Task_ANY.String():
 			any = append(any, name)
-		case proto.CustomTask_SUCCESS.String():
+		case proto.Task_SUCCESS.String():
 			successful = append(successful, name)
-		case proto.CustomTask_FAILURE.String():
+		case proto.Task_FAILURE.String():
 			failure = append(failure, name)
-		case proto.CustomTask_REQUIRED_PARENT_STATUS_UNKNOWN.String():
+		case proto.Task_REQUIRED_PARENT_STATUS_UNKNOWN.String():
 		}
 	}
 

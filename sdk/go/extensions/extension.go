@@ -346,14 +346,14 @@ func parseLogLevel(loglevel string) zerolog.Level {
 	}
 }
 
-// GetConfig is a convenience function that returns extension/commonTask config values from the environment.
+// GetConfig is a convenience function that returns extension config values from the environment.
 // It simply puts the needed config in the correct format to be retrieved from the environment
 // so the caller doesn't have to.
 func GetConfig(variableName string) string {
 	return os.Getenv(fmt.Sprintf("GOFER_EXTENSION_CONFIG_%s", strings.ToUpper(variableName)))
 }
 
-// GetParameters is a convenience function that returns extension/commonTask config values from the environment.
+// GetParameters is a convenience function that returns extension config values from the environment.
 // It simply puts the needed config in the correct format to be retrieved from the environment
 // so the caller doesn't have to.
 func GetParameter(variableName string) string {

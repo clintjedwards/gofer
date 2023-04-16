@@ -8,7 +8,7 @@ import (
 
 	"github.com/clintjedwards/avail/v2"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	sdk "github.com/clintjedwards/gofer/sdk/go/plugins"
+	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
 	"github.com/rs/zerolog/log"
 )
 

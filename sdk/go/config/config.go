@@ -50,29 +50,6 @@ func (ra *RegistryAuth) Proto() *proto.RegistryAuth {
 	}
 }
 
-// TaskConfig represents the interface for different types of tasks Gofer accepts.
-type TaskConfig interface {
-	isTaskConfig()
-	getKind() TaskKind
-	getID() string
-	getDependsOn() map[string]RequiredParentStatus
-	validate() error
-}
-
-// TaskKind represents an enum of types of tasks Gofer accepts.
-type TaskKind string
-
-const (
-	TaskKindUnknown TaskKind = "UNKNOWN"
-
-	// TaskKindCommon represents a common task. Common Tasks are set up by Gofer administrators and then can be included
-	// in Gofer pipelines.
-	TaskKindCommon TaskKind = "COMMON"
-
-	// TaskKindCustom represents a custom task. Custom Tasks are set up on a per pipeline basis by the pipeline user.
-	TaskKindCustom TaskKind = "CUSTOM"
-)
-
 // PipelineWrapper type simply exists so that we can make structs with fields like "id"
 // and we can still add functions called "id()". This makes it not only easier to
 // reason about when working with the struct, but when just writing pipelines as an end user.
@@ -83,11 +60,11 @@ type PipelineWrapper struct {
 // A pipeline is a representation of a Gofer pipeline, the structure in which users represent what they
 // want to run in Gofer.
 type Pipeline struct {
-	ID          string       `json:"id"`          // Unique Identifier for the pipeline.
-	Name        string       `json:"name"`        // Humanized name for the pipeline.
-	Description string       `json:"description"` // A short description for the pipeline.
-	Parallelism int64        `json:"parallelism"` // How many runs are allowed to run at the same time.
-	Tasks       []TaskConfig `json:"tasks"`       // The task set of the pipeline. AKA which containers should be run.
+	ID          string         `json:"id"`          // Unique Identifier for the pipeline.
+	Name        string         `json:"name"`        // Humanized name for the pipeline.
+	Description string         `json:"description"` // A short description for the pipeline.
+	Parallelism int64          `json:"parallelism"` // How many runs are allowed to run at the same time.
+	Tasks       []*TaskWrapper `json:"tasks"`       // The task set of the pipeline. AKA which containers should be run.
 }
 
 // Create a new pipeline.
@@ -103,7 +80,7 @@ func NewPipeline(id, name string) *PipelineWrapper {
 			Name:        name,
 			Description: "",
 			Parallelism: 0,
-			Tasks:       []TaskConfig{},
+			Tasks:       []*TaskWrapper{},
 		},
 	}
 }
@@ -142,10 +119,8 @@ func (p *PipelineWrapper) Parallelism(parallelism int64) *PipelineWrapper {
 	return p
 }
 
-// Tasks are containers that the pipeline runs. There are two types of tasks.
-//   - Common Tasks: Are set up by the Gofer administrator and allow you add pre-configured tasks to your  pipeline.
-//   - Custom Tasks: Are containers that you define for Gofer to execute.
-func (p *PipelineWrapper) Tasks(tasks ...TaskConfig) *PipelineWrapper {
+// Tasks are containers that the pipeline runs.
+func (p *PipelineWrapper) Tasks(tasks ...*TaskWrapper) *PipelineWrapper {
 	p.Pipeline.Tasks = tasks
 	return p
 }
@@ -153,25 +128,12 @@ func (p *PipelineWrapper) Tasks(tasks ...TaskConfig) *PipelineWrapper {
 func (p *PipelineWrapper) Proto() *proto.UserPipelineConfig {
 	tasks := []*proto.UserPipelineTaskConfig{}
 	for _, task := range p.Pipeline.Tasks {
-		switch t := task.(type) {
-		case *CommonTaskWrapper:
-			tasks = append(tasks, &proto.UserPipelineTaskConfig{
-				Task: &proto.UserPipelineTaskConfig_CommonTask{
-					CommonTask: t.Proto(),
-				},
-			})
-		case *CustomTaskWrapper:
-			tasks = append(tasks, &proto.UserPipelineTaskConfig{
-				Task: &proto.UserPipelineTaskConfig_CustomTask{
-					CustomTask: t.Proto(),
-				},
-			})
-		}
+		tasks = append(tasks, task.Proto())
 	}
 
 	return &proto.UserPipelineConfig{
-		Id:          p.Pipeline.ID,
-		Name:        p.Pipeline.Name,
+		Id:          p.ID,
+		Name:        p.Name,
 		Description: p.Pipeline.Description,
 		Parallelism: p.Pipeline.Parallelism,
 		Tasks:       tasks,
@@ -257,10 +219,10 @@ func (p *PipelineWrapper) isDAG() error {
 
 	// Add all nodes to the DAG first
 	for _, task := range p.Pipeline.Tasks {
-		err := taskDAG.AddNode(task.getID())
+		err := taskDAG.AddNode(task.ID)
 		if err != nil {
 			if errors.Is(err, dag.ErrEntityExists) {
-				return fmt.Errorf("duplicate task names found; %q is already a task", task.getID())
+				return fmt.Errorf("duplicate task names found; %q is already a task", task.ID)
 			}
 			return err
 		}
@@ -268,14 +230,14 @@ func (p *PipelineWrapper) isDAG() error {
 
 	// Add all edges
 	for _, task := range p.Pipeline.Tasks {
-		for id := range task.getDependsOn() {
-			err := taskDAG.AddEdge(id, task.getID())
+		for id := range task.Task.DependsOn {
+			err := taskDAG.AddEdge(id, task.ID)
 			if err != nil {
 				if errors.Is(err, dag.ErrEdgeCreatesCycle) {
-					return fmt.Errorf("a cycle was detected creating a dependency from task %q to task %q; %w", task.getID(), id, dag.ErrEdgeCreatesCycle)
+					return fmt.Errorf("a cycle was detected creating a dependency from task %q to task %q; %w", task.ID, id, dag.ErrEdgeCreatesCycle)
 				}
 				if errors.Is(err, dag.ErrEntityNotFound) {
-					return fmt.Errorf("task %q is listed as a dependency within task %q but does not exist", id, task.getID())
+					return fmt.Errorf("task %q is listed as a dependency within task %q but does not exist", id, task.ID)
 				}
 				return err
 			}

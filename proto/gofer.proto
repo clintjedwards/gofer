@@ -276,39 +276,6 @@ service Gofer {
   rpc DisableExtension(DisableExtensionRequest)
       returns (DisableExtensionResponse);
 
-  ////////////// Common Task RPCs //////////////
-  //
-  // A Common Task is a Gofer provided task that can be set up in advanced to
-  // make some action easier for a particular user. For example posting to
-  // Slack.
-
-  // GetCommonTask returns details about a specific commontask.
-  rpc GetCommonTask(GetCommonTaskRequest) returns (GetCommonTaskResponse);
-
-  // ListCommonTasks lists all common tasks currently registered within gofer.
-  rpc ListCommonTasks(ListCommonTasksRequest) returns (ListCommonTasksResponse);
-
-  // GetCommonTaskInstalInstructions retrieves install instructions for a
-  // particular common task.
-  rpc GetCommonTaskInstallInstructions(GetCommonTaskInstallInstructionsRequest)
-      returns (GetCommonTaskInstallInstructionsResponse);
-
-  // InstallCommonTask attempts to install a new common task.
-  rpc InstallCommonTask(InstallCommonTaskRequest)
-      returns (InstallCommonTaskResponse);
-
-  // UninstallCommonTask attempts to uninstall a common task.
-  rpc UninstallCommonTask(UninstallCommonTaskRequest)
-      returns (UninstallCommonTaskResponse);
-
-  // EnableCommonTask attempts to enable a new common task.
-  rpc EnableCommonTask(EnableCommonTaskRequest)
-      returns (EnableCommonTaskResponse);
-
-  // DisableCommonTask attempts to disable a new common task.
-  rpc DisableCommonTask(DisableCommonTaskRequest)
-      returns (DisableCommonTaskResponse);
-
   ////////////// Object Store RPCs //////////////
   //
   // The object store is a temporary key-value storage mechanism for pipelines
@@ -354,7 +321,7 @@ service Gofer {
   ////////////// Secret Store RPCs //////////////
   //
   // The secret store is an encrypted key-value store for secrets used within
-  // pipelines, extensions, and common tasks.
+  // pipelines, extensions, and tasks.
 
   // GetPipelineSecret returns a single secret by pipeline ID and key.
   rpc GetPipelineSecret(GetPipelineSecretRequest)

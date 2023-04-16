@@ -57,22 +57,15 @@ func (api *API) RegisterPipelineConfig(ctx context.Context, request *proto.Regis
 		}
 
 		config = models.NewPipelineConfig(request.NamespaceId, request.PipelineConfig.Id, latestVersion+1, request.PipelineConfig)
-		mainConfig, commonTaskConfigs, customTaskConfigs := config.ToStorage()
+		mainConfig, taskConfigs := config.ToStorage()
 
 		err = api.db.InsertPipelineConfig(tx, mainConfig)
 		if err != nil {
 			return err
 		}
 
-		for _, commonTaskConfig := range commonTaskConfigs {
-			err = api.db.InsertPipelineCommonTaskSettings(tx, commonTaskConfig)
-			if err != nil {
-				return err
-			}
-		}
-
-		for _, customTaskConfig := range customTaskConfigs {
-			err = api.db.InsertPipelineCustomTask(tx, customTaskConfig)
+		for _, taskConfig := range taskConfigs {
+			err = api.db.InsertPipelineTask(tx, taskConfig)
 			if err != nil {
 				return err
 			}
@@ -126,21 +119,14 @@ func (api *API) ListPipelineConfigs(ctx context.Context, request *proto.ListPipe
 
 	protoConfigs := []*proto.PipelineConfig{}
 	for _, configRaw := range configsRaw {
-
-		commonTasks, err := api.db.ListPipelineCommonTaskSettings(api.db, request.NamespaceId, request.PipelineId, configRaw.Version)
-		if err != nil {
-			log.Error().Err(err).Msg("could not get configs")
-			return &proto.ListPipelineConfigsResponse{}, status.Error(codes.Internal, "failed to retrieve configs from database")
-		}
-
-		customTasks, err := api.db.ListPipelineCustomTasks(api.db, request.NamespaceId, request.PipelineId, configRaw.Version)
+		tasks, err := api.db.ListPipelineTasks(api.db, request.NamespaceId, request.PipelineId, configRaw.Version)
 		if err != nil {
 			log.Error().Err(err).Msg("could not get configs")
 			return &proto.ListPipelineConfigsResponse{}, status.Error(codes.Internal, "failed to retrieve configs from database")
 		}
 
 		var config models.PipelineConfig
-		config.FromStorage(&configRaw, &commonTasks, &customTasks)
+		config.FromStorage(&configRaw, &tasks)
 		protoConfigs = append(protoConfigs, config.ToProto())
 	}
 
@@ -170,20 +156,14 @@ func (api *API) GetPipelineConfig(ctx context.Context, request *proto.GetPipelin
 		return &proto.GetPipelineConfigResponse{}, status.Error(codes.Internal, "failed to retrieve config from database")
 	}
 
-	commonTasks, err := api.db.ListPipelineCommonTaskSettings(api.db, request.NamespaceId, request.PipelineId, request.Version)
-	if err != nil {
-		log.Error().Err(err).Msg("could not get config")
-		return &proto.GetPipelineConfigResponse{}, status.Error(codes.Internal, "failed to retrieve config from database")
-	}
-
-	customTasks, err := api.db.ListPipelineCustomTasks(api.db, request.NamespaceId, request.PipelineId, request.Version)
+	tasks, err := api.db.ListPipelineTasks(api.db, request.NamespaceId, request.PipelineId, request.Version)
 	if err != nil {
 		log.Error().Err(err).Msg("could not get config")
 		return &proto.GetPipelineConfigResponse{}, status.Error(codes.Internal, "failed to retrieve config from database")
 	}
 
 	var config models.PipelineConfig
-	config.FromStorage(&configRaw, &commonTasks, &customTasks)
+	config.FromStorage(&configRaw, &tasks)
 
 	return &proto.GetPipelineConfigResponse{Config: config.ToProto()}, nil
 }
@@ -213,7 +193,7 @@ func (api *API) DeletePipelineConfig(ctx context.Context, request *proto.DeleteP
 	}
 
 	var latestConfig models.PipelineConfig
-	latestConfig.FromStorage(&latestConfigRaw, &[]storage.PipelineCommonTaskSettings{}, &[]storage.PipelineCustomTask{})
+	latestConfig.FromStorage(&latestConfigRaw, &[]storage.PipelineTask{})
 
 	if latestConfig.Version == request.Version {
 		return nil, status.Errorf(codes.FailedPrecondition, "Cannot delete latest version of a pipeline configuration; Please upload a new config and then delete the older version")

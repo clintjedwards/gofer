@@ -1,8 +1,5 @@
-use crate::{dag::DAGError, dag::Dag, validate_identifier, validate_variables};
-use downcast_rs::{impl_downcast, Downcast};
-use gofer_proto::{
-    UserCommonTaskConfig, UserCustomTaskConfig, UserPipelineConfig, UserPipelineTaskConfig,
-};
+use crate::{dag::DAGError, dag::Dag, validate_identifier};
+use gofer_proto::{UserPipelineConfig, UserPipelineTaskConfig};
 use prost::Message;
 use std::{collections::HashMap, io::Write};
 use strum::{Display, EnumString};
@@ -20,23 +17,6 @@ pub struct RegistryAuth {
     pub user: String,
     pub pass: String,
 }
-
-#[derive(Debug, Display, EnumString, PartialEq, Eq, Clone)]
-pub enum TaskKind {
-    Unknown,
-    Common,
-    Custom,
-}
-
-// The downcast trait here allows us to take in a Task object and get back our original common task or custom task
-// object (providing we know what it is ahead of time).
-pub trait Task: std::fmt::Debug + Downcast {
-    fn kind(&self) -> TaskKind;
-    fn id(&self) -> String;
-    fn depends_on(&self) -> HashMap<String, RequiredParentStatus>;
-    fn validate(&self) -> Result<(), ConfigError>;
-}
-impl_downcast!(Task);
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum ConfigError {
@@ -77,7 +57,7 @@ pub struct Pipeline {
     /// 0 defaults to whatever the global Gofer setting is.
     pub parallelism: i64,
     /// A mapping of pipeline owned tasks.
-    pub tasks: Vec<Box<dyn Task>>,
+    pub tasks: Vec<Task>,
 }
 
 impl Pipeline {
@@ -98,20 +78,23 @@ impl Pipeline {
         // Add all nodes first.
         for task in &self.tasks {
             pipeline_dag
-                .add_node(&task.id())
-                .map_err(|_| ConfigError::IdenticalTaskNames(task.id()))?
+                .add_node(&task.id)
+                .map_err(|_| ConfigError::IdenticalTaskNames(task.id.clone()))?
         }
 
         // Then add all edges.
         for task in &self.tasks {
-            for id in task.depends_on().keys() {
-                if let Err(e) = pipeline_dag.add_edge(id, &task.id()) {
+            for id in task.depends_on.keys() {
+                if let Err(e) = pipeline_dag.add_edge(id, &task.id) {
                     match e {
                         DAGError::EdgeCreatesCycle(node1, node2) => {
                             return Err(ConfigError::TaskCycle(node1, node2))
                         }
                         DAGError::EntityNotFound => {
-                            return Err(ConfigError::DependencyNotFound(task.id(), id.to_string()))
+                            return Err(ConfigError::DependencyNotFound(
+                                task.id.clone(),
+                                id.to_string(),
+                            ))
                         }
                         _ => return Err(ConfigError::Unknown(e.to_string())),
                     }
@@ -127,10 +110,6 @@ impl Pipeline {
 
         self.is_dag()?;
 
-        for task in &self.tasks {
-            task.validate()?;
-        }
-
         Ok(())
     }
 
@@ -144,7 +123,7 @@ impl Pipeline {
         self
     }
 
-    pub fn tasks(mut self, tasks: Vec<Box<dyn Task>>) -> Self {
+    pub fn tasks(mut self, tasks: Vec<Task>) -> Self {
         self.tasks = tasks;
         self
     }
@@ -165,29 +144,7 @@ impl Pipeline {
         let mut tasks: Vec<UserPipelineTaskConfig> = vec![];
 
         for task in &self.tasks {
-            match task.kind() {
-                TaskKind::Unknown => {
-                    panic!("TaskKind for Task {} is found as Unknown; This should never happen; Please report this error.", task.id())
-                }
-                TaskKind::Common => {
-                    let common_task = task.downcast_ref::<CommonTask>().expect("Could not unwrap task properly; This should never happen; Please report this error.");
-
-                    tasks.push(UserPipelineTaskConfig {
-                        task: Some(gofer_proto::user_pipeline_task_config::Task::CommonTask(
-                            common_task.proto(),
-                        )),
-                    })
-                }
-                TaskKind::Custom => {
-                    let custom_task = task.downcast_ref::<CustomTask>().expect("Could not unwrap task properly; This should never happen; Please report this error.");
-
-                    tasks.push(UserPipelineTaskConfig {
-                        task: Some(gofer_proto::user_pipeline_task_config::Task::CustomTask(
-                            custom_task.proto(),
-                        )),
-                    })
-                }
-            }
+            tasks.push(task.proto())
         }
 
         UserPipelineConfig {
@@ -217,126 +174,7 @@ pub fn run_object(key: &str) -> String {
 }
 
 #[derive(Debug)]
-pub struct CommonTask {
-    pub kind: TaskKind,
-    /// A global unique identifier for the commontask type.
-    pub name: String,
-    /// A user defined identifier for the commontask so that a pipeline with
-    /// multiple commontasks can be differentiated.
-    pub label: String,
-    pub description: Option<String>,
-    pub depends_on: HashMap<String, RequiredParentStatus>,
-    /// The settings for pertaining to that specific commontask.
-    pub settings: HashMap<String, String>,
-    pub inject_api_token: bool,
-}
-
-impl CommonTask {
-    pub fn new(name: &str, label: &str) -> Self {
-        CommonTask {
-            kind: TaskKind::Common,
-            name: name.to_string(),
-            label: label.to_string(),
-            description: None,
-            depends_on: HashMap::new(),
-            settings: HashMap::new(),
-            inject_api_token: false,
-        }
-    }
-
-    pub fn setting(mut self, key: &str, value: &str) -> Self {
-        self.settings.insert(
-            format!("GOFER_EXTENSION_PARAM_{}", key.to_uppercase()),
-            value.to_string(),
-        );
-        self
-    }
-
-    pub fn settings(mut self, settings: HashMap<String, String>) -> Self {
-        self.settings.extend(settings);
-        self
-    }
-
-    pub fn description(mut self, description: &str) -> Self {
-        self.description = Some(description.to_string());
-        self
-    }
-
-    pub fn depends_on(mut self, task_id: &str, state: RequiredParentStatus) -> Self {
-        self.depends_on.insert(task_id.to_string(), state);
-        self
-    }
-
-    pub fn depends_on_many(mut self, depends_on: HashMap<String, RequiredParentStatus>) -> Self {
-        self.depends_on.extend(depends_on);
-        self
-    }
-
-    /// Gofer will auto-generate and inject a Gofer API token as `GOFER_API_TOKEN`. This allows you to easily have tasks
-    /// communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
-    ///
-    /// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
-    /// objects get cleaned up.
-    pub fn inject_api_token(mut self, inject_token: bool) -> Self {
-        self.inject_api_token = inject_token;
-        self
-    }
-
-    fn proto(&self) -> UserCommonTaskConfig {
-        let mut depends_on: HashMap<String, i32> = HashMap::new();
-        for (key, value) in &self.depends_on {
-            let value = match value {
-                RequiredParentStatus::Unknown => {
-                    gofer_proto::user_common_task_config::RequiredParentStatus::Unknown
-                }
-                RequiredParentStatus::Any => {
-                    gofer_proto::user_common_task_config::RequiredParentStatus::Any
-                }
-                RequiredParentStatus::Success => {
-                    gofer_proto::user_common_task_config::RequiredParentStatus::Success
-                }
-                RequiredParentStatus::Failure => {
-                    gofer_proto::user_common_task_config::RequiredParentStatus::Failure
-                }
-            };
-
-            depends_on.insert(key.clone(), value.into());
-        }
-
-        UserCommonTaskConfig {
-            name: self.name.clone(),
-            label: self.label.clone(),
-            description: self.description.clone().unwrap_or_default(),
-            depends_on,
-            settings: self.settings.clone(),
-            inject_api_token: self.inject_api_token,
-        }
-    }
-}
-
-impl Task for CommonTask {
-    fn validate(&self) -> Result<(), ConfigError> {
-        validate_variables(self.settings.clone())?;
-        validate_identifier("label", &self.label)?;
-        Ok(())
-    }
-
-    fn kind(&self) -> TaskKind {
-        TaskKind::Common
-    }
-
-    fn id(&self) -> String {
-        self.label.clone()
-    }
-
-    fn depends_on(&self) -> HashMap<String, RequiredParentStatus> {
-        self.depends_on.clone()
-    }
-}
-
-#[derive(Debug)]
-pub struct CustomTask {
-    pub kind: TaskKind,
+pub struct Task {
     pub id: String,
     pub description: Option<String>,
     pub image: String,
@@ -348,10 +186,9 @@ pub struct CustomTask {
     pub inject_api_token: bool,
 }
 
-impl CustomTask {
+impl Task {
     pub fn new(id: &str, image: &str) -> Self {
-        CustomTask {
-            kind: TaskKind::Custom,
+        Task {
             id: id.to_string(),
             description: None,
             image: image.to_string(),
@@ -430,28 +267,28 @@ impl CustomTask {
         self
     }
 
-    fn proto(&self) -> UserCustomTaskConfig {
+    fn proto(&self) -> UserPipelineTaskConfig {
         let mut depends_on: HashMap<String, i32> = HashMap::new();
         for (key, value) in &self.depends_on {
             let value = match value {
                 RequiredParentStatus::Unknown => {
-                    gofer_proto::user_custom_task_config::RequiredParentStatus::Unknown
+                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Unknown
                 }
                 RequiredParentStatus::Any => {
-                    gofer_proto::user_custom_task_config::RequiredParentStatus::Any
+                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Any
                 }
                 RequiredParentStatus::Success => {
-                    gofer_proto::user_custom_task_config::RequiredParentStatus::Success
+                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Success
                 }
                 RequiredParentStatus::Failure => {
-                    gofer_proto::user_custom_task_config::RequiredParentStatus::Failure
+                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Failure
                 }
             };
 
             depends_on.insert(key.clone(), value.into());
         }
 
-        UserCustomTaskConfig {
+        UserPipelineTaskConfig {
             id: self.id.clone(),
             description: self.description.clone().unwrap_or_default(),
             image: self.image.clone(),
@@ -471,66 +308,23 @@ impl CustomTask {
     }
 }
 
-impl Task for CustomTask {
-    fn validate(&self) -> Result<(), ConfigError> {
-        validate_variables(self.variables.clone())?;
-        validate_identifier("id", &self.id)?;
-        Ok(())
-    }
-
-    fn kind(&self) -> TaskKind {
-        TaskKind::Custom
-    }
-
-    fn id(&self) -> String {
-        self.id.clone()
-    }
-
-    fn depends_on(&self) -> HashMap<String, RequiredParentStatus> {
-        self.depends_on.clone()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_invalid_pipeline_cyclical() {
-        let task_a = CustomTask::new("task_a", "").depends_on("task_b", RequiredParentStatus::Any);
-        let task_b = CustomTask::new("task_b", "").depends_on("task_c", RequiredParentStatus::Any);
-        let task_c = CustomTask::new("task_c", "").depends_on("task_a", RequiredParentStatus::Any);
+        let task_a = Task::new("task_a", "").depends_on("task_b", RequiredParentStatus::Any);
+        let task_b = Task::new("task_b", "").depends_on("task_c", RequiredParentStatus::Any);
+        let task_c = Task::new("task_c", "").depends_on("task_a", RequiredParentStatus::Any);
 
         let result = Pipeline::new("invalid_pipeline", "")
-            .tasks(vec![Box::new(task_a), Box::new(task_b), Box::new(task_c)])
+            .tasks(vec![task_a, task_b, task_c])
             .finish();
 
         assert_eq!(
             std::mem::discriminant(&result.unwrap_err()),
             std::mem::discriminant(&ConfigError::TaskCycle("".to_string(), "".to_string())),
-        )
-    }
-
-    // Test that pipeline validation fails if user attempts to request a global variable.
-    #[test]
-    fn test_invalid_config_global_secrets() {
-        let result = Pipeline::new("simple_test_pipeline", "Simple Test Pipeline")
-            .description("Simple Test Pipeline")
-            .tasks(vec![Box::new(
-                CustomTask::new("simple_task", "ubuntu:latest")
-                    .description("This task simply prints our hello-world message and exists!")
-                    .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
-                    .variable("test_var", "global_secret{{some_secret_here}}"),
-            )])
-            .finish();
-
-        assert_eq!(
-            std::mem::discriminant(&result.unwrap_err()),
-            std::mem::discriminant(&ConfigError::InvalidArgument {
-                argument: "".to_string(),
-                value: "".to_string(),
-                description: "".to_string()
-            }),
         )
     }
 }

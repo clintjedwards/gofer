@@ -5,7 +5,6 @@ use (
 	./containers/debug/fail
 	./containers/debug/log
 	./containers/debug/wait
-	./containers/tasks/debug
 	./containers/extensions/cron
 	./containers/extensions/interval
 	./examplePipelines/go/dag
@@ -13,5 +12,4 @@ use (
 	./examplePipelines/go/secrets
 	./examplePipelines/go/simple
 	./examplePipelines/go/script
-	./examplePipelines/go/commonTask
 )

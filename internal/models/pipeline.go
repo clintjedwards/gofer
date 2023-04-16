@@ -1,12 +1,10 @@
 package models
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	"github.com/rs/zerolog/log"
 )
 
 // A collection of logically grouped tasks. A task is a unit of work wrapped in a docker container.
@@ -97,9 +95,7 @@ type PipelineConfig struct {
 	Name        string `json:"name"`        // Name refers to a human readable pipeline name.
 	Description string `json:"description"` // Description of pipeline's purpose and other details.
 	// Map for quickly finding user created pipeline tasks; assists with DAG generation.
-	CustomTasks map[string]CustomTask `json:"custom_tasks"`
-	// Map for quickly finding gofer provided pipeline tasks; assists with DAG generation.
-	CommonTasks map[string]PipelineCommonTaskSettings `json:"common_tasks"`
+	Tasks map[string]Task `json:"tasks"`
 	// The current running state of the pipeline. This is used to determine if the pipeline should continue to process
 	// runs or not and properly convey that to the user.
 	State      PipelineConfigState `json:"state"`
@@ -109,20 +105,12 @@ type PipelineConfig struct {
 }
 
 func NewPipelineConfig(namespace, pipeline string, version int64, pb *proto.UserPipelineConfig) *PipelineConfig {
-	customTasks := map[string]CustomTask{}
-	commonTasks := map[string]PipelineCommonTaskSettings{}
+	tasks := map[string]Task{}
 
-	for _, task := range pb.Tasks {
-		switch t := task.Task.(type) {
-		case *proto.UserPipelineTaskConfig_CustomTask:
-			ct := CustomTask{}
-			ct.FromProtoCustomTaskConfig(t.CustomTask)
-			customTasks[t.CustomTask.Id] = ct
-		case *proto.UserPipelineTaskConfig_CommonTask:
-			ct := PipelineCommonTaskSettings{}
-			ct.FromProtoCommonTaskConfig(t.CommonTask)
-			commonTasks[ct.Label] = ct
-		}
+	for _, taskRaw := range pb.Tasks {
+		ct := Task{}
+		ct.FromProtoPipelineTaskConfig(taskRaw)
+		tasks[ct.ID] = ct
 	}
 
 	return &PipelineConfig{
@@ -132,15 +120,14 @@ func NewPipelineConfig(namespace, pipeline string, version int64, pb *proto.User
 		Parallelism: pb.Parallelism,
 		Name:        pb.Name,
 		Description: pb.Description,
-		CustomTasks: customTasks,
-		CommonTasks: commonTasks,
+		Tasks:       tasks,
 		State:       PipelineConfigStateUnreleased,
 		Registered:  time.Now().UnixMilli(),
 		Deprecated:  0,
 	}
 }
 
-func (pc *PipelineConfig) ToStorage() (*storage.PipelineConfig, []*storage.PipelineCommonTaskSettings, []*storage.PipelineCustomTask) {
+func (pc *PipelineConfig) ToStorage() (*storage.PipelineConfig, []*storage.PipelineTask) {
 	pipelineConfig := &storage.PipelineConfig{
 		Namespace:   pc.Namespace,
 		Pipeline:    pc.Pipeline,
@@ -153,38 +140,23 @@ func (pc *PipelineConfig) ToStorage() (*storage.PipelineConfig, []*storage.Pipel
 		State:       string(pc.State),
 	}
 
-	commonTaskSettings := []*storage.PipelineCommonTaskSettings{}
+	tasks := []*storage.PipelineTask{}
 
-	for _, commonTaskSetting := range pc.CommonTasks {
-		commonTaskSettings = append(commonTaskSettings, commonTaskSetting.ToStorage(pc.Namespace, pc.Pipeline, pc.Version))
+	for _, task := range pc.Tasks {
+		tasks = append(tasks, task.ToStorage(pc.Namespace, pc.Pipeline, pc.Version))
 	}
 
-	customTasks := []*storage.PipelineCustomTask{}
-
-	for _, customTask := range pc.CustomTasks {
-		customTasks = append(customTasks, customTask.ToStorage(pc.Namespace, pc.Pipeline, pc.Version))
-	}
-
-	return pipelineConfig, commonTaskSettings, customTasks
+	return pipelineConfig, tasks
 }
 
-func (pc *PipelineConfig) FromStorage(spc *storage.PipelineConfig,
-	spcts *[]storage.PipelineCommonTaskSettings, spct *[]storage.PipelineCustomTask,
+func (pc *PipelineConfig) FromStorage(spc *storage.PipelineConfig, spct *[]storage.PipelineTask,
 ) {
-	customTasks := map[string]CustomTask{}
+	tasks := map[string]Task{}
 
-	for _, customTask := range *spct {
-		var ct CustomTask
-		ct.FromStorage(&customTask)
-		customTasks[customTask.ID] = ct
-	}
-
-	commonTasks := map[string]PipelineCommonTaskSettings{}
-
-	for _, commonTask := range *spcts {
-		var ct PipelineCommonTaskSettings
-		ct.FromStorage(&commonTask)
-		commonTasks[commonTask.Label] = ct
+	for _, task := range *spct {
+		var ct Task
+		ct.FromStorage(&task)
+		tasks[task.ID] = ct
 	}
 
 	pc.Namespace = spc.Namespace
@@ -193,25 +165,18 @@ func (pc *PipelineConfig) FromStorage(spc *storage.PipelineConfig,
 	pc.Parallelism = spc.Parallelism
 	pc.Name = spc.Name
 	pc.Description = spc.Description
-	pc.CustomTasks = customTasks
-	pc.CommonTasks = commonTasks
+	pc.Tasks = tasks
 	pc.State = PipelineConfigState(spc.State)
 	pc.Registered = spc.Registered
 	pc.Deprecated = spc.Deprecated
 }
 
 func (pc *PipelineConfig) ToProto() *proto.PipelineConfig {
-	customTasks := map[string]*proto.CustomTask{}
-	commonTasks := map[string]*proto.PipelineCommonTaskSettings{}
+	tasks := map[string]*proto.Task{}
 
-	for _, customTask := range pc.CustomTasks {
-		protoCustomTask := customTask.ToProto()
-		customTasks[protoCustomTask.Id] = protoCustomTask
-	}
-
-	for _, commonTask := range pc.CommonTasks {
-		protoCommonTask := commonTask.ToProto()
-		commonTasks[protoCommonTask.Label] = protoCommonTask
+	for _, task := range pc.Tasks {
+		protoTask := task.ToProto()
+		tasks[protoTask.Id] = protoTask
 	}
 
 	return &proto.PipelineConfig{
@@ -221,102 +186,9 @@ func (pc *PipelineConfig) ToProto() *proto.PipelineConfig {
 		Parallelism: pc.Parallelism,
 		Name:        pc.Name,
 		Description: pc.Description,
-		CustomTasks: customTasks,
-		CommonTasks: commonTasks,
+		Tasks:       tasks,
 		State:       proto.PipelineConfig_PipelineConfigState(proto.PipelineConfig_PipelineConfigState_value[string(pc.State)]),
 		Registered:  pc.Registered,
 		Deprecated:  pc.Deprecated,
-	}
-}
-
-type PipelineCommonTaskSettings struct {
-	Name string `json:"name"` // A global unique identifier for a specific type of common task.
-	// A user defined identifier for the common_task so that a pipeline with multiple common_tasks can be differentiated.
-	Label       string                          `json:"label"`
-	Description string                          `json:"description"`
-	DependsOn   map[string]RequiredParentStatus `json:"depends_on"`
-	Settings    map[string]string               `json:"settings"`
-
-	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
-	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
-	// environment variables "GOFER_API_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
-	// the Run's objects.
-	InjectAPIToken bool `json:"inject_api_token"`
-}
-
-func (t *PipelineCommonTaskSettings) ToProto() *proto.PipelineCommonTaskSettings {
-	dependsOn := map[string]proto.PipelineCommonTaskSettings_RequiredParentStatus{}
-	for key, value := range t.DependsOn {
-		dependsOn[key] = proto.PipelineCommonTaskSettings_RequiredParentStatus(proto.PipelineCommonTaskSettings_RequiredParentStatus_value[string(value)])
-	}
-
-	return &proto.PipelineCommonTaskSettings{
-		Name:           t.Name,
-		Label:          t.Label,
-		Description:    t.Description,
-		DependsOn:      dependsOn,
-		Settings:       t.Settings,
-		InjectApiToken: t.InjectAPIToken,
-	}
-}
-
-func (t *PipelineCommonTaskSettings) FromProtoCommonTaskConfig(p *proto.UserCommonTaskConfig) {
-	dependsOn := map[string]RequiredParentStatus{}
-	for id, status := range p.DependsOn {
-		dependsOn[id] = RequiredParentStatus(status.String())
-	}
-
-	t.Name = p.Name
-	t.Label = p.Label
-	t.Description = p.Description
-	t.DependsOn = dependsOn
-	t.Settings = p.Settings
-	t.InjectAPIToken = p.InjectApiToken
-}
-
-func (t *PipelineCommonTaskSettings) FromStorage(p *storage.PipelineCommonTaskSettings) {
-	var dependsOn map[string]RequiredParentStatus
-
-	err := json.Unmarshal([]byte(p.DependsOn), &dependsOn)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error in translating from storage")
-	}
-
-	var settings map[string]string
-
-	err = json.Unmarshal([]byte(p.Settings), &settings)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error in translating from storage")
-	}
-
-	t.Name = p.Name
-	t.Label = p.Label
-	t.Description = p.Description
-	t.DependsOn = dependsOn
-	t.Settings = settings
-	t.InjectAPIToken = p.InjectAPIToken
-}
-
-func (t *PipelineCommonTaskSettings) ToStorage(namespace, pipeline string, version int64) *storage.PipelineCommonTaskSettings {
-	dependsOn, err := json.Marshal(t.DependsOn)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error in translating from storage")
-	}
-
-	settings, err := json.Marshal(t.Settings)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error in translating from storage")
-	}
-
-	return &storage.PipelineCommonTaskSettings{
-		Namespace:             namespace,
-		Pipeline:              pipeline,
-		PipelineConfigVersion: version,
-		Name:                  t.Name,
-		Label:                 t.Label,
-		Description:           t.Description,
-		DependsOn:             string(dependsOn),
-		Settings:              string(settings),
-		InjectAPIToken:        t.InjectAPIToken,
 	}
 }

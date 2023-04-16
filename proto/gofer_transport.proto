@@ -416,44 +416,6 @@ message GetExtensionInstallInstructionsRequest {
 }
 message GetExtensionInstallInstructionsResponse { string instructions = 1; }
 
-////////////// CommonTask Transport Models //////////////
-
-message GetCommonTaskRequest {
-  string name = 1; // The unique name/kind for a particular commontask
-}
-message GetCommonTaskResponse { CommonTaskRegistration common_task = 1; }
-
-message ListCommonTasksRequest {}
-message ListCommonTasksResponse {
-  repeated CommonTaskRegistration common_tasks = 1;
-}
-
-message InstallCommonTaskRequest {
-  string name = 1;
-  string image = 2;
-  string user = 3;
-  string pass = 4;
-  map<string, string> variables = 5;
-  string documentation = 6;
-}
-message InstallCommonTaskResponse {}
-
-message UninstallCommonTaskRequest { string name = 1; }
-message UninstallCommonTaskResponse {}
-
-message EnableCommonTaskRequest { string name = 1; }
-message EnableCommonTaskResponse {}
-
-message DisableCommonTaskRequest { string name = 1; }
-message DisableCommonTaskResponse {}
-
-message GetCommonTaskInstallInstructionsRequest {
-  string image = 1;
-  string user = 2;
-  string pass = 3;
-}
-message GetCommonTaskInstallInstructionsResponse { string instructions = 1; }
-
 ////////////// Extension Service Transport Models //////////////
 
 message ExtensionInfoRequest {}

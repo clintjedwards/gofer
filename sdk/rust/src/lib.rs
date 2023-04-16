@@ -3,7 +3,6 @@ mod dag;
 
 use config::ConfigError;
 use lazy_regex::regex;
-use std::collections::HashMap;
 
 /// Identifiers are used as the primary key in most of gofer's resources.
 /// They're defined by the user and therefore should have some sane bounds.
@@ -38,9 +37,5 @@ fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
         });
     }
 
-    Ok(())
-}
-
-fn validate_variables(variables: HashMap<String, String>) -> Result<(), ConfigError> {
     Ok(())
 }

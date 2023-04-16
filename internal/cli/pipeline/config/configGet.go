@@ -98,7 +98,7 @@ type taskData struct {
 
 func formatPipelineConfig(config *proto.PipelineConfig, detail bool) (string, error) {
 	tasks := []taskData{}
-	for _, task := range config.CustomTasks {
+	for _, task := range config.Tasks {
 		tasks = append(tasks, taskData{
 			Name:      color.BlueString(task.Id),
 			DependsOn: format.Dependencies(task.DependsOn),

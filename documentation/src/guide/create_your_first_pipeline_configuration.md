@@ -44,11 +44,11 @@ err := sdk.NewPipeline("simple", "Simple Pipeline").
 ...
 ```
 
-#### > The containers we want to run are defined through [tasks](../ref/pipeline_configuration/custom_tasks.md).
+#### > The containers we want to run are defined through [tasks](../ref/pipeline_configuration/tasks.md).
 
 ```go
 ...
-sdk.NewCustomTask("simple_task", "ubuntu:latest").
+sdk.NewTask("simple_task", "ubuntu:latest").
     Description("This task simply prints our hello-world message and exits!").
     Command("echo", "Hello from Gofer!").Variable("test", "sample"),
 ...

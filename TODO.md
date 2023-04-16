@@ -87,8 +87,6 @@ There are several useful things we can do with the concept of extensions:
   - When a run fails.
   - If a particular task run fails or succeeds.
 
-We can also create bespoke common tasks that do this.
-
 ### Things I need to do but probably will never get around to
 
 - Test registry auth.
@@ -131,8 +129,6 @@ We can also create bespoke common tasks that do this.
   - Explanation of the SDK on writing extensions
 - Add a section where we create a new extension using a extension that has already been created. as the example for new extensions in the docs
 - Secrets explanation. Why is there global secrets and pipelines secrets? Whats the difference.
-  - We needed a way to store secrets for common tasks which might be used for any pipeline
-    and a way to store secrets for user's individual pipelines.
   - Global secrets can only be set by administrators
 - Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
   - We are forgoing having cli spit out Json due to gofer having an API, the cli is meant for humans and shouldn't be used by programs.
@@ -149,7 +145,6 @@ We can also create bespoke common tasks that do this.
 
 ### On the floor
 
-- We can possibly get rid of common tasks now that the extensions work how they do.
 - Now that extensions can do anything, maybe it's time to change the way we interact with them.
   Instead of Gofer watching for each extension's ping, maybe they just hit the API if they have something
   to say. This makes it so extensions aren't so snowflaky and are just apis that Gofer can talk to.

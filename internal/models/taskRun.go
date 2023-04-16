@@ -61,7 +61,6 @@ type TaskRun struct {
 	Status       TaskRunStatus        `json:"status"`
 	StatusReason *TaskRunStatusReason `json:"status_reason"` // Extra information about the current status.
 	Variables    []Variable           `json:"variables"`     // The environment variables injected during this particular task run.
-	TaskKind     TaskKind             `json:"task_kind"`     // They type of task that is being run, common or custom.
 	Task         Task                 `json:"task"`          // Task information.
 }
 
@@ -86,13 +85,13 @@ func (t *TaskRunStatusReason) ToProto() *proto.TaskRunStatusReason {
 	}
 }
 
-func NewTaskRun(namespace, pipeline string, version, run int64, kind TaskKind, task Task) *TaskRun {
+func NewTaskRun(namespace, pipeline string, version, run int64, task Task) *TaskRun {
 	return &TaskRun{
 		Namespace:    namespace,
 		Pipeline:     pipeline,
 		Version:      version,
 		Run:          run,
-		ID:           task.GetID(),
+		ID:           task.ID,
 		Created:      time.Now().UnixMilli(),
 		Started:      0,
 		Ended:        0,
@@ -103,7 +102,6 @@ func NewTaskRun(namespace, pipeline string, version, run int64, kind TaskKind, t
 		State:        TaskRunStateProcessing,
 		Status:       TaskRunStatusUnknown,
 		Variables:    []Variable{},
-		TaskKind:     kind,
 		Task:         task,
 	}
 }
@@ -133,6 +131,7 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		Created:      r.Created,
 		Started:      r.Started,
 		Ended:        r.Ended,
+		Task:         r.Task.ToProto(),
 		ExitCode:     exitCode,
 		StatusReason: statusReason,
 		LogsExpired:  r.LogsExpired,
@@ -140,19 +139,6 @@ func (r *TaskRun) ToProto() *proto.TaskRun {
 		State:        proto.TaskRun_TaskRunState(proto.TaskRun_TaskRunState_value[string(r.State)]),
 		Status:       proto.TaskRun_TaskRunStatus(proto.TaskRun_TaskRunStatus_value[string(r.Status)]),
 		Variables:    variables,
-	}
-
-	switch task := r.Task.(type) {
-	case *CommonTask:
-		protoTaskRun.TaskKind = proto.TaskRun_TaskKind(proto.TaskRun_TaskKind_value[string(r.TaskKind)])
-		protoTaskRun.Task = &proto.TaskRun_CommonTask{
-			CommonTask: task.ToProto(),
-		}
-	case *CustomTask:
-		protoTaskRun.TaskKind = proto.TaskRun_TaskKind(proto.TaskRun_TaskKind_value[string(r.TaskKind)])
-		protoTaskRun.Task = &proto.TaskRun_CustomTask{
-			CustomTask: task.ToProto(),
-		}
 	}
 
 	return protoTaskRun
@@ -179,7 +165,6 @@ func (r *TaskRun) ToStorage() *storage.PipelineTaskRun {
 		Pipeline:     r.Pipeline,
 		Run:          r.Run,
 		ID:           r.ID,
-		TaskKind:     string(r.TaskKind),
 		Task:         string(task),
 		Created:      r.Created,
 		Started:      r.Started,
@@ -204,24 +189,9 @@ func (r *TaskRun) FromStorage(storage *storage.PipelineTaskRun) {
 	}
 
 	var task Task
-	var commonTask CommonTask
-	var customTask CustomTask
-
-	switch storage.TaskKind {
-	case string(TaskKindCustom):
-		err = json.Unmarshal([]byte(storage.Task), &customTask)
-		if err != nil {
-			log.Fatal().Err(err).Msg("error in translating from storage")
-		}
-
-		task = &customTask
-	case string(TaskKindCommon):
-		err = json.Unmarshal([]byte(storage.Task), &commonTask)
-		if err != nil {
-			log.Fatal().Err(err).Msg("error in translating from storage")
-		}
-
-		task = &commonTask
+	err = json.Unmarshal([]byte(storage.Task), &task)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
 
 	var variables []Variable
@@ -234,7 +204,6 @@ func (r *TaskRun) FromStorage(storage *storage.PipelineTaskRun) {
 	r.Pipeline = storage.Pipeline
 	r.Run = storage.Run
 	r.ID = storage.ID
-	r.TaskKind = TaskKind(storage.TaskKind)
 	r.Task = task
 	r.Created = storage.Created
 	r.Started = storage.Started

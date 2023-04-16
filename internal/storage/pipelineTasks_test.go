@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestCRUDPipelineCommonTaskSettings(t *testing.T) {
+func TestCRUDPipelineTasks(t *testing.T) {
 	path := tempFile()
 	db, err := New(path, 200)
 	if err != nil {
@@ -55,43 +55,46 @@ func TestCRUDPipelineCommonTaskSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	settings := PipelineCommonTaskSettings{
+	task := PipelineTask{
 		Namespace:             "test_namespace",
 		Pipeline:              "test_pipeline",
 		PipelineConfigVersion: 0,
-		Description:           "test_description",
-		DependsOn:             "test_depends_on",
-		Name:                  "test_common_task_settings_name",
-		Label:                 "test_common_task_settings_label",
-		Settings:              "test_settings",
+		ID:                    "test_task",
+		Description:           "test description",
+		Image:                 "test",
+		RegistryAuth:          "auth string",
+		DependsOn:             "depends on list",
+		Variables:             "variable list",
+		Entrypoint:            "entrypoint list",
+		Command:               "command list",
 		InjectAPIToken:        true,
 	}
 
-	err = db.InsertPipelineCommonTaskSettings(db, &settings)
+	err = db.InsertPipelineTask(db, &task)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	settingsList, err := db.ListPipelineCommonTaskSettings(db, pipeline.Namespace, pipeline.ID, config.Version)
+	taskList, err := db.ListPipelineTasks(db, pipeline.Namespace, pipeline.ID, config.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(settingsList) != 1 {
-		t.Errorf("expected 1 element in list found %d", len(settingsList))
+	if len(taskList) != 1 {
+		t.Errorf("expected 1 element in list found %d", len(taskList))
 	}
 
-	if diff := cmp.Diff(settings, settingsList[0]); diff != "" {
+	if diff := cmp.Diff(task, taskList[0]); diff != "" {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	fetchedSettings, err := db.GetPipelineCommonTaskSettings(db, namespace.ID, pipeline.ID, config.Version,
-		settings.Label)
+	fetchedTask, err := db.GetPipelineTask(db, namespace.ID, pipeline.ID, config.Version,
+		task.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(settings, fetchedSettings); diff != "" {
+	if diff := cmp.Diff(task, fetchedTask); diff != "" {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 }

@@ -81,9 +81,7 @@ pub struct PipelineConfig {
     #[prost(string, tag="6")]
     pub description: ::prost::alloc::string::String,
     #[prost(map="string, message", tag="7")]
-    pub custom_tasks: ::std::collections::HashMap<::prost::alloc::string::String, CustomTask>,
-    #[prost(map="string, message", tag="8")]
-    pub common_tasks: ::std::collections::HashMap<::prost::alloc::string::String, PipelineCommonTaskSettings>,
+    pub tasks: ::std::collections::HashMap<::prost::alloc::string::String, Task>,
     #[prost(enumeration="pipeline_config::PipelineConfigState", tag="9")]
     pub state: i32,
     #[prost(int64, tag="10")]
@@ -279,7 +277,7 @@ pub struct RegistryAuth {
     pub pass: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CustomTask {
+pub struct Task {
     #[prost(string, tag="1")]
     pub id: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -288,7 +286,7 @@ pub struct CustomTask {
     pub image: ::prost::alloc::string::String,
     #[prost(message, optional, tag="4")]
     pub registry_auth: ::core::option::Option<RegistryAuth>,
-    #[prost(map="string, enumeration(custom_task::RequiredParentStatus)", tag="5")]
+    #[prost(map="string, enumeration(task::RequiredParentStatus)", tag="5")]
     pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     #[prost(message, repeated, tag="6")]
     pub variables: ::prost::alloc::vec::Vec<Variable>,
@@ -299,8 +297,8 @@ pub struct CustomTask {
     #[prost(bool, tag="9")]
     pub inject_api_token: bool,
 }
-/// Nested message and enum types in `CustomTask`.
-pub mod custom_task {
+/// Nested message and enum types in `Task`.
+pub mod task {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RequiredParentStatus {
@@ -318,39 +316,6 @@ pub struct PipelineExtensionSettings {
     pub label: ::prost::alloc::string::String,
     #[prost(map="string, string", tag="3")]
     pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct PipelineCommonTaskSettings {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub label: ::prost::alloc::string::String,
-    #[prost(string, tag="3")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(map="string, enumeration(pipeline_common_task_settings::RequiredParentStatus)", tag="4")]
-    pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
-    #[prost(map="string, string", tag="5")]
-    pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
-    #[prost(bool, tag="6")]
-    pub inject_api_token: bool,
-}
-/// Nested message and enum types in `PipelineCommonTaskSettings`.
-pub mod pipeline_common_task_settings {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum RequiredParentStatus {
-        Unknown = 0,
-        Any = 1,
-        Success = 2,
-        Failure = 3,
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CommonTask {
-    #[prost(message, optional, tag="1")]
-    pub settings: ::core::option::Option<PipelineCommonTaskSettings>,
-    #[prost(message, optional, tag="2")]
-    pub registration: ::core::option::Option<CommonTaskRegistration>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TaskRunStatusReason {
@@ -402,12 +367,10 @@ pub struct TaskRun {
     pub state: i32,
     #[prost(enumeration="task_run::TaskRunStatus", tag="14")]
     pub status: i32,
-    #[prost(enumeration="task_run::TaskKind", tag="15")]
-    pub task_kind: i32,
-    #[prost(message, repeated, tag="18")]
+    #[prost(message, optional, tag="15")]
+    pub task: ::core::option::Option<Task>,
+    #[prost(message, repeated, tag="16")]
     pub variables: ::prost::alloc::vec::Vec<Variable>,
-    #[prost(oneof="task_run::Task", tags="16, 17")]
-    pub task: ::core::option::Option<task_run::Task>,
 }
 /// Nested message and enum types in `TaskRun`.
 pub mod task_run {
@@ -428,20 +391,6 @@ pub mod task_run {
         Failed = 2,
         Cancelled = 3,
         Skipped = 4,
-    }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum TaskKind {
-        UnknownTaskkind = 0,
-        Common = 1,
-        Custom = 2,
-    }
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Task {
-        #[prost(message, tag="16")]
-        CustomTask(super::CustomTask),
-        #[prost(message, tag="17")]
-        CommonTask(super::CommonTask),
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -502,35 +451,6 @@ pub mod extension_registration {
     #[repr(i32)]
     pub enum ExtensionStatus {
         UnknownStatus = 0,
-        Enabled = 1,
-        Disabled = 2,
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CommonTaskRegistration {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub image: ::prost::alloc::string::String,
-    #[prost(string, tag="3")]
-    pub user: ::prost::alloc::string::String,
-    #[prost(string, tag="4")]
-    pub pass: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag="5")]
-    pub variables: ::prost::alloc::vec::Vec<Variable>,
-    #[prost(int64, tag="6")]
-    pub created: i64,
-    #[prost(enumeration="common_task_registration::Status", tag="7")]
-    pub status: i32,
-    #[prost(string, tag="8")]
-    pub documentation: ::prost::alloc::string::String,
-}
-/// Nested message and enum types in `CommonTaskRegistration`.
-pub mod common_task_registration {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Status {
-        Unknown = 0,
         Enabled = 1,
         Disabled = 2,
     }
@@ -646,21 +566,6 @@ pub struct UserPipelineConfig {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserPipelineTaskConfig {
-    #[prost(oneof="user_pipeline_task_config::Task", tags="1, 2")]
-    pub task: ::core::option::Option<user_pipeline_task_config::Task>,
-}
-/// Nested message and enum types in `UserPipelineTaskConfig`.
-pub mod user_pipeline_task_config {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Task {
-        #[prost(message, tag="1")]
-        CustomTask(super::UserCustomTaskConfig),
-        #[prost(message, tag="2")]
-        CommonTask(super::UserCommonTaskConfig),
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UserCustomTaskConfig {
     #[prost(string, tag="1")]
     pub id: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
@@ -669,7 +574,7 @@ pub struct UserCustomTaskConfig {
     pub image: ::prost::alloc::string::String,
     #[prost(message, optional, tag="4")]
     pub registry_auth: ::core::option::Option<RegistryAuth>,
-    #[prost(map="string, enumeration(user_custom_task_config::RequiredParentStatus)", tag="5")]
+    #[prost(map="string, enumeration(user_pipeline_task_config::RequiredParentStatus)", tag="5")]
     pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     #[prost(map="string, string", tag="6")]
     pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
@@ -680,34 +585,8 @@ pub struct UserCustomTaskConfig {
     #[prost(bool, tag="9")]
     pub inject_api_token: bool,
 }
-/// Nested message and enum types in `UserCustomTaskConfig`.
-pub mod user_custom_task_config {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum RequiredParentStatus {
-        Unknown = 0,
-        Any = 1,
-        Success = 2,
-        Failure = 3,
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UserCommonTaskConfig {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub label: ::prost::alloc::string::String,
-    #[prost(string, tag="3")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(map="string, enumeration(user_common_task_config::RequiredParentStatus)", tag="4")]
-    pub depends_on: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
-    #[prost(map="string, string", tag="5")]
-    pub settings: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
-    #[prost(bool, tag="6")]
-    pub inject_api_token: bool,
-}
-/// Nested message and enum types in `UserCommonTaskConfig`.
-pub mod user_common_task_config {
+/// Nested message and enum types in `UserPipelineTaskConfig`.
+pub mod user_pipeline_task_config {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RequiredParentStatus {
@@ -1491,83 +1370,6 @@ pub struct GetExtensionInstallInstructionsRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetExtensionInstallInstructionsResponse {
-    #[prost(string, tag="1")]
-    pub instructions: ::prost::alloc::string::String,
-}
-////////////// CommonTask Transport Models //////////////
-
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetCommonTaskRequest {
-    /// The unique name/kind for a particular commontask
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetCommonTaskResponse {
-    #[prost(message, optional, tag="1")]
-    pub common_task: ::core::option::Option<CommonTaskRegistration>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListCommonTasksRequest {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListCommonTasksResponse {
-    #[prost(message, repeated, tag="1")]
-    pub common_tasks: ::prost::alloc::vec::Vec<CommonTaskRegistration>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InstallCommonTaskRequest {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub image: ::prost::alloc::string::String,
-    #[prost(string, tag="3")]
-    pub user: ::prost::alloc::string::String,
-    #[prost(string, tag="4")]
-    pub pass: ::prost::alloc::string::String,
-    #[prost(map="string, string", tag="5")]
-    pub variables: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
-    #[prost(string, tag="6")]
-    pub documentation: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct InstallCommonTaskResponse {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UninstallCommonTaskRequest {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UninstallCommonTaskResponse {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EnableCommonTaskRequest {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EnableCommonTaskResponse {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DisableCommonTaskRequest {
-    #[prost(string, tag="1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DisableCommonTaskResponse {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetCommonTaskInstallInstructionsRequest {
-    #[prost(string, tag="1")]
-    pub image: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub user: ::prost::alloc::string::String,
-    #[prost(string, tag="3")]
-    pub pass: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetCommonTaskInstallInstructionsResponse {
     #[prost(string, tag="1")]
     pub instructions: ::prost::alloc::string::String,
 }
@@ -3080,152 +2882,6 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// GetCommonTask returns details about a specific commontask.
-        pub async fn get_common_task(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::GetCommonTaskResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/GetCommonTask",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// ListCommonTasks lists all common tasks currently registered within gofer.
-        pub async fn list_common_tasks(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListCommonTasksRequest>,
-        ) -> Result<tonic::Response<super::ListCommonTasksResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/ListCommonTasks",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// GetCommonTaskInstalInstructions retrieves install instructions for a
-        /// particular common task.
-        pub async fn get_common_task_install_instructions(
-            &mut self,
-            request: impl tonic::IntoRequest<
-                super::GetCommonTaskInstallInstructionsRequest,
-            >,
-        ) -> Result<
-            tonic::Response<super::GetCommonTaskInstallInstructionsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/GetCommonTaskInstallInstructions",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// InstallCommonTask attempts to install a new common task.
-        pub async fn install_common_task(
-            &mut self,
-            request: impl tonic::IntoRequest<super::InstallCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::InstallCommonTaskResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/InstallCommonTask",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// UninstallCommonTask attempts to uninstall a common task.
-        pub async fn uninstall_common_task(
-            &mut self,
-            request: impl tonic::IntoRequest<super::UninstallCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::UninstallCommonTaskResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/UninstallCommonTask",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// EnableCommonTask attempts to enable a new common task.
-        pub async fn enable_common_task(
-            &mut self,
-            request: impl tonic::IntoRequest<super::EnableCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::EnableCommonTaskResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/EnableCommonTask",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// DisableCommonTask attempts to disable a new common task.
-        pub async fn disable_common_task(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DisableCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::DisableCommonTaskResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/DisableCommonTask",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
         /// ListPipelineObjects returns a list of all pipeline object keys.
         pub async fn list_pipeline_objects(
             &mut self,
@@ -4119,45 +3775,6 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::DisableExtensionRequest>,
         ) -> Result<tonic::Response<super::DisableExtensionResponse>, tonic::Status>;
-        /// GetCommonTask returns details about a specific commontask.
-        async fn get_common_task(
-            &self,
-            request: tonic::Request<super::GetCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::GetCommonTaskResponse>, tonic::Status>;
-        /// ListCommonTasks lists all common tasks currently registered within gofer.
-        async fn list_common_tasks(
-            &self,
-            request: tonic::Request<super::ListCommonTasksRequest>,
-        ) -> Result<tonic::Response<super::ListCommonTasksResponse>, tonic::Status>;
-        /// GetCommonTaskInstalInstructions retrieves install instructions for a
-        /// particular common task.
-        async fn get_common_task_install_instructions(
-            &self,
-            request: tonic::Request<super::GetCommonTaskInstallInstructionsRequest>,
-        ) -> Result<
-            tonic::Response<super::GetCommonTaskInstallInstructionsResponse>,
-            tonic::Status,
-        >;
-        /// InstallCommonTask attempts to install a new common task.
-        async fn install_common_task(
-            &self,
-            request: tonic::Request<super::InstallCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::InstallCommonTaskResponse>, tonic::Status>;
-        /// UninstallCommonTask attempts to uninstall a common task.
-        async fn uninstall_common_task(
-            &self,
-            request: tonic::Request<super::UninstallCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::UninstallCommonTaskResponse>, tonic::Status>;
-        /// EnableCommonTask attempts to enable a new common task.
-        async fn enable_common_task(
-            &self,
-            request: tonic::Request<super::EnableCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::EnableCommonTaskResponse>, tonic::Status>;
-        /// DisableCommonTask attempts to disable a new common task.
-        async fn disable_common_task(
-            &self,
-            request: tonic::Request<super::DisableCommonTaskRequest>,
-        ) -> Result<tonic::Response<super::DisableCommonTaskResponse>, tonic::Status>;
         /// ListPipelineObjects returns a list of all pipeline object keys.
         async fn list_pipeline_objects(
             &self,
@@ -6331,289 +5948,6 @@ pub mod gofer_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = DisableExtensionSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/GetCommonTask" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetCommonTaskSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<super::GetCommonTaskRequest>
-                    for GetCommonTaskSvc<T> {
-                        type Response = super::GetCommonTaskResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetCommonTaskRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).get_common_task(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = GetCommonTaskSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/ListCommonTasks" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListCommonTasksSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<super::ListCommonTasksRequest>
-                    for ListCommonTasksSvc<T> {
-                        type Response = super::ListCommonTasksResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListCommonTasksRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).list_common_tasks(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = ListCommonTasksSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/GetCommonTaskInstallInstructions" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetCommonTaskInstallInstructionsSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<
-                        super::GetCommonTaskInstallInstructionsRequest,
-                    > for GetCommonTaskInstallInstructionsSvc<T> {
-                        type Response = super::GetCommonTaskInstallInstructionsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<
-                                super::GetCommonTaskInstallInstructionsRequest,
-                            >,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).get_common_task_install_instructions(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = GetCommonTaskInstallInstructionsSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/InstallCommonTask" => {
-                    #[allow(non_camel_case_types)]
-                    struct InstallCommonTaskSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<super::InstallCommonTaskRequest>
-                    for InstallCommonTaskSvc<T> {
-                        type Response = super::InstallCommonTaskResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::InstallCommonTaskRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).install_common_task(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = InstallCommonTaskSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/UninstallCommonTask" => {
-                    #[allow(non_camel_case_types)]
-                    struct UninstallCommonTaskSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<super::UninstallCommonTaskRequest>
-                    for UninstallCommonTaskSvc<T> {
-                        type Response = super::UninstallCommonTaskResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::UninstallCommonTaskRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).uninstall_common_task(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = UninstallCommonTaskSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/EnableCommonTask" => {
-                    #[allow(non_camel_case_types)]
-                    struct EnableCommonTaskSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<super::EnableCommonTaskRequest>
-                    for EnableCommonTaskSvc<T> {
-                        type Response = super::EnableCommonTaskResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::EnableCommonTaskRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).enable_common_task(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = EnableCommonTaskSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/proto.Gofer/DisableCommonTask" => {
-                    #[allow(non_camel_case_types)]
-                    struct DisableCommonTaskSvc<T: Gofer>(pub Arc<T>);
-                    impl<
-                        T: Gofer,
-                    > tonic::server::UnaryService<super::DisableCommonTaskRequest>
-                    for DisableCommonTaskSvc<T> {
-                        type Response = super::DisableCommonTaskResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::DisableCommonTaskRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).disable_common_task(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = DisableCommonTaskSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

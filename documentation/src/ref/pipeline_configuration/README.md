@@ -51,13 +51,13 @@ run on container start to just say "Hello from Gofer!".
 ```go
 err := sdk.NewPipeline("simple", "My Simple Pipeline").
         Description("This pipeline is purely for testing purposes.").
-        Tasks(sdk.NewCustomTask("simple_task", "ubuntu:latest").
+        Tasks(sdk.NewTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!"),
     )
 ```
 
-We used the `Tasks` function to add multiple tasks and then we use the SDK's `NewCustomTask` function to create a task. You can see we:
+We used the `Tasks` function to add multiple tasks and then we use the SDK's `NewTask` function to create a task. You can see we:
 
 - Give the task an ID, much like our pipeline earlier.
 - Specify which image we want to use.
@@ -69,7 +69,7 @@ To tie a bow on it, we add the `.Finish()` function to specify that our pipeline
 ```go
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
-    Tasks(sdk.NewCustomTask("simple_task", "ubuntu:latest").
+    Tasks(sdk.NewTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!"),
     ).Finish()
@@ -102,7 +102,7 @@ The token will be cleaned up the same time the logs for a particular run is clea
 err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
     Tasks(
-		sdk.NewCustomTask("simple_task", "ubuntu:latest").
+		sdk.NewTask("simple_task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!").InjectAPIToken(true),
     ).Finish()

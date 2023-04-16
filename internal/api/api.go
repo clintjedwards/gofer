@@ -99,11 +99,6 @@ type API struct {
 	// quickly with the containers and their potentially changing endpoints.
 	extensions syncmap.Syncmap[string, *models.Extension]
 
-	// commonTasks is an in-memory map of the currently registered commonTasks. These commonTasks are registered on startup
-	// and launched as needed at a user's request. Gofer refers to this cache as a way to quickly look
-	// up which container is needed to be launched.
-	commonTasks syncmap.Syncmap[string, *models.CommonTaskRegistration]
-
 	// ignorePipelineRunEvents controls if pipelines can extension runs globally. If this is set to false the entire Gofer
 	// service will not schedule new runs.
 	ignorePipelineRunEvents *atomic.Bool
@@ -149,7 +144,6 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 		secretStore:             secretStore,
 		ignorePipelineRunEvents: &ignorePipelineRunEvents,
 		extensions:              syncmap.New[string, *models.Extension](),
-		commonTasks:             syncmap.New[string, *models.CommonTaskRegistration](),
 	}
 
 	err = newAPI.createDefaultNamespace()
@@ -160,11 +154,6 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 	err = newAPI.installBaseExtensions()
 	if err != nil {
 		return nil, fmt.Errorf("could not install base extensions: %w", err)
-	}
-
-	err = newAPI.restoreRegisteredCommonTasks()
-	if err != nil {
-		return nil, fmt.Errorf("could not register common tasks: %w", err)
 	}
 
 	err = newAPI.startExtensions()
@@ -484,18 +473,13 @@ func (api *API) repairOrphanRun(namespaceID, pipelineID string, runID int64) err
 		return err
 	}
 
-	commonTasksRaw, err := api.db.ListPipelineCommonTaskSettings(api.db, namespaceID, pipelineID, latestConfigRaw.Version)
-	if err != nil {
-		return err
-	}
-
-	customTasksRaw, err := api.db.ListPipelineCustomTasks(api.db, namespaceID, pipelineID, latestConfigRaw.Version)
+	tasksRaw, err := api.db.ListPipelineTasks(api.db, namespaceID, pipelineID, latestConfigRaw.Version)
 	if err != nil {
 		return err
 	}
 
 	var latestConfig models.PipelineConfig
-	latestConfig.FromStorage(&latestConfigRaw, &commonTasksRaw, &customTasksRaw)
+	latestConfig.FromStorage(&latestConfigRaw, &tasksRaw)
 
 	runRaw, err := api.db.GetPipelineRun(api.db, namespaceID, pipelineID, runID)
 	if err != nil {
@@ -528,7 +512,7 @@ func (api *API) repairOrphanRun(namespaceID, pipelineID string, runID int64) err
 		// This is necessary because eventually we will compute whether the run was complete and we'll need the
 		// state of that run.
 		if taskrun.State == models.TaskRunStateComplete {
-			runStateMachine.TaskRuns.Set(taskrun.Task.GetID(), taskrun)
+			runStateMachine.TaskRuns.Set(taskrun.Task.ID, taskrun)
 			continue
 		}
 
@@ -540,7 +524,7 @@ func (api *API) repairOrphanRun(namespaceID, pipelineID string, runID int64) err
 
 		// If the task run was in a state where it had been launched and just needs to be tracked then we just
 		// add log/state trackers onto it.
-		runStateMachine.TaskRuns.Set(taskrun.Task.GetID(), taskrun)
+		runStateMachine.TaskRuns.Set(taskrun.Task.ID, taskrun)
 		go runStateMachine.handleLogUpdates(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)
 		go func() {
 			err = runStateMachine.waitTaskRunFinish(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)

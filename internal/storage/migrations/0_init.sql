@@ -63,22 +63,6 @@ CREATE TABLE IF NOT EXISTS pipeline_extension_subscriptions (
     PRIMARY KEY (namespace, pipeline, name, label)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS pipeline_common_task_settings (
-    namespace               TEXT    NOT NULL,
-    pipeline                TEXT    NOT NULL,
-    pipeline_config_version INTEGER NOT NULL,
-    name                    TEXT    NOT NULL,
-    label                   TEXT    NOT NULL,
-    description             TEXT    NOT NULL,
-    depends_on              TEXT    NOT NULL,
-    settings                TEXT    NOT NULL,
-    inject_api_token        INTEGER NOT NULL CHECK (inject_api_token IN (0, 1)),
-    FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
-    FOREIGN KEY (namespace, pipeline) REFERENCES pipeline_metadata(namespace, id) ON DELETE CASCADE,
-    FOREIGN KEY (namespace, pipeline, pipeline_config_version) REFERENCES pipeline_configs(namespace, pipeline, version) ON DELETE CASCADE,
-    PRIMARY KEY (namespace, pipeline, pipeline_config_version, label)
-) STRICT;
-
 CREATE TABLE IF NOT EXISTS pipeline_runs (
     namespace               TEXT    NOT NULL,
     pipeline                TEXT    NOT NULL,
@@ -98,7 +82,7 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
     PRIMARY KEY (namespace, pipeline, id)
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS pipeline_custom_tasks (
+CREATE TABLE IF NOT EXISTS pipeline_tasks (
     namespace               TEXT    NOT NULL,
     pipeline                TEXT    NOT NULL,
     pipeline_config_version INTEGER NOT NULL,
@@ -125,17 +109,6 @@ CREATE TABLE IF NOT EXISTS global_extension_registrations (
     created       INTEGER NOT NULL,
     status        TEXT    NOT NULL,
     key_id        INTEGER NOT NULL,
-    PRIMARY KEY (name)
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS global_common_task_registrations (
-    name          TEXT    NOT NULL,
-    image         TEXT    NOT NULL,
-    registry_auth TEXT    NOT NULL,
-    variables     TEXT    NOT NULL,
-    created       INTEGER NOT NULL,
-    status        TEXT    NOT NULL,
-    documentation TEXT    NOT NULL,
     PRIMARY KEY (name)
 ) STRICT;
 

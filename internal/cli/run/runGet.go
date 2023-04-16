@@ -128,12 +128,7 @@ func formatRunInfo(run *proto.Run, taskRuns []*proto.TaskRun, detail bool) strin
 			StatePrefix: formatTaskRunStatePrefix(task.State),
 		}
 
-		switch concreteTask := task.Task.(type) {
-		case *proto.TaskRun_CommonTask:
-			data.DependsOn = format.Dependencies(concreteTask.CommonTask.Settings.GetDependsOn())
-		case *proto.TaskRun_CustomTask:
-			data.DependsOn = format.Dependencies(concreteTask.CustomTask.GetDependsOn())
-		}
+		data.DependsOn = format.Dependencies(task.Task.DependsOn)
 
 		taskRunList = append(taskRunList, data)
 	}

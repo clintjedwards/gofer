@@ -59,8 +59,7 @@ message PipelineConfig {
   int64 parallelism = 4;
   string name = 5;
   string description = 6;
-  map<string, CustomTask> custom_tasks = 7;
-  map<string, PipelineCommonTaskSettings> common_tasks = 8;
+  map<string, Task> tasks = 7;
   enum PipelineConfigState {
     PIPELINE_CONFIG_STATE_UNKNOWN = 0;
     UNRELEASED = 1;
@@ -176,7 +175,7 @@ message RegistryAuth {
   string pass = 2;
 }
 
-message CustomTask {
+message Task {
   string id = 1;
   string description = 2;
   string image = 3;
@@ -198,26 +197,6 @@ message PipelineExtensionSettings {
   string name = 1;
   string label = 2;
   map<string, string> settings = 3;
-}
-
-message PipelineCommonTaskSettings {
-  string name = 1;
-  string label = 2;
-  enum RequiredParentStatus {
-    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
-    ANY = 1;
-    SUCCESS = 2;
-    FAILURE = 3;
-  }
-  string description = 3;
-  map<string, RequiredParentStatus> depends_on = 4;
-  map<string, string> settings = 5;
-  bool inject_api_token = 6;
-}
-
-message CommonTask {
-  PipelineCommonTaskSettings settings = 1;
-  CommonTaskRegistration registration = 2;
 }
 
 message TaskRunStatusReason {
@@ -262,17 +241,8 @@ message TaskRun {
     SKIPPED = 4;
   }
   TaskRunStatus status = 14;
-  enum TaskKind {
-    UNKNOWN_TASKKIND = 0;
-    COMMON = 1;
-    CUSTOM = 2;
-  }
-  TaskKind task_kind = 15;
-  oneof task {
-    CustomTask custom_task = 16;
-    CommonTask common_task = 17;
-  }
-  repeated Variable variables = 18;
+  Task task = 15;
+  repeated Variable variables = 16;
 }
 
 message Extension {
@@ -309,22 +279,6 @@ message ExtensionRegistration {
     DISABLED = 2;
   }
   ExtensionStatus status = 7;
-}
-
-message CommonTaskRegistration {
-  string name = 1;
-  string image = 2;
-  string user = 3;
-  string pass = 4;
-  repeated Variable variables = 5;
-  int64 created = 6;
-  enum Status {
-    UNKNOWN = 0;
-    ENABLED = 1;
-    DISABLED = 2;
-  }
-  Status status = 7;
-  string documentation = 8;
 }
 
 message Event {

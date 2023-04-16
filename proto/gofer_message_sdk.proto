@@ -18,13 +18,6 @@ message UserPipelineConfig {
 }
 
 message UserPipelineTaskConfig {
-  oneof task {
-    UserCustomTaskConfig custom_task = 1;
-    UserCommonTaskConfig common_task = 2;
-  }
-}
-
-message UserCustomTaskConfig {
   string id = 1;
   string description = 2;
   string image = 3;
@@ -40,19 +33,4 @@ message UserCustomTaskConfig {
   repeated string entrypoint = 7;
   repeated string command = 8;
   bool inject_api_token = 9;
-}
-
-message UserCommonTaskConfig {
-  string name = 1;
-  string label = 2;
-  enum RequiredParentStatus {
-    REQUIRED_PARENT_STATUS_UNKNOWN = 0;
-    ANY = 1;
-    SUCCESS = 2;
-    FAILURE = 3;
-  }
-  string description = 3;
-  map<string, RequiredParentStatus> depends_on = 4;
-  map<string, string> settings = 5;
-  bool inject_api_token = 6;
 }

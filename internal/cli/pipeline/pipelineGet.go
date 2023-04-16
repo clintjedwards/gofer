@@ -118,7 +118,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 	recentRunHealth := []proto.Run_RunStatus{}
 	for _, run := range recentRuns {
 		recentRunList = append(recentRunList, []string{
-			color.BlueString("(" + strconv.Itoa(int(run.Id)) + ")"),
+			color.BlueString(strconv.Itoa(int(run.Id)) + ":"),
 			fmt.Sprintf("%s by %s", format.UnixMilli(run.Started, "Not yet", detail), color.CyanString(run.Initiator.Name)),
 			fmt.Sprintf("%s %s", formatStatePrefix(run.State), format.Duration(run.Started, run.Ended)),
 			format.ColorizeRunState(format.NormalizeEnumValue(run.State.String(), "Unknown")),
@@ -142,7 +142,7 @@ func formatPipeline(ctx context.Context, client proto.GoferClient, pipeline *pro
 	sort.Slice(extensionDataList, func(i, j int) bool { return extensionDataList[i].Label < extensionDataList[j].Label })
 
 	tasks := []taskData{}
-	for _, task := range pipeline.Config.CustomTasks {
+	for _, task := range pipeline.Config.Tasks {
 		tasks = append(tasks, taskData{
 			Name:      color.BlueString(task.Id),
 			DependsOn: format.Dependencies(task.DependsOn),

@@ -10,15 +10,9 @@ Debugging information coming soon.
 
 <!-- TODO(clintjedwards): Provide a debug Gofer extension-->
 
-## Debugging Common Tasks
+## Debugging Tasks
 
-Common Tasks are pre-setup containers that run at a user's request. Errors in common tasks should show up as errors for your pipeline as normal.
-
-To aid in debugging common tasks in general, there is a [debug](./ref/common_tasks/debug.md) common task available. It simply prints out all environment variables found and takes some straight-forward parameters and configurations.
-
-## Debugging Custom Tasks
-
-When custom tasks aren't working quite right, it helps to have some simple tasks that you can use to debug. Gofer provides a few of these to aid in debugging.
+When tasks aren't working quite right, it helps to have some simple tasks that you can use to debug. Gofer provides a few of these to aid in debugging.
 
 | Name | Image                                  | Description                                                                                                                                                              |
 | ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

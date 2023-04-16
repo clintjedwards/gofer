@@ -132,17 +132,12 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 
 		latestVersion := latestConfigRaw.Version
 
-		commonTasks, err := api.db.ListPipelineCommonTaskSettings(tx, request.NamespaceId, pipeline.ID, latestVersion)
+		tasks, err := api.db.ListPipelineTasks(tx, request.NamespaceId, pipeline.ID, latestVersion)
 		if err != nil {
 			return err
 		}
 
-		customTasks, err := api.db.ListPipelineCustomTasks(tx, request.NamespaceId, pipeline.ID, latestVersion)
-		if err != nil {
-			return err
-		}
-
-		latestConfig.FromStorage(&latestConfigRaw, &commonTasks, &customTasks)
+		latestConfig.FromStorage(&latestConfigRaw, &tasks)
 
 		latestRun, err := api.db.ListPipelineRuns(api.db, 0, 1, request.NamespaceId, pipeline.ID)
 		if err != nil {

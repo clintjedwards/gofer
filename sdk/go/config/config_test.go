@@ -17,7 +17,7 @@ func ExampleNewPipeline_simple() {
 	err := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
 		Description("Simple Test Pipeline").
 		Tasks(
-			NewCustomTask("simple_task", "ubuntu:latest").
+			NewTask("simple_task", "ubuntu:latest").
 				Description("This task simply prints our hello-world message and exits!").
 				Command("echo", `Hello from Gofer!`),
 		).
@@ -28,17 +28,17 @@ func ExampleNewPipeline_simple() {
 }
 
 func ExampleNewPipeline_dag() {
-	taskOne := NewCustomTask("task_one", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
+	taskOne := NewTask("task_one", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
 		Description("This task has no dependencies so it will run immediately").
 		Variable("WAIT_DURATION", "20s")
 
-	dependsOnOne := NewCustomTask("depends_on_one", "ghcr.io/clintjedwards/gofer/debug/log:latest").
+	dependsOnOne := NewTask("depends_on_one", "ghcr.io/clintjedwards/gofer/debug/log:latest").
 		Description("This task depends on the first task to finish  a successfull result."+
 			"This means that if the first task fails this task will not run.").
 		Variable("LOGS_HEADER", "This string can be anything you want it to be").
 		DependsOn(taskOne.ID, RequiredParentStatusSuccess)
 
-	dependsOnTwo := NewCustomTask("depends_on_two", "docker.io/library/hello-world").
+	dependsOnTwo := NewTask("depends_on_two", "docker.io/library/hello-world").
 		Description("This task depends on the second task, but will run after its finished regardless of the result.").
 		DependsOn(dependsOnOne.ID, RequiredParentStatusAny)
 
@@ -55,9 +55,9 @@ perform certain trees of actions depending on what happens in earlier containers
 }
 
 func TestInvalidPipelineCyclical(t *testing.T) {
-	taskA := NewCustomTask("task_a", "").DependsOn("task_b", RequiredParentStatusAny)
-	taskB := NewCustomTask("task_b", "").DependsOn("task_c", RequiredParentStatusAny)
-	taskC := NewCustomTask("task_c", "").DependsOn("task_a", RequiredParentStatusAny)
+	taskA := NewTask("task_a", "").DependsOn("task_b", RequiredParentStatusAny)
+	taskB := NewTask("task_b", "").DependsOn("task_c", RequiredParentStatusAny)
+	taskC := NewTask("task_c", "").DependsOn("task_a", RequiredParentStatusAny)
 
 	err := NewPipeline("invalid_pipeline", "").Tasks(taskA, taskB, taskC).Finish()
 
@@ -72,7 +72,7 @@ func TestSimpleConfigSerialization(t *testing.T) {
 	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
 		Description("Simple Test Pipeline").
 		Tasks(
-			NewCustomTask("simple_task", "ubuntu:latest").
+			NewTask("simple_task", "ubuntu:latest").
 				Description("This task simply prints our hello-world message and exits!").
 				Command("echo", `Hello from Gofer!`),
 		)
@@ -102,14 +102,10 @@ func TestSimpleConfigSerialization(t *testing.T) {
 		Description: "Simple Test Pipeline",
 		Tasks: []*proto.UserPipelineTaskConfig{
 			{
-				Task: &proto.UserPipelineTaskConfig_CustomTask{
-					CustomTask: &proto.UserCustomTaskConfig{
-						Id:          "simple_task",
-						Image:       "ubuntu:latest",
-						Description: "This task simply prints our hello-world message and exits!",
-						Command:     []string{"echo", `Hello from Gofer!`},
-					},
-				},
+				Id:          "simple_task",
+				Image:       "ubuntu:latest",
+				Description: "This task simply prints our hello-world message and exits!",
+				Command:     []string{"echo", `Hello from Gofer!`},
 			},
 		},
 	}
@@ -119,24 +115,9 @@ func TestSimpleConfigSerialization(t *testing.T) {
 	}
 }
 
-// Tests that compliation fails if user attempts to request a global var.
-func TestInvalidConfigGlobalSecrets(t *testing.T) {
-	err := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
-		Description("Simple Test Pipeline").
-		Tasks(
-			NewCustomTask("simple_task", "ubuntu:latest").
-				Description("This task simply prints our hello-world message and exits!").
-				Command("echo", `Hello from Gofer!`).
-				Variable("test_var", "global_secret{{some_secret_here}}"),
-		).Finish()
-	if err == nil {
-		t.Fatal("pipeline should return an error due to user attempting to use global secrets, but it does not")
-	}
-}
-
 func TestInjectAPITokens(t *testing.T) {
-	pipeline := NewPipeline("inject_test_pipeline", "").Tasks(NewCustomTask("task_1", "").InjectAPIToken(true))
-	if pipeline.Pipeline.Tasks[0].(*CustomTaskWrapper).CustomTask.InjectAPIToken == false {
+	pipeline := NewPipeline("inject_test_pipeline", "").Tasks(NewTask("task_1", "").InjectAPIToken(true))
+	if pipeline.Pipeline.Tasks[0].Task.InjectAPIToken == false {
 		t.Fatal("pipeline is not in correct state")
 	}
 }

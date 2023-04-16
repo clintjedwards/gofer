@@ -9,7 +9,7 @@ import (
 	qb "github.com/Masterminds/squirrel"
 )
 
-type PipelineCustomTask struct {
+type PipelineTask struct {
 	Namespace             string
 	Pipeline              string
 	PipelineConfigVersion int64 `db:"pipeline_config_version"`
@@ -24,24 +24,24 @@ type PipelineCustomTask struct {
 	InjectAPIToken        bool `db:"inject_api_token"`
 }
 
-func (db *DB) ListPipelineCustomTasks(conn Queryable, namespace, pipeline string, version int64) ([]PipelineCustomTask, error) {
+func (db *DB) ListPipelineTasks(conn Queryable, namespace, pipeline string, version int64) ([]PipelineTask, error) {
 	query, args := qb.Select("namespace", "pipeline", "pipeline_config_version", "id", "description",
 		"image", "registry_auth", "depends_on", "variables", "entrypoint", "command", "inject_api_token").
-		From("pipeline_custom_tasks").
+		From("pipeline_tasks").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "pipeline_config_version": version}).
 		MustSql()
 
-	customTasks := []PipelineCustomTask{}
-	err := conn.Select(&customTasks, query, args...)
+	tasks := []PipelineTask{}
+	err := conn.Select(&tasks, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return customTasks, nil
+	return tasks, nil
 }
 
-func (db *DB) InsertPipelineCustomTask(conn Queryable, task *PipelineCustomTask) error {
-	_, err := qb.Insert("pipeline_custom_tasks").
+func (db *DB) InsertPipelineTask(conn Queryable, task *PipelineTask) error {
+	_, err := qb.Insert("pipeline_tasks").
 		Columns("namespace", "pipeline", "pipeline_config_version", "id", "description", "image",
 			"registry_auth", "depends_on", "variables", "entrypoint", "command", "inject_api_token").Values(
 		task.Namespace, task.Pipeline, task.PipelineConfigVersion, task.ID, task.Description,
@@ -59,26 +59,26 @@ func (db *DB) InsertPipelineCustomTask(conn Queryable, task *PipelineCustomTask)
 	return nil
 }
 
-func (db *DB) GetPipelineCustomTask(conn Queryable, namespace, pipeline string, version int64, id string) (
-	PipelineCustomTask, error,
+func (db *DB) GetPipelineTask(conn Queryable, namespace, pipeline string, version int64, id string) (
+	PipelineTask, error,
 ) {
 	query, args := qb.Select("namespace", "pipeline", "pipeline_config_version", "id", "description", "image",
 		"registry_auth", "depends_on", "variables", "entrypoint", "command", "inject_api_token").
-		From("pipeline_custom_tasks").Where(qb.Eq{
+		From("pipeline_tasks").Where(qb.Eq{
 		"namespace":               namespace,
 		"pipeline":                pipeline,
 		"pipeline_config_version": version,
 		"id":                      id,
 	}).MustSql()
 
-	task := PipelineCustomTask{}
+	task := PipelineTask{}
 	err := conn.Get(&task, query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return PipelineCustomTask{}, ErrEntityNotFound
+			return PipelineTask{}, ErrEntityNotFound
 		}
 
-		return PipelineCustomTask{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return PipelineTask{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
 	return task, nil

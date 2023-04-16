@@ -57,12 +57,6 @@ Gofer provides a list of events for the most common actions performed. You can v
 
 Gofer allows extensions to consume external events. This allows for extensions to respond to webhooks from favorite sites like Github and more.
 
-## Common Tasks
-
-Much like extensions, Gofer allows users to install "common tasks". Common tasks are Gofer's way of cutting down on some of the setup and allowing containers to be pre-setup by the system administrator for use in any pipeline.
-
-For example, if you wanted to do some common action like post to Slack, it would be annoying have to set up the container that does this for every pipeline. Instead, Gofer allows you to set it up once and include it everywhere.
-
 ## Pluggable Everything
 
 Gofer plugs into all your favorite backends your team is already using. This means that you never have to maintain things outside of your wheelhouse.

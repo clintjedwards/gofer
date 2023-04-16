@@ -174,12 +174,7 @@ func (api *API) getPipelineFromDB(namespace, id string, version int64) (*models.
 			return err
 		}
 
-		commonTasksRaw, err := api.db.ListPipelineCommonTaskSettings(tx, namespace, id, version)
-		if err != nil {
-			return err
-		}
-
-		customTasksRaw, err := api.db.ListPipelineCustomTasks(tx, namespace, id, version)
+		tasksRaw, err := api.db.ListPipelineTasks(tx, namespace, id, version)
 		if err != nil {
 			return err
 		}
@@ -189,7 +184,7 @@ func (api *API) getPipelineFromDB(namespace, id string, version int64) (*models.
 			return err
 		}
 
-		config.FromStorage(&configRaw, &commonTasksRaw, &customTasksRaw)
+		config.FromStorage(&configRaw, &tasksRaw)
 		metadata.FromStorage(&metadataRaw)
 
 		return nil

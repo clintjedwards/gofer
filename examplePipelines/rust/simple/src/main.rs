@@ -1,4 +1,4 @@
-use gofer_sdk::config::{CustomTask, Pipeline};
+use gofer_sdk::config::{Pipeline, Task};
 
 fn main() {
     Pipeline::new("simple", "Simple Pipeline")
@@ -17,11 +17,9 @@ fn main() {
         "particular workflow. Allowing you to keep the logic code closer to the actual object that uses it ",
         "and keeping the Gofer pipeline configurations from becoming a mess.\n"))
         .tasks(vec![
-            Box::new(
-                CustomTask::new("simple_task", "ubuntu:latest").
+                Task::new("simple_task", "ubuntu:latest").
                     description("This task simply prints our hello-world message and exits!").
                     command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
-            ),
         ])
         .finish().unwrap();
 }

@@ -8,7 +8,7 @@ import (
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	sdk "github.com/clintjedwards/gofer/sdk/go/plugins"
+	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
 	"github.com/fatih/color"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

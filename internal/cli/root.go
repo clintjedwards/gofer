@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
-	"github.com/clintjedwards/gofer/internal/cli/commonTask"
 	"github.com/clintjedwards/gofer/internal/cli/event"
 	"github.com/clintjedwards/gofer/internal/cli/extension"
 	"github.com/clintjedwards/gofer/internal/cli/namespace"
@@ -60,7 +59,6 @@ func init() {
 	RootCmd.AddCommand(taskrun.CmdTaskRun)
 	RootCmd.AddCommand(extension.CmdExtension)
 	RootCmd.AddCommand(event.CmdEvent)
-	RootCmd.AddCommand(commonTask.CmdCommonTask)
 
 	RootCmd.PersistentFlags().String("config", "", "configuration file path")
 	RootCmd.PersistentFlags().Bool("detail", false, "show extra detail for some commands (ex. Exact time instead of humanized)")

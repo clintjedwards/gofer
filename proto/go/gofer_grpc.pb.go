@@ -176,21 +176,6 @@ type GoferClient interface {
 	EnableExtension(ctx context.Context, in *EnableExtensionRequest, opts ...grpc.CallOption) (*EnableExtensionResponse, error)
 	// DisableExtension attempts to disable a new extension.
 	DisableExtension(ctx context.Context, in *DisableExtensionRequest, opts ...grpc.CallOption) (*DisableExtensionResponse, error)
-	// GetCommonTask returns details about a specific commontask.
-	GetCommonTask(ctx context.Context, in *GetCommonTaskRequest, opts ...grpc.CallOption) (*GetCommonTaskResponse, error)
-	// ListCommonTasks lists all common tasks currently registered within gofer.
-	ListCommonTasks(ctx context.Context, in *ListCommonTasksRequest, opts ...grpc.CallOption) (*ListCommonTasksResponse, error)
-	// GetCommonTaskInstalInstructions retrieves install instructions for a
-	// particular common task.
-	GetCommonTaskInstallInstructions(ctx context.Context, in *GetCommonTaskInstallInstructionsRequest, opts ...grpc.CallOption) (*GetCommonTaskInstallInstructionsResponse, error)
-	// InstallCommonTask attempts to install a new common task.
-	InstallCommonTask(ctx context.Context, in *InstallCommonTaskRequest, opts ...grpc.CallOption) (*InstallCommonTaskResponse, error)
-	// UninstallCommonTask attempts to uninstall a common task.
-	UninstallCommonTask(ctx context.Context, in *UninstallCommonTaskRequest, opts ...grpc.CallOption) (*UninstallCommonTaskResponse, error)
-	// EnableCommonTask attempts to enable a new common task.
-	EnableCommonTask(ctx context.Context, in *EnableCommonTaskRequest, opts ...grpc.CallOption) (*EnableCommonTaskResponse, error)
-	// DisableCommonTask attempts to disable a new common task.
-	DisableCommonTask(ctx context.Context, in *DisableCommonTaskRequest, opts ...grpc.CallOption) (*DisableCommonTaskResponse, error)
 	// ListPipelineObjects returns a list of all pipeline object keys.
 	ListPipelineObjects(ctx context.Context, in *ListPipelineObjectsRequest, opts ...grpc.CallOption) (*ListPipelineObjectsResponse, error)
 	// GetPipelineObject returns a single pipeline object by pipeline ID and key.
@@ -725,69 +710,6 @@ func (c *goferClient) DisableExtension(ctx context.Context, in *DisableExtension
 	return out, nil
 }
 
-func (c *goferClient) GetCommonTask(ctx context.Context, in *GetCommonTaskRequest, opts ...grpc.CallOption) (*GetCommonTaskResponse, error) {
-	out := new(GetCommonTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/GetCommonTask", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) ListCommonTasks(ctx context.Context, in *ListCommonTasksRequest, opts ...grpc.CallOption) (*ListCommonTasksResponse, error) {
-	out := new(ListCommonTasksResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/ListCommonTasks", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) GetCommonTaskInstallInstructions(ctx context.Context, in *GetCommonTaskInstallInstructionsRequest, opts ...grpc.CallOption) (*GetCommonTaskInstallInstructionsResponse, error) {
-	out := new(GetCommonTaskInstallInstructionsResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/GetCommonTaskInstallInstructions", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) InstallCommonTask(ctx context.Context, in *InstallCommonTaskRequest, opts ...grpc.CallOption) (*InstallCommonTaskResponse, error) {
-	out := new(InstallCommonTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/InstallCommonTask", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) UninstallCommonTask(ctx context.Context, in *UninstallCommonTaskRequest, opts ...grpc.CallOption) (*UninstallCommonTaskResponse, error) {
-	out := new(UninstallCommonTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/UninstallCommonTask", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) EnableCommonTask(ctx context.Context, in *EnableCommonTaskRequest, opts ...grpc.CallOption) (*EnableCommonTaskResponse, error) {
-	out := new(EnableCommonTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/EnableCommonTask", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *goferClient) DisableCommonTask(ctx context.Context, in *DisableCommonTaskRequest, opts ...grpc.CallOption) (*DisableCommonTaskResponse, error) {
-	out := new(DisableCommonTaskResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/DisableCommonTask", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *goferClient) ListPipelineObjects(ctx context.Context, in *ListPipelineObjectsRequest, opts ...grpc.CallOption) (*ListPipelineObjectsResponse, error) {
 	out := new(ListPipelineObjectsResponse)
 	err := c.cc.Invoke(ctx, "/proto.Gofer/ListPipelineObjects", in, out, opts...)
@@ -1131,21 +1053,6 @@ type GoferServer interface {
 	EnableExtension(context.Context, *EnableExtensionRequest) (*EnableExtensionResponse, error)
 	// DisableExtension attempts to disable a new extension.
 	DisableExtension(context.Context, *DisableExtensionRequest) (*DisableExtensionResponse, error)
-	// GetCommonTask returns details about a specific commontask.
-	GetCommonTask(context.Context, *GetCommonTaskRequest) (*GetCommonTaskResponse, error)
-	// ListCommonTasks lists all common tasks currently registered within gofer.
-	ListCommonTasks(context.Context, *ListCommonTasksRequest) (*ListCommonTasksResponse, error)
-	// GetCommonTaskInstalInstructions retrieves install instructions for a
-	// particular common task.
-	GetCommonTaskInstallInstructions(context.Context, *GetCommonTaskInstallInstructionsRequest) (*GetCommonTaskInstallInstructionsResponse, error)
-	// InstallCommonTask attempts to install a new common task.
-	InstallCommonTask(context.Context, *InstallCommonTaskRequest) (*InstallCommonTaskResponse, error)
-	// UninstallCommonTask attempts to uninstall a common task.
-	UninstallCommonTask(context.Context, *UninstallCommonTaskRequest) (*UninstallCommonTaskResponse, error)
-	// EnableCommonTask attempts to enable a new common task.
-	EnableCommonTask(context.Context, *EnableCommonTaskRequest) (*EnableCommonTaskResponse, error)
-	// DisableCommonTask attempts to disable a new common task.
-	DisableCommonTask(context.Context, *DisableCommonTaskRequest) (*DisableCommonTaskResponse, error)
 	// ListPipelineObjects returns a list of all pipeline object keys.
 	ListPipelineObjects(context.Context, *ListPipelineObjectsRequest) (*ListPipelineObjectsResponse, error)
 	// GetPipelineObject returns a single pipeline object by pipeline ID and key.
@@ -1347,27 +1254,6 @@ func (UnimplementedGoferServer) EnableExtension(context.Context, *EnableExtensio
 }
 func (UnimplementedGoferServer) DisableExtension(context.Context, *DisableExtensionRequest) (*DisableExtensionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DisableExtension not implemented")
-}
-func (UnimplementedGoferServer) GetCommonTask(context.Context, *GetCommonTaskRequest) (*GetCommonTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCommonTask not implemented")
-}
-func (UnimplementedGoferServer) ListCommonTasks(context.Context, *ListCommonTasksRequest) (*ListCommonTasksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListCommonTasks not implemented")
-}
-func (UnimplementedGoferServer) GetCommonTaskInstallInstructions(context.Context, *GetCommonTaskInstallInstructionsRequest) (*GetCommonTaskInstallInstructionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCommonTaskInstallInstructions not implemented")
-}
-func (UnimplementedGoferServer) InstallCommonTask(context.Context, *InstallCommonTaskRequest) (*InstallCommonTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InstallCommonTask not implemented")
-}
-func (UnimplementedGoferServer) UninstallCommonTask(context.Context, *UninstallCommonTaskRequest) (*UninstallCommonTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UninstallCommonTask not implemented")
-}
-func (UnimplementedGoferServer) EnableCommonTask(context.Context, *EnableCommonTaskRequest) (*EnableCommonTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EnableCommonTask not implemented")
-}
-func (UnimplementedGoferServer) DisableCommonTask(context.Context, *DisableCommonTaskRequest) (*DisableCommonTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DisableCommonTask not implemented")
 }
 func (UnimplementedGoferServer) ListPipelineObjects(context.Context, *ListPipelineObjectsRequest) (*ListPipelineObjectsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPipelineObjects not implemented")
@@ -2357,132 +2243,6 @@ func _Gofer_DisableExtension_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_GetCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetCommonTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).GetCommonTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/GetCommonTask",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).GetCommonTask(ctx, req.(*GetCommonTaskRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_ListCommonTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListCommonTasksRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).ListCommonTasks(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/ListCommonTasks",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).ListCommonTasks(ctx, req.(*ListCommonTasksRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_GetCommonTaskInstallInstructions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetCommonTaskInstallInstructionsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).GetCommonTaskInstallInstructions(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/GetCommonTaskInstallInstructions",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).GetCommonTaskInstallInstructions(ctx, req.(*GetCommonTaskInstallInstructionsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_InstallCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InstallCommonTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).InstallCommonTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/InstallCommonTask",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).InstallCommonTask(ctx, req.(*InstallCommonTaskRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_UninstallCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UninstallCommonTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).UninstallCommonTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/UninstallCommonTask",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).UninstallCommonTask(ctx, req.(*UninstallCommonTaskRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_EnableCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EnableCommonTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).EnableCommonTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/EnableCommonTask",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).EnableCommonTask(ctx, req.(*EnableCommonTaskRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Gofer_DisableCommonTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DisableCommonTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoferServer).DisableCommonTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/DisableCommonTask",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).DisableCommonTask(ctx, req.(*DisableCommonTaskRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Gofer_ListPipelineObjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListPipelineObjectsRequest)
 	if err := dec(in); err != nil {
@@ -3016,34 +2776,6 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DisableExtension",
 			Handler:    _Gofer_DisableExtension_Handler,
-		},
-		{
-			MethodName: "GetCommonTask",
-			Handler:    _Gofer_GetCommonTask_Handler,
-		},
-		{
-			MethodName: "ListCommonTasks",
-			Handler:    _Gofer_ListCommonTasks_Handler,
-		},
-		{
-			MethodName: "GetCommonTaskInstallInstructions",
-			Handler:    _Gofer_GetCommonTaskInstallInstructions_Handler,
-		},
-		{
-			MethodName: "InstallCommonTask",
-			Handler:    _Gofer_InstallCommonTask_Handler,
-		},
-		{
-			MethodName: "UninstallCommonTask",
-			Handler:    _Gofer_UninstallCommonTask_Handler,
-		},
-		{
-			MethodName: "EnableCommonTask",
-			Handler:    _Gofer_EnableCommonTask_Handler,
-		},
-		{
-			MethodName: "DisableCommonTask",
-			Handler:    _Gofer_DisableCommonTask_Handler,
 		},
 		{
 			MethodName: "ListPipelineObjects",
