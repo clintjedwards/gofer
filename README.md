@@ -28,9 +28,7 @@ It's purpose is to run short term jobs such as: code linters, build tools, tests
 
 ## Demo:
 
-<a href="https://youtu.be/wqDNYcT0XOo">
-    <img src="https://clintjedwards.com/gofer/assets/demo.gif" title="Click on image for extended demo" />
-</a>
+<img src="https://clintjedwards.com/gofer/assets/demo.gif" />
 
 ## Documentation & Getting Started
 
