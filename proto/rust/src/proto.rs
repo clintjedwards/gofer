@@ -1718,7 +1718,7 @@ pub struct PutGlobalSecretRequest {
     pub content: ::prost::alloc::string::String,
     #[prost(string, repeated, tag="3")]
     pub namespaces: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// Overwrites an already existing value.
+    /// Overwrites already existing values.
     #[prost(bool, tag="4")]
     pub force: bool,
 }

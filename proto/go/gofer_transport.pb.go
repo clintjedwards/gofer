@@ -7787,7 +7787,7 @@ type PutGlobalSecretRequest struct {
 	Key        string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Content    string   `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
 	Namespaces []string `protobuf:"bytes,3,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
-	Force      bool     `protobuf:"varint,4,opt,name=force,proto3" json:"force,omitempty"` // Overwrites an already existing value.
+	Force      bool     `protobuf:"varint,4,opt,name=force,proto3" json:"force,omitempty"` // Overwrites already existing values.
 }
 
 func (x *PutGlobalSecretRequest) Reset() {

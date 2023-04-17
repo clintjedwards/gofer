@@ -53,6 +53,7 @@ Also github integration:
 - Expand the CLI up command to actually walk the user through the deployment using watch. Right now it just starts the deployment and walks away.
 - When a user runs up, should we compare their config to known configs and reject
   registration if it's the same?
+- In the CLI as the user a question with a prompt like ?
 
 ### Scheduler
 
@@ -145,8 +146,7 @@ There are several useful things we can do with the concept of extensions:
 
 ### On the floor
 
-- Global secret force replace does not work, probably should just change to and update.
-- In the CLI as the user a question with a prompt like ?
+- Force for both objects and secrets need to be checked. Some layers of the process does not respect it.
 
 - Github Extension:
 - Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of large git repos is the biggest pain point here.

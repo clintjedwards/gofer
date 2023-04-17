@@ -8,6 +8,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/rs/zerolog/log"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -252,6 +253,7 @@ func (api *API) PutGlobalSecret(ctx context.Context, request *proto.PutGlobalSec
 				status.Error(codes.AlreadyExists, "key already exists")
 		}
 
+		log.Error().Err(err).Msg("could not insert global key into database")
 		return &proto.PutGlobalSecretResponse{},
 			status.Error(codes.Internal, "could not insert key")
 	}

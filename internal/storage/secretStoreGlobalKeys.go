@@ -55,9 +55,9 @@ func (db *DB) InsertSecretStoreGlobalKey(conn Queryable, secretKey *SecretStoreG
 			return ErrEntityExists
 		}
 
-		// We should update the key's created if the flag for force was passed down.
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			_, err = qb.Update("secret_store_pipeline_keys").Set("created", secretKey.Created).RunWith(conn).Exec()
+			_, err = qb.Update("secret_store_global_keys").Set("namespaces", secretKey.Namespaces).
+				Where("key", secretKey.Key).RunWith(conn).Exec()
 			if err != nil {
 				return err
 			}

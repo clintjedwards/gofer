@@ -60,6 +60,13 @@ func (store *Store) PutObject(key string, content []byte, force bool) error {
 	_, err := qb.Insert("objects").Columns("key", "value").Values(key, content).RunWith(store).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			if force {
+				_, err = qb.Update("objects").Set("value", content).Where("key", key).RunWith(store).Exec()
+				if err != nil {
+					return fmt.Errorf("database error occurred: %v; %w", err, objectStore.ErrInternal)
+				}
+				return nil
+			}
 			return objectStore.ErrEntityExists
 		}
 

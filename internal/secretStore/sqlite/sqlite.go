@@ -146,6 +146,14 @@ func (store *Store) PutSecret(key string, content string, force bool) error {
 	_, err = qb.Insert("secrets").Columns("key", "value").Values(key, encryptedSecret).RunWith(store).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			if force {
+				_, err = qb.Update("secrets").Set("value", encryptedSecret).
+					Where("key", key).RunWith(store).Exec()
+				if err != nil {
+					return fmt.Errorf("database error occurred: %v; %w", err, secretStore.ErrInternal)
+				}
+				return nil
+			}
 			return secretStore.ErrEntityExists
 		}
 

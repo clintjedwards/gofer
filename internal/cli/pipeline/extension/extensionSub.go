@@ -24,8 +24,8 @@ You can find the current extensions your Gofer instances supports by using the '
 Usually extensions will require some type of configuration for each pipeline subscribed. You can pass this configuration
 by using the '--setting' flag.
 
-For example, the "interval" trigger requires the subscribing pipeline to specify which interval it would like to be
-run on. The parameter is called "every". So one might subscribe to the interval trigger like so:
+For example, the "interval" extension requires the subscribing pipeline to specify which interval it would like to be
+run on. The parameter is called "every". So one might subscribe to the interval extension like so:
 
 ex. gofer pipeline extend simple interval every_5_seconds -s every="5s"
 
