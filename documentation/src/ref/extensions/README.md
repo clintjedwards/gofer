@@ -43,7 +43,7 @@ Just like tasks, extensions are simply docker containers! Making them easily tes
 The SDK provides an interface in which a well functioning GRPC service will be created from your concrete implementation.
 
 ```go
-{{#include ../../../../sdk/go/plugins/extension.go:29:59}}
+{{#include ../../../../sdk/go/extensions/extension.go:29:59}}
 ```
 
 For an commented example of a simple extension you can follow to build your own, view the [interval extension](https://github.com/clintjedwards/gofer/tree/main/containers/extensions/interval):
