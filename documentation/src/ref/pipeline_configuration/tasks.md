@@ -7,8 +7,8 @@ A Task can be any Docker container you want to run. In the [Getting Started](../
 ```go
 Tasks(
     sdk.NewTask("simple_task", "ubuntu:latest").
-        WithDescription("This task simply prints our hello-world message and exists!").
-        WithCommand("echo", "Hello from Gofer!"),
+        Description("This task simply prints our hello-world message and exists!").
+        Command("echo", "Hello from Gofer!"),
 )
 ```
 
@@ -16,7 +16,7 @@ Tasks(
 
 Gofer handles container configuration [the cloud native way](https://12factor.net/config). That is to say every configuration is passed in as an environment variable. This allows for many advantages, the greatest of which is standardization.
 
-As a user, [you pass your configuration in via the `Variable(s)`](https://pkg.go.dev/github.com/clintjedwards/gofer@v0.3.0/sdk/go/config#TaskConfig.Variables) flavor of functions in your pipeline-config.
+As a user, [you pass your configuration in via the `Variable(s)`](https://pkg.go.dev/github.com/clintjedwards/gofer@v0.5.0/sdk/go/config#TaskConfig.Variables) flavor of functions in your pipeline-config.
 
 When a container is run by Gofer, the Gofer scheduler has the potential to pass in configuration from multiple sources[^1]:
 

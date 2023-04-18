@@ -147,7 +147,6 @@ There are several useful things we can do with the concept of extensions:
 ### On the floor
 
 - Force for both objects and secrets need to be checked. Some layers of the process does not respect it.
-- Documentation has a bunch of code references to "with" that doesn't exist anymore as an API.
 
 - Github Extension:
 - Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of large git repos is the biggest pain point here.

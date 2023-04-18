@@ -6,12 +6,8 @@ Interval simply runs the subscribed pipeline at the given time interval continou
 
 - `every` <string>: Specifies the time duration between events. Unless changed via the extension configuration, the minimum for this is 5 mins.
 
-```go
-...
-WithExtensions(
-    *sdk.NewExtension("interval", "every_five_mins").WithSetting("every", "5m"),
-)
-...
+```bash
+gofer pipeline extend simple interval every_five_mins -s every="5m"
 ```
 
 ## Extension Configuration

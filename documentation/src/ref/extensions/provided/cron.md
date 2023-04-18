@@ -34,12 +34,8 @@ It uses a stripped down version of the cron syntax to do so:
 
 ### Every year on Xmas
 
-```go
-...
-WithExtensions(
-    *sdk.NewExtension("cron", "yearly_on_xmas").WithSetting("expression", "0 1 25 12 * *"),
-)
-...
+```bash
+gofer pipeline extend simple cron yearly_on_xmas -s expression="0 1 25 12 * *"
 ```
 
 ## Extension Configuration
