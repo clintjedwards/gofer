@@ -27,15 +27,15 @@ func handleCreateEvent(payload interface{}) (repo string, metadata map[string]st
 func handlePushEvent(payload interface{}) (repo string, metadata map[string]string, err error) {
 	event := payload.(*github.PushEvent)
 	return *event.Repo.FullName, map[string]string{
-		"GOFER_EXTENSION_GITHUB_REF":                           *event.Ref,
-		"GOFER_EXTENSION_GITHUB_REPOSITORY":                    *event.Repo.FullName,
-		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID":                *event.HeadCommit.ID,
-		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_NAME":       *event.HeadCommit.Author.Name,
-		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL":      *event.HeadCommit.Author.Email,
-		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME":   *event.HeadCommit.Author.Login,
-		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_NAME":     *event.HeadCommit.Committer.Name,
-		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_EMAIL":    *event.HeadCommit.Committer.Email,
-		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_USERNAME": *event.HeadCommit.Committer.Login,
+		"GOFER_EXTENSION_GITHUB_REF":                            *event.Ref,
+		"GOFER_EXTENSION_GITHUB_REPOSITORY":                     *event.Repo.FullName,
+		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID":                 *event.HeadCommit.ID,
+		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_NAME":        *event.HeadCommit.Author.Name,
+		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL":       *event.HeadCommit.Author.Email,
+		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME":    *event.HeadCommit.Author.Login,
+		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_NAME":     *event.HeadCommit.Committer.Name,
+		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_EMAIL":    *event.HeadCommit.Committer.Email,
+		"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_USERNAME": *event.HeadCommit.Committer.Login,
 	}, nil
 }
 

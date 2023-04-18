@@ -7,34 +7,33 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/clintjedwards/gofer/sdk"
-	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
+	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
 	"github.com/google/go-github/v42/github"
 	"github.com/rs/zerolog/log"
 )
 
-// Extension configuration env vars
+// Extension configuration.
 // These are general settings needed for github apps:
 // https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id
 const (
-	envvarID            = "GOFER_EXTENSION_GITHUB_APPS_ID"
-	envvarInstallation  = "GOFER_EXTENSION_GITHUB_APPS_INSTALLATION"
-	envvarKey           = "GOFER_EXTENSION_GITHUB_APPS_KEY"
-	envvarWebhookSecret = "GOFER_EXTENSION_GITHUB_APPS_WEBHOOK_SECRET"
+	configID           = "app_id"
+	configInstallation = "app_installation"
+	configKey          = "app_key"
+	configWebhookKey   = "app_webhook_secret"
 )
 
-// Pipeline configuration parameters
+// Pipeline configuration parameters.
 const (
 	// parameterEvents is a comma separated list of events to listen for. Events are listed here:
 	// https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads
 	parameterEvents = "events"
 
-	// parameterRepository is the repository the pipeline will like to be alerted for.
+	// parameterRepository is the repository the pipeline will be alerted for.
 	// The format is <organization>/<repository>
 	// 	Ex: clintjedwards/gofer
 	parameterRepository = "repository"
@@ -55,46 +54,34 @@ type extension struct {
 
 	client *github.Client
 
-	// events channel are omitted when a pipeline should be run. The main Gofer process watches this channel.
-	events chan *sdkProto.CheckResponse
-
-	// subscriptions is a mapping of event type to pipeline subscription. A single subscription could possibly
-	// be listening for multiple
+	// A 3mapping of event type to pipeline subscription. A single subscription could possibly
+	// be listening for multiple repositories.
+	// Map layout is map[event_type]map[repository][]subscriptions
 	subscriptions map[string]map[string][]pipelineSubscription
 }
 
 func newExtension() (*extension, error) {
-	rawApp := os.Getenv(envvarID)
-	if rawApp == "" {
-		return nil, fmt.Errorf("could not find required environment variable %q", envvarID)
-	}
-	app, err := strconv.Atoi(rawApp)
+	appIDStr := sdk.GetConfig(configID)
+	app, err := strconv.Atoi(appIDStr)
 	if err != nil {
-		return nil, fmt.Errorf("malformed github app id %q", rawApp)
+		return nil, fmt.Errorf("malformed github app id %q", appIDStr)
 	}
 
-	rawInstallation := os.Getenv(envvarInstallation)
-	if rawInstallation == "" {
-		return nil, fmt.Errorf("could not find required environment variable %q", envvarInstallation)
-	}
-	installation, err := strconv.Atoi(rawInstallation)
+	installationStr := sdk.GetConfig(configInstallation)
+	installation, err := strconv.Atoi(installationStr)
 	if err != nil {
-		return nil, fmt.Errorf("malformed github installation id %q", rawApp)
+		return nil, fmt.Errorf("malformed github installation id %q", installationStr)
 	}
 
-	rawKey := os.Getenv(envvarKey)
-	if rawKey == "" {
-		return nil, fmt.Errorf("could not find required environment variable %q", envvarKey)
-	}
-
-	key, err := base64.StdEncoding.DecodeString(rawKey)
+	keyStr := sdk.GetConfig(configKey)
+	key, err := base64.StdEncoding.DecodeString(keyStr)
 	if err != nil {
 		return nil, fmt.Errorf("could not decode base64 private key; %v", err)
 	}
 
-	webhookSecret := os.Getenv(envvarWebhookSecret)
+	webhookSecret := sdk.GetConfig(configWebhookKey)
 	if webhookSecret == "" {
-		return nil, fmt.Errorf("could not find required environment variable %q", envvarWebhookSecret)
+		return nil, fmt.Errorf("could not find required environment variable %q", webhookSecret)
 	}
 
 	client, err := newGithubClient(int64(app), int64(installation), key)
@@ -105,7 +92,6 @@ func newExtension() (*extension, error) {
 	return &extension{
 		client:        client,
 		webhookSecret: webhookSecret,
-		events:        make(chan *sdkProto.CheckResponse, 100),
 		subscriptions: map[string]map[string][]pipelineSubscription{},
 	}, nil
 }
@@ -117,7 +103,7 @@ func newGithubClient(app, installation int64, key []byte) (*github.Client, error
 	}
 
 	client := github.NewClient(&http.Client{Transport: transport})
-	client.UserAgent = "clintjedwards/gofer"
+	// client.UserAgent = "clintjedwards/gofer"
 	return client, nil
 }
 
@@ -137,7 +123,7 @@ func (t *extension) processNewEvent(req *http.Request) error {
 	if !exists {
 		// We don't return this as an error, because it is not an error on the Github side.
 		// Instead we just log that we've received it and we move along.
-		log.Debug().Msgf("event type %q not supported", github.WebHookType(req))
+		log.Debug().Str("event", github.WebHookType(req)).Msg("event type not supported")
 		return nil
 	}
 
@@ -147,17 +133,36 @@ func (t *extension) processNewEvent(req *http.Request) error {
 	}
 
 	for _, sub := range t.matchSubscriptions(github.WebHookType(req), repo) {
-		t.events <- &sdkProto.CheckResponse{
-			Details:                fmt.Sprintf("New %q event from %q", github.WebHookType(req), repo),
-			PipelineExtensionLabel: sub.extensionLabel,
-			NamespaceId:            sub.namespace,
-			PipelineId:             sub.pipeline,
-			Result:                 sdkProto.CheckResponse_SUCCESS,
-			Metadata:               metadata,
+		client, ctx, err := sdk.Connect()
+		if err != nil {
+			log.Error().Err(err).Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
+				Str("extension_label", sub.extensionLabel).Msg("could not connect to Gofer")
+
+			continue
 		}
 
-		log.Debug().Str("namespaceID", sub.namespace).Str("pipelineID", sub.pipeline).
-			Str("extension_label", sub.extensionLabel).Msg("new webhook event generated")
+		config, _ := sdk.GetExtensionSystemConfig()
+
+		resp, err := client.StartRun(ctx, &proto.StartRunRequest{
+			NamespaceId: sub.namespace,
+			PipelineId:  sub.pipeline,
+			Variables:   metadata,
+			Initiator: &proto.Initiator{
+				Type:   proto.Initiator_EXTENSION,
+				Name:   fmt.Sprintf("%s (%s)", config.Name, sub.extensionLabel),
+				Reason: fmt.Sprintf("New %q event from %q", github.WebHookType(req), repo),
+			},
+		})
+		if err != nil {
+			log.Error().Err(err).Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
+				Str("extension_label", sub.extensionLabel).Msg("could not start new run")
+
+			continue
+		}
+
+		log.Debug().Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
+			Str("extension_label", sub.extensionLabel).Int64("run_id", resp.Run.Id).
+			Msg("new tick for specified interval; new event spawned")
 	}
 
 	return nil
@@ -178,15 +183,15 @@ func (t *extension) matchSubscriptions(event, repo string) []pipelineSubscriptio
 	return subscriptions
 }
 
-func (t *extension) Subscribe(ctx context.Context, request *sdkProto.SubscribeRequest) (*sdkProto.SubscribeResponse, error) {
-	eventStr, exists := request.Config[strings.ToUpper(parameterEvents)]
+func (t *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
+	eventStr, exists := request.Config[parameterEvents]
 	if !exists {
 		return nil, fmt.Errorf("could not find required configuration parameter %q", parameterEvents)
 	}
 
 	eventList := strings.Split(eventStr, ",")
 
-	repo, exists := request.Config[strings.ToUpper(parameterRepository)]
+	repo, exists := request.Config[parameterRepository]
 	if !exists {
 		return nil, fmt.Errorf("could not find required configuration parameter %q", parameterRepository)
 	}
@@ -211,10 +216,10 @@ func (t *extension) Subscribe(ctx context.Context, request *sdkProto.SubscribeRe
 
 	log.Debug().Str("extension_label", request.PipelineExtensionLabel).Str("pipeline_id", request.PipelineId).
 		Str("namespace_id", request.NamespaceId).Msg("subscribed pipeline")
-	return &sdkProto.SubscribeResponse{}, nil
+	return &proto.ExtensionSubscribeResponse{}, nil
 }
 
-func (t *extension) Unsubscribe(ctx context.Context, request *sdkProto.UnsubscribeRequest) (*sdkProto.UnsubscribeResponse, error) {
+func (t *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error) {
 	for event, repoMap := range t.subscriptions {
 		for repo, subscriptions := range repoMap {
 			for index, sub := range subscriptions {
@@ -222,7 +227,7 @@ func (t *extension) Unsubscribe(ctx context.Context, request *sdkProto.Unsubscri
 					sub.namespace == request.NamespaceId &&
 					sub.pipeline == request.PipelineId {
 					t.subscriptions[event][repo] = append(subscriptions[:index], subscriptions[index+1:]...)
-					return &sdkProto.UnsubscribeResponse{}, nil
+					return &proto.ExtensionUnsubscribeResponse{}, nil
 				}
 			}
 		}
@@ -230,31 +235,18 @@ func (t *extension) Unsubscribe(ctx context.Context, request *sdkProto.Unsubscri
 
 	log.Debug().Str("extension_label", request.PipelineExtensionLabel).Str("pipeline_id", request.PipelineId).
 		Str("namespace_id", request.NamespaceId).Msg("unsubscribed pipeline")
-	return &sdkProto.UnsubscribeResponse{}, nil
+	return &proto.ExtensionUnsubscribeResponse{}, nil
 }
 
-func (t *extension) Check(ctx context.Context, request *sdkProto.CheckRequest) (*sdkProto.CheckResponse, error) {
-	select {
-	case <-ctx.Done():
-		return &sdkProto.CheckResponse{}, nil
-	case event := <-t.events:
-		return event, nil
-	}
+func (t *extension) Info(ctx context.Context, request *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
+	return sdk.InfoResponse("https://clintjedwards.com/gofer/ref/extensions/provided/github.html")
 }
 
-func (t *extension) Info(ctx context.Context, request *sdkProto.InfoRequest) (*sdkProto.InfoResponse, error) {
-	return &sdkProto.InfoResponse{
-		Kind:          os.Getenv("GOFER_EXTENSION_KIND"),
-		Documentation: "https://clintjedwards.com/gofer/ref/extensions/provided/github.html",
-	}, nil
+func (t *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error) {
+	return &proto.ExtensionShutdownResponse{}, nil
 }
 
-func (t *extension) Shutdown(ctx context.Context, request *sdkProto.ShutdownRequest) (*sdkProto.ShutdownResponse, error) {
-	close(t.events)
-	return &sdkProto.ShutdownResponse{}, nil
-}
-
-func (t *extension) ExternalEvent(ctx context.Context, request *sdkProto.ExternalEventRequest) (*sdkProto.ExternalEventResponse, error) {
+func (t *extension) ExternalEvent(ctx context.Context, request *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error) {
 	payload := bytes.NewBuffer(request.Payload)
 	payloadReader := bufio.NewReader(payload)
 	req, err := http.ReadRequest(payloadReader)
@@ -266,14 +258,23 @@ func (t *extension) ExternalEvent(ctx context.Context, request *sdkProto.Externa
 	if err != nil {
 		return nil, err
 	}
-	return &sdkProto.ExternalEventResponse{}, nil
+	return &proto.ExtensionExternalEventResponse{}, nil
 }
 
+// InstallInstructions are Gofer's way to allowing the extension to guide Gofer administrators through their
+// personal installation process. This is needed because some extensions might require special auth tokens and information
+// in a way that might be confusing for extension administrators.
+func installInstructions() sdk.InstallInstructions {
+	instructions := sdk.NewInstructionsBuilder()
+	return instructions
+}
+
+// TODO():
 func main() {
-	newExtension, err := newExtension()
+	extension, err := newExtension()
 	if err != nil {
 		panic(err)
 	}
 
-	sdk.NewExtensionServer(newExtension)
+	sdk.NewExtension(extension, installInstructions())
 }

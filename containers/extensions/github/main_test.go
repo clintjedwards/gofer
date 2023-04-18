@@ -4,17 +4,16 @@ import (
 	"context"
 	"testing"
 
-	sdkProto "github.com/clintjedwards/gofer/sdk/proto"
+	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestMatchSubscriptions(t *testing.T) {
 	extension := extension{
-		events:        make(chan *sdkProto.CheckResponse, 100),
 		subscriptions: map[string]map[string][]pipelineSubscription{},
 	}
 
-	_, err := extension.Subscribe(context.Background(), &sdkProto.SubscribeRequest{
+	_, err := extension.Subscribe(context.Background(), &proto.ExtensionSubscribeRequest{
 		PipelineExtensionLabel: "test_extension",
 		NamespaceId:            "test_namespace",
 		PipelineId:             "test_pipeline",

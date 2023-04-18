@@ -6,6 +6,7 @@ use (
 	./containers/debug/log
 	./containers/debug/wait
 	./containers/extensions/cron
+	./containers/extensions/github
 	./containers/extensions/interval
 	./examplePipelines/go/dag
 	./examplePipelines/go/objects

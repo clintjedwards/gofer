@@ -50,7 +50,7 @@ func (api *API) unsubscribeExtension(namespace, pipeline, name, label string) er
 }
 
 // subscribeExtension takes a pipeline config requested extension and communicates with the extension container
-// in order appropriately make sure the extension is aware for the pipeline.
+// in order appropriately make sure the extension is aware of the pipeline.
 func (api *API) subscribeExtension(subscription *models.PipelineExtensionSubscription) error {
 	extension, exists := api.extensions.Get(subscription.Name)
 	if !exists {
