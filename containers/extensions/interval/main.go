@@ -267,7 +267,7 @@ func (e *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdo
 // in a way that might be confusing for extension administrators.
 func installInstructions() sdk.InstallInstructions {
 	instructions := sdk.NewInstructionsBuilder()
-	instructions = instructions.AddMessage(":: The interval extension allows users to extension their pipelines on the passage"+
+	instructions = instructions.AddMessage(":: The interval extension allows users to run their pipelines on the passage"+
 		" of time by setting a particular duration.").
 		AddMessage("").
 		AddMessage("First, let's prevent users from setting too low of an interval by setting a minimum duration. "+

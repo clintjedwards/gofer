@@ -319,6 +319,27 @@ func (orch *Orchestrator) GetLogs(gl scheduler.GetLogsRequest) (io.Reader, error
 	return demuxr, nil
 }
 
+// Attach to a running docker container. Connection should be closed when finished.
+func (orch *Orchestrator) AttachContainer(ac scheduler.AttachContainerRequest) (scheduler.AttachContainerResponse, error) {
+	exec, err := orch.ContainerExecCreate(context.Background(), ac.ID, types.ExecConfig{
+		Cmd:          ac.Command,
+		Tty:          true,
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: false,
+	})
+	if err != nil {
+		return scheduler.AttachContainerResponse{}, err
+	}
+
+	resp, err := orch.ContainerExecAttach(context.Background(), exec.ID, types.ExecStartCheck{})
+	if err != nil {
+		return scheduler.AttachContainerResponse{}, err
+	}
+
+	return scheduler.AttachContainerResponse{Conn: resp.Conn, Reader: resp.Reader}, nil
+}
+
 func convertEnvVars(envvars map[string]string) []string {
 	output := []string{}
 	for key, value := range envvars {

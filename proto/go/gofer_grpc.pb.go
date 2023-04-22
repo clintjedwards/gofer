@@ -154,6 +154,8 @@ type GoferClient interface {
 	// Task runs that are cancelled can cause other downstream task runs to be
 	// skipped depending on those downstream task run dependencies.
 	CancelTaskRun(ctx context.Context, in *CancelTaskRunRequest, opts ...grpc.CallOption) (*CancelTaskRunResponse, error)
+	// Attach to a running task run container. Useful for debugging.
+	AttachToTaskRun(ctx context.Context, opts ...grpc.CallOption) (Gofer_AttachToTaskRunClient, error)
 	// GetTaskRunLogs returns logs for a specific task run line by line in a
 	// stream. The logs are returns with both STDOUT and STDERR of the associated
 	// container combined.
@@ -606,8 +608,39 @@ func (c *goferClient) CancelTaskRun(ctx context.Context, in *CancelTaskRunReques
 	return out, nil
 }
 
+func (c *goferClient) AttachToTaskRun(ctx context.Context, opts ...grpc.CallOption) (Gofer_AttachToTaskRunClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[0], "/proto.Gofer/AttachToTaskRun", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &goferAttachToTaskRunClient{stream}
+	return x, nil
+}
+
+type Gofer_AttachToTaskRunClient interface {
+	Send(*AttachToTaskRunRequest) error
+	Recv() (*AttachToTaskRunOutput, error)
+	grpc.ClientStream
+}
+
+type goferAttachToTaskRunClient struct {
+	grpc.ClientStream
+}
+
+func (x *goferAttachToTaskRunClient) Send(m *AttachToTaskRunRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *goferAttachToTaskRunClient) Recv() (*AttachToTaskRunOutput, error) {
+	m := new(AttachToTaskRunOutput)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *goferClient) GetTaskRunLogs(ctx context.Context, in *GetTaskRunLogsRequest, opts ...grpc.CallOption) (Gofer_GetTaskRunLogsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[0], "/proto.Gofer/GetTaskRunLogs", opts...)
+	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[1], "/proto.Gofer/GetTaskRunLogs", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -864,7 +897,7 @@ func (c *goferClient) GetEvent(ctx context.Context, in *GetEventRequest, opts ..
 }
 
 func (c *goferClient) ListEvents(ctx context.Context, in *ListEventsRequest, opts ...grpc.CallOption) (Gofer_ListEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[1], "/proto.Gofer/ListEvents", opts...)
+	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[2], "/proto.Gofer/ListEvents", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1031,6 +1064,8 @@ type GoferServer interface {
 	// Task runs that are cancelled can cause other downstream task runs to be
 	// skipped depending on those downstream task run dependencies.
 	CancelTaskRun(context.Context, *CancelTaskRunRequest) (*CancelTaskRunResponse, error)
+	// Attach to a running task run container. Useful for debugging.
+	AttachToTaskRun(Gofer_AttachToTaskRunServer) error
 	// GetTaskRunLogs returns logs for a specific task run line by line in a
 	// stream. The logs are returns with both STDOUT and STDERR of the associated
 	// container combined.
@@ -1227,6 +1262,9 @@ func (UnimplementedGoferServer) ListTaskRuns(context.Context, *ListTaskRunsReque
 }
 func (UnimplementedGoferServer) CancelTaskRun(context.Context, *CancelTaskRunRequest) (*CancelTaskRunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelTaskRun not implemented")
+}
+func (UnimplementedGoferServer) AttachToTaskRun(Gofer_AttachToTaskRunServer) error {
+	return status.Errorf(codes.Unimplemented, "method AttachToTaskRun not implemented")
 }
 func (UnimplementedGoferServer) GetTaskRunLogs(*GetTaskRunLogsRequest, Gofer_GetTaskRunLogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetTaskRunLogs not implemented")
@@ -2078,6 +2116,32 @@ func _Gofer_CancelTaskRun_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gofer_AttachToTaskRun_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GoferServer).AttachToTaskRun(&goferAttachToTaskRunServer{stream})
+}
+
+type Gofer_AttachToTaskRunServer interface {
+	Send(*AttachToTaskRunOutput) error
+	Recv() (*AttachToTaskRunRequest, error)
+	grpc.ServerStream
+}
+
+type goferAttachToTaskRunServer struct {
+	grpc.ServerStream
+}
+
+func (x *goferAttachToTaskRunServer) Send(m *AttachToTaskRunOutput) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *goferAttachToTaskRunServer) Recv() (*AttachToTaskRunRequest, error) {
+	m := new(AttachToTaskRunRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _Gofer_GetTaskRunLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(GetTaskRunLogsRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -2847,6 +2911,12 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "AttachToTaskRun",
+			Handler:       _Gofer_AttachToTaskRun_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
 		{
 			StreamName:    "GetTaskRunLogs",
 			Handler:       _Gofer_GetTaskRunLogs_Handler,

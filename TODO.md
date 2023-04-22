@@ -146,6 +146,8 @@ There are several useful things we can do with the concept of extensions:
 
 ### On the floor
 
+- Attach should have a header when you attach to a container and a > prompt
+- Document all attach stuff
 - Force for both objects and secrets need to be checked. Some layers of the process does not respect it.
 
 - Github Extension:

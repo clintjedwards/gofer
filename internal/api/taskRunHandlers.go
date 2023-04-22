@@ -1,11 +1,15 @@
 package api
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"os"
+	"strings"
 
+	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
+	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
 
@@ -117,6 +121,221 @@ func (api *API) CancelTaskRun(ctx context.Context, request *proto.CancelTaskRunR
 	}
 
 	return &proto.CancelTaskRunResponse{}, nil
+}
+
+func (api *API) AttachToTaskRun(stream proto.Gofer_AttachToTaskRunServer) error {
+	// Get the first message so we can attempt to set up the connection with the proper docker container.
+	initMessageRaw, err := stream.Recv()
+	if err != nil {
+		log.Error().Err(err).Msg("could not set up stream")
+		return status.Errorf(codes.Internal, "could not set up stream: %v", err)
+	}
+
+	initMessage, ok := initMessageRaw.RequestType.(*proto.AttachToTaskRunRequest_Init)
+	if !ok {
+		return status.Error(codes.FailedPrecondition, "first message must be init message, received input message")
+	}
+
+	// Validate input
+	if initMessage.Init.Id == "" {
+		return status.Error(codes.FailedPrecondition, "id required")
+	}
+
+	if initMessage.Init.PipelineId == "" {
+		return status.Error(codes.FailedPrecondition, "pipeline id required")
+	}
+
+	if initMessage.Init.RunId == 0 {
+		return status.Error(codes.FailedPrecondition, "run id required")
+	}
+
+	namespace, err := api.resolveNamespace(stream.Context(), initMessage.Init.NamespaceId)
+	if err != nil {
+		return status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v",
+			initMessage.Init.NamespaceId, err.Error())
+	}
+
+	if !hasAccess(stream.Context(), namespace) {
+		return status.Error(codes.PermissionDenied, "access denied")
+	}
+
+	taskRun, err := api.db.GetPipelineTaskRun(api.db, namespace, initMessage.Init.PipelineId,
+		initMessage.Init.RunId, initMessage.Init.Id)
+	if err != nil {
+		if errors.Is(err, storage.ErrEntityNotFound) {
+			return status.Error(codes.FailedPrecondition, "task run not found")
+		}
+		log.Error().Err(err).Msg("could not get task run")
+		return status.Error(codes.Internal, "failed to retrieve task run from database")
+	}
+
+	// Attempt to drop the user into a shell if the user hasn't entered any explicit command
+	cmd := []string{"sh"}
+	if len(initMessage.Init.Command) != 0 {
+		cmd = initMessage.Init.Command
+	}
+
+	// A channel to buffer the messages incoming from the container.
+	incomingMsgChannel := make(chan string)
+
+	// A general channel that means we should stop what we're doing and cleanly exit.
+	stopChan := make(chan struct{})
+
+	resp, err := api.scheduler.AttachContainer(scheduler.AttachContainerRequest{
+		ID:      taskContainerID(namespace, taskRun.Pipeline, taskRun.Run, taskRun.ID),
+		Command: cmd,
+	})
+	if err != nil {
+		return status.Errorf(codes.Internal, "could not connect to specified container; %v", err)
+	}
+	defer resp.Conn.Close()
+
+	// Start a goroutine to receive incoming messages from the client and insert them into the container.
+	go func() {
+		for {
+			select {
+			case <-stopChan:
+				close(incomingMsgChannel)
+				return
+			case <-stream.Context().Done():
+				close(incomingMsgChannel)
+				return
+			case <-api.context.ctx.Done():
+				close(incomingMsgChannel)
+				return
+			default:
+				msgRaw, err := stream.Recv()
+				if err != nil {
+					// If the context was cancelled, that means that the client abandoned the connect; exit cleanly.
+					if strings.Contains(err.Error(), "context canceled") {
+						close(incomingMsgChannel)
+						return
+					}
+
+					// If the client disconnected, exit cleanly.
+					if strings.Contains(err.Error(), "client disconnected") {
+						close(incomingMsgChannel)
+						close(stopChan)
+						return
+					}
+
+					log.Error().Err(err).Msg("encountered error while streaming messages during task run attach")
+					close(incomingMsgChannel)
+					close(stopChan)
+					return
+				}
+
+				msg, ok := msgRaw.RequestType.(*proto.AttachToTaskRunRequest_Input)
+				if !ok {
+					log.Error().Msg("skipping incorrect message type encountered while streaming messages during task run attach")
+					continue
+				}
+
+				incomingMsgChannel <- msg.Input.Input
+			}
+		}
+	}()
+
+	taskRunCompletedEvents, err := api.events.Subscribe(events.EventTypeTaskRunCompleted)
+	if err != nil {
+		// We don't actually have to fail here since the worse that happens is that that user gets
+		// a confusing EOF error instead.if err != nil {
+		log.Error().Err(err).Str("namespace", namespace).
+			Str("pipeline", initMessage.Init.PipelineId).
+			Int64("run", initMessage.Init.RunId).
+			Str("task_run_id", initMessage.Init.Id).
+			Msg("could not listen for task run completed events")
+	} else {
+		go func() {
+			for {
+				select {
+				case <-stopChan:
+					return
+				case <-stream.Context().Done():
+					return
+				case <-api.context.ctx.Done():
+					return
+				case event := <-taskRunCompletedEvents.Events:
+					evt, ok := event.Details.(events.EventTaskRunCompleted)
+					if !ok {
+						continue
+					}
+
+					if evt.NamespaceID == namespace &&
+						evt.PipelineID == initMessage.Init.PipelineId &&
+						evt.RunID == initMessage.Init.RunId &&
+						evt.TaskRunID == initMessage.Init.Id {
+
+						close(stopChan)
+
+						log.Debug().Str("namespace", namespace).
+							Str("pipeline", initMessage.Init.PipelineId).
+							Int64("run", initMessage.Init.RunId).
+							Str("task_run_id", initMessage.Init.Id).Msg("closed task run attach connection due to task run being complete")
+						return
+					}
+				}
+			}
+		}()
+	}
+
+	// Start a goroutine to send messages that we get back from the container to the client.
+	// Unfortunately it's a known problem that this leaks goroutines because io.Reader doesn't have a close
+	// method.
+	//
+	// https://benjamincongdon.me/blog/2020/04/23/Cancelable-Reads-in-Go/
+	go func() {
+		scanner := bufio.NewScanner(resp.Reader)
+		scanner.Split(scanWordsWithWhitespace)
+
+		for scanner.Scan() {
+			select {
+			case <-stopChan:
+				return
+			case <-stream.Context().Done():
+				return
+			case <-api.context.ctx.Done():
+				return
+			default:
+				chunk := strings.ToValidUTF8(scanner.Text(), "")
+
+				err := stream.Send(&proto.AttachToTaskRunOutput{
+					Output: chunk,
+				})
+				if err != nil {
+					log.Error().Err(err).Str("last_line", chunk).
+						Msg("encountered error while sending messages to container during task run attach")
+					return
+				}
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
+			log.Error().Err(err).
+				Msg("encountered error while reading messages from container during task run attach")
+			return
+		}
+	}()
+
+	for {
+		select {
+		case <-stopChan:
+			return nil
+		case <-stream.Context().Done():
+			return nil
+		case <-api.context.ctx.Done():
+			return nil
+		case input := <-incomingMsgChannel:
+			_, err := resp.Conn.Write([]byte(input))
+			if err != nil {
+				log.Error().Err(err).Msg("encountered error while writing messages during task run attach")
+				return err
+			}
+		}
+	}
 }
 
 func (api *API) GetTaskRunLogs(request *proto.GetTaskRunLogsRequest, stream proto.Gofer_GetTaskRunLogsServer) error {

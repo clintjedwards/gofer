@@ -362,6 +362,25 @@ message CancelTaskRunRequest {
 }
 message CancelTaskRunResponse {}
 
+message AttachToTaskRunRequest {
+  oneof requestType {
+    // On the first request an init request sets up the connection to the
+    // container.
+    AttachToTaskRunInit init = 1;
+    // On following requests an input request passes text to the container.
+    AttachToTaskRunInput input = 2;
+  }
+}
+message AttachToTaskRunInit {
+  string namespace_id = 1; // Unique namespace identifier
+  string pipeline_id = 2;
+  int64 run_id = 3;
+  string id = 4;               // Task Run ID
+  repeated string command = 5; // Which command to execute in container
+}
+message AttachToTaskRunInput { string input = 1; }
+message AttachToTaskRunOutput { string output = 1; }
+
 message GetTaskRunLogsRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;

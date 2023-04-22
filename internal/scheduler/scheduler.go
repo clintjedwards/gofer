@@ -3,8 +3,10 @@
 package scheduler
 
 import (
+	"bufio"
 	"errors"
 	"io"
+	"net"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/models"
@@ -86,6 +88,16 @@ type GetLogsRequest struct {
 	ID string
 }
 
+type AttachContainerRequest struct {
+	ID      string
+	Command []string
+}
+
+type AttachContainerResponse struct {
+	Conn   net.Conn
+	Reader *bufio.Reader
+}
+
 type Engine interface {
 	// StartContainer launches a new container on scheduler.
 	StartContainer(request StartContainerRequest) (response StartContainerResponse, err error)
@@ -101,4 +113,7 @@ type Engine interface {
 	// be written to from a goroutine so that they user gets logs as they are streamed from the container.
 	// Finally once finished the io.reader should be close with an EOF denoting that there are no more logs to be read.
 	GetLogs(request GetLogsRequest) (logs io.Reader, err error)
+
+	// Attach to a running container for debugging or other purposes. Returns a net connection, should be closed when finished.
+	AttachContainer(request AttachContainerRequest) (response AttachContainerResponse, err error)
 }

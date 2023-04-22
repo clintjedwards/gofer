@@ -261,15 +261,30 @@ func (t *extension) ExternalEvent(ctx context.Context, request *proto.ExtensionE
 	return &proto.ExtensionExternalEventResponse{}, nil
 }
 
+// configID           = "app_id"
+// configInstallation = "app_installation"
+// configKey          = "app_key"
+// configWebhookKey   = "app_webhook_secret"
+
 // InstallInstructions are Gofer's way to allowing the extension to guide Gofer administrators through their
 // personal installation process. This is needed because some extensions might require special auth tokens and information
 // in a way that might be confusing for extension administrators.
 func installInstructions() sdk.InstallInstructions {
 	instructions := sdk.NewInstructionsBuilder()
+	// instructions = instructions.AddMessage(":: The Github extension allows users to trigger their pipelines based on Github"+
+	// 	" events.").
+	// 	AddMessage("").
+	// 	AddMessage("Because of Gofer's self-hosted architecture, The following steps will walk you through creating and" +
+	// 	" registering the Github extension as a Github app. This allows the Github extension to have to proper access in order to").
+	// 	AddMessage("First, let's prevent users from setting too low of an interval by setting a minimum duration. "+
+	// 		"Durations are set via Golang duration strings. For example, entering a duration of '10h' would be 10 hours, "+
+	// 		"meaning that users can only run their pipeline at most every 10 hours. "+
+	// 		"You can find more documentation on valid strings here: https://pkg.go.dev/time#ParseDuration.").
+	// 	AddQuery("Set a minimum duration for all pipelines", ConfigMinDuration)
+
 	return instructions
 }
 
-// TODO():
 func main() {
 	extension, err := newExtension()
 	if err != nil {

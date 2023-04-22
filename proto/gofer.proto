@@ -232,6 +232,10 @@ service Gofer {
   // skipped depending on those downstream task run dependencies.
   rpc CancelTaskRun(CancelTaskRunRequest) returns (CancelTaskRunResponse);
 
+  // Attach to a running task run container. Useful for debugging.
+  rpc AttachToTaskRun(stream AttachToTaskRunRequest)
+      returns (stream AttachToTaskRunOutput);
+
   // GetTaskRunLogs returns logs for a specific task run line by line in a
   // stream. The logs are returns with both STDOUT and STDERR of the associated
   // container combined.
