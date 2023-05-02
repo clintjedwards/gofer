@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "github.com/clintjedwards/gofer/proto/go";
-
 import "gofer_message_api.proto";
 import "gofer_message_sdk.proto";
+
+option go_package = "github.com/clintjedwards/gofer/proto/go";
 
 ////////////// System Transport Models //////////////
 
@@ -428,14 +428,76 @@ message EnableExtensionResponse {}
 message DisableExtensionRequest { string name = 1; }
 message DisableExtensionResponse {}
 
-message GetExtensionInstallInstructionsRequest {
-  string image = 1;
-  string user = 2;
-  string pass = 3;
+message RunExtensionInstallerClientMessage {
+  message Init {
+    string image = 1;
+    string user = 2;
+    string pass = 3;
+  }
+
+  oneof message_type {
+    Init init = 1;
+    string msg = 2;
+  }
 }
-message GetExtensionInstallInstructionsResponse { string instructions = 1; }
+message RunExtensionInstallerExtensionMessage {
+  message ConfigSetting {
+    string config = 1;
+    string value = 2;
+  }
+
+  oneof message_type {
+    // Normal extension messages that should be passed back to the user.
+    string msg = 1;
+
+    // A question from the extension that needs an answer. The extension will
+    // wait for an answer after this request. This specific message type
+    // allows the cli to know when to prompt the user for an answer.
+    string query = 2;
+
+    // Config setting messages communicate when the extension has suggested a
+    // configuration based on the user input.
+    ConfigSetting config_setting = 3;
+  }
+}
+
+message RunPipelineConfiguratorClientMessage {
+  message Init {
+    // name of the extension you want to run the pipeline
+    // configurator for
+    string name = 1;
+  }
+
+  oneof message_type {
+    Init init = 1;
+    string msg = 2;
+  }
+}
+message RunPipelineConfiguratorExtensionMessage {
+  message ParamSetting {
+    string param = 1;
+    string value = 2;
+  }
+
+  oneof message_type {
+    // Normal extension messages that should be passed back to the user.
+    string msg = 1;
+
+    // A question from the extension that needs an answer. The extension will
+    // wait for an answer after this request. This specific message type
+    // allows the cli to know when to prompt the user for an answer.
+    string query = 2;
+
+    // Param setting messages communicate when the extension has suggested a
+    // configuration based on the user input.
+    ParamSetting param_setting = 3;
+  }
+}
 
 ////////////// Extension Service Transport Models //////////////
+
+message ExtensionInitRequest { map<string, string> config = 1; }
+message ExtensionInitResponse {}
 
 message ExtensionInfoRequest {}
 message ExtensionInfoResponse {
@@ -484,6 +546,50 @@ message ExtensionShutdownResponse {}
 
 message ExtensionExternalEventRequest { bytes payload = 1; }
 message ExtensionExternalEventResponse {}
+
+message ExtensionRunExtensionInstallerClientMessage { string msg = 1; }
+message ExtensionRunExtensionInstallerExtensionMessage {
+  message ConfigSetting {
+    string config = 1;
+    string value = 2;
+  }
+
+  oneof message_type {
+    // Normal extension messages that should be passed back to the user.
+    string msg = 1;
+
+    // A question from the extension that needs an answer. The extension will
+    // wait for an answer after this request. This specific message type
+    // allows the cli to know when to prompt the user for an answer.
+    string query = 2;
+
+    // Config setting messages communicate when the extension has suggested a
+    // configuration based on the user input.
+    ConfigSetting config_setting = 3;
+  }
+}
+
+message ExtensionRunPipelineConfiguratorClientMessage { string msg = 1; }
+message ExtensionRunPipelineConfiguratorExtensionMessage {
+  message ParamSetting {
+    string param = 1;
+    string value = 2;
+  }
+
+  oneof message_type {
+    // Normal extension messages that should be passed back to the user.
+    string msg = 1;
+
+    // A question from the extension that needs an answer. The extension will
+    // wait for an answer after this request. This specific message type
+    // allows the cli to know when to prompt the user for an answer.
+    string query = 2;
+
+    // Param setting messages communicate when the extension has suggested a
+    // configuration based on the user input.
+    ParamSetting param_setting = 3;
+  }
+}
 
 ////////////// Events Transport Models //////////////
 

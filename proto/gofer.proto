@@ -260,10 +260,14 @@ service Gofer {
   // ListExtensions lists all extensions currently registered within gofer.
   rpc ListExtensions(ListExtensionsRequest) returns (ListExtensionsResponse);
 
-  // GetExtensionInstalInstructions retrieves install instructions for a
-  // particular extension.
-  rpc GetExtensionInstallInstructions(GetExtensionInstallInstructionsRequest)
-      returns (GetExtensionInstallInstructionsResponse);
+  // Run the installer that helps admin user install the extension.
+  rpc RunExtensionInstaller(stream RunExtensionInstallerClientMessage)
+      returns (stream RunExtensionInstallerExtensionMessage);
+
+  // Run the installer that helps pipeline users with their pipeline extension
+  // configuration.
+  rpc RunPipelineConfigurator(stream RunPipelineConfiguratorClientMessage)
+      returns (stream RunPipelineConfiguratorExtensionMessage);
 
   // InstallExtension attempts to install a new extension.
   rpc InstallExtension(InstallExtensionRequest)
@@ -372,7 +376,10 @@ service Gofer {
 }
 
 service ExtensionService {
-  // Info returns information on the specific plugin
+  // Init returns when an extension is ready to serve requests.
+  rpc Init(ExtensionInitRequest) returns (ExtensionInitResponse);
+
+  // Info returns information on the specific plugin.
   rpc Info(ExtensionInfoRequest) returns (ExtensionInfoResponse);
 
   // Subscribe allows a extension to keep track of all pipelines currently
@@ -396,4 +403,14 @@ service ExtensionService {
   // webhooks.
   rpc ExternalEvent(ExtensionExternalEventRequest)
       returns (ExtensionExternalEventResponse);
+
+  // Run the installer that helps admin user install the extension.
+  rpc RunExtensionInstaller(stream ExtensionRunExtensionInstallerClientMessage)
+      returns (stream ExtensionRunExtensionInstallerExtensionMessage);
+
+  // Run the installer that helps pipeline users with their pipeline extension
+  // configuration.
+  rpc RunPipelineConfigurator(
+      stream ExtensionRunPipelineConfiguratorClientMessage)
+      returns (stream ExtensionRunPipelineConfiguratorExtensionMessage);
 }

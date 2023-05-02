@@ -15,4 +15,4 @@ RUN go build -o /build/extension
 FROM gcr.io/distroless/static
 WORKDIR /app
 COPY --from=build-environment /build /app
-ENTRYPOINT [ "./extension", "server" ]
+ENTRYPOINT [ "./extension"]

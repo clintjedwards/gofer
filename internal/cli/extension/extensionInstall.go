@@ -2,16 +2,11 @@ package extension
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/cli/cl"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
-	"github.com/fatih/color"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
@@ -19,25 +14,24 @@ import (
 
 var cmdExtensionInstall = &cobra.Command{
 	Use:   "install <name> <image>",
-	Short: "Install a specific extension by name.",
-	Long: `Install a specific extension by name.
+	Short: "Install a Gofer extension",
+	Long: `Install a specific Gofer extension.
 
-Gofer allows you to install the extensions either manually or by following prompts provided by the extension.
-By not using the "--manual" flag Gofer will attempt to collect extension installation information and then prompt
-the user.
+Gofer allows you to install the extensions either manually or by following a series of prompts provided by the extension.
 
-By simply following the prompt in this method the Gofer CLI will collect the necessary parameters require to setup
-the extension. It will then attempt to install the extension on your behalf.
+By using the "--interactive" flag Gofer will provide installation instructions and prompts provided by the extension.
+It will then attempt to install the extension on your behalf.
 
-When using the --manual flag you'll need to provide config values via the "-c" flag in KEY=VALUE format.`,
-	Example: `$ gofer extension install cron ghcr.io/clintjedwards/gofer/extensions/cron:latest
-$ gofer extension install interval ghcr.io/clintjedwards/gofer/extensions/interval:latest --manual -c MIN_DURATION=1m`,
+When using the --manual flag you'll need to provide config values via the "-c" flag in KEY=VALUE format.
+Normally the extension documentation will have the correct config values needed.`,
+	Example: `$ gofer extension install cron ghcr.io/clintjedwards/gofer/extensions/cron:latest -c MIN_DURATION=1m
+$ gofer extension install interval ghcr.io/clintjedwards/gofer/extensions/interval:latest --interactive`,
 	RunE: extensionInstall,
 	Args: cobra.ExactArgs(2),
 }
 
 func init() {
-	cmdExtensionInstall.Flags().BoolP("manual", "m", false, "manually set up the extension by providing settings via the '-s' flag")
+	cmdExtensionInstall.Flags().BoolP("interactive", "i", false, "Attempt to set up the extension by querying the extension for config information.")
 	cmdExtensionInstall.Flags().StringSliceP("config", "c", []string{}, "provide extension config values for installation")
 	CmdExtension.AddCommand(cmdExtensionInstall)
 }
@@ -48,7 +42,7 @@ func extensionInstall(cmd *cobra.Command, args []string) error {
 
 	cl.State.Fmt.Print("Installing extension")
 
-	manual, err := cmd.Flags().GetBool("manual")
+	interactive, err := cmd.Flags().GetBool("interactive")
 	if err != nil {
 		cl.State.Fmt.PrintErr(err)
 		cl.State.Fmt.Finish()
@@ -62,8 +56,8 @@ func extensionInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if manual && len(configList) > 0 {
-		cl.State.Fmt.PrintErr("cannot use both the manual flag and config flag at the same time")
+	if interactive && len(configList) > 0 {
+		cl.State.Fmt.PrintErr("Cannot use both the interactive flag and config flag at the same time")
 		cl.State.Fmt.Finish()
 		return fmt.Errorf("flag mismatch")
 	}
@@ -80,75 +74,85 @@ func extensionInstall(cmd *cobra.Command, args []string) error {
 
 	configMap := map[string]string{}
 
-	if !manual {
-		cl.State.Fmt.Print("Retrieving extension install instructions")
+	if interactive {
+		cl.State.Fmt.Print("Attaching to extension to retrieve installation information for interactive mode")
 
 		ctx := metadata.NewOutgoingContext(context.Background(), md)
-		resp, err := client.GetExtensionInstallInstructions(ctx, &proto.GetExtensionInstallInstructionsRequest{
-			Image: image,
-			// TODO(clintjedwards): This needs registry auth
+		interactiveConn, err := client.RunExtensionInstaller(ctx)
+		if err != nil {
+			cl.State.Fmt.PrintErr(fmt.Sprintf("Could not connect to extension to get installation instructions %v", err))
+			cl.State.Fmt.Finish()
+			return err
+		}
+
+		interactiveConn.Send(&proto.RunExtensionInstallerClientMessage{
+			MessageType: &proto.RunExtensionInstallerClientMessage_Init_{
+				Init: &proto.RunExtensionInstallerClientMessage_Init{
+					Image: image,
+					// TODO(clintjedwards): This needs registry auth
+				},
+			},
 		})
-		if err != nil {
-			cl.State.Fmt.PrintErr(fmt.Sprintf("could not get extension install instructions: %v", err))
-			cl.State.Fmt.Finish()
-			return err
-		}
 
-		cl.State.Fmt.PrintSuccess("Downloaded extension install instructions")
-		cl.State.Fmt.Println("Parsing install instructions")
+		cl.State.Fmt.PrintSuccess("Attached to extension container " + image)
 
-		instructionsString := strings.TrimSpace(resp.Instructions)
-		instructions := sdk.InstallInstructions{}
+		for {
+			msg, err := interactiveConn.Recv()
+			if err != nil {
+				// If we got an EOF error then the extension closed the connection.
+				if strings.Contains(err.Error(), "EOF") {
+					break
+				}
 
-		err = json.Unmarshal([]byte(instructionsString), &instructions)
-		if err != nil {
-			cl.State.Fmt.PrintErr(fmt.Sprintf("could not parse extension install instructions: %v", err))
-			cl.State.Fmt.Finish()
-			return err
-		}
+				// If the context was cancelled, that means that the extension is done and we should process the installation.
+				if strings.Contains(err.Error(), "context canceled") {
+					break
+				}
 
-		cl.State.Fmt.PrintSuccess("Parsed extension install instructions")
-		cl.State.Fmt.Finish()
+				// If the client disconnected, exit cleanly.
+				if strings.Contains(err.Error(), "client disconnected") {
+					break
+				}
 
-		// Enter alternate screen
-		fmt.Print("\x1b[?1049h")
-
-		toTitle := cases.Title(language.AmericanEnglish)
-		fmt.Printf(":: %s Extension Setup\n", color.CyanString(toTitle.String(name)))
-
-		for _, instruction := range instructions.Instructions {
-			switch v := instruction.(type) {
-			case sdk.InstallInstructionMessageWrapper:
-				fmt.Println(strings.TrimSpace(v.Message.Text))
-			case sdk.InstallInstructionQueryWrapper:
-				var input string
-				fmt.Printf("> %s:", strings.TrimSpace(v.Query.Text))
-				fmt.Scanln(&input)
-				configMap[v.Query.ConfigKey] = strings.TrimSpace(input)
+				cl.State.Fmt.PrintErr(fmt.Sprintf("Could not read from extension connection %v", err))
+				cl.State.Fmt.Finish()
 			}
+
+			switch extensionMsg := msg.MessageType.(type) {
+			case *proto.RunExtensionInstallerExtensionMessage_ConfigSetting_:
+				configMap[extensionMsg.ConfigSetting.Config] = extensionMsg.ConfigSetting.Value
+			case *proto.RunExtensionInstallerExtensionMessage_Msg:
+				cl.State.Fmt.Println(extensionMsg.Msg)
+			case *proto.RunExtensionInstallerExtensionMessage_Query:
+				answer := cl.State.Fmt.PrintQuestion(extensionMsg.Query)
+				err := interactiveConn.Send(&proto.RunExtensionInstallerClientMessage{
+					MessageType: &proto.RunExtensionInstallerClientMessage_Msg{
+						Msg: answer,
+					},
+				})
+				if err != nil {
+					cl.State.Fmt.PrintErr(fmt.Sprintf("Could not send answer to extension query back to extension %v", err))
+					cl.State.Fmt.Finish()
+					return err
+				}
+			default:
+				cl.State.Fmt.PrintErr(fmt.Sprintf("Could not properly decode incoming message from extension; incorrect type %T", extensionMsg))
+				cl.State.Fmt.Finish()
+				return err
+			}
+
 		}
 
-		fmt.Printf("> Install extension %q with above settings? [Y/n]: ", toTitle.String(name))
-		var input string
-		fmt.Scanln(&input)
+		cl.State.Fmt.PrintSuccess("Completed interactive extension routine")
+	}
 
-		if !strings.EqualFold(input, "y") {
-			fmt.Print("\x1b[?1049l")
-			cl.State.NewFormatter()
-			cl.State.Fmt.PrintErr("User aborted installation process")
-			cl.State.Fmt.Finish()
-			return fmt.Errorf("user aborted installation process")
-		}
-
-		fmt.Print("\x1b[?1049l")
-		cl.State.NewFormatter()
-	} else {
+	if !interactive {
 		for _, config := range configList {
 			key, value, ok := strings.Cut(config, "=")
 			if !ok {
 				cl.State.Fmt.PrintErr("Key-value pair malformed; should be in format: <key>=<value>")
 				cl.State.Fmt.Finish()
-				return fmt.Errorf("malformed input")
+				return err
 			}
 
 			configMap[key] = value

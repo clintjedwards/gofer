@@ -51,7 +51,7 @@ Gofer provides a built in [secret store](./ref/secret_store/index.html) you can 
 
 ## Events
 
-Gofer provides a list of events for the most common actions performed. You can view this event stream via the Gofer API, allowing you to build on top of Gofer's actions and even using Gofer as a extension.
+Gofer provides a list of events for the most common actions performed. You can view this event stream via the Gofer API, allowing you to build on top of Gofer's actions and even using Gofer as a trigger for other events.
 
 ## External Events
 

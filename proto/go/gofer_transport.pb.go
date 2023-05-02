@@ -5658,18 +5658,20 @@ func (*DisableExtensionResponse) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{105}
 }
 
-type GetExtensionInstallInstructionsRequest struct {
+type RunExtensionInstallerClientMessage struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Image string `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
-	User  string `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
-	Pass  string `protobuf:"bytes,3,opt,name=pass,proto3" json:"pass,omitempty"`
+	// Types that are assignable to MessageType:
+	//
+	//	*RunExtensionInstallerClientMessage_Init_
+	//	*RunExtensionInstallerClientMessage_Msg
+	MessageType isRunExtensionInstallerClientMessage_MessageType `protobuf_oneof:"message_type"`
 }
 
-func (x *GetExtensionInstallInstructionsRequest) Reset() {
-	*x = GetExtensionInstallInstructionsRequest{}
+func (x *RunExtensionInstallerClientMessage) Reset() {
+	*x = RunExtensionInstallerClientMessage{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[106]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5677,13 +5679,13 @@ func (x *GetExtensionInstallInstructionsRequest) Reset() {
 	}
 }
 
-func (x *GetExtensionInstallInstructionsRequest) String() string {
+func (x *RunExtensionInstallerClientMessage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetExtensionInstallInstructionsRequest) ProtoMessage() {}
+func (*RunExtensionInstallerClientMessage) ProtoMessage() {}
 
-func (x *GetExtensionInstallInstructionsRequest) ProtoReflect() protoreflect.Message {
+func (x *RunExtensionInstallerClientMessage) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[106]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5695,42 +5697,63 @@ func (x *GetExtensionInstallInstructionsRequest) ProtoReflect() protoreflect.Mes
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetExtensionInstallInstructionsRequest.ProtoReflect.Descriptor instead.
-func (*GetExtensionInstallInstructionsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RunExtensionInstallerClientMessage.ProtoReflect.Descriptor instead.
+func (*RunExtensionInstallerClientMessage) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{106}
 }
 
-func (x *GetExtensionInstallInstructionsRequest) GetImage() string {
-	if x != nil {
-		return x.Image
+func (m *RunExtensionInstallerClientMessage) GetMessageType() isRunExtensionInstallerClientMessage_MessageType {
+	if m != nil {
+		return m.MessageType
+	}
+	return nil
+}
+
+func (x *RunExtensionInstallerClientMessage) GetInit() *RunExtensionInstallerClientMessage_Init {
+	if x, ok := x.GetMessageType().(*RunExtensionInstallerClientMessage_Init_); ok {
+		return x.Init
+	}
+	return nil
+}
+
+func (x *RunExtensionInstallerClientMessage) GetMsg() string {
+	if x, ok := x.GetMessageType().(*RunExtensionInstallerClientMessage_Msg); ok {
+		return x.Msg
 	}
 	return ""
 }
 
-func (x *GetExtensionInstallInstructionsRequest) GetUser() string {
-	if x != nil {
-		return x.User
-	}
-	return ""
+type isRunExtensionInstallerClientMessage_MessageType interface {
+	isRunExtensionInstallerClientMessage_MessageType()
 }
 
-func (x *GetExtensionInstallInstructionsRequest) GetPass() string {
-	if x != nil {
-		return x.Pass
-	}
-	return ""
+type RunExtensionInstallerClientMessage_Init_ struct {
+	Init *RunExtensionInstallerClientMessage_Init `protobuf:"bytes,1,opt,name=init,proto3,oneof"`
 }
 
-type GetExtensionInstallInstructionsResponse struct {
+type RunExtensionInstallerClientMessage_Msg struct {
+	Msg string `protobuf:"bytes,2,opt,name=msg,proto3,oneof"`
+}
+
+func (*RunExtensionInstallerClientMessage_Init_) isRunExtensionInstallerClientMessage_MessageType() {}
+
+func (*RunExtensionInstallerClientMessage_Msg) isRunExtensionInstallerClientMessage_MessageType() {}
+
+type RunExtensionInstallerExtensionMessage struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Instructions string `protobuf:"bytes,1,opt,name=instructions,proto3" json:"instructions,omitempty"`
+	// Types that are assignable to MessageType:
+	//
+	//	*RunExtensionInstallerExtensionMessage_Msg
+	//	*RunExtensionInstallerExtensionMessage_Query
+	//	*RunExtensionInstallerExtensionMessage_ConfigSetting_
+	MessageType isRunExtensionInstallerExtensionMessage_MessageType `protobuf_oneof:"message_type"`
 }
 
-func (x *GetExtensionInstallInstructionsResponse) Reset() {
-	*x = GetExtensionInstallInstructionsResponse{}
+func (x *RunExtensionInstallerExtensionMessage) Reset() {
+	*x = RunExtensionInstallerExtensionMessage{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_gofer_transport_proto_msgTypes[107]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5738,13 +5761,13 @@ func (x *GetExtensionInstallInstructionsResponse) Reset() {
 	}
 }
 
-func (x *GetExtensionInstallInstructionsResponse) String() string {
+func (x *RunExtensionInstallerExtensionMessage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetExtensionInstallInstructionsResponse) ProtoMessage() {}
+func (*RunExtensionInstallerExtensionMessage) ProtoMessage() {}
 
-func (x *GetExtensionInstallInstructionsResponse) ProtoReflect() protoreflect.Message {
+func (x *RunExtensionInstallerExtensionMessage) ProtoReflect() protoreflect.Message {
 	mi := &file_gofer_transport_proto_msgTypes[107]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5756,16 +5779,340 @@ func (x *GetExtensionInstallInstructionsResponse) ProtoReflect() protoreflect.Me
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetExtensionInstallInstructionsResponse.ProtoReflect.Descriptor instead.
-func (*GetExtensionInstallInstructionsResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use RunExtensionInstallerExtensionMessage.ProtoReflect.Descriptor instead.
+func (*RunExtensionInstallerExtensionMessage) Descriptor() ([]byte, []int) {
 	return file_gofer_transport_proto_rawDescGZIP(), []int{107}
 }
 
-func (x *GetExtensionInstallInstructionsResponse) GetInstructions() string {
-	if x != nil {
-		return x.Instructions
+func (m *RunExtensionInstallerExtensionMessage) GetMessageType() isRunExtensionInstallerExtensionMessage_MessageType {
+	if m != nil {
+		return m.MessageType
+	}
+	return nil
+}
+
+func (x *RunExtensionInstallerExtensionMessage) GetMsg() string {
+	if x, ok := x.GetMessageType().(*RunExtensionInstallerExtensionMessage_Msg); ok {
+		return x.Msg
 	}
 	return ""
+}
+
+func (x *RunExtensionInstallerExtensionMessage) GetQuery() string {
+	if x, ok := x.GetMessageType().(*RunExtensionInstallerExtensionMessage_Query); ok {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *RunExtensionInstallerExtensionMessage) GetConfigSetting() *RunExtensionInstallerExtensionMessage_ConfigSetting {
+	if x, ok := x.GetMessageType().(*RunExtensionInstallerExtensionMessage_ConfigSetting_); ok {
+		return x.ConfigSetting
+	}
+	return nil
+}
+
+type isRunExtensionInstallerExtensionMessage_MessageType interface {
+	isRunExtensionInstallerExtensionMessage_MessageType()
+}
+
+type RunExtensionInstallerExtensionMessage_Msg struct {
+	// Normal extension messages that should be passed back to the user.
+	Msg string `protobuf:"bytes,1,opt,name=msg,proto3,oneof"`
+}
+
+type RunExtensionInstallerExtensionMessage_Query struct {
+	// A question from the extension that needs an answer. The extension will
+	// wait for an answer after this request. This specific message type
+	// allows the cli to know when to prompt the user for an answer.
+	Query string `protobuf:"bytes,2,opt,name=query,proto3,oneof"`
+}
+
+type RunExtensionInstallerExtensionMessage_ConfigSetting_ struct {
+	// Config setting messages communicate when the extension has suggested a
+	// configuration based on the user input.
+	ConfigSetting *RunExtensionInstallerExtensionMessage_ConfigSetting `protobuf:"bytes,3,opt,name=config_setting,json=configSetting,proto3,oneof"`
+}
+
+func (*RunExtensionInstallerExtensionMessage_Msg) isRunExtensionInstallerExtensionMessage_MessageType() {
+}
+
+func (*RunExtensionInstallerExtensionMessage_Query) isRunExtensionInstallerExtensionMessage_MessageType() {
+}
+
+func (*RunExtensionInstallerExtensionMessage_ConfigSetting_) isRunExtensionInstallerExtensionMessage_MessageType() {
+}
+
+type RunPipelineConfiguratorClientMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to MessageType:
+	//
+	//	*RunPipelineConfiguratorClientMessage_Init_
+	//	*RunPipelineConfiguratorClientMessage_Msg
+	MessageType isRunPipelineConfiguratorClientMessage_MessageType `protobuf_oneof:"message_type"`
+}
+
+func (x *RunPipelineConfiguratorClientMessage) Reset() {
+	*x = RunPipelineConfiguratorClientMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[108]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RunPipelineConfiguratorClientMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunPipelineConfiguratorClientMessage) ProtoMessage() {}
+
+func (x *RunPipelineConfiguratorClientMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[108]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunPipelineConfiguratorClientMessage.ProtoReflect.Descriptor instead.
+func (*RunPipelineConfiguratorClientMessage) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{108}
+}
+
+func (m *RunPipelineConfiguratorClientMessage) GetMessageType() isRunPipelineConfiguratorClientMessage_MessageType {
+	if m != nil {
+		return m.MessageType
+	}
+	return nil
+}
+
+func (x *RunPipelineConfiguratorClientMessage) GetInit() *RunPipelineConfiguratorClientMessage_Init {
+	if x, ok := x.GetMessageType().(*RunPipelineConfiguratorClientMessage_Init_); ok {
+		return x.Init
+	}
+	return nil
+}
+
+func (x *RunPipelineConfiguratorClientMessage) GetMsg() string {
+	if x, ok := x.GetMessageType().(*RunPipelineConfiguratorClientMessage_Msg); ok {
+		return x.Msg
+	}
+	return ""
+}
+
+type isRunPipelineConfiguratorClientMessage_MessageType interface {
+	isRunPipelineConfiguratorClientMessage_MessageType()
+}
+
+type RunPipelineConfiguratorClientMessage_Init_ struct {
+	Init *RunPipelineConfiguratorClientMessage_Init `protobuf:"bytes,1,opt,name=init,proto3,oneof"`
+}
+
+type RunPipelineConfiguratorClientMessage_Msg struct {
+	Msg string `protobuf:"bytes,2,opt,name=msg,proto3,oneof"`
+}
+
+func (*RunPipelineConfiguratorClientMessage_Init_) isRunPipelineConfiguratorClientMessage_MessageType() {
+}
+
+func (*RunPipelineConfiguratorClientMessage_Msg) isRunPipelineConfiguratorClientMessage_MessageType() {
+}
+
+type RunPipelineConfiguratorExtensionMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to MessageType:
+	//
+	//	*RunPipelineConfiguratorExtensionMessage_Msg
+	//	*RunPipelineConfiguratorExtensionMessage_Query
+	//	*RunPipelineConfiguratorExtensionMessage_ParamSetting_
+	MessageType isRunPipelineConfiguratorExtensionMessage_MessageType `protobuf_oneof:"message_type"`
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage) Reset() {
+	*x = RunPipelineConfiguratorExtensionMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[109]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunPipelineConfiguratorExtensionMessage) ProtoMessage() {}
+
+func (x *RunPipelineConfiguratorExtensionMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[109]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunPipelineConfiguratorExtensionMessage.ProtoReflect.Descriptor instead.
+func (*RunPipelineConfiguratorExtensionMessage) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{109}
+}
+
+func (m *RunPipelineConfiguratorExtensionMessage) GetMessageType() isRunPipelineConfiguratorExtensionMessage_MessageType {
+	if m != nil {
+		return m.MessageType
+	}
+	return nil
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage) GetMsg() string {
+	if x, ok := x.GetMessageType().(*RunPipelineConfiguratorExtensionMessage_Msg); ok {
+		return x.Msg
+	}
+	return ""
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage) GetQuery() string {
+	if x, ok := x.GetMessageType().(*RunPipelineConfiguratorExtensionMessage_Query); ok {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage) GetParamSetting() *RunPipelineConfiguratorExtensionMessage_ParamSetting {
+	if x, ok := x.GetMessageType().(*RunPipelineConfiguratorExtensionMessage_ParamSetting_); ok {
+		return x.ParamSetting
+	}
+	return nil
+}
+
+type isRunPipelineConfiguratorExtensionMessage_MessageType interface {
+	isRunPipelineConfiguratorExtensionMessage_MessageType()
+}
+
+type RunPipelineConfiguratorExtensionMessage_Msg struct {
+	// Normal extension messages that should be passed back to the user.
+	Msg string `protobuf:"bytes,1,opt,name=msg,proto3,oneof"`
+}
+
+type RunPipelineConfiguratorExtensionMessage_Query struct {
+	// A question from the extension that needs an answer. The extension will
+	// wait for an answer after this request. This specific message type
+	// allows the cli to know when to prompt the user for an answer.
+	Query string `protobuf:"bytes,2,opt,name=query,proto3,oneof"`
+}
+
+type RunPipelineConfiguratorExtensionMessage_ParamSetting_ struct {
+	// Param setting messages communicate when the extension has suggested a
+	// configuration based on the user input.
+	ParamSetting *RunPipelineConfiguratorExtensionMessage_ParamSetting `protobuf:"bytes,3,opt,name=param_setting,json=paramSetting,proto3,oneof"`
+}
+
+func (*RunPipelineConfiguratorExtensionMessage_Msg) isRunPipelineConfiguratorExtensionMessage_MessageType() {
+}
+
+func (*RunPipelineConfiguratorExtensionMessage_Query) isRunPipelineConfiguratorExtensionMessage_MessageType() {
+}
+
+func (*RunPipelineConfiguratorExtensionMessage_ParamSetting_) isRunPipelineConfiguratorExtensionMessage_MessageType() {
+}
+
+type ExtensionInitRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Config map[string]string `protobuf:"bytes,1,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (x *ExtensionInitRequest) Reset() {
+	*x = ExtensionInitRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[110]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionInitRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionInitRequest) ProtoMessage() {}
+
+func (x *ExtensionInitRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[110]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionInitRequest.ProtoReflect.Descriptor instead.
+func (*ExtensionInitRequest) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{110}
+}
+
+func (x *ExtensionInitRequest) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type ExtensionInitResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ExtensionInitResponse) Reset() {
+	*x = ExtensionInitResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[111]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionInitResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionInitResponse) ProtoMessage() {}
+
+func (x *ExtensionInitResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[111]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionInitResponse.ProtoReflect.Descriptor instead.
+func (*ExtensionInitResponse) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{111}
 }
 
 type ExtensionInfoRequest struct {
@@ -5777,7 +6124,7 @@ type ExtensionInfoRequest struct {
 func (x *ExtensionInfoRequest) Reset() {
 	*x = ExtensionInfoRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[108]
+		mi := &file_gofer_transport_proto_msgTypes[112]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5790,7 +6137,7 @@ func (x *ExtensionInfoRequest) String() string {
 func (*ExtensionInfoRequest) ProtoMessage() {}
 
 func (x *ExtensionInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[108]
+	mi := &file_gofer_transport_proto_msgTypes[112]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5803,7 +6150,7 @@ func (x *ExtensionInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionInfoRequest.ProtoReflect.Descriptor instead.
 func (*ExtensionInfoRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{108}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{112}
 }
 
 type ExtensionInfoResponse struct {
@@ -5826,7 +6173,7 @@ type ExtensionInfoResponse struct {
 func (x *ExtensionInfoResponse) Reset() {
 	*x = ExtensionInfoResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[109]
+		mi := &file_gofer_transport_proto_msgTypes[113]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5839,7 +6186,7 @@ func (x *ExtensionInfoResponse) String() string {
 func (*ExtensionInfoResponse) ProtoMessage() {}
 
 func (x *ExtensionInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[109]
+	mi := &file_gofer_transport_proto_msgTypes[113]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5852,7 +6199,7 @@ func (x *ExtensionInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionInfoResponse.ProtoReflect.Descriptor instead.
 func (*ExtensionInfoResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{109}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *ExtensionInfoResponse) GetName() string {
@@ -5900,7 +6247,7 @@ type ExtensionSubscribeRequest struct {
 func (x *ExtensionSubscribeRequest) Reset() {
 	*x = ExtensionSubscribeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[110]
+		mi := &file_gofer_transport_proto_msgTypes[114]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5913,7 +6260,7 @@ func (x *ExtensionSubscribeRequest) String() string {
 func (*ExtensionSubscribeRequest) ProtoMessage() {}
 
 func (x *ExtensionSubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[110]
+	mi := &file_gofer_transport_proto_msgTypes[114]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5926,7 +6273,7 @@ func (x *ExtensionSubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionSubscribeRequest.ProtoReflect.Descriptor instead.
 func (*ExtensionSubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{110}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *ExtensionSubscribeRequest) GetNamespaceId() string {
@@ -5966,7 +6313,7 @@ type ExtensionSubscribeResponse struct {
 func (x *ExtensionSubscribeResponse) Reset() {
 	*x = ExtensionSubscribeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[111]
+		mi := &file_gofer_transport_proto_msgTypes[115]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5979,7 +6326,7 @@ func (x *ExtensionSubscribeResponse) String() string {
 func (*ExtensionSubscribeResponse) ProtoMessage() {}
 
 func (x *ExtensionSubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[111]
+	mi := &file_gofer_transport_proto_msgTypes[115]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5992,7 +6339,7 @@ func (x *ExtensionSubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionSubscribeResponse.ProtoReflect.Descriptor instead.
 func (*ExtensionSubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{111}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{115}
 }
 
 type ExtensionUnsubscribeRequest struct {
@@ -6008,7 +6355,7 @@ type ExtensionUnsubscribeRequest struct {
 func (x *ExtensionUnsubscribeRequest) Reset() {
 	*x = ExtensionUnsubscribeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[112]
+		mi := &file_gofer_transport_proto_msgTypes[116]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6021,7 +6368,7 @@ func (x *ExtensionUnsubscribeRequest) String() string {
 func (*ExtensionUnsubscribeRequest) ProtoMessage() {}
 
 func (x *ExtensionUnsubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[112]
+	mi := &file_gofer_transport_proto_msgTypes[116]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6034,7 +6381,7 @@ func (x *ExtensionUnsubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionUnsubscribeRequest.ProtoReflect.Descriptor instead.
 func (*ExtensionUnsubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{112}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *ExtensionUnsubscribeRequest) GetNamespaceId() string {
@@ -6067,7 +6414,7 @@ type ExtensionUnsubscribeResponse struct {
 func (x *ExtensionUnsubscribeResponse) Reset() {
 	*x = ExtensionUnsubscribeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[113]
+		mi := &file_gofer_transport_proto_msgTypes[117]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6080,7 +6427,7 @@ func (x *ExtensionUnsubscribeResponse) String() string {
 func (*ExtensionUnsubscribeResponse) ProtoMessage() {}
 
 func (x *ExtensionUnsubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[113]
+	mi := &file_gofer_transport_proto_msgTypes[117]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6093,7 +6440,7 @@ func (x *ExtensionUnsubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionUnsubscribeResponse.ProtoReflect.Descriptor instead.
 func (*ExtensionUnsubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{113}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{117}
 }
 
 type ExtensionShutdownRequest struct {
@@ -6105,7 +6452,7 @@ type ExtensionShutdownRequest struct {
 func (x *ExtensionShutdownRequest) Reset() {
 	*x = ExtensionShutdownRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[114]
+		mi := &file_gofer_transport_proto_msgTypes[118]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6118,7 +6465,7 @@ func (x *ExtensionShutdownRequest) String() string {
 func (*ExtensionShutdownRequest) ProtoMessage() {}
 
 func (x *ExtensionShutdownRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[114]
+	mi := &file_gofer_transport_proto_msgTypes[118]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6131,7 +6478,7 @@ func (x *ExtensionShutdownRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionShutdownRequest.ProtoReflect.Descriptor instead.
 func (*ExtensionShutdownRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{114}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{118}
 }
 
 type ExtensionShutdownResponse struct {
@@ -6143,7 +6490,7 @@ type ExtensionShutdownResponse struct {
 func (x *ExtensionShutdownResponse) Reset() {
 	*x = ExtensionShutdownResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[115]
+		mi := &file_gofer_transport_proto_msgTypes[119]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6156,7 +6503,7 @@ func (x *ExtensionShutdownResponse) String() string {
 func (*ExtensionShutdownResponse) ProtoMessage() {}
 
 func (x *ExtensionShutdownResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[115]
+	mi := &file_gofer_transport_proto_msgTypes[119]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6169,7 +6516,7 @@ func (x *ExtensionShutdownResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionShutdownResponse.ProtoReflect.Descriptor instead.
 func (*ExtensionShutdownResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{115}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{119}
 }
 
 type ExtensionExternalEventRequest struct {
@@ -6183,7 +6530,7 @@ type ExtensionExternalEventRequest struct {
 func (x *ExtensionExternalEventRequest) Reset() {
 	*x = ExtensionExternalEventRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[116]
+		mi := &file_gofer_transport_proto_msgTypes[120]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6196,7 +6543,7 @@ func (x *ExtensionExternalEventRequest) String() string {
 func (*ExtensionExternalEventRequest) ProtoMessage() {}
 
 func (x *ExtensionExternalEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[116]
+	mi := &file_gofer_transport_proto_msgTypes[120]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6209,7 +6556,7 @@ func (x *ExtensionExternalEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionExternalEventRequest.ProtoReflect.Descriptor instead.
 func (*ExtensionExternalEventRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{116}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *ExtensionExternalEventRequest) GetPayload() []byte {
@@ -6228,7 +6575,7 @@ type ExtensionExternalEventResponse struct {
 func (x *ExtensionExternalEventResponse) Reset() {
 	*x = ExtensionExternalEventResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[117]
+		mi := &file_gofer_transport_proto_msgTypes[121]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6241,7 +6588,7 @@ func (x *ExtensionExternalEventResponse) String() string {
 func (*ExtensionExternalEventResponse) ProtoMessage() {}
 
 func (x *ExtensionExternalEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[117]
+	mi := &file_gofer_transport_proto_msgTypes[121]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6254,7 +6601,309 @@ func (x *ExtensionExternalEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionExternalEventResponse.ProtoReflect.Descriptor instead.
 func (*ExtensionExternalEventResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{117}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{121}
+}
+
+type ExtensionRunExtensionInstallerClientMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Msg string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
+}
+
+func (x *ExtensionRunExtensionInstallerClientMessage) Reset() {
+	*x = ExtensionRunExtensionInstallerClientMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[122]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionRunExtensionInstallerClientMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionRunExtensionInstallerClientMessage) ProtoMessage() {}
+
+func (x *ExtensionRunExtensionInstallerClientMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[122]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionRunExtensionInstallerClientMessage.ProtoReflect.Descriptor instead.
+func (*ExtensionRunExtensionInstallerClientMessage) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{122}
+}
+
+func (x *ExtensionRunExtensionInstallerClientMessage) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
+}
+
+type ExtensionRunExtensionInstallerExtensionMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to MessageType:
+	//
+	//	*ExtensionRunExtensionInstallerExtensionMessage_Msg
+	//	*ExtensionRunExtensionInstallerExtensionMessage_Query
+	//	*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting_
+	MessageType isExtensionRunExtensionInstallerExtensionMessage_MessageType `protobuf_oneof:"message_type"`
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage) Reset() {
+	*x = ExtensionRunExtensionInstallerExtensionMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[123]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionRunExtensionInstallerExtensionMessage) ProtoMessage() {}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[123]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionRunExtensionInstallerExtensionMessage.ProtoReflect.Descriptor instead.
+func (*ExtensionRunExtensionInstallerExtensionMessage) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{123}
+}
+
+func (m *ExtensionRunExtensionInstallerExtensionMessage) GetMessageType() isExtensionRunExtensionInstallerExtensionMessage_MessageType {
+	if m != nil {
+		return m.MessageType
+	}
+	return nil
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage) GetMsg() string {
+	if x, ok := x.GetMessageType().(*ExtensionRunExtensionInstallerExtensionMessage_Msg); ok {
+		return x.Msg
+	}
+	return ""
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage) GetQuery() string {
+	if x, ok := x.GetMessageType().(*ExtensionRunExtensionInstallerExtensionMessage_Query); ok {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage) GetConfigSetting() *ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting {
+	if x, ok := x.GetMessageType().(*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting_); ok {
+		return x.ConfigSetting
+	}
+	return nil
+}
+
+type isExtensionRunExtensionInstallerExtensionMessage_MessageType interface {
+	isExtensionRunExtensionInstallerExtensionMessage_MessageType()
+}
+
+type ExtensionRunExtensionInstallerExtensionMessage_Msg struct {
+	// Normal extension messages that should be passed back to the user.
+	Msg string `protobuf:"bytes,1,opt,name=msg,proto3,oneof"`
+}
+
+type ExtensionRunExtensionInstallerExtensionMessage_Query struct {
+	// A question from the extension that needs an answer. The extension will
+	// wait for an answer after this request. This specific message type
+	// allows the cli to know when to prompt the user for an answer.
+	Query string `protobuf:"bytes,2,opt,name=query,proto3,oneof"`
+}
+
+type ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting_ struct {
+	// Config setting messages communicate when the extension has suggested a
+	// configuration based on the user input.
+	ConfigSetting *ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting `protobuf:"bytes,3,opt,name=config_setting,json=configSetting,proto3,oneof"`
+}
+
+func (*ExtensionRunExtensionInstallerExtensionMessage_Msg) isExtensionRunExtensionInstallerExtensionMessage_MessageType() {
+}
+
+func (*ExtensionRunExtensionInstallerExtensionMessage_Query) isExtensionRunExtensionInstallerExtensionMessage_MessageType() {
+}
+
+func (*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting_) isExtensionRunExtensionInstallerExtensionMessage_MessageType() {
+}
+
+type ExtensionRunPipelineConfiguratorClientMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Msg string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
+}
+
+func (x *ExtensionRunPipelineConfiguratorClientMessage) Reset() {
+	*x = ExtensionRunPipelineConfiguratorClientMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[124]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionRunPipelineConfiguratorClientMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionRunPipelineConfiguratorClientMessage) ProtoMessage() {}
+
+func (x *ExtensionRunPipelineConfiguratorClientMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[124]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionRunPipelineConfiguratorClientMessage.ProtoReflect.Descriptor instead.
+func (*ExtensionRunPipelineConfiguratorClientMessage) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{124}
+}
+
+func (x *ExtensionRunPipelineConfiguratorClientMessage) GetMsg() string {
+	if x != nil {
+		return x.Msg
+	}
+	return ""
+}
+
+type ExtensionRunPipelineConfiguratorExtensionMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to MessageType:
+	//
+	//	*ExtensionRunPipelineConfiguratorExtensionMessage_Msg
+	//	*ExtensionRunPipelineConfiguratorExtensionMessage_Query
+	//	*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting_
+	MessageType isExtensionRunPipelineConfiguratorExtensionMessage_MessageType `protobuf_oneof:"message_type"`
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage) Reset() {
+	*x = ExtensionRunPipelineConfiguratorExtensionMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[125]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionRunPipelineConfiguratorExtensionMessage) ProtoMessage() {}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[125]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionRunPipelineConfiguratorExtensionMessage.ProtoReflect.Descriptor instead.
+func (*ExtensionRunPipelineConfiguratorExtensionMessage) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{125}
+}
+
+func (m *ExtensionRunPipelineConfiguratorExtensionMessage) GetMessageType() isExtensionRunPipelineConfiguratorExtensionMessage_MessageType {
+	if m != nil {
+		return m.MessageType
+	}
+	return nil
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage) GetMsg() string {
+	if x, ok := x.GetMessageType().(*ExtensionRunPipelineConfiguratorExtensionMessage_Msg); ok {
+		return x.Msg
+	}
+	return ""
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage) GetQuery() string {
+	if x, ok := x.GetMessageType().(*ExtensionRunPipelineConfiguratorExtensionMessage_Query); ok {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage) GetParamSetting() *ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting {
+	if x, ok := x.GetMessageType().(*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting_); ok {
+		return x.ParamSetting
+	}
+	return nil
+}
+
+type isExtensionRunPipelineConfiguratorExtensionMessage_MessageType interface {
+	isExtensionRunPipelineConfiguratorExtensionMessage_MessageType()
+}
+
+type ExtensionRunPipelineConfiguratorExtensionMessage_Msg struct {
+	// Normal extension messages that should be passed back to the user.
+	Msg string `protobuf:"bytes,1,opt,name=msg,proto3,oneof"`
+}
+
+type ExtensionRunPipelineConfiguratorExtensionMessage_Query struct {
+	// A question from the extension that needs an answer. The extension will
+	// wait for an answer after this request. This specific message type
+	// allows the cli to know when to prompt the user for an answer.
+	Query string `protobuf:"bytes,2,opt,name=query,proto3,oneof"`
+}
+
+type ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting_ struct {
+	// Param setting messages communicate when the extension has suggested a
+	// configuration based on the user input.
+	ParamSetting *ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting `protobuf:"bytes,3,opt,name=param_setting,json=paramSetting,proto3,oneof"`
+}
+
+func (*ExtensionRunPipelineConfiguratorExtensionMessage_Msg) isExtensionRunPipelineConfiguratorExtensionMessage_MessageType() {
+}
+
+func (*ExtensionRunPipelineConfiguratorExtensionMessage_Query) isExtensionRunPipelineConfiguratorExtensionMessage_MessageType() {
+}
+
+func (*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting_) isExtensionRunPipelineConfiguratorExtensionMessage_MessageType() {
 }
 
 type GetEventRequest struct {
@@ -6268,7 +6917,7 @@ type GetEventRequest struct {
 func (x *GetEventRequest) Reset() {
 	*x = GetEventRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[118]
+		mi := &file_gofer_transport_proto_msgTypes[126]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6281,7 +6930,7 @@ func (x *GetEventRequest) String() string {
 func (*GetEventRequest) ProtoMessage() {}
 
 func (x *GetEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[118]
+	mi := &file_gofer_transport_proto_msgTypes[126]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6294,7 +6943,7 @@ func (x *GetEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEventRequest.ProtoReflect.Descriptor instead.
 func (*GetEventRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{118}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *GetEventRequest) GetId() int64 {
@@ -6315,7 +6964,7 @@ type GetEventResponse struct {
 func (x *GetEventResponse) Reset() {
 	*x = GetEventResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[119]
+		mi := &file_gofer_transport_proto_msgTypes[127]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6328,7 +6977,7 @@ func (x *GetEventResponse) String() string {
 func (*GetEventResponse) ProtoMessage() {}
 
 func (x *GetEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[119]
+	mi := &file_gofer_transport_proto_msgTypes[127]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6341,7 +6990,7 @@ func (x *GetEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEventResponse.ProtoReflect.Descriptor instead.
 func (*GetEventResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{119}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *GetEventResponse) GetEvent() *Event {
@@ -6366,7 +7015,7 @@ type ListEventsRequest struct {
 func (x *ListEventsRequest) Reset() {
 	*x = ListEventsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[120]
+		mi := &file_gofer_transport_proto_msgTypes[128]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6379,7 +7028,7 @@ func (x *ListEventsRequest) String() string {
 func (*ListEventsRequest) ProtoMessage() {}
 
 func (x *ListEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[120]
+	mi := &file_gofer_transport_proto_msgTypes[128]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6392,7 +7041,7 @@ func (x *ListEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEventsRequest.ProtoReflect.Descriptor instead.
 func (*ListEventsRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{120}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *ListEventsRequest) GetReverse() bool {
@@ -6420,7 +7069,7 @@ type ListEventsResponse struct {
 func (x *ListEventsResponse) Reset() {
 	*x = ListEventsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[121]
+		mi := &file_gofer_transport_proto_msgTypes[129]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6433,7 +7082,7 @@ func (x *ListEventsResponse) String() string {
 func (*ListEventsResponse) ProtoMessage() {}
 
 func (x *ListEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[121]
+	mi := &file_gofer_transport_proto_msgTypes[129]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6446,7 +7095,7 @@ func (x *ListEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEventsResponse.ProtoReflect.Descriptor instead.
 func (*ListEventsResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{121}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *ListEventsResponse) GetEvent() *Event {
@@ -6469,7 +7118,7 @@ type GetPipelineObjectRequest struct {
 func (x *GetPipelineObjectRequest) Reset() {
 	*x = GetPipelineObjectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[122]
+		mi := &file_gofer_transport_proto_msgTypes[130]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6482,7 +7131,7 @@ func (x *GetPipelineObjectRequest) String() string {
 func (*GetPipelineObjectRequest) ProtoMessage() {}
 
 func (x *GetPipelineObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[122]
+	mi := &file_gofer_transport_proto_msgTypes[130]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6495,7 +7144,7 @@ func (x *GetPipelineObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineObjectRequest.ProtoReflect.Descriptor instead.
 func (*GetPipelineObjectRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{122}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *GetPipelineObjectRequest) GetNamespaceId() string {
@@ -6530,7 +7179,7 @@ type GetPipelineObjectResponse struct {
 func (x *GetPipelineObjectResponse) Reset() {
 	*x = GetPipelineObjectResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[123]
+		mi := &file_gofer_transport_proto_msgTypes[131]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6543,7 +7192,7 @@ func (x *GetPipelineObjectResponse) String() string {
 func (*GetPipelineObjectResponse) ProtoMessage() {}
 
 func (x *GetPipelineObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[123]
+	mi := &file_gofer_transport_proto_msgTypes[131]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6556,7 +7205,7 @@ func (x *GetPipelineObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineObjectResponse.ProtoReflect.Descriptor instead.
 func (*GetPipelineObjectResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{123}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *GetPipelineObjectResponse) GetContent() []byte {
@@ -6578,7 +7227,7 @@ type ListPipelineObjectsRequest struct {
 func (x *ListPipelineObjectsRequest) Reset() {
 	*x = ListPipelineObjectsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[124]
+		mi := &file_gofer_transport_proto_msgTypes[132]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6591,7 +7240,7 @@ func (x *ListPipelineObjectsRequest) String() string {
 func (*ListPipelineObjectsRequest) ProtoMessage() {}
 
 func (x *ListPipelineObjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[124]
+	mi := &file_gofer_transport_proto_msgTypes[132]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6604,7 +7253,7 @@ func (x *ListPipelineObjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPipelineObjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListPipelineObjectsRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{124}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *ListPipelineObjectsRequest) GetNamespaceId() string {
@@ -6632,7 +7281,7 @@ type ListPipelineObjectsResponse struct {
 func (x *ListPipelineObjectsResponse) Reset() {
 	*x = ListPipelineObjectsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[125]
+		mi := &file_gofer_transport_proto_msgTypes[133]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6645,7 +7294,7 @@ func (x *ListPipelineObjectsResponse) String() string {
 func (*ListPipelineObjectsResponse) ProtoMessage() {}
 
 func (x *ListPipelineObjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[125]
+	mi := &file_gofer_transport_proto_msgTypes[133]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6658,7 +7307,7 @@ func (x *ListPipelineObjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPipelineObjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListPipelineObjectsResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{125}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *ListPipelineObjectsResponse) GetKeys() []*ObjectStoreKey {
@@ -6683,7 +7332,7 @@ type PutPipelineObjectRequest struct {
 func (x *PutPipelineObjectRequest) Reset() {
 	*x = PutPipelineObjectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[126]
+		mi := &file_gofer_transport_proto_msgTypes[134]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6696,7 +7345,7 @@ func (x *PutPipelineObjectRequest) String() string {
 func (*PutPipelineObjectRequest) ProtoMessage() {}
 
 func (x *PutPipelineObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[126]
+	mi := &file_gofer_transport_proto_msgTypes[134]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6709,7 +7358,7 @@ func (x *PutPipelineObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutPipelineObjectRequest.ProtoReflect.Descriptor instead.
 func (*PutPipelineObjectRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{126}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *PutPipelineObjectRequest) GetNamespaceId() string {
@@ -6763,7 +7412,7 @@ type PutPipelineObjectResponse struct {
 func (x *PutPipelineObjectResponse) Reset() {
 	*x = PutPipelineObjectResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[127]
+		mi := &file_gofer_transport_proto_msgTypes[135]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6776,7 +7425,7 @@ func (x *PutPipelineObjectResponse) String() string {
 func (*PutPipelineObjectResponse) ProtoMessage() {}
 
 func (x *PutPipelineObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[127]
+	mi := &file_gofer_transport_proto_msgTypes[135]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6789,7 +7438,7 @@ func (x *PutPipelineObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutPipelineObjectResponse.ProtoReflect.Descriptor instead.
 func (*PutPipelineObjectResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{127}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *PutPipelineObjectResponse) GetBytes() int64 {
@@ -6826,7 +7475,7 @@ type DeletePipelineObjectRequest struct {
 func (x *DeletePipelineObjectRequest) Reset() {
 	*x = DeletePipelineObjectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[128]
+		mi := &file_gofer_transport_proto_msgTypes[136]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6839,7 +7488,7 @@ func (x *DeletePipelineObjectRequest) String() string {
 func (*DeletePipelineObjectRequest) ProtoMessage() {}
 
 func (x *DeletePipelineObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[128]
+	mi := &file_gofer_transport_proto_msgTypes[136]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6852,7 +7501,7 @@ func (x *DeletePipelineObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePipelineObjectRequest.ProtoReflect.Descriptor instead.
 func (*DeletePipelineObjectRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{128}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *DeletePipelineObjectRequest) GetNamespaceId() string {
@@ -6885,7 +7534,7 @@ type DeletePipelineObjectResponse struct {
 func (x *DeletePipelineObjectResponse) Reset() {
 	*x = DeletePipelineObjectResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[129]
+		mi := &file_gofer_transport_proto_msgTypes[137]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6898,7 +7547,7 @@ func (x *DeletePipelineObjectResponse) String() string {
 func (*DeletePipelineObjectResponse) ProtoMessage() {}
 
 func (x *DeletePipelineObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[129]
+	mi := &file_gofer_transport_proto_msgTypes[137]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6911,7 +7560,7 @@ func (x *DeletePipelineObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePipelineObjectResponse.ProtoReflect.Descriptor instead.
 func (*DeletePipelineObjectResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{129}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{137}
 }
 
 type GetRunObjectRequest struct {
@@ -6928,7 +7577,7 @@ type GetRunObjectRequest struct {
 func (x *GetRunObjectRequest) Reset() {
 	*x = GetRunObjectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[130]
+		mi := &file_gofer_transport_proto_msgTypes[138]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6941,7 +7590,7 @@ func (x *GetRunObjectRequest) String() string {
 func (*GetRunObjectRequest) ProtoMessage() {}
 
 func (x *GetRunObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[130]
+	mi := &file_gofer_transport_proto_msgTypes[138]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6954,7 +7603,7 @@ func (x *GetRunObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRunObjectRequest.ProtoReflect.Descriptor instead.
 func (*GetRunObjectRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{130}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *GetRunObjectRequest) GetNamespaceId() string {
@@ -6996,7 +7645,7 @@ type GetRunObjectResponse struct {
 func (x *GetRunObjectResponse) Reset() {
 	*x = GetRunObjectResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[131]
+		mi := &file_gofer_transport_proto_msgTypes[139]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7009,7 +7658,7 @@ func (x *GetRunObjectResponse) String() string {
 func (*GetRunObjectResponse) ProtoMessage() {}
 
 func (x *GetRunObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[131]
+	mi := &file_gofer_transport_proto_msgTypes[139]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7022,7 +7671,7 @@ func (x *GetRunObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRunObjectResponse.ProtoReflect.Descriptor instead.
 func (*GetRunObjectResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{131}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *GetRunObjectResponse) GetContent() []byte {
@@ -7045,7 +7694,7 @@ type ListRunObjectsRequest struct {
 func (x *ListRunObjectsRequest) Reset() {
 	*x = ListRunObjectsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[132]
+		mi := &file_gofer_transport_proto_msgTypes[140]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7058,7 +7707,7 @@ func (x *ListRunObjectsRequest) String() string {
 func (*ListRunObjectsRequest) ProtoMessage() {}
 
 func (x *ListRunObjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[132]
+	mi := &file_gofer_transport_proto_msgTypes[140]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7071,7 +7720,7 @@ func (x *ListRunObjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRunObjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListRunObjectsRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{132}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *ListRunObjectsRequest) GetNamespaceId() string {
@@ -7106,7 +7755,7 @@ type ListRunObjectsResponse struct {
 func (x *ListRunObjectsResponse) Reset() {
 	*x = ListRunObjectsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[133]
+		mi := &file_gofer_transport_proto_msgTypes[141]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7119,7 +7768,7 @@ func (x *ListRunObjectsResponse) String() string {
 func (*ListRunObjectsResponse) ProtoMessage() {}
 
 func (x *ListRunObjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[133]
+	mi := &file_gofer_transport_proto_msgTypes[141]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7132,7 +7781,7 @@ func (x *ListRunObjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRunObjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListRunObjectsResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{133}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *ListRunObjectsResponse) GetKeys() []*ObjectStoreKey {
@@ -7158,7 +7807,7 @@ type PutRunObjectRequest struct {
 func (x *PutRunObjectRequest) Reset() {
 	*x = PutRunObjectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[134]
+		mi := &file_gofer_transport_proto_msgTypes[142]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7171,7 +7820,7 @@ func (x *PutRunObjectRequest) String() string {
 func (*PutRunObjectRequest) ProtoMessage() {}
 
 func (x *PutRunObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[134]
+	mi := &file_gofer_transport_proto_msgTypes[142]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7184,7 +7833,7 @@ func (x *PutRunObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutRunObjectRequest.ProtoReflect.Descriptor instead.
 func (*PutRunObjectRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{134}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *PutRunObjectRequest) GetNamespaceId() string {
@@ -7240,7 +7889,7 @@ type PutRunObjectResponse struct {
 func (x *PutRunObjectResponse) Reset() {
 	*x = PutRunObjectResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[135]
+		mi := &file_gofer_transport_proto_msgTypes[143]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7253,7 +7902,7 @@ func (x *PutRunObjectResponse) String() string {
 func (*PutRunObjectResponse) ProtoMessage() {}
 
 func (x *PutRunObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[135]
+	mi := &file_gofer_transport_proto_msgTypes[143]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7266,7 +7915,7 @@ func (x *PutRunObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutRunObjectResponse.ProtoReflect.Descriptor instead.
 func (*PutRunObjectResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{135}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *PutRunObjectResponse) GetBytes() int64 {
@@ -7290,7 +7939,7 @@ type DeleteRunObjectRequest struct {
 func (x *DeleteRunObjectRequest) Reset() {
 	*x = DeleteRunObjectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[136]
+		mi := &file_gofer_transport_proto_msgTypes[144]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7303,7 +7952,7 @@ func (x *DeleteRunObjectRequest) String() string {
 func (*DeleteRunObjectRequest) ProtoMessage() {}
 
 func (x *DeleteRunObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[136]
+	mi := &file_gofer_transport_proto_msgTypes[144]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7316,7 +7965,7 @@ func (x *DeleteRunObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRunObjectRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRunObjectRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{136}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *DeleteRunObjectRequest) GetNamespaceId() string {
@@ -7356,7 +8005,7 @@ type DeleteRunObjectResponse struct {
 func (x *DeleteRunObjectResponse) Reset() {
 	*x = DeleteRunObjectResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[137]
+		mi := &file_gofer_transport_proto_msgTypes[145]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7369,7 +8018,7 @@ func (x *DeleteRunObjectResponse) String() string {
 func (*DeleteRunObjectResponse) ProtoMessage() {}
 
 func (x *DeleteRunObjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[137]
+	mi := &file_gofer_transport_proto_msgTypes[145]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7382,7 +8031,7 @@ func (x *DeleteRunObjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRunObjectResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRunObjectResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{137}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{145}
 }
 
 type GetPipelineSecretRequest struct {
@@ -7399,7 +8048,7 @@ type GetPipelineSecretRequest struct {
 func (x *GetPipelineSecretRequest) Reset() {
 	*x = GetPipelineSecretRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[138]
+		mi := &file_gofer_transport_proto_msgTypes[146]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7412,7 +8061,7 @@ func (x *GetPipelineSecretRequest) String() string {
 func (*GetPipelineSecretRequest) ProtoMessage() {}
 
 func (x *GetPipelineSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[138]
+	mi := &file_gofer_transport_proto_msgTypes[146]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7425,7 +8074,7 @@ func (x *GetPipelineSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineSecretRequest.ProtoReflect.Descriptor instead.
 func (*GetPipelineSecretRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{138}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *GetPipelineSecretRequest) GetNamespaceId() string {
@@ -7468,7 +8117,7 @@ type GetPipelineSecretResponse struct {
 func (x *GetPipelineSecretResponse) Reset() {
 	*x = GetPipelineSecretResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[139]
+		mi := &file_gofer_transport_proto_msgTypes[147]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7481,7 +8130,7 @@ func (x *GetPipelineSecretResponse) String() string {
 func (*GetPipelineSecretResponse) ProtoMessage() {}
 
 func (x *GetPipelineSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[139]
+	mi := &file_gofer_transport_proto_msgTypes[147]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7494,7 +8143,7 @@ func (x *GetPipelineSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineSecretResponse.ProtoReflect.Descriptor instead.
 func (*GetPipelineSecretResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{139}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *GetPipelineSecretResponse) GetMetadata() *SecretStoreKey {
@@ -7523,7 +8172,7 @@ type ListPipelineSecretsRequest struct {
 func (x *ListPipelineSecretsRequest) Reset() {
 	*x = ListPipelineSecretsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[140]
+		mi := &file_gofer_transport_proto_msgTypes[148]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7536,7 +8185,7 @@ func (x *ListPipelineSecretsRequest) String() string {
 func (*ListPipelineSecretsRequest) ProtoMessage() {}
 
 func (x *ListPipelineSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[140]
+	mi := &file_gofer_transport_proto_msgTypes[148]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7549,7 +8198,7 @@ func (x *ListPipelineSecretsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPipelineSecretsRequest.ProtoReflect.Descriptor instead.
 func (*ListPipelineSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{140}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *ListPipelineSecretsRequest) GetNamespaceId() string {
@@ -7577,7 +8226,7 @@ type ListPipelineSecretsResponse struct {
 func (x *ListPipelineSecretsResponse) Reset() {
 	*x = ListPipelineSecretsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[141]
+		mi := &file_gofer_transport_proto_msgTypes[149]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7590,7 +8239,7 @@ func (x *ListPipelineSecretsResponse) String() string {
 func (*ListPipelineSecretsResponse) ProtoMessage() {}
 
 func (x *ListPipelineSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[141]
+	mi := &file_gofer_transport_proto_msgTypes[149]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7603,7 +8252,7 @@ func (x *ListPipelineSecretsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPipelineSecretsResponse.ProtoReflect.Descriptor instead.
 func (*ListPipelineSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{141}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *ListPipelineSecretsResponse) GetKeys() []*SecretStoreKey {
@@ -7628,7 +8277,7 @@ type PutPipelineSecretRequest struct {
 func (x *PutPipelineSecretRequest) Reset() {
 	*x = PutPipelineSecretRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[142]
+		mi := &file_gofer_transport_proto_msgTypes[150]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7641,7 +8290,7 @@ func (x *PutPipelineSecretRequest) String() string {
 func (*PutPipelineSecretRequest) ProtoMessage() {}
 
 func (x *PutPipelineSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[142]
+	mi := &file_gofer_transport_proto_msgTypes[150]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7654,7 +8303,7 @@ func (x *PutPipelineSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutPipelineSecretRequest.ProtoReflect.Descriptor instead.
 func (*PutPipelineSecretRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{142}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *PutPipelineSecretRequest) GetNamespaceId() string {
@@ -7704,7 +8353,7 @@ type PutPipelineSecretResponse struct {
 func (x *PutPipelineSecretResponse) Reset() {
 	*x = PutPipelineSecretResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[143]
+		mi := &file_gofer_transport_proto_msgTypes[151]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7717,7 +8366,7 @@ func (x *PutPipelineSecretResponse) String() string {
 func (*PutPipelineSecretResponse) ProtoMessage() {}
 
 func (x *PutPipelineSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[143]
+	mi := &file_gofer_transport_proto_msgTypes[151]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7730,7 +8379,7 @@ func (x *PutPipelineSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutPipelineSecretResponse.ProtoReflect.Descriptor instead.
 func (*PutPipelineSecretResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{143}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *PutPipelineSecretResponse) GetBytes() int64 {
@@ -7753,7 +8402,7 @@ type DeletePipelineSecretRequest struct {
 func (x *DeletePipelineSecretRequest) Reset() {
 	*x = DeletePipelineSecretRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[144]
+		mi := &file_gofer_transport_proto_msgTypes[152]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7766,7 +8415,7 @@ func (x *DeletePipelineSecretRequest) String() string {
 func (*DeletePipelineSecretRequest) ProtoMessage() {}
 
 func (x *DeletePipelineSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[144]
+	mi := &file_gofer_transport_proto_msgTypes[152]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7779,7 +8428,7 @@ func (x *DeletePipelineSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePipelineSecretRequest.ProtoReflect.Descriptor instead.
 func (*DeletePipelineSecretRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{144}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *DeletePipelineSecretRequest) GetNamespaceId() string {
@@ -7812,7 +8461,7 @@ type DeletePipelineSecretResponse struct {
 func (x *DeletePipelineSecretResponse) Reset() {
 	*x = DeletePipelineSecretResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[145]
+		mi := &file_gofer_transport_proto_msgTypes[153]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7825,7 +8474,7 @@ func (x *DeletePipelineSecretResponse) String() string {
 func (*DeletePipelineSecretResponse) ProtoMessage() {}
 
 func (x *DeletePipelineSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[145]
+	mi := &file_gofer_transport_proto_msgTypes[153]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7838,7 +8487,7 @@ func (x *DeletePipelineSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePipelineSecretResponse.ProtoReflect.Descriptor instead.
 func (*DeletePipelineSecretResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{145}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{153}
 }
 
 type GetGlobalSecretRequest struct {
@@ -7853,7 +8502,7 @@ type GetGlobalSecretRequest struct {
 func (x *GetGlobalSecretRequest) Reset() {
 	*x = GetGlobalSecretRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[146]
+		mi := &file_gofer_transport_proto_msgTypes[154]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7866,7 +8515,7 @@ func (x *GetGlobalSecretRequest) String() string {
 func (*GetGlobalSecretRequest) ProtoMessage() {}
 
 func (x *GetGlobalSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[146]
+	mi := &file_gofer_transport_proto_msgTypes[154]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7879,7 +8528,7 @@ func (x *GetGlobalSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGlobalSecretRequest.ProtoReflect.Descriptor instead.
 func (*GetGlobalSecretRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{146}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{154}
 }
 
 func (x *GetGlobalSecretRequest) GetKey() string {
@@ -7908,7 +8557,7 @@ type GetGlobalSecretResponse struct {
 func (x *GetGlobalSecretResponse) Reset() {
 	*x = GetGlobalSecretResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[147]
+		mi := &file_gofer_transport_proto_msgTypes[155]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7921,7 +8570,7 @@ func (x *GetGlobalSecretResponse) String() string {
 func (*GetGlobalSecretResponse) ProtoMessage() {}
 
 func (x *GetGlobalSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[147]
+	mi := &file_gofer_transport_proto_msgTypes[155]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7934,7 +8583,7 @@ func (x *GetGlobalSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGlobalSecretResponse.ProtoReflect.Descriptor instead.
 func (*GetGlobalSecretResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{147}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *GetGlobalSecretResponse) GetMetadata() *SecretStoreKey {
@@ -7960,7 +8609,7 @@ type ListGlobalSecretsRequest struct {
 func (x *ListGlobalSecretsRequest) Reset() {
 	*x = ListGlobalSecretsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[148]
+		mi := &file_gofer_transport_proto_msgTypes[156]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7973,7 +8622,7 @@ func (x *ListGlobalSecretsRequest) String() string {
 func (*ListGlobalSecretsRequest) ProtoMessage() {}
 
 func (x *ListGlobalSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[148]
+	mi := &file_gofer_transport_proto_msgTypes[156]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7986,7 +8635,7 @@ func (x *ListGlobalSecretsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGlobalSecretsRequest.ProtoReflect.Descriptor instead.
 func (*ListGlobalSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{148}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{156}
 }
 
 type ListGlobalSecretsResponse struct {
@@ -8000,7 +8649,7 @@ type ListGlobalSecretsResponse struct {
 func (x *ListGlobalSecretsResponse) Reset() {
 	*x = ListGlobalSecretsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[149]
+		mi := &file_gofer_transport_proto_msgTypes[157]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -8013,7 +8662,7 @@ func (x *ListGlobalSecretsResponse) String() string {
 func (*ListGlobalSecretsResponse) ProtoMessage() {}
 
 func (x *ListGlobalSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[149]
+	mi := &file_gofer_transport_proto_msgTypes[157]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8026,7 +8675,7 @@ func (x *ListGlobalSecretsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGlobalSecretsResponse.ProtoReflect.Descriptor instead.
 func (*ListGlobalSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{149}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{157}
 }
 
 func (x *ListGlobalSecretsResponse) GetKeys() []*SecretStoreKey {
@@ -8050,7 +8699,7 @@ type PutGlobalSecretRequest struct {
 func (x *PutGlobalSecretRequest) Reset() {
 	*x = PutGlobalSecretRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[150]
+		mi := &file_gofer_transport_proto_msgTypes[158]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -8063,7 +8712,7 @@ func (x *PutGlobalSecretRequest) String() string {
 func (*PutGlobalSecretRequest) ProtoMessage() {}
 
 func (x *PutGlobalSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[150]
+	mi := &file_gofer_transport_proto_msgTypes[158]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8076,7 +8725,7 @@ func (x *PutGlobalSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutGlobalSecretRequest.ProtoReflect.Descriptor instead.
 func (*PutGlobalSecretRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{150}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{158}
 }
 
 func (x *PutGlobalSecretRequest) GetKey() string {
@@ -8119,7 +8768,7 @@ type PutGlobalSecretResponse struct {
 func (x *PutGlobalSecretResponse) Reset() {
 	*x = PutGlobalSecretResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[151]
+		mi := &file_gofer_transport_proto_msgTypes[159]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -8132,7 +8781,7 @@ func (x *PutGlobalSecretResponse) String() string {
 func (*PutGlobalSecretResponse) ProtoMessage() {}
 
 func (x *PutGlobalSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[151]
+	mi := &file_gofer_transport_proto_msgTypes[159]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8145,7 +8794,7 @@ func (x *PutGlobalSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutGlobalSecretResponse.ProtoReflect.Descriptor instead.
 func (*PutGlobalSecretResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{151}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{159}
 }
 
 func (x *PutGlobalSecretResponse) GetBytes() int64 {
@@ -8166,7 +8815,7 @@ type DeleteGlobalSecretRequest struct {
 func (x *DeleteGlobalSecretRequest) Reset() {
 	*x = DeleteGlobalSecretRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[152]
+		mi := &file_gofer_transport_proto_msgTypes[160]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -8179,7 +8828,7 @@ func (x *DeleteGlobalSecretRequest) String() string {
 func (*DeleteGlobalSecretRequest) ProtoMessage() {}
 
 func (x *DeleteGlobalSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[152]
+	mi := &file_gofer_transport_proto_msgTypes[160]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8192,7 +8841,7 @@ func (x *DeleteGlobalSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteGlobalSecretRequest.ProtoReflect.Descriptor instead.
 func (*DeleteGlobalSecretRequest) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{152}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{160}
 }
 
 func (x *DeleteGlobalSecretRequest) GetKey() string {
@@ -8211,7 +8860,7 @@ type DeleteGlobalSecretResponse struct {
 func (x *DeleteGlobalSecretResponse) Reset() {
 	*x = DeleteGlobalSecretResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_gofer_transport_proto_msgTypes[153]
+		mi := &file_gofer_transport_proto_msgTypes[161]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -8224,7 +8873,7 @@ func (x *DeleteGlobalSecretResponse) String() string {
 func (*DeleteGlobalSecretResponse) ProtoMessage() {}
 
 func (x *DeleteGlobalSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gofer_transport_proto_msgTypes[153]
+	mi := &file_gofer_transport_proto_msgTypes[161]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8237,7 +8886,339 @@ func (x *DeleteGlobalSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteGlobalSecretResponse.ProtoReflect.Descriptor instead.
 func (*DeleteGlobalSecretResponse) Descriptor() ([]byte, []int) {
-	return file_gofer_transport_proto_rawDescGZIP(), []int{153}
+	return file_gofer_transport_proto_rawDescGZIP(), []int{161}
+}
+
+type RunExtensionInstallerClientMessage_Init struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Image string `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	User  string `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	Pass  string `protobuf:"bytes,3,opt,name=pass,proto3" json:"pass,omitempty"`
+}
+
+func (x *RunExtensionInstallerClientMessage_Init) Reset() {
+	*x = RunExtensionInstallerClientMessage_Init{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[166]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RunExtensionInstallerClientMessage_Init) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunExtensionInstallerClientMessage_Init) ProtoMessage() {}
+
+func (x *RunExtensionInstallerClientMessage_Init) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[166]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunExtensionInstallerClientMessage_Init.ProtoReflect.Descriptor instead.
+func (*RunExtensionInstallerClientMessage_Init) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{106, 0}
+}
+
+func (x *RunExtensionInstallerClientMessage_Init) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
+func (x *RunExtensionInstallerClientMessage_Init) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *RunExtensionInstallerClientMessage_Init) GetPass() string {
+	if x != nil {
+		return x.Pass
+	}
+	return ""
+}
+
+type RunExtensionInstallerExtensionMessage_ConfigSetting struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Config string `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	Value  string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (x *RunExtensionInstallerExtensionMessage_ConfigSetting) Reset() {
+	*x = RunExtensionInstallerExtensionMessage_ConfigSetting{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[167]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RunExtensionInstallerExtensionMessage_ConfigSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunExtensionInstallerExtensionMessage_ConfigSetting) ProtoMessage() {}
+
+func (x *RunExtensionInstallerExtensionMessage_ConfigSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[167]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunExtensionInstallerExtensionMessage_ConfigSetting.ProtoReflect.Descriptor instead.
+func (*RunExtensionInstallerExtensionMessage_ConfigSetting) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{107, 0}
+}
+
+func (x *RunExtensionInstallerExtensionMessage_ConfigSetting) GetConfig() string {
+	if x != nil {
+		return x.Config
+	}
+	return ""
+}
+
+func (x *RunExtensionInstallerExtensionMessage_ConfigSetting) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type RunPipelineConfiguratorClientMessage_Init struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// name of the extension you want to run the pipeline
+	// configurator for
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+}
+
+func (x *RunPipelineConfiguratorClientMessage_Init) Reset() {
+	*x = RunPipelineConfiguratorClientMessage_Init{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[168]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RunPipelineConfiguratorClientMessage_Init) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunPipelineConfiguratorClientMessage_Init) ProtoMessage() {}
+
+func (x *RunPipelineConfiguratorClientMessage_Init) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[168]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunPipelineConfiguratorClientMessage_Init.ProtoReflect.Descriptor instead.
+func (*RunPipelineConfiguratorClientMessage_Init) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{108, 0}
+}
+
+func (x *RunPipelineConfiguratorClientMessage_Init) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type RunPipelineConfiguratorExtensionMessage_ParamSetting struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Param string `protobuf:"bytes,1,opt,name=param,proto3" json:"param,omitempty"`
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage_ParamSetting) Reset() {
+	*x = RunPipelineConfiguratorExtensionMessage_ParamSetting{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[169]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage_ParamSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunPipelineConfiguratorExtensionMessage_ParamSetting) ProtoMessage() {}
+
+func (x *RunPipelineConfiguratorExtensionMessage_ParamSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[169]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunPipelineConfiguratorExtensionMessage_ParamSetting.ProtoReflect.Descriptor instead.
+func (*RunPipelineConfiguratorExtensionMessage_ParamSetting) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{109, 0}
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage_ParamSetting) GetParam() string {
+	if x != nil {
+		return x.Param
+	}
+	return ""
+}
+
+func (x *RunPipelineConfiguratorExtensionMessage_ParamSetting) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Config string `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	Value  string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting) Reset() {
+	*x = ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[172]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting) ProtoMessage() {}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[172]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting.ProtoReflect.Descriptor instead.
+func (*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{123, 0}
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting) GetConfig() string {
+	if x != nil {
+		return x.Config
+	}
+	return ""
+}
+
+func (x *ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Param string `protobuf:"bytes,1,opt,name=param,proto3" json:"param,omitempty"`
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting) Reset() {
+	*x = ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_gofer_transport_proto_msgTypes[173]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting) ProtoMessage() {}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_gofer_transport_proto_msgTypes[173]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting.ProtoReflect.Descriptor instead.
+func (*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting) Descriptor() ([]byte, []int) {
+	return file_gofer_transport_proto_rawDescGZIP(), []int{125, 0}
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting) GetParam() string {
+	if x != nil {
+		return x.Param
+	}
+	return ""
+}
+
+func (x *ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
 }
 
 var File_gofer_transport_proto protoreflect.FileDescriptor
@@ -8808,264 +9789,365 @@ var file_gofer_transport_proto_rawDesc = []byte{
 	0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d,
 	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x1a, 0x0a,
 	0x18, 0x44, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
-	0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x66, 0x0a, 0x26, 0x47, 0x65, 0x74,
-	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c,
-	0x49, 0x6e, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x05, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x75, 0x73, 0x65,
-	0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x75, 0x73, 0x65, 0x72, 0x12, 0x12, 0x0a,
-	0x04, 0x70, 0x61, 0x73, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x73,
-	0x73, 0x22, 0x4d, 0x0a, 0x27, 0x47, 0x65, 0x74, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
-	0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x49, 0x6e, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74,
-	0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x22, 0x0a, 0x0c,
-	0x69, 0x6e, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x0c, 0x69, 0x6e, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73,
-	0x22, 0x16, 0x0a, 0x14, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x66,
-	0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x71, 0x0a, 0x15, 0x45, 0x78, 0x74, 0x65,
-	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x24, 0x0a, 0x0d, 0x64, 0x6f, 0x63, 0x75, 0x6d, 0x65, 0x6e,
-	0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x64, 0x6f,
-	0x63, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1e, 0x0a, 0x0a, 0x72,
-	0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x65, 0x64, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52,
-	0x0a, 0x72, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x65, 0x64, 0x22, 0x9a, 0x02, 0x0a, 0x19,
-	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69,
-	0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d,
-	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b,
-	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x38, 0x0a,
-	0x18, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73,
-	0x69, 0x6f, 0x6e, 0x5f, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x16, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69,
-	0x6f, 0x6e, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x12, 0x44, 0x0a, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69,
-	0x67, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69,
-	0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0xd4, 0x01, 0x0a, 0x22, 0x52, 0x75,
+	0x6e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c,
+	0x6c, 0x65, 0x72, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x12, 0x44, 0x0a, 0x04, 0x69, 0x6e, 0x69, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2e,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x75, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x65, 0x72, 0x43, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x49, 0x6e, 0x69, 0x74, 0x48, 0x00,
+	0x52, 0x04, 0x69, 0x6e, 0x69, 0x74, 0x12, 0x12, 0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x6d, 0x73, 0x67, 0x1a, 0x44, 0x0a, 0x04, 0x49, 0x6e,
+	0x69, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x05, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x75, 0x73, 0x65, 0x72,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x75, 0x73, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04,
+	0x70, 0x61, 0x73, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x73, 0x73,
+	0x42, 0x0e, 0x0a, 0x0c, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x5f, 0x74, 0x79, 0x70, 0x65,
+	0x22, 0x87, 0x02, 0x0a, 0x25, 0x52, 0x75, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
+	0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x65, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x03, 0x6d, 0x73,
+	0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x6d, 0x73, 0x67, 0x12, 0x16,
+	0x0a, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52,
+	0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x12, 0x63, 0x0a, 0x0e, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x5f, 0x73, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x3a,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x75, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x65, 0x72, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x43, 0x6f, 0x6e,
+	0x66, 0x69, 0x67, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x48, 0x00, 0x52, 0x0d, 0x63, 0x6f,
+	0x6e, 0x66, 0x69, 0x67, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x1a, 0x3d, 0x0a, 0x0d, 0x43,
+	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x12, 0x16, 0x0a, 0x06,
+	0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x63, 0x6f,
+	0x6e, 0x66, 0x69, 0x67, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x42, 0x0e, 0x0a, 0x0c, 0x6d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0xae, 0x01, 0x0a, 0x24, 0x52,
+	0x75, 0x6e, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x75, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x12, 0x46, 0x0a, 0x04, 0x69, 0x6e, 0x69, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x30, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x75, 0x6e, 0x50, 0x69, 0x70,
+	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x6f,
+	0x72, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x49,
+	0x6e, 0x69, 0x74, 0x48, 0x00, 0x52, 0x04, 0x69, 0x6e, 0x69, 0x74, 0x12, 0x12, 0x0a, 0x03, 0x6d,
+	0x73, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x6d, 0x73, 0x67, 0x1a,
+	0x1a, 0x0a, 0x04, 0x49, 0x6e, 0x69, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x42, 0x0e, 0x0a, 0x0c, 0x6d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0x85, 0x02, 0x0a, 0x27,
+	0x52, 0x75, 0x6e, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69,
+	0x67, 0x75, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e,
+	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x6d, 0x73, 0x67, 0x12, 0x16, 0x0a, 0x05, 0x71,
+	0x75, 0x65, 0x72, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x05, 0x71, 0x75,
+	0x65, 0x72, 0x79, 0x12, 0x62, 0x0a, 0x0d, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x5f, 0x73, 0x65, 0x74,
+	0x74, 0x69, 0x6e, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x3b, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x52, 0x75, 0x6e, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f,
+	0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x50, 0x61, 0x72, 0x61, 0x6d,
+	0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x48, 0x00, 0x52, 0x0c, 0x70, 0x61, 0x72, 0x61, 0x6d,
+	0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x1a, 0x3a, 0x0a, 0x0c, 0x50, 0x61, 0x72, 0x61, 0x6d,
+	0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x61, 0x72, 0x61, 0x6d,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x12, 0x14, 0x0a,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x42, 0x0e, 0x0a, 0x0c, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x5f, 0x74,
+	0x79, 0x70, 0x65, 0x22, 0x92, 0x01, 0x0a, 0x14, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
+	0x6e, 0x49, 0x6e, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x3f, 0x0a, 0x06,
+	0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e,
+	0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
 	0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x1a, 0x39, 0x0a,
 	0x0b, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03,
 	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14,
 	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76,
-	0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x1c, 0x0a, 0x1a, 0x45, 0x78, 0x74, 0x65,
-	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x9b, 0x01, 0x0a, 0x1b, 0x45, 0x78, 0x74, 0x65, 0x6e,
-	0x73, 0x69, 0x6f, 0x6e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
-	0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61,
-	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70,
-	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a,
-	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x38, 0x0a, 0x18, 0x70, 0x69,
-	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e,
-	0x5f, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x16, 0x70, 0x69,
-	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x4c,
-	0x61, 0x62, 0x65, 0x6c, 0x22, 0x1e, 0x0a, 0x1c, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
-	0x6e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1a, 0x0a, 0x18, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
-	0x6e, 0x53, 0x68, 0x75, 0x74, 0x64, 0x6f, 0x77, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x22, 0x1b, 0x0a, 0x19, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x68, 0x75,
-	0x74, 0x64, 0x6f, 0x77, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x39, 0x0a,
-	0x1d, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x72, 0x6e,
-	0x61, 0x6c, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18,
-	0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x22, 0x20, 0x0a, 0x1e, 0x45, 0x78, 0x74, 0x65,
-	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x45, 0x76, 0x65,
-	0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x21, 0x0a, 0x0f, 0x47, 0x65,
-	0x74, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a,
-	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x02, 0x69, 0x64, 0x22, 0x36, 0x0a,
-	0x10, 0x47, 0x65, 0x74, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x22, 0x0a, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x0c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x05,
-	0x65, 0x76, 0x65, 0x6e, 0x74, 0x22, 0x45, 0x0a, 0x11, 0x4c, 0x69, 0x73, 0x74, 0x45, 0x76, 0x65,
-	0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x72, 0x65,
-	0x76, 0x65, 0x72, 0x73, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x72, 0x65, 0x76,
-	0x65, 0x72, 0x73, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x66, 0x6f, 0x6c, 0x6c, 0x6f, 0x77, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x66, 0x6f, 0x6c, 0x6c, 0x6f, 0x77, 0x22, 0x38, 0x0a, 0x12,
-	0x4c, 0x69, 0x73, 0x74, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x12, 0x22, 0x0a, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52,
-	0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x22, 0x70, 0x0a, 0x18, 0x47, 0x65, 0x74, 0x50, 0x69, 0x70,
-	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f,
-	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
-	0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e,
-	0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65,
-	0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x35, 0x0a, 0x19, 0x47, 0x65, 0x74, 0x50,
-	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x22,
-	0x60, 0x0a, 0x1a, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f,
-	0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a,
+	0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x17, 0x0a, 0x15, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x22, 0x16, 0x0a, 0x14, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e,
+	0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x71, 0x0a, 0x15, 0x45, 0x78, 0x74,
+	0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x24, 0x0a, 0x0d, 0x64, 0x6f, 0x63, 0x75, 0x6d, 0x65,
+	0x6e, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x64,
+	0x6f, 0x63, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1e, 0x0a, 0x0a,
+	0x72, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x65, 0x64, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09,
+	0x52, 0x0a, 0x72, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x65, 0x64, 0x22, 0x9a, 0x02, 0x0a,
+	0x19, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72,
+	0x69, 0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61,
+	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a,
+	0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x38,
+	0x0a, 0x18, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x65, 0x78, 0x74, 0x65, 0x6e,
+	0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x16, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x69, 0x6f, 0x6e, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x12, 0x44, 0x0a, 0x06, 0x63, 0x6f, 0x6e, 0x66,
+	0x69, 0x67, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72,
+	0x69, 0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x66, 0x69,
+	0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x1a, 0x39,
+	0x0a, 0x0b, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a,
+	0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12,
+	0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x1c, 0x0a, 0x1a, 0x45, 0x78, 0x74,
+	0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x9b, 0x01, 0x0a, 0x1b, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e,
+	0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69,
+	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x38, 0x0a, 0x18, 0x70,
+	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
+	0x6e, 0x5f, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x16, 0x70,
+	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e,
+	0x4c, 0x61, 0x62, 0x65, 0x6c, 0x22, 0x1e, 0x0a, 0x1c, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69,
+	0x6f, 0x6e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1a, 0x0a, 0x18, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69,
+	0x6f, 0x6e, 0x53, 0x68, 0x75, 0x74, 0x64, 0x6f, 0x77, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x22, 0x1b, 0x0a, 0x19, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x68,
+	0x75, 0x74, 0x64, 0x6f, 0x77, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x39,
+	0x0a, 0x1d, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x72,
+	0x6e, 0x61, 0x6c, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x18, 0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c,
+	0x52, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x22, 0x20, 0x0a, 0x1e, 0x45, 0x78, 0x74,
+	0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x45, 0x76,
+	0x65, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x3f, 0x0a, 0x2b, 0x45,
+	0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x6e,
+	0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x65, 0x72, 0x43, 0x6c, 0x69,
+	0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x6d, 0x73,
+	0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6d, 0x73, 0x67, 0x22, 0x99, 0x02, 0x0a,
+	0x2e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x45, 0x78, 0x74,
+	0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x65, 0x72, 0x45,
+	0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12,
+	0x12, 0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03,
+	0x6d, 0x73, 0x67, 0x12, 0x16, 0x0a, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x48, 0x00, 0x52, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x12, 0x6c, 0x0a, 0x0e, 0x63,
+	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x5f, 0x73, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x43, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
+	0x6e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x65, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x43, 0x6f, 0x6e, 0x66, 0x69,
+	0x67, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x48, 0x00, 0x52, 0x0d, 0x63, 0x6f, 0x6e, 0x66,
+	0x69, 0x67, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x1a, 0x3d, 0x0a, 0x0d, 0x43, 0x6f, 0x6e,
+	0x66, 0x69, 0x67, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x12, 0x16, 0x0a, 0x06, 0x63, 0x6f,
+	0x6e, 0x66, 0x69, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x63, 0x6f, 0x6e, 0x66,
+	0x69, 0x67, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x42, 0x0e, 0x0a, 0x0c, 0x6d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0x41, 0x0a, 0x2d, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x43, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x6d, 0x73, 0x67,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6d, 0x73, 0x67, 0x22, 0x97, 0x02, 0x0a, 0x30,
+	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x50, 0x69, 0x70, 0x65,
+	0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x6f, 0x72,
+	0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x12, 0x12, 0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52,
+	0x03, 0x6d, 0x73, 0x67, 0x12, 0x16, 0x0a, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x12, 0x6b, 0x0a, 0x0d,
+	0x70, 0x61, 0x72, 0x61, 0x6d, 0x5f, 0x73, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x44, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x45, 0x78, 0x74, 0x65,
+	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x50, 0x61, 0x72,
+	0x61, 0x6d, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x48, 0x00, 0x52, 0x0c, 0x70, 0x61, 0x72,
+	0x61, 0x6d, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x1a, 0x3a, 0x0a, 0x0c, 0x50, 0x61, 0x72,
+	0x61, 0x6d, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x61, 0x72,
+	0x61, 0x6d, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x70, 0x61, 0x72, 0x61, 0x6d, 0x12,
+	0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x42, 0x0e, 0x0a, 0x0c, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x5f, 0x74, 0x79, 0x70, 0x65, 0x22, 0x21, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x45, 0x76, 0x65, 0x6e,
+	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x02, 0x69, 0x64, 0x22, 0x36, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x45,
+	0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x22, 0x0a, 0x05,
+	0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74,
+	0x22, 0x45, 0x0a, 0x11, 0x4c, 0x69, 0x73, 0x74, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x72, 0x65, 0x76, 0x65, 0x72, 0x73, 0x65,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x72, 0x65, 0x76, 0x65, 0x72, 0x73, 0x65, 0x12,
+	0x16, 0x0a, 0x06, 0x66, 0x6f, 0x6c, 0x6c, 0x6f, 0x77, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52,
+	0x06, 0x66, 0x6f, 0x6c, 0x6c, 0x6f, 0x77, 0x22, 0x38, 0x0a, 0x12, 0x4c, 0x69, 0x73, 0x74, 0x45,
+	0x76, 0x65, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x22, 0x0a,
+	0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x05, 0x65, 0x76, 0x65, 0x6e,
+	0x74, 0x22, 0x70, 0x0a, 0x18, 0x47, 0x65, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
+	0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a,
 	0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64,
 	0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18,
 	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49,
-	0x64, 0x22, 0x48, 0x0a, 0x1b, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e,
-	0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x12, 0x29, 0x0a, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x74, 0x6f,
-	0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x22, 0xa0, 0x01, 0x0a, 0x18,
-	0x50, 0x75, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63,
-	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65,
-	0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
-	0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70,
-	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03,
-	0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18,
-	0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63,
-	0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x7b,
-	0x0a, 0x19, 0x50, 0x75, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a,
-	0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x62,
-	0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x62, 0x79, 0x74, 0x65,
-	0x73, 0x12, 0x21, 0x0a, 0x0c, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x6c, 0x69, 0x6d, 0x69,
-	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0b, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4c,
-	0x69, 0x6d, 0x69, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x65,
-	0x76, 0x69, 0x63, 0x74, 0x65, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6f, 0x62,
-	0x6a, 0x65, 0x63, 0x74, 0x45, 0x76, 0x69, 0x63, 0x74, 0x65, 0x64, 0x22, 0x73, 0x0a, 0x1b, 0x44,
-	0x65, 0x6c, 0x65, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a,
-	0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61,
-	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a,
-	0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10,
-	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
-	0x22, 0x1e, 0x0a, 0x1c, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69,
+	0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03,
+	0x6b, 0x65, 0x79, 0x22, 0x35, 0x0a, 0x19, 0x47, 0x65, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69,
 	0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x82, 0x01, 0x0a, 0x13, 0x47, 0x65, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63,
-	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65,
+	0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x0c, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x22, 0x60, 0x0a, 0x1a, 0x4c, 0x69,
+	0x73, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65,
 	0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
 	0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70,
 	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06,
-	0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72, 0x75,
-	0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x30, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x52, 0x75, 0x6e, 0x4f,
-	0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a,
-	0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07,
-	0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x22, 0x72, 0x0a, 0x15, 0x4c, 0x69, 0x73, 0x74, 0x52,
-	0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
-	0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f,
-	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
-	0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x22, 0x43, 0x0a, 0x16, 0x4c,
-	0x69, 0x73, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4f, 0x62, 0x6a, 0x65,
-	0x63, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x04, 0x6b, 0x65, 0x79, 0x73,
-	0x22, 0xb2, 0x01, 0x0a, 0x13, 0x50, 0x75, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63,
-	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65,
-	0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
-	0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70,
-	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06,
-	0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72, 0x75,
-	0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74,
-	0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12,
-	0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05,
-	0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x2c, 0x0a, 0x14, 0x50, 0x75, 0x74, 0x52, 0x75, 0x6e, 0x4f,
-	0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a,
-	0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x62, 0x79,
-	0x74, 0x65, 0x73, 0x22, 0x85, 0x01, 0x0a, 0x16, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x52, 0x75,
-	0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21,
-	0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49,
-	0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
-	0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01,
-	0x28, 0x03, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
-	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x19, 0x0a, 0x17, 0x44,
-	0x65, 0x6c, 0x65, 0x74, 0x65, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x97, 0x01, 0x0a, 0x18, 0x47, 0x65, 0x74, 0x50, 0x69,
-	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75,
+	0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x22, 0x48, 0x0a, 0x1b,
+	0x4c, 0x69, 0x73, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65,
+	0x63, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x04, 0x6b,
+	0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x2e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79,
+	0x52, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x22, 0xa0, 0x01, 0x0a, 0x18, 0x50, 0x75, 0x74, 0x50, 0x69,
+	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75,
 	0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
 	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73,
 	0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
 	0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70,
 	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x63,
-	0x6c, 0x75, 0x64, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x08, 0x52, 0x0d, 0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74,
-	0x22, 0x66, 0x0a, 0x19, 0x47, 0x65, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53,
-	0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x31, 0x0a,
-	0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74,
-	0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0x12, 0x16, 0x0a, 0x06, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x06, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x22, 0x60, 0x0a, 0x1a, 0x4c, 0x69, 0x73, 0x74,
-	0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
-	0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61,
-	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70,
-	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a,
-	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x22, 0x48, 0x0a, 0x1b, 0x4c, 0x69,
-	0x73, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74,
-	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x04, 0x6b, 0x65, 0x79,
-	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x04,
-	0x6b, 0x65, 0x79, 0x73, 0x22, 0xa0, 0x01, 0x0a, 0x18, 0x50, 0x75, 0x74, 0x50, 0x69, 0x70, 0x65,
-	0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e,
+	0x74, 0x65, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74,
+	0x65, 0x6e, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x7b, 0x0a, 0x19, 0x50, 0x75, 0x74,
+	0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x12, 0x21, 0x0a, 0x0c,
+	0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x0b, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4c, 0x69, 0x6d, 0x69, 0x74, 0x12,
+	0x25, 0x0a, 0x0e, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x65, 0x76, 0x69, 0x63, 0x74, 0x65,
+	0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x45,
+	0x76, 0x69, 0x63, 0x74, 0x65, 0x64, 0x22, 0x73, 0x0a, 0x1b, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
+	0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d,
+	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65,
+	0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70,
+	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x1e, 0x0a, 0x1c, 0x44,
+	0x65, 0x6c, 0x65, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x4f, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x82, 0x01, 0x0a, 0x13,
+	0x47, 0x65, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
+	0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70,
+	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69,
+	0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x12, 0x10,
+	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
+	0x22, 0x30, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74,
+	0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65,
+	0x6e, 0x74, 0x22, 0x72, 0x0a, 0x15, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e,
+	0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f,
+	0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12,
+	0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x22, 0x43, 0x0a, 0x16, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x75,
+	0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x12, 0x29, 0x0a, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x74, 0x6f,
+	0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x22, 0xb2, 0x01, 0x0a, 0x13,
+	0x50, 0x75, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69,
+	0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70,
+	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69,
+	0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x12, 0x10,
+	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
+	0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28,
+	0x0c, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f,
+	0x72, 0x63, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65,
+	0x22, 0x2c, 0x0a, 0x14, 0x50, 0x75, 0x74, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65,
+	0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x22, 0x85,
+	0x01, 0x0a, 0x16, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65,
+	0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d,
+	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b,
+	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x15, 0x0a,
+	0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x72,
+	0x75, 0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x19, 0x0a, 0x17, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x52, 0x75, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x22, 0x97, 0x01, 0x0a, 0x18, 0x47, 0x65, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e,
+	0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21,
+	0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49,
+	0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
+	0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x6b, 0x65, 0x79, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x5f,
+	0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0d, 0x69, 0x6e,
+	0x63, 0x6c, 0x75, 0x64, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x22, 0x66, 0x0a, 0x19, 0x47,
+	0x65, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x31, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65,
+	0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x16, 0x0a, 0x06, 0x73,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x65, 0x63,
+	0x72, 0x65, 0x74, 0x22, 0x60, 0x0a, 0x1a, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c,
+	0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69,
 	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
 	0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65,
 	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c,
-	0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65,
-	0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
-	0x74, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08,
-	0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x31, 0x0a, 0x19, 0x50, 0x75, 0x74, 0x50, 0x69,
-	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x03, 0x52, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x22, 0x73, 0x0a, 0x1b, 0x44, 0x65,
+	0x69, 0x6e, 0x65, 0x49, 0x64, 0x22, 0x48, 0x0a, 0x1b, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x69, 0x70,
+	0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65,
+	0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x22,
+	0xa0, 0x01, 0x0a, 0x18, 0x50, 0x75, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c,
+	0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12,
+	0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64,
+	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b,
+	0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x04, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x14, 0x0a, 0x05,
+	0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x66, 0x6f, 0x72,
+	0x63, 0x65, 0x22, 0x31, 0x0a, 0x19, 0x50, 0x75, 0x74, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e,
+	0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05,
+	0x62, 0x79, 0x74, 0x65, 0x73, 0x22, 0x73, 0x0a, 0x1b, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x50,
+	0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
+	0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x6e, 0x61, 0x6d, 0x65,
+	0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x70, 0x69, 0x70, 0x65, 0x6c,
+	0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x70, 0x69,
+	0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x1e, 0x0a, 0x1c, 0x44, 0x65,
 	0x6c, 0x65, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x53, 0x65, 0x63, 0x72,
-	0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x61, 0x6d,
-	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b,
-	0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x0a, 0x70, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x10, 0x0a,
-	0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22,
-	0x1e, 0x0a, 0x1c, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e,
-	0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x51, 0x0a, 0x16, 0x47, 0x65, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72,
-	0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x25, 0x0a, 0x0e, 0x69,
-	0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x08, 0x52, 0x0d, 0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x53, 0x65, 0x63, 0x72,
-	0x65, 0x74, 0x22, 0x64, 0x0a, 0x17, 0x47, 0x65, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53,
-	0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x31, 0x0a,
-	0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74,
-	0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0x12, 0x16, 0x0a, 0x06, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x06, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x22, 0x1a, 0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74,
-	0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x22, 0x46, 0x0a, 0x19, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x6c, 0x6f, 0x62,
-	0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x29, 0x0a, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32,
-	0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74,
-	0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x52, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x22, 0x7a, 0x0a, 0x16,
-	0x50, 0x75, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74,
-	0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65,
-	0x6e, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73,
-	0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
-	0x65, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x08, 0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x22, 0x2f, 0x0a, 0x17, 0x50, 0x75, 0x74, 0x47,
-	0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x03, 0x52, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x22, 0x2d, 0x0a, 0x19, 0x44, 0x65, 0x6c,
-	0x65, 0x74, 0x65, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x1c, 0x0a, 0x1a, 0x44, 0x65, 0x6c, 0x65,
-	0x74, 0x65, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77, 0x61, 0x72,
-	0x64, 0x73, 0x2f, 0x67, 0x6f, 0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67,
-	0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x51, 0x0a, 0x16, 0x47, 0x65,
+	0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64,
+	0x65, 0x5f, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0d,
+	0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x22, 0x64, 0x0a,
+	0x17, 0x47, 0x65, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x31, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65,
+	0x79, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x16, 0x0a, 0x06, 0x73,
+	0x65, 0x63, 0x72, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x65, 0x63,
+	0x72, 0x65, 0x74, 0x22, 0x1a, 0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61,
+	0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22,
+	0x46, 0x0a, 0x19, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63,
+	0x72, 0x65, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x04,
+	0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65,
+	0x79, 0x52, 0x04, 0x6b, 0x65, 0x79, 0x73, 0x22, 0x7a, 0x0a, 0x16, 0x50, 0x75, 0x74, 0x47, 0x6c,
+	0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03,
+	0x6b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x1e, 0x0a,
+	0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73, 0x12, 0x14, 0x0a,
+	0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x66, 0x6f,
+	0x72, 0x63, 0x65, 0x22, 0x2f, 0x0a, 0x17, 0x50, 0x75, 0x74, 0x47, 0x6c, 0x6f, 0x62, 0x61, 0x6c,
+	0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14,
+	0x0a, 0x05, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x62,
+	0x79, 0x74, 0x65, 0x73, 0x22, 0x2d, 0x0a, 0x19, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x47, 0x6c,
+	0x6f, 0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03,
+	0x6b, 0x65, 0x79, 0x22, 0x1c, 0x0a, 0x1a, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x47, 0x6c, 0x6f,
+	0x62, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
+	0x63, 0x6c, 0x69, 0x6e, 0x74, 0x6a, 0x65, 0x64, 0x77, 0x61, 0x72, 0x64, 0x73, 0x2f, 0x67, 0x6f,
+	0x66, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -9081,234 +10163,256 @@ func file_gofer_transport_proto_rawDescGZIP() []byte {
 }
 
 var file_gofer_transport_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_gofer_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 159)
+var file_gofer_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 174)
 var file_gofer_transport_proto_goTypes = []interface{}{
-	(CreateTokenRequest_Kind)(0),                         // 0: proto.CreateTokenRequest.Kind
-	(*GetSystemInfoRequest)(nil),                         // 1: proto.GetSystemInfoRequest
-	(*GetSystemInfoResponse)(nil),                        // 2: proto.GetSystemInfoResponse
-	(*RepairOrphanRequest)(nil),                          // 3: proto.RepairOrphanRequest
-	(*RepairOrphanResponse)(nil),                         // 4: proto.RepairOrphanResponse
-	(*ToggleEventIngressRequest)(nil),                    // 5: proto.ToggleEventIngressRequest
-	(*ToggleEventIngressResponse)(nil),                   // 6: proto.ToggleEventIngressResponse
-	(*CreateTokenRequest)(nil),                           // 7: proto.CreateTokenRequest
-	(*CreateTokenResponse)(nil),                          // 8: proto.CreateTokenResponse
-	(*BootstrapTokenRequest)(nil),                        // 9: proto.BootstrapTokenRequest
-	(*BootstrapTokenResponse)(nil),                       // 10: proto.BootstrapTokenResponse
-	(*GetTokenRequest)(nil),                              // 11: proto.GetTokenRequest
-	(*GetTokenResponse)(nil),                             // 12: proto.GetTokenResponse
-	(*ListTokensRequest)(nil),                            // 13: proto.ListTokensRequest
-	(*ListTokensResponse)(nil),                           // 14: proto.ListTokensResponse
-	(*DeleteTokenRequest)(nil),                           // 15: proto.DeleteTokenRequest
-	(*DeleteTokenResponse)(nil),                          // 16: proto.DeleteTokenResponse
-	(*EnableTokenRequest)(nil),                           // 17: proto.EnableTokenRequest
-	(*EnableTokenResponse)(nil),                          // 18: proto.EnableTokenResponse
-	(*DisableTokenRequest)(nil),                          // 19: proto.DisableTokenRequest
-	(*DisableTokenResponse)(nil),                         // 20: proto.DisableTokenResponse
-	(*GetNamespaceRequest)(nil),                          // 21: proto.GetNamespaceRequest
-	(*GetNamespaceResponse)(nil),                         // 22: proto.GetNamespaceResponse
-	(*ListNamespacesRequest)(nil),                        // 23: proto.ListNamespacesRequest
-	(*ListNamespacesResponse)(nil),                       // 24: proto.ListNamespacesResponse
-	(*CreateNamespaceRequest)(nil),                       // 25: proto.CreateNamespaceRequest
-	(*CreateNamespaceResponse)(nil),                      // 26: proto.CreateNamespaceResponse
-	(*UpdateNamespaceRequest)(nil),                       // 27: proto.UpdateNamespaceRequest
-	(*UpdateNamespaceResponse)(nil),                      // 28: proto.UpdateNamespaceResponse
-	(*DeleteNamespaceRequest)(nil),                       // 29: proto.DeleteNamespaceRequest
-	(*DeleteNamespaceResponse)(nil),                      // 30: proto.DeleteNamespaceResponse
-	(*GetPipelineRequest)(nil),                           // 31: proto.GetPipelineRequest
-	(*GetPipelineResponse)(nil),                          // 32: proto.GetPipelineResponse
-	(*ListPipelinesRequest)(nil),                         // 33: proto.ListPipelinesRequest
-	(*ListPipelinesResponse)(nil),                        // 34: proto.ListPipelinesResponse
-	(*DisablePipelineRequest)(nil),                       // 35: proto.DisablePipelineRequest
-	(*DisablePipelineResponse)(nil),                      // 36: proto.DisablePipelineResponse
-	(*EnablePipelineRequest)(nil),                        // 37: proto.EnablePipelineRequest
-	(*EnablePipelineResponse)(nil),                       // 38: proto.EnablePipelineResponse
-	(*RegisterPipelineConfigRequest)(nil),                // 39: proto.RegisterPipelineConfigRequest
-	(*RegisterPipelineConfigResponse)(nil),               // 40: proto.RegisterPipelineConfigResponse
-	(*DeployPipelineRequest)(nil),                        // 41: proto.DeployPipelineRequest
-	(*DeployPipelineResponse)(nil),                       // 42: proto.DeployPipelineResponse
-	(*DeletePipelineRequest)(nil),                        // 43: proto.DeletePipelineRequest
-	(*DeletePipelineResponse)(nil),                       // 44: proto.DeletePipelineResponse
-	(*GetPipelineConfigRequest)(nil),                     // 45: proto.GetPipelineConfigRequest
-	(*GetPipelineConfigResponse)(nil),                    // 46: proto.GetPipelineConfigResponse
-	(*ListPipelineConfigsRequest)(nil),                   // 47: proto.ListPipelineConfigsRequest
-	(*ListPipelineConfigsResponse)(nil),                  // 48: proto.ListPipelineConfigsResponse
-	(*DeletePipelineConfigRequest)(nil),                  // 49: proto.DeletePipelineConfigRequest
-	(*DeletePipelineConfigResponse)(nil),                 // 50: proto.DeletePipelineConfigResponse
-	(*CreatePipelineExtensionSubscriptionRequest)(nil),   // 51: proto.CreatePipelineExtensionSubscriptionRequest
-	(*CreatePipelineExtensionSubscriptionResponse)(nil),  // 52: proto.CreatePipelineExtensionSubscriptionResponse
-	(*GetPipelineExtensionSubscriptionRequest)(nil),      // 53: proto.GetPipelineExtensionSubscriptionRequest
-	(*GetPipelineExtensionSubscriptionResponse)(nil),     // 54: proto.GetPipelineExtensionSubscriptionResponse
-	(*ListPipelineExtensionSubscriptionsRequest)(nil),    // 55: proto.ListPipelineExtensionSubscriptionsRequest
-	(*ListPipelineExtensionSubscriptionsResponse)(nil),   // 56: proto.ListPipelineExtensionSubscriptionsResponse
-	(*EnablePipelineExtensionSubscriptionRequest)(nil),   // 57: proto.EnablePipelineExtensionSubscriptionRequest
-	(*EnablePipelineExtensionSubscriptionResponse)(nil),  // 58: proto.EnablePipelineExtensionSubscriptionResponse
-	(*DisablePipelineExtensionSubscriptionRequest)(nil),  // 59: proto.DisablePipelineExtensionSubscriptionRequest
-	(*DisablePipelineExtensionSubscriptionResponse)(nil), // 60: proto.DisablePipelineExtensionSubscriptionResponse
-	(*DeletePipelineExtensionSubscriptionRequest)(nil),   // 61: proto.DeletePipelineExtensionSubscriptionRequest
-	(*DeletePipelineExtensionSubscriptionResponse)(nil),  // 62: proto.DeletePipelineExtensionSubscriptionResponse
-	(*ListDeploymentsRequest)(nil),                       // 63: proto.ListDeploymentsRequest
-	(*ListDeploymentsResponse)(nil),                      // 64: proto.ListDeploymentsResponse
-	(*GetDeploymentRequest)(nil),                         // 65: proto.GetDeploymentRequest
-	(*GetDeploymentResponse)(nil),                        // 66: proto.GetDeploymentResponse
-	(*GetRunRequest)(nil),                                // 67: proto.GetRunRequest
-	(*GetRunResponse)(nil),                               // 68: proto.GetRunResponse
-	(*BatchGetRunsRequest)(nil),                          // 69: proto.BatchGetRunsRequest
-	(*BatchGetRunsResponse)(nil),                         // 70: proto.BatchGetRunsResponse
-	(*ListRunsRequest)(nil),                              // 71: proto.ListRunsRequest
-	(*ListRunsResponse)(nil),                             // 72: proto.ListRunsResponse
-	(*StartRunRequest)(nil),                              // 73: proto.StartRunRequest
-	(*StartRunResponse)(nil),                             // 74: proto.StartRunResponse
-	(*RetryRunRequest)(nil),                              // 75: proto.RetryRunRequest
-	(*RetryRunResponse)(nil),                             // 76: proto.RetryRunResponse
-	(*CancelRunRequest)(nil),                             // 77: proto.CancelRunRequest
-	(*CancelRunResponse)(nil),                            // 78: proto.CancelRunResponse
-	(*CancelAllRunsRequest)(nil),                         // 79: proto.CancelAllRunsRequest
-	(*CancelAllRunsResponse)(nil),                        // 80: proto.CancelAllRunsResponse
-	(*ListTaskRunsRequest)(nil),                          // 81: proto.ListTaskRunsRequest
-	(*ListTaskRunsResponse)(nil),                         // 82: proto.ListTaskRunsResponse
-	(*GetTaskRunRequest)(nil),                            // 83: proto.GetTaskRunRequest
-	(*GetTaskRunResponse)(nil),                           // 84: proto.GetTaskRunResponse
-	(*CancelTaskRunRequest)(nil),                         // 85: proto.CancelTaskRunRequest
-	(*CancelTaskRunResponse)(nil),                        // 86: proto.CancelTaskRunResponse
-	(*AttachToTaskRunRequest)(nil),                       // 87: proto.AttachToTaskRunRequest
-	(*AttachToTaskRunInit)(nil),                          // 88: proto.AttachToTaskRunInit
-	(*AttachToTaskRunInput)(nil),                         // 89: proto.AttachToTaskRunInput
-	(*AttachToTaskRunOutput)(nil),                        // 90: proto.AttachToTaskRunOutput
-	(*GetTaskRunLogsRequest)(nil),                        // 91: proto.GetTaskRunLogsRequest
-	(*GetTaskRunLogsResponse)(nil),                       // 92: proto.GetTaskRunLogsResponse
-	(*DeleteTaskRunLogsRequest)(nil),                     // 93: proto.DeleteTaskRunLogsRequest
-	(*DeleteTaskRunLogsResponse)(nil),                    // 94: proto.DeleteTaskRunLogsResponse
-	(*GetExtensionRequest)(nil),                          // 95: proto.GetExtensionRequest
-	(*GetExtensionResponse)(nil),                         // 96: proto.GetExtensionResponse
-	(*ListExtensionsRequest)(nil),                        // 97: proto.ListExtensionsRequest
-	(*ListExtensionsResponse)(nil),                       // 98: proto.ListExtensionsResponse
-	(*InstallExtensionRequest)(nil),                      // 99: proto.InstallExtensionRequest
-	(*InstallExtensionResponse)(nil),                     // 100: proto.InstallExtensionResponse
-	(*UninstallExtensionRequest)(nil),                    // 101: proto.UninstallExtensionRequest
-	(*UninstallExtensionResponse)(nil),                   // 102: proto.UninstallExtensionResponse
-	(*EnableExtensionRequest)(nil),                       // 103: proto.EnableExtensionRequest
-	(*EnableExtensionResponse)(nil),                      // 104: proto.EnableExtensionResponse
-	(*DisableExtensionRequest)(nil),                      // 105: proto.DisableExtensionRequest
-	(*DisableExtensionResponse)(nil),                     // 106: proto.DisableExtensionResponse
-	(*GetExtensionInstallInstructionsRequest)(nil),       // 107: proto.GetExtensionInstallInstructionsRequest
-	(*GetExtensionInstallInstructionsResponse)(nil),      // 108: proto.GetExtensionInstallInstructionsResponse
-	(*ExtensionInfoRequest)(nil),                         // 109: proto.ExtensionInfoRequest
-	(*ExtensionInfoResponse)(nil),                        // 110: proto.ExtensionInfoResponse
-	(*ExtensionSubscribeRequest)(nil),                    // 111: proto.ExtensionSubscribeRequest
-	(*ExtensionSubscribeResponse)(nil),                   // 112: proto.ExtensionSubscribeResponse
-	(*ExtensionUnsubscribeRequest)(nil),                  // 113: proto.ExtensionUnsubscribeRequest
-	(*ExtensionUnsubscribeResponse)(nil),                 // 114: proto.ExtensionUnsubscribeResponse
-	(*ExtensionShutdownRequest)(nil),                     // 115: proto.ExtensionShutdownRequest
-	(*ExtensionShutdownResponse)(nil),                    // 116: proto.ExtensionShutdownResponse
-	(*ExtensionExternalEventRequest)(nil),                // 117: proto.ExtensionExternalEventRequest
-	(*ExtensionExternalEventResponse)(nil),               // 118: proto.ExtensionExternalEventResponse
-	(*GetEventRequest)(nil),                              // 119: proto.GetEventRequest
-	(*GetEventResponse)(nil),                             // 120: proto.GetEventResponse
-	(*ListEventsRequest)(nil),                            // 121: proto.ListEventsRequest
-	(*ListEventsResponse)(nil),                           // 122: proto.ListEventsResponse
-	(*GetPipelineObjectRequest)(nil),                     // 123: proto.GetPipelineObjectRequest
-	(*GetPipelineObjectResponse)(nil),                    // 124: proto.GetPipelineObjectResponse
-	(*ListPipelineObjectsRequest)(nil),                   // 125: proto.ListPipelineObjectsRequest
-	(*ListPipelineObjectsResponse)(nil),                  // 126: proto.ListPipelineObjectsResponse
-	(*PutPipelineObjectRequest)(nil),                     // 127: proto.PutPipelineObjectRequest
-	(*PutPipelineObjectResponse)(nil),                    // 128: proto.PutPipelineObjectResponse
-	(*DeletePipelineObjectRequest)(nil),                  // 129: proto.DeletePipelineObjectRequest
-	(*DeletePipelineObjectResponse)(nil),                 // 130: proto.DeletePipelineObjectResponse
-	(*GetRunObjectRequest)(nil),                          // 131: proto.GetRunObjectRequest
-	(*GetRunObjectResponse)(nil),                         // 132: proto.GetRunObjectResponse
-	(*ListRunObjectsRequest)(nil),                        // 133: proto.ListRunObjectsRequest
-	(*ListRunObjectsResponse)(nil),                       // 134: proto.ListRunObjectsResponse
-	(*PutRunObjectRequest)(nil),                          // 135: proto.PutRunObjectRequest
-	(*PutRunObjectResponse)(nil),                         // 136: proto.PutRunObjectResponse
-	(*DeleteRunObjectRequest)(nil),                       // 137: proto.DeleteRunObjectRequest
-	(*DeleteRunObjectResponse)(nil),                      // 138: proto.DeleteRunObjectResponse
-	(*GetPipelineSecretRequest)(nil),                     // 139: proto.GetPipelineSecretRequest
-	(*GetPipelineSecretResponse)(nil),                    // 140: proto.GetPipelineSecretResponse
-	(*ListPipelineSecretsRequest)(nil),                   // 141: proto.ListPipelineSecretsRequest
-	(*ListPipelineSecretsResponse)(nil),                  // 142: proto.ListPipelineSecretsResponse
-	(*PutPipelineSecretRequest)(nil),                     // 143: proto.PutPipelineSecretRequest
-	(*PutPipelineSecretResponse)(nil),                    // 144: proto.PutPipelineSecretResponse
-	(*DeletePipelineSecretRequest)(nil),                  // 145: proto.DeletePipelineSecretRequest
-	(*DeletePipelineSecretResponse)(nil),                 // 146: proto.DeletePipelineSecretResponse
-	(*GetGlobalSecretRequest)(nil),                       // 147: proto.GetGlobalSecretRequest
-	(*GetGlobalSecretResponse)(nil),                      // 148: proto.GetGlobalSecretResponse
-	(*ListGlobalSecretsRequest)(nil),                     // 149: proto.ListGlobalSecretsRequest
-	(*ListGlobalSecretsResponse)(nil),                    // 150: proto.ListGlobalSecretsResponse
-	(*PutGlobalSecretRequest)(nil),                       // 151: proto.PutGlobalSecretRequest
-	(*PutGlobalSecretResponse)(nil),                      // 152: proto.PutGlobalSecretResponse
-	(*DeleteGlobalSecretRequest)(nil),                    // 153: proto.DeleteGlobalSecretRequest
-	(*DeleteGlobalSecretResponse)(nil),                   // 154: proto.DeleteGlobalSecretResponse
-	nil,                                                  // 155: proto.CreateTokenRequest.MetadataEntry
-	nil,                                                  // 156: proto.CreatePipelineExtensionSubscriptionRequest.SettingsEntry
-	nil,                                                  // 157: proto.StartRunRequest.VariablesEntry
-	nil,                                                  // 158: proto.InstallExtensionRequest.VariablesEntry
-	nil,                                                  // 159: proto.ExtensionSubscribeRequest.ConfigEntry
-	(*Token)(nil),                                        // 160: proto.Token
-	(*Namespace)(nil),                                    // 161: proto.Namespace
-	(*Pipeline)(nil),                                     // 162: proto.Pipeline
-	(*PipelineMetadata)(nil),                             // 163: proto.PipelineMetadata
-	(*UserPipelineConfig)(nil),                           // 164: proto.UserPipelineConfig
-	(*PipelineConfig)(nil),                               // 165: proto.PipelineConfig
-	(*PipelineExtensionSubscription)(nil),                // 166: proto.PipelineExtensionSubscription
-	(*Deployment)(nil),                                   // 167: proto.Deployment
-	(*Run)(nil),                                          // 168: proto.Run
-	(*Initiator)(nil),                                    // 169: proto.Initiator
-	(*TaskRun)(nil),                                      // 170: proto.TaskRun
-	(*Extension)(nil),                                    // 171: proto.Extension
-	(*Event)(nil),                                        // 172: proto.Event
-	(*ObjectStoreKey)(nil),                               // 173: proto.ObjectStoreKey
-	(*SecretStoreKey)(nil),                               // 174: proto.SecretStoreKey
+	(CreateTokenRequest_Kind)(0),                                 // 0: proto.CreateTokenRequest.Kind
+	(*GetSystemInfoRequest)(nil),                                 // 1: proto.GetSystemInfoRequest
+	(*GetSystemInfoResponse)(nil),                                // 2: proto.GetSystemInfoResponse
+	(*RepairOrphanRequest)(nil),                                  // 3: proto.RepairOrphanRequest
+	(*RepairOrphanResponse)(nil),                                 // 4: proto.RepairOrphanResponse
+	(*ToggleEventIngressRequest)(nil),                            // 5: proto.ToggleEventIngressRequest
+	(*ToggleEventIngressResponse)(nil),                           // 6: proto.ToggleEventIngressResponse
+	(*CreateTokenRequest)(nil),                                   // 7: proto.CreateTokenRequest
+	(*CreateTokenResponse)(nil),                                  // 8: proto.CreateTokenResponse
+	(*BootstrapTokenRequest)(nil),                                // 9: proto.BootstrapTokenRequest
+	(*BootstrapTokenResponse)(nil),                               // 10: proto.BootstrapTokenResponse
+	(*GetTokenRequest)(nil),                                      // 11: proto.GetTokenRequest
+	(*GetTokenResponse)(nil),                                     // 12: proto.GetTokenResponse
+	(*ListTokensRequest)(nil),                                    // 13: proto.ListTokensRequest
+	(*ListTokensResponse)(nil),                                   // 14: proto.ListTokensResponse
+	(*DeleteTokenRequest)(nil),                                   // 15: proto.DeleteTokenRequest
+	(*DeleteTokenResponse)(nil),                                  // 16: proto.DeleteTokenResponse
+	(*EnableTokenRequest)(nil),                                   // 17: proto.EnableTokenRequest
+	(*EnableTokenResponse)(nil),                                  // 18: proto.EnableTokenResponse
+	(*DisableTokenRequest)(nil),                                  // 19: proto.DisableTokenRequest
+	(*DisableTokenResponse)(nil),                                 // 20: proto.DisableTokenResponse
+	(*GetNamespaceRequest)(nil),                                  // 21: proto.GetNamespaceRequest
+	(*GetNamespaceResponse)(nil),                                 // 22: proto.GetNamespaceResponse
+	(*ListNamespacesRequest)(nil),                                // 23: proto.ListNamespacesRequest
+	(*ListNamespacesResponse)(nil),                               // 24: proto.ListNamespacesResponse
+	(*CreateNamespaceRequest)(nil),                               // 25: proto.CreateNamespaceRequest
+	(*CreateNamespaceResponse)(nil),                              // 26: proto.CreateNamespaceResponse
+	(*UpdateNamespaceRequest)(nil),                               // 27: proto.UpdateNamespaceRequest
+	(*UpdateNamespaceResponse)(nil),                              // 28: proto.UpdateNamespaceResponse
+	(*DeleteNamespaceRequest)(nil),                               // 29: proto.DeleteNamespaceRequest
+	(*DeleteNamespaceResponse)(nil),                              // 30: proto.DeleteNamespaceResponse
+	(*GetPipelineRequest)(nil),                                   // 31: proto.GetPipelineRequest
+	(*GetPipelineResponse)(nil),                                  // 32: proto.GetPipelineResponse
+	(*ListPipelinesRequest)(nil),                                 // 33: proto.ListPipelinesRequest
+	(*ListPipelinesResponse)(nil),                                // 34: proto.ListPipelinesResponse
+	(*DisablePipelineRequest)(nil),                               // 35: proto.DisablePipelineRequest
+	(*DisablePipelineResponse)(nil),                              // 36: proto.DisablePipelineResponse
+	(*EnablePipelineRequest)(nil),                                // 37: proto.EnablePipelineRequest
+	(*EnablePipelineResponse)(nil),                               // 38: proto.EnablePipelineResponse
+	(*RegisterPipelineConfigRequest)(nil),                        // 39: proto.RegisterPipelineConfigRequest
+	(*RegisterPipelineConfigResponse)(nil),                       // 40: proto.RegisterPipelineConfigResponse
+	(*DeployPipelineRequest)(nil),                                // 41: proto.DeployPipelineRequest
+	(*DeployPipelineResponse)(nil),                               // 42: proto.DeployPipelineResponse
+	(*DeletePipelineRequest)(nil),                                // 43: proto.DeletePipelineRequest
+	(*DeletePipelineResponse)(nil),                               // 44: proto.DeletePipelineResponse
+	(*GetPipelineConfigRequest)(nil),                             // 45: proto.GetPipelineConfigRequest
+	(*GetPipelineConfigResponse)(nil),                            // 46: proto.GetPipelineConfigResponse
+	(*ListPipelineConfigsRequest)(nil),                           // 47: proto.ListPipelineConfigsRequest
+	(*ListPipelineConfigsResponse)(nil),                          // 48: proto.ListPipelineConfigsResponse
+	(*DeletePipelineConfigRequest)(nil),                          // 49: proto.DeletePipelineConfigRequest
+	(*DeletePipelineConfigResponse)(nil),                         // 50: proto.DeletePipelineConfigResponse
+	(*CreatePipelineExtensionSubscriptionRequest)(nil),           // 51: proto.CreatePipelineExtensionSubscriptionRequest
+	(*CreatePipelineExtensionSubscriptionResponse)(nil),          // 52: proto.CreatePipelineExtensionSubscriptionResponse
+	(*GetPipelineExtensionSubscriptionRequest)(nil),              // 53: proto.GetPipelineExtensionSubscriptionRequest
+	(*GetPipelineExtensionSubscriptionResponse)(nil),             // 54: proto.GetPipelineExtensionSubscriptionResponse
+	(*ListPipelineExtensionSubscriptionsRequest)(nil),            // 55: proto.ListPipelineExtensionSubscriptionsRequest
+	(*ListPipelineExtensionSubscriptionsResponse)(nil),           // 56: proto.ListPipelineExtensionSubscriptionsResponse
+	(*EnablePipelineExtensionSubscriptionRequest)(nil),           // 57: proto.EnablePipelineExtensionSubscriptionRequest
+	(*EnablePipelineExtensionSubscriptionResponse)(nil),          // 58: proto.EnablePipelineExtensionSubscriptionResponse
+	(*DisablePipelineExtensionSubscriptionRequest)(nil),          // 59: proto.DisablePipelineExtensionSubscriptionRequest
+	(*DisablePipelineExtensionSubscriptionResponse)(nil),         // 60: proto.DisablePipelineExtensionSubscriptionResponse
+	(*DeletePipelineExtensionSubscriptionRequest)(nil),           // 61: proto.DeletePipelineExtensionSubscriptionRequest
+	(*DeletePipelineExtensionSubscriptionResponse)(nil),          // 62: proto.DeletePipelineExtensionSubscriptionResponse
+	(*ListDeploymentsRequest)(nil),                               // 63: proto.ListDeploymentsRequest
+	(*ListDeploymentsResponse)(nil),                              // 64: proto.ListDeploymentsResponse
+	(*GetDeploymentRequest)(nil),                                 // 65: proto.GetDeploymentRequest
+	(*GetDeploymentResponse)(nil),                                // 66: proto.GetDeploymentResponse
+	(*GetRunRequest)(nil),                                        // 67: proto.GetRunRequest
+	(*GetRunResponse)(nil),                                       // 68: proto.GetRunResponse
+	(*BatchGetRunsRequest)(nil),                                  // 69: proto.BatchGetRunsRequest
+	(*BatchGetRunsResponse)(nil),                                 // 70: proto.BatchGetRunsResponse
+	(*ListRunsRequest)(nil),                                      // 71: proto.ListRunsRequest
+	(*ListRunsResponse)(nil),                                     // 72: proto.ListRunsResponse
+	(*StartRunRequest)(nil),                                      // 73: proto.StartRunRequest
+	(*StartRunResponse)(nil),                                     // 74: proto.StartRunResponse
+	(*RetryRunRequest)(nil),                                      // 75: proto.RetryRunRequest
+	(*RetryRunResponse)(nil),                                     // 76: proto.RetryRunResponse
+	(*CancelRunRequest)(nil),                                     // 77: proto.CancelRunRequest
+	(*CancelRunResponse)(nil),                                    // 78: proto.CancelRunResponse
+	(*CancelAllRunsRequest)(nil),                                 // 79: proto.CancelAllRunsRequest
+	(*CancelAllRunsResponse)(nil),                                // 80: proto.CancelAllRunsResponse
+	(*ListTaskRunsRequest)(nil),                                  // 81: proto.ListTaskRunsRequest
+	(*ListTaskRunsResponse)(nil),                                 // 82: proto.ListTaskRunsResponse
+	(*GetTaskRunRequest)(nil),                                    // 83: proto.GetTaskRunRequest
+	(*GetTaskRunResponse)(nil),                                   // 84: proto.GetTaskRunResponse
+	(*CancelTaskRunRequest)(nil),                                 // 85: proto.CancelTaskRunRequest
+	(*CancelTaskRunResponse)(nil),                                // 86: proto.CancelTaskRunResponse
+	(*AttachToTaskRunRequest)(nil),                               // 87: proto.AttachToTaskRunRequest
+	(*AttachToTaskRunInit)(nil),                                  // 88: proto.AttachToTaskRunInit
+	(*AttachToTaskRunInput)(nil),                                 // 89: proto.AttachToTaskRunInput
+	(*AttachToTaskRunOutput)(nil),                                // 90: proto.AttachToTaskRunOutput
+	(*GetTaskRunLogsRequest)(nil),                                // 91: proto.GetTaskRunLogsRequest
+	(*GetTaskRunLogsResponse)(nil),                               // 92: proto.GetTaskRunLogsResponse
+	(*DeleteTaskRunLogsRequest)(nil),                             // 93: proto.DeleteTaskRunLogsRequest
+	(*DeleteTaskRunLogsResponse)(nil),                            // 94: proto.DeleteTaskRunLogsResponse
+	(*GetExtensionRequest)(nil),                                  // 95: proto.GetExtensionRequest
+	(*GetExtensionResponse)(nil),                                 // 96: proto.GetExtensionResponse
+	(*ListExtensionsRequest)(nil),                                // 97: proto.ListExtensionsRequest
+	(*ListExtensionsResponse)(nil),                               // 98: proto.ListExtensionsResponse
+	(*InstallExtensionRequest)(nil),                              // 99: proto.InstallExtensionRequest
+	(*InstallExtensionResponse)(nil),                             // 100: proto.InstallExtensionResponse
+	(*UninstallExtensionRequest)(nil),                            // 101: proto.UninstallExtensionRequest
+	(*UninstallExtensionResponse)(nil),                           // 102: proto.UninstallExtensionResponse
+	(*EnableExtensionRequest)(nil),                               // 103: proto.EnableExtensionRequest
+	(*EnableExtensionResponse)(nil),                              // 104: proto.EnableExtensionResponse
+	(*DisableExtensionRequest)(nil),                              // 105: proto.DisableExtensionRequest
+	(*DisableExtensionResponse)(nil),                             // 106: proto.DisableExtensionResponse
+	(*RunExtensionInstallerClientMessage)(nil),                   // 107: proto.RunExtensionInstallerClientMessage
+	(*RunExtensionInstallerExtensionMessage)(nil),                // 108: proto.RunExtensionInstallerExtensionMessage
+	(*RunPipelineConfiguratorClientMessage)(nil),                 // 109: proto.RunPipelineConfiguratorClientMessage
+	(*RunPipelineConfiguratorExtensionMessage)(nil),              // 110: proto.RunPipelineConfiguratorExtensionMessage
+	(*ExtensionInitRequest)(nil),                                 // 111: proto.ExtensionInitRequest
+	(*ExtensionInitResponse)(nil),                                // 112: proto.ExtensionInitResponse
+	(*ExtensionInfoRequest)(nil),                                 // 113: proto.ExtensionInfoRequest
+	(*ExtensionInfoResponse)(nil),                                // 114: proto.ExtensionInfoResponse
+	(*ExtensionSubscribeRequest)(nil),                            // 115: proto.ExtensionSubscribeRequest
+	(*ExtensionSubscribeResponse)(nil),                           // 116: proto.ExtensionSubscribeResponse
+	(*ExtensionUnsubscribeRequest)(nil),                          // 117: proto.ExtensionUnsubscribeRequest
+	(*ExtensionUnsubscribeResponse)(nil),                         // 118: proto.ExtensionUnsubscribeResponse
+	(*ExtensionShutdownRequest)(nil),                             // 119: proto.ExtensionShutdownRequest
+	(*ExtensionShutdownResponse)(nil),                            // 120: proto.ExtensionShutdownResponse
+	(*ExtensionExternalEventRequest)(nil),                        // 121: proto.ExtensionExternalEventRequest
+	(*ExtensionExternalEventResponse)(nil),                       // 122: proto.ExtensionExternalEventResponse
+	(*ExtensionRunExtensionInstallerClientMessage)(nil),          // 123: proto.ExtensionRunExtensionInstallerClientMessage
+	(*ExtensionRunExtensionInstallerExtensionMessage)(nil),       // 124: proto.ExtensionRunExtensionInstallerExtensionMessage
+	(*ExtensionRunPipelineConfiguratorClientMessage)(nil),        // 125: proto.ExtensionRunPipelineConfiguratorClientMessage
+	(*ExtensionRunPipelineConfiguratorExtensionMessage)(nil),     // 126: proto.ExtensionRunPipelineConfiguratorExtensionMessage
+	(*GetEventRequest)(nil),                                      // 127: proto.GetEventRequest
+	(*GetEventResponse)(nil),                                     // 128: proto.GetEventResponse
+	(*ListEventsRequest)(nil),                                    // 129: proto.ListEventsRequest
+	(*ListEventsResponse)(nil),                                   // 130: proto.ListEventsResponse
+	(*GetPipelineObjectRequest)(nil),                             // 131: proto.GetPipelineObjectRequest
+	(*GetPipelineObjectResponse)(nil),                            // 132: proto.GetPipelineObjectResponse
+	(*ListPipelineObjectsRequest)(nil),                           // 133: proto.ListPipelineObjectsRequest
+	(*ListPipelineObjectsResponse)(nil),                          // 134: proto.ListPipelineObjectsResponse
+	(*PutPipelineObjectRequest)(nil),                             // 135: proto.PutPipelineObjectRequest
+	(*PutPipelineObjectResponse)(nil),                            // 136: proto.PutPipelineObjectResponse
+	(*DeletePipelineObjectRequest)(nil),                          // 137: proto.DeletePipelineObjectRequest
+	(*DeletePipelineObjectResponse)(nil),                         // 138: proto.DeletePipelineObjectResponse
+	(*GetRunObjectRequest)(nil),                                  // 139: proto.GetRunObjectRequest
+	(*GetRunObjectResponse)(nil),                                 // 140: proto.GetRunObjectResponse
+	(*ListRunObjectsRequest)(nil),                                // 141: proto.ListRunObjectsRequest
+	(*ListRunObjectsResponse)(nil),                               // 142: proto.ListRunObjectsResponse
+	(*PutRunObjectRequest)(nil),                                  // 143: proto.PutRunObjectRequest
+	(*PutRunObjectResponse)(nil),                                 // 144: proto.PutRunObjectResponse
+	(*DeleteRunObjectRequest)(nil),                               // 145: proto.DeleteRunObjectRequest
+	(*DeleteRunObjectResponse)(nil),                              // 146: proto.DeleteRunObjectResponse
+	(*GetPipelineSecretRequest)(nil),                             // 147: proto.GetPipelineSecretRequest
+	(*GetPipelineSecretResponse)(nil),                            // 148: proto.GetPipelineSecretResponse
+	(*ListPipelineSecretsRequest)(nil),                           // 149: proto.ListPipelineSecretsRequest
+	(*ListPipelineSecretsResponse)(nil),                          // 150: proto.ListPipelineSecretsResponse
+	(*PutPipelineSecretRequest)(nil),                             // 151: proto.PutPipelineSecretRequest
+	(*PutPipelineSecretResponse)(nil),                            // 152: proto.PutPipelineSecretResponse
+	(*DeletePipelineSecretRequest)(nil),                          // 153: proto.DeletePipelineSecretRequest
+	(*DeletePipelineSecretResponse)(nil),                         // 154: proto.DeletePipelineSecretResponse
+	(*GetGlobalSecretRequest)(nil),                               // 155: proto.GetGlobalSecretRequest
+	(*GetGlobalSecretResponse)(nil),                              // 156: proto.GetGlobalSecretResponse
+	(*ListGlobalSecretsRequest)(nil),                             // 157: proto.ListGlobalSecretsRequest
+	(*ListGlobalSecretsResponse)(nil),                            // 158: proto.ListGlobalSecretsResponse
+	(*PutGlobalSecretRequest)(nil),                               // 159: proto.PutGlobalSecretRequest
+	(*PutGlobalSecretResponse)(nil),                              // 160: proto.PutGlobalSecretResponse
+	(*DeleteGlobalSecretRequest)(nil),                            // 161: proto.DeleteGlobalSecretRequest
+	(*DeleteGlobalSecretResponse)(nil),                           // 162: proto.DeleteGlobalSecretResponse
+	nil,                                                          // 163: proto.CreateTokenRequest.MetadataEntry
+	nil,                                                          // 164: proto.CreatePipelineExtensionSubscriptionRequest.SettingsEntry
+	nil,                                                          // 165: proto.StartRunRequest.VariablesEntry
+	nil,                                                          // 166: proto.InstallExtensionRequest.VariablesEntry
+	(*RunExtensionInstallerClientMessage_Init)(nil),              // 167: proto.RunExtensionInstallerClientMessage.Init
+	(*RunExtensionInstallerExtensionMessage_ConfigSetting)(nil),  // 168: proto.RunExtensionInstallerExtensionMessage.ConfigSetting
+	(*RunPipelineConfiguratorClientMessage_Init)(nil),            // 169: proto.RunPipelineConfiguratorClientMessage.Init
+	(*RunPipelineConfiguratorExtensionMessage_ParamSetting)(nil), // 170: proto.RunPipelineConfiguratorExtensionMessage.ParamSetting
+	nil, // 171: proto.ExtensionInitRequest.ConfigEntry
+	nil, // 172: proto.ExtensionSubscribeRequest.ConfigEntry
+	(*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting)(nil),  // 173: proto.ExtensionRunExtensionInstallerExtensionMessage.ConfigSetting
+	(*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting)(nil), // 174: proto.ExtensionRunPipelineConfiguratorExtensionMessage.ParamSetting
+	(*Token)(nil),                         // 175: proto.Token
+	(*Namespace)(nil),                     // 176: proto.Namespace
+	(*Pipeline)(nil),                      // 177: proto.Pipeline
+	(*PipelineMetadata)(nil),              // 178: proto.PipelineMetadata
+	(*UserPipelineConfig)(nil),            // 179: proto.UserPipelineConfig
+	(*PipelineConfig)(nil),                // 180: proto.PipelineConfig
+	(*PipelineExtensionSubscription)(nil), // 181: proto.PipelineExtensionSubscription
+	(*Deployment)(nil),                    // 182: proto.Deployment
+	(*Run)(nil),                           // 183: proto.Run
+	(*Initiator)(nil),                     // 184: proto.Initiator
+	(*TaskRun)(nil),                       // 185: proto.TaskRun
+	(*Extension)(nil),                     // 186: proto.Extension
+	(*Event)(nil),                         // 187: proto.Event
+	(*ObjectStoreKey)(nil),                // 188: proto.ObjectStoreKey
+	(*SecretStoreKey)(nil),                // 189: proto.SecretStoreKey
 }
 var file_gofer_transport_proto_depIdxs = []int32{
 	0,   // 0: proto.CreateTokenRequest.kind:type_name -> proto.CreateTokenRequest.Kind
-	155, // 1: proto.CreateTokenRequest.metadata:type_name -> proto.CreateTokenRequest.MetadataEntry
-	160, // 2: proto.CreateTokenResponse.details:type_name -> proto.Token
-	160, // 3: proto.BootstrapTokenResponse.details:type_name -> proto.Token
-	160, // 4: proto.GetTokenResponse.details:type_name -> proto.Token
-	160, // 5: proto.ListTokensResponse.tokens:type_name -> proto.Token
-	161, // 6: proto.GetNamespaceResponse.namespace:type_name -> proto.Namespace
-	161, // 7: proto.ListNamespacesResponse.namespaces:type_name -> proto.Namespace
-	161, // 8: proto.CreateNamespaceResponse.namespace:type_name -> proto.Namespace
-	162, // 9: proto.GetPipelineResponse.pipeline:type_name -> proto.Pipeline
-	163, // 10: proto.ListPipelinesResponse.pipelines:type_name -> proto.PipelineMetadata
-	164, // 11: proto.RegisterPipelineConfigRequest.pipeline_config:type_name -> proto.UserPipelineConfig
-	162, // 12: proto.RegisterPipelineConfigResponse.pipeline:type_name -> proto.Pipeline
-	165, // 13: proto.GetPipelineConfigResponse.config:type_name -> proto.PipelineConfig
-	165, // 14: proto.ListPipelineConfigsResponse.configs:type_name -> proto.PipelineConfig
-	156, // 15: proto.CreatePipelineExtensionSubscriptionRequest.settings:type_name -> proto.CreatePipelineExtensionSubscriptionRequest.SettingsEntry
-	166, // 16: proto.GetPipelineExtensionSubscriptionResponse.subscription:type_name -> proto.PipelineExtensionSubscription
-	166, // 17: proto.ListPipelineExtensionSubscriptionsResponse.subscriptions:type_name -> proto.PipelineExtensionSubscription
-	167, // 18: proto.ListDeploymentsResponse.Deployments:type_name -> proto.Deployment
-	167, // 19: proto.GetDeploymentResponse.deployment:type_name -> proto.Deployment
-	168, // 20: proto.GetRunResponse.run:type_name -> proto.Run
-	168, // 21: proto.BatchGetRunsResponse.runs:type_name -> proto.Run
-	168, // 22: proto.ListRunsResponse.runs:type_name -> proto.Run
-	157, // 23: proto.StartRunRequest.variables:type_name -> proto.StartRunRequest.VariablesEntry
-	169, // 24: proto.StartRunRequest.initiator:type_name -> proto.Initiator
-	168, // 25: proto.StartRunResponse.run:type_name -> proto.Run
-	169, // 26: proto.RetryRunRequest.initiator:type_name -> proto.Initiator
-	168, // 27: proto.RetryRunResponse.run:type_name -> proto.Run
-	170, // 28: proto.ListTaskRunsResponse.task_runs:type_name -> proto.TaskRun
-	170, // 29: proto.GetTaskRunResponse.task_run:type_name -> proto.TaskRun
+	163, // 1: proto.CreateTokenRequest.metadata:type_name -> proto.CreateTokenRequest.MetadataEntry
+	175, // 2: proto.CreateTokenResponse.details:type_name -> proto.Token
+	175, // 3: proto.BootstrapTokenResponse.details:type_name -> proto.Token
+	175, // 4: proto.GetTokenResponse.details:type_name -> proto.Token
+	175, // 5: proto.ListTokensResponse.tokens:type_name -> proto.Token
+	176, // 6: proto.GetNamespaceResponse.namespace:type_name -> proto.Namespace
+	176, // 7: proto.ListNamespacesResponse.namespaces:type_name -> proto.Namespace
+	176, // 8: proto.CreateNamespaceResponse.namespace:type_name -> proto.Namespace
+	177, // 9: proto.GetPipelineResponse.pipeline:type_name -> proto.Pipeline
+	178, // 10: proto.ListPipelinesResponse.pipelines:type_name -> proto.PipelineMetadata
+	179, // 11: proto.RegisterPipelineConfigRequest.pipeline_config:type_name -> proto.UserPipelineConfig
+	177, // 12: proto.RegisterPipelineConfigResponse.pipeline:type_name -> proto.Pipeline
+	180, // 13: proto.GetPipelineConfigResponse.config:type_name -> proto.PipelineConfig
+	180, // 14: proto.ListPipelineConfigsResponse.configs:type_name -> proto.PipelineConfig
+	164, // 15: proto.CreatePipelineExtensionSubscriptionRequest.settings:type_name -> proto.CreatePipelineExtensionSubscriptionRequest.SettingsEntry
+	181, // 16: proto.GetPipelineExtensionSubscriptionResponse.subscription:type_name -> proto.PipelineExtensionSubscription
+	181, // 17: proto.ListPipelineExtensionSubscriptionsResponse.subscriptions:type_name -> proto.PipelineExtensionSubscription
+	182, // 18: proto.ListDeploymentsResponse.Deployments:type_name -> proto.Deployment
+	182, // 19: proto.GetDeploymentResponse.deployment:type_name -> proto.Deployment
+	183, // 20: proto.GetRunResponse.run:type_name -> proto.Run
+	183, // 21: proto.BatchGetRunsResponse.runs:type_name -> proto.Run
+	183, // 22: proto.ListRunsResponse.runs:type_name -> proto.Run
+	165, // 23: proto.StartRunRequest.variables:type_name -> proto.StartRunRequest.VariablesEntry
+	184, // 24: proto.StartRunRequest.initiator:type_name -> proto.Initiator
+	183, // 25: proto.StartRunResponse.run:type_name -> proto.Run
+	184, // 26: proto.RetryRunRequest.initiator:type_name -> proto.Initiator
+	183, // 27: proto.RetryRunResponse.run:type_name -> proto.Run
+	185, // 28: proto.ListTaskRunsResponse.task_runs:type_name -> proto.TaskRun
+	185, // 29: proto.GetTaskRunResponse.task_run:type_name -> proto.TaskRun
 	88,  // 30: proto.AttachToTaskRunRequest.init:type_name -> proto.AttachToTaskRunInit
 	89,  // 31: proto.AttachToTaskRunRequest.input:type_name -> proto.AttachToTaskRunInput
-	171, // 32: proto.GetExtensionResponse.extension:type_name -> proto.Extension
-	171, // 33: proto.ListExtensionsResponse.extensions:type_name -> proto.Extension
-	158, // 34: proto.InstallExtensionRequest.variables:type_name -> proto.InstallExtensionRequest.VariablesEntry
-	159, // 35: proto.ExtensionSubscribeRequest.config:type_name -> proto.ExtensionSubscribeRequest.ConfigEntry
-	172, // 36: proto.GetEventResponse.event:type_name -> proto.Event
-	172, // 37: proto.ListEventsResponse.event:type_name -> proto.Event
-	173, // 38: proto.ListPipelineObjectsResponse.keys:type_name -> proto.ObjectStoreKey
-	173, // 39: proto.ListRunObjectsResponse.keys:type_name -> proto.ObjectStoreKey
-	174, // 40: proto.GetPipelineSecretResponse.metadata:type_name -> proto.SecretStoreKey
-	174, // 41: proto.ListPipelineSecretsResponse.keys:type_name -> proto.SecretStoreKey
-	174, // 42: proto.GetGlobalSecretResponse.metadata:type_name -> proto.SecretStoreKey
-	174, // 43: proto.ListGlobalSecretsResponse.keys:type_name -> proto.SecretStoreKey
-	44,  // [44:44] is the sub-list for method output_type
-	44,  // [44:44] is the sub-list for method input_type
-	44,  // [44:44] is the sub-list for extension type_name
-	44,  // [44:44] is the sub-list for extension extendee
-	0,   // [0:44] is the sub-list for field type_name
+	186, // 32: proto.GetExtensionResponse.extension:type_name -> proto.Extension
+	186, // 33: proto.ListExtensionsResponse.extensions:type_name -> proto.Extension
+	166, // 34: proto.InstallExtensionRequest.variables:type_name -> proto.InstallExtensionRequest.VariablesEntry
+	167, // 35: proto.RunExtensionInstallerClientMessage.init:type_name -> proto.RunExtensionInstallerClientMessage.Init
+	168, // 36: proto.RunExtensionInstallerExtensionMessage.config_setting:type_name -> proto.RunExtensionInstallerExtensionMessage.ConfigSetting
+	169, // 37: proto.RunPipelineConfiguratorClientMessage.init:type_name -> proto.RunPipelineConfiguratorClientMessage.Init
+	170, // 38: proto.RunPipelineConfiguratorExtensionMessage.param_setting:type_name -> proto.RunPipelineConfiguratorExtensionMessage.ParamSetting
+	171, // 39: proto.ExtensionInitRequest.config:type_name -> proto.ExtensionInitRequest.ConfigEntry
+	172, // 40: proto.ExtensionSubscribeRequest.config:type_name -> proto.ExtensionSubscribeRequest.ConfigEntry
+	173, // 41: proto.ExtensionRunExtensionInstallerExtensionMessage.config_setting:type_name -> proto.ExtensionRunExtensionInstallerExtensionMessage.ConfigSetting
+	174, // 42: proto.ExtensionRunPipelineConfiguratorExtensionMessage.param_setting:type_name -> proto.ExtensionRunPipelineConfiguratorExtensionMessage.ParamSetting
+	187, // 43: proto.GetEventResponse.event:type_name -> proto.Event
+	187, // 44: proto.ListEventsResponse.event:type_name -> proto.Event
+	188, // 45: proto.ListPipelineObjectsResponse.keys:type_name -> proto.ObjectStoreKey
+	188, // 46: proto.ListRunObjectsResponse.keys:type_name -> proto.ObjectStoreKey
+	189, // 47: proto.GetPipelineSecretResponse.metadata:type_name -> proto.SecretStoreKey
+	189, // 48: proto.ListPipelineSecretsResponse.keys:type_name -> proto.SecretStoreKey
+	189, // 49: proto.GetGlobalSecretResponse.metadata:type_name -> proto.SecretStoreKey
+	189, // 50: proto.ListGlobalSecretsResponse.keys:type_name -> proto.SecretStoreKey
+	51,  // [51:51] is the sub-list for method output_type
+	51,  // [51:51] is the sub-list for method input_type
+	51,  // [51:51] is the sub-list for extension type_name
+	51,  // [51:51] is the sub-list for extension extendee
+	0,   // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_gofer_transport_proto_init() }
@@ -10592,7 +11696,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[106].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetExtensionInstallInstructionsRequest); i {
+			switch v := v.(*RunExtensionInstallerClientMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10604,7 +11708,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[107].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetExtensionInstallInstructionsResponse); i {
+			switch v := v.(*RunExtensionInstallerExtensionMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10616,7 +11720,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[108].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionInfoRequest); i {
+			switch v := v.(*RunPipelineConfiguratorClientMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10628,7 +11732,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[109].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionInfoResponse); i {
+			switch v := v.(*RunPipelineConfiguratorExtensionMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10640,7 +11744,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[110].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionSubscribeRequest); i {
+			switch v := v.(*ExtensionInitRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10652,7 +11756,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[111].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionSubscribeResponse); i {
+			switch v := v.(*ExtensionInitResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10664,7 +11768,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[112].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionUnsubscribeRequest); i {
+			switch v := v.(*ExtensionInfoRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10676,7 +11780,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[113].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionUnsubscribeResponse); i {
+			switch v := v.(*ExtensionInfoResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10688,7 +11792,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[114].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionShutdownRequest); i {
+			switch v := v.(*ExtensionSubscribeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10700,7 +11804,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[115].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionShutdownResponse); i {
+			switch v := v.(*ExtensionSubscribeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10712,7 +11816,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[116].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionExternalEventRequest); i {
+			switch v := v.(*ExtensionUnsubscribeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10724,7 +11828,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[117].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtensionExternalEventResponse); i {
+			switch v := v.(*ExtensionUnsubscribeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10736,7 +11840,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[118].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetEventRequest); i {
+			switch v := v.(*ExtensionShutdownRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10748,7 +11852,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[119].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetEventResponse); i {
+			switch v := v.(*ExtensionShutdownResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10760,7 +11864,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[120].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListEventsRequest); i {
+			switch v := v.(*ExtensionExternalEventRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10772,7 +11876,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[121].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListEventsResponse); i {
+			switch v := v.(*ExtensionExternalEventResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10784,7 +11888,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[122].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetPipelineObjectRequest); i {
+			switch v := v.(*ExtensionRunExtensionInstallerClientMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10796,7 +11900,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[123].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetPipelineObjectResponse); i {
+			switch v := v.(*ExtensionRunExtensionInstallerExtensionMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10808,7 +11912,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[124].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListPipelineObjectsRequest); i {
+			switch v := v.(*ExtensionRunPipelineConfiguratorClientMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10820,7 +11924,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[125].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListPipelineObjectsResponse); i {
+			switch v := v.(*ExtensionRunPipelineConfiguratorExtensionMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10832,7 +11936,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[126].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutPipelineObjectRequest); i {
+			switch v := v.(*GetEventRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10844,7 +11948,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[127].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutPipelineObjectResponse); i {
+			switch v := v.(*GetEventResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10856,7 +11960,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[128].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeletePipelineObjectRequest); i {
+			switch v := v.(*ListEventsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10868,7 +11972,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[129].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeletePipelineObjectResponse); i {
+			switch v := v.(*ListEventsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10880,7 +11984,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[130].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetRunObjectRequest); i {
+			switch v := v.(*GetPipelineObjectRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10892,7 +11996,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[131].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetRunObjectResponse); i {
+			switch v := v.(*GetPipelineObjectResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10904,7 +12008,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[132].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListRunObjectsRequest); i {
+			switch v := v.(*ListPipelineObjectsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10916,7 +12020,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[133].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListRunObjectsResponse); i {
+			switch v := v.(*ListPipelineObjectsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10928,7 +12032,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[134].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutRunObjectRequest); i {
+			switch v := v.(*PutPipelineObjectRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10940,7 +12044,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[135].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutRunObjectResponse); i {
+			switch v := v.(*PutPipelineObjectResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10952,7 +12056,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[136].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteRunObjectRequest); i {
+			switch v := v.(*DeletePipelineObjectRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10964,7 +12068,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[137].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteRunObjectResponse); i {
+			switch v := v.(*DeletePipelineObjectResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10976,7 +12080,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[138].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetPipelineSecretRequest); i {
+			switch v := v.(*GetRunObjectRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -10988,7 +12092,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[139].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetPipelineSecretResponse); i {
+			switch v := v.(*GetRunObjectResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11000,7 +12104,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[140].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListPipelineSecretsRequest); i {
+			switch v := v.(*ListRunObjectsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11012,7 +12116,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[141].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListPipelineSecretsResponse); i {
+			switch v := v.(*ListRunObjectsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11024,7 +12128,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[142].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutPipelineSecretRequest); i {
+			switch v := v.(*PutRunObjectRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11036,7 +12140,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[143].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutPipelineSecretResponse); i {
+			switch v := v.(*PutRunObjectResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11048,7 +12152,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[144].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeletePipelineSecretRequest); i {
+			switch v := v.(*DeleteRunObjectRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11060,7 +12164,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[145].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeletePipelineSecretResponse); i {
+			switch v := v.(*DeleteRunObjectResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11072,7 +12176,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[146].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetGlobalSecretRequest); i {
+			switch v := v.(*GetPipelineSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11084,7 +12188,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[147].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetGlobalSecretResponse); i {
+			switch v := v.(*GetPipelineSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11096,7 +12200,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[148].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListGlobalSecretsRequest); i {
+			switch v := v.(*ListPipelineSecretsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11108,7 +12212,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[149].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListGlobalSecretsResponse); i {
+			switch v := v.(*ListPipelineSecretsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11120,7 +12224,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[150].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutGlobalSecretRequest); i {
+			switch v := v.(*PutPipelineSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11132,7 +12236,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[151].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PutGlobalSecretResponse); i {
+			switch v := v.(*PutPipelineSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11144,7 +12248,7 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[152].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteGlobalSecretRequest); i {
+			switch v := v.(*DeletePipelineSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11156,7 +12260,175 @@ func file_gofer_transport_proto_init() {
 			}
 		}
 		file_gofer_transport_proto_msgTypes[153].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeletePipelineSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[154].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetGlobalSecretRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[155].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetGlobalSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[156].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListGlobalSecretsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[157].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListGlobalSecretsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[158].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PutGlobalSecretRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[159].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PutGlobalSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[160].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeleteGlobalSecretRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[161].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DeleteGlobalSecretResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[166].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RunExtensionInstallerClientMessage_Init); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[167].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RunExtensionInstallerExtensionMessage_ConfigSetting); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[168].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RunPipelineConfiguratorClientMessage_Init); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[169].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RunPipelineConfiguratorExtensionMessage_ParamSetting); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[172].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_gofer_transport_proto_msgTypes[173].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11172,13 +12444,41 @@ func file_gofer_transport_proto_init() {
 		(*AttachToTaskRunRequest_Init)(nil),
 		(*AttachToTaskRunRequest_Input)(nil),
 	}
+	file_gofer_transport_proto_msgTypes[106].OneofWrappers = []interface{}{
+		(*RunExtensionInstallerClientMessage_Init_)(nil),
+		(*RunExtensionInstallerClientMessage_Msg)(nil),
+	}
+	file_gofer_transport_proto_msgTypes[107].OneofWrappers = []interface{}{
+		(*RunExtensionInstallerExtensionMessage_Msg)(nil),
+		(*RunExtensionInstallerExtensionMessage_Query)(nil),
+		(*RunExtensionInstallerExtensionMessage_ConfigSetting_)(nil),
+	}
+	file_gofer_transport_proto_msgTypes[108].OneofWrappers = []interface{}{
+		(*RunPipelineConfiguratorClientMessage_Init_)(nil),
+		(*RunPipelineConfiguratorClientMessage_Msg)(nil),
+	}
+	file_gofer_transport_proto_msgTypes[109].OneofWrappers = []interface{}{
+		(*RunPipelineConfiguratorExtensionMessage_Msg)(nil),
+		(*RunPipelineConfiguratorExtensionMessage_Query)(nil),
+		(*RunPipelineConfiguratorExtensionMessage_ParamSetting_)(nil),
+	}
+	file_gofer_transport_proto_msgTypes[123].OneofWrappers = []interface{}{
+		(*ExtensionRunExtensionInstallerExtensionMessage_Msg)(nil),
+		(*ExtensionRunExtensionInstallerExtensionMessage_Query)(nil),
+		(*ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting_)(nil),
+	}
+	file_gofer_transport_proto_msgTypes[125].OneofWrappers = []interface{}{
+		(*ExtensionRunPipelineConfiguratorExtensionMessage_Msg)(nil),
+		(*ExtensionRunPipelineConfiguratorExtensionMessage_Query)(nil),
+		(*ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting_)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_gofer_transport_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   159,
+			NumMessages:   174,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

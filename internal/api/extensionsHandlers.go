@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -12,9 +11,11 @@ import (
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
-
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
+
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -46,15 +47,39 @@ func (api *API) ListExtensions(ctx context.Context, request *proto.ListExtension
 	}, nil
 }
 
-func (api *API) GetExtensionInstallInstructions(ctx context.Context, request *proto.GetExtensionInstallInstructionsRequest) (*proto.GetExtensionInstallInstructionsResponse, error) {
-	if !isManagementUser(ctx) {
-		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
+func (api *API) RunExtensionInstaller(stream proto.Gofer_RunExtensionInstallerServer) error {
+	if !isManagementUser(stream.Context()) {
+		return status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
+	// Get the first message so we can attempt to set up the connection with the proper docker container.
+	initMessageRaw, err := stream.Recv()
+	if err != nil {
+		log.Error().Err(err).Msg("could not set up stream")
+		return status.Errorf(codes.Internal, "could not set up stream: %v", err)
+	}
+
+	initMessage, ok := initMessageRaw.MessageType.(*proto.RunExtensionInstallerClientMessage_Init_)
+	if !ok {
+		return status.Error(codes.FailedPrecondition, "first message must be init message, received wrong message type")
+	}
+
+	// Validate input
+	if initMessage.Init.Image == "" {
+		return status.Error(codes.FailedPrecondition, "extension image required")
+	}
+
+	var registryAuth *models.RegistryAuth
+	if initMessage.Init.User != "" {
+		registryAuth = &models.RegistryAuth{
+			User: initMessage.Init.User,
+			Pass: initMessage.Init.Pass,
+		}
 	}
 
 	cert, key, err := api.getTLSFromFile(api.config.Extensions.TLSCertPath, api.config.Extensions.TLSKeyPath)
 	if err != nil {
-		return &proto.GetExtensionInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not obtain proper TLS for extension certifications; %v", err)
+		return status.Errorf(codes.Internal, "could not obtain proper TLS for extension certifications; %v", err)
 	}
 
 	// Temporary key since we don't need to continually talk to the container.
@@ -90,58 +115,236 @@ func (api *API) GetExtensionInstallInstructions(ctx context.Context, request *pr
 			Value:  extensionKey,
 			Source: models.VariableSourceSystem,
 		},
-	}
-
-	var registryAuth *models.RegistryAuth
-	if request.User != "" {
-		registryAuth = &models.RegistryAuth{
-			User: request.User,
-			Pass: request.Pass,
-		}
+		{
+			Key:    "GOFER_EXTENSION_SYSTEM_GOFER_HOST",
+			Value:  api.config.Server.Address,
+			Source: models.VariableSourceSystem,
+		},
+		{
+			Key:    "GOFER_EXTENSION_SYSTEM_HOST",
+			Value:  "0.0.0.0:8082",
+			Source: models.VariableSourceSystem,
+		},
 	}
 
 	containerID := installerContainerID()
 
 	sc := scheduler.StartContainerRequest{
 		ID:           containerID,
-		ImageName:    request.Image,
+		ImageName:    initMessage.Init.Image,
 		EnvVars:      convertVarsToMap(systemExtensionVars),
 		RegistryAuth: registryAuth,
 		AlwaysPull:   true,
-		Networking:   nil,
-		Entrypoint:   &[]string{"./extension", "installer"},
+		Networking: &scheduler.Networking{
+			Port: 8082,
+		},
 	}
 
-	_, err = api.scheduler.StartContainer(sc)
+	resp, err := api.scheduler.StartContainer(sc)
 	if err != nil {
-		log.Error().Err(err).Str("image", request.Image).Msg("could not start extension during installation instructions retrieval")
-		return &proto.GetExtensionInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not start extension; %v", err)
+		log.Error().Err(err).Str("image", initMessage.Init.Image).
+			Msg("could not start extension during running extension installer")
+		return status.Errorf(codes.Internal, "could not start extension; %v", err)
 	}
+	defer api.scheduler.StopContainer(scheduler.StopContainerRequest{
+		ID: containerID,
+	})
 
-	logReader, err := api.scheduler.GetLogs(scheduler.GetLogsRequest{ID: containerID})
+	conn, err := grpcDial(resp.URL)
 	if err != nil {
-		log.Error().Err(err).Str("image", request.Image).Msg("could not get logs from extension installation run")
-		return &proto.GetExtensionInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not get logs from extension installation run; %v", err)
+		log.Debug().Err(err).Msg("could not connect to extension for handling")
+		return err
 	}
+	defer conn.Close()
 
-	lastLine := ""
+	client := proto.NewExtensionServiceClient(conn)
 
-	scanner := bufio.NewScanner(logReader)
-	for scanner.Scan() {
-		lastLine = scanner.Text()
-	}
-	err = scanner.Err()
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(extensionKey))
+
+	_, err = client.Info(ctx, &proto.ExtensionInfoRequest{}, grpc_retry.WithMax(30))
 	if err != nil {
-		log.Error().Err(err).Msg("Could not properly read from logging stream")
-		return &proto.GetExtensionInstallInstructionsResponse{},
-			status.Errorf(codes.Internal, "could not get logs from extension installation run; %v", err)
+		if status.Code(err) == codes.Canceled {
+			return nil
+		}
+
+		log.Error().Err(err).Str("image", initMessage.Init.Image).Msg("failed to communicate with extension info phase")
+		return err
 	}
 
-	return &proto.GetExtensionInstallInstructionsResponse{
-		Instructions: strings.TrimSpace(lastLine),
-	}, nil
+	extensionConn, err := client.RunExtensionInstaller(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "could not connect to extension while running extension installer; %v", err)
+	}
+
+	// Simply copy the messages from the extension and client together.
+	for {
+		extensionMsgRaw, err := extensionConn.Recv()
+		if err != nil {
+			// If the context was cancelled, that means that the extension is done and we should process the installation.
+			if strings.Contains(err.Error(), "context canceled") {
+				return nil
+			}
+
+			// If the client disconnected, exit cleanly.
+			if strings.Contains(err.Error(), "client disconnected") {
+				return nil
+			}
+
+			return status.Errorf(codes.Internal, "could not receive message from extension during extension installation; %v", err)
+		}
+
+		switch extensionMsg := extensionMsgRaw.MessageType.(type) {
+		case *proto.ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting_:
+			_ = stream.Send(&proto.RunExtensionInstallerExtensionMessage{
+				MessageType: &proto.RunExtensionInstallerExtensionMessage_ConfigSetting_{
+					ConfigSetting: &proto.RunExtensionInstallerExtensionMessage_ConfigSetting{
+						Config: extensionMsg.ConfigSetting.Config,
+						Value:  extensionMsg.ConfigSetting.Value,
+					},
+				},
+			})
+
+		case *proto.ExtensionRunExtensionInstallerExtensionMessage_Msg:
+			_ = stream.Send(&proto.RunExtensionInstallerExtensionMessage{
+				MessageType: &proto.RunExtensionInstallerExtensionMessage_Msg{
+					Msg: extensionMsg.Msg,
+				},
+			})
+
+		case *proto.ExtensionRunExtensionInstallerExtensionMessage_Query:
+			_ = stream.Send(&proto.RunExtensionInstallerExtensionMessage{
+				MessageType: &proto.RunExtensionInstallerExtensionMessage_Query{
+					Query: extensionMsg.Query,
+				},
+			})
+
+			clientResponseRaw, err := stream.Recv()
+			if err != nil {
+				return status.Errorf(codes.Internal, "could not receive message from client; %v", err)
+			}
+
+			clientResponse, ok := clientResponseRaw.MessageType.(*proto.RunExtensionInstallerClientMessage_Msg)
+			if !ok {
+				return status.Errorf(codes.Internal, "client sent incorrect message; sent init when should have sent regular msg;")
+			}
+
+			err = extensionConn.Send(&proto.ExtensionRunExtensionInstallerClientMessage{
+				Msg: clientResponse.Msg,
+			})
+			if err != nil {
+				return status.Errorf(codes.Internal, "could not send message to extension; %v", err)
+			}
+		default:
+			return status.Errorf(codes.Internal, "received incorrect message type during extension installer; %T",
+				extensionMsgRaw.MessageType)
+		}
+	}
+}
+
+func (api *API) RunPipelineConfigurator(stream proto.Gofer_RunPipelineConfiguratorServer) error {
+	if !isManagementUser(stream.Context()) {
+		return status.Error(codes.PermissionDenied, "management token required for this action")
+	}
+
+	// Get the first message so we can attempt to set up the connection with the proper docker container.
+	initMessageRaw, err := stream.Recv()
+	if err != nil {
+		log.Error().Err(err).Msg("could not set up stream")
+		return status.Errorf(codes.Internal, "could not set up stream: %v", err)
+	}
+
+	initMessage, ok := initMessageRaw.MessageType.(*proto.RunPipelineConfiguratorClientMessage_Init_)
+	if !ok {
+		return status.Error(codes.FailedPrecondition, "first message must be init message, received wrong message type")
+	}
+
+	// Validate input
+	if initMessage.Init.Name == "" {
+		return status.Error(codes.FailedPrecondition, "extension name required")
+	}
+
+	extension, exists := api.extensions.Get(initMessage.Init.Name)
+	if !exists {
+		return status.Error(codes.FailedPrecondition, "extension does not exist")
+	}
+
+	conn, err := grpcDial(extension.URL)
+	if err != nil {
+		log.Error().Err(err).Str("name", extension.Registration.Name).Msg("could not connect to extension")
+	}
+	defer conn.Close()
+
+	client := proto.NewExtensionServiceClient(conn)
+
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*extension.Key))
+	extensionConn, err := client.RunPipelineConfigurator(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "could not connect to extension while running pipeline configuration; %v", err)
+	}
+
+	// Simply copy the messages from the extension and client together.
+	for {
+		extensionMsgRaw, err := extensionConn.Recv()
+		if err != nil {
+			// If the context was cancelled, that means that the extension is done and we should process the installation.
+			if strings.Contains(err.Error(), "context canceled") {
+				return nil
+			}
+
+			// If the client disconnected, exit cleanly.
+			if strings.Contains(err.Error(), "client disconnected") {
+				return nil
+			}
+
+			return status.Errorf(codes.Internal, "could not receive message from extension during pipeline configuration; %v", err)
+		}
+
+		switch extensionMsg := extensionMsgRaw.MessageType.(type) {
+		case *proto.ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting_:
+			_ = stream.Send(&proto.RunPipelineConfiguratorExtensionMessage{
+				MessageType: &proto.RunPipelineConfiguratorExtensionMessage_ParamSetting_{
+					ParamSetting: &proto.RunPipelineConfiguratorExtensionMessage_ParamSetting{
+						Param: extensionMsg.ParamSetting.Param,
+						Value: extensionMsg.ParamSetting.Value,
+					},
+				},
+			})
+
+		case *proto.ExtensionRunPipelineConfiguratorExtensionMessage_Msg:
+			_ = stream.Send(&proto.RunPipelineConfiguratorExtensionMessage{
+				MessageType: &proto.RunPipelineConfiguratorExtensionMessage_Msg{
+					Msg: extensionMsg.Msg,
+				},
+			})
+
+		case *proto.ExtensionRunPipelineConfiguratorExtensionMessage_Query:
+			_ = stream.Send(&proto.RunPipelineConfiguratorExtensionMessage{
+				MessageType: &proto.RunPipelineConfiguratorExtensionMessage_Query{
+					Query: extensionMsg.Query,
+				},
+			})
+
+			clientResponseRaw, err := stream.Recv()
+			if err != nil {
+				return status.Errorf(codes.Internal, "could not receive message from client; %v", err)
+			}
+
+			clientResponse, ok := clientResponseRaw.MessageType.(*proto.RunPipelineConfiguratorClientMessage_Msg)
+			if !ok {
+				return status.Errorf(codes.Internal, "client sent incorrect message; sent init when should have sent regular msg;")
+			}
+
+			err = extensionConn.Send(&proto.ExtensionRunPipelineConfiguratorClientMessage{
+				Msg: clientResponse.Msg,
+			})
+			if err != nil {
+				return status.Errorf(codes.Internal, "could not send message to extension; %v", err)
+			}
+		default:
+			return status.Errorf(codes.Internal, "received incorrect message type during pipeline configuration; %T",
+				extensionMsgRaw.MessageType)
+		}
+	}
 }
 
 func (api *API) InstallExtension(ctx context.Context, request *proto.InstallExtensionRequest) (*proto.InstallExtensionResponse, error) {
@@ -195,6 +398,17 @@ func (api *API) UninstallExtension(ctx context.Context, request *proto.Uninstall
 	if request.Name == "" {
 		return nil, status.Error(codes.FailedPrecondition, "name required")
 	}
+
+	_, exists := api.extensions.Get(request.Name)
+	if !exists {
+		return nil, status.Errorf(codes.FailedPrecondition, "no extension %q found", request.Name)
+	}
+
+	containerID := extensionContainerID(request.Name)
+
+	api.scheduler.StopContainer(scheduler.StopContainerRequest{
+		ID: containerID,
+	})
 
 	api.extensions.Delete(request.Name)
 

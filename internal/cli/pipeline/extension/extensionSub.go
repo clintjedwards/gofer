@@ -46,6 +46,13 @@ func pipelineExtensionSub(cmd *cobra.Command, args []string) error {
 	name := args[1]
 	label := args[2]
 
+	interactive, err := cmd.Flags().GetBool("interactive")
+	if err != nil {
+		cl.State.Fmt.PrintErr(err)
+		cl.State.Fmt.Finish()
+		return err
+	}
+
 	settingsList, err := cmd.Flags().GetStringSlice("setting")
 	if err != nil {
 		cl.State.Fmt.PrintErr(err)
@@ -53,18 +60,11 @@ func pipelineExtensionSub(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	settingsMap := map[string]string{}
-	for _, setting := range settingsList {
-		key, value, found := strings.Cut(setting, "=")
-		if !found {
-			cl.State.Fmt.PrintErr("Key-value pair malformed; should be in format: <key>=<value>")
-			cl.State.Fmt.Finish()
-			return err
-		}
-		settingsMap[key] = value
+	if interactive && len(settingsList) > 0 {
+		cl.State.Fmt.PrintErr("Cannot use both the interactive flag and setting flag at the same time")
+		cl.State.Fmt.Finish()
+		return fmt.Errorf("flag mismatch")
 	}
-
-	cl.State.Fmt.Print("Subscribing pipeline to extension")
 
 	conn, err := cl.State.Connect()
 	if err != nil {
@@ -74,8 +74,95 @@ func pipelineExtensionSub(cmd *cobra.Command, args []string) error {
 	}
 
 	client := proto.NewGoferClient(conn)
-
 	md := metadata.Pairs("Authorization", "Bearer "+cl.State.Config.Token)
+
+	settingsMap := map[string]string{}
+
+	if interactive {
+		cl.State.Fmt.Print("Attaching to extension to retrieve setting information for interactive mode")
+
+		ctx := metadata.NewOutgoingContext(context.Background(), md)
+		interactiveConn, err := client.RunPipelineConfigurator(ctx)
+		if err != nil {
+			cl.State.Fmt.PrintErr(fmt.Sprintf("Could not connect to extension to get setting instructions %v", err))
+			cl.State.Fmt.Finish()
+			return err
+		}
+
+		interactiveConn.Send(&proto.RunPipelineConfiguratorClientMessage{
+			MessageType: &proto.RunPipelineConfiguratorClientMessage_Init_{
+				Init: &proto.RunPipelineConfiguratorClientMessage_Init{
+					Name: name,
+				},
+			},
+		})
+
+		cl.State.Fmt.PrintSuccess("Attached to extension " + name)
+
+		for {
+			msg, err := interactiveConn.Recv()
+			if err != nil {
+				// If we got an EOF error then the extension closed the connection.
+				if strings.Contains(err.Error(), "EOF") {
+					break
+				}
+
+				// If the context was cancelled, that means that the extension is done and we should process the installation.
+				if strings.Contains(err.Error(), "context canceled") {
+					break
+				}
+
+				// If the client disconnected, exit cleanly.
+				if strings.Contains(err.Error(), "client disconnected") {
+					break
+				}
+
+				cl.State.Fmt.PrintErr(fmt.Sprintf("Could not read from extension connection %v", err))
+				cl.State.Fmt.Finish()
+			}
+
+			switch extensionMsg := msg.MessageType.(type) {
+			case *proto.RunPipelineConfiguratorExtensionMessage_ParamSetting_:
+				settingsMap[extensionMsg.ParamSetting.Param] = extensionMsg.ParamSetting.Value
+			case *proto.RunPipelineConfiguratorExtensionMessage_Msg:
+				cl.State.Fmt.Println(extensionMsg.Msg)
+			case *proto.RunPipelineConfiguratorExtensionMessage_Query:
+				answer := cl.State.Fmt.PrintQuestion(extensionMsg.Query)
+				err := interactiveConn.Send(&proto.RunPipelineConfiguratorClientMessage{
+					MessageType: &proto.RunPipelineConfiguratorClientMessage_Msg{
+						Msg: answer,
+					},
+				})
+				if err != nil {
+					cl.State.Fmt.PrintErr(fmt.Sprintf("Could not send answer to extension query back to extension %v", err))
+					cl.State.Fmt.Finish()
+					return err
+				}
+			default:
+				cl.State.Fmt.PrintErr(fmt.Sprintf("Could not properly decode incoming message from extension; incorrect type %T", extensionMsg))
+				cl.State.Fmt.Finish()
+				return err
+			}
+
+		}
+
+		cl.State.Fmt.PrintSuccess("Completed interactive extension routine")
+	}
+
+	if !interactive {
+		for _, setting := range settingsList {
+			key, value, found := strings.Cut(setting, "=")
+			if !found {
+				cl.State.Fmt.PrintErr("Key-value pair malformed; should be in format: <key>=<value>")
+				cl.State.Fmt.Finish()
+				return err
+			}
+			settingsMap[key] = value
+		}
+	}
+
+	cl.State.Fmt.Print("Subscribing pipeline to extension")
+
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	_, err = client.CreatePipelineExtensionSubscription(ctx, &proto.CreatePipelineExtensionSubscriptionRequest{
 		NamespaceId:    cl.State.Config.Namespace,

@@ -1261,6 +1261,50 @@ pub struct CancelTaskRunRequest {
 pub struct CancelTaskRunResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AttachToTaskRunRequest {
+    #[prost(oneof="attach_to_task_run_request::RequestType", tags="1, 2")]
+    pub request_type: ::core::option::Option<attach_to_task_run_request::RequestType>,
+}
+/// Nested message and enum types in `AttachToTaskRunRequest`.
+pub mod attach_to_task_run_request {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum RequestType {
+        /// On the first request an init request sets up the connection to the
+        /// container.
+        #[prost(message, tag="1")]
+        Init(super::AttachToTaskRunInit),
+        /// On following requests an input request passes text to the container.
+        #[prost(message, tag="2")]
+        Input(super::AttachToTaskRunInput),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AttachToTaskRunInit {
+    /// Unique namespace identifier
+    #[prost(string, tag="1")]
+    pub namespace_id: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub pipeline_id: ::prost::alloc::string::String,
+    #[prost(int64, tag="3")]
+    pub run_id: i64,
+    /// Task Run ID
+    #[prost(string, tag="4")]
+    pub id: ::prost::alloc::string::String,
+    /// Which command to execute in container
+    #[prost(string, repeated, tag="5")]
+    pub command: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AttachToTaskRunInput {
+    #[prost(string, tag="1")]
+    pub input: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AttachToTaskRunOutput {
+    #[prost(string, tag="1")]
+    pub output: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetTaskRunLogsRequest {
     /// Unique namespace identifier
     #[prost(string, tag="1")]
@@ -1360,21 +1404,107 @@ pub struct DisableExtensionRequest {
 pub struct DisableExtensionResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetExtensionInstallInstructionsRequest {
-    #[prost(string, tag="1")]
-    pub image: ::prost::alloc::string::String,
-    #[prost(string, tag="2")]
-    pub user: ::prost::alloc::string::String,
-    #[prost(string, tag="3")]
-    pub pass: ::prost::alloc::string::String,
+pub struct RunExtensionInstallerClientMessage {
+    #[prost(oneof="run_extension_installer_client_message::MessageType", tags="1, 2")]
+    pub message_type: ::core::option::Option<run_extension_installer_client_message::MessageType>,
+}
+/// Nested message and enum types in `RunExtensionInstallerClientMessage`.
+pub mod run_extension_installer_client_message {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Init {
+        #[prost(string, tag="1")]
+        pub image: ::prost::alloc::string::String,
+        #[prost(string, tag="2")]
+        pub user: ::prost::alloc::string::String,
+        #[prost(string, tag="3")]
+        pub pass: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum MessageType {
+        #[prost(message, tag="1")]
+        Init(Init),
+        #[prost(string, tag="2")]
+        Msg(::prost::alloc::string::String),
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetExtensionInstallInstructionsResponse {
+pub struct RunExtensionInstallerExtensionMessage {
+    #[prost(oneof="run_extension_installer_extension_message::MessageType", tags="1, 2, 3")]
+    pub message_type: ::core::option::Option<run_extension_installer_extension_message::MessageType>,
+}
+/// Nested message and enum types in `RunExtensionInstallerExtensionMessage`.
+pub mod run_extension_installer_extension_message {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ConfigSetting {
+        #[prost(string, tag="1")]
+        pub config: ::prost::alloc::string::String,
+        #[prost(string, tag="2")]
+        pub value: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum MessageType {
+        /// Normal extension messages that should be passed back to the user.
+        #[prost(string, tag="1")]
+        Msg(::prost::alloc::string::String),
+        /// A question from the extension that needs an answer. The extension will
+        /// wait for an answer after this request. This specific message type
+        /// allows the cli to know when to prompt the user for an answer.
+        #[prost(string, tag="2")]
+        Query(::prost::alloc::string::String),
+        /// Config setting messages communicate when the extension has suggested a
+        /// configuration based on the user input.
+        #[prost(message, tag="3")]
+        ConfigSetting(ConfigSetting),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RunPipelineConfiguratorRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RunPipelineConfiguratorClientMessage {
     #[prost(string, tag="1")]
-    pub instructions: ::prost::alloc::string::String,
+    pub msg: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RunPipelineConfiguratorExtensionMessage {
+    #[prost(oneof="run_pipeline_configurator_extension_message::MessageType", tags="1, 2, 3")]
+    pub message_type: ::core::option::Option<run_pipeline_configurator_extension_message::MessageType>,
+}
+/// Nested message and enum types in `RunPipelineConfiguratorExtensionMessage`.
+pub mod run_pipeline_configurator_extension_message {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ParamSetting {
+        #[prost(string, tag="1")]
+        pub param: ::prost::alloc::string::String,
+        #[prost(string, tag="2")]
+        pub value: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum MessageType {
+        /// Normal extension messages that should be passed back to the user.
+        #[prost(string, tag="1")]
+        Msg(::prost::alloc::string::String),
+        /// A question from the extension that needs an answer. The extension will
+        /// wait for an answer after this request. This specific message type
+        /// allows the cli to know when to prompt the user for an answer.
+        #[prost(string, tag="2")]
+        Query(::prost::alloc::string::String),
+        /// Param setting messages communicate when the extension has suggested a
+        /// configuration based on the user input.
+        #[prost(message, tag="3")]
+        ParamSetting(ParamSetting),
+    }
 }
 ////////////// Extension Service Transport Models //////////////
 
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExtensionInitRequest {
+    #[prost(map="string, string", tag="1")]
+    pub config: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExtensionInitResponse {
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExtensionInfoRequest {
 }
@@ -1449,6 +1579,79 @@ pub struct ExtensionExternalEventRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExtensionExternalEventResponse {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExtensionRunExtensionInstallerClientMessage {
+    #[prost(string, tag="1")]
+    pub msg: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExtensionRunExtensionInstallerExtensionMessage {
+    #[prost(oneof="extension_run_extension_installer_extension_message::MessageType", tags="1, 2, 3")]
+    pub message_type: ::core::option::Option<extension_run_extension_installer_extension_message::MessageType>,
+}
+/// Nested message and enum types in `ExtensionRunExtensionInstallerExtensionMessage`.
+pub mod extension_run_extension_installer_extension_message {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ConfigSetting {
+        #[prost(string, tag="1")]
+        pub config: ::prost::alloc::string::String,
+        #[prost(string, tag="2")]
+        pub value: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum MessageType {
+        /// Normal extension messages that should be passed back to the user.
+        #[prost(string, tag="1")]
+        Msg(::prost::alloc::string::String),
+        /// A question from the extension that needs an answer. The extension will
+        /// wait for an answer after this request. This specific message type
+        /// allows the cli to know when to prompt the user for an answer.
+        #[prost(string, tag="2")]
+        Query(::prost::alloc::string::String),
+        /// Config setting messages communicate when the extension has suggested a
+        /// configuration based on the user input.
+        #[prost(message, tag="3")]
+        ConfigSetting(ConfigSetting),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExtensionRunPipelineConfiguratorRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExtensionRunPipelineConfiguratorClientMessage {
+    #[prost(string, tag="1")]
+    pub msg: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExtensionRunPipelineConfiguratorExtensionMessage {
+    #[prost(oneof="extension_run_pipeline_configurator_extension_message::MessageType", tags="1, 2, 3")]
+    pub message_type: ::core::option::Option<extension_run_pipeline_configurator_extension_message::MessageType>,
+}
+/// Nested message and enum types in `ExtensionRunPipelineConfiguratorExtensionMessage`.
+pub mod extension_run_pipeline_configurator_extension_message {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ParamSetting {
+        #[prost(string, tag="1")]
+        pub param: ::prost::alloc::string::String,
+        #[prost(string, tag="2")]
+        pub value: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum MessageType {
+        /// Normal extension messages that should be passed back to the user.
+        #[prost(string, tag="1")]
+        Msg(::prost::alloc::string::String),
+        /// A question from the extension that needs an answer. The extension will
+        /// wait for an answer after this request. This specific message type
+        /// allows the cli to know when to prompt the user for an answer.
+        #[prost(string, tag="2")]
+        Query(::prost::alloc::string::String),
+        /// Param setting messages communicate when the extension has suggested a
+        /// configuration based on the user input.
+        #[prost(message, tag="3")]
+        ParamSetting(ParamSetting),
+    }
 }
 ////////////// Events Transport Models //////////////
 
@@ -2692,6 +2895,31 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        /// Attach to a running task run container. Useful for debugging.
+        pub async fn attach_to_task_run(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::AttachToTaskRunRequest,
+            >,
+        ) -> Result<
+            tonic::Response<tonic::codec::Streaming<super::AttachToTaskRunOutput>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/AttachToTaskRun",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
         /// GetTaskRunLogs returns logs for a specific task run line by line in a
         /// stream. The logs are returns with both STDOUT and STDERR of the associated
         /// container combined.
@@ -2776,15 +3004,18 @@ pub mod gofer_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
-        /// GetExtensionInstalInstructions retrieves install instructions for a
-        /// particular extension.
-        pub async fn get_extension_install_instructions(
+        /// Run the installer that helps admin user install the extension.
+        pub async fn run_extension_installer(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::GetExtensionInstallInstructionsRequest,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::ExtensionRunExtensionInstallerClientMessage,
             >,
         ) -> Result<
-            tonic::Response<super::GetExtensionInstallInstructionsResponse>,
+            tonic::Response<
+                tonic::codec::Streaming<
+                    super::ExtensionRunExtensionInstallerExtensionMessage,
+                >,
+            >,
             tonic::Status,
         > {
             self.inner
@@ -2798,9 +3029,39 @@ pub mod gofer_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/proto.Gofer/GetExtensionInstallInstructions",
+                "/proto.Gofer/RunExtensionInstaller",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
+        /// Run the installer that helps pipeline users with their pipeline extension
+        /// configuration.
+        pub async fn run_pipeline_configurator(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::ExtensionRunPipelineConfiguratorClientMessage,
+            >,
+        ) -> Result<
+            tonic::Response<
+                tonic::codec::Streaming<
+                    super::ExtensionRunPipelineConfiguratorExtensionMessage,
+                >,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/RunPipelineConfigurator",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
         /// InstallExtension attempts to install a new extension.
         pub async fn install_extension(
@@ -3315,7 +3576,27 @@ pub mod extension_service_client {
             self.inner = self.inner.accept_gzip();
             self
         }
-        /// Info returns information on the specific plugin
+        /// Init returns when an extension is ready to serve requests.
+        pub async fn init(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ExtensionInitRequest>,
+        ) -> Result<tonic::Response<super::ExtensionInitResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.ExtensionService/Init",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// Info returns information on the specific plugin.
         pub async fn info(
             &mut self,
             request: impl tonic::IntoRequest<super::ExtensionInfoRequest>,
@@ -3428,6 +3709,65 @@ pub mod extension_service_client {
                 "/proto.ExtensionService/ExternalEvent",
             );
             self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// Run the installer that helps admin user install the extension.
+        pub async fn run_extension_installer(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::ExtensionRunExtensionInstallerClientMessage,
+            >,
+        ) -> Result<
+            tonic::Response<
+                tonic::codec::Streaming<
+                    super::ExtensionRunExtensionInstallerExtensionMessage,
+                >,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.ExtensionService/RunExtensionInstaller",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
+        }
+        /// Run the installer that helps pipeline users with their pipeline extension
+        /// configuration.
+        pub async fn run_pipeline_configurator(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::ExtensionRunPipelineConfiguratorClientMessage,
+            >,
+        ) -> Result<
+            tonic::Response<
+                tonic::codec::Streaming<
+                    super::ExtensionRunPipelineConfiguratorExtensionMessage,
+                >,
+            >,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.ExtensionService/RunPipelineConfigurator",
+            );
+            self.inner.streaming(request.into_streaming_request(), path, codec).await
         }
     }
 }
@@ -3717,6 +4057,17 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::CancelTaskRunRequest>,
         ) -> Result<tonic::Response<super::CancelTaskRunResponse>, tonic::Status>;
+        ///Server streaming response type for the AttachToTaskRun method.
+        type AttachToTaskRunStream: futures_core::Stream<
+                Item = Result<super::AttachToTaskRunOutput, tonic::Status>,
+            >
+            + Send
+            + 'static;
+        /// Attach to a running task run container. Useful for debugging.
+        async fn attach_to_task_run(
+            &self,
+            request: tonic::Request<tonic::Streaming<super::AttachToTaskRunRequest>>,
+        ) -> Result<tonic::Response<Self::AttachToTaskRunStream>, tonic::Status>;
         ///Server streaming response type for the GetTaskRunLogs method.
         type GetTaskRunLogsStream: futures_core::Stream<
                 Item = Result<super::GetTaskRunLogsResponse, tonic::Status>,
@@ -3746,15 +4097,39 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::ListExtensionsRequest>,
         ) -> Result<tonic::Response<super::ListExtensionsResponse>, tonic::Status>;
-        /// GetExtensionInstalInstructions retrieves install instructions for a
-        /// particular extension.
-        async fn get_extension_install_instructions(
+        ///Server streaming response type for the RunExtensionInstaller method.
+        type RunExtensionInstallerStream: futures_core::Stream<
+                Item = Result<
+                    super::ExtensionRunExtensionInstallerExtensionMessage,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// Run the installer that helps admin user install the extension.
+        async fn run_extension_installer(
             &self,
-            request: tonic::Request<super::GetExtensionInstallInstructionsRequest>,
-        ) -> Result<
-            tonic::Response<super::GetExtensionInstallInstructionsResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<
+                tonic::Streaming<super::ExtensionRunExtensionInstallerClientMessage>,
+            >,
+        ) -> Result<tonic::Response<Self::RunExtensionInstallerStream>, tonic::Status>;
+        ///Server streaming response type for the RunPipelineConfigurator method.
+        type RunPipelineConfiguratorStream: futures_core::Stream<
+                Item = Result<
+                    super::ExtensionRunPipelineConfiguratorExtensionMessage,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// Run the installer that helps pipeline users with their pipeline extension
+        /// configuration.
+        async fn run_pipeline_configurator(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::ExtensionRunPipelineConfiguratorClientMessage>,
+            >,
+        ) -> Result<tonic::Response<Self::RunPipelineConfiguratorStream>, tonic::Status>;
         /// InstallExtension attempts to install a new extension.
         async fn install_extension(
             &self,
@@ -5595,6 +5970,49 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
+                "/proto.Gofer/AttachToTaskRun" => {
+                    #[allow(non_camel_case_types)]
+                    struct AttachToTaskRunSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::StreamingService<super::AttachToTaskRunRequest>
+                    for AttachToTaskRunSvc<T> {
+                        type Response = super::AttachToTaskRunOutput;
+                        type ResponseStream = T::AttachToTaskRunStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<super::AttachToTaskRunRequest>,
+                            >,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).attach_to_task_run(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = AttachToTaskRunSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/proto.Gofer/GetTaskRunLogs" => {
                     #[allow(non_camel_case_types)]
                     struct GetTaskRunLogsSvc<T: Gofer>(pub Arc<T>);
@@ -5756,28 +6174,31 @@ pub mod gofer_server {
                     };
                     Box::pin(fut)
                 }
-                "/proto.Gofer/GetExtensionInstallInstructions" => {
+                "/proto.Gofer/RunExtensionInstaller" => {
                     #[allow(non_camel_case_types)]
-                    struct GetExtensionInstallInstructionsSvc<T: Gofer>(pub Arc<T>);
+                    struct RunExtensionInstallerSvc<T: Gofer>(pub Arc<T>);
                     impl<
                         T: Gofer,
-                    > tonic::server::UnaryService<
-                        super::GetExtensionInstallInstructionsRequest,
-                    > for GetExtensionInstallInstructionsSvc<T> {
-                        type Response = super::GetExtensionInstallInstructionsResponse;
+                    > tonic::server::StreamingService<
+                        super::ExtensionRunExtensionInstallerClientMessage,
+                    > for RunExtensionInstallerSvc<T> {
+                        type Response = super::ExtensionRunExtensionInstallerExtensionMessage;
+                        type ResponseStream = T::RunExtensionInstallerStream;
                         type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
+                            tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                super::GetExtensionInstallInstructionsRequest,
+                                tonic::Streaming<
+                                    super::ExtensionRunExtensionInstallerClientMessage,
+                                >,
                             >,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).get_extension_install_instructions(request).await
+                                (*inner).run_extension_installer(request).await
                             };
                             Box::pin(fut)
                         }
@@ -5787,14 +6208,60 @@ pub mod gofer_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = GetExtensionInstallInstructionsSvc(inner);
+                        let method = RunExtensionInstallerSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/RunPipelineConfigurator" => {
+                    #[allow(non_camel_case_types)]
+                    struct RunPipelineConfiguratorSvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::StreamingService<
+                        super::ExtensionRunPipelineConfiguratorClientMessage,
+                    > for RunPipelineConfiguratorSvc<T> {
+                        type Response = super::ExtensionRunPipelineConfiguratorExtensionMessage;
+                        type ResponseStream = T::RunPipelineConfiguratorStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<
+                                    super::ExtensionRunPipelineConfiguratorClientMessage,
+                                >,
+                            >,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).run_pipeline_configurator(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = RunPipelineConfiguratorSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -6720,7 +7187,12 @@ pub mod extension_service_server {
     ///Generated trait containing gRPC methods that should be implemented for use with ExtensionServiceServer.
     #[async_trait]
     pub trait ExtensionService: Send + Sync + 'static {
-        /// Info returns information on the specific plugin
+        /// Init returns when an extension is ready to serve requests.
+        async fn init(
+            &self,
+            request: tonic::Request<super::ExtensionInitRequest>,
+        ) -> Result<tonic::Response<super::ExtensionInitResponse>, tonic::Status>;
+        /// Info returns information on the specific plugin.
         async fn info(
             &self,
             request: tonic::Request<super::ExtensionInfoRequest>,
@@ -6756,6 +7228,39 @@ pub mod extension_service_server {
             tonic::Response<super::ExtensionExternalEventResponse>,
             tonic::Status,
         >;
+        ///Server streaming response type for the RunExtensionInstaller method.
+        type RunExtensionInstallerStream: futures_core::Stream<
+                Item = Result<
+                    super::ExtensionRunExtensionInstallerExtensionMessage,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// Run the installer that helps admin user install the extension.
+        async fn run_extension_installer(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::ExtensionRunExtensionInstallerClientMessage>,
+            >,
+        ) -> Result<tonic::Response<Self::RunExtensionInstallerStream>, tonic::Status>;
+        ///Server streaming response type for the RunPipelineConfigurator method.
+        type RunPipelineConfiguratorStream: futures_core::Stream<
+                Item = Result<
+                    super::ExtensionRunPipelineConfiguratorExtensionMessage,
+                    tonic::Status,
+                >,
+            >
+            + Send
+            + 'static;
+        /// Run the installer that helps pipeline users with their pipeline extension
+        /// configuration.
+        async fn run_pipeline_configurator(
+            &self,
+            request: tonic::Request<
+                tonic::Streaming<super::ExtensionRunPipelineConfiguratorClientMessage>,
+            >,
+        ) -> Result<tonic::Response<Self::RunPipelineConfiguratorStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct ExtensionServiceServer<T: ExtensionService> {
@@ -6804,6 +7309,44 @@ pub mod extension_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
+                "/proto.ExtensionService/Init" => {
+                    #[allow(non_camel_case_types)]
+                    struct InitSvc<T: ExtensionService>(pub Arc<T>);
+                    impl<
+                        T: ExtensionService,
+                    > tonic::server::UnaryService<super::ExtensionInitRequest>
+                    for InitSvc<T> {
+                        type Response = super::ExtensionInitResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ExtensionInitRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).init(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = InitSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/proto.ExtensionService/Info" => {
                     #[allow(non_camel_case_types)]
                     struct InfoSvc<T: ExtensionService>(pub Arc<T>);
@@ -6992,6 +7535,98 @@ pub mod extension_service_server {
                                 send_compression_encodings,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.ExtensionService/RunExtensionInstaller" => {
+                    #[allow(non_camel_case_types)]
+                    struct RunExtensionInstallerSvc<T: ExtensionService>(pub Arc<T>);
+                    impl<
+                        T: ExtensionService,
+                    > tonic::server::StreamingService<
+                        super::ExtensionRunExtensionInstallerClientMessage,
+                    > for RunExtensionInstallerSvc<T> {
+                        type Response = super::ExtensionRunExtensionInstallerExtensionMessage;
+                        type ResponseStream = T::RunExtensionInstallerStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<
+                                    super::ExtensionRunExtensionInstallerClientMessage,
+                                >,
+                            >,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).run_extension_installer(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = RunExtensionInstallerSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.ExtensionService/RunPipelineConfigurator" => {
+                    #[allow(non_camel_case_types)]
+                    struct RunPipelineConfiguratorSvc<T: ExtensionService>(pub Arc<T>);
+                    impl<
+                        T: ExtensionService,
+                    > tonic::server::StreamingService<
+                        super::ExtensionRunPipelineConfiguratorClientMessage,
+                    > for RunPipelineConfiguratorSvc<T> {
+                        type Response = super::ExtensionRunPipelineConfiguratorExtensionMessage;
+                        type ResponseStream = T::RunPipelineConfiguratorStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                tonic::Streaming<
+                                    super::ExtensionRunPipelineConfiguratorClientMessage,
+                                >,
+                            >,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).run_pipeline_configurator(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = RunPipelineConfiguratorSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

@@ -3,7 +3,6 @@ package sdk
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -31,6 +30,11 @@ import (
 // provides the caller with a clear interface to implement and allows this package to bake in common
 // functionality among all extensions.
 type ExtensionServiceInterface interface {
+	// Init tells the extension it should complete it's initialization phase and return when it is ready to serve requests.
+	// This is useful because sometimes we'll want to start the extension, but not actually have it do anything
+	// but serve only certain routes like the installation routes.
+	Init(context.Context, *proto.ExtensionInitRequest) (*proto.ExtensionInitResponse, error)
+
 	// Info returns information on the specific plugin
 	Info(context.Context, *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error)
 
@@ -48,9 +52,18 @@ type ExtensionServiceInterface interface {
 
 	// ExternalEvent are json blobs of Gofer's /events endpoint. Normally webhooks.
 	ExternalEvent(context.Context, *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error)
+
+	// Run the installer that helps admin user install the extension.
+	RunExtensionInstaller(stream proto.ExtensionService_RunExtensionInstallerServer) error
+
+	// Run the installer that helps pipeline users with their pipeline extension
+	// configuration.
+	RunPipelineConfigurator(stream proto.ExtensionService_RunPipelineConfiguratorServer) error
 }
 
 type extension struct {
+	isInitialized bool
+
 	// Authentication key passed by the Gofer server for every extension.
 	// Prevents out-of-band/external changes to extensions.
 	authKey string
@@ -61,6 +74,25 @@ type extension struct {
 	// We use "Unsafe" instead of "Unimplemented" due to unsafe forcing us to sacrifice forward compatibility in an
 	// effort to be more correct in implementation.
 	proto.UnsafeExtensionServiceServer
+}
+
+func (t *extension) Init(ctx context.Context, req *proto.ExtensionInitRequest) (*proto.ExtensionInitResponse, error) {
+	if t.isInitialized {
+		return nil, status.Error(codes.FailedPrecondition, "extension already initialized")
+	}
+
+	resp, err := t.impl.Init(ctx, req)
+	if err != nil {
+		return &proto.ExtensionInitResponse{}, err
+	}
+
+	if resp == nil {
+		return &proto.ExtensionInitResponse{}, nil
+	}
+
+	t.isInitialized = true
+
+	return resp, nil
 }
 
 func (t *extension) Info(ctx context.Context, req *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
@@ -79,6 +111,11 @@ func (t *extension) Info(ctx context.Context, req *proto.ExtensionInfoRequest) (
 }
 
 func (t *extension) Subscribe(ctx context.Context, req *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
+	if !t.isInitialized {
+		status.Error(codes.Internal, "failed to retrieve namespaces from database")
+		return nil, status.Error(codes.Unavailable, "extension is not initialized yet")
+	}
+
 	resp, err := t.impl.Subscribe(ctx, req)
 	if err != nil {
 		return &proto.ExtensionSubscribeResponse{}, err
@@ -92,6 +129,11 @@ func (t *extension) Subscribe(ctx context.Context, req *proto.ExtensionSubscribe
 }
 
 func (t *extension) Unsubscribe(ctx context.Context, req *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error) {
+	if !t.isInitialized {
+		status.Error(codes.Internal, "failed to retrieve namespaces from database")
+		return nil, status.Error(codes.Unavailable, "extension is not initialized yet")
+	}
+
 	resp, err := t.impl.Unsubscribe(ctx, req)
 	if err != nil {
 		return &proto.ExtensionUnsubscribeResponse{}, err
@@ -115,6 +157,11 @@ func (t *extension) Shutdown(ctx context.Context, req *proto.ExtensionShutdownRe
 }
 
 func (t *extension) ExternalEvent(ctx context.Context, req *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error) {
+	if !t.isInitialized {
+		status.Error(codes.Internal, "failed to retrieve namespaces from database")
+		return nil, status.Error(codes.Unavailable, "extension is not initialized yet")
+	}
+
 	resp, err := t.impl.ExternalEvent(ctx, req)
 	if err != nil {
 		return &proto.ExtensionExternalEventResponse{}, err
@@ -127,23 +174,22 @@ func (t *extension) ExternalEvent(ctx context.Context, req *proto.ExtensionExter
 	return resp, nil
 }
 
-func NewExtension(service ExtensionServiceInterface, installInstructions InstallInstructions) {
-	if len(os.Args) != 2 {
-		log.Fatal().Msg("Usage: ./extension <server|installer>")
+func (t *extension) RunExtensionInstaller(stream proto.ExtensionService_RunExtensionInstallerServer) error {
+	err := t.impl.RunExtensionInstaller(stream)
+	if err != nil {
+		return err
 	}
 
-	switch os.Args[1] {
-	case "server":
-		newExtensionServer(service)
-	case "installer":
-		instructions, err := installInstructions.JSON()
-		if err != nil {
-			log.Fatal().Msg("could not parse instructions to json")
-		}
-		fmt.Println(instructions)
-	default:
-		log.Fatal().Msg("Usage: ./extension <server|installer>")
+	return nil
+}
+
+func (t *extension) RunPipelineConfigurator(stream proto.ExtensionService_RunPipelineConfiguratorServer) error {
+	err := t.impl.RunPipelineConfigurator(stream)
+	if err != nil {
+		return err
 	}
+
+	return nil
 }
 
 // Connect to Gofer's API
@@ -183,8 +229,8 @@ func Connect() (proto.GoferClient, context.Context, error) {
 	return client, ctx, nil
 }
 
-// newExtensionServer starts the provided extension service
-func newExtensionServer(impl ExtensionServiceInterface) {
+// NewExtension starts the provided extension service
+func NewExtension(impl ExtensionServiceInterface) {
 	config, err := GetExtensionSystemConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not get environment variables for config")
@@ -346,147 +392,92 @@ func parseLogLevel(loglevel string) zerolog.Level {
 	}
 }
 
-// GetConfig is a convenience function that returns extension config values from the environment.
-// It simply puts the needed config in the correct format to be retrieved from the environment
-// so the caller doesn't have to.
-func GetConfig(variableName string) string {
-	return os.Getenv(fmt.Sprintf("GOFER_EXTENSION_CONFIG_%s", strings.ToUpper(variableName)))
-}
-
-// GetParameters is a convenience function that returns extension config values from the environment.
-// It simply puts the needed config in the correct format to be retrieved from the environment
-// so the caller doesn't have to.
-func GetParameter(variableName string) string {
-	return os.Getenv(fmt.Sprintf("GOFER_EXTENSION_PARAM_%s", strings.ToUpper(variableName)))
-}
-
-// InfoResponse is a convenience function for the Info interface function response.
-func InfoResponse(documentationLink string) (*proto.ExtensionInfoResponse, error) {
-	return &proto.ExtensionInfoResponse{
-		Name:          os.Getenv("GOFER_EXTENSION_SYSTEM_NAME"),
-		Documentation: documentationLink,
-	}, nil
-}
-
-type isInstallInstruction interface {
-	isInstallInstruction()
-}
-
-type InstallInstructionQueryWrapper struct {
-	Query InstallInstructionQuery `json:"query"`
-}
-
-func (InstallInstructionQueryWrapper) isInstallInstruction() {}
-
-type InstallInstructionQuery struct {
-	Text      string `json:"text"`
-	ConfigKey string `json:"config_key"`
-}
-
-type InstallInstructionMessageWrapper struct {
-	Message InstallInstructionMessage `json:"message"`
-}
-
-func (InstallInstructionMessageWrapper) isInstallInstruction() {}
-
-type InstallInstructionMessage struct {
-	Text string `json:"text"`
-}
-
-type InstallInstructions struct {
-	Instructions []isInstallInstruction `json:"instructions"`
-}
-
-func (i *InstallInstructions) UnmarshalJSON(b []byte) error {
-	data := make(map[string]json.RawMessage)
-	err := json.Unmarshal(b, &data)
+// Convenience function for sending a message to the client without excessive bulk.
+func SendConfiguratorMessageToClient(stream proto.ExtensionService_RunPipelineConfiguratorServer, msg string) error {
+	err := stream.Send(&proto.ExtensionRunPipelineConfiguratorExtensionMessage{
+		MessageType: &proto.ExtensionRunPipelineConfiguratorExtensionMessage_Msg{
+			Msg: msg,
+		},
+	})
 	if err != nil {
 		return err
-	}
-
-	// Peel back the "instructions"
-	instructionJSON := data["instructions"]
-	instructions := []json.RawMessage{}
-
-	err = json.Unmarshal(instructionJSON, &instructions)
-	if err != nil {
-		return err
-	}
-
-	for _, value := range instructions {
-		instruction := map[string]json.RawMessage{}
-
-		err = json.Unmarshal(value, &instruction)
-		if err != nil {
-			return err
-		}
-
-		messageInstructionJSON, exists := instruction["message"]
-		if exists {
-			messageInstruction := InstallInstructionMessage{}
-			err = json.Unmarshal(messageInstructionJSON, &messageInstruction)
-			if err != nil {
-				return err
-			}
-
-			i.Instructions = append(i.Instructions, InstallInstructionMessageWrapper{
-				Message: messageInstruction,
-			})
-
-			continue
-		}
-
-		queryInstructionJSON, exists := instruction["query"]
-		if exists {
-			queryInstruction := InstallInstructionQuery{}
-			err = json.Unmarshal(queryInstructionJSON, &queryInstruction)
-			if err != nil {
-				return err
-			}
-
-			i.Instructions = append(i.Instructions, InstallInstructionQueryWrapper{
-				Query: queryInstruction,
-			})
-
-			continue
-		}
 	}
 
 	return nil
 }
 
-func NewInstructionsBuilder() InstallInstructions {
-	return InstallInstructions{
-		Instructions: []isInstallInstruction{},
-	}
-}
-
-// AddMessage adds a new generic text string for the installation instructions.
-// This string is simply printed back to the reader.
-func (i InstallInstructions) AddMessage(text string) InstallInstructions {
-	i.Instructions = append(i.Instructions,
-		InstallInstructionMessageWrapper{Message: InstallInstructionMessage{Text: text}})
-
-	return i
-}
-
-// AddQuery adds a new text query for the installation instructions.
-// This string is printed back to the client and then the CLI waits for a response.
-// At the end of the extension setup, this response is used as part of the config
-// to send to the extension for installation.
-func (i InstallInstructions) AddQuery(text, configKey string) InstallInstructions {
-	i.Instructions = append(i.Instructions,
-		InstallInstructionQueryWrapper{Query: InstallInstructionQuery{Text: text, ConfigKey: configKey}})
-
-	return i
-}
-
-// Take our current instructions and return a json string
-func (i InstallInstructions) JSON() (string, error) {
-	output, err := json.Marshal(i)
+// Convenience function for sending a query to the client without excessive bulk.
+func SendConfiguratorQueryToClient(stream proto.ExtensionService_RunPipelineConfiguratorServer, query string) error {
+	err := stream.Send(&proto.ExtensionRunPipelineConfiguratorExtensionMessage{
+		MessageType: &proto.ExtensionRunPipelineConfiguratorExtensionMessage_Query{
+			Query: query,
+		},
+	})
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return string(output), nil
+	return nil
+}
+
+// Convenience function for sending a message to the client without excessive bulk.
+func SendConfiguratorParamSettingToClient(stream proto.ExtensionService_RunPipelineConfiguratorServer, param, value string) error {
+	err := stream.Send(&proto.ExtensionRunPipelineConfiguratorExtensionMessage{
+		MessageType: &proto.ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting_{
+			ParamSetting: &proto.ExtensionRunPipelineConfiguratorExtensionMessage_ParamSetting{
+				Param: param,
+				Value: value,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Convenience function for sending a message to the client without excessive bulk.
+func SendInstallerMessageToClient(stream proto.ExtensionService_RunExtensionInstallerServer, msg string) error {
+	err := stream.Send(&proto.ExtensionRunExtensionInstallerExtensionMessage{
+		MessageType: &proto.ExtensionRunExtensionInstallerExtensionMessage_Msg{
+			Msg: msg,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Convenience function for sending a query to the client without excessive bulk.
+func SendInstallerQueryToClient(stream proto.ExtensionService_RunExtensionInstallerServer, query string) error {
+	err := stream.Send(&proto.ExtensionRunExtensionInstallerExtensionMessage{
+		MessageType: &proto.ExtensionRunExtensionInstallerExtensionMessage_Query{
+			Query: query,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Convenience function for sending a message to the client without excessive bulk.
+func SendInstallerConfigSettingToClient(stream proto.ExtensionService_RunExtensionInstallerServer, config, value string) error {
+	err := stream.Send(&proto.ExtensionRunExtensionInstallerExtensionMessage{
+		MessageType: &proto.ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting_{
+			ConfigSetting: &proto.ExtensionRunExtensionInstallerExtensionMessage_ConfigSetting{
+				Config: config,
+				Value:  value,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

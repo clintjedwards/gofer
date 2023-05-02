@@ -167,9 +167,11 @@ type GoferClient interface {
 	GetExtension(ctx context.Context, in *GetExtensionRequest, opts ...grpc.CallOption) (*GetExtensionResponse, error)
 	// ListExtensions lists all extensions currently registered within gofer.
 	ListExtensions(ctx context.Context, in *ListExtensionsRequest, opts ...grpc.CallOption) (*ListExtensionsResponse, error)
-	// GetExtensionInstalInstructions retrieves install instructions for a
-	// particular extension.
-	GetExtensionInstallInstructions(ctx context.Context, in *GetExtensionInstallInstructionsRequest, opts ...grpc.CallOption) (*GetExtensionInstallInstructionsResponse, error)
+	// Run the installer that helps admin user install the extension.
+	RunExtensionInstaller(ctx context.Context, opts ...grpc.CallOption) (Gofer_RunExtensionInstallerClient, error)
+	// Run the installer that helps pipeline users with their pipeline extension
+	// configuration.
+	RunPipelineConfigurator(ctx context.Context, opts ...grpc.CallOption) (Gofer_RunPipelineConfiguratorClient, error)
 	// InstallExtension attempts to install a new extension.
 	InstallExtension(ctx context.Context, in *InstallExtensionRequest, opts ...grpc.CallOption) (*InstallExtensionResponse, error)
 	// UninstallExtension attempts to uninstall a extension.
@@ -698,13 +700,66 @@ func (c *goferClient) ListExtensions(ctx context.Context, in *ListExtensionsRequ
 	return out, nil
 }
 
-func (c *goferClient) GetExtensionInstallInstructions(ctx context.Context, in *GetExtensionInstallInstructionsRequest, opts ...grpc.CallOption) (*GetExtensionInstallInstructionsResponse, error) {
-	out := new(GetExtensionInstallInstructionsResponse)
-	err := c.cc.Invoke(ctx, "/proto.Gofer/GetExtensionInstallInstructions", in, out, opts...)
+func (c *goferClient) RunExtensionInstaller(ctx context.Context, opts ...grpc.CallOption) (Gofer_RunExtensionInstallerClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[2], "/proto.Gofer/RunExtensionInstaller", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &goferRunExtensionInstallerClient{stream}
+	return x, nil
+}
+
+type Gofer_RunExtensionInstallerClient interface {
+	Send(*RunExtensionInstallerClientMessage) error
+	Recv() (*RunExtensionInstallerExtensionMessage, error)
+	grpc.ClientStream
+}
+
+type goferRunExtensionInstallerClient struct {
+	grpc.ClientStream
+}
+
+func (x *goferRunExtensionInstallerClient) Send(m *RunExtensionInstallerClientMessage) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *goferRunExtensionInstallerClient) Recv() (*RunExtensionInstallerExtensionMessage, error) {
+	m := new(RunExtensionInstallerExtensionMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *goferClient) RunPipelineConfigurator(ctx context.Context, opts ...grpc.CallOption) (Gofer_RunPipelineConfiguratorClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[3], "/proto.Gofer/RunPipelineConfigurator", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &goferRunPipelineConfiguratorClient{stream}
+	return x, nil
+}
+
+type Gofer_RunPipelineConfiguratorClient interface {
+	Send(*RunPipelineConfiguratorClientMessage) error
+	Recv() (*RunPipelineConfiguratorExtensionMessage, error)
+	grpc.ClientStream
+}
+
+type goferRunPipelineConfiguratorClient struct {
+	grpc.ClientStream
+}
+
+func (x *goferRunPipelineConfiguratorClient) Send(m *RunPipelineConfiguratorClientMessage) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *goferRunPipelineConfiguratorClient) Recv() (*RunPipelineConfiguratorExtensionMessage, error) {
+	m := new(RunPipelineConfiguratorExtensionMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *goferClient) InstallExtension(ctx context.Context, in *InstallExtensionRequest, opts ...grpc.CallOption) (*InstallExtensionResponse, error) {
@@ -897,7 +952,7 @@ func (c *goferClient) GetEvent(ctx context.Context, in *GetEventRequest, opts ..
 }
 
 func (c *goferClient) ListEvents(ctx context.Context, in *ListEventsRequest, opts ...grpc.CallOption) (Gofer_ListEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[2], "/proto.Gofer/ListEvents", opts...)
+	stream, err := c.cc.NewStream(ctx, &Gofer_ServiceDesc.Streams[4], "/proto.Gofer/ListEvents", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1077,9 +1132,11 @@ type GoferServer interface {
 	GetExtension(context.Context, *GetExtensionRequest) (*GetExtensionResponse, error)
 	// ListExtensions lists all extensions currently registered within gofer.
 	ListExtensions(context.Context, *ListExtensionsRequest) (*ListExtensionsResponse, error)
-	// GetExtensionInstalInstructions retrieves install instructions for a
-	// particular extension.
-	GetExtensionInstallInstructions(context.Context, *GetExtensionInstallInstructionsRequest) (*GetExtensionInstallInstructionsResponse, error)
+	// Run the installer that helps admin user install the extension.
+	RunExtensionInstaller(Gofer_RunExtensionInstallerServer) error
+	// Run the installer that helps pipeline users with their pipeline extension
+	// configuration.
+	RunPipelineConfigurator(Gofer_RunPipelineConfiguratorServer) error
 	// InstallExtension attempts to install a new extension.
 	InstallExtension(context.Context, *InstallExtensionRequest) (*InstallExtensionResponse, error)
 	// UninstallExtension attempts to uninstall a extension.
@@ -1278,8 +1335,11 @@ func (UnimplementedGoferServer) GetExtension(context.Context, *GetExtensionReque
 func (UnimplementedGoferServer) ListExtensions(context.Context, *ListExtensionsRequest) (*ListExtensionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListExtensions not implemented")
 }
-func (UnimplementedGoferServer) GetExtensionInstallInstructions(context.Context, *GetExtensionInstallInstructionsRequest) (*GetExtensionInstallInstructionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetExtensionInstallInstructions not implemented")
+func (UnimplementedGoferServer) RunExtensionInstaller(Gofer_RunExtensionInstallerServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunExtensionInstaller not implemented")
+}
+func (UnimplementedGoferServer) RunPipelineConfigurator(Gofer_RunPipelineConfiguratorServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunPipelineConfigurator not implemented")
 }
 func (UnimplementedGoferServer) InstallExtension(context.Context, *InstallExtensionRequest) (*InstallExtensionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InstallExtension not implemented")
@@ -2217,22 +2277,56 @@ func _Gofer_ListExtensions_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Gofer_GetExtensionInstallInstructions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetExtensionInstallInstructionsRequest)
-	if err := dec(in); err != nil {
+func _Gofer_RunExtensionInstaller_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GoferServer).RunExtensionInstaller(&goferRunExtensionInstallerServer{stream})
+}
+
+type Gofer_RunExtensionInstallerServer interface {
+	Send(*RunExtensionInstallerExtensionMessage) error
+	Recv() (*RunExtensionInstallerClientMessage, error)
+	grpc.ServerStream
+}
+
+type goferRunExtensionInstallerServer struct {
+	grpc.ServerStream
+}
+
+func (x *goferRunExtensionInstallerServer) Send(m *RunExtensionInstallerExtensionMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *goferRunExtensionInstallerServer) Recv() (*RunExtensionInstallerClientMessage, error) {
+	m := new(RunExtensionInstallerClientMessage)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(GoferServer).GetExtensionInstallInstructions(ctx, in)
+	return m, nil
+}
+
+func _Gofer_RunPipelineConfigurator_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GoferServer).RunPipelineConfigurator(&goferRunPipelineConfiguratorServer{stream})
+}
+
+type Gofer_RunPipelineConfiguratorServer interface {
+	Send(*RunPipelineConfiguratorExtensionMessage) error
+	Recv() (*RunPipelineConfiguratorClientMessage, error)
+	grpc.ServerStream
+}
+
+type goferRunPipelineConfiguratorServer struct {
+	grpc.ServerStream
+}
+
+func (x *goferRunPipelineConfiguratorServer) Send(m *RunPipelineConfiguratorExtensionMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *goferRunPipelineConfiguratorServer) Recv() (*RunPipelineConfiguratorClientMessage, error) {
+	m := new(RunPipelineConfiguratorClientMessage)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
 	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Gofer/GetExtensionInstallInstructions",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoferServer).GetExtensionInstallInstructions(ctx, req.(*GetExtensionInstallInstructionsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 func _Gofer_InstallExtension_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -2822,10 +2916,6 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gofer_ListExtensions_Handler,
 		},
 		{
-			MethodName: "GetExtensionInstallInstructions",
-			Handler:    _Gofer_GetExtensionInstallInstructions_Handler,
-		},
-		{
 			MethodName: "InstallExtension",
 			Handler:    _Gofer_InstallExtension_Handler,
 		},
@@ -2923,6 +3013,18 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 		{
+			StreamName:    "RunExtensionInstaller",
+			Handler:       _Gofer_RunExtensionInstaller_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "RunPipelineConfigurator",
+			Handler:       _Gofer_RunPipelineConfigurator_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
 			StreamName:    "ListEvents",
 			Handler:       _Gofer_ListEvents_Handler,
 			ServerStreams: true,
@@ -2935,7 +3037,9 @@ var Gofer_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ExtensionServiceClient interface {
-	// Info returns information on the specific plugin
+	// Init returns when an extension is ready to serve requests.
+	Init(ctx context.Context, in *ExtensionInitRequest, opts ...grpc.CallOption) (*ExtensionInitResponse, error)
+	// Info returns information on the specific plugin.
 	Info(ctx context.Context, in *ExtensionInfoRequest, opts ...grpc.CallOption) (*ExtensionInfoResponse, error)
 	// Subscribe allows a extension to keep track of all pipelines currently
 	// dependant on that extension so that we can extension them at appropriate
@@ -2953,6 +3057,11 @@ type ExtensionServiceClient interface {
 	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
 	// webhooks.
 	ExternalEvent(ctx context.Context, in *ExtensionExternalEventRequest, opts ...grpc.CallOption) (*ExtensionExternalEventResponse, error)
+	// Run the installer that helps admin user install the extension.
+	RunExtensionInstaller(ctx context.Context, opts ...grpc.CallOption) (ExtensionService_RunExtensionInstallerClient, error)
+	// Run the installer that helps pipeline users with their pipeline extension
+	// configuration.
+	RunPipelineConfigurator(ctx context.Context, opts ...grpc.CallOption) (ExtensionService_RunPipelineConfiguratorClient, error)
 }
 
 type extensionServiceClient struct {
@@ -2961,6 +3070,15 @@ type extensionServiceClient struct {
 
 func NewExtensionServiceClient(cc grpc.ClientConnInterface) ExtensionServiceClient {
 	return &extensionServiceClient{cc}
+}
+
+func (c *extensionServiceClient) Init(ctx context.Context, in *ExtensionInitRequest, opts ...grpc.CallOption) (*ExtensionInitResponse, error) {
+	out := new(ExtensionInitResponse)
+	err := c.cc.Invoke(ctx, "/proto.ExtensionService/Init", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *extensionServiceClient) Info(ctx context.Context, in *ExtensionInfoRequest, opts ...grpc.CallOption) (*ExtensionInfoResponse, error) {
@@ -3008,11 +3126,75 @@ func (c *extensionServiceClient) ExternalEvent(ctx context.Context, in *Extensio
 	return out, nil
 }
 
+func (c *extensionServiceClient) RunExtensionInstaller(ctx context.Context, opts ...grpc.CallOption) (ExtensionService_RunExtensionInstallerClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ExtensionService_ServiceDesc.Streams[0], "/proto.ExtensionService/RunExtensionInstaller", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &extensionServiceRunExtensionInstallerClient{stream}
+	return x, nil
+}
+
+type ExtensionService_RunExtensionInstallerClient interface {
+	Send(*ExtensionRunExtensionInstallerClientMessage) error
+	Recv() (*ExtensionRunExtensionInstallerExtensionMessage, error)
+	grpc.ClientStream
+}
+
+type extensionServiceRunExtensionInstallerClient struct {
+	grpc.ClientStream
+}
+
+func (x *extensionServiceRunExtensionInstallerClient) Send(m *ExtensionRunExtensionInstallerClientMessage) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *extensionServiceRunExtensionInstallerClient) Recv() (*ExtensionRunExtensionInstallerExtensionMessage, error) {
+	m := new(ExtensionRunExtensionInstallerExtensionMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *extensionServiceClient) RunPipelineConfigurator(ctx context.Context, opts ...grpc.CallOption) (ExtensionService_RunPipelineConfiguratorClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ExtensionService_ServiceDesc.Streams[1], "/proto.ExtensionService/RunPipelineConfigurator", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &extensionServiceRunPipelineConfiguratorClient{stream}
+	return x, nil
+}
+
+type ExtensionService_RunPipelineConfiguratorClient interface {
+	Send(*ExtensionRunPipelineConfiguratorClientMessage) error
+	Recv() (*ExtensionRunPipelineConfiguratorExtensionMessage, error)
+	grpc.ClientStream
+}
+
+type extensionServiceRunPipelineConfiguratorClient struct {
+	grpc.ClientStream
+}
+
+func (x *extensionServiceRunPipelineConfiguratorClient) Send(m *ExtensionRunPipelineConfiguratorClientMessage) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *extensionServiceRunPipelineConfiguratorClient) Recv() (*ExtensionRunPipelineConfiguratorExtensionMessage, error) {
+	m := new(ExtensionRunPipelineConfiguratorExtensionMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ExtensionServiceServer is the server API for ExtensionService service.
 // All implementations must embed UnimplementedExtensionServiceServer
 // for forward compatibility
 type ExtensionServiceServer interface {
-	// Info returns information on the specific plugin
+	// Init returns when an extension is ready to serve requests.
+	Init(context.Context, *ExtensionInitRequest) (*ExtensionInitResponse, error)
+	// Info returns information on the specific plugin.
 	Info(context.Context, *ExtensionInfoRequest) (*ExtensionInfoResponse, error)
 	// Subscribe allows a extension to keep track of all pipelines currently
 	// dependant on that extension so that we can extension them at appropriate
@@ -3030,6 +3212,11 @@ type ExtensionServiceServer interface {
 	// ExternalEvent are json blobs of gofer's /events endpoint. Normally
 	// webhooks.
 	ExternalEvent(context.Context, *ExtensionExternalEventRequest) (*ExtensionExternalEventResponse, error)
+	// Run the installer that helps admin user install the extension.
+	RunExtensionInstaller(ExtensionService_RunExtensionInstallerServer) error
+	// Run the installer that helps pipeline users with their pipeline extension
+	// configuration.
+	RunPipelineConfigurator(ExtensionService_RunPipelineConfiguratorServer) error
 	mustEmbedUnimplementedExtensionServiceServer()
 }
 
@@ -3037,6 +3224,9 @@ type ExtensionServiceServer interface {
 type UnimplementedExtensionServiceServer struct {
 }
 
+func (UnimplementedExtensionServiceServer) Init(context.Context, *ExtensionInitRequest) (*ExtensionInitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
+}
 func (UnimplementedExtensionServiceServer) Info(context.Context, *ExtensionInfoRequest) (*ExtensionInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
 }
@@ -3052,6 +3242,12 @@ func (UnimplementedExtensionServiceServer) Shutdown(context.Context, *ExtensionS
 func (UnimplementedExtensionServiceServer) ExternalEvent(context.Context, *ExtensionExternalEventRequest) (*ExtensionExternalEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExternalEvent not implemented")
 }
+func (UnimplementedExtensionServiceServer) RunExtensionInstaller(ExtensionService_RunExtensionInstallerServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunExtensionInstaller not implemented")
+}
+func (UnimplementedExtensionServiceServer) RunPipelineConfigurator(ExtensionService_RunPipelineConfiguratorServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunPipelineConfigurator not implemented")
+}
 func (UnimplementedExtensionServiceServer) mustEmbedUnimplementedExtensionServiceServer() {}
 
 // UnsafeExtensionServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -3063,6 +3259,24 @@ type UnsafeExtensionServiceServer interface {
 
 func RegisterExtensionServiceServer(s grpc.ServiceRegistrar, srv ExtensionServiceServer) {
 	s.RegisterService(&ExtensionService_ServiceDesc, srv)
+}
+
+func _ExtensionService_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExtensionInitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExtensionServiceServer).Init(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.ExtensionService/Init",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExtensionServiceServer).Init(ctx, req.(*ExtensionInitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ExtensionService_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -3155,6 +3369,58 @@ func _ExtensionService_ExternalEvent_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ExtensionService_RunExtensionInstaller_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ExtensionServiceServer).RunExtensionInstaller(&extensionServiceRunExtensionInstallerServer{stream})
+}
+
+type ExtensionService_RunExtensionInstallerServer interface {
+	Send(*ExtensionRunExtensionInstallerExtensionMessage) error
+	Recv() (*ExtensionRunExtensionInstallerClientMessage, error)
+	grpc.ServerStream
+}
+
+type extensionServiceRunExtensionInstallerServer struct {
+	grpc.ServerStream
+}
+
+func (x *extensionServiceRunExtensionInstallerServer) Send(m *ExtensionRunExtensionInstallerExtensionMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *extensionServiceRunExtensionInstallerServer) Recv() (*ExtensionRunExtensionInstallerClientMessage, error) {
+	m := new(ExtensionRunExtensionInstallerClientMessage)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _ExtensionService_RunPipelineConfigurator_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ExtensionServiceServer).RunPipelineConfigurator(&extensionServiceRunPipelineConfiguratorServer{stream})
+}
+
+type ExtensionService_RunPipelineConfiguratorServer interface {
+	Send(*ExtensionRunPipelineConfiguratorExtensionMessage) error
+	Recv() (*ExtensionRunPipelineConfiguratorClientMessage, error)
+	grpc.ServerStream
+}
+
+type extensionServiceRunPipelineConfiguratorServer struct {
+	grpc.ServerStream
+}
+
+func (x *extensionServiceRunPipelineConfiguratorServer) Send(m *ExtensionRunPipelineConfiguratorExtensionMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *extensionServiceRunPipelineConfiguratorServer) Recv() (*ExtensionRunPipelineConfiguratorClientMessage, error) {
+	m := new(ExtensionRunPipelineConfiguratorClientMessage)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ExtensionService_ServiceDesc is the grpc.ServiceDesc for ExtensionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3162,6 +3428,10 @@ var ExtensionService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.ExtensionService",
 	HandlerType: (*ExtensionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Init",
+			Handler:    _ExtensionService_Init_Handler,
+		},
 		{
 			MethodName: "Info",
 			Handler:    _ExtensionService_Info_Handler,
@@ -3183,6 +3453,19 @@ var ExtensionService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ExtensionService_ExternalEvent_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "RunExtensionInstaller",
+			Handler:       _ExtensionService_RunExtensionInstaller_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "RunPipelineConfigurator",
+			Handler:       _ExtensionService_RunPipelineConfigurator_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "gofer.proto",
 }

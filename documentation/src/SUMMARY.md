@@ -7,6 +7,7 @@
 [Feature Guide](./features.md)
 [Best Practices](./best_practices.md)
 [Troubleshooting](./troubleshooting.md)
+[Philosophy](./philosophy.md)
 
 # User Guide
 

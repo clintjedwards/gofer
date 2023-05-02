@@ -22,12 +22,12 @@ Gofer's suggestion here is to make deploy keys self service and then simply ente
 Three strategies:
 
 1. Just download it when you need it. Depending on the size of your repository and the frequency of the pull, this can work absolutely fine.
-2. Download it as you need it using a local caching git server. Once your repository starts becoming large or you do many
-   pulls quickly it might make more sense to use a cache[^1],[^2]. It also makes sense to only download what you
-   need using git tools like `sparse checkout`
-3. Use the object store as a cache. Gofer provides an object store to act as a permanent (pipeline-level) or short-lived
+2. Use the object store as a cache. Gofer provides an object store to act as a permanent (pipeline-level) or short-lived
    (run-level) cache for your workloads. Simply store the repository inside the object store and pull down per job
    as needed.
+3. Download it as you need it using a local caching git server. Once your repository starts becoming large or you do many
+   pulls quickly it might make more sense to use a cache[^1],[^2]. It also makes sense to only download what you
+   need using git tools like `sparse checkout`
 
 [^1]: https://github.com/google/goblet
 [^2]: https://github.com/jonasmalacofilho/git-cache-http-server

@@ -1,9 +1,10 @@
-// Extension interval simply extensions the subscribed pipeline at the given interval.
+// Extension interval simply runs the subscribed pipeline at the given interval.
 //
 // This package is commented in such a way to make it easy to deduce what is going on, making it
 // a perfect example of how to build other extensions.
 //
 // What is going on below is relatively simple:
+//   - All extensions are run as long-running containers.
 //   - We create our extension as just a regular program, paying attention to what we want our variables to be
 //     when we install the extension and when a pipeline subscribes to this extension.
 //   - We assimilate the program to become a long running extension by using the Gofer SDK and implementing
@@ -18,10 +19,9 @@ import (
 	"time"
 
 	// The proto package provides some data structures that we'll need to return to our interface.
-
 	proto "github.com/clintjedwards/gofer/proto/go"
 
-	// The plugins package contains a bunch of convenience functions that we use to build our extension.
+	// The sdk package contains a bunch of convenience functions that we use to build our extension.
 	// It is possible to build a extension without using the SDK, but the SDK makes the process much
 	// less cumbersome.
 	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
@@ -29,12 +29,13 @@ import (
 	// Golang doesn't have a standardized logging interface and as such Gofer extensions can technically
 	// use any logging package, but because Gofer and provided extensions use zerolog, it is heavily encouraged
 	// to use zerolog. The log level for extensions is set by Gofer on extension start via Gofer's configuration.
+	// And logs are interleaved in the stdout for the main program.
 	"github.com/rs/zerolog/log"
 )
 
 // Extensions have two types of variables they can be passed.
 //   - They take variables called "config" when they are installed.
-//   - And they take variables called parameters for each pipeline that subscribes to them.
+//   - They take variables called "parameters" for each pipeline that subscribes to them.
 
 // This extension has a single parameter called "every".
 const (
@@ -47,14 +48,14 @@ const (
 
 // And a single config called "min_duration".
 const (
-	// The minimum duration pipelines can set for the "every" parameter.
-	ConfigMinDuration = "min_duration"
+	// The minimum interval pipelines can set for the "every" parameter.
+	ConfigMinInterval = "min_interval"
 )
 
-// Extensions are subscribed to by pipelines when that pipeline is registered. Gofer will call the `subscribe`
-// function for the extension and pass it details about the pipeline and the parameters it wants.
-// This structure is to keep details about those subscriptions so that we may perform the extensions duties on those
-// pipeline subscriptions.
+// Extensions are subscribed to by pipelines. Gofer will call the `subscribe` function for the extension and
+// pass it details about the pipeline and the parameters it wants.
+// This structure is meant to keep details about those subscriptions so that we may
+// perform the extension's duties on those pipeline subscriptions.
 type subscription struct {
 	namespace              string
 	pipeline               string
@@ -64,7 +65,7 @@ type subscription struct {
 
 // SubscriptionID is simply a composite key of the many things that make a single subscription unique.
 // We use this as the key in a hash table to lookup subscriptions. Some might wonder why label is part
-// of this unique key. That is because, when relevant extensions should be expected that pipelines might
+// of this unique key. That is because extensions should expect that pipelines might
 // want to subscribe more than once.
 type subscriptionID struct {
 	namespace              string
@@ -72,11 +73,16 @@ type subscriptionID struct {
 	pipelineExtensionLabel string
 }
 
-// Extension is a structure that every Gofer extension should have. It is essentially the God struct. It contains
-// all information about our extension that we might want to reference.
+// Extension is a structure that every Gofer extension should have. It is essentially a God struct that coordinates things
+// for the extension as a whole. It contains all information about our extension that we might want to reference.
 type extension struct {
-	// The limit for how long a pipeline configuration can request a minimum duration.
-	minDuration time.Duration
+	// Extensions can be run without "initializing" them. This allows Gofer to run things like the installer without
+	// having to pass the extension everything it needs to work for normal cases.
+	// It might be useful to track whether the extension was initialized or not.
+	isInitialized bool
+
+	// The lower limit for how often a pipeline can request to be run.
+	minInterval time.Duration
 
 	// During shutdown the extension will want to stop all intervals immediately. Having the ability to stop all goroutines
 	// is very useful.
@@ -90,15 +96,18 @@ type extension struct {
 	// cancel context for the specified extension. This is important, as when a pipeline unsubscribes from a this extension
 	// we will need a way to stop that specific goroutine from running.
 	subscriptions map[subscriptionID]*subscription
+
+	// Generic extension configuration set by Gofer at startup. Useful for interacting with Gofer.
+	systemConfig sdk.ExtensionSystemConfig
 }
 
-// NewExtension is the entrypoint to the overall extension. It sets up all initial extension state, validates any config
-// that was passed to it and generally gets the extension ready to take requests.
-func newExtension() (*extension, error) {
-	// The GetConfig function wrap our `min duration` config and retrieves it from the environment.
-	// Extension config environment variables are passed in as "GOFER_EXTENSION_CONFIG_%s" so that they don't conflict
-	// with any other environment variables that might be around.
-	minDurationStr := sdk.GetConfig(ConfigMinDuration)
+// Init serves to set up the extension for it's main functionality. It is needed mostly because we sometimes need
+// extensions to launch, but not actually serve all requests(like when we're running the extensions install endpoints).
+//
+// The Gofer server when launching an extension will call the Init endpoint and then wait until
+// a successful response is returned to mark the extension ready to take subscriptions.
+func (e *extension) Init(ctx context.Context, request *proto.ExtensionInitRequest) (*proto.ExtensionInitResponse, error) {
+	minDurationStr := request.Config[ConfigMinInterval]
 	minDuration := time.Minute * 1
 	if minDurationStr != "" {
 		parsedDuration, err := time.ParseDuration(minDurationStr)
@@ -108,18 +117,19 @@ func newExtension() (*extension, error) {
 		minDuration = parsedDuration
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	e.parentContext, e.quitAllSubscriptions = context.WithCancel(context.Background())
+	e.minInterval = minDuration
+	e.subscriptions = map[subscriptionID]*subscription{}
 
-	return &extension{
-		minDuration:          minDuration,
-		quitAllSubscriptions: cancel,
-		parentContext:        ctx,
-		subscriptions:        map[subscriptionID]*subscription{},
-	}, nil
+	config, _ := sdk.GetExtensionSystemConfig()
+	e.systemConfig = config
+	e.isInitialized = true
+
+	return &proto.ExtensionInitResponse{}, nil
 }
 
 // startInterval is the main logic of what enables the interval extension to work. Each pipeline that is subscribed runs
-// this function which simply waits for the set duration and then pushes a "WatchResponse" event into the extension's main channel.
+// this function which simply waits for the set duration and then calls the StartRun endpoint for Gofer.
 func (e *extension) startInterval(ctx context.Context, namespace, pipeline string, pipelineExtensionLabel string, duration time.Duration,
 ) {
 	for {
@@ -161,12 +171,12 @@ func (e *extension) startInterval(ctx context.Context, namespace, pipeline strin
 	}
 }
 
-// Gofer calls subscribe when a pipeline configuration is being registered and a pipeline wants to subscribe to this extension.
+// Gofer calls subscribe when a pipeline wants to subscribe to this extension.
 // The logic here is simple:
-//   - We retrieve the pipeline's requested parameters.
-//   - We validate the parameters.
-//   - We create a new subscription object and enter it into our map.
-//   - We call the `startInterval` function in a goroutine for that specific pipeline and return.
+//   - Retrieve the pipeline's requested parameters.
+//   - Validate the parameters.
+//   - Create a new subscription object and enter it into our map.
+//   - Call the `startInterval` function in a goroutine for that specific pipeline and return.
 func (e *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
 	interval, exists := request.Config[strings.ToUpper(ParameterEvery)]
 	if !exists {
@@ -178,8 +188,8 @@ func (e *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubsc
 		return nil, fmt.Errorf("could not parse interval string: %w", err)
 	}
 
-	if duration < e.minDuration {
-		return nil, fmt.Errorf("durations cannot be less than %s", e.minDuration)
+	if duration < e.minInterval {
+		return nil, fmt.Errorf("durations cannot be less than %s", e.minInterval)
 	}
 
 	subID := subscriptionID{
@@ -242,7 +252,16 @@ func (e *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUns
 // Info is mostly used as a health check endpoint. It returns some basic info about a extension, the most important
 // being where to get more documentation about that specific extension.
 func (e *extension) Info(ctx context.Context, request *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
-	return sdk.InfoResponse("https://clintjedwards.com/gofer/ref/extensions/provided/interval.html")
+	registered := []string{}
+	for _, sub := range e.subscriptions {
+		registered = append(registered, fmt.Sprintf("%s/%s", sub.namespace, sub.pipeline))
+	}
+
+	return &proto.ExtensionInfoResponse{
+		Name:          e.systemConfig.Name,
+		Documentation: "https://clintjedwards.com/gofer/ref/extensions/provided/interval.html",
+		Registered:    registered,
+	}, nil
 }
 
 // The ExternalEvent endpoint tells the extension what to do if they get messages from Gofer's external event system.
@@ -257,26 +276,117 @@ func (e *extension) ExternalEvent(ctx context.Context, request *proto.ExtensionE
 // Sometimes that means sending requests to third parties that it is shutting down, sometimes that just means
 // reaping its personal goroutines.
 func (e *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error) {
-	e.quitAllSubscriptions()
+	if e.isInitialized {
+		e.quitAllSubscriptions()
+	}
 
 	return &proto.ExtensionShutdownResponse{}, nil
 }
 
-// InstallInstructions are Gofer's way to allowing the extension to guide Gofer administrators through their
-// personal installation process. This is needed because some extensions might require special auth tokens and information
-// in a way that might be confusing for extension administrators.
-func installInstructions() sdk.InstallInstructions {
-	instructions := sdk.NewInstructionsBuilder()
-	instructions = instructions.AddMessage(":: The interval extension allows users to run their pipelines on the passage"+
-		" of time by setting a particular duration.").
-		AddMessage("").
-		AddMessage("First, let's prevent users from setting too low of an interval by setting a minimum duration. "+
-			"Durations are set via Golang duration strings. For example, entering a duration of '10h' would be 10 hours, "+
-			"meaning that users can only run their pipeline at most every 10 hours. "+
-			"You can find more documentation on valid strings here: https://pkg.go.dev/time#ParseDuration.").
-		AddQuery("Set a minimum duration for all pipelines", ConfigMinDuration)
+// The ExtensionInstaller is a small script that gets piped to the admin who is trying to set up this particular
+// extension. The installer is meant to guide the user through the different configuration options that the
+// installer has globally.
+func (e *extension) RunExtensionInstaller(stream proto.ExtensionService_RunExtensionInstallerServer) error {
+	err := sdk.SendInstallerMessageToClient(stream, "The interval extension allows users to run their pipelines on the passage of "+
+		"time by setting a particular duration.\n")
+	if err != nil {
+		return err
+	}
 
-	return instructions
+	err = sdk.SendInstallerMessageToClient(stream, "First, let's prevent users from setting too low of an interval by "+
+		"setting a minimum duration. Durations are set via Golang duration strings. For example, entering a duration "+
+		"of '10h' would be 10 hours, meaning that users can only run their pipeline at most every 10 hours. "+
+		"You can find more documentation on valid strings here: https://pkg.go.dev/time#ParseDuration.")
+	if err != nil {
+		return err
+	}
+
+	for {
+		err = sdk.SendInstallerQueryToClient(stream, "Set a minimum duration for all pipelines: ")
+		if err != nil {
+			return err
+		}
+
+		clientMsg, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		_, err = time.ParseDuration(clientMsg.Msg)
+		if err != nil {
+			err = sdk.SendInstallerMessageToClient(stream, fmt.Sprintf("Malformed duration %q; %v", clientMsg.Msg, err))
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		err = sdk.SendInstallerConfigSettingToClient(stream, ConfigMinInterval, clientMsg.Msg)
+		if err != nil {
+			return err
+		}
+
+		break
+	}
+
+	err = sdk.SendInstallerMessageToClient(stream, "Interval extension configuration finished")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// The PipelineConfigurator is a small script that a pipeline owner can run when subscribing to this extension.
+// It's meant to guide the pipeline owner through the different options of the extension.
+func (e *extension) RunPipelineConfigurator(stream proto.ExtensionService_RunPipelineConfiguratorServer) error {
+	err := sdk.SendConfiguratorMessageToClient(stream, "The interval extension allows you to run your pipelines on the passage of "+
+		"time by setting a particular duration.\n")
+	if err != nil {
+		return err
+	}
+
+	err = sdk.SendConfiguratorMessageToClient(stream, "Durations are set via Golang duration strings. "+
+		"For example, entering a duration of '10h' would be 10 hours, meaning that your pipeline would run once every 10 hours. "+
+		"You can find more documentation on valid strings here: https://pkg.go.dev/time#ParseDuration.")
+	if err != nil {
+		return err
+	}
+
+	for {
+		err = sdk.SendConfiguratorQueryToClient(stream, "Set your pipeline run interval: ")
+		if err != nil {
+			return err
+		}
+
+		clientMsg, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		_, err = time.ParseDuration(clientMsg.Msg)
+		if err != nil {
+			err = sdk.SendConfiguratorMessageToClient(stream, fmt.Sprintf("Malformed duration %q; %v", clientMsg.Msg, err))
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		err = sdk.SendConfiguratorParamSettingToClient(stream, ParameterEvery, clientMsg.Msg)
+		if err != nil {
+			return err
+		}
+
+		break
+	}
+
+	err = sdk.SendConfiguratorMessageToClient(stream, "Interval extension configuration finished")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Lastly we call our personal NewExtension function, which now implements the ExtensionServerInterface and then we
@@ -288,9 +398,6 @@ func installInstructions() sdk.InstallInstructions {
 // Whenever this program is called with the parameter "installer" then it will print out the installation instructions
 // instead.
 func main() {
-	extension, err := newExtension()
-	if err != nil {
-		panic(err)
-	}
-	sdk.NewExtension(extension, installInstructions())
+	extension := extension{}
+	sdk.NewExtension(&extension)
 }

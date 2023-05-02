@@ -66,6 +66,11 @@ Also github integration:
   - For an extension like vault we manage the read and write in the same way we would for bolt. So vault gives us a prefix
     path and we essentially just used that prefix path to store secrets.
 
+### ObjectStore
+
+- We could probably make the default object store pretty good for trival to medium size deployments by implementing a CAS.
+- Maybe there is a library we can use to do this for us? Does BoltDB do some form of deduplicaton?
+
 ### Extensions
 
 - Test that unsubscribing works with all extensions. And create a test suite that extensions can run against.
@@ -146,16 +151,7 @@ There are several useful things we can do with the concept of extensions:
 
 ### On the floor
 
-- Attach should have a header when you attach to a container and a > prompt
-- Document all attach stuff
+- Job recovery is broken again.
 - Force for both objects and secrets need to be checked. Some layers of the process does not respect it.
-
 - Github Extension:
-- Because things are handled at the current abstraction layer for users who just want to throw code and have it work it can be difficult. Users who operate within Gofer will have to do at least some thought about repositories downloads, possibly caching, transferring between containers, etc. These are all things that some CI/CD systems give for free. The managing of large git repos is the biggest pain point here.
-- To give people the ability to cache certain important items like repositories we can create a special ubuntu container with a fuse file system. We can then allow people to use this container to connect back to the object fs and make common tasks like storing your repo easy.
-  - The hard part about this is for git repos. If we have one user who has checked out a branch we now have to implement a copy on write situation.
-  - An alternative to this is we can use things like the Github trigger to help users manage their PRs. The github trigger can manage it just using Gofer's object store, simply storying a few select things for each repo. Before the user accesses it in their container the trigger can inject the proper path for the repo they want. This would require a fairly expensive operation of the
-    github trigger downloading the repo, updating it, switching the branch, and then pushing that back up....only to be downloaded by the user in the near future.
-  - instead of downloading and updating, just make the Github trigger cache the repo locally, when a user needs it we just make sure it's up to date, and upload it to the path, the user can then just download from that path
-  - We can possibly do smarter things here also, like only write the files from the extension that have changed from a base version of the git repository, Do copy on write to the container. All hard problems that sounds interesting.
-- https://fly.io/docs/litefs/getting-started/ You can actually just pull files straight from docker kekw
+  - Restore ability to register a pipeline to be triggered every time some event happens.

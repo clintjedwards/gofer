@@ -11,6 +11,7 @@ import (
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/rs/zerolog/log"
@@ -98,13 +99,11 @@ func (api *API) startExtension(extension models.ExtensionRegistration, tlsCert, 
 	log.Info().Str("name", extension.Name).Msg("starting extension")
 
 	systemExtensionVarsMap := convertVarsToMap(systemExtensionVars)
-	extensionVarsMap := convertVarsToMap(extension.Variables)
-	envVars := mergeMaps(systemExtensionVarsMap, extensionVarsMap)
 
 	sc := scheduler.StartContainerRequest{
 		ID:           extensionContainerID(extension.Name),
 		ImageName:    extension.Image,
-		EnvVars:      envVars,
+		EnvVars:      systemExtensionVarsMap,
 		RegistryAuth: extension.RegistryAuth,
 		Networking: &scheduler.Networking{
 			Port: 8082,
@@ -117,48 +116,39 @@ func (api *API) startExtension(extension models.ExtensionRegistration, tlsCert, 
 		return err
 	}
 
-	var info *proto.ExtensionInfoResponse
+	conn, err := grpcDial(resp.URL)
+	if err != nil {
+		log.Debug().Err(err).Str("extension", extension.Name).Msg("could not connect to extension")
+		return err
+	}
+	defer conn.Close()
 
-	// For some reason I can't get GRPC's retry to properly handle this, so instead we resort to a simple for loop.
-	//
-	// There is a race condition where we schedule the container, but the actual container application might not
-	// have gotten a chance to start before we issue a query.
-	// So instead of baking in some arbitrary sleep time between these two actions instead we retry
-	// until we get a good state.
-	attempts := 0
-	for {
-		if attempts >= 30 {
-			log.Error().Msg("maximum amount of attempts reached for starting extension; could not connect to extension")
-			return fmt.Errorf("could not connect to extension; maximum amount of attempts reached")
+	client := proto.NewExtensionServiceClient(conn)
+
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(token))
+
+	_, err = client.Init(ctx, &proto.ExtensionInitRequest{
+		Config: convertVarsToMap(extension.Variables),
+	}, grpc_retry.WithMax(30))
+	if err != nil {
+		if status.Code(err) == codes.Canceled {
+			return nil
 		}
 
-		conn, err := grpcDial(resp.URL)
-		if err != nil {
-			log.Debug().Err(err).Str("extension", extension.Name).Msg("could not connect to extension")
-			time.Sleep(time.Millisecond * 300)
-			attempts++
-			continue
+		log.Error().Err(err).Str("image", extension.Image).Str("name", extension.Name).
+			Msg("failed to communicate with extension init phase")
+		return err
+	}
+
+	info, err := client.Info(ctx, &proto.ExtensionInfoRequest{}, grpc_retry.WithMax(30))
+	if err != nil {
+		if status.Code(err) == codes.Canceled {
+			return nil
 		}
 
-		client := proto.NewExtensionServiceClient(conn)
-
-		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(token))
-
-		info, err = client.Info(ctx, &proto.ExtensionInfoRequest{})
-		if err != nil {
-			if status.Code(err) == codes.Canceled {
-				return nil
-			}
-
-			conn.Close()
-			log.Debug().Err(err).Msg("failed to communicate with extension startup")
-			time.Sleep(time.Millisecond * 300)
-			attempts++
-			continue
-		}
-
-		conn.Close()
-		break
+		log.Error().Err(err).Str("image", extension.Image).Str("name", extension.Name).
+			Msg("failed to communicate with extension info phase")
+		return err
 	}
 
 	// Add the extension to the in-memory registry so we can refer to its variable network location later.
@@ -171,7 +161,7 @@ func (api *API) startExtension(extension models.ExtensionRegistration, tlsCert, 
 		Key:           &token,
 	})
 
-	log.Info().Str("kind", extension.Name).Str("url", resp.URL).Msg("started extension")
+	log.Info().Str("name", extension.Name).Str("url", resp.URL).Msg("started extension")
 
 	go api.collectLogs(extensionContainerID(extension.Name))
 
