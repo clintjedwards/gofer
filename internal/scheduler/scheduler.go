@@ -3,7 +3,6 @@
 package scheduler
 
 import (
-	"bufio"
 	"errors"
 	"io"
 	"net"
@@ -95,7 +94,7 @@ type AttachContainerRequest struct {
 
 type AttachContainerResponse struct {
 	Conn   net.Conn
-	Reader *bufio.Reader
+	Reader io.Reader
 }
 
 type Engine interface {
