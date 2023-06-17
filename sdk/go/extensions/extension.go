@@ -65,7 +65,8 @@ type extension struct {
 	isInitialized bool
 
 	// Authentication key passed by the Gofer server for every extension.
-	// Prevents out-of-band/external changes to extensions.
+	// Prevents out-of-band/external changes to extensions and provides
+	// auth for extensions communicating back to Gofer.
 	authKey string
 
 	stop chan os.Signal
@@ -112,7 +113,6 @@ func (t *extension) Info(ctx context.Context, req *proto.ExtensionInfoRequest) (
 
 func (t *extension) Subscribe(ctx context.Context, req *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
 	if !t.isInitialized {
-		status.Error(codes.Internal, "failed to retrieve namespaces from database")
 		return nil, status.Error(codes.Unavailable, "extension is not initialized yet")
 	}
 
@@ -130,7 +130,6 @@ func (t *extension) Subscribe(ctx context.Context, req *proto.ExtensionSubscribe
 
 func (t *extension) Unsubscribe(ctx context.Context, req *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error) {
 	if !t.isInitialized {
-		status.Error(codes.Internal, "failed to retrieve namespaces from database")
 		return nil, status.Error(codes.Unavailable, "extension is not initialized yet")
 	}
 
@@ -158,7 +157,6 @@ func (t *extension) Shutdown(ctx context.Context, req *proto.ExtensionShutdownRe
 
 func (t *extension) ExternalEvent(ctx context.Context, req *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error) {
 	if !t.isInitialized {
-		status.Error(codes.Internal, "failed to retrieve namespaces from database")
 		return nil, status.Error(codes.Unavailable, "extension is not initialized yet")
 	}
 

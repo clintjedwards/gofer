@@ -1,6 +1,6 @@
 # Github <small>_Extension_</small>
 
-The Github extension allows Gofer pipelines to be extensioned by [Github webhook events.](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads) This makes it possible to write event driven
+The Github extension allows Gofer pipelines to be run on [Github webhook events.](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads) This makes it possible to write event driven
 workloads that depend on an action happening on Github.
 
 See the [events section below](#events) for all supported events and the environment variables they pass to each

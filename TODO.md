@@ -97,11 +97,6 @@ There are several useful things we can do with the concept of extensions:
 
 - Test registry auth.
 - Write tests for all "TO" and "FROM" functions.
-- For certain routes we need to pass around the logger so that we can automatically
-  inject namespace and pipeline.
-- We need to refactor logging for some routes to build on top of each other so that they we automatically get things
-  like namespace, pipeline.
-- Terraform provider for installing extensions.
 
 ### General
 
@@ -110,6 +105,10 @@ There are several useful things we can do with the concept of extensions:
 - Check that when we create the run specific token for a run and enter it into the user's run stuff. We also need to make sure we clean that token up after the run is done.
 - Create a container for custom use that has gofer-cli already packed in and possibly allows
   - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So users can get zero to code ultra-fast.
+- Improve Logging:
+  - We should change extensions(and probably main?) over to use slog instead so we can get consistent logging patterns from extensions.
+  - We need to refactor logging for some routes to build on top of each other so that they we automatically get things
+    like namespace, pipeline.
 
 ### Rough spots in design
 
@@ -155,3 +154,6 @@ There are several useful things we can do with the concept of extensions:
 - Force for both objects and secrets need to be checked. Some layers of the process does not respect it.
 - Github Extension:
   - Restore ability to register a pipeline to be triggered every time some event happens.
+  - Update Github extension documentation in external docs
+  - Github extension also needs to do check-run stuff
+  - Mention the 'all' action in documentation

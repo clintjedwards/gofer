@@ -62,6 +62,7 @@ func (api *API) startExtension(extension models.ExtensionRegistration, tlsCert, 
 			Source: models.VariableSourceSystem,
 		},
 		{
+			// The system_name is simply a human readable name for the extension.
 			Key:    "GOFER_EXTENSION_SYSTEM_NAME",
 			Value:  extension.Name,
 			Source: models.VariableSourceSystem,
@@ -72,11 +73,16 @@ func (api *API) startExtension(extension models.ExtensionRegistration, tlsCert, 
 			Source: models.VariableSourceSystem,
 		},
 		{
+			// The system_key is a random string passed in by Gofer on the extensions init to act as a pre-shared
+			// auth key between the two systems. When gofer makes a request to the extension, the extension verifies
+			// that is has the correct auth and vice-versa.
 			Key:    "GOFER_EXTENSION_SYSTEM_KEY",
 			Value:  token,
 			Source: models.VariableSourceSystem,
 		},
 		{
+			// The gofer_host is the url of where the main gofer server. This is used by the extension to simply
+			// communicate back to the original gofer host.
 			Key:    "GOFER_EXTENSION_SYSTEM_GOFER_HOST",
 			Value:  api.config.Server.Address,
 			Source: models.VariableSourceSystem,
