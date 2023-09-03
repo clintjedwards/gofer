@@ -8,23 +8,19 @@
 [![docs site][website-badge]][website-url]
 [![project status][project-status]][project-status]
 
-Gofer is an opinionated, cloud-native, container-focused, continuous thing do-er. It focuses on simplicity and usability for both developers and ops.
+Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. Once set up, Gofer takes care of scheduling and running your automation tasks—be it on Nomad, Kubernetes, or even Local Docker.
 
-You deploy it as a single static binary service, pass it declarative configurations written in real programming languages, and watch as it automatically handles periodic scheduling of your automation workloads.
-
-Gofer runs your workloads on whatever your choice of container scheduler: Nomad, K8s, Local Docker.
-
-It's purpose is to run short term jobs such as: code linters, build tools, tests, port-scanners, ETL tooling and anything else you can package into a Docker container and run as a result of some other event happening.
+Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
 
 ## Features:
 
-- Deploy Gofer as a single static binary, manage Gofer through the included command line interface.
-- Write your pipelines in a programming language you're familiar with; stop cobbling together unfamiliar yaml. (**Go** or **Rust** for now).
-- Test and run your pipelines locally; No more <i>"commit it and see"</i> testing.
-- Pluggable: Write your own extensions, backends, and more in any language (through GRPC).
-- Included Object and Secret store.
-- DAG(Directed Acyclic Graph) support.
-- Reliability tooling: Automatically version, Blue/Green deploy, and [canary][canarying-url] deploy updated versions of your pipelines.
+- **Simple Deployment**: Install Gofer effortlessly with a single static binary and manage it through its intuitive command-line interface.
+- **Language Flexibility**: Craft your pipelines in programming languages you're already comfortable with, such as Go or Rust—no more wrestling with unfamiliar YAML.
+- **Local Testing**: Validate and run your pipelines locally, eliminating the guesswork of "commit and see" testing.
+- **Extensible Architecture**: Easily extend Gofer's capabilities by writing your own plugins, backends, and more, in any language via gRPC.
+- **Built-In Storage**: Comes with an integrated Object and Secret store for your convenience.
+- **DAG Support**: Harness the power of Directed Acyclic Graphs (DAGs) for complex workflow automation.
+- **Robust Reliability**: Automatic versioning, Blue/Green deployments, and canary releases ensure the stability and dependability of your pipelines.
 
 ## Demo:
 
