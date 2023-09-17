@@ -1,0 +1,1 @@
+- A focus on simplicity

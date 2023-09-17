@@ -148,6 +148,7 @@ There are several useful things we can do with the concept of extensions:
 - Write better documentation on how to spin Gofer up locally so you can test out your pipeline.
 - Add documentation for new token namespaces
 - Document extension system env vars
+- Consider writing a retrospective
 
 ### On the floor
 
