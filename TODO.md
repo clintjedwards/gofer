@@ -78,6 +78,7 @@ Also github integration:
 - Extensions should follow semver. Extensions that use the same major version of Gofer should be compatible.
 - If a extension by the same name is already installed, we should refuse to install another but instead allow the user to update it.
 - Extensions should be able to report details about their execution somehow. It would be nice when looking at my pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension that is taking overly long.
+- Make sure to put in the extension documentation which versions are compatible with gofer. The current scheme is that all major versions are compatible with all same major versions. So if Gofer releases a 1.0, then all extensions will have to release a 1.0. This means that extensions can update their minor and patch versioning, but major versions will also be compatible with the same Gofer major version. Make sure this is documented.
 
 #### More extensions:
 

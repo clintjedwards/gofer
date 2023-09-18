@@ -1,4 +1,4 @@
-FROM golang:1.19 AS build-environment
+FROM golang:1.20 AS build-environment
 
 LABEL org.opencontainers.image.source https://github.com/clintjedwards/gofer
 
