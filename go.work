@@ -1,4 +1,6 @@
-go 1.19
+go 1.20
+
+toolchain go1.21.1
 
 use (
 	./
@@ -10,7 +12,7 @@ use (
 	./containers/extensions/interval
 	./examplePipelines/go/dag
 	./examplePipelines/go/objects
+	./examplePipelines/go/script
 	./examplePipelines/go/secrets
 	./examplePipelines/go/simple
-	./examplePipelines/go/script
 )
