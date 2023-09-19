@@ -1,0 +1,682 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Extensions - Gofer</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="Gofer documentation">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = null;
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../../introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="../../how_does_gofer_work.html">How Does Gofer Work?</a></li><li class="chapter-item expanded affix "><a href="../../glossary.html">Glossary</a></li><li class="chapter-item expanded affix "><a href="../../faq.html">FAQ</a></li><li class="chapter-item expanded affix "><a href="../../features.html">Feature Guide</a></li><li class="chapter-item expanded affix "><a href="../../best_practices.html">Best Practices</a></li><li class="chapter-item expanded affix "><a href="../../troubleshooting.html">Troubleshooting</a></li><li class="chapter-item expanded affix "><a href="../../philosophy.html">Philosophy</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="../../guide/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../guide/installing_gofer.html"><strong aria-hidden="true">1.1.</strong> Installing Gofer</a></li><li class="chapter-item expanded "><a href="../../guide/running_the_server_locally.html"><strong aria-hidden="true">1.2.</strong> Running the Server Locally</a></li><li class="chapter-item expanded "><a href="../../guide/create_your_first_pipeline_configuration.html"><strong aria-hidden="true">1.3.</strong> Create Your First Pipeline Config</a></li><li class="chapter-item expanded "><a href="../../guide/register_your_pipeline.html"><strong aria-hidden="true">1.4.</strong> Register your pipeline</a></li><li class="chapter-item expanded "><a href="../../guide/start_a_run.html"><strong aria-hidden="true">1.5.</strong> Start a Run</a></li><li class="chapter-item expanded "><a href="../../guide/whats_next.html"><strong aria-hidden="true">1.6.</strong> What's Next?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../../ref/pipeline_configuration/index.html"><strong aria-hidden="true">2.</strong> Pipeline Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/pipeline_configuration/tasks.html"><strong aria-hidden="true">2.1.</strong> Tasks</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/server_configuration/index.html"><strong aria-hidden="true">3.</strong> Server Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/server_configuration/configuration_reference.html"><strong aria-hidden="true">3.1.</strong> Configuration Reference</a></li><li class="chapter-item expanded "><a href="../../ref/server_configuration/authentication.html"><strong aria-hidden="true">3.2.</strong> Authentication</a></li><li class="chapter-item expanded "><a href="../../ref/server_configuration/external_events.html"><strong aria-hidden="true">3.3.</strong> External Events</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/scheduler/index.html"><strong aria-hidden="true">4.</strong> Scheduler</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/scheduler/docker.html"><strong aria-hidden="true">4.1.</strong> Docker</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/object_store/index.html"><strong aria-hidden="true">5.</strong> Object Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/object_store/sqlite.html"><strong aria-hidden="true">5.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/secret_store/index.html"><strong aria-hidden="true">6.</strong> Secret Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/secret_store/sqlite.html"><strong aria-hidden="true">6.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="../../ref/extensions/index.html" class="active"><strong aria-hidden="true">7.</strong> Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/extensions/provided/index.html"><strong aria-hidden="true">7.1.</strong> Provided Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../ref/extensions/provided/cron.html"><strong aria-hidden="true">7.1.1.</strong> Cron</a></li><li class="chapter-item expanded "><a href="../../ref/extensions/provided/interval.html"><strong aria-hidden="true">7.1.2.</strong> Interval</a></li><li class="chapter-item expanded "><a href="../../ref/extensions/provided/github.html"><strong aria-hidden="true">7.1.3.</strong> Github</a></li></ol></li></ol></li><li class="chapter-item expanded "><li class="part-title">CLI</li><li class="chapter-item expanded "><a href="../../cli/index.html"><strong aria-hidden="true">8.</strong> Command Line</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../cli/configuration.html"><strong aria-hidden="true">8.1.</strong> Configuration</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Gofer</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="extensions"><a class="header" href="#extensions">Extensions</a></h1>
+<p>Extensions are Gofer's way of adding additional functionality to pipelines. You can subscribe your pipeline to an extension, allowing that extension to give your pipeline extra powers.</p>
+<p>The most straight-forward example of this, is the interval extension. This extension allows your pipeline to run everytime some amount of time has passed. Let's say you have a pipeline that needs to run every 5 mins. You would subscribe your pipeline to the <a href="./provided/interval.html">interval</a> extension using the gofer cli command <code>gofer extension sub internal every_5_seconds</code> set to an interval of <code>5m</code>.</p>
+<p>On startup, Gofer launches the interval extension as a long-running container. When your pipeline subscribes to it. The interval extension starts a timer and when 5 minutes have passed the extension sends an API request to Gofer, causing Gofer to run your pipeline.</p>
+<h2 id="gofer-provided-extensions"><a class="header" href="#gofer-provided-extensions">Gofer Provided Extensions</a></h2>
+<p>You can <a href="#how-to-add-new-extensions">create</a> your own extensions, but Gofer provides some <a href="./provided/index.html">provided extensions</a> for use.</p>
+<h2 id="how-do-i-install-a-extension"><a class="header" href="#how-do-i-install-a-extension">How do I install a Extension?</a></h2>
+<p>Extensions must first be installed by Gofer administrators before they can be used. They can be installed by the CLI. For more information on how to install a specific extension run:</p>
+<pre><code class="language-bash">gofer extension install -h
+</code></pre>
+<h2 id="how-do-i-configure-a-extension"><a class="header" href="#how-do-i-configure-a-extension">How do I configure a Extension?</a></h2>
+<p>Extensions allow for both system and pipeline configuration<sup class="footnote-reference"><a href="#1">1</a></sup>. Meaning they have both Global settings that apply to all pipelines
+and Pipeline specific settings. This is what makes them so dynamically useful!</p>
+<h3 id="pipeline-configuration"><a class="header" href="#pipeline-configuration">Pipeline Configuration</a></h3>
+<p>Most Extensions allow for some pipeline specific configuration usually referred to as &quot;Parameters&quot; or &quot;Pipeline configuration&quot;.</p>
+<p>These variables are passed when the user subscribes their pipeline to the extension. Each extension defines what this might be
+in it's documentation.</p>
+<h3 id="system-configuration"><a class="header" href="#system-configuration">System Configuration</a></h3>
+<p>Most extensions have system configurations which allow the administrator or system to inject some needed variables. These are defined when the Extension is installed.</p>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>See a specific Extension's documentation for the exact variables accepted and where they belong.</p>
+</div>
+<h2 id="how-to-add-new-extensions-how-do-i-create-my-own"><a class="header" href="#how-to-add-new-extensions-how-do-i-create-my-own">How to add new Extensions/ How do I create my own?</a></h2>
+<p>Just like tasks, extensions are simply docker containers! Making them easily testable and portable. To create a new extension you simply use the included <a href="https://pkg.go.dev/github.com/clintjedwards/gofer/sdk">Gofer SDK</a>.</p>
+<p>The SDK provides an interface in which a well functioning GRPC service will be created from your concrete implementation.</p>
+<pre><code class="language-go">// ExtensionServiceInterface provides a light wrapper around the GRPC extension interface. This light wrapper
+// provides the caller with a clear interface to implement and allows this package to bake in common
+// functionality among all extensions.
+type ExtensionServiceInterface interface {
+	// Init tells the extension it should complete it's initialization phase and return when it is ready to serve requests.
+	// This is useful because sometimes we'll want to start the extension, but not actually have it do anything
+	// but serve only certain routes like the installation routes.
+	Init(context.Context, *proto.ExtensionInitRequest) (*proto.ExtensionInitResponse, error)
+
+	// Info returns information on the specific plugin
+	Info(context.Context, *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error)
+
+	// Subscribe registers a pipeline with said extension to provide the extension's functionality.
+	Subscribe(context.Context, *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error)
+
+	// Unsubscribe allows pipelines to remove their extension subscriptions.
+	Unsubscribe(context.Context, *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error)
+
+	// Shutdown tells the extension to cleanup and gracefully shutdown. If a extension
+	// does not shutdown in a time defined by the Gofer API the extension will
+	// instead be Force shutdown(SIGKILL). This is to say that all extensions should
+	// lean toward quick cleanups and shutdowns.
+	Shutdown(context.Context, *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error)
+
+	// ExternalEvent are json blobs of Gofer's /events endpoint. Normally webhooks.
+	ExternalEvent(context.Context, *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error)
+
+	// Run the installer that helps admin user install the extension.
+	RunExtensionInstaller(stream proto.ExtensionService_RunExtensionInstallerServer) error
+
+	// Run the installer that helps pipeline users with their pipeline extension
+</code></pre>
+<p>For an commented example of a simple extension you can follow to build your own, view the <a href="https://github.com/clintjedwards/gofer/tree/main/containers/extensions/interval">interval extension</a>:</p>
+<pre><code class="language-go">// Extension interval simply runs the subscribed pipeline at the given interval.
+//
+// This package is commented in such a way to make it easy to deduce what is going on, making it
+// a perfect example of how to build other extensions.
+//
+// What is going on below is relatively simple:
+//   - All extensions are run as long-running containers.
+//   - We create our extension as just a regular program, paying attention to what we want our variables to be
+//     when we install the extension and when a pipeline subscribes to this extension.
+//   - We assimilate the program to become a long running extension by using the Gofer SDK and implementing
+//     the needed sdk.ExtensionServiceInterface.
+//   - We simply call NewExtension and let the SDK and Gofer go to work.
+package main
+
+import (
+	&quot;context&quot;
+	&quot;fmt&quot;
+	&quot;strings&quot;
+	&quot;time&quot;
+
+	// The proto package provides some data structures that we'll need to return to our interface.
+	proto &quot;github.com/clintjedwards/gofer/proto/go&quot;
+
+	// The sdk package contains a bunch of convenience functions that we use to build our extension.
+	// It is possible to build a extension without using the SDK, but the SDK makes the process much
+	// less cumbersome.
+	sdk &quot;github.com/clintjedwards/gofer/sdk/go/extensions&quot;
+
+	// Golang doesn't have a standardized logging interface and as such Gofer extensions can technically
+	// use any logging package, but because Gofer and provided extensions use zerolog, it is heavily encouraged
+	// to use zerolog. The log level for extensions is set by Gofer on extension start via Gofer's configuration.
+	// And logs are interleaved in the stdout for the main program.
+	&quot;github.com/rs/zerolog/log&quot;
+)
+
+// Extensions have two types of variables they can be passed.
+//   - They take variables called &quot;config&quot; when they are installed.
+//   - They take variables called &quot;parameters&quot; for each pipeline that subscribes to them.
+
+// This extension has a single parameter called &quot;every&quot;.
+const (
+	// &quot;every&quot; is the time between pipeline runs.
+	// Supports golang native duration strings: https://pkg.go.dev/time#ParseDuration
+	//
+	// Examples: &quot;1m&quot;, &quot;60s&quot;, &quot;3h&quot;, &quot;3m30s&quot;
+	ParameterEvery = &quot;every&quot;
+)
+
+// And a single config called &quot;min_duration&quot;.
+const (
+	// The minimum interval pipelines can set for the &quot;every&quot; parameter.
+	ConfigMinInterval = &quot;min_interval&quot;
+)
+
+// Extensions are subscribed to by pipelines. Gofer will call the `subscribe` function for the extension and
+// pass it details about the pipeline and the parameters it wants.
+// This structure is meant to keep details about those subscriptions so that we may
+// perform the extension's duties on those pipeline subscriptions.
+type subscription struct {
+	namespace              string
+	pipeline               string
+	pipelineExtensionLabel string
+	quit                   context.CancelFunc
+}
+
+// SubscriptionID is simply a composite key of the many things that make a single subscription unique.
+// We use this as the key in a hash table to lookup subscriptions. Some might wonder why label is part
+// of this unique key. That is because extensions should expect that pipelines might
+// want to subscribe more than once.
+type subscriptionID struct {
+	namespace              string
+	pipeline               string
+	pipelineExtensionLabel string
+}
+
+// Extension is a structure that every Gofer extension should have. It is essentially a God struct that coordinates things
+// for the extension as a whole. It contains all information about our extension that we might want to reference.
+type extension struct {
+	// Extensions can be run without &quot;initializing&quot; them. This allows Gofer to run things like the installer without
+	// having to pass the extension everything it needs to work for normal cases.
+	// It might be useful to track whether the extension was initialized or not.
+	isInitialized bool
+
+	// The lower limit for how often a pipeline can request to be run.
+	minInterval time.Duration
+
+	// During shutdown the extension will want to stop all intervals immediately. Having the ability to stop all goroutines
+	// is very useful.
+	quitAllSubscriptions context.CancelFunc
+
+	// The parent context is stored here so that we have a common parent for all goroutines we spin up.
+	// This enables us to manipulate all goroutines at the same time.
+	parentContext context.Context
+
+	// Mapping of subscription id to actual subscription. The subscription in this case also contains the goroutine
+	// cancel context for the specified extension. This is important, as when a pipeline unsubscribes from a this extension
+	// we will need a way to stop that specific goroutine from running.
+	subscriptions map[subscriptionID]*subscription
+
+	// Generic extension configuration set by Gofer at startup. Useful for interacting with Gofer.
+	systemConfig sdk.ExtensionSystemConfig
+}
+
+// Init serves to set up the extension for it's main functionality. It is needed mostly because we sometimes need
+// extensions to launch, but not actually serve all requests(like when we're running the extensions install endpoints).
+//
+// The Gofer server when launching an extension will call the Init endpoint and then wait until
+// a successful response is returned to mark the extension ready to take subscriptions.
+func (e *extension) Init(ctx context.Context, request *proto.ExtensionInitRequest) (*proto.ExtensionInitResponse, error) {
+	minDurationStr := request.Config[ConfigMinInterval]
+	minDuration := time.Minute * 1
+	if minDurationStr != &quot;&quot; {
+		parsedDuration, err := time.ParseDuration(minDurationStr)
+		if err != nil {
+			return nil, err
+		}
+		minDuration = parsedDuration
+	}
+
+	e.parentContext, e.quitAllSubscriptions = context.WithCancel(context.Background())
+	e.minInterval = minDuration
+	e.subscriptions = map[subscriptionID]*subscription{}
+
+	config, _ := sdk.GetExtensionSystemConfig()
+	e.systemConfig = config
+	e.isInitialized = true
+
+	return &amp;proto.ExtensionInitResponse{}, nil
+}
+
+// startInterval is the main logic of what enables the interval extension to work. Each pipeline that is subscribed runs
+// this function which simply waits for the set duration and then calls the StartRun endpoint for Gofer.
+func (e *extension) startInterval(ctx context.Context, namespace, pipeline string, pipelineExtensionLabel string, duration time.Duration,
+) {
+	for {
+		select {
+		case &lt;-ctx.Done():
+			return
+		case &lt;-time.After(duration):
+			client, ctx, err := sdk.Connect()
+			if err != nil {
+				log.Error().Err(err).Str(&quot;namespaceID&quot;, namespace).Str(&quot;pipelineID&quot;, pipeline).
+					Str(&quot;extension_label&quot;, pipelineExtensionLabel).Msg(&quot;could not connect to Gofer&quot;)
+
+				continue
+			}
+
+			config, _ := sdk.GetExtensionSystemConfig()
+
+			resp, err := client.StartRun(ctx, &amp;proto.StartRunRequest{
+				NamespaceId: namespace,
+				PipelineId:  pipeline,
+				Variables:   map[string]string{},
+				Initiator: &amp;proto.Initiator{
+					Type:   proto.Initiator_EXTENSION,
+					Name:   fmt.Sprintf(&quot;%s (%s)&quot;, config.Name, pipelineExtensionLabel),
+					Reason: &quot;Triggered due to the passage of time&quot;,
+				},
+			})
+			if err != nil {
+				log.Error().Err(err).Str(&quot;namespaceID&quot;, namespace).Str(&quot;pipelineID&quot;, pipeline).
+					Str(&quot;extension_label&quot;, pipelineExtensionLabel).Msg(&quot;could not start new run&quot;)
+
+				continue
+			}
+
+			log.Debug().Str(&quot;namespace_id&quot;, namespace).Str(&quot;pipeline_id&quot;, pipeline).
+				Str(&quot;extension_label&quot;, pipelineExtensionLabel).Int64(&quot;run_id&quot;, resp.Run.Id).
+				Msg(&quot;new tick for specified interval; new event spawned&quot;)
+		}
+	}
+}
+
+// Gofer calls subscribe when a pipeline wants to subscribe to this extension.
+// The logic here is simple:
+//   - Retrieve the pipeline's requested parameters.
+//   - Validate the parameters.
+//   - Create a new subscription object and enter it into our map.
+//   - Call the `startInterval` function in a goroutine for that specific pipeline and return.
+func (e *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
+	interval, exists := request.Config[strings.ToUpper(ParameterEvery)]
+	if !exists {
+		return nil, fmt.Errorf(&quot;could not find required configuration parameter %q; received config params: %+v&quot;, ParameterEvery, request.Config)
+	}
+
+	duration, err := time.ParseDuration(interval)
+	if err != nil {
+		return nil, fmt.Errorf(&quot;could not parse interval string: %w&quot;, err)
+	}
+
+	if duration &lt; e.minInterval {
+		return nil, fmt.Errorf(&quot;durations cannot be less than %s&quot;, e.minInterval)
+	}
+
+	subID := subscriptionID{
+		request.NamespaceId,
+		request.PipelineId,
+		request.PipelineExtensionLabel,
+	}
+
+	// It is perfectly possible for Gofer to attempt to subscribe an already subscribed pipeline. In this case,
+	// we can simply ignore the request.
+	_, exists = e.subscriptions[subID]
+	if exists {
+		log.Debug().Str(&quot;namespace_id&quot;, request.NamespaceId).Str(&quot;extension_label&quot;, request.PipelineExtensionLabel).
+			Str(&quot;pipeline_id&quot;, request.PipelineId).Msg(&quot;pipeline already subscribed; ignoring request&quot;)
+		return &amp;proto.ExtensionSubscribeResponse{}, nil
+	}
+
+	subctx, quit := context.WithCancel(e.parentContext)
+	e.subscriptions[subID] = &amp;subscription{
+		namespace:              request.NamespaceId,
+		pipeline:               request.PipelineId,
+		pipelineExtensionLabel: request.PipelineExtensionLabel,
+		quit:                   quit,
+	}
+
+	go e.startInterval(subctx, request.NamespaceId, request.PipelineId, request.PipelineExtensionLabel, duration)
+
+	log.Debug().Str(&quot;namespace_id&quot;, request.NamespaceId).Str(&quot;extension_label&quot;, request.PipelineExtensionLabel).
+		Str(&quot;pipeline_id&quot;, request.PipelineId).Msg(&quot;subscribed pipeline&quot;)
+	return &amp;proto.ExtensionSubscribeResponse{}, nil
+}
+
+// Pipelines change and this means that sometimes they will no longer want to be executed by a particular extension or maybe
+// they want to change the previous settings on that extension. Because of this we need a way to remove pipelines that were
+// previously subscribed.
+func (e *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error) {
+	subscription, exists := e.subscriptions[subscriptionID{
+		namespace:              request.NamespaceId,
+		pipeline:               request.PipelineId,
+		pipelineExtensionLabel: request.PipelineExtensionLabel,
+	}]
+
+	// It is perfectly possible for Gofer to attempt to unsubscribe an already unsubscribed pipeline. In this case,
+	// we can simply ignore the request.
+	if !exists {
+		log.Debug().Str(&quot;namespace_id&quot;, request.NamespaceId).Str(&quot;extension_label&quot;, request.PipelineExtensionLabel).
+			Str(&quot;pipeline_id&quot;, request.PipelineId).Msg(&quot;no subscription found for pipeline&quot;)
+		return &amp;proto.ExtensionUnsubscribeResponse{}, nil
+	}
+
+	subscription.quit()
+	delete(e.subscriptions, subscriptionID{
+		namespace:              request.NamespaceId,
+		pipeline:               request.PipelineId,
+		pipelineExtensionLabel: request.PipelineExtensionLabel,
+	})
+	return &amp;proto.ExtensionUnsubscribeResponse{}, nil
+}
+
+// Info is mostly used as a health check endpoint. It returns some basic info about a extension, the most important
+// being where to get more documentation about that specific extension.
+func (e *extension) Info(ctx context.Context, request *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
+	registered := []string{}
+	for _, sub := range e.subscriptions {
+		registered = append(registered, fmt.Sprintf(&quot;%s/%s&quot;, sub.namespace, sub.pipeline))
+	}
+
+	return &amp;proto.ExtensionInfoResponse{
+		Name:          e.systemConfig.Name,
+		Documentation: &quot;https://clintjedwards.com/gofer/ref/extensions/provided/interval.html&quot;,
+		Registered:    registered,
+	}, nil
+}
+
+// The ExternalEvent endpoint tells the extension what to do if they get messages from Gofer's external event system.
+// This system is set up to facilitate webhook interactions like those that occur for github
+// (A user pushes a branch, Gofer gets an event from github).
+// The ExternalEvent will come with a payload which the extension can then authenticate, process, and take action on.
+func (e *extension) ExternalEvent(ctx context.Context, request *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error) {
+	return &amp;proto.ExtensionExternalEventResponse{}, nil
+}
+
+// A graceful shutdown for a extension should clean up any resources it was working with that might be left hanging.
+// Sometimes that means sending requests to third parties that it is shutting down, sometimes that just means
+// reaping its personal goroutines.
+func (e *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error) {
+	if e.isInitialized {
+		e.quitAllSubscriptions()
+	}
+
+	return &amp;proto.ExtensionShutdownResponse{}, nil
+}
+
+// The ExtensionInstaller is a small script that gets piped to the admin who is trying to set up this particular
+// extension. The installer is meant to guide the user through the different configuration options that the
+// installer has globally.
+func (e *extension) RunExtensionInstaller(stream proto.ExtensionService_RunExtensionInstallerServer) error {
+	err := sdk.SendInstallerMessageToClient(stream, &quot;The interval extension allows users to run their pipelines on the passage of &quot;+
+		&quot;time by setting a particular duration.\n&quot;)
+	if err != nil {
+		return err
+	}
+
+	err = sdk.SendInstallerMessageToClient(stream, &quot;First, let's prevent users from setting too low of an interval by &quot;+
+		&quot;setting a minimum duration. Durations are set via Golang duration strings. For example, entering a duration &quot;+
+		&quot;of '10h' would be 10 hours, meaning that users can only run their pipeline at most every 10 hours. &quot;+
+		&quot;You can find more documentation on valid strings here: https://pkg.go.dev/time#ParseDuration.&quot;)
+	if err != nil {
+		return err
+	}
+
+	for {
+		err = sdk.SendInstallerQueryToClient(stream, &quot;Set a minimum duration for all pipelines: &quot;)
+		if err != nil {
+			return err
+		}
+
+		clientMsg, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		_, err = time.ParseDuration(clientMsg.Msg)
+		if err != nil {
+			err = sdk.SendInstallerMessageToClient(stream, fmt.Sprintf(&quot;Malformed duration %q; %v&quot;, clientMsg.Msg, err))
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		err = sdk.SendInstallerConfigSettingToClient(stream, ConfigMinInterval, clientMsg.Msg)
+		if err != nil {
+			return err
+		}
+
+		break
+	}
+
+	err = sdk.SendInstallerMessageToClient(stream, &quot;Interval extension configuration finished&quot;)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// The PipelineConfigurator is a small script that a pipeline owner can run when subscribing to this extension.
+// It's meant to guide the pipeline owner through the different options of the extension.
+func (e *extension) RunPipelineConfigurator(stream proto.ExtensionService_RunPipelineConfiguratorServer) error {
+	err := sdk.SendConfiguratorMessageToClient(stream, &quot;The interval extension allows you to run your pipelines on the passage of &quot;+
+		&quot;time by setting a particular duration.\n&quot;)
+	if err != nil {
+		return err
+	}
+
+	err = sdk.SendConfiguratorMessageToClient(stream, &quot;Durations are set via Golang duration strings. &quot;+
+		&quot;For example, entering a duration of '10h' would be 10 hours, meaning that your pipeline would run once every 10 hours. &quot;+
+		&quot;You can find more documentation on valid strings here: https://pkg.go.dev/time#ParseDuration.&quot;)
+	if err != nil {
+		return err
+	}
+
+	for {
+		err = sdk.SendConfiguratorQueryToClient(stream, &quot;Set your pipeline run interval: &quot;)
+		if err != nil {
+			return err
+		}
+
+		clientMsg, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		_, err = time.ParseDuration(clientMsg.Msg)
+		if err != nil {
+			err = sdk.SendConfiguratorMessageToClient(stream, fmt.Sprintf(&quot;Malformed duration %q; %v&quot;, clientMsg.Msg, err))
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		err = sdk.SendConfiguratorParamSettingToClient(stream, ParameterEvery, clientMsg.Msg)
+		if err != nil {
+			return err
+		}
+
+		break
+	}
+
+	err = sdk.SendConfiguratorMessageToClient(stream, &quot;Interval extension configuration finished&quot;)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Lastly we call our personal NewExtension function, which now implements the ExtensionServerInterface and then we
+// pass it to the NewExtension function within the SDK.
+//
+// From here the SDK will use the given interface and run a GRPC service whenever this program is called with the
+// positional parameter &quot;server&quot;. Ex. &quot;./extension server&quot;
+//
+// Whenever this program is called with the parameter &quot;installer&quot; then it will print out the installation instructions
+// instead.
+func main() {
+	extension := extension{}
+	sdk.NewExtension(&amp;extension)
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../ref/secret_store/sqlite.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../../ref/extensions/provided/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../ref/secret_store/sqlite.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../../ref/extensions/provided/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Philosophy - Gofer</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="Gofer documentation">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = null;
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="how_does_gofer_work.html">How Does Gofer Work?</a></li><li class="chapter-item expanded affix "><a href="glossary.html">Glossary</a></li><li class="chapter-item expanded affix "><a href="faq.html">FAQ</a></li><li class="chapter-item expanded affix "><a href="features.html">Feature Guide</a></li><li class="chapter-item expanded affix "><a href="best_practices.html">Best Practices</a></li><li class="chapter-item expanded affix "><a href="troubleshooting.html">Troubleshooting</a></li><li class="chapter-item expanded affix "><a href="philosophy.html" class="active">Philosophy</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="guide/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guide/installing_gofer.html"><strong aria-hidden="true">1.1.</strong> Installing Gofer</a></li><li class="chapter-item expanded "><a href="guide/running_the_server_locally.html"><strong aria-hidden="true">1.2.</strong> Running the Server Locally</a></li><li class="chapter-item expanded "><a href="guide/create_your_first_pipeline_configuration.html"><strong aria-hidden="true">1.3.</strong> Create Your First Pipeline Config</a></li><li class="chapter-item expanded "><a href="guide/register_your_pipeline.html"><strong aria-hidden="true">1.4.</strong> Register your pipeline</a></li><li class="chapter-item expanded "><a href="guide/start_a_run.html"><strong aria-hidden="true">1.5.</strong> Start a Run</a></li><li class="chapter-item expanded "><a href="guide/whats_next.html"><strong aria-hidden="true">1.6.</strong> What's Next?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="ref/pipeline_configuration/index.html"><strong aria-hidden="true">2.</strong> Pipeline Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/pipeline_configuration/tasks.html"><strong aria-hidden="true">2.1.</strong> Tasks</a></li></ol></li><li class="chapter-item expanded "><a href="ref/server_configuration/index.html"><strong aria-hidden="true">3.</strong> Server Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/server_configuration/configuration_reference.html"><strong aria-hidden="true">3.1.</strong> Configuration Reference</a></li><li class="chapter-item expanded "><a href="ref/server_configuration/authentication.html"><strong aria-hidden="true">3.2.</strong> Authentication</a></li><li class="chapter-item expanded "><a href="ref/server_configuration/external_events.html"><strong aria-hidden="true">3.3.</strong> External Events</a></li></ol></li><li class="chapter-item expanded "><a href="ref/scheduler/index.html"><strong aria-hidden="true">4.</strong> Scheduler</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/scheduler/docker.html"><strong aria-hidden="true">4.1.</strong> Docker</a></li></ol></li><li class="chapter-item expanded "><a href="ref/object_store/index.html"><strong aria-hidden="true">5.</strong> Object Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/object_store/sqlite.html"><strong aria-hidden="true">5.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="ref/secret_store/index.html"><strong aria-hidden="true">6.</strong> Secret Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/secret_store/sqlite.html"><strong aria-hidden="true">6.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="ref/extensions/index.html"><strong aria-hidden="true">7.</strong> Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/extensions/provided/index.html"><strong aria-hidden="true">7.1.</strong> Provided Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/extensions/provided/cron.html"><strong aria-hidden="true">7.1.1.</strong> Cron</a></li><li class="chapter-item expanded "><a href="ref/extensions/provided/interval.html"><strong aria-hidden="true">7.1.2.</strong> Interval</a></li><li class="chapter-item expanded "><a href="ref/extensions/provided/github.html"><strong aria-hidden="true">7.1.3.</strong> Github</a></li></ol></li></ol></li><li class="chapter-item expanded "><li class="part-title">CLI</li><li class="chapter-item expanded "><a href="cli/index.html"><strong aria-hidden="true">8.</strong> Command Line</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/configuration.html"><strong aria-hidden="true">8.1.</strong> Configuration</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Gofer</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="gofers-philosophy"><a class="header" href="#gofers-philosophy">Gofer's Philosophy</a></h1>
+<p><em>Things should be <strong>simple, easy, and fast</strong>. For if they are not, people will look for an alternate solution.</em></p>
+<p>Gofer focuses on the usage of common docker containers to run workloads that don't belong as long-running applications. The ability to run containers <em>easily</em> is powerful tool for users who need to run various short-term workloads and don't want to care about the idiosyncrasies of the tooling that they run on top of.</p>
+<h2 id="how-do-i-use-gofer-whats-a-common-workflow"><a class="header" href="#how-do-i-use-gofer-whats-a-common-workflow">How do I use Gofer? What's a common workflow?</a></h2>
+<ol>
+<li>Create a docker container with the workload/code you want to run.</li>
+<li>Create a configuration file (kept with your workload code) in which you tell Gofer what containers to run and when they should be run.</li>
+<li>Gofer takes care of the rest!</li>
+</ol>
+<h2 id="what-problem-is-gofer-attempting-to-solve"><a class="header" href="#what-problem-is-gofer-attempting-to-solve">What problem is Gofer attempting to solve?</a></h2>
+<p>The current landscape for running short-term jobs is heavily splintered and could do with some <a href="https://xkcd.com/927/">centralization</a> and sanity.</p>
+<h3 id="1-tooling-in-this-space-is-often-cicd-focused-and-treats-gitops-as-a-core-tenet"><a class="header" href="#1-tooling-in-this-space-is-often-cicd-focused-and-treats-gitops-as-a-core-tenet">1) Tooling in this space is often CI/CD focused and treats <a href="https://about.gitlab.com/topics/gitops/">gitops</a> as a core tenet.</a></h3>
+<p>Initially this is really good, Gitops is something most companies should embrace. But eventually as your workload grows you'll notice that you'll want/need to have a little more control over your short term workloads without setting up complicated release scheduling.</p>
+<h3 id="2-tooling-in-this-space-can-lack-testability"><a class="header" href="#2-tooling-in-this-space-can-lack-testability">2) Tooling in this space can lack testability.</a></h3>
+<p>Ever set up a CI/CD pipeline for your team and end up with a string of commits simply testing or fixing bugs in your assumptions of the system? This is usually due to not understanding how the system works, what values it will produce, or testing being difficult.</p>
+<p>These are issues because most CI/CD systems make it hard to test locally. In order to support a wide array of job types(and lean toward being fully gitops focused) most of them run custom agents which in turn run the jobs you want.</p>
+<p>This can be bad, since it's usually non-trivial to understand exactly what these agents will do once they handle your workload. Dealing with these agents can also be an operational burden. Operators are generally unfamiliar with these custom agents and it doesn't play to the strengths of an ops team that is already focused on other complex systems.</p>
+<p>Gofer leverages schedulers which work locally and are already native to your environment, so testing locally is never far away!</p>
+<h3 id="3-tooling-in-this-space-can-lack-simplicity"><a class="header" href="#3-tooling-in-this-space-can-lack-simplicity">3) Tooling in this space can lack simplicity.</a></h3>
+<p>Some user experience issues I've run into using other common CI/CD tooling:</p>
+<ul>
+<li>100 line bash script (filled with sed and awk) to configure the agent's environment before my workload was loaded onto it.</li>
+<li>Debugging docker in docker issues.</li>
+<li>Reading the metric shit ton of documentation just to get a project started, only to realize everything is proprietary.</li>
+<li>Trying to understand a groovy script nested so deep it got into one of the layers of hell.</li>
+<li>Dealing with the security issues of a way too permissive plugin system.</li>
+<li>Agents giving vague and indecipherable errors to why my job failed.</li>
+</ul>
+<p>Gofer aims to use tooling that users are already are familiar with and get out of the way. Running containers should be <em>easy</em>. Forgoing things like custom agents and being opinionated in how workloads should be run, allows users to understand the system immediately and be productive quickly.</p>
+<p>Familiar with the logging, metrics, and container orchestration of a system you already use? Great! Gofer will fit right in.</p>
+<h2 id="why-should-you-not-use-gofer"><a class="header" href="#why-should-you-not-use-gofer">Why should you not use Gofer?</a></h2>
+<h3 id="1-you-need-to-simply-run-tests-for-your-code"><a class="header" href="#1-you-need-to-simply-run-tests-for-your-code">1) You need to simply run tests for your code.</a></h3>
+<p>While Gofer can do this, the gitops process really shines here. I'd recommend using any one of the widely available gitops focused tooling. Attempting to do this with Gofer will require you to recreate some of the things these tools give you for free, namely git repository management and automatic deployments.</p>
+<h3 id="2-the-code-you-run-is-not-idempotent"><a class="header" href="#2-the-code-you-run-is-not-idempotent">2) The code you run is not idempotent.</a></h3>
+<p>Gofer does not guarantee a single run of a container. Even though it does a good job in best effort, a perfect storm of operator error, extension errors, or sudden shutdowns could cause multiple runs of the same container.</p>
+<h3 id="3-the-code-you-run-does-not-follow-cloud-native-best-practices"><a class="header" href="#3-the-code-you-run-does-not-follow-cloud-native-best-practices">3) The code you run does not follow cloud native best practices.</a></h3>
+<p>The easiest primer on cloud native best practices is the <a href="https://12factor.net/">12-factor guide</a>, specifically the <a href="https://12factor.net/config">configuration section</a>. Gofer provides tooling for container to operate following these guidelines with the most important being that your code will need to take configuration via environment variables.</p>
+<h3 id="4-the-scheduling-you-need-is-precise"><a class="header" href="#4-the-scheduling-you-need-is-precise">4) The scheduling you need is precise.</a></h3>
+<p>Gofer makes a best effort to start jobs on their defined timeline, but it is at the mercy of many parts of the system (scheduling lag, image download time, competition with other pipelines). If you need precise down to the second or minute runs of code Gofer does not guarantee such a thing.</p>
+<p>Gofer works better when jobs are expected to run +1 to +5 mins of their scheduled event/time.</p>
+<h2 id="why-not-use-insert-favorite-tool-instead-"><a class="header" href="#why-not-use-insert-favorite-tool-instead-">Why not use &lt;insert favorite tool&gt; instead ?</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Tool</th><th>Category</th><th>Why not?</th></tr></thead><tbody>
+<tr><td><a href="https://www.jenkins.io/">Jenkins</a></td><td>General thing-doer</td><td>Supports generally anything you might want to do ever, but because of this it can be operationally hard to manage, usually has massive security issues and isn't by default opinionated enough to provide users a good interface into how they should be managing their workloads.</td></tr>
+<tr><td><a href="https://buildkite.com/">Buildkite</a>/<a href="https://circleci.com/">CircleCI</a>/<a href="https://github.com/features/actions">Github actions</a>/etc</td><td>Gitops cloud builders</td><td>Gitops focused cloud build tooling is great for most situations and probably what most companies should start out using. The issue is that running your workloads can be hard to test since these tools use custom agents to manage those jobs. This causes local testing to be difficult as the custom agents generally work very differently locally. Many times users will fight with yaml and make commits just to test that their job does what they need due to their being no way to determine that beforehand.</td></tr>
+<tr><td><a href="https://argo-cd.readthedocs.io/en/stable/">ArgoCD</a></td><td>Kubernetes focused CI/CD tooling</td><td>In the right direction with its focus on running containers on already established container orchstrators, but Argo is tied to gitops making it hard to test locally, and also closely tied to Kubernetes.</td></tr>
+<tr><td><a href="https://concourse-ci.org/">ConcourseCI</a></td><td>Container focused thing do-er</td><td>Concourse is great and where much of this inspiration for this project comes from. It sports a sleek CLI, great UI, and cloud-native primatives that makes sense. The drawback of concourse is that it uses a custom way of managing docker containers that can be hard to reason about. This makes testing locally difficult and running in production means that your short-lived containers exist on a platform that the rest of your company is not used to running containers on.</td></tr>
+<tr><td><a href="https://airflow.apache.org/">Airflow</a></td><td>ETL systems</td><td>I haven't worked with large scale data systems enough to know deeply about how ETL systems came to be, but (maybe naively) they seem to fit into the same paradigm of &quot;run <em>x</em> thing every time <em>y</em> happens&quot;. Airflow was particularly rough to operate in the early days of its release with security and UX around DAG runs/management being nearly non-existent. As an added bonus the scheduler regularly crashed from poorly written user workloads making it a reliability nightmare. <br /><br /> Additionally, Airflow's models of combining the execution logic of your DAGs with your code led to issues of testing and iterating locally. <br /><br /> Instead of having tooling specifically for data workloads, instead it might be easier for both data teams and ops teams to work in the model of distributed cron as Gofer does. Write your stream processing using dedicated tooling/libraries like <a href="https://www.benthos.dev/">Benthos</a> (or in whatever language you're most familiar with), wrap it in a Docker container, and use Gofer to manage which containers should run when, where, and how often. This gives you easy testing, separation of responsibilities, and no python decorator spam around your logic.</td></tr>
+<tr><td><a href="https://cadenceworkflow.io/">Cadence</a></td><td>ETL systems</td><td>I like Uber's cadence, it does a great job at providing a platform that does distributed cron and has some really nifty features by choosing to interact with your workflows at the code level. The ability to bake in sleeps and polls just like you would regular code is awesome. But just like Airflow, I don't want to marry my scheduling platform with my business logic. I write the code as I would for a normal application context and I just need something to run that code. When we unmarry the business logic and the scheduling platform we are able to treat it just like we treat all our other code, which means code workflows(testing, for example) we were all already used to and the ability to foster code reuse for these same processes. To test Uber's cadence you'll need to bring up a copy of it. to test Gofer you can simply test the code in the container. Gofer doesn't force you to change anything about your code at all.</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="troubleshooting.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="guide/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="troubleshooting.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="guide/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
