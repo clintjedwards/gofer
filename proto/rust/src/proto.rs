@@ -1458,12 +1458,26 @@ pub mod run_extension_installer_extension_message {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RunPipelineConfiguratorRequest {
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RunPipelineConfiguratorClientMessage {
-    #[prost(string, tag="1")]
-    pub msg: ::prost::alloc::string::String,
+    #[prost(oneof="run_pipeline_configurator_client_message::MessageType", tags="1, 2")]
+    pub message_type: ::core::option::Option<run_pipeline_configurator_client_message::MessageType>,
+}
+/// Nested message and enum types in `RunPipelineConfiguratorClientMessage`.
+pub mod run_pipeline_configurator_client_message {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Init {
+        /// name of the extension you want to run the pipeline
+        /// configurator for
+        #[prost(string, tag="1")]
+        pub name: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum MessageType {
+        #[prost(message, tag="1")]
+        Init(Init),
+        #[prost(string, tag="2")]
+        Msg(::prost::alloc::string::String),
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RunPipelineConfiguratorExtensionMessage {
@@ -1614,9 +1628,6 @@ pub mod extension_run_extension_installer_extension_message {
         #[prost(message, tag="3")]
         ConfigSetting(ConfigSetting),
     }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ExtensionRunPipelineConfiguratorRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExtensionRunPipelineConfiguratorClientMessage {
@@ -3008,13 +3019,11 @@ pub mod gofer_client {
         pub async fn run_extension_installer(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
-                Message = super::ExtensionRunExtensionInstallerClientMessage,
+                Message = super::RunExtensionInstallerClientMessage,
             >,
         ) -> Result<
             tonic::Response<
-                tonic::codec::Streaming<
-                    super::ExtensionRunExtensionInstallerExtensionMessage,
-                >,
+                tonic::codec::Streaming<super::RunExtensionInstallerExtensionMessage>,
             >,
             tonic::Status,
         > {
@@ -3038,13 +3047,11 @@ pub mod gofer_client {
         pub async fn run_pipeline_configurator(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
-                Message = super::ExtensionRunPipelineConfiguratorClientMessage,
+                Message = super::RunPipelineConfiguratorClientMessage,
             >,
         ) -> Result<
             tonic::Response<
-                tonic::codec::Streaming<
-                    super::ExtensionRunPipelineConfiguratorExtensionMessage,
-                >,
+                tonic::codec::Streaming<super::RunPipelineConfiguratorExtensionMessage>,
             >,
             tonic::Status,
         > {
@@ -4100,7 +4107,7 @@ pub mod gofer_server {
         ///Server streaming response type for the RunExtensionInstaller method.
         type RunExtensionInstallerStream: futures_core::Stream<
                 Item = Result<
-                    super::ExtensionRunExtensionInstallerExtensionMessage,
+                    super::RunExtensionInstallerExtensionMessage,
                     tonic::Status,
                 >,
             >
@@ -4110,13 +4117,13 @@ pub mod gofer_server {
         async fn run_extension_installer(
             &self,
             request: tonic::Request<
-                tonic::Streaming<super::ExtensionRunExtensionInstallerClientMessage>,
+                tonic::Streaming<super::RunExtensionInstallerClientMessage>,
             >,
         ) -> Result<tonic::Response<Self::RunExtensionInstallerStream>, tonic::Status>;
         ///Server streaming response type for the RunPipelineConfigurator method.
         type RunPipelineConfiguratorStream: futures_core::Stream<
                 Item = Result<
-                    super::ExtensionRunPipelineConfiguratorExtensionMessage,
+                    super::RunPipelineConfiguratorExtensionMessage,
                     tonic::Status,
                 >,
             >
@@ -4127,7 +4134,7 @@ pub mod gofer_server {
         async fn run_pipeline_configurator(
             &self,
             request: tonic::Request<
-                tonic::Streaming<super::ExtensionRunPipelineConfiguratorClientMessage>,
+                tonic::Streaming<super::RunPipelineConfiguratorClientMessage>,
             >,
         ) -> Result<tonic::Response<Self::RunPipelineConfiguratorStream>, tonic::Status>;
         /// InstallExtension attempts to install a new extension.
@@ -6180,9 +6187,9 @@ pub mod gofer_server {
                     impl<
                         T: Gofer,
                     > tonic::server::StreamingService<
-                        super::ExtensionRunExtensionInstallerClientMessage,
+                        super::RunExtensionInstallerClientMessage,
                     > for RunExtensionInstallerSvc<T> {
-                        type Response = super::ExtensionRunExtensionInstallerExtensionMessage;
+                        type Response = super::RunExtensionInstallerExtensionMessage;
                         type ResponseStream = T::RunExtensionInstallerStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
@@ -6191,9 +6198,7 @@ pub mod gofer_server {
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                tonic::Streaming<
-                                    super::ExtensionRunExtensionInstallerClientMessage,
-                                >,
+                                tonic::Streaming<super::RunExtensionInstallerClientMessage>,
                             >,
                         ) -> Self::Future {
                             let inner = self.0.clone();
@@ -6226,9 +6231,9 @@ pub mod gofer_server {
                     impl<
                         T: Gofer,
                     > tonic::server::StreamingService<
-                        super::ExtensionRunPipelineConfiguratorClientMessage,
+                        super::RunPipelineConfiguratorClientMessage,
                     > for RunPipelineConfiguratorSvc<T> {
-                        type Response = super::ExtensionRunPipelineConfiguratorExtensionMessage;
+                        type Response = super::RunPipelineConfiguratorExtensionMessage;
                         type ResponseStream = T::RunPipelineConfiguratorStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
@@ -6238,7 +6243,7 @@ pub mod gofer_server {
                             &mut self,
                             request: tonic::Request<
                                 tonic::Streaming<
-                                    super::ExtensionRunPipelineConfiguratorClientMessage,
+                                    super::RunPipelineConfiguratorClientMessage,
                                 >,
                             >,
                         ) -> Self::Future {
