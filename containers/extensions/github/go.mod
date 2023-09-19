@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
-	github.com/clintjedwards/gofer v0.5.0
+	github.com/clintjedwards/gofer v0.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-github/v42 v42.0.0
 	github.com/google/go-github/v53 v53.2.0

@@ -116,6 +116,7 @@ func extensionInstall(cmd *cobra.Command, args []string) error {
 
 				cl.State.Fmt.PrintErr(fmt.Sprintf("Could not read from extension connection %v", err))
 				cl.State.Fmt.Finish()
+				return err
 			}
 
 			switch extensionMsg := msg.MessageType.(type) {

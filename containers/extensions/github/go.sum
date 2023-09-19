@@ -16,6 +16,8 @@ github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/clintjedwards/gofer v0.5.0 h1:stk3TMq3TsHAMULN0HPe3NGuAzlBjSY1+iDaYAOmeg8=
 github.com/clintjedwards/gofer v0.5.0/go.mod h1:fvf2BmHz9Ql7kfb9ipEIB5Y8yrmbk28EFGmuec2CVpc=
+github.com/clintjedwards/gofer v0.6.0 h1:aGFAGXYvTgvgCPPJQG1E6U/+ddmFCRxaJtk8rrvzW/4=
+github.com/clintjedwards/gofer v0.6.0/go.mod h1:sCHUolXQUd4vXCFSt8cbLhq1rskOyef0yy85Bd6/698=
 github.com/cloudflare/circl v1.1.0/go.mod h1:prBCrKB9DV4poKZY1l9zBXg2QJY7mvgRvtMxxK7fi4I=
 github.com/cloudflare/circl v1.3.3 h1:fE/Qz0QdIGqeWfnwq0RE0R7MI51s0M2E4Ga9kq5AEMs=
 github.com/cloudflare/circl v1.3.3/go.mod h1:5XYMA4rFBvNIrhs50XuiBJ15vF2pZn4nnUKZrLbUZFA=

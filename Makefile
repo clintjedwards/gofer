@@ -101,11 +101,6 @@ push-docs:
 > git reset --hard origin/main
 .PHONY: push-docs
 
-# 	docker build -f extensions/github/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/github:${semver} .
-#	docker tag ghcr.io/clintjedwards/gofer/extensions/github:${semver} ghcr.io/clintjedwards/gofer/extensions/github:latest
-#	docker push ghcr.io/clintjedwards/gofer/extensions/github:${semver}
-#	docker push ghcr.io/clintjedwards/gofer/extensions/github:latest
-
 ## build-containers: build docker containers
 build-containers: check-semver-included
 > cd containers
@@ -116,6 +111,10 @@ build-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Building Interval Extension$(COLOR_END)"
 > docker build -f extensions/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:latest
+
+> echo -e "$(COLOR_BLUE)Building Github Extension$(COLOR_END)"
+> docker build -f extensions/github/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} .
+> docker tag ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/github:latest
 
 > echo -e "$(COLOR_BLUE)Building Debug Container Envs$(COLOR_END)"
 > docker build -f debug/envs/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} .
@@ -141,6 +140,10 @@ push-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Push Internal Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/extensions/interval:latest
+
+> echo -e "$(COLOR_BLUE)Push Github Extension Container$(COLOR_END)"
+> docker push ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER}
+> docker push ghcr.io/clintjedwards/gofer/extensions/github:latest
 
 > echo -e "$(COLOR_BLUE)Push Debug Env Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER}
