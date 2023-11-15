@@ -110,6 +110,7 @@ There are several useful things we can do with the concept of extensions:
   - We should change extensions(and probably main?) over to use slog instead so we can get consistent logging patterns from extensions.
   - We need to refactor logging for some routes to build on top of each other so that they we automatically get things
     like namespace, pipeline.
+- When first spinning up Gofer we attempt to check for a bootstrap token. To do this we must filter out any extension tokens that get automagically created now. Instead of checking if there are any tokens at all, we should instead just have a gofer metadata table and bootstrap_token_created: true.
 
 ### Rough spots in design
 

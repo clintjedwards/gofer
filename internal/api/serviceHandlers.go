@@ -252,7 +252,19 @@ func (api *API) BootstrapToken(ctx context.Context, request *proto.BootstrapToke
 		return &proto.BootstrapTokenResponse{}, status.Errorf(codes.Internal, "could not create bootstrap token: %v", err)
 	}
 
-	if len(tokens) != 0 {
+	// TODO(): This is hacky, it either needs a new token kind or needs a separate table so that we can identify, when
+	// a bootstrap token has been created.
+	//
+	// Get rid of extension tokens when attempting to determine if a bootstrap token has already been created.
+	prunedTokens := []storage.Token{}
+
+	for _, token := range tokens {
+		if !strings.Contains(token.Metadata, "extension_token") {
+			prunedTokens = append(prunedTokens, token)
+		}
+	}
+
+	if len(prunedTokens) != 0 {
 		return &proto.BootstrapTokenResponse{}, status.Error(codes.FailedPrecondition, "bootstrap token already created")
 	}
 

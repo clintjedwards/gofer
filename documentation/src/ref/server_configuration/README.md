@@ -69,7 +69,7 @@ You will first need to handle the problem of auth. Every request to Gofer must u
 
 More information about auth in general terms [can be found here.](./authentication.md)
 
-To create your root management token use the command: `gofer service token bootstrap`
+To create your root management token use the command: `gofer service tokens bootstrap`
 
 > 🪧 The token returned is a management token and as such as access to all routes within Gofer. It is advised that:
 >
