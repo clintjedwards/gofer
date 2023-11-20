@@ -6,6 +6,7 @@ Also github integration:
   PR. When you start a pipeline not only does it handle the webhooks of starting the pipeline, but it will also
   mark the PR in question as pending and query the Gofer API to figure out when it's done and mark the pipeline
   as completed. Could also include some other goodies just like any other CI/CD platform.
+- Update Github documentation, it needs a lot of work.
 
 ### Canaried pipelines
 
@@ -28,6 +29,8 @@ Also github integration:
 - Reconstructing a timeline of any given pipeline run would be a really cool feature.
 - Check that management token only with the same namespaces are able to create client tokens with those same namespaces.
 - We need to address all the minor bugs around namespaces and pipelines and their existance when calling upon the api
+- Github actions just downloads it's cache, we should do the same thing or make it easy for users to do so.
+-
 
 ### SDK
 
@@ -79,6 +82,7 @@ Also github integration:
 - If a extension by the same name is already installed, we should refuse to install another but instead allow the user to update it.
 - Extensions should be able to report details about their execution somehow. It would be nice when looking at my pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension that is taking overly long.
 - Make sure to put in the extension documentation which versions are compatible with gofer. The current scheme is that all major versions are compatible with all same major versions. So if Gofer releases a 1.0, then all extensions will have to release a 1.0. This means that extensions can update their minor and patch versioning, but major versions will also be compatible with the same Gofer major version. Make sure this is documented.
+- Github sometimes changes their payloads and this causes us to always have to be at the latest release or else casting payloads might break. Investigate payload casting and see if maybe we can get something even partial if not a better error for the user.
 
 #### More extensions:
 

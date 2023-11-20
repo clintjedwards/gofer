@@ -186,7 +186,7 @@ func convertVarsToMap(vars []models.Variable) map[string]string {
 
 	for _, variable := range vars {
 		variable := variable
-		variables[strings.ToUpper(variable.Key)] = variable.Value
+		variables[variable.Key] = variable.Value
 	}
 
 	return variables

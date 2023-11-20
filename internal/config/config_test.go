@@ -8,7 +8,7 @@ import (
 
 // Simply test for panics, the reflect code here will panic if the API struct has any
 // pointers with zero values.
-func TestGetEnvvarsFromStruct(t *testing.T) {
+func TestGetEnvvarsFromStruct(_ *testing.T) {
 	api := API{
 		Development:       &Development{},
 		ExternalEventsAPI: &ExternalEventsAPI{},

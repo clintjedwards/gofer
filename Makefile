@@ -43,7 +43,7 @@ build: check-path-included check-semver-included build-protos build-sdk
 > go test ./...
 > go mod tidy
 > export CGO_ENABLED=1
-> go build -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
+> go build -tags release -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
 .PHONY: build
 
 ## build-protos: build protobufs

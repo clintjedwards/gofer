@@ -142,7 +142,7 @@ func formatRunInfo(run *proto.Run, taskRuns []*proto.TaskRun, detail bool) strin
 		Started:        format.UnixMilli(run.Started, "Not yet", detail),
 		Duration:       format.Duration(run.Started, run.Ended),
 		PipelineID:     color.BlueString(run.Pipeline),
-		InitiatorType:  faint("(" + format.NormalizeEnumValue(run.Initiator.Type.String(), "Unknown") + ")"),
+		InitiatorType:  faint("[" + format.NormalizeEnumValue(run.Initiator.Type.String(), "Unknown") + "]"),
 		InitiatorName:  color.CyanString(run.Initiator.Name),
 		ObjectsExpired: run.StoreObjectsExpired,
 		TaskRuns:       taskRunList,

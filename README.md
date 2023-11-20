@@ -8,7 +8,9 @@
 [![docs site][website-badge]][website-url]
 [![project status][project-status]][project-status]
 
-Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. Once set up, Gofer takes care of scheduling and running your automation tasks—be it on Nomad, Kubernetes, or even Local Docker.
+Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.
+
+It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. Once set up, Gofer takes care of scheduling and running your automation tasks—be it on Nomad, Kubernetes, or even Local Docker.
 
 Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
 

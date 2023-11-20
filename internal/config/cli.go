@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -53,13 +52,7 @@ func InitCLIConfig(flagPath string, loadDefaults bool) (*CLI, error) {
 	}
 
 	homeDir, _ := os.UserHomeDir()
-	possibleConfigPaths := []string{
-		flagPath,
-		fmt.Sprintf("%s/%s", homeDir, ".gofer.hcl"),
-		fmt.Sprintf("%s/%s/%s", homeDir, ".config", "gofer.hcl"),
-	}
-
-	path := searchFilePaths(possibleConfigPaths...)
+	path := searchFilePaths(possibleConfigPaths(homeDir, flagPath)...)
 
 	// envVars top all other entries so if its not empty we just insert it over the current path
 	// regardless of if we found one.

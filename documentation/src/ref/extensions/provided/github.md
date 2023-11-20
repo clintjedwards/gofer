@@ -92,7 +92,7 @@ On the configuration page for the new Github application the following should be
 - **APP ID**: Take note of the id; it will be used later for extension configuration.
 - **Webhook URL**: Should be the address of your Gofer's external extension instance and pointing to the events/github endpoint:
 
-  `ex: https://mygoferinstance.yourdomain.com/events/github`
+  `ex: https://mygoferinstance.yourdomain.com/external/github`
 
 - **Webhook Secret**: Make this a secure, long, random string of characters and note it for future extension configuration.
 - **Private Keys**: Generate a private key and store it somewhere safe. You'll need to base64 this key and insert it into the extension configuration.

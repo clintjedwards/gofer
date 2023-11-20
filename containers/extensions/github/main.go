@@ -13,7 +13,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	proto "github.com/clintjedwards/gofer/proto/go"
 	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
-	"github.com/google/go-github/v42/github"
+	"github.com/google/go-github/v58/github"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,7 +29,7 @@ const (
 
 // Pipeline configuration parameters.
 const (
-	// parameterEventFilter is the event/action combination the pipeline will be triggered upon. It's presented in the form: <event>/[<action>,<action2>...]
+	// parameterEventFilter is the event/action combination the pipeline will be triggered upon. It's presented in the form: <event>/<action>,<action2>...
 	// For events that do not have actions or if you simply want to trigger on any action, just putting the <event> will suffice.
 	// To be clear if you don't include actions on an event that has multiple, Gofer will be triggered on any action.
 	// You can find a list of events and their actions here(Actions listed as 'activity type'): https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows.
@@ -401,7 +401,7 @@ Follow the instructions and enter the values requested below.`)
 		return err
 	}
 
-	err = sdk.SendInstallerQueryToClient(stream, "First, enter the App ID located on the configuration page for the new Github App")
+	err = sdk.SendInstallerQueryToClient(stream, "First, enter the App ID located on the configuration page for the new Github App: ")
 	if err != nil {
 		return err
 	}
@@ -416,7 +416,7 @@ Follow the instructions and enter the values requested below.`)
 		return err
 	}
 
-	err = sdk.SendInstallerQueryToClient(stream, "Next, enter the webhook secret you created")
+	err = sdk.SendInstallerQueryToClient(stream, "Next, enter the webhook secret you created: ")
 	if err != nil {
 		return err
 	}
@@ -431,7 +431,7 @@ Follow the instructions and enter the values requested below.`)
 		return err
 	}
 
-	err = sdk.SendInstallerQueryToClient(stream, "Next, enter the base64'd private key you created")
+	err = sdk.SendInstallerQueryToClient(stream, "Next, enter the base64'd private key you created (Make sure to get rid of all new line characters): ")
 	if err != nil {
 		return err
 	}
@@ -441,12 +441,12 @@ Follow the instructions and enter the values requested below.`)
 		return err
 	}
 
-	err = sdk.SendInstallerConfigSettingToClient(stream, configAppWebhookKey, privateKey.Msg)
+	err = sdk.SendInstallerConfigSettingToClient(stream, configAppKey, privateKey.Msg)
 	if err != nil {
 		return err
 	}
 
-	err = sdk.SendInstallerQueryToClient(stream, "Lastly, enter the installation ID of your new Github App")
+	err = sdk.SendInstallerQueryToClient(stream, "Lastly, enter the installation ID of your new Github App: ")
 	if err != nil {
 		return err
 	}

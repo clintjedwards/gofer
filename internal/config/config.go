@@ -45,14 +45,17 @@ func searchFilePaths(paths ...string) string {
 			continue
 		}
 
-		if stat, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		stat, err := os.Stat(path)
+
+		if errors.Is(err, os.ErrNotExist) {
 			continue
-		} else {
-			if stat.IsDir() {
-				continue
-			}
-			return path
 		}
+
+		if stat.IsDir() {
+			continue
+		}
+		return path
+
 	}
 
 	return ""

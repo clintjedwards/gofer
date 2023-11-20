@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v58/github"
 )
 
 type eventHandler func(payload interface{}) (repo, action string, metadata map[string]string, err error)
