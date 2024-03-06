@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetNamespace(ctx context.Context, request *proto.GetNamespaceRequest) (*proto.GetNamespaceResponse, error) {
+func (api *API) GetNamespace(_ context.Context, request *proto.GetNamespaceRequest) (*proto.GetNamespaceResponse, error) {
 	if request.Id == "" {
 		return &proto.GetNamespaceResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -36,7 +36,7 @@ func (api *API) GetNamespace(ctx context.Context, request *proto.GetNamespaceReq
 	return &proto.GetNamespaceResponse{Namespace: namespace.ToProto()}, nil
 }
 
-func (api *API) ListNamespaces(ctx context.Context, request *proto.ListNamespacesRequest) (*proto.ListNamespacesResponse, error) {
+func (api *API) ListNamespaces(_ context.Context, request *proto.ListNamespacesRequest) (*proto.ListNamespacesResponse, error) {
 	namespaces, err := api.db.ListNamespaces(api.db, int(request.Offset), int(request.Limit))
 	if err != nil {
 		log.Error().Err(err).Msg("could not get namespaces")

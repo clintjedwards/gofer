@@ -82,7 +82,7 @@ func New(path string, maxResultsLimit int) (DB, error) {
 		},
 	}
 
-	err = migration.migrate(db, "sqlite3")
+	err = migration.migrate(db)
 	if err != nil {
 		return DB{}, err
 	}

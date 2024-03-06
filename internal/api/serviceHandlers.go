@@ -16,7 +16,7 @@ import (
 )
 
 // GetSystemInfo returns system information and health
-func (api *API) GetSystemInfo(context context.Context, request *proto.GetSystemInfoRequest) (*proto.GetSystemInfoResponse, error) {
+func (api *API) GetSystemInfo(_ context.Context, _ *proto.GetSystemInfoRequest) (*proto.GetSystemInfoResponse, error) {
 	version, commit := parseVersion(appVersion)
 
 	return &proto.GetSystemInfoResponse{
@@ -25,7 +25,7 @@ func (api *API) GetSystemInfo(context context.Context, request *proto.GetSystemI
 	}, nil
 }
 
-func (api *API) ToggleEventIngress(ctx context.Context, request *proto.ToggleEventIngressRequest) (*proto.ToggleEventIngressResponse, error) {
+func (api *API) ToggleEventIngress(ctx context.Context, _ *proto.ToggleEventIngressRequest) (*proto.ToggleEventIngressResponse, error) {
 	if !isManagementUser(ctx) {
 		return &proto.ToggleEventIngressResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -159,7 +159,7 @@ func (api *API) ListTokens(ctx context.Context, request *proto.ListTokensRequest
 	}, nil
 }
 
-func (api *API) GetToken(ctx context.Context, request *proto.GetTokenRequest) (*proto.GetTokenResponse, error) {
+func (api *API) GetToken(_ context.Context, request *proto.GetTokenRequest) (*proto.GetTokenResponse, error) {
 	if request.Token == "" {
 		return &proto.GetTokenResponse{}, status.Error(codes.FailedPrecondition, "token required")
 	}
@@ -245,8 +245,8 @@ func (api *API) DeleteToken(ctx context.Context, request *proto.DeleteTokenReque
 	return &proto.DeleteTokenResponse{}, nil
 }
 
-func (api *API) BootstrapToken(ctx context.Context, request *proto.BootstrapTokenRequest) (*proto.BootstrapTokenResponse, error) {
-	tokens, err := api.db.ListTokens(api.db, 0, 1)
+func (api *API) BootstrapToken(_ context.Context, _ *proto.BootstrapTokenRequest) (*proto.BootstrapTokenResponse, error) {
+	tokens, err := api.db.ListTokens(api.db, 0, 0)
 	if err != nil {
 		log.Error().Err(err).Msg("could not save token to storage")
 		return &proto.BootstrapTokenResponse{}, status.Errorf(codes.Internal, "could not create bootstrap token: %v", err)

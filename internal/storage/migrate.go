@@ -14,7 +14,7 @@ type migrate struct {
 }
 
 // migrate will run the migrations using the provided db connection.
-func (s *migrate) migrate(db *sqlx.DB, dialect string) error {
+func (s *migrate) migrate(db *sqlx.DB) error {
 	err := s.createMigrationTable(db)
 	if err != nil {
 		return err

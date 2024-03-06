@@ -213,7 +213,7 @@ func (api *API) GetGlobalSecret(ctx context.Context, request *proto.GetGlobalSec
 	}, nil
 }
 
-func (api *API) ListGlobalSecrets(ctx context.Context, request *proto.ListGlobalSecretsRequest) (*proto.ListGlobalSecretsResponse, error) {
+func (api *API) ListGlobalSecrets(ctx context.Context, _ *proto.ListGlobalSecretsRequest) (*proto.ListGlobalSecretsResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}

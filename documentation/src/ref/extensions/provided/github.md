@@ -108,6 +108,8 @@ It is recommended that you give read-only permissions to any permissions that mi
 The installation ID is unfortunately hidden in an event that gets sent once the Github app has been created and installed. You can find it by navigating to the settings page for the Github application and
 then viewing it in the "Recent Deliveries" page.
 
+> 🪧 These recent deliveries only last a short amount of time, so if you take a while to check on them, they might not exist anymore. If that has happened you should be able to create another event and that will create another recent delivery.
+
 ![Recent Deliveries](../../../assets/github-apps-recent-deliveries.png)
 ![Installation webhook event](../../../assets/github-apps-installation-id.png)
 

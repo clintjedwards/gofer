@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetExtension(ctx context.Context, request *proto.GetExtensionRequest) (*proto.GetExtensionResponse, error) {
+func (api *API) GetExtension(_ context.Context, request *proto.GetExtensionRequest) (*proto.GetExtensionResponse, error) {
 	if request.Name == "" {
 		return &proto.GetExtensionResponse{}, status.Error(codes.FailedPrecondition, "name required")
 	}
@@ -32,7 +32,7 @@ func (api *API) GetExtension(ctx context.Context, request *proto.GetExtensionReq
 	return &proto.GetExtensionResponse{Extension: extension.ToProto()}, nil
 }
 
-func (api *API) ListExtensions(ctx context.Context, request *proto.ListExtensionsRequest) (*proto.ListExtensionsResponse, error) {
+func (api *API) ListExtensions(_ context.Context, _ *proto.ListExtensionsRequest) (*proto.ListExtensionsResponse, error) {
 	protoExtensions := []*proto.Extension{}
 	for _, extensionKey := range api.extensions.Keys() {
 		extension, exists := api.extensions.Get(extensionKey)

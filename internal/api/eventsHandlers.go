@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetEvent(ctx context.Context, request *proto.GetEventRequest) (*proto.GetEventResponse, error) {
+func (api *API) GetEvent(_ context.Context, request *proto.GetEventRequest) (*proto.GetEventResponse, error) {
 	if request.Id == 0 {
 		return &proto.GetEventResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
