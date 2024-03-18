@@ -60,12 +60,22 @@ build-sdk:
 > cargo build
 .PHONY: build-sdk
 
-## run: build application and run server
+## run: build application and run server with frontend
 run:
+> @$(MAKE) -j run-tailwind run-backend
+.PHONY: build
+
+## run-backend: build application and run server
+run-backend:
 > export GOFER_LOG_LEVEL=debug
 > go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
 > /tmp/${APP_NAME} service start --dev-mode
 .PHONY: run
+
+## run-tailwind: watch and build tailwind assets
+run-tailwind:
+> cd ./internal/frontend
+> npx tailwindcss -i ./main.css -o ./public/css/main.css --watch &> /dev/null
 
 ## run-race: build application and run server with race detector
 run-race:

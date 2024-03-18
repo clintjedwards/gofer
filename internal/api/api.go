@@ -18,6 +18,7 @@ import (
 	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/config"
 	"github.com/clintjedwards/gofer/internal/eventbus"
+	"github.com/clintjedwards/gofer/internal/frontend"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/objectStore"
 	"github.com/clintjedwards/gofer/internal/scheduler"
@@ -258,6 +259,12 @@ func wrapGRPCServer(config *config.API, grpcServer *grpc.Server) *http.Server {
 	wrappedGrpc := grpcweb.WrapServer(grpcServer)
 
 	router := mux.NewRouter()
+
+	if config.Frontend.Enable {
+		frontend := frontend.New(config.Development.LoadFrontendFilesFromDisk)
+		frontend.RegisterUIRoutes(router)
+		log.Info().Msg("frontend enabled due to configuration setting")
+	}
 
 	// Define GRPC/HTTP request detection middleware
 	GRPCandHTTPHandler := http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {

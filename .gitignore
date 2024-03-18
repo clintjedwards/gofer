@@ -12,10 +12,8 @@
 target/
 
 #frontend
-node_modules/
-dist/*
--dist/.gitkeep
-main.js
+!internal/frontend/public/.gitkeep
+internal/frontend/public/css/*
 
 # Remove the documentation assets
 documentation/book/html/*

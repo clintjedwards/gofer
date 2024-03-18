@@ -22,6 +22,21 @@ type UpdatablePipelineMetadataFields struct {
 	State    *string
 }
 
+// Returns the total number of pipelines over all namespaces.
+func (db *DB) GetPipelineCount(conn Queryable) (int64, error) {
+	query, args := qb.Select("COUNT(*)").
+		From("pipeline_metadata").
+		MustSql()
+
+	var count int64
+	err := conn.QueryRow(query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return count, nil
+}
+
 // Returns pipelines ordered by id.
 func (db *DB) ListPipelineMetadata(conn Queryable, offset, limit int, namespace string) ([]PipelineMetadata, error) {
 	if limit == 0 || limit > db.maxResultsLimit {

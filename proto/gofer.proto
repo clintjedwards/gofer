@@ -15,6 +15,9 @@ service Gofer {
   // having to stop the entire service.
   rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse);
 
+  // A general endpoint to retrieve various metrics about the Gofer service.
+  rpc GetSystemSummary(GetSystemSummaryRequest) returns (GetSystemSummaryResponse);
+
   // RepairOrphan is used when a single run has gotten into a state that does
   // not reflect what actually happened to the run. This can happen if the Gofer
   // service crashes for unforeseen reasons. Usually this route is not needed as

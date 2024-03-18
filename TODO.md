@@ -7,6 +7,7 @@ Also github integration:
   mark the PR in question as pending and query the Gofer API to figure out when it's done and mark the pipeline
   as completed. Could also include some other goodies just like any other CI/CD platform.
 - Update Github documentation, it needs a lot of work.
+- Minify CSS when we release for frontend.
 
 ### Canaried pipelines
 
@@ -40,6 +41,7 @@ Also github integration:
 
 ### CLI
 
+- When you schedule a job the job should tell you where your task is running. Maybe it does this through the contianer name?
 - Provide custom errors downstream via grpc metadata so the CLI can pass back intelligent errors to users.
 - Improve CLI errors overall.
 - Add command line options for controlling pagination
@@ -97,6 +99,12 @@ There are several useful things we can do with the concept of extensions:
   - When a run finishes.
   - When a run fails.
   - If a particular task run fails or succeeds.
+
+### Frontend
+
+- SuccessRate should be tracked, we also probably can run a background job that will sleep the majority of the time and
+  then run once every day or so to calculate metrics.
+- On the first page a constantly updating event log would be really cool for the default namespace.
 
 ### Things I need to do but probably will never get around to
 

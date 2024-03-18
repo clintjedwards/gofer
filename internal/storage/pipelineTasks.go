@@ -24,6 +24,21 @@ type PipelineTask struct {
 	InjectAPIToken        bool `db:"inject_api_token"`
 }
 
+// Returns the total number of pipelines over all namespaces.
+func (db *DB) GetPipelineTasksCount(conn Queryable) (int64, error) {
+	query, args := qb.Select("COUNT(*)").
+		From("pipeline_tasks").
+		MustSql()
+
+	var count int64
+	err := conn.QueryRow(query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return count, nil
+}
+
 func (db *DB) ListPipelineTasks(conn Queryable, namespace, pipeline string, version int64) ([]PipelineTask, error) {
 	query, args := qb.Select("namespace", "pipeline", "pipeline_config_version", "id", "description",
 		"image", "registry_auth", "depends_on", "variables", "entrypoint", "command", "inject_api_token").

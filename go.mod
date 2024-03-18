@@ -33,6 +33,7 @@ require (
 	github.com/nxadm/tail v1.4.11
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rs/zerolog v1.32.0
+	github.com/shurcooL/httpgzip v0.0.0-20230704072819-d1585fc322fa
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.62.1
