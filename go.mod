@@ -76,6 +76,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/cors v1.10.1 // indirect
+	github.com/shurcooL/httpgzip v0.0.0-20230704072819-d1585fc322fa // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/theckman/yacspin v0.13.12 // indirect
 	github.com/zclconf/go-cty v1.14.3 // indirect
