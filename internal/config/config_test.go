@@ -11,7 +11,9 @@ import (
 func TestGetEnvvarsFromStruct(_ *testing.T) {
 	api := API{
 		Development:       &Development{},
+		Extensions:        &Extensions{},
 		ExternalEventsAPI: &ExternalEventsAPI{},
+		Frontend:          &Frontend{},
 		ObjectStore: &ObjectStore{
 			Sqlite: &Sqlite{},
 		},
@@ -21,8 +23,7 @@ func TestGetEnvvarsFromStruct(_ *testing.T) {
 		Scheduler: &Scheduler{
 			Docker: &Docker{},
 		},
-		Server:     &Server{},
-		Extensions: &Extensions{},
+		Server: &Server{},
 	}
 	fields := structs.Fields(api)
 	getEnvVarsFromStruct("GOFER_", fields)

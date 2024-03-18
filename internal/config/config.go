@@ -61,6 +61,11 @@ func searchFilePaths(paths ...string) string {
 	return ""
 }
 
+// This function helps us generate always up to date env vars for the help and documentation. To do that it leverages
+// reflection and an empty struct to reconstruct what those keys should be.
+//
+// If you get a panic pointing to this area check the higher level function GetAPIEnvVars() to make sure the struct
+// doesn't have any uninitialized struct pointers.
 func getEnvVarsFromStruct(prefix string, fields []*structs.Field) []string {
 	output := []string{}
 

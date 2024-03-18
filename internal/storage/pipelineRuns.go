@@ -33,6 +33,21 @@ type UpdatablePipelineRunFields struct {
 	StoreObjectsExpired *bool
 }
 
+// Returns the total number of pipelines over all namespaces.
+func (db *DB) GetPipelineRunsCount(conn Queryable) (int64, error) {
+	query, args := qb.Select("COUNT(*)").
+		From("pipeline_runs").
+		MustSql()
+
+	var count int64
+	err := conn.QueryRow(query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+	}
+
+	return count, nil
+}
+
 func (db *DB) ListPipelineRuns(conn Queryable, offset, limit int, namespace, pipeline string) ([]PipelineRun, error) {
 	if limit == 0 || limit > db.maxResultsLimit {
 		limit = db.maxResultsLimit

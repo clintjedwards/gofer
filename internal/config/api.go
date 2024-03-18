@@ -56,6 +56,7 @@ type API struct {
 	Development       *Development       `koanf:"development"`
 	Extensions        *Extensions        `koanf:"extensions"`
 	ExternalEventsAPI *ExternalEventsAPI `koanf:"external_events_api"`
+	Frontend          *Frontend          `koanf:"frontend"`
 	ObjectStore       *ObjectStore       `koanf:"object_store"`
 	Scheduler         *Scheduler         `koanf:"scheduler"`
 	SecretStore       *SecretStore       `koanf:"secret_store"`
@@ -76,6 +77,7 @@ func DefaultAPIConfig() *API {
 		Development:             DefaultDevelopmentConfig(),
 		Extensions:              DefaultExtensionsConfig(),
 		ExternalEventsAPI:       DefaultExternalEventsAPIConfig(),
+		Frontend:                DefaultFrontendConfig(),
 		ObjectStore:             DefaultObjectStoreConfig(),
 		Scheduler:               DefaultSchedulerConfig(),
 		SecretStore:             DefaultSecretStoreConfig(),
@@ -94,25 +96,31 @@ type Development struct {
 	// Pass the "skip_tls_verify" environment variable to extensions
 	// so that they can talk to Gofer without verifying the cert.
 	ExtensionSkipTLSVerify bool `koanf:"extension_skip_tls_verify"`
+
+	// Instead of having to recompile the static files into the binary during development for every change
+	// instead uses another implementation of the fileserver to easily serve files from local disk.
+	LoadFrontendFilesFromDisk bool `koanf:"load_frontend_files_from_disk"`
 }
 
 func DefaultDevelopmentConfig() *Development {
 	return &Development{
-		PrettyLogging:          false,
-		BypassAuth:             false,
-		UseLocalhostTLS:        false,
-		DefaultEncryption:      false,
-		ExtensionSkipTLSVerify: false,
+		PrettyLogging:             false,
+		BypassAuth:                false,
+		UseLocalhostTLS:           false,
+		DefaultEncryption:         false,
+		ExtensionSkipTLSVerify:    false,
+		LoadFrontendFilesFromDisk: false,
 	}
 }
 
 func FullDevelopmentConfig() *Development {
 	return &Development{
-		PrettyLogging:          true,
-		BypassAuth:             true,
-		UseLocalhostTLS:        true,
-		DefaultEncryption:      true,
-		ExtensionSkipTLSVerify: true,
+		PrettyLogging:             true,
+		BypassAuth:                true,
+		UseLocalhostTLS:           true,
+		DefaultEncryption:         true,
+		ExtensionSkipTLSVerify:    true,
+		LoadFrontendFilesFromDisk: true,
 	}
 }
 
@@ -141,7 +149,7 @@ type Server struct {
 // settings.
 func DefaultServerConfig() *Server {
 	return &Server{
-		Address:             "172.17.0.1:8080",
+		Address:             "172.17.0.1:8080", // Address for the host machine in docker.
 		Host:                "0.0.0.0:8080",
 		ShutdownTimeout:     mustParseDuration("15s"),
 		StoragePath:         "/tmp/gofer.db",
@@ -176,6 +184,12 @@ func DefaultExtensionsConfig() *Extensions {
 // Frontend represents configuration for frontend basecoat
 type Frontend struct {
 	Enable bool `koanf:"enable"`
+}
+
+func DefaultFrontendConfig() *Frontend {
+	return &Frontend{
+		Enable: true,
+	}
 }
 
 // ExternalEventsAPI controls how the settings around the HTTP service that handles external extension events.
@@ -281,6 +295,7 @@ func GetAPIEnvVars() []string {
 	api := API{
 		Development:       &Development{},
 		ExternalEventsAPI: &ExternalEventsAPI{},
+		Frontend:          &Frontend{},
 		ObjectStore: &ObjectStore{
 			Sqlite: &Sqlite{},
 		},

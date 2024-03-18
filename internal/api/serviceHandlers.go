@@ -25,6 +25,44 @@ func (api *API) GetSystemInfo(_ context.Context, _ *proto.GetSystemInfoRequest) 
 	}, nil
 }
 
+func (api *API) GetSystemSummary(_ context.Context, _ *proto.GetSystemSummaryRequest) (*proto.GetSystemSummaryResponse, error) {
+	storedNamespaces, err := api.db.ListNamespaces(api.db, 0, 0)
+	if err != nil {
+		log.Error().Err(err).Msg("could not list namespaces")
+		return nil, status.Errorf(codes.Internal, "could not list namespaces: %v", err)
+	}
+
+	namespaces := []string{}
+	for _, namespace := range storedNamespaces {
+		namespaces = append(namespaces, namespace.Name)
+	}
+
+	pipelineCount, err := api.db.GetPipelineCount(api.db)
+	if err != nil {
+		log.Error().Err(err).Msg("could not query for pipeline count")
+		return nil, status.Errorf(codes.Internal, "could not query for pipeline count: %v", err)
+	}
+
+	runCount, err := api.db.GetPipelineRunsCount(api.db)
+	if err != nil {
+		log.Error().Err(err).Msg("could not query for pipeline run count")
+		return nil, status.Errorf(codes.Internal, "could not query for pipeline run count: %v", err)
+	}
+
+	taskCount, err := api.db.GetPipelineTasksCount(api.db)
+	if err != nil {
+		log.Error().Err(err).Msg("could not query for pipeline task count")
+		return nil, status.Errorf(codes.Internal, "could not query for pipeline task count: %v", err)
+	}
+
+	return &proto.GetSystemSummaryResponse{
+		Namespaces:    namespaces,
+		PipelineCount: pipelineCount,
+		RunCount:      runCount,
+		TaskCount:     taskCount,
+	}, nil
+}
+
 func (api *API) ToggleEventIngress(ctx context.Context, _ *proto.ToggleEventIngressRequest) (*proto.ToggleEventIngressResponse, error) {
 	if !isManagementUser(ctx) {
 		return &proto.ToggleEventIngressResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")

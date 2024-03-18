@@ -609,6 +609,20 @@ pub struct GetSystemInfoResponse {
     pub semver: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSystemSummaryRequest {
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSystemSummaryResponse {
+    #[prost(string, repeated, tag="1")]
+    pub namespaces: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(int64, tag="2")]
+    pub pipeline_count: i64,
+    #[prost(int64, tag="3")]
+    pub run_count: i64,
+    #[prost(int64, tag="4")]
+    pub task_count: i64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RepairOrphanRequest {
     /// Unique namespace identifier
     #[prost(string, tag="1")]
@@ -2036,6 +2050,26 @@ pub mod gofer_client {
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/proto.Gofer/GetSystemInfo",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        /// A general endpoint to retrieve various metrics about the Gofer service.
+        pub async fn get_system_summary(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetSystemSummaryRequest>,
+        ) -> Result<tonic::Response<super::GetSystemSummaryResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/proto.Gofer/GetSystemSummary",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
@@ -3795,6 +3829,11 @@ pub mod gofer_server {
             &self,
             request: tonic::Request<super::GetSystemInfoRequest>,
         ) -> Result<tonic::Response<super::GetSystemInfoResponse>, tonic::Status>;
+        /// A general endpoint to retrieve various metrics about the Gofer service.
+        async fn get_system_summary(
+            &self,
+            request: tonic::Request<super::GetSystemSummaryRequest>,
+        ) -> Result<tonic::Response<super::GetSystemSummaryResponse>, tonic::Status>;
         /// RepairOrphan is used when a single run has gotten into a state that does
         /// not reflect what actually happened to the run. This can happen if the Gofer
         /// service crashes for unforeseen reasons. Usually this route is not needed as
@@ -4336,6 +4375,46 @@ pub mod gofer_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetSystemInfoSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/proto.Gofer/GetSystemSummary" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetSystemSummarySvc<T: Gofer>(pub Arc<T>);
+                    impl<
+                        T: Gofer,
+                    > tonic::server::UnaryService<super::GetSystemSummaryRequest>
+                    for GetSystemSummarySvc<T> {
+                        type Response = super::GetSystemSummaryResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetSystemSummaryRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move {
+                                (*inner).get_system_summary(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetSystemSummarySvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

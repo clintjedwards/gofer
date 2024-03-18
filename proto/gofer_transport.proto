@@ -15,6 +15,14 @@ message GetSystemInfoResponse {
   string semver = 2;
 }
 
+message GetSystemSummaryRequest {}
+message GetSystemSummaryResponse {
+    repeated string namespaces = 1;
+    int64 pipeline_count = 2;
+    int64 run_count = 3;
+    int64 task_count = 4;
+}
+
 message RepairOrphanRequest {
   string namespace_id = 1; // Unique namespace identifier
   string pipeline_id = 2;

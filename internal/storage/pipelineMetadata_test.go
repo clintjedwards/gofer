@@ -55,6 +55,15 @@ func TestCRUDPipelines(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
+	pipelineCount, err := db.GetPipelineCount(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pipelineCount != int64(len(pipelines)) {
+		t.Errorf("unexpected pipeline count")
+	}
+
 	fetchedPipeline, err := db.GetPipelineMetadata(db, namespace.ID, pipeline.ID)
 	if err != nil {
 		t.Fatal(err)
