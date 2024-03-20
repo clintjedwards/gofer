@@ -11,7 +11,7 @@ go 1.19
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/clintjedwards/polyfmt v1.0.0
-	github.com/docker/docker v25.0.4+incompatible
+	github.com/docker/docker v25.0.5+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.16.0
