@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -14,7 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) RegisterPipelineConfig(ctx context.Context, request *proto.RegisterPipelineConfigRequest) (*proto.RegisterPipelineConfigResponse, error) {
+func (api *APIContext) RegisterPipelineConfig(ctx context.Context, request *proto.RegisterPipelineConfigRequest) (*proto.RegisterPipelineConfigResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
@@ -99,7 +101,7 @@ func (api *API) RegisterPipelineConfig(ctx context.Context, request *proto.Regis
 	}, nil
 }
 
-func (api *API) ListPipelineConfigs(ctx context.Context, request *proto.ListPipelineConfigsRequest) (
+func (api *APIContext) ListPipelineConfigs(ctx context.Context, request *proto.ListPipelineConfigsRequest) (
 	*proto.ListPipelineConfigsResponse, error,
 ) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
@@ -135,7 +137,7 @@ func (api *API) ListPipelineConfigs(ctx context.Context, request *proto.ListPipe
 	}, nil
 }
 
-func (api *API) GetPipelineConfig(ctx context.Context, request *proto.GetPipelineConfigRequest) (
+func (api *APIContext) GetPipelineConfig(ctx context.Context, request *proto.GetPipelineConfigRequest) (
 	*proto.GetPipelineConfigResponse, error,
 ) {
 	if request.PipelineId == "" {
@@ -168,7 +170,7 @@ func (api *API) GetPipelineConfig(ctx context.Context, request *proto.GetPipelin
 	return &proto.GetPipelineConfigResponse{Config: config.ToProto()}, nil
 }
 
-func (api *API) DeletePipelineConfig(ctx context.Context, request *proto.DeletePipelineConfigRequest) (
+func (api *APIContext) DeletePipelineConfig(ctx context.Context, request *proto.DeletePipelineConfigRequest) (
 	*proto.DeletePipelineConfigResponse, error,
 ) {
 	if request.PipelineId == "" {

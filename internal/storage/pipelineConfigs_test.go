@@ -20,8 +20,8 @@ func TestCRUDPipelineConfigs(t *testing.T) {
 		ID:          "test_namespace",
 		Name:        "Test Namespace",
 		Description: "This is a test namespace",
-		Created:     0,
-		Modified:    0,
+		Created:     "0",
+		Modified:    "0",
 	}
 
 	err = db.InsertNamespace(db, &namespace)
@@ -32,8 +32,8 @@ func TestCRUDPipelineConfigs(t *testing.T) {
 	pipeline := PipelineMetadata{
 		Namespace: "test_namespace",
 		ID:        "test_pipeline",
-		Created:   0,
-		Modified:  0,
+		Created:   "0",
+		Modified:  "0",
 		State:     "ACTIVE",
 	}
 
@@ -49,8 +49,8 @@ func TestCRUDPipelineConfigs(t *testing.T) {
 		Name:        "test Name",
 		Description: "test description",
 		Version:     0,
-		Registered:  0,
-		Deprecated:  0,
+		Registered:  "0",
+		Deprecated:  "0",
 		State:       "LIVE",
 	}
 
@@ -99,7 +99,7 @@ func TestCRUDPipelineConfigs(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	fetchedConfig.Deprecated = 1
+	fetchedConfig.Deprecated = "1"
 	fetchedConfig.State = "DISABLED"
 
 	err = db.UpdatePipelineConfig(db, namespace.ID, pipeline.ID, config.Version,

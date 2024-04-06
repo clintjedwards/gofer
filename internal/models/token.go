@@ -2,55 +2,48 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/rs/zerolog/log"
 )
 
-type TokenKind string
+type TokenType string
 
 const (
-	TokenKindUnknown    TokenKind = "UNKNOWN"
-	TokenKindManagement TokenKind = "MANAGEMENT"
-	TokenKindClient     TokenKind = "CLIENT"
+	TokenTypeUnknown    TokenType = "UNKNOWN"
+	TokenTypeManagement TokenType = "MANAGEMENT"
+	TokenTypeClient     TokenType = "CLIENT"
 )
 
-// Token is a representation of the API key, belonging to an owner.
 type Token struct {
-	Hash       string            `json:"hash"`       // SHA-256 hash of the secret ID.
-	Created    int64             `json:"created"`    // Create time in epoch millisecond
-	Kind       TokenKind         `json:"kind"`       // The type of token. Management tokens are essentially root.
-	Namespaces []string          `json:"namespaces"` // List of namespaces this token has access to, strings in this list might be a regex.
-	Metadata   map[string]string `json:"metadata"`   // Extra information about this token in label form.
-	Expires    int64             `json:"expiry"`     // When the token would expire.
-	Disabled   bool              `json:"disabled"`   // Disabled tokens cannot be used.
+	ID         string            `json:"id" example:"de3foi" doc:"The unique identifier for the token"`
+	Hash       string            `json:"-" hidden:"true"`
+	Created    uint64            `json:"created" example:"1712433802634" doc:"Time in epoch milliseconds since token was created."`
+	TokenType  TokenType         `json:"token_type" example:"MANAGEMENT" doc:"The type of the token. Management tokens are essentially root."`
+	Namespaces []string          `json:"namespaces" example:"[\"default\"]" doc:"List of namespaces this token has access to, strings in this list can be a regex."`
+	Metadata   map[string]string `json:"metadata" example:"{\"created_by\": \"me\"}" doc:"Extra information about this token in label form."`
+	Expires    uint64            `json:"expires" example:"1712433802634" doc:"Time in epoch milliseconds when the token would expire."`
+	Disabled   bool              `json:"disabled" example:"false" doc:"If the token is inactive or not; disabled tokens cannot be used."`
 }
 
-func NewToken(hash string, kind TokenKind, namespaces []string, metadata map[string]string, expiry time.Duration) *Token {
+func NewToken(hash string, kind TokenType, namespaces []string, metadata map[string]string, expiry time.Duration) *Token {
 	now := time.Now()
 	expires := now.Add(expiry)
 
+	id := generateID(12)
+
 	return &Token{
+		ID:         id,
 		Hash:       hash,
-		Created:    time.Now().UnixMilli(),
-		Kind:       kind,
+		Created:    uint64(time.Now().UnixMilli()),
+		TokenType:  kind,
 		Namespaces: namespaces,
 		Metadata:   metadata,
-		Expires:    expires.UnixMilli(),
+		Expires:    uint64(expires.UnixMilli()),
 		Disabled:   false,
-	}
-}
-
-func (t *Token) ToProto() *proto.Token {
-	return &proto.Token{
-		Created:    t.Created,
-		Kind:       proto.Token_Kind(proto.Token_Kind_value[string(t.Kind)]),
-		Namespaces: t.Namespaces,
-		Metadata:   t.Metadata,
-		Expires:    t.Expires,
-		Disabled:   t.Disabled,
 	}
 }
 
@@ -66,12 +59,13 @@ func (t *Token) ToStorage() *storage.Token {
 	}
 
 	return &storage.Token{
+		ID:         t.ID,
 		Hash:       t.Hash,
-		Created:    t.Created,
-		Kind:       string(t.Kind),
+		Created:    fmt.Sprint(t.Created),
+		Kind:       string(t.TokenType),
 		Namespaces: string(namespaces),
 		Metadata:   string(metadata),
-		Expires:    t.Expires,
+		Expires:    fmt.Sprint(t.Expires),
 		Disabled:   t.Disabled,
 	}
 }
@@ -89,11 +83,22 @@ func (t *Token) FromStorage(s *storage.Token) {
 		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
 
+	created, err := strconv.ParseUint(s.Created, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	expires, err := strconv.ParseUint(s.Expires, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	t.ID = s.ID
 	t.Hash = s.Hash
-	t.Created = s.Created
-	t.Kind = TokenKind(s.Kind)
+	t.Created = created
+	t.TokenType = TokenType(s.Kind)
 	t.Namespaces = namespaces
 	t.Metadata = metadata
-	t.Expires = s.Expires
+	t.Expires = expires
 	t.Disabled = s.Disabled
 }

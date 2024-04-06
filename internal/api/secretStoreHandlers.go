@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package api
 
 import (
@@ -14,15 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetPipelineSecret(ctx context.Context, request *proto.GetPipelineSecretRequest) (*proto.GetPipelineSecretResponse, error) {
-	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
-	if err != nil {
-		return &proto.GetPipelineSecretResponse{},
-			status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
-	}
-
-	request.NamespaceId = namespace
-
+func (api *APIContext) GetPipelineSecret(ctx context.Context, request *proto.GetPipelineSecretRequest) (*proto.GetPipelineSecretResponse, error) {
 	if request.Key == "" {
 		return nil, status.Error(codes.FailedPrecondition, "key cannot be empty")
 	}
@@ -61,7 +56,7 @@ func (api *API) GetPipelineSecret(ctx context.Context, request *proto.GetPipelin
 	}, nil
 }
 
-func (api *API) ListPipelineSecrets(ctx context.Context, request *proto.ListPipelineSecretsRequest) (*proto.ListPipelineSecretsResponse, error) {
+func (api *APIContext) ListPipelineSecrets(ctx context.Context, request *proto.ListPipelineSecretsRequest) (*proto.ListPipelineSecretsResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.ListPipelineSecretsResponse{},
@@ -92,7 +87,7 @@ func (api *API) ListPipelineSecrets(ctx context.Context, request *proto.ListPipe
 	}, nil
 }
 
-func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelineSecretRequest) (*proto.PutPipelineSecretResponse, error) {
+func (api *APIContext) PutPipelineSecret(ctx context.Context, request *proto.PutPipelineSecretRequest) (*proto.PutPipelineSecretResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.PutPipelineSecretResponse{},
@@ -143,7 +138,7 @@ func (api *API) PutPipelineSecret(ctx context.Context, request *proto.PutPipelin
 	}, nil
 }
 
-func (api *API) DeletePipelineSecret(ctx context.Context, request *proto.DeletePipelineSecretRequest) (
+func (api *APIContext) DeletePipelineSecret(ctx context.Context, request *proto.DeletePipelineSecretRequest) (
 	*proto.DeletePipelineSecretResponse, error,
 ) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
@@ -175,7 +170,7 @@ func (api *API) DeletePipelineSecret(ctx context.Context, request *proto.DeleteP
 	return &proto.DeletePipelineSecretResponse{}, nil
 }
 
-func (api *API) GetGlobalSecret(ctx context.Context, request *proto.GetGlobalSecretRequest) (*proto.GetGlobalSecretResponse, error) {
+func (api *APIContext) GetGlobalSecret(ctx context.Context, request *proto.GetGlobalSecretRequest) (*proto.GetGlobalSecretResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -213,7 +208,7 @@ func (api *API) GetGlobalSecret(ctx context.Context, request *proto.GetGlobalSec
 	}, nil
 }
 
-func (api *API) ListGlobalSecrets(ctx context.Context, _ *proto.ListGlobalSecretsRequest) (*proto.ListGlobalSecretsResponse, error) {
+func (api *APIContext) ListGlobalSecrets(ctx context.Context, _ *proto.ListGlobalSecretsRequest) (*proto.ListGlobalSecretsResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -235,7 +230,7 @@ func (api *API) ListGlobalSecrets(ctx context.Context, _ *proto.ListGlobalSecret
 	}, nil
 }
 
-func (api *API) PutGlobalSecret(ctx context.Context, request *proto.PutGlobalSecretRequest) (*proto.PutGlobalSecretResponse, error) {
+func (api *APIContext) PutGlobalSecret(ctx context.Context, request *proto.PutGlobalSecretRequest) (*proto.PutGlobalSecretResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -274,7 +269,7 @@ func (api *API) PutGlobalSecret(ctx context.Context, request *proto.PutGlobalSec
 	}, nil
 }
 
-func (api *API) DeleteGlobalSecret(ctx context.Context, request *proto.DeleteGlobalSecretRequest) (*proto.DeleteGlobalSecretResponse, error) {
+func (api *APIContext) DeleteGlobalSecret(ctx context.Context, request *proto.DeleteGlobalSecretRequest) (*proto.DeleteGlobalSecretResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}

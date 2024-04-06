@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -14,7 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetEvent(_ context.Context, request *proto.GetEventRequest) (*proto.GetEventResponse, error) {
+func (api *APIContext) GetEvent(_ context.Context, request *proto.GetEventRequest) (*proto.GetEventResponse, error) {
 	if request.Id == 0 {
 		return &proto.GetEventResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -40,7 +42,7 @@ func (api *API) GetEvent(_ context.Context, request *proto.GetEventRequest) (*pr
 	}, nil
 }
 
-func (api *API) ListEvents(request *proto.ListEventsRequest, stream proto.Gofer_ListEventsServer) error {
+func (api *APIContext) ListEvents(request *proto.ListEventsRequest, stream proto.Gofer_ListEventsServer) error {
 	historicalEvents := api.events.GetAll(request.Reverse)
 
 	subscription, err := api.events.Subscribe(events.EventTypeAny)

@@ -14,7 +14,7 @@ type ObjectStoreRunKey struct {
 	Pipeline  string
 	Run       int64
 	Key       string
-	Created   int64
+	Created   string
 }
 
 func (db *DB) ListObjectStoreRunKeys(conn Queryable, namespace, pipeline string, run int64) ([]ObjectStoreRunKey, error) {

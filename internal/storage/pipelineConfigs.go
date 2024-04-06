@@ -16,13 +16,13 @@ type PipelineConfig struct {
 	Parallelism int64
 	Name        string
 	Description string
-	Registered  int64
-	Deprecated  int64
+	Registered  string
+	Deprecated  string
 	State       string
 }
 
 type UpdatablePipelineConfigFields struct {
-	Deprecated *int64
+	Deprecated *string
 	State      *string
 }
 

@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -16,7 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetNamespace(_ context.Context, request *proto.GetNamespaceRequest) (*proto.GetNamespaceResponse, error) {
+func (api *APIContext) GetNamespace(_ context.Context, request *proto.GetNamespaceRequest) (*proto.GetNamespaceResponse, error) {
 	if request.Id == "" {
 		return &proto.GetNamespaceResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -36,7 +38,7 @@ func (api *API) GetNamespace(_ context.Context, request *proto.GetNamespaceReque
 	return &proto.GetNamespaceResponse{Namespace: namespace.ToProto()}, nil
 }
 
-func (api *API) ListNamespaces(_ context.Context, request *proto.ListNamespacesRequest) (*proto.ListNamespacesResponse, error) {
+func (api *APIContext) ListNamespaces(_ context.Context, request *proto.ListNamespacesRequest) (*proto.ListNamespacesResponse, error) {
 	namespaces, err := api.db.ListNamespaces(api.db, int(request.Offset), int(request.Limit))
 	if err != nil {
 		log.Error().Err(err).Msg("could not get namespaces")
@@ -55,7 +57,7 @@ func (api *API) ListNamespaces(_ context.Context, request *proto.ListNamespacesR
 	}, nil
 }
 
-func (api *API) CreateNamespace(ctx context.Context, request *proto.CreateNamespaceRequest) (*proto.CreateNamespaceResponse, error) {
+func (api *APIContext) CreateNamespace(ctx context.Context, request *proto.CreateNamespaceRequest) (*proto.CreateNamespaceResponse, error) {
 	if !isManagementUser(ctx) {
 		return &proto.CreateNamespaceResponse{},
 			status.Error(codes.PermissionDenied, "management token required for this action")
@@ -97,7 +99,7 @@ func (api *API) CreateNamespace(ctx context.Context, request *proto.CreateNamesp
 	}, nil
 }
 
-func (api *API) UpdateNamespace(ctx context.Context, request *proto.UpdateNamespaceRequest) (*proto.UpdateNamespaceResponse, error) {
+func (api *APIContext) UpdateNamespace(ctx context.Context, request *proto.UpdateNamespaceRequest) (*proto.UpdateNamespaceResponse, error) {
 	if !isManagementUser(ctx) {
 		return &proto.UpdateNamespaceResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -122,7 +124,7 @@ func (api *API) UpdateNamespace(ctx context.Context, request *proto.UpdateNamesp
 	return &proto.UpdateNamespaceResponse{}, nil
 }
 
-func (api *API) DeleteNamespace(ctx context.Context, request *proto.DeleteNamespaceRequest) (*proto.DeleteNamespaceResponse, error) {
+func (api *APIContext) DeleteNamespace(ctx context.Context, request *proto.DeleteNamespaceRequest) (*proto.DeleteNamespaceResponse, error) {
 	if !isManagementUser(ctx) {
 		return &proto.DeleteNamespaceResponse{}, status.Error(codes.PermissionDenied, "management token required for this action")
 	}

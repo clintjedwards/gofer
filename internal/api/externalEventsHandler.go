@@ -1,60 +1,51 @@
 package api
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
-	proto "github.com/clintjedwards/gofer/proto/go"
-
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
-func (api *API) externalEventsHandler(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	extensionKind := vars["extension"]
-	extension, exists := api.extensions.Get(extensionKind)
-	if !exists {
-		sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("extension %q does not exist", extensionKind))
-		return
-	}
+func (api *APIContext) externalEventsHandler(w http.ResponseWriter, req *http.Request) {
+	// vars := mux.Vars(req)
+	// extensionKind := vars["extension"]
+	// extension, exists := api.extensions.Get(extensionKind)
+	// if !exists {
+	// 	sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("extension %q does not exist", extensionKind))
+	// 	return
+	// }
 
-	serializedRequest := &bytes.Buffer{}
-	err := req.Write(serializedRequest)
-	if err != nil {
-		sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("could not serialize http request"))
-		return
-	}
+	// serializedRequest := &bytes.Buffer{}
+	// err := req.Write(serializedRequest)
+	// if err != nil {
+	// 	sendErrResponse(w, http.StatusBadRequest, fmt.Errorf("could not serialize http request"))
+	// 	return
+	// }
 
-	defer req.Body.Close()
+	// defer req.Body.Close()
 
-	conn, err := grpcDial(extension.URL)
-	if err != nil {
-		log.Error().Err(err).Str("extension", extensionKind).Msg("could not connect to extension")
-	}
-	defer conn.Close()
+	// conn, err := grpcDial(extension.URL)
+	// if err != nil {
+	// 	log.Error().Err(err).Str("extension", extensionKind).Msg("could not connect to extension")
+	// }
+	// defer conn.Close()
 
-	client := proto.NewExtensionServiceClient(conn)
+	// client := proto.NewExtensionServiceClient(conn)
 
-	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*extension.Key))
-	_, err = client.ExternalEvent(ctx, &proto.ExtensionExternalEventRequest{
-		Payload: serializedRequest.Bytes(),
-	})
-	if err != nil {
-		if status.Code(err) == codes.Canceled {
-			return
-		}
+	// ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+string(*extension.Key))
+	// _, err = client.ExternalEvent(ctx, &proto.ExtensionExternalEventRequest{
+	// 	Payload: serializedRequest.Bytes(),
+	// })
+	// if err != nil {
+	// 	if status.Code(err) == codes.Canceled {
+	// 		return
+	// 	}
 
-		log.Error().Err(err).Str("extension", extensionKind).Msg("could not connect to extension")
-		sendErrResponse(w, http.StatusInternalServerError, fmt.Errorf("could not connect to extension"))
-		return
-	}
+	// 	log.Error().Err(err).Str("extension", extensionKind).Msg("could not connect to extension")
+	// 	sendErrResponse(w, http.StatusInternalServerError, fmt.Errorf("could not connect to extension"))
+	// 	return
+	// }
 }
 
 // sendErrResponse converts raw objects and parameters to a json response specifically for erorrs

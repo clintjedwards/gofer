@@ -2,10 +2,11 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,7 +15,7 @@ type RunState string
 const (
 	RunStateUnknown RunState = "UNKNOWN" // The state of the run is unknown.
 	// Before the tasks in a run is sent to a scheduler it must complete various steps like
-	// validation checking. This state represents that step where the run and task_runs are
+	// validation checking. This state represents that step where the run and task executions are
 	// pre-checked.
 	RunStatePending  RunState = "PENDING"
 	RunStateRunning  RunState = "RUNNING"  // Currently running.
@@ -33,26 +34,26 @@ const (
 	RunStatusCancelled  RunStatus = "CANCELLED"  // One or more tasks in a run have been cancelled.
 )
 
-type RunStatusReasonKind string
+type RunStatusReasonType string
 
 const (
-	// Gofer has no idea who the run got into this state.
-	RunStatusReasonKindUnknown RunStatusReasonKind = "UNKNOWN"
+	// Gofer has no idea how the run got into this state.
+	RunStatusReasonKindUnknown RunStatusReasonType = "UNKNOWN"
 	// While executing the run one or more tasks exited with an abnormal exit code.
-	RunStatusReasonKindAbnormalExit RunStatusReasonKind = "ABNORMAL_EXIT"
+	RunStatusReasonKindAbnormalExit RunStatusReasonType = "ABNORMAL_EXIT"
 	// While executing the run one or more tasks could not be scheduled.
-	RunStatusReasonKindSchedulerError RunStatusReasonKind = "SCHEDULER_ERROR"
+	RunStatusReasonKindSchedulerError RunStatusReasonType = "SCHEDULER_ERROR"
 	// The run could not be executed as requested due to user defined attributes given.
-	RunStatusReasonKindFailedPrecondition RunStatusReasonKind = "FAILED_PRECONDITION"
+	RunStatusReasonKindFailedPrecondition RunStatusReasonType = "FAILED_PRECONDITION"
 	// One or more tasks could not be completed due to a user cancelling the run.
-	RunStatusReasonKindUserCancelled RunStatusReasonKind = "USER_CANCELLED"
+	RunStatusReasonKindUserCancelled RunStatusReasonType = "USER_CANCELLED"
 	// One or more tasks could not be completed due to the system or admin cancelling the run.
-	RunStatusReasonKindAdminCancelled RunStatusReasonKind = "ADMIN_CANCELLED"
+	RunStatusReasonKindAdminCancelled RunStatusReasonType = "ADMIN_CANCELLED"
 )
 
 type RunStatusReason struct {
-	Reason      RunStatusReasonKind `json:"kind"`        // The specific type of run failure. Good for documentation about what it might be.
-	Description string              `json:"description"` // The description of why the run might have failed.
+	Reason      RunStatusReasonType `json:"reason" example:"ABNORMAL_EXIT" doc:"The specific type of run failure"`
+	Description string              `json:"description" example:"some description about the reason" doc:"The description of why the run might have failed"`
 }
 
 func (r *RunStatusReason) ToJSON() string {
@@ -62,13 +63,6 @@ func (r *RunStatusReason) ToJSON() string {
 	}
 
 	return string(reason)
-}
-
-func (r *RunStatusReason) ToProto() *proto.RunStatusReason {
-	return &proto.RunStatusReason{
-		Reason:      proto.RunStatusReason_RunStatusReasonKind(proto.RunStatusReason_RunStatusReasonKind_value[string(r.Reason)]),
-		Description: r.Description,
-	}
 }
 
 type InitiatorType string
@@ -83,49 +77,35 @@ const (
 
 // Information about which extension was responsible for the run's execution.
 type Initiator struct {
-	Type   InitiatorType `json:"type"`
-	Name   string        `json:"name"`
-	Reason string        `json:"reason"`
-}
-
-func (t *Initiator) ToProto() *proto.Initiator {
-	return &proto.Initiator{
-		Type:   proto.Initiator_Type(proto.Initiator_Type_value[string(t.Type)]),
-		Name:   t.Name,
-		Reason: t.Reason,
-	}
-}
-
-func (t *Initiator) FromProto(proto *proto.Initiator) {
-	t.Type = InitiatorType(proto.Type.String())
-	t.Name = proto.Name
-	t.Reason = proto.Reason
+	Type   InitiatorType `json:"type" example:"BOT" doc:"Which type of user initiated the run"`
+	Name   string        `json:"name" example:"obama" doc:"The name of the user which initiated the run"`
+	Reason string        `json:"reason" example:"Re-running due to previous failure" doc:"The reason the run was initiated."`
 }
 
 // A run is one or more tasks being executed on behalf of some extension.
 // Run is a third level unit containing tasks and being contained in a pipeline.
 type Run struct {
-	Namespace           string           `json:"namespace"`             // Unique ID of namespace.
-	Pipeline            string           `json:"pipeline"`              // The unique ID of the related pipeline.
-	Version             int64            `json:"version"`               // Which version of the pipeline did this run occur.
-	ID                  int64            `json:"id"`                    // UniqueID of a run. Auto-incrementing and cannot be zero.
-	Started             int64            `json:"started"`               // Time of run start in epoch milli.
-	Ended               int64            `json:"ended"`                 // Time of run finish in epoch milli.
-	State               RunState         `json:"state"`                 // The current state of the run.
-	Status              RunStatus        `json:"status"`                // The current status of the run.
-	StatusReason        *RunStatusReason `json:"status_reason"`         // Contains more information about a run's current status.
-	Initiator           Initiator        `json:"initiator"`             // Information who started the run and why.
-	Variables           []Variable       `json:"variables"`             // Environment variables to be injected into each child task run. These are usually injected by the extension.
-	StoreObjectsExpired bool             `json:"store_objects_expired"` // Tracks whether objects for this run have expired already.
+	NamespaceID         string           `json:"namespace_id,omitempty" example:"default" doc:"Unique identifier of the target namespace"`
+	PipelineID          string           `json:"pipeline_id" example:"simple_pipeline" doc:"Unique identifier for the target pipeline"`
+	Version             int64            `json:"version" example:"42" doc:"Which version of the pipeline did this task execution occur in"`
+	RunID               int64            `json:"run_id" example:"1" doc:"Unique identifier for the target run"`
+	Started             uint64           `json:"started" example:"1712433802634" doc:"Time of run creation in epoch milliseconds"`
+	Ended               uint64           `json:"ended" example:"1712433802634" doc:"Time of run completion in epoch milliseconds"`
+	State               RunState         `json:"state" example:"PENDING" doc:"The current state of the run within the Gofer execution model. Describes if the run is in progress or not."`
+	Status              RunStatus        `json:"status" example:"SUCCESSFUL" doc:"The final result of the run."`
+	StatusReason        *RunStatusReason `json:"status_reason,omitempty" example:"Could not finish run due to some reason" doc:"More information on the circumstances around a particular run's status"`
+	Initiator           Initiator        `json:"initiator" doc:"Information about what started the run"`
+	Variables           []Variable       `json:"variables" doc:"Run level environment variables to be passed to each task execution"`
+	StoreObjectsExpired bool             `json:"store_objects_expired" doc:"Whether run level objects were expired"`
 }
 
 func NewRun(namespace, pipeline string, version, id int64, initiator Initiator, variables []Variable) *Run {
 	return &Run{
-		Namespace:           namespace,
-		Pipeline:            pipeline,
+		NamespaceID:         namespace,
+		PipelineID:          pipeline,
 		Version:             version,
-		ID:                  id,
-		Started:             time.Now().UnixMilli(),
+		RunID:               id,
+		Started:             uint64(time.Now().UnixMilli()),
 		Ended:               0,
 		State:               RunStatePending,
 		Status:              RunStatusUnknown,
@@ -133,33 +113,6 @@ func NewRun(namespace, pipeline string, version, id int64, initiator Initiator, 
 		Initiator:           initiator,
 		Variables:           variables,
 		StoreObjectsExpired: false,
-	}
-}
-
-func (r *Run) ToProto() *proto.Run {
-	variables := []*proto.Variable{}
-	for _, variable := range r.Variables {
-		variables = append(variables, variable.ToProto())
-	}
-
-	var statusReason *proto.RunStatusReason
-	if r.StatusReason != nil {
-		statusReason = r.StatusReason.ToProto()
-	}
-
-	return &proto.Run{
-		Namespace:           r.Namespace,
-		Pipeline:            r.Pipeline,
-		Version:             r.Version,
-		Id:                  r.ID,
-		Started:             r.Started,
-		Ended:               r.Ended,
-		State:               proto.Run_RunState(proto.Run_RunState_value[string(r.State)]),
-		Status:              proto.Run_RunStatus(proto.Run_RunStatus_value[string(r.Status)]),
-		StatusReason:        statusReason,
-		Initiator:           r.Initiator.ToProto(),
-		Variables:           variables,
-		StoreObjectsExpired: r.StoreObjectsExpired,
 	}
 }
 
@@ -175,12 +128,12 @@ func (r *Run) ToStorage() *storage.PipelineRun {
 	}
 
 	return &storage.PipelineRun{
-		Namespace:             r.Namespace,
-		Pipeline:              r.Pipeline,
+		Namespace:             r.NamespaceID,
+		Pipeline:              r.PipelineID,
 		PipelineConfigVersion: r.Version,
-		ID:                    r.ID,
-		Started:               r.Started,
-		Ended:                 r.Ended,
+		ID:                    r.RunID,
+		Started:               fmt.Sprint(r.Started),
+		Ended:                 fmt.Sprint(r.Ended),
 		State:                 string(r.State),
 		Status:                string(r.Status),
 		StatusReason:          r.StatusReason.ToJSON(),
@@ -209,12 +162,22 @@ func (r *Run) FromStorage(storage *storage.PipelineRun) {
 		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
 
-	r.Namespace = storage.Namespace
-	r.Pipeline = storage.Pipeline
+	started, err := strconv.ParseUint(storage.Started, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	ended, err := strconv.ParseUint(storage.Ended, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	r.NamespaceID = storage.Namespace
+	r.PipelineID = storage.Pipeline
 	r.Version = storage.PipelineConfigVersion
-	r.ID = storage.ID
-	r.Started = storage.Started
-	r.Ended = storage.Ended
+	r.RunID = storage.ID
+	r.Started = started
+	r.Ended = ended
 	r.State = RunState(storage.State)
 	r.Status = RunStatus(storage.Status)
 	r.StatusReason = &statusReason

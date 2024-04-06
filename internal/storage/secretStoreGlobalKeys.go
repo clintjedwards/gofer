@@ -12,7 +12,7 @@ import (
 type SecretStoreGlobalKey struct {
 	Key        string
 	Namespaces string
-	Created    int64
+	Created    string
 }
 
 type UpdatableSecretStoreGlobalKeyFields struct {

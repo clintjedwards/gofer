@@ -2,16 +2,16 @@ CREATE TABLE IF NOT EXISTS namespaces (
     id          TEXT    NOT NULL,
     name        TEXT    NOT NULL,
     description TEXT    NOT NULL,
-    created     INTEGER NOT NULL,
-    modified    INTEGER NOT NULL,
+    created     TEXT    NOT NULL,
+    modified    TEXT    NOT NULL,
     PRIMARY KEY (id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS pipeline_metadata (
     namespace   TEXT    NOT NULL,
     id          TEXT    NOT NULL,
-    created     INTEGER NOT NULL,
-    modified    INTEGER NOT NULL,
+    created     TEXT    NOT NULL,
+    modified    TEXT    NOT NULL,
     state       TEXT    NOT NULL,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, id)
@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS pipeline_configs (
     parallelism INTEGER NOT NULL,
     name        TEXT    NOT NULL,
     description TEXT    NOT NULL,
-    registered  INTEGER NOT NULL,
-    deprecated  INTEGER NOT NULL,
+    registered  TEXT    NOT NULL,
+    deprecated  TEXT    NOT NULL,
     state       TEXT    NOT NULL,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipeline_metadata(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, version)
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS pipeline_deployments (
     id            INTEGER NOT NULL,
     start_version INTEGER NOT NULL,
     end_version   INTEGER NOT NULL,
-    started       INTEGER NOT NULL,
-    ended         INTEGER NOT NULL,
+    started       TEXT    NOT NULL,
+    ended         TEXT    NOT NULL,
     state         TEXT    NOT NULL,
     status        TEXT    NOT NULL,
     status_reason TEXT    NOT NULL,
@@ -53,14 +53,14 @@ CREATE TABLE IF NOT EXISTS pipeline_deployments (
 CREATE TABLE IF NOT EXISTS pipeline_extension_subscriptions (
     namespace        TEXT NOT NULL,
     pipeline         TEXT NOT NULL,
-    name             TEXT NOT NULL,
+    id               TEXT NOT NULL,
     label            TEXT NOT NULL,
     settings         TEXT NOT NULL,
     status           TEXT NOT NULL,
     status_reason    TEXT NOT NULL,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipeline_metadata(namespace, id) ON DELETE CASCADE,
-    PRIMARY KEY (namespace, pipeline, name, label)
+    PRIMARY KEY (namespace, pipeline, id, label)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS pipeline_runs (
@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
     pipeline                TEXT    NOT NULL,
     pipeline_config_version INTEGER NOT NULL,
     id                      INTEGER NOT NULL,
-    started                 INTEGER NOT NULL,
-    ended                   INTEGER NOT NULL,
+    started                 TEXT    NOT NULL,
+    ended                   TEXT    NOT NULL,
     state                   TEXT    NOT NULL,
     status                  TEXT    NOT NULL,
     status_reason           TEXT    NOT NULL,
@@ -102,21 +102,21 @@ CREATE TABLE IF NOT EXISTS pipeline_tasks (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS global_extension_registrations (
-    name          TEXT    NOT NULL,
+    id            TEXT    NOT NULL,
     image         TEXT    NOT NULL,
     registry_auth TEXT    NOT NULL,
     variables     TEXT    NOT NULL,
-    created       INTEGER NOT NULL,
+    created       TEXT    NOT NULL,
     status        TEXT    NOT NULL,
-    key_id        INTEGER NOT NULL,
-    PRIMARY KEY (name)
+    key_id        TEXT    NOT NULL,
+    PRIMARY KEY (id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS object_store_pipeline_keys(
     namespace     TEXT     NOT NULL,
     pipeline      TEXT     NOT NULL,
     key           TEXT     NOT NULL,
-    created       INTEGER  NOT NULL,
+    created       TEXT     NOT NULL,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipeline_metadata(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, key)
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS object_store_run_keys(
     pipeline      TEXT    NOT NULL,
     run           INTEGER NOT NULL,
     key           TEXT    NOT NULL,
-    created       INTEGER NOT NULL,
+    created       TEXT    NOT NULL,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipeline_metadata(namespace, id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline, run) REFERENCES pipeline_runs(namespace, pipeline, id) ON DELETE CASCADE,
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS secret_store_pipeline_keys(
     namespace     TEXT    NOT NULL,
     pipeline      TEXT    NOT NULL,
     key           TEXT    NOT NULL,
-    created       INTEGER NOT NULL,
+    created       TEXT    NOT NULL,
     FOREIGN KEY (namespace) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace, pipeline) REFERENCES pipeline_metadata(namespace, id) ON DELETE CASCADE,
     PRIMARY KEY (namespace, pipeline, key)
@@ -153,21 +153,21 @@ CREATE INDEX idx_secret_pipeline_keys_created ON secret_store_pipeline_keys (cre
 CREATE TABLE IF NOT EXISTS secret_store_global_keys(
     key           TEXT    NOT NULL,
     namespaces    TEXT    NOT NULL,
-    created       INTEGER NOT NULL,
+    created       TEXT    NOT NULL,
     PRIMARY KEY (key)
 ) STRICT;
 
 CREATE INDEX idx_secret_global_keys_created ON secret_store_global_keys (created);
 
-CREATE TABLE IF NOT EXISTS pipeline_task_runs (
+CREATE TABLE IF NOT EXISTS pipeline_task_executions (
     namespace     TEXT    NOT NULL,
     pipeline      TEXT    NOT NULL,
     run           INTEGER NOT NULL,
     id            TEXT    NOT NULL,
     task          TEXT    NOT NULL,
-    created       INTEGER NOT NULL,
-    started       INTEGER NOT NULL,
-    ended         INTEGER NOT NULL,
+    created       TEXT    NOT NULL,
+    started       TEXT    NOT NULL,
+    ended         TEXT    NOT NULL,
     exit_code     INTEGER NOT NULL,
     logs_expired  INTEGER NOT NULL CHECK (logs_expired IN (0, 1)),
     logs_removed  INTEGER NOT NULL CHECK (logs_removed IN (0, 1)),
@@ -182,23 +182,23 @@ CREATE TABLE IF NOT EXISTS pipeline_task_runs (
     PRIMARY KEY (namespace, pipeline, run, id)
 ) STRICT;
 
-CREATE INDEX idx_taskruns_started ON pipeline_task_runs (started);
+CREATE INDEX idx_taskexecutions_started ON pipeline_task_executions (started);
 
 CREATE TABLE IF NOT EXISTS events (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     type     TEXT    NOT NULL,
     details  TEXT    NOT NULL,
-    emitted  INTEGER NOT NULL
+    emitted  TEXT    NOT NULL
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS tokens (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    id          TEXT    NOT NULL,
     hash        TEXT    NOT NULL,
-    created     INTEGER NOT NULL,
+    created     TEXT    NOT NULL,
     kind        TEXT    NOT NULL,
     namespaces  TEXT    NOT NULL,
     metadata    TEXT    NOT NULL,
-    expires     INTEGER NOT NULL,
+    expires     TEXT    NOT NULL,
     disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1))
 ) STRICT;
 

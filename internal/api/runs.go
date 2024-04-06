@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -194,7 +196,7 @@ func convertVarsToMap(vars []models.Variable) map[string]string {
 
 // Takes in a map of mixed plaintext and raw secret/store strings and populates it with
 // the fetched strings for each type.
-func (api *API) interpolateVars(namespace, pipeline string, run *int64, variables []models.Variable) ([]models.Variable, error) {
+func (api *APIContext) interpolateVars(namespace, pipeline string, run *int64, variables []models.Variable) ([]models.Variable, error) {
 	varList := []models.Variable{}
 
 	for _, variable := range variables {
@@ -288,7 +290,7 @@ func (api *API) interpolateVars(namespace, pipeline string, run *int64, variable
 // cancelRun cancels all task runs related to a run by calling the scheduler's StopContainer function on each one.
 // It then waits until the goroutine monitoring run health gets to the correct state.
 // This causes the function to block for a bit, while it waits for the correct run status.
-func (api *API) cancelRun(run *models.Run, description string, force bool) error {
+func (api *APIContext) cancelRun(run *models.Run, description string, force bool) error {
 	taskRunsRaw, err := api.db.ListPipelineTaskRuns(api.db, 0, 0, run.Namespace, run.Pipeline, run.ID)
 	if err != nil {
 		return err
@@ -375,7 +377,7 @@ func (api *API) cancelRun(run *models.Run, description string, force bool) error
 	}
 }
 
-func (api *API) cancelAllRuns(namespaceID, pipelineID, description string, force bool) ([]int64, error) {
+func (api *APIContext) cancelAllRuns(namespaceID, pipelineID, description string, force bool) ([]int64, error) {
 	type runkey struct {
 		namespace string
 		pipeline  string

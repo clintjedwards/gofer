@@ -20,8 +20,8 @@ func TestCRUDNamespaces(t *testing.T) {
 		ID:          "test_namespace",
 		Name:        "Test Namespace",
 		Description: "This is a test namespace",
-		Created:     0,
-		Modified:    0,
+		Created:     "0",
+		Modified:    "0",
 	}
 
 	err = db.InsertNamespace(db, &namespace)
@@ -53,7 +53,7 @@ func TestCRUDNamespaces(t *testing.T) {
 
 	namespace.Name = "Updated Namespace"
 	namespace.Description = "updated namespace"
-	namespace.Modified = 1
+	namespace.Modified = "1"
 
 	err = db.UpdateNamespace(db, namespace.ID, UpdatableNamespaceFields{
 		Name:        &namespace.Name,

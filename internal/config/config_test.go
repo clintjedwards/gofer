@@ -13,7 +13,6 @@ func TestGetEnvvarsFromStruct(_ *testing.T) {
 		Development:       &Development{},
 		Extensions:        &Extensions{},
 		ExternalEventsAPI: &ExternalEventsAPI{},
-		Frontend:          &Frontend{},
 		ObjectStore: &ObjectStore{
 			Sqlite: &Sqlite{},
 		},

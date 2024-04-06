@@ -46,13 +46,14 @@ build: check-path-included check-semver-included build-protos build-sdk
 > go build -tags release -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
 .PHONY: build
 
-## build-protos: build protobufs
-build-protos:
-> protoc --proto_path=proto --go_out=proto/go --go_opt=paths=source_relative \
-	 --go-grpc_out=proto/go --go-grpc_opt=paths=source_relative proto/*.proto
-> cd proto/rust
-> cargo build --release
-.PHONY: build-protos
+## generate-sdk: Attempts to generate the golang sdk from the openAPI spec files.
+generate-sdk:
+> go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest
+> go run sdk/generate_openapi/generate_openapi.go
+> oapi-codegen -generate "types,client" -package sdk openapi.yaml > sdk/go/sdk.go
+> oapi-codegen -generate "types,client" -package extensions sdk/openapi.yaml > sdk/go/extensions/sdk.go
+> go mod tidy
+.PHONY: generate-sdk
 
 ## build-sdk: build rust sdk
 build-sdk:

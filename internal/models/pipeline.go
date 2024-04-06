@@ -1,17 +1,20 @@
 package models
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
+	sdk "github.com/clintjedwards/gofer/sdk/go/config"
+	"github.com/rs/zerolog/log"
 )
 
 // A collection of logically grouped tasks. A task is a unit of work wrapped in a docker container.
 // Pipeline is a secondary level unit being contained within namespaces and containing runs.
 type Pipeline struct {
-	Metadata PipelineMetadata
-	Config   PipelineConfig
+	Metadata PipelineMetadata `json:"metadata" doc:"Macro-level details on the targeted pipeline"`
+	Config   PipelineConfig   `json:"config" doc:"User controlled data on the targeted pipeline"`
 }
 
 type PipelineState string
@@ -26,24 +29,20 @@ const (
 // All these values are changed by the system or never changed at all. This sits in contrast to
 // the config which the user can change freely.
 type PipelineMetadata struct {
-	Namespace string `json:"namespace"` // The namespace this pipeline belongs to.
-	ID        string `json:"id"`        // Unique identifier; user defined.
-	// Controls how many runs can be active at any single time. 0 indicates unbounded with respect to bounds
-	// enforced by Gofer.
-	Created  int64 `json:"created"`  // Time pipeline was created in epoch milliseconds.
-	Modified int64 `json:"modified"` // Time pipeline was updated to a new version in epoch milliseconds.
-	// The current running state of the pipeline. This is used to determine if the pipeline should continue to process
-	// runs or not and properly convey that to the user.
-	State PipelineState `json:"state"`
+	NamespaceID string        `json:"namespace_id" example:"default" doc:"Unique identifier of the target namespace"`
+	PipelineID  string        `json:"pipeline_id" example:"simple_pipeline" doc:"Unique identifier for the target pipeline; user supplied"`
+	Created     uint64        `json:"created" example:"1712433802634" doc:"Time of pipeline creation in epoch milliseconds"`
+	Modified    uint64        `json:"modified" example:"1712433802634" doc:"Time pipeline was updated to a new version in epoch milliseconds."`
+	State       PipelineState `json:"state" example:"ACTIVE" doc:"The current running state of the pipeline. This is used to determine if the pipeline should continue to process runs or not and properly convey that to the user."`
 }
 
 func NewPipelineMetadata(namespace, id string) *PipelineMetadata {
 	newPipelineMetadata := &PipelineMetadata{
-		Namespace: namespace,
-		ID:        id,
-		Created:   time.Now().UnixMilli(),
-		Modified:  time.Now().UnixMilli(),
-		State:     PipelineStateActive,
+		NamespaceID: namespace,
+		PipelineID:  id,
+		Created:     uint64(time.Now().UnixMilli()),
+		Modified:    uint64(time.Now().UnixMilli()),
+		State:       PipelineStateActive,
 	}
 
 	return newPipelineMetadata
@@ -51,30 +50,30 @@ func NewPipelineMetadata(namespace, id string) *PipelineMetadata {
 
 func (p *PipelineMetadata) ToStorage() *storage.PipelineMetadata {
 	return &storage.PipelineMetadata{
-		Namespace: p.Namespace,
-		ID:        p.ID,
-		Created:   p.Created,
-		Modified:  p.Modified,
+		Namespace: p.NamespaceID,
+		ID:        p.PipelineID,
+		Created:   fmt.Sprint(p.Created),
+		Modified:  fmt.Sprint(p.Modified),
 		State:     string(p.State),
 	}
 }
 
 func (p *PipelineMetadata) FromStorage(sp *storage.PipelineMetadata) {
-	p.Namespace = sp.Namespace
-	p.ID = sp.ID
-	p.Created = sp.Created
-	p.Modified = sp.Modified
-	p.State = PipelineState(sp.State)
-}
-
-func (p *PipelineMetadata) ToProto() *proto.PipelineMetadata {
-	return &proto.PipelineMetadata{
-		Namespace: p.Namespace,
-		Id:        p.ID,
-		Created:   p.Created,
-		Modified:  p.Modified,
-		State:     proto.PipelineMetadata_PipelineState(proto.PipelineMetadata_PipelineState_value[string(p.State)]),
+	created, err := strconv.ParseUint(sp.Created, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
+
+	modified, err := strconv.ParseUint(sp.Modified, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	p.NamespaceID = sp.Namespace
+	p.PipelineID = sp.ID
+	p.Created = created
+	p.Modified = modified
+	p.State = PipelineState(sp.State)
 }
 
 type PipelineConfigState string
@@ -88,62 +87,58 @@ const (
 
 // A representation of the user's configuration settings for a particular pipeline.
 type PipelineConfig struct {
-	Namespace   string `json:"namespace"`
-	Pipeline    string `json:"pipeline"`
-	Version     int64  `json:"version"`
-	Parallelism int64  `json:"parallelism"`
-	Name        string `json:"name"`        // Name refers to a human readable pipeline name.
-	Description string `json:"description"` // Description of pipeline's purpose and other details.
-	// Map for quickly finding user created pipeline tasks; assists with DAG generation.
-	Tasks map[string]Task `json:"tasks"`
-	// The current running state of the pipeline. This is used to determine if the pipeline should continue to process
-	// runs or not and properly convey that to the user.
-	State      PipelineConfigState `json:"state"`
-	Registered int64               `json:"registered"`
-	// If the pipeline's state is "deprecated" we note the time it was so we know which is the oldest defunct version.
-	Deprecated int64 `json:"deprecated"`
+	NamespaceID string              `json:"namespace_id" example:"default" doc:"Unique identifier of the target namespace"`
+	PipelineID  string              `json:"pipeline_id" example:"simple_pipeline" doc:"Unique identifier for the target pipeline; user supplied"`
+	Version     int64               `json:"version" example:"42" doc:"The current version of this pipeline configuration"`
+	Parallelism int64               `json:"parallelism" example:"5" doc:"The amount of runs allowed to happen at any given time"`
+	Name        string              `json:"name" example:"Simple Pipeline" doc:"Human readable name for pipeline"`
+	Description string              `json:"description" example:"Some description here" doc:"Description of pipeline's purpose and other details"`
+	Tasks       map[string]Task     `json:"tasks" doc:"Tasks associated with this pipeline config"`
+	State       PipelineConfigState `json:"state" example:"LIVE" doc:"The deployment state of the config. This is used to determine if the pipeline should continue to process runs or not and properly convey that to the user"`
+	Registered  uint64              `json:"registered" example:"1712433802634" doc:"Time in epoch milliseconds when this pipeline config was registered"`
+	Deprecated  uint64              `json:"deprecated" example:"1712433802634" doc:"The time in epoch milliseconds when the pipeline config was marked deprecated. This helps us figure out which version is actually most recent and which are defunct"`
 }
 
-func NewPipelineConfig(namespace, pipeline string, version int64, pb *proto.UserPipelineConfig) *PipelineConfig {
+func NewPipelineConfig(namespace, pipeline string, version int64, config *sdk.UserPipelineConfig) *PipelineConfig {
 	tasks := map[string]Task{}
 
-	for _, taskRaw := range pb.Tasks {
+	for _, taskRaw := range config.Tasks {
 		ct := Task{}
-		ct.FromProtoPipelineTaskConfig(taskRaw)
+		ct.FromSDKUserPipelineTaskConfig(taskRaw)
 		tasks[ct.ID] = ct
 	}
 
 	return &PipelineConfig{
-		Namespace:   namespace,
-		Pipeline:    pipeline,
+		NamespaceID: namespace,
+		PipelineID:  pipeline,
 		Version:     version,
-		Parallelism: pb.Parallelism,
-		Name:        pb.Name,
-		Description: pb.Description,
+		Parallelism: config.Parallelism,
+		Name:        config.Name,
+		Description: config.Description,
 		Tasks:       tasks,
 		State:       PipelineConfigStateUnreleased,
-		Registered:  time.Now().UnixMilli(),
+		Registered:  uint64(time.Now().UnixMilli()),
 		Deprecated:  0,
 	}
 }
 
 func (pc *PipelineConfig) ToStorage() (*storage.PipelineConfig, []*storage.PipelineTask) {
 	pipelineConfig := &storage.PipelineConfig{
-		Namespace:   pc.Namespace,
-		Pipeline:    pc.Pipeline,
+		Namespace:   pc.NamespaceID,
+		Pipeline:    pc.PipelineID,
 		Version:     pc.Version,
 		Parallelism: pc.Parallelism,
 		Name:        pc.Name,
 		Description: pc.Description,
-		Registered:  pc.Registered,
-		Deprecated:  pc.Deprecated,
+		Registered:  fmt.Sprint(pc.Registered),
+		Deprecated:  fmt.Sprint(pc.Deprecated),
 		State:       string(pc.State),
 	}
 
 	tasks := []*storage.PipelineTask{}
 
 	for _, task := range pc.Tasks {
-		tasks = append(tasks, task.ToStorage(pc.Namespace, pc.Pipeline, pc.Version))
+		tasks = append(tasks, task.ToStorage(pc.NamespaceID, pc.PipelineID, pc.Version))
 	}
 
 	return pipelineConfig, tasks
@@ -159,36 +154,24 @@ func (pc *PipelineConfig) FromStorage(spc *storage.PipelineConfig, spct *[]stora
 		tasks[task.ID] = ct
 	}
 
-	pc.Namespace = spc.Namespace
-	pc.Pipeline = spc.Pipeline
+	registered, err := strconv.ParseUint(spc.Registered, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	deprecated, err := strconv.ParseUint(spc.Deprecated, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	pc.NamespaceID = spc.Namespace
+	pc.PipelineID = spc.Pipeline
 	pc.Version = spc.Version
 	pc.Parallelism = spc.Parallelism
 	pc.Name = spc.Name
 	pc.Description = spc.Description
 	pc.Tasks = tasks
 	pc.State = PipelineConfigState(spc.State)
-	pc.Registered = spc.Registered
-	pc.Deprecated = spc.Deprecated
-}
-
-func (pc *PipelineConfig) ToProto() *proto.PipelineConfig {
-	tasks := map[string]*proto.Task{}
-
-	for _, task := range pc.Tasks {
-		protoTask := task.ToProto()
-		tasks[protoTask.Id] = protoTask
-	}
-
-	return &proto.PipelineConfig{
-		Namespace:   pc.Namespace,
-		Pipeline:    pc.Pipeline,
-		Version:     pc.Version,
-		Parallelism: pc.Parallelism,
-		Name:        pc.Name,
-		Description: pc.Description,
-		Tasks:       tasks,
-		State:       proto.PipelineConfig_PipelineConfigState(proto.PipelineConfig_PipelineConfigState_value[string(pc.State)]),
-		Registered:  pc.Registered,
-		Deprecated:  pc.Deprecated,
-	}
+	pc.Registered = registered
+	pc.Deprecated = deprecated
 }

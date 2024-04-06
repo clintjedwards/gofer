@@ -8,6 +8,15 @@ Also github integration:
   as completed. Could also include some other goodies just like any other CI/CD platform.
 - Update Github documentation, it needs a lot of work.
 - Minify CSS when we release for frontend.
+- Change task run to task execution to differ it from runs
+- Clean up all GRPC references, status refs, codes. refs
+- Now that we use a conventional rest api maybe we can set up Hurl.dev to do integration testing.
+- After the GRPC changes update the readme and docs to reflect how to manage openapi.
+  - go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest
+- Task runs are called task executions now.
+- Make namespaces able to be set in the cli
+- All time is now uints
+- Check over all routes and see which one need namespace auth via hasaccess
 
 ### Canaried pipelines
 
@@ -31,7 +40,8 @@ Also github integration:
 - Check that management token only with the same namespaces are able to create client tokens with those same namespaces.
 - We need to address all the minor bugs around namespaces and pipelines and their existance when calling upon the api
 - Github actions just downloads it's cache, we should do the same thing or make it easy for users to do so.
--
+- Change discription for models.go to reflect new thinking on shared objects
+- We need to make a distinct between bot api keys and human api keys so we can know who used which, this might be useful for the metadata type.
 
 ### SDK
 

@@ -2,25 +2,26 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/rs/zerolog/log"
 )
 
 type SecretStoreKey struct {
 	Key        string   `json:"key"`
 	Namespaces []string `json:"namespaces"`
-	Created    int64    `json:"created"`
+	Created    uint64   `json:"created"`
 }
 
 func NewSecretStoreKey(key string, namespaces []string) *SecretStoreKey {
 	return &SecretStoreKey{
 		Key:        key,
 		Namespaces: namespaces,
-		Created:    time.Now().UnixMilli(),
+		Created:    uint64(time.Now().UnixMilli()),
 	}
 }
 
@@ -57,14 +58,6 @@ func (s *SecretStoreKey) IsAllowedNamespace(namespace string) bool {
 	return false
 }
 
-func (s *SecretStoreKey) ToProto() *proto.SecretStoreKey {
-	return &proto.SecretStoreKey{
-		Key:        s.Key,
-		Namespaces: s.Namespaces,
-		Created:    s.Created,
-	}
-}
-
 func (s *SecretStoreKey) FromGlobalSecretKeyStorage(sn *storage.SecretStoreGlobalKey) {
 	namespaces := []string{}
 	err := json.Unmarshal([]byte(sn.Namespaces), &namespaces)
@@ -72,9 +65,14 @@ func (s *SecretStoreKey) FromGlobalSecretKeyStorage(sn *storage.SecretStoreGloba
 		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
 
+	created, err := strconv.ParseUint(sn.Created, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
 	s.Key = sn.Key
 	s.Namespaces = namespaces
-	s.Created = sn.Created
+	s.Created = created
 }
 
 func (s *SecretStoreKey) ToGlobalSecretKeyStorage() *storage.SecretStoreGlobalKey {
@@ -86,6 +84,6 @@ func (s *SecretStoreKey) ToGlobalSecretKeyStorage() *storage.SecretStoreGlobalKe
 	return &storage.SecretStoreGlobalKey{
 		Key:        s.Key,
 		Namespaces: string(namespacesRaw),
-		Created:    s.Created,
+		Created:    fmt.Sprint(s.Created),
 	}
 }

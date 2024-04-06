@@ -335,7 +335,7 @@ type Event struct {
 	ID      int64            // Unique identifier for event.
 	Type    EventType        // The type of event it is.
 	Details EventTypeDetails // A struct of details about the specific event.
-	Emitted int64            // Time event was performed in epoch milliseconds.
+	Emitted uint64           // Time event was performed in epoch milliseconds.
 }
 
 func NewEvent(details EventTypeDetails) *Event {
@@ -343,6 +343,6 @@ func NewEvent(details EventTypeDetails) *Event {
 		ID:      0,
 		Type:    details.Kind(),
 		Details: details,
-		Emitted: time.Now().UnixMilli(),
+		Emitted: uint64(time.Now().UnixMilli()),
 	}
 }

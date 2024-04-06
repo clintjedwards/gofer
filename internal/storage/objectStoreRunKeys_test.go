@@ -19,8 +19,8 @@ func TestCRUDObjectStoreRunKeys(t *testing.T) {
 		ID:          "test_namespace",
 		Name:        "Test Namespace",
 		Description: "This is a test namespace",
-		Created:     0,
-		Modified:    0,
+		Created:     "0",
+		Modified:    "0",
 	}
 
 	err = db.InsertNamespace(db, &namespace)
@@ -31,8 +31,8 @@ func TestCRUDObjectStoreRunKeys(t *testing.T) {
 	pipeline := PipelineMetadata{
 		Namespace: "test_namespace",
 		ID:        "test_pipeline",
-		Created:   0,
-		Modified:  0,
+		Created:   "0",
+		Modified:  "0",
 		State:     "ACTIVE",
 	}
 
@@ -45,8 +45,8 @@ func TestCRUDObjectStoreRunKeys(t *testing.T) {
 		Namespace:  "test_namespace",
 		Pipeline:   "test_pipeline",
 		Version:    0,
-		Registered: 0,
-		Deprecated: 0,
+		Registered: "0",
+		Deprecated: "0",
 		State:      "ACTIVE",
 	}
 
@@ -60,8 +60,8 @@ func TestCRUDObjectStoreRunKeys(t *testing.T) {
 		Pipeline:              "test_pipeline",
 		PipelineConfigVersion: 0,
 		ID:                    1,
-		Started:               0,
-		Ended:                 0,
+		Started:               "0",
+		Ended:                 "0",
 		State:                 "STATE_STRING",
 		Status:                "STATUS_STRING",
 		StatusReason:          "STATUS_REASON_STRING",
@@ -80,7 +80,7 @@ func TestCRUDObjectStoreRunKeys(t *testing.T) {
 		Pipeline:  "test_pipeline",
 		Run:       1,
 		Key:       "test_key",
-		Created:   0,
+		Created:   "0",
 	}
 
 	err = db.InsertObjectStoreRunKey(db, &key)

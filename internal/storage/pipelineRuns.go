@@ -10,22 +10,22 @@ import (
 )
 
 type PipelineRun struct {
-	Namespace             string
-	Pipeline              string
-	PipelineConfigVersion int64 `db:"pipeline_config_version"`
-	ID                    int64
-	Started               int64
-	Ended                 int64
-	State                 string
-	Status                string
+	Namespace             string `db:"namespace"`
+	Pipeline              string `db:"pipeline"`
+	PipelineConfigVersion int64  `db:"pipeline_config_version"`
+	ID                    int64  `db:"id"`
+	Started               string `db:"started"`
+	Ended                 string `db:"ended"`
+	State                 string `db:"state"`
+	Status                string `db:"status"`
 	StatusReason          string `db:"status_reason"`
-	Initiator             string
-	Variables             string
-	StoreObjectsExpired   bool `db:"store_objects_expired"`
+	Initiator             string `db:"initiator"`
+	Variables             string `db:"variables"`
+	StoreObjectsExpired   bool   `db:"store_objects_expired"`
 }
 
 type UpdatablePipelineRunFields struct {
-	Ended               *int64
+	Ended               *string
 	State               *string
 	Status              *string
 	StatusReason        *string

@@ -16,7 +16,7 @@ import (
 
 // StartExternalEventsService starts the external events http service, which is used to pass external events (like a github webhook)
 // to extensions.
-func StartExternalEventsService(config *config.API, api *API) {
+func StartExternalEventsService(config *config.API, api *APIContext) {
 	router := mux.NewRouter()
 
 	router.Handle("/external/{extension}", handlers.MethodHandler{

@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -11,7 +13,7 @@ import (
 // addPipelineObject adds an object to the pipeline specific object registry.
 // If this registry is at the limit it removes the least recently added pipeline object and
 // puts the new item on top.
-func (api *API) addPipelineObject(namespace, pipeline string, key string, content []byte, force bool) (string, error) {
+func (api *APIContext) addPipelineObject(namespace, pipeline string, key string, content []byte, force bool) (string, error) {
 	objectKeys, err := api.db.ListObjectStorePipelineKeys(api.db, namespace, pipeline)
 	if err != nil {
 		return "", err

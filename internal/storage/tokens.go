@@ -10,13 +10,13 @@ import (
 )
 
 type Token struct {
-	ID         int64
+	ID         string
 	Hash       string
-	Created    int64
+	Created    string
 	Kind       string
 	Namespaces string
 	Metadata   string
-	Expires    int64
+	Expires    string
 	Disabled   bool
 }
 
@@ -39,21 +39,21 @@ func (db *DB) ListTokens(conn Queryable, offset, limit int) ([]Token, error) {
 	return tokens, nil
 }
 
-func (db *DB) InsertToken(conn Queryable, tr *Token) (int64, error) {
-	result, err := qb.Insert("tokens").Columns("hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
-		Values(tr.Hash, tr.Created, tr.Kind, tr.Namespaces, tr.Metadata, tr.Expires, tr.Disabled).RunWith(conn).Exec()
+func (db *DB) InsertToken(conn Queryable, tr *Token) error {
+	_, err := qb.Insert("tokens").Columns("id", "hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
+		Values(tr.ID, tr.Hash, tr.Created, tr.Kind, tr.Namespaces, tr.Metadata, tr.Expires, tr.Disabled).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			return 0, ErrEntityExists
+			return ErrEntityExists
 		}
 
-		return 0, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return result.LastInsertId()
+	return nil
 }
 
-func (db *DB) GetTokenByID(conn Queryable, id int64) (Token, error) {
+func (db *DB) GetTokenByID(conn Queryable, id string) (Token, error) {
 	query, args := qb.Select("id", "hash", "created", "kind", "namespaces", "metadata", "expires", "disabled").
 		From("tokens").Where(qb.Eq{"id": id}).MustSql()
 
@@ -87,10 +87,10 @@ func (db *DB) GetTokenByHash(conn Queryable, hashStr string) (Token, error) {
 	return token, nil
 }
 
-func (db *DB) EnableToken(conn Queryable, hashStr string) error {
+func (db *DB) EnableToken(conn Queryable, id string) error {
 	query := qb.Update("tokens")
 	query = query.Set("disabled", false)
-	_, err := query.Where(qb.Eq{"hash": hashStr}).RunWith(conn).Exec()
+	_, err := query.Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows in result set") {
 			return ErrEntityNotFound
@@ -102,10 +102,10 @@ func (db *DB) EnableToken(conn Queryable, hashStr string) error {
 	return nil
 }
 
-func (db *DB) DisableToken(conn Queryable, hashStr string) error {
+func (db *DB) DisableToken(conn Queryable, id string) error {
 	query := qb.Update("tokens")
 	query = query.Set("disabled", true)
-	_, err := query.Where(qb.Eq{"hash": hashStr}).RunWith(conn).Exec()
+	_, err := query.Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows in result set") {
 			return ErrEntityNotFound
@@ -130,7 +130,7 @@ func (db *DB) DeleteTokenByHash(conn Queryable, hash string) error {
 	return nil
 }
 
-func (db *DB) DeleteTokenByID(conn Queryable, id int64) error {
+func (db *DB) DeleteTokenByID(conn Queryable, id string) error {
 	_, err := qb.Delete("tokens").Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

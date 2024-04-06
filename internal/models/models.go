@@ -10,18 +10,24 @@
 // all the way to the top? The answer to that is the separation of domain models from DB models and in general any
 // other model that has a contract with something else is usually a good thing. This loose coupling enables a lot of
 // good practices as the code base gets more complex overtime. Two examples:
-//  1. We may want to use simplier names for our database naming in order to save space, but more descriptive names
+//  1. We may want to use simpler names for our database naming in order to save space, but more descriptive names
 //     for our domain layer.
 //  2. We may want to change something in our database layer and might not want to go through the trouble of having
 //     to also change the API contract with outside users. Changes on that level can be extremely expensive in terms
-//     of engineering time/complexcity etc.
+//     of engineering time/complexity etc.
 //
 // You can read more about this here: https://threedots.tech/post/common-anti-patterns-in-go-web-applications/
 //
 // Because this package contains the domain models, it effectively acts as the middle package between the
-// internal storage layer and the external protobuf layer. The general flow goes like this:
+// internal storage layer and the external REST layer. The general flow goes like this:
 //
-//	Protobuf from API calls <-> models internally <-> backend storage.
+// Objects from API calls <-> models internally <-> backend storage.
+//
+// There is a balance to this though, it would be very error prone to copy every single model three separate places
+// even if there were no changes. Right now this package creates a storage model and an internal model for every necessary
+// object. But there might not be a API focused model if the internal model doesn't differ at all. Whether an API focused
+// model should be created should be evaluated on a case by case basis as it's possible to split the two at a later date
+// without major API version bumps.
 //
 // Something to keep in mind when making changes to this package:
 //
@@ -30,15 +36,21 @@
 // may connect to other models in ways that might not be obvious and changes to them might break things
 // in ways that are hard to set up testing for. Testing would need to heavily use reflection to prevent
 // breakages and for now I don't have the time. The real solution would probably be something involving code
-// generation, but I don't have a good answer for that either.
+// generation, but I don't have a good answer for that either. Make sure to test changes thoroughly throughout not
+// just the Gofer API but the extension API and other places where the model might appear.
 package models
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"fmt"
 
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/rs/zerolog/log"
 )
+
+func Ptr[T any](v T) *T {
+	return &v
+}
 
 type VariableSource string
 
@@ -60,47 +72,9 @@ type Variable struct {
 	Source VariableSource `json:"source"` // Where the variable originated from
 }
 
-func (v *Variable) ToProto() *proto.Variable {
-	return &proto.Variable{
-		Key:    v.Key,
-		Value:  v.Value,
-		Source: string(v.Source),
-	}
-}
-
-func (v *Variable) FromProto(proto *proto.Variable) {
-	v.Key = proto.Key
-	v.Value = proto.Value
-	v.Source = VariableSource(proto.Source)
-}
-
 type RegistryAuth struct {
 	User string `json:"user"`
 	Pass string `json:"pass"`
-}
-
-func (t *RegistryAuth) ToProto() *proto.RegistryAuth {
-	if t == nil {
-		return nil
-	}
-
-	return &proto.RegistryAuth{
-		User: t.User,
-		Pass: t.Pass,
-	}
-}
-
-func (t *RegistryAuth) FromProto(pb *proto.RegistryAuth) {
-	if pb == nil {
-		return
-	}
-
-	if t == nil {
-		t = &RegistryAuth{}
-	}
-
-	t.User = pb.User
-	t.Pass = pb.Pass
 }
 
 func (t *RegistryAuth) FromStorage(jsonStr string) {
@@ -126,4 +100,10 @@ func (t *RegistryAuth) ToStorage() string {
 	}
 
 	return string(jsonStr)
+}
+
+func generateID(length int) string {
+	b := make([]byte, length)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%x", b)
 }

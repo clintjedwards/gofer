@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -18,7 +20,7 @@ import (
 
 // Used to keep track of a run as it progresses through the necessary states.
 type RunStateMachine struct {
-	API      *API
+	API      *APIContext
 	Pipeline *models.PipelineMetadata
 	Config   *models.PipelineConfig
 	Run      *models.Run
@@ -26,7 +28,7 @@ type RunStateMachine struct {
 	StopRuns *atomic.Bool // Used to stop the progression of a run
 }
 
-func (api *API) newRunStateMachine(pipeline *models.PipelineMetadata, config *models.PipelineConfig, run *models.Run) *RunStateMachine {
+func (api *APIContext) newRunStateMachine(pipeline *models.PipelineMetadata, config *models.PipelineConfig, run *models.Run) *RunStateMachine {
 	var stopRuns atomic.Bool
 	stopRuns.Store(false)
 
@@ -139,7 +141,7 @@ func (r *RunStateMachine) createAutoInjectToken() {
 			"description": "This token was automatically created by Gofer API at the user's request. Visit https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html#auto-inject-api-tokens to learn more.",
 		}, time.Hour*48)
 
-		_, err := r.API.db.InsertToken(r.API.db, newToken.ToStorage())
+		err := r.API.db.InsertToken(r.API.db, newToken.ToStorage())
 		if err != nil {
 			log.Error().Err(err).Msg("could not save token to storage")
 		}
@@ -300,7 +302,7 @@ outerLoop:
 	}
 
 	// When all are finished we now need to get a final tallying of what the run's result is.
-	// A run is only successful if all task_runs were successful. If any task_run is in an
+	// A run is only successful if all task executions were successful. If any task_run is in an
 	// unknown or failed state we fail the run, if any task_run is cancelled we mark the run as cancelled.
 	for _, id := range r.TaskRuns.Keys() {
 		taskRun, exists := r.TaskRuns.Get(id)

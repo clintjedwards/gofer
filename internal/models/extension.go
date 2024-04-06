@@ -2,10 +2,10 @@ package models
 
 import (
 	"encoding/json"
-	"time"
+	"fmt"
+	"strconv"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,67 +29,28 @@ const (
 )
 
 type Extension struct {
-	Registration ExtensionRegistration `json:"registration"`
+	Registration ExtensionRegistration `json:"registration" doc:"Metadata about the extension as it's registered in Gofer"`
 
-	// URL is the network address used to communicate with the extension by the main process.
-	URL           string         `json:"url"`
-	Started       int64          `json:"started"` // The start time of the extension in epoch milliseconds.
-	State         ExtensionState `json:"state"`
-	Documentation string         `json:"documentation"` // The documentation for this specific extension.
+	URL           string         `json:"url" doc:"URL is the network address used to communicate with the extension by the main process"`
+	Started       uint64         `json:"started" example:"1712433802634" doc:"The start time of the extension in epoch milliseconds"`
+	State         ExtensionState `json:"state" example:"RUNNING" doc:"The current state of the extension as it exists within Gofer's operating model."`
+	Documentation string         `json:"documentation" doc:"extension given documentation; supports markdown"`
 	// Key is a extension's authentication key used to validate requests from the Gofer main service.
 	// On every request the Gofer service passes this key so that it is impossible for other service to contact
 	// and manipulate extensions directly.
-	Key *string `json:"-"`
-}
-
-func (t *Extension) ToProto() *proto.Extension {
-	return &proto.Extension{
-		Name:          t.Registration.Name,
-		Image:         t.Registration.Image,
-		Url:           t.URL,
-		Started:       t.Started,
-		State:         proto.Extension_ExtensionState(proto.Extension_ExtensionState_value[string(t.State)]),
-		Status:        proto.Extension_ExtensionStatus(proto.Extension_ExtensionStatus_value[string(t.Registration.Status)]),
-		Documentation: t.Documentation,
-	}
+	Key *string `json:"-" hidden:"true"`
 }
 
 // When installing a new extension, we allow the extension installer to pass a bunch of settings that
 // allow us to go get that extension on future startups.
 type ExtensionRegistration struct {
-	Name         string          `json:"name"`
-	Image        string          `json:"image"`
-	RegistryAuth *RegistryAuth   `json:"registry_auth"`
-	Variables    []Variable      `json:"variables"`
-	Created      int64           `json:"created"`
-	Status       ExtensionStatus `json:"status"`
-	KeyID        int64           `json:"key_id"`
-}
-
-func (c *ExtensionRegistration) FromInstallExtensionRequest(proto *proto.InstallExtensionRequest) {
-	variables := []Variable{}
-	for key, value := range proto.Variables {
-		variables = append(variables, Variable{
-			Key:    key,
-			Value:  value,
-			Source: VariableSourceSystem,
-		})
-	}
-
-	var registryAuth *RegistryAuth
-	if proto.User != "" {
-		registryAuth = &RegistryAuth{
-			User: proto.User,
-			Pass: proto.Pass,
-		}
-	}
-
-	c.Name = proto.Name
-	c.Image = proto.Image
-	c.RegistryAuth = registryAuth
-	c.Variables = variables
-	c.Created = time.Now().UnixMilli()
-	c.Status = ExtensionStatusEnabled
+	ID           string          `json:"id" example:"cron" doc:"Unique identifier for the extension"`
+	Image        string          `json:"image" example:"ubuntu:latest" doc:"Which container image this extension should run"`
+	RegistryAuth *RegistryAuth   `json:"registry_auth" doc:"Auth credentials for the image's registry"`
+	Variables    []Variable      `json:"variables" doc:"Variables which will be passed in as env vars to the task"`
+	Created      uint64          `json:"created" example:"1712433802634" doc:"Time of pipeline creation in epoch milliseconds"`
+	Status       ExtensionStatus `json:"status" example:"ENABLED" doc:"Whether the extension is enabled or not; extensions can be disabled to prevent use by admins"`
+	KeyID        string          `json:"-" hidden:"true"`
 }
 
 func (c *ExtensionRegistration) ToStorage() *storage.GlobalExtensionRegistration {
@@ -109,11 +70,11 @@ func (c *ExtensionRegistration) ToStorage() *storage.GlobalExtensionRegistration
 	variables = string(output)
 
 	storage := &storage.GlobalExtensionRegistration{
-		Name:         c.Name,
+		ID:           c.ID,
 		Image:        c.Image,
 		RegistryAuth: registryAuth,
 		Variables:    variables,
-		Created:      c.Created,
+		Created:      fmt.Sprint(c.Created),
 		Status:       string(c.Status),
 		KeyID:        c.KeyID,
 	}
@@ -139,11 +100,16 @@ func (c *ExtensionRegistration) FromStorage(tr *storage.GlobalExtensionRegistrat
 		}
 	}
 
-	c.Name = tr.Name
+	created, err := strconv.ParseUint(tr.Created, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	c.ID = tr.ID
 	c.Image = tr.Image
 	c.RegistryAuth = &registryAuth
 	c.Variables = variables
-	c.Created = tr.Created
+	c.Created = created
 	c.Status = ExtensionStatus(tr.Status)
 	c.KeyID = tr.KeyID
 }
@@ -169,9 +135,8 @@ const (
 )
 
 type ExtensionSubscriptionStatusReason struct {
-	// The specific type of subscription failure. Good for documentation about what it might be.
-	Reason      ExtensionSubscriptionStatusReasonKind `json:"kind"`
-	Description string                                `json:"description"` // The description of why the run might have failed.
+	Reason      ExtensionSubscriptionStatusReasonKind `json:"reason" example:"EXTENSION_NOT_FOUND" doc:"Specific type of subscription failure"`
+	Description string                                `json:"description" doc:"The description of why the run might have failed"`
 }
 
 func (r *ExtensionSubscriptionStatusReason) ToJSON() string {
@@ -183,34 +148,26 @@ func (r *ExtensionSubscriptionStatusReason) ToJSON() string {
 	return string(reason)
 }
 
-func (r *ExtensionSubscriptionStatusReason) ToProto() *proto.PipelineExtensionSubscriptionStatusReason {
-	return &proto.PipelineExtensionSubscriptionStatusReason{
-		Reason: proto.PipelineExtensionSubscriptionStatusReason_PipelineExtensionSubscriptionStatusReasonKind(
-			proto.PipelineExtensionSubscriptionStatusReason_PipelineExtensionSubscriptionStatusReasonKind_value[string(r.Reason)]),
-		Description: r.Description,
-	}
-}
-
 type PipelineExtensionSubscription struct {
-	Namespace    string
-	Pipeline     string
-	Name         string
-	Label        string
-	Settings     map[string]string
-	Status       ExtensionSubscriptionStatus
-	StatusReason ExtensionSubscriptionStatusReason
+	NamespaceID  string                            `json:"namespace_id" example:"default" doc:"Unique identifier of the target namespace"`
+	PipelineID   string                            `json:"pipeline_id" example:"simple_pipeline" doc:"Unique identifier for the target pipeline"`
+	ExtensionID  string                            `json:"name" example:"extension_id" doc:"Unique identifier for the target extension"`
+	Label        string                            `json:"label" example:"every_5_seconds" doc:"A per pipeline unique identifier to differentiate multiple subscriptions to a single pipeline"`
+	Settings     map[string]string                 `json:"settings" doc:"Each extension defines per pipeline settings that the user can subscribe with to perform different functionalities; These are generally listed in the extension documentation and passed through here."`
+	Status       ExtensionSubscriptionStatus       `json:"status" example:"ACTIVE" doc:"The state of the subscription for the pipeline; defines whether this subscription is still active."`
+	StatusReason ExtensionSubscriptionStatusReason `json:"status_reason" doc:"More details about why a subscription has a particular status"`
 }
 
-func FromCreatePipelineExtensionSubscriptionRequest(request *proto.CreatePipelineExtensionSubscriptionRequest) *PipelineExtensionSubscription {
-	return &PipelineExtensionSubscription{
-		Namespace: request.NamespaceId,
-		Pipeline:  request.PipelineId,
-		Name:      request.ExtensionName,
-		Label:     request.ExtensionLabel,
-		Settings:  request.Settings,
-		Status:    ExtensionSubscriptionStatusActive,
-	}
-}
+// func FromCreatePipelineExtensionSubscriptionRequest(request *CreatePipelineExtensionSubscriptionRequest) *PipelineExtensionSubscription {
+// 	return &PipelineExtensionSubscription{
+// 		NamespaceID: request.NamespaceId,
+// 		PipelineID:  request.PipelineId,
+// 		ExtensionID: request.ExtensionName,
+// 		Label:       request.ExtensionLabel,
+// 		Settings:    request.Settings,
+// 		Status:      ExtensionSubscriptionStatusActive,
+// 	}
+// }
 
 func (ts *PipelineExtensionSubscription) ToStorage() *storage.PipelineExtensionSubscription {
 	settings, err := json.Marshal(ts.Settings)
@@ -219,9 +176,9 @@ func (ts *PipelineExtensionSubscription) ToStorage() *storage.PipelineExtensionS
 	}
 
 	return &storage.PipelineExtensionSubscription{
-		Namespace:    ts.Namespace,
-		Pipeline:     ts.Pipeline,
-		Name:         ts.Name,
+		Namespace:    ts.NamespaceID,
+		Pipeline:     ts.PipelineID,
+		ID:           ts.ExtensionID,
 		Label:        ts.Label,
 		Settings:     string(settings),
 		Status:       string(ts.Status),
@@ -242,24 +199,11 @@ func (ts *PipelineExtensionSubscription) FromStorage(storage *storage.PipelineEx
 		log.Fatal().Err(err).Msg("error in translating from storage")
 	}
 
-	ts.Namespace = storage.Namespace
-	ts.Pipeline = storage.Pipeline
-	ts.Name = storage.Name
+	ts.NamespaceID = storage.Namespace
+	ts.PipelineID = storage.Pipeline
+	ts.ExtensionID = storage.ID
 	ts.Label = storage.Label
 	ts.Settings = settings
 	ts.Status = ExtensionSubscriptionStatus(storage.Status)
 	ts.StatusReason = statusReason
-}
-
-func (ts *PipelineExtensionSubscription) ToProto() *proto.PipelineExtensionSubscription {
-	return &proto.PipelineExtensionSubscription{
-		Namespace: ts.Namespace,
-		Pipeline:  ts.Pipeline,
-		Name:      ts.Name,
-		Label:     ts.Label,
-		Settings:  ts.Settings,
-		Status: proto.PipelineExtensionSubscription_Status(
-			proto.PipelineExtensionSubscriptionStatusReason_PipelineExtensionSubscriptionStatusReasonKind_value[string(ts.Status)]),
-		StatusReason: ts.StatusReason.ToProto(),
-	}
 }

@@ -3,14 +3,11 @@ package api
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime/debug"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -25,20 +22,10 @@ import (
 	"github.com/clintjedwards/gofer/internal/secretStore"
 	"github.com/clintjedwards/gofer/internal/storage"
 	"github.com/clintjedwards/gofer/internal/syncmap"
-	proto "github.com/clintjedwards/gofer/proto/go"
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/gorilla/mux"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 func ptr[T any](v T) *T {
@@ -67,10 +54,12 @@ type CancelContext struct {
 	cancel context.CancelFunc
 }
 
-// API represents the main Gofer service API. It is run using a GRPC/HTTP combined server.
-// This main API handles 99% of interactions with the gofer service itself and is only missing the hooks for the
+// APIContext represents the main Gofer service APIContext. It is run using a HTTP combined server.
+// This main APIContext handles 99% of interactions with the gofer service itself and is only missing the hooks for the
 // gofer events service.
-type API struct {
+//
+//revive:disable-next-line (This exception exists because we don't care about the stutter here)
+type APIContext struct {
 	// Parent context for management goroutines. Used to easily stop goroutines on shutdown.
 	context *CancelContext
 
@@ -108,20 +97,12 @@ type API struct {
 	// different parts of the application the ability to listen for and respond to events that might happen in other
 	// parts.
 	events *eventbus.EventBus
-
-	// We opt out of forward compatibility with this embedded interface. This is required by GRPC.
-	//
-	// We don't embed the "proto.UnimplementedGoferServer" as there should never(I assume this will come back to bite me)
-	// be an instance where we add proto methods without also updating the server to support those methods.
-	// There is the added benefit that without it embedded we get compile time errors when a function isn't correctly
-	// implemented. Saving us from weird "Unimplemented" RPC bugs.
-	proto.UnsafeGoferServer
 }
 
 // NewAPI creates a new instance of the main Gofer API service.
 func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, objectStore objectStore.Engine,
 	secretStore secretStore.Engine,
-) (*API, error) {
+) (*APIContext, error) {
 	eventbus, err := eventbus.New(storage, config.EventLogRetention, config.EventPruneInterval)
 	if err != nil {
 		return nil, fmt.Errorf("could not init event bus: %w", err)
@@ -132,7 +113,7 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 	var ignorePipelineRunEvents atomic.Bool
 	ignorePipelineRunEvents.Store(config.IgnorePipelineRunEvents)
 
-	newAPI := &API{
+	newAPI := &APIContext{
 		context: &CancelContext{
 			ctx:    ctx,
 			cancel: cancel,
@@ -176,30 +157,34 @@ func NewAPI(config *config.API, storage storage.DB, scheduler scheduler.Engine, 
 }
 
 // cleanup gracefully cleans up all goroutines to ensure a clean shutdown.
-func (api *API) cleanup() {
-	api.ignorePipelineRunEvents.Store(true)
+func (apictx *APIContext) cleanup() {
+	apictx.ignorePipelineRunEvents.Store(true)
 
 	// Send graceful stop to all extensions
-	api.stopExtensions()
+	apictx.stopExtensions()
 
 	// Stop all goroutines which should stop the event processing pipeline and the extension monitoring.
-	api.context.cancel()
+	apictx.context.cancel()
 }
 
 // StartAPIService starts the Gofer API service and blocks until a SIGINT or SIGTERM is received.
-func (api *API) StartAPIService() {
-	grpcServer, err := api.createGRPCServer()
-	if err != nil {
-		log.Fatal().Err(err).Msg("could not create GRPC service")
-	}
-
-	tlsConfig, err := api.generateTLSConfig(api.config.Server.TLSCertPath, api.config.Server.TLSKeyPath)
+func (apictx *APIContext) StartAPIService() {
+	tlsConfig, err := apictx.generateTLSConfig(apictx.config.Server.TLSCertPath, apictx.config.Server.TLSKeyPath)
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not get proper TLS config")
 	}
 
-	httpServer := wrapGRPCServer(api.config, grpcServer)
-	httpServer.TLSConfig = tlsConfig
+	// Assign all routes and handlers
+	router, _ := InitRouter(apictx)
+
+	httpServer := http.Server{
+		Addr:         apictx.config.Server.ListenAddress,
+		Handler:      loggingMiddleware(router),
+		WriteTimeout: apictx.config.Server.WriteTimeout,
+		ReadTimeout:  apictx.config.Server.ReadTimeout,
+		IdleTimeout:  apictx.config.Server.IdleTimeout,
+		TLSConfig:    tlsConfig,
+	}
 
 	// Run our server in a goroutine and listen for signals that indicate graceful shutdown
 	go func() {
@@ -207,19 +192,19 @@ func (api *API) StartAPIService() {
 			log.Fatal().Err(err).Msg("server exited abnormally")
 		}
 	}()
-	log.Info().Str("url", api.config.Server.Host).Msg("started gofer grpc/http service")
+	log.Info().Str("url", apictx.config.Server.ListenAddress).Msg("started gofer http service")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
 	<-c
 
-	// On ctrl-c we need to clean up not only the connections from the GRPC server, but make sure all the currently
+	// On ctrl-c we need to clean up not only the connections from the server, but make sure all the currently
 	// running jobs are logged and exited properly.
-	api.cleanup()
+	apictx.cleanup()
 
 	// Doesn't block if no connections, otherwise will wait until the timeout deadline or connections to finish,
 	// whichever comes first.
-	ctx, cancel := context.WithTimeout(context.Background(), api.config.Server.ShutdownTimeout) // shutdown gracefully
+	ctx, cancel := context.WithTimeout(context.Background(), apictx.config.Server.ShutdownTimeout) // shutdown gracefully
 	defer cancel()
 
 	err = httpServer.Shutdown(ctx)
@@ -228,12 +213,12 @@ func (api *API) StartAPIService() {
 		return
 	}
 
-	log.Info().Msg("grpc server exited gracefully")
+	log.Info().Msg("http server exited gracefully")
 }
 
 // The logging middleware has to be run before the final call to return the request.
 // This is because we wrap the responseWriter to gain information from it after it
-// has been written to.
+// has been written to (this enables us to get things that we only know after the request has been served like status codes).
 // To speed this process up we call Serve as soon as possible and log afterwards.
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -246,115 +231,166 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			Stringer("url", r.URL).
 			Int("status_code", ww.Status()).
 			Int("response_size_bytes", ww.BytesWritten()).
-			Dur("elapsed_ms", time.Since(start)).
+			Float64("elapsed_ms", float64(time.Since(start))/float64(time.Millisecond)).
 			Msg("")
 	})
 }
 
-// wrapGRPCServer returns a combined grpc/http (grpc-web compatible) service with all proper settings;
-// Rather than going through the trouble of setting up a separate proxy and extra for the service in order to server http/grpc/grpc-web
-// this keeps things simple by enabling the operator to deploy a single binary and serve them all from one endpoint.
-// This reduces operational burden, configuration headache and overall just makes for a better time for both client and operator.
-func wrapGRPCServer(config *config.API, grpcServer *grpc.Server) *http.Server {
-	wrappedGrpc := grpcweb.WrapServer(grpcServer)
+// Create a new http router that gets populated by huma lib. Huma helps create an OpenAPI spec and documentation
+// from REST code. We export this function so that we can use it in external scripts to generate the OpenAPI spec
+// for this API in other places.
+func InitRouter(apictx *APIContext) (router *http.ServeMux, apiDescription huma.API) {
+	router = http.NewServeMux()
 
-	router := mux.NewRouter()
+	version, _ := parseVersion(appVersion)
+	humaConfig := huma.DefaultConfig("Gofer", version)
+	humaConfig.Info.Description = "Gofer is an opinionated, streamlined automation engine designed for the cloud-native " +
+		"era. It specializes in executing your custom scripts in a containerized environment, making it versatile for " +
+		"both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and " +
+		"manage it using expressive, declarative configurations written in real programming languages. Once " +
+		"set up, Gofer takes care of scheduling and running your automation tasks—be it on Nomad, Kubernetes, or even Local Docker." +
+		"\n" +
+		"Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, " +
+		"ETL operations, or any task you can containerize and trigger based on events."
 
-	if config.Frontend.Enable {
-		frontend := frontend.New(config.Development.LoadFrontendFilesFromDisk)
-		frontend.RegisterUIRoutes(router)
-		log.Info().Msg("frontend enabled due to configuration setting")
-	}
-
-	// Define GRPC/HTTP request detection middleware
-	GRPCandHTTPHandler := http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if strings.Contains(req.Header.Get("Content-Type"), "application/grpc") || wrappedGrpc.IsGrpcWebRequest(req) {
-			wrappedGrpc.ServeHTTP(resp, req)
-		} else {
-			router.ServeHTTP(resp, req)
-		}
+	humaConfig.DocsPath = "/api/docs"
+	humaConfig.OpenAPIPath = "/api/docs/openapi"
+	humaConfig.Servers = append(humaConfig.Servers, &huma.Server{
+		URL: apictx.config.Server.Address,
 	})
-
-	httpServer := http.Server{
-		Addr:    config.Server.Host,
-		Handler: loggingMiddleware(GRPCandHTTPHandler),
-		// Timeouts set here unfortunately also apply to the backing GRPC server. Because GRPC might have long running calls
-		// we have to set these to 0 or a very high number. This creates an issue where running the frontend in this configuration
-		// could possibly open us up to DOS attacks where the client holds the request open for long periods of time. To mitigate
-		// this we both implement timeouts for routes on both the GRPC side and the pure HTTP side.
-		WriteTimeout: 0,
-		ReadTimeout:  0,
+	humaConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+		"bearer": {
+			Type:   "http",
+			Scheme: "bearer",
+		},
 	}
 
-	return &httpServer
+	apiDescription = humago.New(router, humaConfig)
+	apiDescription.UseMiddleware(authMiddleware(apictx, apiDescription))
+
+	/* /api/system */
+	apictx.registerDescribeSystemInfo(apiDescription)
+	apictx.registerDescribeSystemSummary(apiDescription)
+	apictx.registerToggleEventIngress(apiDescription)
+	apictx.registerRepairOrphan(apiDescription)
+
+	/* /api/tokens */
+	apictx.registerCreateToken(apiDescription)
+	apictx.registerListTokens(apiDescription)
+	apictx.registerDescribeTokenByID(apiDescription)
+	apictx.registerDescribeTokenByHash(apiDescription)
+	apictx.registerEnableToken(apiDescription)
+	apictx.registerDisableToken(apiDescription)
+	apictx.registerDeleteToken(apiDescription)
+	apictx.registerCreateBootstrapToken(apiDescription)
+
+	/* /api/pipelines/{pipeline_id}/runs/{run_id}/tasks/{task_execution_id} */
+	apictx.registerDescribeTaskExecution(apiDescription)
+	apictx.registerListTaskExecutions(apiDescription)
+	apictx.registerCancelTaskExecution(apiDescription)
+	router.HandleFunc("/api/pipelines/{pipeline_id}/runs/{run_id}/tasks/{task_execution_id}/attach",
+		apictx.attachToTaskExecutionHandler)
+
+	// Set up the frontend paths last since they capture everything that isn't in the API path.
+	if apictx.config.Development.LoadFrontendFilesFromDisk {
+		log.Warn().Msg("Loading frontend files from local disk dir 'public'; Not for use in production.")
+		router.Handle("/", frontend.LocalHandler())
+	} else {
+		router.Handle("/", frontend.StaticHandler())
+	}
+
+	if apictx.config.Development.GenerateOpenAPISpecFiles {
+		generateOpenAPIFiles(apiDescription)
+	}
+
+	return router, apiDescription
 }
 
-func (api *API) installBaseExtensions() error {
-	if !api.config.Extensions.InstallBaseExtensions {
-		return nil
-	}
-
-	registeredExtensions, err := api.db.ListGlobalExtensionRegistrations(api.db, 0, 0)
+// Generates OpenAPI Yaml files that other services can use to generate code for Gofer's API.
+func generateOpenAPIFiles(apiDescription huma.API) {
+	output, err := apiDescription.OpenAPI().YAML()
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	cronInstalled := false
-	intervalInstalled := false
-
-	for _, extension := range registeredExtensions {
-		if strings.EqualFold(extension.Name, "cron") {
-			cronInstalled = true
-		}
-
-		if strings.EqualFold(extension.Name, "interval") {
-			intervalInstalled = true
-		}
+	file, err := os.Create("openapi.yaml")
+	if err != nil {
+		panic(err)
 	}
+	defer file.Close()
 
-	if !cronInstalled {
-		registration := models.ExtensionRegistration{}
-		registration.FromInstallExtensionRequest(&proto.InstallExtensionRequest{
-			Name:  "cron",
-			Image: "ghcr.io/clintjedwards/gofer/extensions/cron:latest",
-		})
-
-		err := api.db.InsertGlobalExtensionRegistration(api.db, registration.ToStorage())
-		if err != nil {
-			if !errors.Is(err, storage.ErrEntityExists) {
-				return err
-			}
-		}
-
-		log.Info().Str("name", registration.Name).Str("image", registration.Image).
-			Msg("registered base extension automatically due to 'install_base_extensions' config")
+	_, err = file.Write(output)
+	if err != nil {
+		panic(err)
 	}
+}
 
-	if !intervalInstalled {
-		registration := models.ExtensionRegistration{}
-		registration.FromInstallExtensionRequest(&proto.InstallExtensionRequest{
-			Name:  "interval",
-			Image: "ghcr.io/clintjedwards/gofer/extensions/interval:latest",
-		})
+func (apictx *APIContext) installBaseExtensions() error {
+	// if !apictx.config.Extensions.InstallBaseExtensions {
+	// 	return nil
+	// }
 
-		err := api.db.InsertGlobalExtensionRegistration(api.db, registration.ToStorage())
-		if err != nil {
-			if !errors.Is(err, storage.ErrEntityExists) {
-				return err
-			}
-		}
+	// registeredExtensions, err := apictx.db.ListGlobalExtensionRegistrations(apictx.db, 0, 0)
+	// if err != nil {
+	// 	return err
+	// }
 
-		log.Info().Str("name", registration.Name).Str("image", registration.Image).
-			Msg("registered base extension automatically due to 'install_base_extensions' config")
-	}
+	// cronInstalled := false
+	// intervalInstalled := false
+
+	// for _, extension := range registeredExtensions {
+	// 	if strings.EqualFold(extension.ID, "cron") {
+	// 		cronInstalled = true
+	// 	}
+
+	// 	if strings.EqualFold(extension.ID, "interval") {
+	// 		intervalInstalled = true
+	// 	}
+	// }
+
+	// if !cronInstalled {
+	// 	registration := models.ExtensionRegistration{}
+	// 	registration.FromInstallExtensionRequest(&proto.InstallExtensionRequest{
+	// 		Name:  "cron",
+	// 		Image: "ghcr.io/clintjedwards/gofer/extensions/cron:latest",
+	// 	})
+
+	// 	err := apictx.db.InsertGlobalExtensionRegistration(apictx.db, registration.ToStorage())
+	// 	if err != nil {
+	// 		if !errors.Is(err, storage.ErrEntityExists) {
+	// 			return err
+	// 		}
+	// 	}
+
+	// 	log.Info().Str("name", registration.Name).Str("image", registration.Image).
+	// 		Msg("registered base extension automatically due to 'install_base_extensions' config")
+	// }
+
+	// if !intervalInstalled {
+	// 	registration := models.ExtensionRegistration{}
+	// 	registration.FromInstallExtensionRequest(&proto.InstallExtensionRequest{
+	// 		Name:  "interval",
+	// 		Image: "ghcr.io/clintjedwards/gofer/extensions/interval:latest",
+	// 	})
+
+	// 	err := apictx.db.InsertGlobalExtensionRegistration(apictx.db, registration.ToStorage())
+	// 	if err != nil {
+	// 		if !errors.Is(err, storage.ErrEntityExists) {
+	// 			return err
+	// 		}
+	// 	}
+
+	// 	log.Info().Str("name", registration.Name).Str("image", registration.Image).
+	// 		Msg("registered base extension automatically due to 'install_base_extensions' config")
+	// }
 
 	return nil
 }
 
 // Gofer starts with a default namespace that all users have access to.
-func (api *API) createDefaultNamespace() error {
-	namespace := models.NewNamespace(namespaceDefaultID, namespaceDefaultName, "default namespace")
-	err := api.db.InsertNamespace(api.db, namespace.ToStorage())
+func (apictx *APIContext) createDefaultNamespace() error {
+	namespace := models.NewNamespace("default", "Default", "default namespace")
+	err := apictx.db.InsertNamespace(apictx.db, namespace.ToStorage())
 	if err != nil {
 		if errors.Is(err, storage.ErrEntityExists) {
 			return nil
@@ -363,7 +399,7 @@ func (api *API) createDefaultNamespace() error {
 		return err
 	}
 
-	api.events.Publish(events.EventNamespaceCreated{
+	apictx.events.Publish(events.EventNamespaceCreated{
 		NamespaceID: namespace.ID,
 	})
 
@@ -385,7 +421,7 @@ func (api *API) createDefaultNamespace() error {
 //   - If the container is in a finished state: Remove from run cache -> update container state -> clear out logs
 //     -> update logs with new logs.
 //   - If the scheduler has no record of this container ever running then assume the state is unknown.
-func (api *API) findOrphans() {
+func (apictx *APIContext) findOrphans() {
 	type orphankey struct {
 		namespace string
 		pipeline  string
@@ -393,7 +429,7 @@ func (api *API) findOrphans() {
 	}
 
 	// Collect all eventList.
-	eventList := api.events.GetAll(false)
+	eventList := apictx.events.GetAll(false)
 	orphanedRuns := map[orphankey]struct{}{}
 
 	// Search events for any orphan runs.
@@ -451,7 +487,7 @@ func (api *API) findOrphans() {
 		log.Info().Str("namespace", orphan.namespace).Str("pipeline", orphan.pipeline).
 			Int64("run", orphan.run).Msg("attempting to complete orphaned run")
 
-		err := api.repairOrphanRun(orphan.namespace, orphan.pipeline, orphan.run)
+		err := apictx.repairOrphanRun(orphan.namespace, orphan.pipeline, orphan.run)
 		if err != nil {
 			log.Error().Err(err).Str("namespace", orphan.namespace).
 				Str("pipeline", orphan.pipeline).Int64("run", orphan.run).Msg("could not repair orphan run")
@@ -466,153 +502,112 @@ func (api *API) findOrphans() {
 //   - If the container is in a finished state: update container state -> clear out logs
 //     -> update logs with new logs.
 //   - If the scheduler has no record of this container ever running then assume the state is unknown.
-func (api *API) repairOrphanRun(namespaceID, pipelineID string, runID int64) error {
-	metadataRaw, err := api.db.GetPipelineMetadata(api.db, namespaceID, pipelineID)
-	if err != nil {
-		return err
-	}
+func (apictx *APIContext) repairOrphanRun(namespaceID, pipelineID string, runID int64) error {
+	// metadataRaw, err := apictx.db.GetPipelineMetadata(apictx.db, namespaceID, pipelineID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var metadata models.PipelineMetadata
-	metadata.FromStorage(&metadataRaw)
+	// var metadata models.PipelineMetadata
+	// metadata.FromStorage(&metadataRaw)
 
-	latestConfigRaw, err := api.db.GetLatestLivePipelineConfig(api.db, namespaceID, pipelineID)
-	if err != nil {
-		return err
-	}
+	// latestConfigRaw, err := apictx.db.GetLatestLivePipelineConfig(apictx.db, namespaceID, pipelineID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	tasksRaw, err := api.db.ListPipelineTasks(api.db, namespaceID, pipelineID, latestConfigRaw.Version)
-	if err != nil {
-		return err
-	}
+	// tasksRaw, err := apictx.db.ListPipelineTasks(apictx.db, namespaceID, pipelineID, latestConfigRaw.Version)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var latestConfig models.PipelineConfig
-	latestConfig.FromStorage(&latestConfigRaw, &tasksRaw)
+	// var latestConfig models.PipelineConfig
+	// latestConfig.FromStorage(&latestConfigRaw, &tasksRaw)
 
-	runRaw, err := api.db.GetPipelineRun(api.db, namespaceID, pipelineID, runID)
-	if err != nil {
-		return err
-	}
+	// runRaw, err := apictx.db.GetPipelineRun(apictx.db, namespaceID, pipelineID, runID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var run models.Run
-	run.FromStorage(&runRaw)
+	// var run models.Run
+	// run.FromStorage(&runRaw)
 
-	taskRunsRaw, err := api.db.ListPipelineTaskRuns(api.db, 0, 0, namespaceID, pipelineID, runID)
-	if err != nil {
-		return err
-	}
+	// taskExecutionsRaw, err := apictx.db.ListPipelineTaskExecutions(apictx.db, 0, 0, namespaceID, pipelineID, runID)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var taskRuns []models.TaskRun
-	for _, taskRunRaw := range taskRunsRaw {
-		var taskRun models.TaskRun
-		taskRun.FromStorage(&taskRunRaw)
-		taskRuns = append(taskRuns, taskRun)
-	}
+	// var taskExecutions []models.TaskExecution
+	// for _, taskExecutionRaw := range taskExecutionsRaw {
+	// 	var taskExecution models.TaskExecution
+	// 	taskExecution.FromStorage(&taskExecutionRaw)
+	// 	taskExecutions = append(taskExecutions, taskExecution)
+	// }
 
-	// In order to manage the orphaned run we will create a new state machine and make it part of that.
-	runStateMachine := api.newRunStateMachine(&metadata, &latestConfig, &run)
+	// // In order to manage the orphaned run we will create a new state machine and make it part of that.
+	// runStateMachine := apictx.newRunStateMachine(&metadata, &latestConfig, &run)
 
-	// For each run we also need to evaluate the individual task runs.
-	for _, taskrun := range taskRuns {
-		taskrun := taskrun
+	// // For each run we also need to evaluate the individual task runs.
+	// for _, taskexecution := range taskExecutions {
+	// 	taskExecution := taskexecution
 
-		// If the task run was actually marked complete in the database. Then we add it to the state machine.
-		// This is necessary because eventually we will compute whether the run was complete and we'll need the
-		// state of that run.
-		if taskrun.State == models.TaskRunStateComplete {
-			runStateMachine.TaskRuns.Set(taskrun.Task.ID, taskrun)
-			continue
-		}
+	// 	// If the task run was actually marked complete in the database. Then we add it to the state machine.
+	// 	// This is necessary because eventually we will compute whether the run was complete and we'll need the
+	// 	// state of that run.
+	// 	if taskExecution.State == models.TaskExecutionStateComplete {
+	// 		runStateMachine.TaskExecutions.Set(taskExecution.Task.ID, taskExecution)
+	// 		continue
+	// 	}
 
-		// If the taskrun was waiting to be scheduled then we have to make sure it gets scheduled as normal.
-		if taskrun.State == models.TaskRunStateWaiting || taskrun.State == models.TaskRunStateProcessing {
-			go runStateMachine.launchTaskRun(taskrun.Task, false)
-			continue
-		}
+	// 	// If the taskexecution was waiting to be scheduled then we have to make sure it gets scheduled as normal.
+	// 	if taskExecution.State == models.TaskExecutionStateWaiting || taskExecution.State == models.TaskExecutionStateProcessing {
+	// 		go runStateMachine.launchTaskExecution(taskExecution.Task, false)
+	// 		continue
+	// 	}
 
-		// If the task run was in a state where it had been launched and just needs to be tracked then we just
-		// add log/state trackers onto it.
-		runStateMachine.TaskRuns.Set(taskrun.Task.ID, taskrun)
-		go runStateMachine.handleLogUpdates(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)
-		go func() {
-			err = runStateMachine.waitTaskRunFinish(taskContainerID(taskrun.Namespace, taskrun.Pipeline, taskrun.Run, taskrun.ID), taskrun.ID)
-			if err != nil {
-				log.Error().Err(err).Str("task", taskrun.ID).
-					Str("pipeline", taskrun.Pipeline).
-					Int64("run", taskrun.Run).Msg("could not get state for container update")
-			}
-		}()
-	}
+	// 	// If the task run was in a state where it had been launched and just needs to be tracked then we just
+	// 	// add log/state trackers onto it.
+	// 	runStateMachine.TaskExecutions.Set(taskExecution.Task.ID, taskExecution)
+	// 	go runStateMachine.handleLogUpdates(taskContainerID(taskExecution.Namespace, taskExecution.Pipeline, taskExecution.Run, taskExecution.ID), taskExecution.ID)
+	// 	go func() {
+	// 		err = runStateMachine.waitTaskExecutionFinish(taskContainerID(taskExecution.Namespace, taskExecution.Pipeline, taskExecution.Run, taskExecution.ID), taskExecution.ID)
+	// 		if err != nil {
+	// 			log.Error().Err(err).Str("task", taskExecution.ID).
+	// 				Str("pipeline", taskExecution.Pipeline).
+	// 				Int64("run", taskExecution.Run).Msg("could not get state for container update")
+	// 		}
+	// 	}()
+	// }
 
-	// If run is unfinished then we need to launch a goroutine to track its state.
-	if run.State != models.RunStateComplete {
-		go runStateMachine.waitRunFinish()
-	}
+	// // If run is unfinished then we need to launch a goroutine to track its state.
+	// if run.State != models.RunStateComplete {
+	// 	go runStateMachine.waitRunFinish()
+	// }
 
 	return nil
 }
 
-// createGRPCServer creates the gofer grpc server with all the proper settings; TLS enabled.
-func (api *API) createGRPCServer() (*grpc.Server, error) {
-	tlsConfig, err := api.generateTLSConfig(api.config.Server.TLSCertPath, api.config.Server.TLSKeyPath)
-	if err != nil {
-		return nil, err
-	}
+type VariableSource string
 
-	panicHandler := func(p interface{}) (err error) {
-		log.Error().Err(err).Interface("panic", p).Msg("server has encountered a fatal error")
-		log.Error().Msg(string(debug.Stack()))
-		return status.Errorf(codes.Unknown, "server has encountered a fatal error and could not process request")
-	}
+const (
+	VariableSourceUnknown        VariableSource = "UNKNOWN"
+	VariableSourcePipelineConfig VariableSource = "PIPELINE_CONFIG"
+	VariableSourceSystem         VariableSource = "SYSTEM"
+	VariableSourceRunOptions     VariableSource = "RUN_OPTIONS"
+	VariableSourceExtension      VariableSource = "EXTENSION"
+)
 
-	grpcServer := grpc.NewServer(
-		// recovery should always be first
-		grpc.UnaryInterceptor(
-			grpc_middleware.ChainUnaryServer(
-				grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(panicHandler)),
-				grpc_auth.UnaryServerInterceptor(api.authenticate),
-			),
-		),
-		grpc.StreamInterceptor(
-			grpc_middleware.ChainStreamServer(
-				grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(panicHandler)),
-				grpc_auth.StreamServerInterceptor(api.authenticate),
-			),
-		),
-
-		// Handle TLS
-		grpc.Creds(credentials.NewTLS(tlsConfig)),
-	)
-
-	reflection.Register(grpcServer)
-	proto.RegisterGoferServer(grpcServer, api)
-
-	return grpcServer, nil
+// A variable is a key value pair that is used either in a run or task level.
+// The variable is inserted as an environment variable to an eventual task run.
+// It can be owned by different parts of the system which control where
+// the potentially sensitive variables might show up.
+type Variable struct {
+	Key    string         `json:"key" example:"MYAPP_VAR_ONE" doc:"The key of the environment variable"`
+	Value  string         `json:"value" example:"some_value" doc:"The value of the environment variable"`
+	Source VariableSource `json:"source" example:"PIPELINE_CONFIG" doc:"Where the variable originated"`
 }
 
-// grpcDial establishes a connection with the request URL via GRPC.
-func grpcDial(url string) (*grpc.ClientConn, error) {
-	host, port, ok := strings.Cut(url, ":")
-	if !ok {
-		return nil, fmt.Errorf("could not parse url %q; format should be <host>:<port>", url)
-	}
-
-	var opt []grpc.DialOption
-	var tlsConf *tls.Config
-
-	// If we're testing in development bypass the cert checks.
-	if host == "localhost" || host == "127.0.0.1" {
-		tlsConf = &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		opt = append(opt, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-	}
-
-	opt = append(opt, grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(grpc_retry.WithMax(3), grpc_retry.WithBackoff(grpc_retry.BackoffExponential(time.Millisecond*100)))))
-
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", host, port), opt...)
-	if err != nil {
-		return nil, fmt.Errorf("could not connect to server: %w", err)
-	}
-
-	return conn, nil
+type RegistryAuth struct {
+	User string `json:"user" example:"some_user" doc:"The username for image registry auth"`
+	Pass string `json:"pass" example:"hunter2" doc:"The password for the image registry auth"`
 }

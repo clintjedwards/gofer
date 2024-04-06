@@ -13,14 +13,14 @@ type Namespace struct {
 	ID          string
 	Name        string
 	Description string
-	Created     int64
-	Modified    int64
+	Created     string
+	Modified    string
 }
 
 type UpdatableNamespaceFields struct {
 	Name        *string
 	Description *string
-	Modified    *int64
+	Modified    *string
 }
 
 func (db *DB) ListNamespaces(conn Queryable, offset, limit int) ([]Namespace, error) {

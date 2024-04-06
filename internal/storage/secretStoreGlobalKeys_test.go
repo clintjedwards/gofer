@@ -19,7 +19,7 @@ func TestCRUDSecretStoreGlobalKeys(t *testing.T) {
 	key := SecretStoreGlobalKey{
 		Key:        "test_key",
 		Namespaces: "namespace,test",
-		Created:    0,
+		Created:    "0",
 	}
 
 	err = db.InsertSecretStoreGlobalKey(db, &key, false)

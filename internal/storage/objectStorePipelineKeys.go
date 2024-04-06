@@ -13,7 +13,7 @@ type ObjectStorePipelineKey struct {
 	Namespace string
 	Pipeline  string
 	Key       string
-	Created   int64
+	Created   string
 }
 
 func (db *DB) ListObjectStorePipelineKeys(conn Queryable, namespace, pipeline string) ([]ObjectStorePipelineKey, error) {

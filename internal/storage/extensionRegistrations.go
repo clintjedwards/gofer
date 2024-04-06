@@ -10,13 +10,13 @@ import (
 )
 
 type GlobalExtensionRegistration struct {
-	Name         string
-	Image        string
+	ID           string `db:"id"`
+	Image        string `db:"image"`
 	RegistryAuth string `db:"registry_auth"`
-	Variables    string
-	Created      int64
-	Status       string
-	KeyID        int64 `db:"key_id"`
+	Variables    string `db:"variables"`
+	Created      string `db:"created"`
+	Status       string `db:"status"`
+	KeyID        string `db:"key_id"`
 }
 
 type UpdatableGlobalExtensionRegistrationFields struct {
@@ -24,7 +24,7 @@ type UpdatableGlobalExtensionRegistrationFields struct {
 	RegistryAuth *string
 	Variables    *string
 	Status       *string
-	KeyID        *int64
+	KeyID        *string
 }
 
 func (db *DB) ListGlobalExtensionRegistrations(conn Queryable, offset, limit int) ([]GlobalExtensionRegistration, error) {
@@ -32,7 +32,7 @@ func (db *DB) ListGlobalExtensionRegistrations(conn Queryable, offset, limit int
 		limit = db.maxResultsLimit
 	}
 
-	query, args := qb.Select("name", "image", "registry_auth", "variables", "created", "status", "key_id").
+	query, args := qb.Select("id", "image", "registry_auth", "variables", "created", "status", "key_id").
 		From("global_extension_registrations").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).MustSql()
@@ -47,8 +47,8 @@ func (db *DB) ListGlobalExtensionRegistrations(conn Queryable, offset, limit int
 }
 
 func (db *DB) InsertGlobalExtensionRegistration(conn Queryable, tr *GlobalExtensionRegistration) error {
-	_, err := qb.Insert("global_extension_registrations").Columns("name", "image", "registry_auth", "variables", "created",
-		"status", "key_id").Values(tr.Name, tr.Image, tr.RegistryAuth, tr.Variables, tr.Created, tr.Status, tr.KeyID).
+	_, err := qb.Insert("global_extension_registrations").Columns("id", "image", "registry_auth", "variables", "created",
+		"status", "key_id").Values(tr.ID, tr.Image, tr.RegistryAuth, tr.Variables, tr.Created, tr.Status, tr.KeyID).
 		RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -61,9 +61,9 @@ func (db *DB) InsertGlobalExtensionRegistration(conn Queryable, tr *GlobalExtens
 	return nil
 }
 
-func (db *DB) GetGlobalExtensionRegistration(conn Queryable, name string) (GlobalExtensionRegistration, error) {
-	query, args := qb.Select("name", "image", "registry_auth", "variables", "created", "status", "key_id").
-		From("global_extension_registrations").Where(qb.Eq{"name": name}).MustSql()
+func (db *DB) GetGlobalExtensionRegistration(conn Queryable, id string) (GlobalExtensionRegistration, error) {
+	query, args := qb.Select("id", "image", "registry_auth", "variables", "created", "status", "key_id").
+		From("global_extension_registrations").Where(qb.Eq{"id": id}).MustSql()
 
 	reg := GlobalExtensionRegistration{}
 	err := conn.Get(&reg, query, args...)
@@ -78,7 +78,7 @@ func (db *DB) GetGlobalExtensionRegistration(conn Queryable, name string) (Globa
 	return reg, nil
 }
 
-func (db *DB) UpdateGlobalExtensionRegistration(conn Queryable, name string, fields UpdatableGlobalExtensionRegistrationFields) error {
+func (db *DB) UpdateGlobalExtensionRegistration(conn Queryable, id string, fields UpdatableGlobalExtensionRegistrationFields) error {
 	query := qb.Update("global_extension_registrations")
 
 	if fields.Image != nil {
@@ -101,7 +101,7 @@ func (db *DB) UpdateGlobalExtensionRegistration(conn Queryable, name string, fie
 		query = query.Set("key_id", fields.KeyID)
 	}
 
-	_, err := query.Where(qb.Eq{"name": name}).RunWith(conn).Exec()
+	_, err := query.Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrEntityNotFound
@@ -113,8 +113,8 @@ func (db *DB) UpdateGlobalExtensionRegistration(conn Queryable, name string, fie
 	return nil
 }
 
-func (db *DB) DeleteGlobalExtensionRegistration(conn Queryable, name string) error {
-	_, err := qb.Delete("global_extension_registrations").Where(qb.Eq{"name": name}).RunWith(conn).Exec()
+func (db *DB) DeleteGlobalExtensionRegistration(conn Queryable, id string) error {
+	_, err := qb.Delete("global_extension_registrations").Where(qb.Eq{"id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

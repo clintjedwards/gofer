@@ -16,13 +16,13 @@ func TestCRUDGlobalExtensionRegistrations(t *testing.T) {
 	defer os.Remove(path)
 
 	reg := GlobalExtensionRegistration{
-		Name:         "test_registration",
+		ID:           "test_registration",
 		Image:        "test_image",
 		RegistryAuth: "test_reg",
 		Variables:    "test_vars",
-		Created:      0,
+		Created:      "0",
 		Status:       "ACTIVE",
-		KeyID:        1,
+		KeyID:        "1",
 	}
 
 	err = db.InsertGlobalExtensionRegistration(db, &reg)

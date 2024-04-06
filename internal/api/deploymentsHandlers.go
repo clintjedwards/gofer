@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -13,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetDeployment(ctx context.Context, request *proto.GetDeploymentRequest) (*proto.GetDeploymentResponse, error) {
+func (api *APIContext) GetDeployment(ctx context.Context, request *proto.GetDeploymentRequest) (*proto.GetDeploymentResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.GetDeploymentResponse{},
@@ -37,7 +39,7 @@ func (api *API) GetDeployment(ctx context.Context, request *proto.GetDeploymentR
 	return &proto.GetDeploymentResponse{Deployment: deployment.ToProto()}, nil
 }
 
-func (api *API) ListDeployments(ctx context.Context, request *proto.ListDeploymentsRequest) (*proto.ListDeploymentsResponse, error) {
+func (api *APIContext) ListDeployments(ctx context.Context, request *proto.ListDeploymentsRequest) (*proto.ListDeploymentsResponse, error) {
 	if request.PipelineId == "" {
 		return &proto.ListDeploymentsResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}

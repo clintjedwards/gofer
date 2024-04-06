@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -16,7 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetRun(ctx context.Context, request *proto.GetRunRequest) (*proto.GetRunResponse, error) {
+func (api *APIContext) GetRun(ctx context.Context, request *proto.GetRunRequest) (*proto.GetRunResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.GetRunResponse{},
@@ -40,7 +42,7 @@ func (api *API) GetRun(ctx context.Context, request *proto.GetRunRequest) (*prot
 	return &proto.GetRunResponse{Run: run.ToProto()}, nil
 }
 
-func (api *API) ListRuns(ctx context.Context, request *proto.ListRunsRequest) (*proto.ListRunsResponse, error) {
+func (api *APIContext) ListRuns(ctx context.Context, request *proto.ListRunsRequest) (*proto.ListRunsResponse, error) {
 	if request.PipelineId == "" {
 		return &proto.ListRunsResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -73,7 +75,7 @@ func (api *API) ListRuns(ctx context.Context, request *proto.ListRunsRequest) (*
 	}, nil
 }
 
-func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*proto.StartRunResponse, error) {
+func (api *APIContext) StartRun(ctx context.Context, request *proto.StartRunRequest) (*proto.StartRunResponse, error) {
 	if request.PipelineId == "" {
 		return &proto.StartRunResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -204,7 +206,7 @@ func (api *API) StartRun(ctx context.Context, request *proto.StartRunRequest) (*
 	}, nil
 }
 
-func (api *API) RetryRun(ctx context.Context, request *proto.RetryRunRequest) (*proto.RetryRunResponse, error) {
+func (api *APIContext) RetryRun(ctx context.Context, request *proto.RetryRunRequest) (*proto.RetryRunResponse, error) {
 	if request.PipelineId == "" {
 		return &proto.RetryRunResponse{}, status.Error(codes.FailedPrecondition, "pipeline id required")
 	}
@@ -258,7 +260,7 @@ func (api *API) RetryRun(ctx context.Context, request *proto.RetryRunRequest) (*
 	}, nil
 }
 
-func (api *API) CancelRun(ctx context.Context, request *proto.CancelRunRequest) (*proto.CancelRunResponse, error) {
+func (api *APIContext) CancelRun(ctx context.Context, request *proto.CancelRunRequest) (*proto.CancelRunResponse, error) {
 	if request.PipelineId == "" {
 		return &proto.CancelRunResponse{}, status.Error(codes.FailedPrecondition, "pipeline id required")
 	}
@@ -299,7 +301,7 @@ func (api *API) CancelRun(ctx context.Context, request *proto.CancelRunRequest) 
 	return &proto.CancelRunResponse{}, nil
 }
 
-func (api *API) CancelAllRuns(ctx context.Context, request *proto.CancelAllRunsRequest) (*proto.CancelAllRunsResponse, error) {
+func (api *APIContext) CancelAllRuns(ctx context.Context, request *proto.CancelAllRunsRequest) (*proto.CancelAllRunsResponse, error) {
 	if request.PipelineId == "" {
 		return &proto.CancelAllRunsResponse{}, status.Error(codes.FailedPrecondition, "pipeline id required")
 	}

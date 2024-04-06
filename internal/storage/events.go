@@ -13,7 +13,7 @@ type Event struct {
 	ID      int64
 	Type    string
 	Details string
-	Emitted int64
+	Emitted string
 }
 
 // Return all events.

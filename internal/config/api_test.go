@@ -56,7 +56,7 @@ func TestInitAPIConfigAgainstSample(t *testing.T) {
 		},
 
 		Server: &Server{
-			Host:                "localhost:8080",
+			ListenAddress:       "localhost:8080",
 			ShutdownTimeout:     time.Second * 15,
 			TLSCertPath:         "./localhost.crt",
 			TLSKeyPath:          "./localhost.key",
@@ -139,7 +139,7 @@ func TestInitAPIConfigAgainstSampleOverwriteWithEnvs(t *testing.T) {
 		},
 
 		Server: &Server{
-			Host:                "localhost:8080",
+			ListenAddress:       "localhost:8080",
 			ShutdownTimeout:     time.Second * 15,
 			TLSCertPath:         "./test",
 			TLSKeyPath:          "./localhost.key",

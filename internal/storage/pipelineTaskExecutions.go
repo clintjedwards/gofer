@@ -9,28 +9,28 @@ import (
 	qb "github.com/Masterminds/squirrel"
 )
 
-type PipelineTaskRun struct {
-	Namespace    string
-	Pipeline     string
-	Run          int64
-	ID           string
+type PipelineTaskExecution struct {
+	Namespace    string `db:"namespace"`
+	Pipeline     string `db:"pipeline"`
+	Run          int64  `db:"run"`
+	ID           string `db:"id"`
 	TaskKind     string `db:"task_kind"`
-	Task         string
-	Created      int64
-	Started      int64
-	Ended        int64
-	ExitCode     int64 `db:"exit_code"`
-	LogsExpired  bool  `db:"logs_expired"`
-	LogsRemoved  bool  `db:"logs_removed"`
-	State        string
-	Status       string
+	Task         string `db:"task"`
+	Created      string `db:"created"`
+	Started      string `db:"started"`
+	Ended        string `db:"ended"`
+	ExitCode     int64  `db:"exit_code"`
+	LogsExpired  bool   `db:"logs_expired"`
+	LogsRemoved  bool   `db:"logs_removed"`
+	State        string `db:"state"`
+	Status       string `db:"status"`
 	StatusReason string `db:"status_reason"`
-	Variables    string
+	Variables    string `db:"variables"`
 }
 
-type UpdatablePipelineTaskRunFields struct {
-	Started      *int64
-	Ended        *int64
+type UpdatablePipelineTaskExecutionFields struct {
+	Started      *string
+	Ended        *string
 	ExitCode     *int64
 	State        *string
 	Status       *string
@@ -40,8 +40,8 @@ type UpdatablePipelineTaskRunFields struct {
 	Variables    *string
 }
 
-func (db *DB) ListPipelineTaskRuns(conn Queryable, offset, limit int, namespace, pipeline string, run int64) (
-	[]PipelineTaskRun, error,
+func (db *DB) ListPipelineTaskExecutions(conn Queryable, offset, limit int, namespace, pipeline string, run int64) (
+	[]PipelineTaskExecution, error,
 ) {
 	if limit == 0 || limit > db.maxResultsLimit {
 		limit = db.maxResultsLimit
@@ -49,27 +49,27 @@ func (db *DB) ListPipelineTaskRuns(conn Queryable, offset, limit int, namespace,
 
 	query, args := qb.Select("namespace", "pipeline", "run", "id", "task_kind", "task", "created", "started", "ended", "exit_code",
 		"state", "status", "status_reason", "logs_expired", "logs_removed", "variables").
-		From("pipeline_task_runs").
+		From("pipeline_task_executions").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run}).
 		Limit(uint64(limit)).
 		OrderBy("started ASC").
 		Offset(uint64(offset)).MustSql()
 
-	taskRuns := []PipelineTaskRun{}
-	err := conn.Select(&taskRuns, query, args...)
+	TaskExecutions := []PipelineTaskExecution{}
+	err := conn.Select(&TaskExecutions, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return taskRuns, nil
+	return TaskExecutions, nil
 }
 
-func (db *DB) InsertPipelineTaskRun(conn Queryable, taskRun *PipelineTaskRun) error {
-	_, err := qb.Insert("pipeline_task_runs").Columns("namespace", "pipeline", "run", "id", "created", "started", "ended",
+func (db *DB) InsertPipelineTaskExecution(conn Queryable, taskExecution *PipelineTaskExecution) error {
+	_, err := qb.Insert("pipeline_task_executions").Columns("namespace", "pipeline", "run", "id", "created", "started", "ended",
 		"exit_code", "logs_expired", "logs_removed", "state", "status", "status_reason", "task_kind", "task", "variables").Values(
-		taskRun.Namespace, taskRun.Pipeline, taskRun.Run, taskRun.ID, taskRun.Created, taskRun.Started,
-		taskRun.Ended, taskRun.ExitCode, taskRun.LogsExpired, taskRun.LogsRemoved, taskRun.State, taskRun.Status,
-		taskRun.StatusReason, taskRun.TaskKind, taskRun.Task, taskRun.Variables).RunWith(conn).Exec()
+		taskExecution.Namespace, taskExecution.Pipeline, taskExecution.Run, taskExecution.ID, taskExecution.Created, taskExecution.Started,
+		taskExecution.Ended, taskExecution.ExitCode, taskExecution.LogsExpired, taskExecution.LogsRemoved, taskExecution.State, taskExecution.Status,
+		taskExecution.StatusReason, taskExecution.TaskKind, taskExecution.Task, taskExecution.Variables).RunWith(conn).Exec()
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrEntityExists
@@ -81,27 +81,27 @@ func (db *DB) InsertPipelineTaskRun(conn Queryable, taskRun *PipelineTaskRun) er
 	return nil
 }
 
-func (db *DB) GetPipelineTaskRun(conn Queryable, namespace, pipeline string, run int64, id string) (PipelineTaskRun, error) {
+func (db *DB) GetPipelineTaskExecution(conn Queryable, namespace, pipeline string, run int64, id string) (PipelineTaskExecution, error) {
 	query, args := qb.Select("namespace", "pipeline", "run", "id", "task_kind", "task", "created", "started", "ended", "exit_code",
 		"state", "status", "status_reason", "logs_expired", "logs_removed", "variables").
-		From("pipeline_task_runs").
+		From("pipeline_task_executions").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run, "id": id}).MustSql()
 
-	taskRun := PipelineTaskRun{}
-	err := conn.Get(&taskRun, query, args...)
+	TaskExecution := PipelineTaskExecution{}
+	err := conn.Get(&TaskExecution, query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return PipelineTaskRun{}, ErrEntityNotFound
+			return PipelineTaskExecution{}, ErrEntityNotFound
 		}
 
-		return PipelineTaskRun{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
+		return PipelineTaskExecution{}, fmt.Errorf("database error occurred: %v; %w", err, ErrInternal)
 	}
 
-	return taskRun, nil
+	return TaskExecution, nil
 }
 
-func (db *DB) UpdatePipelineTaskRun(conn Queryable, namespace, pipeline string, run int64, id string, fields UpdatablePipelineTaskRunFields) error {
-	query := qb.Update("pipeline_task_runs")
+func (db *DB) UpdatePipelineTaskExecution(conn Queryable, namespace, pipeline string, run int64, id string, fields UpdatablePipelineTaskExecutionFields) error {
+	query := qb.Update("pipeline_task_executions")
 
 	if fields.Started != nil {
 		query = query.Set("started", fields.Started)
@@ -153,8 +153,8 @@ func (db *DB) UpdatePipelineTaskRun(conn Queryable, namespace, pipeline string, 
 	return nil
 }
 
-func (db *DB) DeletePipelineTaskRun(conn Queryable, namespace, pipeline string, run int64, id string) error {
-	_, err := qb.Delete("pipeline_task_runs").
+func (db *DB) DeletePipelineTaskExecution(conn Queryable, namespace, pipeline string, run int64, id string) error {
+	_, err := qb.Delete("pipeline_task_executions").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "run": run, "id": id}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

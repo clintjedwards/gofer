@@ -10,18 +10,18 @@ import (
 )
 
 type PipelineTask struct {
-	Namespace             string
-	Pipeline              string
-	PipelineConfigVersion int64 `db:"pipeline_config_version"`
-	ID                    string
-	Description           string
-	Image                 string
+	Namespace             string `db:"namespace"`
+	Pipeline              string `db:"pipeline"`
+	PipelineConfigVersion int64  `db:"pipeline_config_version"`
+	ID                    string `db:"id"`
+	Description           string `db:"description"`
+	Image                 string `db:"image"`
 	RegistryAuth          string `db:"registry_auth"`
 	DependsOn             string `db:"depends_on"`
-	Variables             string
-	Entrypoint            string
-	Command               string
-	InjectAPIToken        bool `db:"inject_api_token"`
+	Variables             string `db:"variables"`
+	Entrypoint            string `db:"entrypoint"`
+	Command               string `db:"command"`
+	InjectAPIToken        bool   `db:"inject_api_token"`
 }
 
 // Returns the total number of pipelines over all namespaces.

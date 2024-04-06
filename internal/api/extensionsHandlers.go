@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -11,7 +13,6 @@ import (
 	"github.com/clintjedwards/gofer/internal/scheduler"
 	"github.com/clintjedwards/gofer/internal/storage"
 	proto "github.com/clintjedwards/gofer/proto/go"
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/rs/zerolog/log"
 
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetExtension(_ context.Context, request *proto.GetExtensionRequest) (*proto.GetExtensionResponse, error) {
+func (api *APIContext) GetExtension(_ context.Context, request *proto.GetExtensionRequest) (*proto.GetExtensionResponse, error) {
 	if request.Name == "" {
 		return &proto.GetExtensionResponse{}, status.Error(codes.FailedPrecondition, "name required")
 	}
@@ -245,9 +246,11 @@ func (api *API) RunExtensionInstaller(stream proto.Gofer_RunExtensionInstallerSe
 				extensionMsgRaw.MessageType)
 		}
 	}
+
+	return nil, nil
 }
 
-func (api *API) RunPipelineConfigurator(stream proto.Gofer_RunPipelineConfiguratorServer) error {
+func (api *APIContext) RunPipelineConfigurator(stream proto.Gofer_RunPipelineConfiguratorServer) error {
 	if !isManagementUser(stream.Context()) {
 		return status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -351,9 +354,11 @@ func (api *API) RunPipelineConfigurator(stream proto.Gofer_RunPipelineConfigurat
 				extensionMsgRaw.MessageType)
 		}
 	}
+
+	return nil
 }
 
-func (api *API) InstallExtension(ctx context.Context, request *proto.InstallExtensionRequest) (*proto.InstallExtensionResponse, error) {
+func (api *APIContext) InstallExtension(ctx context.Context, request *proto.InstallExtensionRequest) (*proto.InstallExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -396,7 +401,7 @@ func (api *API) InstallExtension(ctx context.Context, request *proto.InstallExte
 	return &proto.InstallExtensionResponse{}, nil
 }
 
-func (api *API) UninstallExtension(ctx context.Context, request *proto.UninstallExtensionRequest) (*proto.UninstallExtensionResponse, error) {
+func (api *APIContext) UninstallExtension(ctx context.Context, request *proto.UninstallExtensionRequest) (*proto.UninstallExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -430,7 +435,7 @@ func (api *API) UninstallExtension(ctx context.Context, request *proto.Uninstall
 	return &proto.UninstallExtensionResponse{}, nil
 }
 
-func (api *API) EnableExtension(ctx context.Context, request *proto.EnableExtensionRequest) (*proto.EnableExtensionResponse, error) {
+func (api *APIContext) EnableExtension(ctx context.Context, request *proto.EnableExtensionRequest) (*proto.EnableExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}
@@ -469,7 +474,7 @@ func (api *API) EnableExtension(ctx context.Context, request *proto.EnableExtens
 	return &proto.EnableExtensionResponse{}, nil
 }
 
-func (api *API) DisableExtension(ctx context.Context, request *proto.DisableExtensionRequest) (*proto.DisableExtensionResponse, error) {
+func (api *APIContext) DisableExtension(ctx context.Context, request *proto.DisableExtensionRequest) (*proto.DisableExtensionResponse, error) {
 	if !isManagementUser(ctx) {
 		return nil, status.Error(codes.PermissionDenied, "management token required for this action")
 	}

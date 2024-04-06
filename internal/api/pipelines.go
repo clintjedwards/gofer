@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -8,14 +10,13 @@ import (
 	"github.com/clintjedwards/gofer/events"
 	"github.com/clintjedwards/gofer/internal/models"
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/metadata"
 )
 
 // unsubscribeExtension contacts the extension and remove the pipeline subscription.
-func (api *API) unsubscribeExtension(namespace, pipeline, name, label string) error {
+func (api *APIContext) unsubscribeExtension(namespace, pipeline, name, label string) error {
 	extension, exists := api.extensions.Get(name)
 	if !exists {
 		return fmt.Errorf("could not find extension name %q in registered extension list", name)
@@ -51,7 +52,7 @@ func (api *API) unsubscribeExtension(namespace, pipeline, name, label string) er
 
 // subscribeExtension takes a pipeline config requested extension and communicates with the extension container
 // in order appropriately make sure the extension is aware of the pipeline.
-func (api *API) subscribeExtension(subscription *models.PipelineExtensionSubscription) error {
+func (api *APIContext) subscribeExtension(subscription *models.PipelineExtensionSubscription) error {
 	extension, exists := api.extensions.Get(subscription.Name)
 	if !exists {
 		return fmt.Errorf("extension %q not found;", subscription.Name)
@@ -93,7 +94,7 @@ func (api *API) subscribeExtension(subscription *models.PipelineExtensionSubscri
 
 // collectAllPipelines attempts to return a single list of all pipelines within the gofer service.
 // Useful for functions where we must operate globally.
-func (api *API) collectAllPipelines() ([]storage.PipelineMetadata, error) {
+func (api *APIContext) collectAllPipelines() ([]storage.PipelineMetadata, error) {
 	allNamespaces := []storage.Namespace{}
 
 	offset := 0
@@ -133,7 +134,7 @@ func (api *API) collectAllPipelines() ([]storage.PipelineMetadata, error) {
 	return allPipelines, nil
 }
 
-func (api *API) disablePipeline(pipeline *models.PipelineMetadata) error {
+func (api *APIContext) disablePipeline(pipeline *models.PipelineMetadata) error {
 	if pipeline.State == models.PipelineStateDisabled {
 		return nil
 	}
@@ -155,7 +156,7 @@ func (api *API) disablePipeline(pipeline *models.PipelineMetadata) error {
 }
 
 // Return pipeline object from DB. Passing 0 as the version gets the latest version.
-func (api *API) getPipelineFromDB(namespace, id string, version int64) (*models.Pipeline, error) {
+func (api *APIContext) getPipelineFromDB(namespace, id string, version int64) (*models.Pipeline, error) {
 	var metadata models.PipelineMetadata
 	var config models.PipelineConfig
 

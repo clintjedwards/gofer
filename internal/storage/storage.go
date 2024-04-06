@@ -1,4 +1,6 @@
 // Package storage contains the data storage interface in which Gofer stores all internal data.
+//
+// We use strings to stand in for uint64s since sqlite does not support uint64s but we'd like to express time that way.
 package storage
 
 import (

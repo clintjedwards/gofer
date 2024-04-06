@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestCRUDPipelineTaskRuns(t *testing.T) {
+func TestCRUDPipelineTaskExecutions(t *testing.T) {
 	path := tempFile()
 	db, err := New(path, 200)
 	if err != nil {
@@ -20,8 +20,8 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 		ID:          "test_namespace",
 		Name:        "Test Namespace",
 		Description: "This is a test namespace",
-		Created:     0,
-		Modified:    0,
+		Created:     "0",
+		Modified:    "0",
 	}
 
 	err = db.InsertNamespace(db, &namespace)
@@ -32,8 +32,8 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 	pipeline := PipelineMetadata{
 		Namespace: "test_namespace",
 		ID:        "test_pipeline",
-		Created:   0,
-		Modified:  0,
+		Created:   "0",
+		Modified:  "0",
 		State:     "ACTIVE",
 	}
 
@@ -46,8 +46,8 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 		Namespace:  "test_namespace",
 		Pipeline:   "test_pipeline",
 		Version:    0,
-		Registered: 0,
-		Deprecated: 0,
+		Registered: "0",
+		Deprecated: "0",
 		State:      "ACTIVE",
 	}
 
@@ -61,8 +61,8 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 		Pipeline:              "test_pipeline",
 		PipelineConfigVersion: 0,
 		ID:                    1,
-		Started:               0,
-		Ended:                 0,
+		Started:               "0",
+		Ended:                 "0",
 		State:                 "STATE_STRING",
 		Status:                "STATUS_STRING",
 		StatusReason:          "STATUS_REASON_STRING",
@@ -76,15 +76,15 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	taskRun := PipelineTaskRun{
+	TaskExecution := PipelineTaskExecution{
 		Namespace:    "test_namespace",
 		Pipeline:     "test_pipeline",
 		Run:          1,
 		ID:           "test_task_run",
 		Task:         "TASK_STRING",
-		Created:      0,
-		Started:      0,
-		Ended:        0,
+		Created:      "0",
+		Started:      "0",
+		Ended:        "0",
 		ExitCode:     0,
 		LogsExpired:  true,
 		LogsRemoved:  true,
@@ -94,42 +94,42 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 		Variables:    "VARIABLES_STRING",
 	}
 
-	err = db.InsertPipelineTaskRun(db, &taskRun)
+	err = db.InsertPipelineTaskExecution(db, &TaskExecution)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	taskRuns, err := db.ListPipelineTaskRuns(db, 0, 0, pipeline.Namespace, pipeline.ID, run.ID)
+	TaskExecutions, err := db.ListPipelineTaskExecutions(db, 0, 0, pipeline.Namespace, pipeline.ID, run.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(taskRuns) != 1 {
-		t.Errorf("expected 1 element in list found %d", len(taskRuns))
+	if len(TaskExecutions) != 1 {
+		t.Errorf("expected 1 element in list found %d", len(TaskExecutions))
 	}
 
-	if diff := cmp.Diff(taskRun, taskRuns[0]); diff != "" {
+	if diff := cmp.Diff(TaskExecution, TaskExecutions[0]); diff != "" {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	fetchedRun, err := db.GetPipelineTaskRun(db, namespace.ID, pipeline.ID, run.ID, taskRun.ID)
+	fetchedRun, err := db.GetPipelineTaskExecution(db, namespace.ID, pipeline.ID, run.ID, TaskExecution.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(taskRun, fetchedRun); diff != "" {
+	if diff := cmp.Diff(TaskExecution, fetchedRun); diff != "" {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	fetchedRun.Ended = 1
+	fetchedRun.Ended = "1"
 	fetchedRun.State = "DISABLED"
 	fetchedRun.Status = "UPDATED_STATUS"
 	fetchedRun.StatusReason = "UPDATED_STATUS_REASON"
 	fetchedRun.Variables = "UPDATED_VARIABLES"
 	fetchedRun.LogsExpired = false
 
-	err = db.UpdatePipelineTaskRun(db, namespace.ID, pipeline.ID, run.ID, taskRun.ID,
-		UpdatablePipelineTaskRunFields{
+	err = db.UpdatePipelineTaskExecution(db, namespace.ID, pipeline.ID, run.ID, TaskExecution.ID,
+		UpdatablePipelineTaskExecutionFields{
 			Ended:        &fetchedRun.Ended,
 			State:        &fetchedRun.State,
 			Status:       &fetchedRun.Status,
@@ -141,7 +141,7 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updatedRun, err := db.GetPipelineTaskRun(db, namespace.ID, pipeline.ID, run.ID, taskRun.ID)
+	updatedRun, err := db.GetPipelineTaskExecution(db, namespace.ID, pipeline.ID, run.ID, TaskExecution.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,12 +150,12 @@ func TestCRUDPipelineTaskRuns(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	err = db.DeletePipelineTaskRun(db, namespace.ID, pipeline.ID, run.ID, taskRun.ID)
+	err = db.DeletePipelineTaskExecution(db, namespace.ID, pipeline.ID, run.ID, TaskExecution.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = db.GetPipelineTaskRun(db, namespace.ID, pipeline.ID, run.ID, taskRun.ID)
+	_, err = db.GetPipelineTaskExecution(db, namespace.ID, pipeline.ID, run.ID, TaskExecution.ID)
 	if !errors.Is(err, ErrEntityNotFound) {
 		t.Fatal("expected error Not Found; found alternate error")
 	}

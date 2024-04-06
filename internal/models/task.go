@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
+	sdk "github.com/clintjedwards/gofer/sdk/go/config"
 	"github.com/rs/zerolog/log"
 )
 
@@ -34,91 +34,54 @@ func (s *RequiredParentStatus) FromStr(input string) RequiredParentStatus {
 }
 
 type Task struct {
-	ID           string                          `json:"id"`
-	Description  string                          `json:"description"`
-	Image        string                          `json:"image"`
-	RegistryAuth *RegistryAuth                   `json:"registry_auth"`
-	DependsOn    map[string]RequiredParentStatus `json:"depends_on"`
-	Variables    []Variable                      `json:"variables"`
-	Entrypoint   *[]string                       `json:"entrypoint"`
-	Command      *[]string                       `json:"command"`
-	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
-	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
-	// environment variables "GOFER_API_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
-	// the Run's objects.
-	InjectAPIToken bool `json:"inject_api_token"`
+	ID             string                          `json:"id" example:"my_task_name" doc:"Unique identifier for the task"`
+	Description    string                          `json:"description" example:"example description" doc:"A user provided description for what this task does"`
+	Image          string                          `json:"image" example:"ubuntu:latest" doc:"Which container image to run for this specific task"`
+	RegistryAuth   *RegistryAuth                   `json:"registry_auth" doc:"Auth credentials for the image's registry"`
+	DependsOn      map[string]RequiredParentStatus `json:"depends_on" example:"{\"task_one\":\"SUCCESS\"}"`
+	Variables      []Variable                      `json:"variables" doc:"Variables which will be passed in as env vars to the task"`
+	Entrypoint     *[]string                       `json:"entrypoint,omitempty" example:"[\"printenv\"]" doc:"Command to run on init of container; can be overridden"`
+	Command        *[]string                       `json:"command,omitempty" example:"[\"printenv\"]" doc:"Command to run on init of container; cannot be overridden"`
+	InjectAPIToken bool                            `json:"inject_api_token" example:"true" doc:"Whether to inject a run specific Gofer API Key. Useful for using Gofer API within the container"`
 }
 
-func (r *Task) ToProto() *proto.Task {
-	dependsOn := map[string]proto.Task_RequiredParentStatus{}
-	for key, value := range r.DependsOn {
-		dependsOn[key] = proto.Task_RequiredParentStatus(proto.Task_RequiredParentStatus_value[string(value)])
+func (r *Task) FromSDKUserPipelineTaskConfig(t *sdk.UserPipelineTaskConfig) {
+	var regAuth *RegistryAuth = nil
+
+	if t.RegistryAuth != nil {
+		regAuth.User = t.RegistryAuth.User
+		regAuth.Pass = t.RegistryAuth.Pass
 	}
 
-	variables := []*proto.Variable{}
-	for _, v := range r.Variables {
-		variables = append(variables, v.ToProto())
-	}
-
-	entrypoint := []string{}
-	if r.Entrypoint != nil {
-		entrypoint = *r.Entrypoint
-	}
-
-	command := []string{}
-	if r.Command != nil {
-		command = *r.Command
-	}
-
-	return &proto.Task{
-		Id:             r.ID,
-		Description:    r.Description,
-		Image:          r.Image,
-		RegistryAuth:   r.RegistryAuth.ToProto(),
-		DependsOn:      dependsOn,
-		Variables:      variables,
-		Entrypoint:     entrypoint,
-		Command:        command,
-		InjectApiToken: r.InjectAPIToken,
-	}
-}
-
-func (r *Task) FromProtoPipelineTaskConfig(t *proto.UserPipelineTaskConfig) {
 	dependsOn := map[string]RequiredParentStatus{}
 	for key, value := range t.DependsOn {
-		dependsOn[key] = RequiredParentStatus(value.String())
+		dependsOn[key] = RequiredParentStatus(value)
 	}
 
-	variables := []Variable{}
-	for key, value := range t.Variables {
-		variables = append(variables, Variable{
-			Key:    key,
-			Value:  value,
-			Source: VariableSourcePipelineConfig,
-		})
-	}
-
-	var regAuth *RegistryAuth
-	regAuth.FromProto(t.RegistryAuth)
-
-	var entrypoint *[]string
-	if len(t.Entrypoint) > 0 {
-		entrypoint = &t.Entrypoint
-	}
-
-	var command *[]string
-	if len(t.Command) > 0 {
-		command = &t.Command
-	}
-
-	r.ID = t.Id
+	r.ID = t.ID
 	r.Description = t.Description
 	r.Image = t.Image
+	r.RegistryAuth = regAuth
 	r.DependsOn = dependsOn
+	r.InjectAPIToken = t.InjectAPIToken
+
+	var variables []Variable
+	for key, value := range t.Variables {
+		variables = append(variables, Variable{Key: key, Value: value, Source: VariableSourcePipelineConfig})
+	}
 	r.Variables = variables
-	r.Entrypoint = entrypoint
-	r.Command = command
-	r.InjectAPIToken = t.InjectApiToken
+
+	if len(t.Entrypoint) > 0 {
+		r.Entrypoint = &t.Entrypoint
+	} else {
+		r.Entrypoint = nil
+	}
+
+	if len(t.Command) > 0 {
+		r.Command = &t.Command
+	} else {
+		r.Command = nil
+	}
 }
 
 func (r *Task) FromStorage(t *storage.PipelineTask) {

@@ -18,7 +18,7 @@ func TestCRUDEvents(t *testing.T) {
 	event := Event{
 		Type:    "Kind",
 		Details: "Some detail",
-		Emitted: 0,
+		Emitted: "0",
 	}
 
 	id, err := db.InsertEvent(db, &event)

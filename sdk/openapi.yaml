@@ -1,0 +1,235 @@
+components:
+  schemas:
+    ErrorDetail:
+      additionalProperties: false
+      properties:
+        location:
+          description: Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
+          type: string
+        message:
+          description: Error message text
+          type: string
+        value:
+          description: The value at the given location
+      type: object
+    ErrorModel:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ErrorModel.json
+          format: uri
+          readOnly: true
+          type: string
+        detail:
+          description: A human-readable explanation specific to this occurrence of the problem.
+          examples:
+            - Property foo is required but is missing.
+          type: string
+        errors:
+          description: Optional list of individual error details
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          type: array
+        instance:
+          description: A URI reference that identifies the specific occurrence of the problem.
+          examples:
+            - https://example.com/error-log/abc123
+          format: uri
+          type: string
+        status:
+          description: HTTP status code
+          examples:
+            - 400
+          format: int64
+          type: integer
+        title:
+          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+          examples:
+            - Bad Request
+          type: string
+        type:
+          default: about:blank
+          description: A URI reference to human-readable documentation for the error.
+          examples:
+            - https://example.com/errors/example
+          format: uri
+          type: string
+      type: object
+    ExtensionInfoResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ExtensionInfoResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        documentation:
+          description: Markdown string documentation for extension
+          type: string
+        name:
+          description: The unique extension identifier
+          examples:
+            - cron
+          type: string
+        registered_pipelines:
+          examples:
+            - - pipeline_one
+              - pipeline_three
+          items:
+            type: string
+          type: array
+      required:
+        - name
+        - documentation
+        - registered_pipelines
+      type: object
+    ExtensionInitRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ExtensionInitRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        config:
+          additionalProperties:
+            type: string
+          description: The extension specific configuration for your pipeline
+          examples:
+            - interval: 5m
+          type: object
+      required:
+        - config
+      type: object
+info:
+  title: dummy
+  version: ""
+openapi: 3.1.0
+paths:
+  /api/external-events:
+    post:
+      description: Extensions are allowed to receive payloads from external sources. These external sources are usually providing said payloads via webhooks. The request initially gets sent to Gofer(via it's external event endpoint) and then is relayed to the correct extensions to be processed and handled.
+      operationId: ExternalEvent
+      responses:
+        "200":
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Insert event from Gofer's ExternalEvent endpoint
+  /api/info:
+    get:
+      description: Return general information about the extension
+      operationId: Info
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtensionInfoResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Returns general information about extension
+  /api/init:
+    post:
+      description: Init tells the extension it should complete it's initialization phase and return when it is ready to serve requests. This is useful because sometimes (namely when we are helping the user set up this extension) we'll want to start the extension, but not actually have it do anything but server only certain routes like the installation routes.
+      operationId: Init
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtensionInitRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Initialize extension
+  /api/run-extension-installer:
+    post:
+      description: Run the installer that helps admin users install this extension. Uses websockets.
+      operationId: RunExtensionInstaller
+      responses:
+        "200":
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Run the installer that helps admin users install this extension
+  /api/run-pipeline-configurator:
+    post:
+      description: Run the installer that helps pipeline users with their pipeline extension.
+      operationId: RunPipelineConfigurator
+      responses:
+        "200":
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Run the installer that helps pipeline users with their pipeline extension
+  /api/shutdown:
+    post:
+      description: Shutdown tells the extension to cleanup and gracefully shutdown. If a extension does not shutdown in a time defined by the Gofer API the extension will instead be forced(SIGKILL). This is to say that all extensions should lean toward quick cleanups and shutdowns.
+      operationId: Shutdown
+      responses:
+        "200":
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Cleanup and gracefully shutdown extension
+  /api/subscribe:
+    delete:
+      description: Remove a pipeline subscription from an extension
+      operationId: Unsubscribe
+      responses:
+        "200":
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Remove a pipeline subscription from an extension
+    post:
+      description: Registers a pipeline with extension to provide the extension's functionality
+      operationId: Subscribe
+      responses:
+        "201":
+          description: Created
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Registers a pipeline with extension to provide the extension's functionality

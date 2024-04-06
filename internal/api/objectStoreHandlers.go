@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -14,7 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) ListPipelineObjects(ctx context.Context, request *proto.ListPipelineObjectsRequest) (*proto.ListPipelineObjectsResponse, error) {
+func (api *APIContext) ListPipelineObjects(ctx context.Context, request *proto.ListPipelineObjectsRequest) (*proto.ListPipelineObjectsResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.ListPipelineObjectsResponse{},
@@ -45,7 +47,7 @@ func (api *API) ListPipelineObjects(ctx context.Context, request *proto.ListPipe
 	}, nil
 }
 
-func (api *API) GetPipelineObject(ctx context.Context, request *proto.GetPipelineObjectRequest) (*proto.GetPipelineObjectResponse, error) {
+func (api *APIContext) GetPipelineObject(ctx context.Context, request *proto.GetPipelineObjectRequest) (*proto.GetPipelineObjectResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.GetPipelineObjectResponse{},
@@ -68,7 +70,7 @@ func (api *API) GetPipelineObject(ctx context.Context, request *proto.GetPipelin
 	}, nil
 }
 
-func (api *API) PutPipelineObject(ctx context.Context, request *proto.PutPipelineObjectRequest) (*proto.PutPipelineObjectResponse, error) {
+func (api *APIContext) PutPipelineObject(ctx context.Context, request *proto.PutPipelineObjectRequest) (*proto.PutPipelineObjectResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.PutPipelineObjectResponse{},
@@ -98,7 +100,7 @@ func (api *API) PutPipelineObject(ctx context.Context, request *proto.PutPipelin
 	}, nil
 }
 
-func (api *API) DeletePipelineObject(ctx context.Context, request *proto.DeletePipelineObjectRequest) (*proto.DeletePipelineObjectResponse, error) {
+func (api *APIContext) DeletePipelineObject(ctx context.Context, request *proto.DeletePipelineObjectRequest) (*proto.DeletePipelineObjectResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.DeletePipelineObjectResponse{},
@@ -119,7 +121,7 @@ func (api *API) DeletePipelineObject(ctx context.Context, request *proto.DeleteP
 	return &proto.DeletePipelineObjectResponse{}, nil
 }
 
-func (api *API) ListRunObjects(ctx context.Context, request *proto.ListRunObjectsRequest) (*proto.ListRunObjectsResponse, error) {
+func (api *APIContext) ListRunObjects(ctx context.Context, request *proto.ListRunObjectsRequest) (*proto.ListRunObjectsResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.ListRunObjectsResponse{},
@@ -150,7 +152,7 @@ func (api *API) ListRunObjects(ctx context.Context, request *proto.ListRunObject
 	}, nil
 }
 
-func (api *API) GetRunObject(ctx context.Context, request *proto.GetRunObjectRequest) (*proto.GetRunObjectResponse, error) {
+func (api *APIContext) GetRunObject(ctx context.Context, request *proto.GetRunObjectRequest) (*proto.GetRunObjectResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.GetRunObjectResponse{},
@@ -173,7 +175,7 @@ func (api *API) GetRunObject(ctx context.Context, request *proto.GetRunObjectReq
 	}, nil
 }
 
-func (api *API) PutRunObject(ctx context.Context, request *proto.PutRunObjectRequest) (*proto.PutRunObjectResponse, error) {
+func (api *APIContext) PutRunObject(ctx context.Context, request *proto.PutRunObjectRequest) (*proto.PutRunObjectResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.PutRunObjectResponse{},
@@ -219,7 +221,7 @@ func (api *API) PutRunObject(ctx context.Context, request *proto.PutRunObjectReq
 	}, nil
 }
 
-func (api *API) DeleteRunObject(ctx context.Context, request *proto.DeleteRunObjectRequest) (*proto.DeleteRunObjectResponse, error) {
+func (api *APIContext) DeleteRunObject(ctx context.Context, request *proto.DeleteRunObjectRequest) (*proto.DeleteRunObjectResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.DeleteRunObjectResponse{},

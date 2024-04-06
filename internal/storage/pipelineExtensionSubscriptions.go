@@ -10,12 +10,12 @@ import (
 )
 
 type PipelineExtensionSubscription struct {
-	Namespace    string
-	Pipeline     string
-	Name         string
-	Label        string
-	Settings     string
-	Status       string
+	Namespace    string `db:"namespace"`
+	Pipeline     string `db:"pipeline"`
+	ID           string `db:"id"`
+	Label        string `db:"label"`
+	Settings     string `db:"settings"`
+	Status       string `db:"status"`
 	StatusReason string `db:"status_reason"`
 }
 
@@ -26,7 +26,7 @@ type UpdateablePipelineExtensionSubscriptionFields struct {
 }
 
 func (db *DB) ListPipelineExtensionSubscriptions(conn Queryable, namespace, pipeline string) ([]PipelineExtensionSubscription, error) {
-	query, args := qb.Select("namespace", "pipeline", "name", "label", "settings", "status", "status_reason").
+	query, args := qb.Select("namespace", "pipeline", "id", "label", "settings", "status", "status_reason").
 		From("pipeline_extension_subscriptions").
 		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline}).
 		MustSql()
@@ -42,8 +42,8 @@ func (db *DB) ListPipelineExtensionSubscriptions(conn Queryable, namespace, pipe
 
 func (db *DB) InsertPipelineExtensionSubscription(conn Queryable, sub *PipelineExtensionSubscription) error {
 	_, err := qb.Insert("pipeline_extension_subscriptions").
-		Columns("namespace", "pipeline", "name", "label", "settings", "status", "status_reason").Values(
-		sub.Namespace, sub.Pipeline, sub.Name, sub.Label, sub.Settings,
+		Columns("namespace", "pipeline", "id", "label", "settings", "status", "status_reason").Values(
+		sub.Namespace, sub.Pipeline, sub.ID, sub.Label, sub.Settings,
 		sub.Status, sub.StatusReason,
 	).RunWith(conn).Exec()
 	if err != nil {
@@ -57,12 +57,12 @@ func (db *DB) InsertPipelineExtensionSubscription(conn Queryable, sub *PipelineE
 	return nil
 }
 
-func (db *DB) GetPipelineExtensionSubscription(conn Queryable, namespace, pipeline, name, label string) (
+func (db *DB) GetPipelineExtensionSubscription(conn Queryable, namespace, pipeline, id, label string) (
 	PipelineExtensionSubscription, error,
 ) {
-	query, args := qb.Select("namespace", "pipeline", "name", "label", "settings", "status", "status_reason").
+	query, args := qb.Select("namespace", "pipeline", "id", "label", "settings", "status", "status_reason").
 		From("pipeline_extension_subscriptions").Where(qb.Eq{
-		"namespace": namespace, "pipeline": pipeline, "name": name, "label": label,
+		"namespace": namespace, "pipeline": pipeline, "id": id, "label": label,
 	}).MustSql()
 
 	sub := PipelineExtensionSubscription{}
@@ -78,7 +78,7 @@ func (db *DB) GetPipelineExtensionSubscription(conn Queryable, namespace, pipeli
 	return sub, nil
 }
 
-func (db *DB) UpdatePipelineExtensionSubscription(conn Queryable, namespace, pipeline, name, label string, fields UpdateablePipelineExtensionSubscriptionFields) error {
+func (db *DB) UpdatePipelineExtensionSubscription(conn Queryable, namespace, pipeline, id, label string, fields UpdateablePipelineExtensionSubscriptionFields) error {
 	query := qb.Update("pipeline_extension_subscriptions")
 
 	if fields.Settings != nil {
@@ -94,7 +94,7 @@ func (db *DB) UpdatePipelineExtensionSubscription(conn Queryable, namespace, pip
 	}
 
 	_, err := query.Where(qb.Eq{
-		"namespace": namespace, "pipeline": pipeline, "name": name, "label": label,
+		"namespace": namespace, "pipeline": pipeline, "id": id, "label": label,
 	}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -107,9 +107,9 @@ func (db *DB) UpdatePipelineExtensionSubscription(conn Queryable, namespace, pip
 	return nil
 }
 
-func (db *DB) DeletePipelineExtensionSubscription(conn Queryable, namespace, pipeline, name, label string) error {
+func (db *DB) DeletePipelineExtensionSubscription(conn Queryable, namespace, pipeline, id, label string) error {
 	_, err := qb.Delete("pipeline_extension_subscriptions").
-		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "name": name, "label": label}).RunWith(conn).Exec()
+		Where(qb.Eq{"namespace": namespace, "pipeline": pipeline, "id": id, "label": label}).RunWith(conn).Exec()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

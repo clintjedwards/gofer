@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -15,7 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) CreatePipelineExtensionSubscription(ctx context.Context, request *proto.CreatePipelineExtensionSubscriptionRequest) (*proto.CreatePipelineExtensionSubscriptionResponse, error) {
+func (api *APIContext) CreatePipelineExtensionSubscription(ctx context.Context, request *proto.CreatePipelineExtensionSubscriptionRequest) (*proto.CreatePipelineExtensionSubscriptionResponse, error) {
 	if request.PipelineId == "" {
 		return &proto.CreatePipelineExtensionSubscriptionResponse{}, status.Error(codes.FailedPrecondition, "pipeline id required")
 	}
@@ -90,7 +92,7 @@ func (api *API) CreatePipelineExtensionSubscription(ctx context.Context, request
 	return &proto.CreatePipelineExtensionSubscriptionResponse{}, nil
 }
 
-func (api *API) ListPipelineExtensionSubscriptions(ctx context.Context, request *proto.ListPipelineExtensionSubscriptionsRequest) (
+func (api *APIContext) ListPipelineExtensionSubscriptions(ctx context.Context, request *proto.ListPipelineExtensionSubscriptionsRequest) (
 	*proto.ListPipelineExtensionSubscriptionsResponse, error,
 ) {
 	if request.PipelineId == "" {
@@ -124,7 +126,7 @@ func (api *API) ListPipelineExtensionSubscriptions(ctx context.Context, request 
 	}, nil
 }
 
-func (api *API) GetPipelineExtensionSubscription(ctx context.Context, request *proto.GetPipelineExtensionSubscriptionRequest) (
+func (api *APIContext) GetPipelineExtensionSubscription(ctx context.Context, request *proto.GetPipelineExtensionSubscriptionRequest) (
 	*proto.GetPipelineExtensionSubscriptionResponse, error,
 ) {
 	if request.PipelineId == "" {
@@ -159,7 +161,7 @@ func (api *API) GetPipelineExtensionSubscription(ctx context.Context, request *p
 	return &proto.GetPipelineExtensionSubscriptionResponse{Subscription: sub.ToProto()}, nil
 }
 
-func (api *API) EnablePipelineExtensionSubscription(ctx context.Context, request *proto.EnablePipelineExtensionSubscriptionRequest) (
+func (api *APIContext) EnablePipelineExtensionSubscription(ctx context.Context, request *proto.EnablePipelineExtensionSubscriptionRequest) (
 	*proto.EnablePipelineExtensionSubscriptionResponse, error,
 ) {
 	if request.PipelineId == "" {
@@ -198,7 +200,7 @@ func (api *API) EnablePipelineExtensionSubscription(ctx context.Context, request
 	return &proto.EnablePipelineExtensionSubscriptionResponse{}, nil
 }
 
-func (api *API) DisablePipelineExtensionSubscription(ctx context.Context, request *proto.DisablePipelineExtensionSubscriptionRequest) (
+func (api *APIContext) DisablePipelineExtensionSubscription(ctx context.Context, request *proto.DisablePipelineExtensionSubscriptionRequest) (
 	*proto.DisablePipelineExtensionSubscriptionResponse, error,
 ) {
 	if request.PipelineId == "" {
@@ -237,7 +239,7 @@ func (api *API) DisablePipelineExtensionSubscription(ctx context.Context, reques
 	return &proto.DisablePipelineExtensionSubscriptionResponse{}, nil
 }
 
-func (api *API) DeletePipelineExtensionSubscription(ctx context.Context, request *proto.DeletePipelineExtensionSubscriptionRequest) (
+func (api *APIContext) DeletePipelineExtensionSubscription(ctx context.Context, request *proto.DeletePipelineExtensionSubscriptionRequest) (
 	*proto.DeletePipelineExtensionSubscriptionResponse, error,
 ) {
 	if request.PipelineId == "" {

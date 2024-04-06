@@ -224,7 +224,7 @@ func (eb *EventBus) pruneEvents() {
 
 			if isPastCutDate(event.Event, eb.retention) {
 				log.Debug().Int64("event_id", event.ID).Dur("retention", eb.retention).
-					Int64("emitted", event.Emitted).
+					Uint64("emitted", event.Emitted).
 					Int64("current_time", time.Now().UnixMilli()).Msg("removed event past retention")
 				totalPruned++
 				err := eb.storage.DeleteEvent(eb.storage, event.ID)
@@ -250,5 +250,5 @@ func (eb *EventBus) pruneEvents() {
 func isPastCutDate(event events.Event, limit time.Duration) bool {
 	cut := time.Now().Add(-limit) // Even though this function says add, we're actually subtracting time.
 
-	return event.Emitted < cut.UnixMilli()
+	return event.Emitted < uint64(cut.UnixMilli())
 }

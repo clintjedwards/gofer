@@ -20,8 +20,8 @@ func TestCRUDPipelineExtensionSubscriptions(t *testing.T) {
 		ID:          "test_namespace",
 		Name:        "Test Namespace",
 		Description: "This is a test namespace",
-		Created:     0,
-		Modified:    0,
+		Created:     "0",
+		Modified:    "0",
 	}
 
 	err = db.InsertNamespace(db, &namespace)
@@ -32,8 +32,8 @@ func TestCRUDPipelineExtensionSubscriptions(t *testing.T) {
 	pipeline := PipelineMetadata{
 		Namespace: "test_namespace",
 		ID:        "test_pipeline",
-		Created:   0,
-		Modified:  0,
+		Created:   "0",
+		Modified:  "0",
 		State:     "ACTIVE",
 	}
 
@@ -46,8 +46,8 @@ func TestCRUDPipelineExtensionSubscriptions(t *testing.T) {
 		Namespace:  "test_namespace",
 		Pipeline:   "test_pipeline",
 		Version:    0,
-		Registered: 0,
-		Deprecated: 0,
+		Registered: "0",
+		Deprecated: "0",
 		State:      "ACTIVE",
 	}
 
@@ -59,7 +59,7 @@ func TestCRUDPipelineExtensionSubscriptions(t *testing.T) {
 	sub := PipelineExtensionSubscription{
 		Namespace:    "test_namespace",
 		Pipeline:     "test_pipeline",
-		Name:         "test name",
+		ID:           "test name",
 		Label:        "test_label",
 		Settings:     "settings string",
 		Status:       "ACTIVE",
@@ -84,7 +84,7 @@ func TestCRUDPipelineExtensionSubscriptions(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	fetchedTask, err := db.GetPipelineExtensionSubscription(db, namespace.ID, pipeline.ID, sub.Name, sub.Label)
+	fetchedTask, err := db.GetPipelineExtensionSubscription(db, namespace.ID, pipeline.ID, sub.ID, sub.Label)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,12 +93,12 @@ func TestCRUDPipelineExtensionSubscriptions(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	err = db.DeletePipelineExtensionSubscription(db, namespace.ID, pipeline.ID, sub.Name, sub.Label)
+	err = db.DeletePipelineExtensionSubscription(db, namespace.ID, pipeline.ID, sub.ID, sub.Label)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = db.GetPipelineExtensionSubscription(db, namespace.ID, pipeline.ID, sub.Name, sub.Label)
+	_, err = db.GetPipelineExtensionSubscription(db, namespace.ID, pipeline.ID, sub.ID, sub.Label)
 	if !errors.Is(err, ErrEntityNotFound) {
 		t.Fatal("expected error Not Found; found alternate error")
 	}

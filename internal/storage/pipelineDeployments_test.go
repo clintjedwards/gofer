@@ -20,8 +20,8 @@ func TestCRUDPipelineDeployments(t *testing.T) {
 		ID:          "test_namespace",
 		Name:        "Test Namespace",
 		Description: "This is a test namespace",
-		Created:     0,
-		Modified:    0,
+		Created:     "0",
+		Modified:    "0",
 	}
 
 	err = db.InsertNamespace(db, &namespace)
@@ -32,8 +32,8 @@ func TestCRUDPipelineDeployments(t *testing.T) {
 	pipeline := PipelineMetadata{
 		Namespace: "test_namespace",
 		ID:        "test_pipeline",
-		Created:   0,
-		Modified:  0,
+		Created:   "0",
+		Modified:  "0",
 		State:     "ACTIVE",
 	}
 
@@ -48,8 +48,8 @@ func TestCRUDPipelineDeployments(t *testing.T) {
 		ID:           0,
 		StartVersion: 0,
 		EndVersion:   1,
-		Started:      0,
-		Ended:        0,
+		Started:      "0",
+		Ended:        "0",
 		State:        "RUNNING",
 		Status:       "ACTIVE",
 		StatusReason: "REASON",
@@ -96,7 +96,7 @@ func TestCRUDPipelineDeployments(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	fetchedDeployment.Ended = 4
+	fetchedDeployment.Ended = "4"
 	fetchedDeployment.State = "DISABLED"
 	fetchedDeployment.Status = "UPDATED_STATUS"
 	fetchedDeployment.StatusReason = "UPDATED_STATUS_REASON"

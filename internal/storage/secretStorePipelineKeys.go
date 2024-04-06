@@ -13,7 +13,7 @@ type SecretStorePipelineKey struct {
 	Namespace string
 	Pipeline  string
 	Key       string
-	Created   int64
+	Created   string
 }
 
 func (db *DB) ListSecretStorePipelineKeys(conn Queryable, namespace, pipeline string) ([]SecretStorePipelineKey, error) {

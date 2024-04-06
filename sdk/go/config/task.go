@@ -1,9 +1,5 @@
 package config
 
-import (
-	proto "github.com/clintjedwards/gofer/proto/go"
-)
-
 // TaskWrapper type simply exists so that we can make structs with fields like "id"
 // and we can still add functions called "id()". This makes it not only easier to
 // reason about when working with the struct, but when just writing pipelines as an end user.
@@ -43,10 +39,10 @@ func NewTask(id, image string) *TaskWrapper {
 	}
 }
 
-func (t *TaskWrapper) Proto() *proto.UserPipelineTaskConfig {
-	dependsOn := map[string]proto.UserPipelineTaskConfig_RequiredParentStatus{}
+func (t *TaskWrapper) ToUserPipelineTaskConfig() *UserPipelineTaskConfig {
+	dependsOn := map[string]RequiredParentStatus{}
 	for key, value := range t.Task.DependsOn {
-		dependsOn[key] = proto.UserPipelineTaskConfig_RequiredParentStatus(proto.UserPipelineTaskConfig_RequiredParentStatus_value[string(value)])
+		dependsOn[key] = value
 	}
 
 	entrypoint := []string{}
@@ -59,58 +55,20 @@ func (t *TaskWrapper) Proto() *proto.UserPipelineTaskConfig {
 		command = *t.Task.Command
 	}
 
-	return &proto.UserPipelineTaskConfig{
-		Id:             t.Task.ID,
+	return &UserPipelineTaskConfig{
+		ID:             t.Task.ID,
 		Description:    t.Task.Description,
 		Image:          t.Task.Image,
-		RegistryAuth:   t.Task.RegistryAuth.Proto(),
-		DependsOn:      dependsOn,
+		RegistryAuth:   t.Task.RegistryAuth,
+		DependsOn:      t.Task.DependsOn,
 		Variables:      t.Task.Variables,
 		Entrypoint:     entrypoint,
 		Command:        command,
-		InjectApiToken: t.Task.InjectAPIToken,
+		InjectAPIToken: t.Task.InjectAPIToken,
 	}
-}
-
-func (t *TaskWrapper) FromTaskProto(proto *proto.UserPipelineTaskConfig) {
-	var registryAuth *RegistryAuth
-	if proto.RegistryAuth != nil {
-		ra := RegistryAuth{}
-		ra.FromProto(proto.RegistryAuth)
-		registryAuth = &ra
-	}
-
-	dependsOn := map[string]RequiredParentStatus{}
-	for id, status := range proto.DependsOn {
-		dependsOn[id] = RequiredParentStatus(status)
-	}
-
-	var entrypoint *[]string
-	if len(proto.Entrypoint) != 0 {
-		entrypoint = &proto.Entrypoint
-	}
-
-	var command *[]string
-	if len(proto.Command) != 0 {
-		command = &proto.Command
-	}
-
-	t.ID = proto.Id
-	t.Task.Description = proto.Description
-	t.Image = proto.Image
-	t.Task.RegistryAuth = registryAuth
-	t.Task.DependsOn = dependsOn
-	t.Task.Variables = proto.Variables
-	t.Task.Entrypoint = entrypoint
-	t.Task.Command = command
-	t.Task.InjectAPIToken = proto.InjectApiToken
 }
 
 func (t *TaskWrapper) validate() error {
-	err := validateVariables(t.Task.Variables)
-	if err != nil {
-		return err
-	}
 	return validateIdentifier("id", t.Task.ID)
 }
 

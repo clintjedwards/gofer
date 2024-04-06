@@ -2,10 +2,11 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/storage"
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,9 +36,8 @@ const (
 )
 
 type DeploymentStatusReason struct {
-	// The specific type of deployment failure. Good for documentation about what it might be.
-	Reason      DeploymentStatusReasonKind `json:"kind"`
-	Description string                     `json:"description"` // The description of why the run might have failed.
+	Reason      DeploymentStatusReasonKind `json:"reason" example:"ABNORMAL_EXIT" doc:"Specific reason type; useful for documentation"`
+	Description string                     `json:"description" example:"task exited without an error code of 0" doc:"A humanized description for what occurred"`
 }
 
 func (r *DeploymentStatusReason) ToJSON() string {
@@ -49,68 +49,34 @@ func (r *DeploymentStatusReason) ToJSON() string {
 	return string(reason)
 }
 
-func (r *DeploymentStatusReason) ToProto() *proto.DeploymentStatusReason {
-	return &proto.DeploymentStatusReason{
-		Reason:      proto.DeploymentStatusReason_DeploymentStatusReasonKind(proto.DeploymentStatusReason_DeploymentStatusReasonKind_value[string(r.Reason)]),
-		Description: r.Description,
-	}
-}
-
 // A deployment represents a transition between pipeline versions.
 type Deployment struct {
-	Namespace    string                  `json:"namespace"`     // Unique ID of namespace.
-	Pipeline     string                  `json:"pipeline"`      // The unique ID of the related pipeline.
-	ID           int64                   `json:"id"`            // Unique identifier for deployment
-	StartVersion int64                   `json:"start_version"` // What version of the pipeline is being deprecated.
-	EndVersion   int64                   `json:"end_version"`   // What version of the pipeline are we moving to.
-	Started      int64                   `json:"started"`       // Time of run start in epoch milli.
-	Ended        int64                   `json:"ended"`         // Time of run finish in epoch milli.
-	State        DeploymentState         `json:"state"`         // The current state of the run.
-	Status       DeploymentStatus        `json:"status"`        // The current status of the run.
-	StatusReason *DeploymentStatusReason `json:"status_reason"` // Contains more information about a run's current status.
-	Logs         []Event                 `json:"logs"`          // An ordered event stream of what happened during the deployment.
+	NamespaceID  string                  `json:"namespace_id" example:"default" doc:"Unique identifier of the target namespace"`
+	PipelineID   string                  `json:"pipeline_id" example:"simple_pipeline" doc:"Unique identifier for the target pipeline"`
+	DeploymentID int64                   `json:"deployment_id" example:"23" doc:"Unique identifier for the deployment"`
+	StartVersion int64                   `json:"start_version" example:"1" doc:"What version of the pipeline is being deprecated"`
+	EndVersion   int64                   `json:"end_version" example:"2" doc:"What version of the pipeline we are moving to"`
+	Started      uint64                  `json:"started" example:"1712433802634" doc:"Time of deployment start in epoch milliseconds"`
+	Ended        uint64                  `json:"ended" example:"1712433802634" doc:"Time of deployment end in epoch milliseconds"`
+	State        DeploymentState         `json:"state" example:"RUNNING" doc:"The current state of the deployment as it exists within Gofer's operating model"`
+	Status       DeploymentStatus        `json:"status" example:"SUCCESSFUL" doc:"The final status of the deployment"`
+	StatusReason *DeploymentStatusReason `json:"status_reason" doc:"Details about a deployment's specific status"`
+	Logs         []Event                 `json:"logs" doc:"The event logs from the deployment"`
 }
 
 func NewDeployment(namespace, pipeline string, id, startVersion, endVersion int64) *Deployment {
 	return &Deployment{
-		Namespace:    namespace,
-		Pipeline:     pipeline,
-		ID:           id,
+		NamespaceID:  namespace,
+		PipelineID:   pipeline,
+		DeploymentID: id,
 		StartVersion: startVersion,
 		EndVersion:   endVersion,
-		Started:      time.Now().UnixMilli(),
+		Started:      uint64(time.Now().UnixMilli()),
 		Ended:        0,
 		State:        DeploymentStateRunning,
 		Status:       DeploymentStatusUnknown,
 		StatusReason: nil,
 		Logs:         []Event{},
-	}
-}
-
-func (d *Deployment) ToProto() *proto.Deployment {
-	var statusReason *proto.DeploymentStatusReason
-	if d.StatusReason != nil {
-		statusReason = d.StatusReason.ToProto()
-	}
-
-	events := []*proto.Event{}
-	for _, event := range d.Logs {
-		evt, _ := event.ToProto()
-		events = append(events, evt)
-	}
-
-	return &proto.Deployment{
-		Namespace:    d.Namespace,
-		Pipeline:     d.Pipeline,
-		Id:           d.ID,
-		StartVersion: d.StartVersion,
-		EndVersion:   d.EndVersion,
-		Started:      d.Started,
-		Ended:        d.Ended,
-		State:        proto.Deployment_DeploymentState(proto.Deployment_DeploymentState_value[string(d.State)]),
-		Status:       proto.Deployment_DeploymentStatus(proto.Deployment_DeploymentStatus_value[string(d.Status)]),
-		StatusReason: statusReason,
-		Logs:         events,
 	}
 }
 
@@ -127,13 +93,13 @@ func (d *Deployment) ToStorage() *storage.PipelineDeployment {
 	}
 
 	return &storage.PipelineDeployment{
-		Namespace:    d.Namespace,
-		Pipeline:     d.Pipeline,
-		ID:           d.ID,
+		Namespace:    d.NamespaceID,
+		Pipeline:     d.PipelineID,
+		ID:           d.DeploymentID,
 		StartVersion: d.StartVersion,
 		EndVersion:   d.EndVersion,
-		Started:      d.Started,
-		Ended:        d.Ended,
+		Started:      fmt.Sprint(d.Started),
+		Ended:        fmt.Sprint(d.Ended),
 		State:        string(d.State),
 		Status:       string(d.Status),
 		StatusReason: d.StatusReason.ToJSON(),
@@ -154,13 +120,23 @@ func (d *Deployment) FromStorage(storage *storage.PipelineDeployment) {
 		log.Fatal().Err(err).Msg("could not marshal ToStorage for deployment")
 	}
 
-	d.Namespace = storage.Namespace
-	d.Pipeline = storage.Pipeline
-	d.ID = storage.ID
+	started, err := strconv.ParseUint(storage.Started, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	ended, err := strconv.ParseUint(storage.Ended, 10, 64)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error in translating from storage")
+	}
+
+	d.NamespaceID = storage.Namespace
+	d.PipelineID = storage.Pipeline
+	d.DeploymentID = storage.ID
 	d.StartVersion = storage.StartVersion
 	d.EndVersion = storage.EndVersion
-	d.Started = storage.Started
-	d.Ended = storage.Ended
+	d.Started = started
+	d.Ended = ended
 	d.State = DeploymentState(storage.State)
 	d.Status = DeploymentStatus(storage.Status)
 	d.StatusReason = &statusReason

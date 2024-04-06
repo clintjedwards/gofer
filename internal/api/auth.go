@@ -5,16 +5,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/clintjedwards/gofer/internal/models"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // We create custom types because context is a mess: https://www.calhoun.io/pitfalls-of-context-values-and-how-to-avoid-or-mitigate-them/
@@ -28,9 +26,10 @@ var (
 	contextUserKind       = goferContextKey("kind")
 )
 
-var authlessMethods = []string{
-	"/proto.Gofer/BootstrapToken",
-	"/proto.Gofer/GetSystemInfo",
+var authlessEndpoints = []string{
+	"/api/system/summary",
+	"/api/system/info",
+	"/api/tokens/bootstrap",
 }
 
 func generateToken(length int) string {
@@ -40,7 +39,7 @@ func generateToken(length int) string {
 }
 
 // createNewAPIToken creates returns the new token and its hash.
-func (api *API) createNewAPIToken() (token string, hash string) {
+func (apictx *APIContext) createNewAPIToken() (token string, hash string) {
 	token = generateToken(32)
 
 	hasher := sha256.New()
@@ -50,9 +49,9 @@ func (api *API) createNewAPIToken() (token string, hash string) {
 	return
 }
 
-func (api *API) getAPIToken(token string) (*models.Token, error) {
+func (apictx *APIContext) getAPIToken(token string) (*models.Token, error) {
 	hash := getHash(token)
-	tokenDetailsRaw, err := api.db.GetTokenByHash(api.db, hash)
+	tokenDetailsRaw, err := apictx.db.GetTokenByHash(apictx.db, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -69,48 +68,67 @@ func getHash(token string) string {
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
-// authenticate is run on every call to verify if the user is allowed to access a given RPC
-func (api *API) authenticate(ctx context.Context) (context.Context, error) {
-	method, _ := grpc.Method(ctx)
+func authMiddleware(apictx *APIContext, api huma.API) func(ctx huma.Context, next func(huma.Context)) {
+	return func(ctx huma.Context, next func(huma.Context)) {
+		currentEndpoint := ctx.Operation().Path
 
-	// Exclude routes that don't need authentication
-	for _, route := range authlessMethods {
-		if method == route {
-			return ctx, nil
+		// Exclude routes that don't need authentication
+		for _, endpoint := range authlessEndpoints {
+			if currentEndpoint == endpoint {
+				next(ctx)
+				return
+			}
 		}
+
+		// If server is in DevMode give context fake admin values
+		if apictx.config.Development.BypassAuth {
+			ctx = huma.WithValue(ctx, contextUserNamespaces, []string{})
+			ctx = huma.WithValue(ctx, contextUserKind, string(models.TokenTypeManagement))
+
+			next(ctx)
+			return
+		}
+
+		token := strings.TrimPrefix(ctx.Header("Authorization"), "Bearer ")
+		if len(token) == 0 {
+			err := huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized; Token missing")
+			if err != nil {
+				log.Error().Err(err).Msg("Could not properly write error")
+			}
+			return
+		}
+
+		storedToken, err := apictx.getAPIToken(token)
+		if err != nil {
+			err = huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized")
+			if err != nil {
+				log.Error().Err(err).Msg("Could not properly write error")
+			}
+			return
+		}
+
+		now := time.Now().UnixMilli()
+		if uint64(now) >= storedToken.Expires {
+			err = huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized; Token expired")
+			if err != nil {
+				log.Error().Err(err).Msg("Could not properly write error")
+			}
+			return
+		}
+
+		if storedToken.Disabled {
+			err = huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized; Token disabled")
+			if err != nil {
+				log.Error().Err(err).Msg("Could not properly write error")
+			}
+			return
+		}
+
+		ctx = huma.WithValue(ctx, contextUserNamespaces, storedToken.Namespaces)
+		ctx = huma.WithValue(ctx, contextUserKind, string(storedToken.TokenType))
+
+		next(ctx)
 	}
-
-	// If server is in DevMode give context fake admin values
-	if api.config.Development.BypassAuth {
-		ctxNamespaces := context.WithValue(ctx, contextUserNamespaces, []string{})
-		ctxKind := context.WithValue(ctxNamespaces, contextUserKind, string(models.TokenKindManagement))
-
-		return ctxKind, nil
-	}
-
-	token, err := grpc_auth.AuthFromMD(ctx, "Bearer")
-	if err != nil {
-		return ctx, status.Error(codes.PermissionDenied, "malformed token fmt; should be in form: 'Bearer <token>'")
-	}
-
-	storedToken, err := api.getAPIToken(token)
-	if err != nil {
-		return ctx, status.Error(codes.PermissionDenied, "access denied")
-	}
-
-	now := time.Now().UnixMilli()
-	if now >= storedToken.Expires {
-		return ctx, status.Error(codes.PermissionDenied, "access denied; token expired")
-	}
-
-	if storedToken.Disabled {
-		return ctx, status.Error(codes.PermissionDenied, "access denied; token disabled")
-	}
-
-	ctxNamespaces := context.WithValue(ctx, contextUserNamespaces, storedToken.Namespaces)
-	ctxKind := context.WithValue(ctxNamespaces, contextUserKind, string(storedToken.Kind))
-
-	return ctxKind, nil
 }
 
 // hasAccess is a convenience function for common routes that checks first for management key and then
@@ -123,6 +141,8 @@ func hasAccess(ctx context.Context, namespace string) bool {
 	return hasNamespaceAccess(ctx, namespace)
 }
 
+// Attempts to match on the namespaces that the user's token has access to if they have access to the provided
+// namespace.
 func hasNamespaceAccess(ctx context.Context, namespace string) bool {
 	namespaces, present := ctx.Value(contextUserNamespaces).([]string)
 	if !present {
@@ -167,5 +187,5 @@ func isManagementUser(ctx context.Context) bool {
 		return false
 	}
 
-	return strings.EqualFold(kind, string(models.TokenKindManagement))
+	return strings.EqualFold(kind, string(models.TokenTypeManagement))
 }

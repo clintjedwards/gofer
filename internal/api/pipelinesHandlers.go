@@ -1,3 +1,5 @@
+//go:build ignore
+
 package api
 
 import (
@@ -17,7 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (api *API) GetPipeline(ctx context.Context, request *proto.GetPipelineRequest) (*proto.GetPipelineResponse, error) {
+func (api *APIContext) GetPipeline(ctx context.Context, request *proto.GetPipelineRequest) (*proto.GetPipelineResponse, error) {
 	if request.Id == "" {
 		return &proto.GetPipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -47,7 +49,7 @@ func (api *API) GetPipeline(ctx context.Context, request *proto.GetPipelineReque
 	return &proto.GetPipelineResponse{Pipeline: response}, nil
 }
 
-func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipelineRequest) (*proto.DisablePipelineResponse, error) {
+func (api *APIContext) DisablePipeline(ctx context.Context, request *proto.DisablePipelineRequest) (*proto.DisablePipelineResponse, error) {
 	if request.Id == "" {
 		return &proto.DisablePipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -88,7 +90,7 @@ func (api *API) DisablePipeline(ctx context.Context, request *proto.DisablePipel
 	return &proto.DisablePipelineResponse{}, nil
 }
 
-func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelineRequest) (*proto.EnablePipelineResponse, error) {
+func (api *APIContext) EnablePipeline(ctx context.Context, request *proto.EnablePipelineRequest) (*proto.EnablePipelineResponse, error) {
 	if request.Id == "" {
 		return &proto.EnablePipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}
@@ -142,7 +144,7 @@ func (api *API) EnablePipeline(ctx context.Context, request *proto.EnablePipelin
 	return &proto.EnablePipelineResponse{}, nil
 }
 
-func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesRequest) (*proto.ListPipelinesResponse, error) {
+func (api *APIContext) ListPipelines(ctx context.Context, request *proto.ListPipelinesRequest) (*proto.ListPipelinesResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return &proto.ListPipelinesResponse{},
@@ -169,7 +171,7 @@ func (api *API) ListPipelines(ctx context.Context, request *proto.ListPipelinesR
 	}, nil
 }
 
-func (api *API) DeployPipeline(ctx context.Context, request *proto.DeployPipelineRequest) (*proto.DeployPipelineResponse, error) {
+func (api *APIContext) DeployPipeline(ctx context.Context, request *proto.DeployPipelineRequest) (*proto.DeployPipelineResponse, error) {
 	namespace, err := api.resolveNamespace(ctx, request.NamespaceId)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "error retrieving namespace %q; %v", request.NamespaceId, err.Error())
@@ -351,7 +353,7 @@ func (api *API) DeployPipeline(ctx context.Context, request *proto.DeployPipelin
 	}, nil
 }
 
-func (api *API) DeletePipeline(ctx context.Context, request *proto.DeletePipelineRequest) (*proto.DeletePipelineResponse, error) {
+func (api *APIContext) DeletePipeline(ctx context.Context, request *proto.DeletePipelineRequest) (*proto.DeletePipelineResponse, error) {
 	if request.Id == "" {
 		return &proto.DeletePipelineResponse{}, status.Error(codes.FailedPrecondition, "id required")
 	}

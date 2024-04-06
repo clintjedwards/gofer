@@ -10,21 +10,21 @@ import (
 )
 
 type PipelineDeployment struct {
-	Namespace    string
-	Pipeline     string
-	ID           int64
-	StartVersion int64 `db:"start_version"`
-	EndVersion   int64 `db:"end_version"`
-	Started      int64
-	Ended        int64
-	State        string
-	Status       string
+	Namespace    string `db:"namespace"`
+	Pipeline     string `db:"pipeline"`
+	ID           int64  `db:"id"`
+	StartVersion int64  `db:"start_version"`
+	EndVersion   int64  `db:"end_version"`
+	Started      string `db:"started"`
+	Ended        string `db:"ended"`
+	State        string `db:"state"`
+	Status       string `db:"status"`
 	StatusReason string `db:"status_reason"`
-	Logs         string
+	Logs         string `db:"logs"`
 }
 
 type UpdatablePipelineDeploymentFields struct {
-	Ended        *int64
+	Ended        *string
 	State        *string
 	Status       *string
 	StatusReason *string

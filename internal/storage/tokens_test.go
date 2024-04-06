@@ -17,25 +17,20 @@ func TestCRUDTokens(t *testing.T) {
 	defer os.Remove(path)
 
 	token := Token{
+		ID:         "test_id",
 		Hash:       "HASH_STR",
-		Created:    0,
+		Created:    "0",
 		Kind:       "KIND_STR",
 		Namespaces: "NAMESPACE_STR",
 		Metadata:   "METADATA_STR",
-		Expires:    0,
-		Disabled:   true,
+		Expires:    "0",
+		Disabled:   false,
 	}
 
-	id, err := db.InsertToken(db, &token)
+	err = db.InsertToken(db, &token)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if id != 1 {
-		t.Fatalf("id is incorrect integer")
-	}
-
-	token.ID = id
 
 	tokens, err := db.ListTokens(db, 0, 0)
 	if err != nil {
@@ -59,8 +54,6 @@ func TestCRUDTokens(t *testing.T) {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
 
-	token.Disabled = false
-
 	err = db.EnableToken(db, token.Hash)
 	if err != nil {
 		t.Fatal(err)
@@ -74,8 +67,6 @@ func TestCRUDTokens(t *testing.T) {
 	if diff := cmp.Diff(token, fetchedToken); diff != "" {
 		t.Errorf("unexpected map values (-want +got):\n%s", diff)
 	}
-
-	token.Disabled = true
 
 	err = db.DisableToken(db, token.Hash)
 	if err != nil {

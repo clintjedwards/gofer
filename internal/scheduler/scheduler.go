@@ -23,7 +23,7 @@ type ContainerState string
 const (
 	ContainerStateUnknown ContainerState = "UNKNOWN" // The state of the run is unknown.
 	// Before the tasks in a run is sent to a scheduler it must complete various steps like
-	// validation checking. This state represents that step where the run and task_runs are
+	// validation checking. This state represents that step where the run and task executions are
 	// pre-checked.
 	ContainerStateRunning    ContainerState = "RUNNING" // Currently running.
 	ContainerStatePaused     ContainerState = "PAUSED"  // Container is paused.

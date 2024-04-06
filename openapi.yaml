@@ -1,0 +1,1276 @@
+components:
+  schemas:
+    CancelTaskExecutionRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/CancelTaskExecutionRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        force:
+          default: false
+          description: Causes Gofer to hard kill this task execution's container. Usually this means the container receives a SIGKILL
+          examples:
+            - true
+          type: boolean
+      required:
+        - force
+      type: object
+    CreateBootstrapTokenResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/CreateBootstrapTokenResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        secret:
+          description: The secret value for the created token
+          examples:
+            - secret_value
+          type: string
+        token:
+          $ref: "#/components/schemas/Token"
+          description: Details about the created token
+      required:
+        - token
+        - secret
+      type: object
+    CreateTokenRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/CreateTokenRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        expires:
+          description: "The amount of time the token is valid for. Uses golang time duration strings: https://pkg.go.dev/time#ParseDuration"
+          examples:
+            - 1h
+          type: string
+        metadata:
+          additionalProperties:
+            type: string
+          description: Various other bits of data you can attach to tokens
+          examples:
+            - created_by: me
+          type: object
+        namespaces:
+          description: The namespaces this token applies to; will be unauthorized at all other namespaces. This field can contain simple regexs
+          examples:
+            - - default
+              - other_group
+          items:
+            type: string
+          type: array
+        token_type:
+          description: The type of token to be created. Can be "management" or "client"
+          examples:
+            - CLIENT
+          type: string
+      required:
+        - token_type
+        - namespaces
+        - metadata
+        - expires
+      type: object
+    CreateTokenResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/CreateTokenResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        secret:
+          description: The secret value for the created token
+          examples:
+            - secret_value
+          type: string
+        token:
+          $ref: "#/components/schemas/Token"
+          description: Details about the created token
+      required:
+        - token
+        - secret
+      type: object
+    DeleteTokenRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DeleteTokenRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        token_id:
+          description: The unique identifier for the token you want to target
+          examples:
+            - a4e7L2
+          type: string
+      required:
+        - token_id
+      type: object
+    DescribeSystemInfoResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DescribeSystemInfoResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        commit:
+          description: The commit of the current build
+          examples:
+            - e83adcd
+          type: string
+        semver:
+          description: The semver version of the current build
+          examples:
+            - 1.0.0
+          type: string
+      required:
+        - commit
+        - semver
+      type: object
+    DescribeSystemSummaryResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DescribeSystemSummaryResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        namespaces:
+          description: List of all namespaces
+          examples:
+            - - default
+              - infra
+              - backend
+              - frontend
+          items:
+            type: string
+          type: array
+        pipeline_count:
+          description: The number of pipelines registered
+          examples:
+            - 4
+          format: int64
+          type: integer
+        run_count:
+          description: The number of runs completed
+          examples:
+            - 3
+          format: int64
+          type: integer
+        task_execution_count:
+          description: The number of task executions completed
+          examples:
+            - 7
+          format: int64
+          type: integer
+      required:
+        - namespaces
+        - pipeline_count
+        - run_count
+        - task_execution_count
+      type: object
+    DescribeTaskExecutionResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DescribeTaskExecutionResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        task_execution:
+          $ref: "#/components/schemas/TaskExecution"
+          description: Metadata for the task execution requested
+      required:
+        - task_execution
+      type: object
+    DescribeTokenByHashRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DescribeTokenByHashRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        token_hash:
+          description: The hash of the token you want to look up.
+          examples:
+            - some_token_hash
+          type: string
+      required:
+        - token_hash
+      type: object
+    DescribeTokenByHashResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DescribeTokenByHashResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        token_metadata:
+          $ref: "#/components/schemas/Token"
+          description: Details about the token.
+      required:
+        - token_metadata
+      type: object
+    DescribeTokenByIDRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DescribeTokenByIDRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        token_id:
+          description: The id of the token you want to look up.
+          examples:
+            - token_id
+          type: string
+      required:
+        - token_id
+      type: object
+    DescribeTokenByIDResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DescribeTokenByIDResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        token_metadata:
+          $ref: "#/components/schemas/Token"
+          description: Details about the token.
+      required:
+        - token_metadata
+      type: object
+    DisableTokenRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/DisableTokenRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        token_id:
+          description: The unique identifier for the token you want to target
+          examples:
+            - a4e7L2
+          type: string
+      required:
+        - token_id
+      type: object
+    EnableTokenRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/EnableTokenRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        token_id:
+          description: The unique identifier for the token you want to target
+          examples:
+            - a4e7L2
+          type: string
+      required:
+        - token_id
+      type: object
+    ErrorDetail:
+      additionalProperties: false
+      properties:
+        location:
+          description: Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
+          type: string
+        message:
+          description: Error message text
+          type: string
+        value:
+          description: The value at the given location
+      type: object
+    ErrorModel:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/ErrorModel.json
+          format: uri
+          readOnly: true
+          type: string
+        detail:
+          description: A human-readable explanation specific to this occurrence of the problem.
+          examples:
+            - Property foo is required but is missing.
+          type: string
+        errors:
+          description: Optional list of individual error details
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          type: array
+        instance:
+          description: A URI reference that identifies the specific occurrence of the problem.
+          examples:
+            - https://example.com/error-log/abc123
+          format: uri
+          type: string
+        status:
+          description: HTTP status code
+          examples:
+            - 400
+          format: int64
+          type: integer
+        title:
+          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+          examples:
+            - Bad Request
+          type: string
+        type:
+          default: about:blank
+          description: A URI reference to human-readable documentation for the error.
+          examples:
+            - https://example.com/errors/example
+          format: uri
+          type: string
+      type: object
+    ListTaskExecutionsResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/ListTaskExecutionsResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        task_executions:
+          description: List of metadata for the task executions requested
+          items:
+            $ref: "#/components/schemas/TaskExecution"
+          type: array
+      required:
+        - task_executions
+      type: object
+    ListTokensResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/ListTokensResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        tokens:
+          description: A list of tokens within this namespace
+          items:
+            $ref: "#/components/schemas/Token"
+          type: array
+      required:
+        - tokens
+      type: object
+    RegistryAuth:
+      additionalProperties: false
+      properties:
+        pass:
+          type: string
+        user:
+          type: string
+      required:
+        - user
+        - pass
+      type: object
+    RepairOrphanRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/RepairOrphanRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        namespace_id:
+          default: default
+          description: Unique identifier of the target namespace
+          examples:
+            - default
+          type: string
+        pipeline_id:
+          description: Unique identifier for the target pipeline
+          examples:
+            - simple_pipeline
+          type: string
+        run_id:
+          description: Unique identifier for the target run
+          examples:
+            - 1
+          format: int64
+          type: integer
+      required:
+        - pipeline_id
+        - run_id
+      type: object
+    Task:
+      additionalProperties: false
+      properties:
+        command:
+          description: Command to run on init of container; cannot be overridden
+          examples:
+            - - printenv
+          items:
+            type: string
+          type: array
+        depends_on:
+          additionalProperties:
+            type: string
+          examples:
+            - task_one: SUCCESS
+          type: object
+        description:
+          description: A user provided description for what this task does
+          examples:
+            - example description
+          type: string
+        entrypoint:
+          description: Command to run on init of container; can be overridden
+          examples:
+            - - printenv
+          items:
+            type: string
+          type: array
+        id:
+          description: Unique identifier for the task
+          examples:
+            - my_task_name
+          type: string
+        image:
+          description: Which container image to run for this specific task
+          examples:
+            - ubuntu:latest
+          type: string
+        inject_api_token:
+          description: Whether to inject a run specific Gofer API Key. Useful for using Gofer API within the container
+          examples:
+            - true
+          type: boolean
+        registry_auth:
+          $ref: "#/components/schemas/RegistryAuth"
+          description: Auth credentials for the image's registry
+        variables:
+          description: Variables which will be passed in as env vars to the task
+          items:
+            $ref: "#/components/schemas/Variable"
+          type: array
+      required:
+        - id
+        - description
+        - image
+        - registry_auth
+        - depends_on
+        - variables
+        - inject_api_token
+      type: object
+    TaskExecution:
+      additionalProperties: false
+      properties:
+        created:
+          description: Time of task execution creation in epoch milliseconds
+          examples:
+            - 1712433802634
+          format: int64
+          type: integer
+        ended:
+          description: Time of task execution completion in epoch milliseconds
+          examples:
+            - 1712433802640
+          format: int64
+          type: integer
+        exit_code:
+          description: The exit code of the task execution if it is finished
+          examples:
+            - 0
+          format: int64
+          type: integer
+        logs_expired:
+          description: Whether the logs have past their retention time
+          examples:
+            - true
+          type: boolean
+        logs_removed:
+          description: If the logs for this execution have been removed. This can be due to user request or automatic action based on expiry time
+          examples:
+            - true
+          type: boolean
+        namespace_id:
+          description: Unique identifier of the target namespace
+          examples:
+            - default
+          type: string
+        pipeline_id:
+          description: Unique identifier for the target pipeline
+          examples:
+            - simple_pipeline
+          type: string
+        run_id:
+          description: Unique identifier for the target run
+          examples:
+            - 1
+          format: int64
+          type: integer
+        started:
+          description: Time of task execution start in epoch milliseconds
+          examples:
+            - 1712433802640
+          format: int64
+          type: integer
+        state:
+          description: What current state of execution is the task execution within. This is a meta status on the progress of the task execution itself.
+          examples:
+            - PROCESSING
+          type: string
+        status:
+          description: What is the final end state of the task execution
+          examples:
+            - SUCCESSFUL
+          type: string
+        status_reason:
+          $ref: "#/components/schemas/TaskExecutionStatusReason"
+          description: More information about the current status
+        task:
+          $ref: "#/components/schemas/Task"
+          description: Information about the underlying task this task execution ran
+        task_execution_id:
+          description: Unique identifier for the target task execution
+          examples:
+            - "30"
+          type: string
+        variables:
+          description: The environment variables injected during this particular task run
+          items:
+            $ref: "#/components/schemas/Variable"
+          type: array
+        version:
+          description: Which version of the pipeline did this task execution occur in
+          examples:
+            - 42
+          format: int64
+          type: integer
+      required:
+        - namespace_id
+        - pipeline_id
+        - version
+        - run_id
+        - task_execution_id
+        - created
+        - started
+        - ended
+        - logs_expired
+        - logs_removed
+        - state
+        - status
+        - variables
+        - task
+      type: object
+    TaskExecutionStatusReason:
+      additionalProperties: false
+      properties:
+        description:
+          description: A humanized description for what occurred
+          examples:
+            - task exited without an error code of 0
+          type: string
+        reason:
+          description: Specific reason type; useful for documentation
+          examples:
+            - ABNORMAL_EXIT
+          type: string
+      required:
+        - reason
+        - description
+      type: object
+    ToggleEventIngressResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - localhost:8080/schemas/ToggleEventIngressResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        value:
+          description: The current value for the boolean that controls event ingress
+          examples:
+            - true
+          type: boolean
+      required:
+        - value
+      type: object
+    Token:
+      additionalProperties: false
+      properties:
+        created:
+          description: Time in epoch milliseconds since token was created.
+          examples:
+            - 1712433802634
+          format: int64
+          type: integer
+        disabled:
+          description: If the token is inactive or not; disabled tokens cannot be used.
+          examples:
+            - false
+          type: boolean
+        expires:
+          description: Time in epoch milliseconds when the token would expire.
+          examples:
+            - 1712433802634
+          format: int64
+          type: integer
+        id:
+          description: The unique identifier for the token
+          examples:
+            - de3foi
+          type: string
+        metadata:
+          additionalProperties:
+            type: string
+          description: Extra information about this token in label form.
+          examples:
+            - created_by: me
+          type: object
+        namespaces:
+          description: List of namespaces this token has access to, strings in this list can be a regex.
+          examples:
+            - - default
+          items:
+            type: string
+          type: array
+        token_type:
+          description: The type of the token. Management tokens are essentially root.
+          examples:
+            - MANAGEMENT
+          type: string
+      required:
+        - id
+        - created
+        - token_type
+        - namespaces
+        - metadata
+        - expires
+        - disabled
+      type: object
+    Variable:
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+        source:
+          type: string
+        value:
+          type: string
+      required:
+        - key
+        - value
+        - source
+      type: object
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      type: http
+info:
+  description: |-
+    Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. Once set up, Gofer takes care of scheduling and running your automation tasks—be it on Nomad, Kubernetes, or even Local Docker.
+    Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
+  title: Gofer
+  version: 0.0.0
+openapi: 3.1.0
+paths:
+  /api/pipelines/{pipeline_id}/runs/{run_id}/tasks:
+    get:
+      description: List all task executions for a specific run
+      operationId: ListTaskExecutions
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+        - example: example_namespace
+          explode: false
+          in: query
+          name: namespace
+          schema:
+            default: default
+            description: Unique identifier of the target namespace
+            examples:
+              - example_namespace
+            type: string
+        - example: simple_pipeline
+          in: path
+          name: pipeline_id
+          required: true
+          schema:
+            description: Unique identifier for the target pipeline
+            examples:
+              - simple_pipeline
+            type: string
+        - example: 1
+          in: path
+          name: run_id
+          required: true
+          schema:
+            description: Unique identifier for the target run
+            examples:
+              - 1
+            format: int64
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListTaskExecutionsResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: List all task executions
+      tags:
+        - Tasks
+  /api/pipelines/{pipeline_id}/runs/{run_id}/tasks/{task_execution_id}:
+    get:
+      description: Task executions are just summaries of what happened on any particular run at the task level. This endpoint allows users to retrieve task execution information about a targeted execution along with details on the task itself
+      operationId: DescribeTaskExecution
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+        - example: example_namespace
+          explode: false
+          in: query
+          name: namespace
+          schema:
+            default: default
+            description: Unique identifier of the target namespace
+            examples:
+              - example_namespace
+            type: string
+        - example: simple_pipeline
+          in: path
+          name: pipeline_id
+          required: true
+          schema:
+            description: Unique identifier for the target pipeline
+            examples:
+              - simple_pipeline
+            type: string
+        - example: 1
+          in: path
+          name: run_id
+          required: true
+          schema:
+            description: Unique identifier for the target run
+            examples:
+              - 1
+            format: int64
+            type: integer
+        - example: "3"
+          in: path
+          name: task_execution_id
+          required: true
+          schema:
+            description: Unique identifier for the target task execution
+            examples:
+              - "3"
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DescribeTaskExecutionResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Retrieve information on a specific task execution
+      tags:
+        - Tasks
+  /api/pipelines/{pipeline_id}/runs/{run_id}/tasks/{task_execution_id}/cancel:
+    post:
+      description: |-
+        Cancels a specific task execution, sending the related container a SIGINT signal. If the force flag is used we instead send the container a SIGKILL signal.
+        Task executions that are cancelled can cause other downstream task executions to be skipped depending on those downstream task execution dependencies.
+      operationId: CancelTaskExecution
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+        - example: example_namespace
+          explode: false
+          in: query
+          name: namespace
+          schema:
+            default: default
+            description: Unique identifier of the target namespace
+            examples:
+              - example_namespace
+            type: string
+        - example: simple_pipeline
+          in: path
+          name: pipeline_id
+          required: true
+          schema:
+            description: Unique identifier for the target pipeline
+            examples:
+              - simple_pipeline
+            type: string
+        - example: 1
+          in: path
+          name: run_id
+          required: true
+          schema:
+            description: Unique identifier for the target run
+            examples:
+              - 1
+            format: int64
+            type: integer
+        - example: "3"
+          in: path
+          name: task_execution_id
+          required: true
+          schema:
+            description: Unique identifier for the target task execution
+            examples:
+              - "3"
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelTaskExecutionRequestBody"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Cancel a specific task execution
+      tags:
+        - Tasks
+  /api/system/info:
+    get:
+      description: Return a number of internal meta information about the Gofer server.
+      operationId: DescribeSystemInfo
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DescribeSystemInfoResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Describe current system information
+      tags:
+        - System
+  /api/system/repair-orphan:
+    post:
+      description: RepairOrphan is used when a single run has gotten into a state that does not reflect what actually happened to the run. This can happen if the Gofer service crashes for unforeseen reasons. Usually this route is not needed as Gofer will attempt  to resolve all orphaned runs upon startup. But in the rare case that a run gets into a bad state during the service's normal execution this route can be used to attempt to repair the orphaned run or at the very least mark it as failed so it isn't stuck in a unfinished state.
+      operationId: RepairOrphan
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepairOrphanRequestBody"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Manually attempt to repair an incomplete run
+      tags:
+        - System
+  /api/system/summary:
+    get:
+      description: A general endpoint to retrieve various metrics about the Gofer service.
+      operationId: DescribeSystemSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DescribeSystemSummaryResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Describe various aspects about Gofer's current workloads
+      tags:
+        - System
+  /api/system/toggle-event-ingress:
+    post:
+      description: Allows the admin to start or stop the execution of all pipelines within Gofer. This can be useful under some security implications or for the purposes of defining general downtime and service maintenance.
+      operationId: ToggleEventIngress
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToggleEventIngressResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Toggle the ability for users to trigger pIpelines
+      tags:
+        - System
+  /api/tokens:
+    get:
+      description: "This endpoint lists all API tokens that are available within a specified namespace. "
+      operationId: ListTokens
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+        - example: my_namespace
+          explode: false
+          in: query
+          name: namespace
+          schema:
+            default: default
+            description: The unique identifier for the namespace to list the tokens for.
+            examples:
+              - my_namespace
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListTokensResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: List available API tokens
+      tags:
+        - Tokens
+    post:
+      description: This endpoint is responsible for generating new API tokens. Tokens are essential for interacting with Gofer's APIs, providing the necessary authentication for various operations. Management tokens can use all admin routes and have no restrictions. Client tokens can only operate within their namespace and cannot access admin routes.
+      operationId: CreateToken
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTokenRequestBody"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateTokenResponseBody"
+          description: Created
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Create new API token
+      tags:
+        - Tokens
+  /api/tokens/bootstrap:
+    post:
+      description: This endpoint is meant to be called on the first run of the Gofer application. It provides the original management token (also referred to as the root or init token) that can create all future tokens. This route can only be used once.
+      operationId: CreateBootstrapToken
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateBootstrapTokenResponseBody"
+          description: Created
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Create original management token
+      tags:
+        - Tokens
+  /api/tokens/by-hash:
+    get:
+      description: "This endpoint fetches the details of a specific API token using its secret. "
+      operationId: DescribeTokenByHash
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DescribeTokenByHashRequestBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DescribeTokenByHashResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Retrieve a specific API token's details
+      tags:
+        - Tokens
+  /api/tokens/by-id:
+    get:
+      description: "This endpoint fetches the details of a specific API token using its unique ID. "
+      operationId: DescribeTokenByID
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DescribeTokenByIDRequestBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DescribeTokenByIDResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Describe a specific API token's details by it's ID
+      tags:
+        - Tokens
+  /api/tokens/delete:
+    delete:
+      description: Remove a stored token
+      operationId: DeleteToken
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteTokenRequestBody"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Delete a specific token
+      tags:
+        - Tokens
+  /api/tokens/disable:
+    post:
+      description: Tokens can be in two separate states either 'Enabled' or 'Disabled'. Disabled tokens cannot be used within the Gofer API. This endpoint allows admins to take enabled tokens and make them disabled.
+      operationId: DisableToken
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisableTokenRequestBody"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Set enabled token to disabled
+      tags:
+        - Tokens
+  /api/tokens/enable:
+    post:
+      description: Tokens can be in two separate states either 'Enabled' or 'Disabled'. Disabled tokens cannot be used within the Gofer API. This endpoint allows admins to take disabled tokens and make them enabled again.
+      operationId: EnableToken
+      parameters:
+        - example: Bearer <your_api_token>
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            examples:
+              - Bearer <your_api_token>
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnableTokenRequestBody"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Set disabled token to enabled
+      tags:
+        - Tokens
+servers:
+  - url: localhost:8080

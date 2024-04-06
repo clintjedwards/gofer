@@ -12,13 +12,13 @@ import (
 type PipelineMetadata struct {
 	Namespace string
 	ID        string
-	Created   int64
-	Modified  int64
+	Created   string
+	Modified  string
 	State     string
 }
 
 type UpdatablePipelineMetadataFields struct {
-	Modified *int64
+	Modified *string
 	State    *string
 }
 

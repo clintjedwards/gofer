@@ -1,16 +1,12 @@
 package config
 
 import (
-	"bytes"
-	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"testing"
 
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
 	"github.com/google/go-cmp/cmp"
-	pb "google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func ExampleNewPipeline_simple() {
@@ -66,8 +62,8 @@ func TestInvalidPipelineCyclical(t *testing.T) {
 	}
 }
 
-// Tests that a pipeline can be fully serialized into proto and back and retain correct structure.
-// Mostly a test on the many ToProto calls in the library.
+// Tests that a pipeline can be fully serialized into json and back and retain correct structure.
+// Mostly a test on the many json conversion calls in the library.
 func TestSimpleConfigSerialization(t *testing.T) {
 	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
 		Description("Simple Test Pipeline").
@@ -77,41 +73,35 @@ func TestSimpleConfigSerialization(t *testing.T) {
 				Command("echo", `Hello from Gofer!`),
 		)
 
-	pipelineProto := pipeline.Proto()
-
-	output, err := pb.Marshal(pipelineProto)
+	pipelineJSON, err := json.Marshal(pipeline)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	buf := bytes.NewBuffer([]byte{})
-	err = binary.Write(buf, binary.LittleEndian, output)
+	got := UserPipelineConfig{}
+	err = json.Unmarshal(pipelineJSON, &got)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	got := proto.UserPipelineConfig{}
-	err = pb.Unmarshal(buf.Bytes(), &got)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	want := proto.UserPipelineConfig{
-		Id:          "simple_test_pipeline",
+	want := UserPipelineConfig{
+		ID:          "simple_test_pipeline",
 		Name:        "Simple Test Pipeline",
 		Description: "Simple Test Pipeline",
-		Tasks: []*proto.UserPipelineTaskConfig{
+		Tasks: []*UserPipelineTaskConfig{
 			{
-				Id:          "simple_task",
+				ID:          "simple_task",
 				Image:       "ubuntu:latest",
 				Description: "This task simply prints our hello-world message and exits!",
 				Command:     []string{"echo", `Hello from Gofer!`},
+				DependsOn:   map[string]RequiredParentStatus{},
+				Variables:   map[string]string{},
 			},
 		},
 	}
 
-	if diff := cmp.Diff(&want, &got, protocmp.Transform()); diff != "" {
-		t.Errorf("proto did not match (-want +got):\n%s", diff)
+	if diff := cmp.Diff(&want, &got); diff != "" {
+		t.Errorf("json did not match (-want +got):\n%s", diff)
 	}
 }
 
