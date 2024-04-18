@@ -1,20 +1,14 @@
-#Mac files
+# Mac files
 .DS_Store
 
-#Vs Code
+# VS Code
 .vscode
 
-#secret files
+#s ecret files
 .env
 -docker/.env
 
-#rust build dir
+# rust build dir
 target/
 
-#frontend
-!internal/frontend/public/.gitkeep
-internal/frontend/public/css/*
-
-# Remove the documentation assets
-documentation/book/html/*
 

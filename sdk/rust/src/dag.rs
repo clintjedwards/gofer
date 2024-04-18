@@ -68,10 +68,12 @@ impl Dag {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn exists(&self, id: &str) -> bool {
         self.0.contains_key(id)
     }
 
+    #[allow(dead_code)]
     pub fn edges(&self, id: &str) -> Result<Vec<Rc<RefCell<Node>>>, DAGError> {
         if !self.0.contains_key(id) {
             return Err(DAGError::EntityNotFound);
@@ -191,5 +193,73 @@ mod tests {
         dag.add_edge("4", "6").unwrap();
         dag.add_edge("5", "6").unwrap();
         dag.add_edge("6", "3").unwrap();
+    }
+
+    #[test]
+    fn test_add_node() {
+        let mut dag = Dag::new();
+        assert_eq!(dag.add_node("A"), Ok(()));
+        assert!(dag.exists("A"));
+    }
+
+    #[test]
+    fn test_add_duplicate_node() {
+        let mut dag = Dag::new();
+        dag.add_node("A").unwrap();
+        assert_eq!(dag.add_node("A"), Err(DAGError::EntityExists));
+    }
+
+    #[test]
+    fn test_add_edge() {
+        let mut dag = Dag::new();
+        dag.add_node("A").unwrap();
+        dag.add_node("B").unwrap();
+        assert_eq!(dag.add_edge("A", "B"), Ok(()));
+    }
+
+    #[test]
+    fn test_add_edge_non_existent_node() {
+        let mut dag = Dag::new();
+        dag.add_node("A").unwrap();
+        assert_eq!(dag.add_edge("A", "B"), Err(DAGError::EntityNotFound));
+        assert_eq!(dag.add_edge("B", "A"), Err(DAGError::EntityNotFound));
+    }
+
+    #[test]
+    fn test_add_edge_creates_cycle() {
+        let mut dag = Dag::new();
+        dag.add_node("A").unwrap();
+        dag.add_node("B").unwrap();
+        dag.add_node("C").unwrap();
+        dag.add_edge("A", "B").unwrap();
+        dag.add_edge("B", "C").unwrap();
+        assert_eq!(
+            dag.add_edge("C", "A"),
+            Err(DAGError::EdgeCreatesCycle("C".to_string(), "A".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_cycle_detection() {
+        let mut dag = Dag::new();
+        dag.add_node("A").unwrap();
+        dag.add_node("B").unwrap();
+        dag.add_edge("A", "B").unwrap();
+        assert!(!dag.is_cyclic("A", "B"));
+        assert!(dag.is_cyclic("B", "A"));
+        dag.add_node("C").unwrap();
+        dag.add_edge("B", "C").unwrap();
+        assert!(dag.is_cyclic("C", "A"));
+    }
+
+    #[test]
+    fn test_retrieve_edges() {
+        let mut dag = Dag::new();
+        dag.add_node("A").unwrap();
+        dag.add_node("B").unwrap();
+        dag.add_edge("A", "B").unwrap();
+        let edges = dag.edges("A").unwrap();
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].borrow().id, "B");
     }
 }

@@ -1,0 +1,58 @@
+[api]
+ignore_pipeline_run_events = false
+run_parallelism_limit = 200
+pipeline_version_retention = 10
+event_log_retention = 15768000     # 6 months
+event_prune_interval = 604800      # 1 week
+log_level = "info"
+task_execution_log_retention = 50  # total runs
+task_execution_logs_dir = "/tmp"
+task_execution_stop_timeout = 300  # 5 mins
+admin_key = "test"
+
+[server]
+url = "http://localhost:8080"
+bind_address = "0.0.0.0:8080"
+extension_address = "172.17.0.1:8080"
+shutdown_timeout = 15
+storage_path = "/tmp/gofer.db"
+storage_results_limit = 200
+use_tls = false
+
+[development]
+pretty_logging = true     # Tells the logging package to use human readable output.
+bypass_auth = true        # Turns off auth.
+use_included_certs = true # Automatically loads localhost certs for development.
+
+[extensions]
+install_std_extensions = true
+stop_timeout = 300            # 5 mins
+use_tls = false
+
+[external_events]
+enable = true
+bind_address = "0.0.0.0:8081"
+use_tls = false
+
+[scheduler]
+engine = "docker"
+
+[scheduler.docker]
+prune = true
+prune_interval = 604800
+timeout = 300           # Should be the same or more than the task_execution_stop_timeout
+
+[object_store]
+engine = "sqlite"
+pipeline_object_limit = 50
+run_object_expiry = 50
+
+[object_store.sqlite]
+path = "/tmp/gofer_objects.db"
+
+[secret_store]
+engine = "sqlite"
+
+[secret_store.sqlite]
+path = "/tmp/gofer_secrets.db"
+encryption_key = "changemechangemechangemechangeme"

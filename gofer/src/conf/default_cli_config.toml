@@ -1,0 +1,9 @@
+# This file is purely used as an easy way to provide default values.
+# Default values are important for development as they allow newer developers to get up and running quickly and have
+# something to test against without diving deep into configuration settings first.
+api_base_url = "http://127.0.0.1:8080/"
+debug = false
+detail = false
+namespace = "default"
+output_format = "plain"
+token = "example"

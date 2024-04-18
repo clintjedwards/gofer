@@ -1,0 +1,18 @@
+# Gofer configuration file. The values here get read when running CLI commands.
+# Values here can be overridden by environment variables or global flags.
+#
+# ## Valid locations
+# Valid locations for this file can be one of [~/.gofer.toml, ~/.config/gofer.toml]
+#
+# ## Hierarchy
+# The values here can all be input as environment variables.
+#
+# For example the line `api_base_url` could be input as:
+# `export GOFER_CLI_API_BASE_URL="https://gofer.orreri.dev"`
+
+api_base_url = "https://gofer.clintjedwards.com" # The URL of the Gofer API.
+debug = false # Provides extra debug output.
+detail = false # Turn on extra detail for certain commands. Controls things like what format time is in.
+namespace = "default" # The default namespace to work within. You can change this on the fly via the CLI.
+output_format = "plain" # What format you want the CLI to output in; Accepts "plain", "silent", and "json".
+token = "{{token}}" # Your API Token for the Gofer API.

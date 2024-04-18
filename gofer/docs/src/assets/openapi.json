@@ -1,0 +1,6266 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gofer",
+    "version": "0.7.0"
+  },
+  "paths": {
+    "/api/events": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "List all events.",
+        "operationId": "stream_events",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "history",
+            "description": "If set to true Gofer first exhausts events that have already passed before it starts to stream new events.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reverse",
+            "description": "Reverses the order of events by the time they were emitted. By default Gofer lists events in ascending order; setting reverse to true causes events to be in descending order.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "x-dropshot-websocket": {}
+      }
+    },
+    "/api/events/{event_id}": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get api event by id.",
+        "operationId": "get_event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "description": "The unique identifier for the target event.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEventResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Delete api event by id.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "delete_event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "description": "The unique identifier for the target event.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions": {
+      "get": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "List all extensions currently registered.",
+        "operationId": "list_extensions",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListExtensionsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Register and start a new extension.",
+        "description": "This route is only available to management tokens.",
+        "operationId": "install_extension",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallExtensionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallExtensionResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions/{extension_id}": {
+      "get": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Returns details about a specific extension.",
+        "operationId": "get_extension",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetExtensionResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Uninstall a registered extension.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "uninstall_extension",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Enable or disable an extension.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "update_extension",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExtensionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions/{extension_id}/logs": {
+      "get": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Retrieves logs from the extension container.",
+        "operationId": "get_extension_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "x-dropshot-websocket": {}
+      }
+    },
+    "/api/namespaces": {
+      "get": {
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "List all namespaces.",
+        "operationId": "list_namespaces",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListNamespacesResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Create a new namespace.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "create_namespace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNamespaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateNamespaceResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}": {
+      "get": {
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Get api namespace by id.",
+        "operationId": "get_namespace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetNamespaceResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Delete api namespace by id.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "delete_namespace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Update a namespace's details.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "update_namespace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNamespaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateNamespaceResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines": {
+      "get": {
+        "tags": [
+          "Pipelines"
+        ],
+        "summary": "List all pipelines.",
+        "description": "Returns the metadata for all pipelines. If you want a more complete picture of the pipeline details combine this endpoint with the configs endpoint to grab the metadata AND the user's pipeline configuration.",
+        "operationId": "list_pipelines",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPipelinesResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}": {
+      "get": {
+        "tags": [
+          "Pipelines"
+        ],
+        "summary": "Get pipeline by id.",
+        "operationId": "get_pipeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPipelineResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Pipelines"
+        ],
+        "summary": "Delete pipeline by id.",
+        "description": "IMPORTANT: Deleting a pipeline is set to cascade. All downstream objects to the pipeline (configs, secrets, runs, tasks) will be removed as well.",
+        "operationId": "delete_pipeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Pipelines"
+        ],
+        "summary": "Update a pipeline's state.",
+        "operationId": "update_pipeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePipelineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/configs": {
+      "get": {
+        "tags": [
+          "Configs"
+        ],
+        "summary": "List all pipeline configs.",
+        "description": "A pipeline's config is the small program you write to configure how you want your pipeline to run.",
+        "operationId": "list_configs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPipelineConfigsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Configs"
+        ],
+        "summary": "Register a new pipeline configuration.",
+        "description": "This creates both the pipeline metadata and the initial config object.",
+        "operationId": "register_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPipelineConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterPipelineConfigResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/configs/{version}": {
+      "get": {
+        "tags": [
+          "Configs"
+        ],
+        "summary": "Get a specific version of a pipeline configuration.",
+        "description": "A version of 0 indicates to return the latest pipeline config.",
+        "operationId": "get_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "description": "The version of the configuration you want to target. 0 means return the latest.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPipelineConfigResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Configs"
+        ],
+        "summary": "Deploy pipeline config.",
+        "operationId": "deploy_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "description": "The version of the configuration you want to target. 0 means return the latest.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeployPipelineConfigResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Configs"
+        ],
+        "summary": "Delete pipeline config by version.",
+        "operationId": "delete_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "description": "The version of the configuration you want to target. 0 means return the latest.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/deployments": {
+      "get": {
+        "tags": [
+          "Deployments"
+        ],
+        "summary": "List all deployments.",
+        "operationId": "list_deployments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListDeploymentsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/deployments/{deployment_id}": {
+      "get": {
+        "tags": [
+          "Deployments"
+        ],
+        "summary": "Get api deployment by id.",
+        "operationId": "get_deployment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deployment_id",
+            "description": "The unique identifier for the target deployment.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDeploymentResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/objects": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "List all pipeline objects.",
+        "operationId": "list_pipeline_objects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPipelineObjectsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Insert a new object into the pipeline object store.",
+        "operationId": "put_pipeline_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPipelineObjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutPipelineObjectResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/objects/{key}": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Get pipeline object by key.",
+        "operationId": "get_pipeline_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPipelineObjectResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Delete pipeline object by key.",
+        "operationId": "delete_pipeline_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs": {
+      "get": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "List all runs.",
+        "description": "Returns a list of all runs by pipeline id.",
+        "operationId": "list_runs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "nullable": true,
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "nullable": true,
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "reverse",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRunsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "Start a run of a particular pipeline.",
+        "operationId": "start_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartRunResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "Get run by id.",
+        "operationId": "get_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetRunResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "Cancel a run by id.",
+        "operationId": "cancel_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "List all run objects.",
+        "operationId": "list_run_objects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRunObjectsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Insert a new object into the run object store.",
+        "operationId": "put_run_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutRunObjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutRunObjectResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects/{key}": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Get run object by key.",
+        "operationId": "get_run_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetRunObjectResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Delete run object by key.",
+        "operationId": "delete_run_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "List all task executions.",
+        "description": "Returns a list of all task executions by run.",
+        "operationId": "list_task_executions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTaskExecutionsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Get task execution by id.",
+        "operationId": "get_task_execution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "description": "The unique identifier for the target task execution.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTaskExecutionResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Cancel a task execution by id.",
+        "operationId": "cancel_task_execution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "description": "The unique identifier for the target task execution.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "wait_for",
+            "description": "Period of time to wait the task before forcing it to cancel. 0 means send SIGKILL instantly.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/tasks/{task_id}/attach": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Run command on a running task execution container.",
+        "description": "This allows you to run a command on a task execution container and connect to the stdin and stdout/err for said container.\nUseful for debugging.",
+        "operationId": "attach_task_execution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "description": "The unique identifier for the target task execution.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "command",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "x-dropshot-websocket": {}
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/tasks/{task_id}/logs": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Retrieves logs from a task execution.",
+        "operationId": "get_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "description": "The unique identifier for the target task execution.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "x-dropshot-websocket": {}
+      },
+      "delete": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Removes a task execution's associated log object.",
+        "description": "This is useful for if logs mistakenly contain sensitive data.",
+        "operationId": "delete_logs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "description": "The unique identifier for the target task execution.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/secrets": {
+      "get": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "List all pipeline secrets.",
+        "operationId": "list_pipeline_secrets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPipelineSecretsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "Insert a new secret into the pipeline secret store.",
+        "operationId": "put_pipeline_secret",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPipelineSecretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutPipelineSecretResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/secrets/{key}": {
+      "get": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "Get pipeline secret by key.",
+        "operationId": "get_pipeline_secret",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Includes the actual plaintext secret in the response.",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target secret.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPipelineSecretResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "Delete pipeline secret by key.",
+        "operationId": "delete_pipeline_secret",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target secret.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/subscriptions": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "List all subscriptions.",
+        "operationId": "list_subscriptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSubscriptionsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Create a new subscription.",
+        "operationId": "create_subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSubscriptionResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/subscriptions/{extension_id}/{subscription_id}": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Get subscription by id.",
+        "operationId": "get_subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "subscription_id",
+            "description": "The unique identifier for the target subscription.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSubscriptionResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Delete subscription by id.",
+        "operationId": "delete_subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "subscription_id",
+            "description": "The unique identifier for the target subscription.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Update a subscription's state.",
+        "operationId": "update_subscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "subscription_id",
+            "description": "The unique identifier for the target subscription.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/secrets/global": {
+      "get": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "List all global secrets.",
+        "description": "Management tokens required.",
+        "operationId": "list_global_secrets",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListGlobalSecretsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "Insert a new secret into the global secret store.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "put_global_secret",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutGlobalSecretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutGlobalSecretResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/secrets/global/{key}": {
+      "get": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "Get global secret by key.",
+        "description": "Management token required.",
+        "operationId": "get_global_secret",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Includes the actual plaintext secret in the response.",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target secret.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetGlobalSecretResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Secrets"
+        ],
+        "summary": "Delete global secret by key.",
+        "description": "This route is only accessible for management tokens.",
+        "operationId": "delete_global_secret",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target secret.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/system/metadata": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Describe current system meta-information.",
+        "description": "Return a number of internal metadata about the Gofer service itself.",
+        "operationId": "get_metadata",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSystemMetadataResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/tokens": {
+      "get": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "List all Gofer API tokens.",
+        "description": "This endpoint is restricted to management tokens only.",
+        "operationId": "list_tokens",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTokensResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Create a new token.",
+        "description": "This endpoint is restricted to management tokens only.",
+        "operationId": "create_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTokenResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/tokens/bootstrap": {
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Create root management token.",
+        "description": "This endpoint can only be hit once and will create the root management token, from which all other tokens can be created.",
+        "operationId": "create_bootstrap_token",
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTokenResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/tokens/whoami": {
+      "get": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Get api token who made the request.",
+        "operationId": "whoami",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoAmIResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/tokens/{id}": {
+      "get": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Get api token by id.",
+        "operationId": "get_token_by_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTokenByIDResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Delete api token by id.",
+        "description": "This endpoint is restricted to management tokens only.",
+        "operationId": "delete_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Update a token's state.",
+        "operationId": "update_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Config": {
+        "description": "A representation of the user's configuration settings for a particular pipeline.",
+        "type": "object",
+        "properties": {
+          "deprecated": {
+            "description": "Time in epoch milliseconds when this pipeline config was not longer used.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "description": {
+            "description": "Description of pipeline's purpose and other details.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Human readable name for pipeline.",
+            "type": "string"
+          },
+          "namespace_id": {
+            "description": "Unique identifier of the target namespace.",
+            "type": "string"
+          },
+          "parallelism": {
+            "description": "The amount of runs allowed to happen at any given time.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "pipeline_id": {
+            "description": "Unique identifier of the target pipeline.",
+            "type": "string"
+          },
+          "registered": {
+            "description": "Time in epoch milliseconds when this pipeline config was registered.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "state": {
+            "description": "The deployment state of the config. This is used to determine the state of this particular config and if it is currently being used or not.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConfigState"
+              }
+            ]
+          },
+          "tasks": {
+            "description": "Tasks associated with this pipeline.",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "version": {
+            "description": "The iteration number for this pipeline's configs.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deprecated",
+          "description",
+          "name",
+          "namespace_id",
+          "parallelism",
+          "pipeline_id",
+          "registered",
+          "state",
+          "tasks",
+          "version"
+        ]
+      },
+      "ConfigState": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "Has never been deployed.",
+            "type": "string",
+            "enum": [
+              "unreleased"
+            ]
+          },
+          {
+            "description": "Currently deployed.",
+            "type": "string",
+            "enum": [
+              "live"
+            ]
+          },
+          {
+            "description": "Has previously been deployed and is now defunct.",
+            "type": "string",
+            "enum": [
+              "deprecated"
+            ]
+          }
+        ]
+      },
+      "CreateNamespaceRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "description": "Short description about what the namespace is used for.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The unique identifier for the namespace. Only accepts alphanumeric chars with hyphens. No spaces.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Humanized name for the namespace.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "id",
+          "name"
+        ]
+      },
+      "CreateNamespaceResponse": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "description": "Information about the namespace created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Namespace"
+              }
+            ]
+          }
+        },
+        "required": [
+          "namespace"
+        ]
+      },
+      "CreateSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "extension_id": {
+            "type": "string"
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "extension_id",
+          "settings",
+          "subscription_id"
+        ]
+      },
+      "CreateSubscriptionResponse": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "description": "Information about the subscription created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            ]
+          }
+        },
+        "required": [
+          "subscription"
+        ]
+      },
+      "CreateTokenRequest": {
+        "type": "object",
+        "properties": {
+          "expires": {
+            "description": "The amount of time the token is valid for in seconds.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "metadata": {
+            "description": "Various other bits of data you can attach to tokens. This is used by Gofer to track some details about tokens, but can also be used by users to attach bits of information that would make the token easier to programmatically manage.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "namespaces": {
+            "description": "The namespaces this token applies to. Token will be unauthorized for any namespace not listed. Accepts regexes.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "token_type": {
+            "description": "The type of token to be created. Can be management or client.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TokenType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expires",
+          "metadata",
+          "namespaces",
+          "token_type"
+        ]
+      },
+      "CreateTokenResponse": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "description": "The actual token created. API Tokens should be protected in the same fashion as passwords.",
+            "type": "string"
+          },
+          "token_details": {
+            "description": "Information about the token created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Token"
+              }
+            ]
+          }
+        },
+        "required": [
+          "secret",
+          "token_details"
+        ]
+      },
+      "DeployPipelineConfigResponse": {
+        "type": "object",
+        "properties": {
+          "deployment": {
+            "description": "Information about the pipeline created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Deployment"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deployment"
+        ]
+      },
+      "Deployment": {
+        "description": "A deployment represents a transition between two pipeline versions.",
+        "type": "object",
+        "properties": {
+          "deployment_id": {
+            "description": "Unique identifier for the deployment.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "end_version": {
+            "description": "Version of the pipeline being promoted.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "ended": {
+            "description": "Time of deployment end in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "logs": {
+            "description": "The event logs from the deployment.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          },
+          "namespace_id": {
+            "description": "Unique identifier for the target namespace.",
+            "type": "string"
+          },
+          "pipeline_id": {
+            "description": "Unique identifier for the target pipeline.",
+            "type": "string"
+          },
+          "start_version": {
+            "description": "Version of the pipeline is being deprecated.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "started": {
+            "description": "Time of deployment start in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "state": {
+            "description": "The current state of the deployment as it exists within Gofer's operating model.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/deployment_state"
+              }
+            ]
+          },
+          "status": {
+            "description": "The final status of the deployment.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/deployment_status"
+              }
+            ]
+          },
+          "status_reason": {
+            "nullable": true,
+            "description": "Details about a deployment's specific status",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/deployment_status_reason"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deployment_id",
+          "end_version",
+          "ended",
+          "logs",
+          "namespace_id",
+          "pipeline_id",
+          "start_version",
+          "started",
+          "state",
+          "status"
+        ]
+      },
+      "Documentation": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "Anything the extension wants to explain to the user. This text is inserted into the documentation a user can look up about the extension. Supports AsciiDoc.",
+            "type": "string"
+          },
+          "config_params": {
+            "description": "Each extension has configuration parameters that can be passed in at extension startup. These parameters should control extension behavior for it's entire lifetime.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            }
+          },
+          "pipeline_subscription_params": {
+            "description": "Each extension has pipeline subscription parameters that are passed in by a pipeline when it attempts to subscribe to an extension. This controls how the extension treats that specific pipeline subscription.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            }
+          }
+        },
+        "required": [
+          "body",
+          "config_params",
+          "pipeline_subscription_params"
+        ]
+      },
+      "Error": {
+        "description": "Error information from a response.",
+        "type": "object",
+        "properties": {
+          "error_code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "request_id"
+        ]
+      },
+      "Event": {
+        "description": "A single event",
+        "type": "object",
+        "properties": {
+          "emitted": {
+            "description": "Time event was performed in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "id": {
+            "description": "Unique identifier for event.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "The type of event it is.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Kind"
+              }
+            ]
+          }
+        },
+        "required": [
+          "emitted",
+          "id",
+          "kind"
+        ]
+      },
+      "Extension": {
+        "description": "An Extension is the way that pipelines add extra functionality to themselves. Pipelines can \"subscribe\" to extensions and extensions then act on behalf of that pipeline.",
+        "type": "object",
+        "properties": {
+          "documentation": {
+            "description": "Extension given documentation usually in markdown.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Documentation"
+              }
+            ]
+          },
+          "registration": {
+            "description": "Metadata about the extension as it is registered within Gofer.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Registration"
+              }
+            ]
+          },
+          "started": {
+            "description": "The start time of the extension in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "state": {
+            "description": "The current state of the extension as it exists within Gofer's operating model.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/extension_state"
+              }
+            ]
+          },
+          "url": {
+            "description": "The network address used to communicate with the extension by the main process.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentation",
+          "registration",
+          "started",
+          "state",
+          "url"
+        ]
+      },
+      "GetDeploymentResponse": {
+        "type": "object",
+        "properties": {
+          "deployment": {
+            "description": "The target deployment.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Deployment"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deployment"
+        ]
+      },
+      "GetEventResponse": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "description": "The target event.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Event"
+              }
+            ]
+          }
+        },
+        "required": [
+          "event"
+        ]
+      },
+      "GetExtensionResponse": {
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "The extension requested.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Extension"
+              }
+            ]
+          }
+        },
+        "required": [
+          "extension"
+        ]
+      },
+      "GetGlobalSecretResponse": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "description": "The target secret metadata.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Secret"
+              }
+            ]
+          },
+          "secret": {
+            "nullable": true,
+            "description": "The actual secret, only included if \"include_secret\" param is true.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metadata"
+        ]
+      },
+      "GetNamespaceResponse": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "description": "The target namespace.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Namespace"
+              }
+            ]
+          }
+        },
+        "required": [
+          "namespace"
+        ]
+      },
+      "GetPipelineConfigResponse": {
+        "type": "object",
+        "properties": {
+          "config": {
+            "description": "The target pipeline config.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Config"
+              }
+            ]
+          }
+        },
+        "required": [
+          "config"
+        ]
+      },
+      "GetPipelineObjectResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "description": "The requested object data.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          }
+        },
+        "required": [
+          "object"
+        ]
+      },
+      "GetPipelineResponse": {
+        "type": "object",
+        "properties": {
+          "pipeline": {
+            "description": "The metadata for the pipeline.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Metadata"
+              }
+            ]
+          }
+        },
+        "required": [
+          "pipeline"
+        ]
+      },
+      "GetPipelineSecretResponse": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "description": "The target secret metadata.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Secret"
+              }
+            ]
+          },
+          "secret": {
+            "nullable": true,
+            "description": "The actual secret, only included if \"include_secret\" param is true.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metadata"
+        ]
+      },
+      "GetRunObjectResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "description": "The requested object data.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          }
+        },
+        "required": [
+          "object"
+        ]
+      },
+      "GetRunResponse": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "description": "The run requested.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Run"
+              }
+            ]
+          }
+        },
+        "required": [
+          "run"
+        ]
+      },
+      "GetSubscriptionResponse": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "description": "The metadata for the subscription.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            ]
+          }
+        },
+        "required": [
+          "subscription"
+        ]
+      },
+      "GetSystemMetadataResponse": {
+        "type": "object",
+        "properties": {
+          "commit": {
+            "description": "The commit of the current build.",
+            "type": "string"
+          },
+          "semver": {
+            "description": "The semver version of the current build.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "commit",
+          "semver"
+        ]
+      },
+      "GetTaskExecutionResponse": {
+        "type": "object",
+        "properties": {
+          "task_execution": {
+            "description": "The task execution requested.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskExecution"
+              }
+            ]
+          }
+        },
+        "required": [
+          "task_execution"
+        ]
+      },
+      "GetTokenByIDResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "description": "The target token.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Token"
+              }
+            ]
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "Initiator": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "Which type of user initiated the run.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InitiatorType"
+              }
+            ]
+          },
+          "name": {
+            "description": "The name of the user which initiated the run.",
+            "type": "string"
+          },
+          "reason": {
+            "description": "The reason the run was initiated.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "reason"
+        ]
+      },
+      "InitiatorType": {
+        "type": "string",
+        "enum": [
+          "other",
+          "bot",
+          "human",
+          "extension"
+        ]
+      },
+      "InstallExtensionRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "A unique id for the extension. Since this needs to only be unique across extensions simply using the extension's name usually suffices.",
+            "type": "string"
+          },
+          "image": {
+            "description": "The container image this extension should use.",
+            "type": "string"
+          },
+          "registry_auth": {
+            "nullable": true,
+            "description": "Registry auth credentials",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegistryAuth"
+              }
+            ]
+          },
+          "settings": {
+            "description": "Each extension has a list of settings it takes to configure how it runs. You can usually find this in the documentation.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "image",
+          "settings"
+        ]
+      },
+      "InstallExtensionResponse": {
+        "type": "object",
+        "properties": {
+          "extension": {
+            "$ref": "#/components/schemas/Extension"
+          }
+        },
+        "required": [
+          "extension"
+        ]
+      },
+      "Kind": {
+        "oneOf": [
+          {
+            "description": "The Any kind is a special event kind that denotes the caller wants to listen for any event. It should not be used as a normal event type(for example do not publish anything with it). It is internal only and not passed back on event streaming.",
+            "type": "string",
+            "enum": [
+              "any"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "created_namespace": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id"
+                ]
+              }
+            },
+            "required": [
+              "created_namespace"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deleted_namespace": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id"
+                ]
+              }
+            },
+            "required": [
+              "deleted_namespace"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "disabled_pipeline": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id"
+                ]
+              }
+            },
+            "required": [
+              "disabled_pipeline"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "enabled_pipeline": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id"
+                ]
+              }
+            },
+            "required": [
+              "enabled_pipeline"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "created_pipeline": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id"
+                ]
+              }
+            },
+            "required": [
+              "created_pipeline"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deleted_pipeline": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id"
+                ]
+              }
+            },
+            "required": [
+              "deleted_pipeline"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deployment_started": {
+                "type": "object",
+                "properties": {
+                  "end_version": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  },
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "start_version": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "end_version",
+                  "namespace_id",
+                  "pipeline_id",
+                  "start_version"
+                ]
+              }
+            },
+            "required": [
+              "deployment_started"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deployment_completed": {
+                "type": "object",
+                "properties": {
+                  "end_version": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  },
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "start_version": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "end_version",
+                  "namespace_id",
+                  "pipeline_id",
+                  "start_version"
+                ]
+              }
+            },
+            "required": [
+              "deployment_completed"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "started_run": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id"
+                ]
+              }
+            },
+            "required": [
+              "started_run"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "completed_run": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  },
+                  "status": {
+                    "$ref": "#/components/schemas/run_status"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id",
+                  "status"
+                ]
+              }
+            },
+            "required": [
+              "completed_run"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "created_task_execution": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  },
+                  "task_execution_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id",
+                  "task_execution_id"
+                ]
+              }
+            },
+            "required": [
+              "created_task_execution"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "started_task_execution": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  },
+                  "task_execution_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id",
+                  "task_execution_id"
+                ]
+              }
+            },
+            "required": [
+              "started_task_execution"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "completed_task_execution": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  },
+                  "status": {
+                    "$ref": "#/components/schemas/task_execution_status"
+                  },
+                  "task_execution_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id",
+                  "status",
+                  "task_execution_id"
+                ]
+              }
+            },
+            "required": [
+              "completed_task_execution"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installed_extension": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "image"
+                ]
+              }
+            },
+            "required": [
+              "installed_extension"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "uninstalled_extension": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "image"
+                ]
+              }
+            },
+            "required": [
+              "uninstalled_extension"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "enabled_extension": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "image"
+                ]
+              }
+            },
+            "required": [
+              "enabled_extension"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "disabled_extension": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "image"
+                ]
+              }
+            },
+            "required": [
+              "disabled_extension"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "extension_subscription": {
+                "type": "object",
+                "properties": {
+                  "extension_id": {
+                    "type": "string"
+                  },
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "subscription_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "extension_id",
+                  "namespace_id",
+                  "pipeline_id",
+                  "subscription_id"
+                ]
+              }
+            },
+            "required": [
+              "extension_subscription"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "extension_unsubscription": {
+                "type": "object",
+                "properties": {
+                  "extension_id": {
+                    "type": "string"
+                  },
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "subscription_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "extension_id",
+                  "namespace_id",
+                  "pipeline_id",
+                  "subscription_id"
+                ]
+              }
+            },
+            "required": [
+              "extension_unsubscription"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ListDeploymentsResponse": {
+        "type": "object",
+        "properties": {
+          "deployments": {
+            "description": "A list of all deployments.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Deployment"
+            }
+          }
+        },
+        "required": [
+          "deployments"
+        ]
+      },
+      "ListExtensionsResponse": {
+        "type": "object",
+        "properties": {
+          "extensions": {
+            "description": "A list of all extensions.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            }
+          }
+        },
+        "required": [
+          "extensions"
+        ]
+      },
+      "ListGlobalSecretsResponse": {
+        "type": "object",
+        "properties": {
+          "secrets": {
+            "description": "A list of all global secrets.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Secret"
+            }
+          }
+        },
+        "required": [
+          "secrets"
+        ]
+      },
+      "ListNamespacesResponse": {
+        "type": "object",
+        "properties": {
+          "namespaces": {
+            "description": "A list of all namespaces.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Namespace"
+            }
+          }
+        },
+        "required": [
+          "namespaces"
+        ]
+      },
+      "ListPipelineConfigsResponse": {
+        "type": "object",
+        "properties": {
+          "configs": {
+            "description": "A list of all pipelines configs.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Config"
+            }
+          }
+        },
+        "required": [
+          "configs"
+        ]
+      },
+      "ListPipelineObjectsResponse": {
+        "type": "object",
+        "properties": {
+          "objects": {
+            "description": "A list of all pipeline objects.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        },
+        "required": [
+          "objects"
+        ]
+      },
+      "ListPipelineSecretsResponse": {
+        "type": "object",
+        "properties": {
+          "secrets": {
+            "description": "A list of all pipeline secrets.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Secret"
+            }
+          }
+        },
+        "required": [
+          "secrets"
+        ]
+      },
+      "ListPipelinesResponse": {
+        "type": "object",
+        "properties": {
+          "pipelines": {
+            "description": "A list of all pipelines metadata.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metadata"
+            }
+          }
+        },
+        "required": [
+          "pipelines"
+        ]
+      },
+      "ListRunObjectsResponse": {
+        "type": "object",
+        "properties": {
+          "objects": {
+            "description": "A list of all run objects.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        },
+        "required": [
+          "objects"
+        ]
+      },
+      "ListRunsResponse": {
+        "type": "object",
+        "properties": {
+          "runs": {
+            "description": "A list of all runs.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Run"
+            }
+          }
+        },
+        "required": [
+          "runs"
+        ]
+      },
+      "ListSubscriptionsResponse": {
+        "type": "object",
+        "properties": {
+          "subscriptions": {
+            "description": "A list of all pipeline subscriptions.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subscription"
+            }
+          }
+        },
+        "required": [
+          "subscriptions"
+        ]
+      },
+      "ListTaskExecutionsResponse": {
+        "type": "object",
+        "properties": {
+          "task_executions": {
+            "description": "A list of all task executions.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskExecution"
+            }
+          }
+        },
+        "required": [
+          "task_executions"
+        ]
+      },
+      "ListTokensResponse": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "description": "A list of all tokens.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Token"
+            }
+          }
+        },
+        "required": [
+          "tokens"
+        ]
+      },
+      "Metadata": {
+        "description": "Details about the pipeline itself, not including the configuration that the user can change. All these values are changed by the system or never changed at all. This sits in contrast to the config which the user can change freely.",
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time of pipeline creation in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "modified": {
+            "description": "Time pipeline was updated to a new version in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "namespace_id": {
+            "description": "Unique identifier of the target namespace.",
+            "type": "string"
+          },
+          "pipeline_id": {
+            "description": "Unique identifier of the target pipeline.",
+            "type": "string"
+          },
+          "state": {
+            "description": "The current running state of the pipeline. This is used to determine if the pipeline should run or not.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineState"
+              }
+            ]
+          }
+        },
+        "required": [
+          "created",
+          "modified",
+          "namespace_id",
+          "pipeline_id",
+          "state"
+        ]
+      },
+      "Namespace": {
+        "description": "A namespace represents a grouping of pipelines. Normally it is used to divide teams or logically different sections of workloads. It is the highest level unit as it sits above pipelines in the hierarchy of Gofer.",
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time in epoch milliseconds when namespace was created.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "description": {
+            "description": "Short description about what the namespace is used for.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique identifier for the namespace.",
+            "type": "string"
+          },
+          "modified": {
+            "description": "Time in epoch milliseconds when namespace would expire.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "name": {
+            "description": "Humanized name for the namespace.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "created",
+          "description",
+          "id",
+          "modified",
+          "name"
+        ]
+      },
+      "Object": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time in epoch milliseconds that this object was registered.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "key": {
+            "description": "The identifier for the object value.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "created",
+          "key"
+        ]
+      },
+      "Parameter": {
+        "type": "object",
+        "properties": {
+          "documentation": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "documentation",
+          "key",
+          "required"
+        ]
+      },
+      "Pipeline": {
+        "description": "`Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute.\n\n# Example\n\nThe following example demonstrates how to create a simple pipeline in Gofer, which is familiar to those experienced with CI/CD tooling. It outlines how to define a simple task within a pipeline, use a standard Ubuntu container, and execute a basic command.\n\nThis simple example serves as a foundation, illustrating the pattern of defining tasks as building blocks of a pipeline. In practice, you would create custom containers designed specifically for the tasks in your Gofer workflows, keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.\n\n```ignore // Create a new pipeline with a name and a descriptive label. Pipeline::new(\"simple\", \"Simple Pipeline\") .description(\"This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \\ This pattern will be familiar to those experienced with CI/CD tools. \\ Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.\") // Adding a single task to the pipeline. .tasks(vec![ Task::new(\"simple_task\", \"ubuntu:latest\") .description(\"This task uses the Ubuntu container to print a 'Hello World' message.\") .command(vec![\"echo\".to_string(), \"Hello from Gofer!\".to_string()]) ]) .finish() // Finalize and validate the pipeline setup. .unwrap(); // Handle potential errors during pipeline creation. ```",
+        "type": "object",
+        "properties": {
+          "description": {
+            "nullable": true,
+            "description": "Short description of what the pipeline is used for.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique user defined identifier.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Humanized name, meant for display.",
+            "type": "string"
+          },
+          "parallelism": {
+            "description": "Controls how many runs can be active at any single time. 0 defaults to whatever the global Gofer setting is.",
+            "type": "integer",
+            "format": "int64"
+          },
+          "tasks": {
+            "description": "A mapping of pipeline owned tasks.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Task2"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "parallelism",
+          "tasks"
+        ]
+      },
+      "Pipeline2": {
+        "description": "A collection of logically grouped tasks. A task is a unit of work wrapped in a docker container. Pipeline is a secondary level unit being contained within namespaces and containing runs.",
+        "type": "object",
+        "properties": {
+          "config": {
+            "description": "User controlled data for the targeted pipeline.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Config"
+              }
+            ]
+          },
+          "metadata": {
+            "description": "Macro level details on the targeted pipeline.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Metadata"
+              }
+            ]
+          }
+        },
+        "required": [
+          "config",
+          "metadata"
+        ]
+      },
+      "PipelineState": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "active",
+          "disabled"
+        ]
+      },
+      "PutGlobalSecretRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "description": "The actual plaintext secret.",
+            "type": "string"
+          },
+          "force": {
+            "description": "Overwrite a value of a secret if it already exists.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The name for the secret you would like to store.",
+            "type": "string"
+          },
+          "namespaces": {
+            "description": "The namespaces you want this secret to be accessible by. Accepts Regexes.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "content",
+          "force",
+          "key",
+          "namespaces"
+        ]
+      },
+      "PutGlobalSecretResponse": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "description": "Information about the secret created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Secret"
+              }
+            ]
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      },
+      "PutPipelineObjectRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "description": "The bytes for the object.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          },
+          "force": {
+            "description": "Overwrite a value of a object if it already exists.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The name for the object you would like to store.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "force",
+          "key"
+        ]
+      },
+      "PutPipelineObjectResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "description": "Information about the object created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "object"
+        ]
+      },
+      "PutPipelineSecretRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "description": "The actual plaintext secret.",
+            "type": "string"
+          },
+          "force": {
+            "description": "Overwrite a value of a secret if it already exists.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The name for the secret you would like to store.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "force",
+          "key"
+        ]
+      },
+      "PutPipelineSecretResponse": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "description": "Information about the secret created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Secret"
+              }
+            ]
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      },
+      "PutRunObjectRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "description": "The bytes for the object.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          },
+          "force": {
+            "description": "Overwrite a value of a object if it already exists.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The name for the object you would like to store.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "force",
+          "key"
+        ]
+      },
+      "PutRunObjectResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "description": "Information about the object created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "object"
+        ]
+      },
+      "RegisterPipelineConfigRequest": {
+        "type": "object",
+        "properties": {
+          "config": {
+            "description": "The pipeline configuration. This is usually supplied by the CLI which translates written code into this format.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Pipeline"
+              }
+            ]
+          }
+        },
+        "required": [
+          "config"
+        ]
+      },
+      "RegisterPipelineConfigResponse": {
+        "type": "object",
+        "properties": {
+          "pipeline": {
+            "description": "The current pipeline.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Pipeline2"
+              }
+            ]
+          }
+        },
+        "required": [
+          "pipeline"
+        ]
+      },
+      "Registration": {
+        "description": "When installing a new extension, we allow the extension installer to pass a bunch of settings that allow us to go get that extension on future startups.",
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time of registration creation in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "extension_id": {
+            "description": "Unique identifier for the extension.",
+            "type": "string"
+          },
+          "image": {
+            "description": "Which container image this extension should run.",
+            "type": "string"
+          },
+          "modified": {
+            "description": "Time of last modification in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "registry_auth": {
+            "nullable": true,
+            "description": "Auth credentials for the image's registry.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegistryAuth"
+              }
+            ]
+          },
+          "settings": {
+            "description": "Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variable"
+            }
+          },
+          "status": {
+            "description": "Whether the extension is enabled or not; extensions can be disabled to prevent use by admins.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/extension_status"
+              }
+            ]
+          }
+        },
+        "required": [
+          "created",
+          "extension_id",
+          "image",
+          "modified",
+          "settings",
+          "status"
+        ]
+      },
+      "RegistryAuth": {
+        "description": "Authentication information for container registries.",
+        "type": "object",
+        "properties": {
+          "pass": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pass",
+          "user"
+        ]
+      },
+      "RegistryAuth2": {
+        "type": "object",
+        "properties": {
+          "pass": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pass",
+          "user"
+        ]
+      },
+      "RequiredParentStatus": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "any",
+          "success",
+          "failure"
+        ]
+      },
+      "RequiredParentStatus2": {
+        "type": "string",
+        "enum": [
+          "Unknown",
+          "Any",
+          "Success",
+          "Failure"
+        ]
+      },
+      "Run": {
+        "description": "A run is one or more tasks being executed on behalf of some extension. Run is a third level unit containing tasks and being contained in a pipeline.",
+        "type": "object",
+        "properties": {
+          "ended": {
+            "description": "Time of run end in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "initiator": {
+            "description": "Information about what started the run.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Initiator"
+              }
+            ]
+          },
+          "namespace_id": {
+            "description": "Unique identifier of the target namespace.",
+            "type": "string"
+          },
+          "pipeline_config_version": {
+            "description": "Which version of the pipeline did this run execute.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "pipeline_id": {
+            "description": "Unique identifier of the target pipeline.",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "Unique identifier of the target run.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "started": {
+            "description": "Time of run start in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "state": {
+            "description": "The current state of the run within the Gofer execution model. Describes if the run is in progress or not.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/run_state"
+              }
+            ]
+          },
+          "status": {
+            "description": "The final result of the run.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/run_status"
+              }
+            ]
+          },
+          "status_reason": {
+            "nullable": true,
+            "description": "More information on the circumstances around a particular run's status.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/run_status_reason"
+              }
+            ]
+          },
+          "store_objects_expired": {
+            "description": "Whether run level objects are deleted.",
+            "type": "boolean"
+          },
+          "token_id": {
+            "nullable": true,
+            "description": "The unique identifier for Gofer's auto-inject token. This feature is so that users can easily use Gofer's API with a ready injected token into the run just-in-time. If this is None this run had no tasks with the `inject_api_token` setting enabled.\n\nThese tokens automatically expire after a pre-determined time.",
+            "type": "string"
+          },
+          "variables": {
+            "description": "Run level environment variables to be passed to each task execution.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variable"
+            }
+          }
+        },
+        "required": [
+          "ended",
+          "initiator",
+          "namespace_id",
+          "pipeline_config_version",
+          "pipeline_id",
+          "run_id",
+          "started",
+          "state",
+          "status",
+          "store_objects_expired",
+          "variables"
+        ]
+      },
+      "Secret": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time in epoch milliseconds that this secret was registered.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "key": {
+            "description": "The identifier for the secret value.",
+            "type": "string"
+          },
+          "namespaces": {
+            "description": "The namespaces this secret is allowed to be accessed from. Accepts regexes.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "created",
+          "key",
+          "namespaces"
+        ]
+      },
+      "StartRunRequest": {
+        "type": "object",
+        "properties": {
+          "initiator": {
+            "$ref": "#/components/schemas/Initiator"
+          },
+          "variables": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "initiator",
+          "variables"
+        ]
+      },
+      "StartRunResponse": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "description": "Information about the run started.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Run"
+              }
+            ]
+          }
+        },
+        "required": [
+          "run"
+        ]
+      },
+      "Subscription": {
+        "type": "object",
+        "properties": {
+          "extension_id": {
+            "description": "Unique identifier of the target extension.",
+            "type": "string"
+          },
+          "namespace_id": {
+            "description": "Unique identifier of the target namespace.",
+            "type": "string"
+          },
+          "pipeline_id": {
+            "description": "Unique identifier of the target pipeline.",
+            "type": "string"
+          },
+          "settings": {
+            "description": "The extension's pipeline configuration settings.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "description": "The state of the subscription.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/subscription_status"
+              }
+            ]
+          },
+          "status_reason": {
+            "nullable": true,
+            "description": "A further description about the status.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/subscription_status_reason"
+              }
+            ]
+          },
+          "subscription_id": {
+            "description": "A unique label differentiating this subscription from other subscriptions.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "extension_id",
+          "namespace_id",
+          "pipeline_id",
+          "settings",
+          "status",
+          "subscription_id"
+        ]
+      },
+      "Task": {
+        "description": "A task represents a particular workload within a pipeline. Tasks are composable within a larger pipeline, meaning they can be run before, after, or alongside other tasks. Tasks represent the lowest level of the Gofer hierarchy and is what Gofer references to see how a user might want their workload handled.",
+        "type": "object",
+        "properties": {
+          "command": {
+            "nullable": true,
+            "description": "Command to run on init of container; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "description": "Which other tasks (by id) this task depends on.",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RequiredParentStatus"
+            }
+          },
+          "description": {
+            "description": "Short description about the workload.",
+            "type": "string"
+          },
+          "entrypoint": {
+            "nullable": true,
+            "description": "Command to run on init of container; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "description": "Unique identifier for the task.",
+            "type": "string"
+          },
+          "image": {
+            "description": "Which container image to run for this specific task.\n\nExample: \"ubuntu:latest\"",
+            "type": "string"
+          },
+          "inject_api_token": {
+            "description": "Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container.",
+            "type": "boolean"
+          },
+          "registry_auth": {
+            "nullable": true,
+            "description": "Auth credentials for the image's registry",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegistryAuth"
+              }
+            ]
+          },
+          "variables": {
+            "description": "Variables which will be passed in as env vars to the task.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variable"
+            }
+          }
+        },
+        "required": [
+          "depends_on",
+          "description",
+          "id",
+          "image",
+          "inject_api_token",
+          "variables"
+        ]
+      },
+      "Task2": {
+        "description": "Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container. Each task defines the operations to be performed and the container environment in which these operations will run.\n\n# Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: \"example_task\".to_string(), description: Some(\"This task executes a simple print command in an Ubuntu container.\".to_string()), image: \"ubuntu:latest\".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([(\"KEY\", \"value\".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec![\"echo\".to_string(), \"Hello World!\".to_string()]), inject_api_token: false, }; ```",
+        "type": "object",
+        "properties": {
+          "command": {
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RequiredParentStatus2"
+            }
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "entrypoint": {
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "inject_api_token": {
+            "type": "boolean"
+          },
+          "registry_auth": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegistryAuth2"
+              }
+            ]
+          },
+          "variables": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "depends_on",
+          "id",
+          "image",
+          "inject_api_token",
+          "variables"
+        ]
+      },
+      "TaskExecution": {
+        "description": "a task execution is a specific execution of a task/container. It represents a 4th level unit in the hierarchy. namespace -> pipeline -> run -> task execution. It is the last and most specific object in Gofer's execution model.",
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time of task execution creation in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "ended": {
+            "description": "Time of task execution end in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "exit_code": {
+            "nullable": true,
+            "description": "The exit code of the task execution completion if it is finished.",
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0
+          },
+          "logs_expired": {
+            "description": "Whether the logs have past their retention time.",
+            "type": "boolean"
+          },
+          "logs_removed": {
+            "description": "If the logs for this execution have been removed. This can be due to user request or automatic action based on expiry time.",
+            "type": "boolean"
+          },
+          "namespace_id": {
+            "description": "Unique identifier of the target namespace.",
+            "type": "string"
+          },
+          "pipeline_id": {
+            "description": "Unique identifier of the target pipeline.",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "Unique identifier of the target run.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "started": {
+            "description": "Time of task execution start in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "state": {
+            "description": "The current state of the task execution within the Gofer execution model. Describes if the execution is in progress or not.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/task_execution_state"
+              }
+            ]
+          },
+          "status": {
+            "description": "The final result of the task execution.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/task_execution_status"
+              }
+            ]
+          },
+          "status_reason": {
+            "nullable": true,
+            "description": "More information on the circumstances around a particular task execution's status.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/task_execution_status_reason"
+              }
+            ]
+          },
+          "task": {
+            "description": "Information about the underlying task this task execution ran.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Task"
+              }
+            ]
+          },
+          "task_id": {
+            "description": "Unique identifier of the current task being executed.",
+            "type": "string"
+          },
+          "variables": {
+            "description": "The environment variables injected during this particular task execution.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variable"
+            }
+          }
+        },
+        "required": [
+          "created",
+          "ended",
+          "logs_expired",
+          "logs_removed",
+          "namespace_id",
+          "pipeline_id",
+          "run_id",
+          "started",
+          "state",
+          "status",
+          "task",
+          "task_id",
+          "variables"
+        ]
+      },
+      "Token": {
+        "description": "Gofer API Token.",
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time in epoch milliseconds when token was created.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "disabled": {
+            "description": "If the token is inactive or not; disabled tokens cannot be used for requests.",
+            "type": "boolean"
+          },
+          "expires": {
+            "description": "Time in epoch milliseconds when token would expire.",
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0
+          },
+          "id": {
+            "description": "Unique identifier for token.",
+            "type": "string"
+          },
+          "metadata": {
+            "description": "Extra information about this token in label form",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "namespaces": {
+            "description": "List of namespaces this token has access to, strings in this list can be a regex",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "token_type": {
+            "description": "The type of token. Management tokens are essentially root.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TokenType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "created",
+          "disabled",
+          "expires",
+          "id",
+          "metadata",
+          "namespaces",
+          "token_type"
+        ]
+      },
+      "TokenType": {
+        "oneOf": [
+          {
+            "description": "Admin token; has access to just about everything.",
+            "type": "string",
+            "enum": [
+              "Management"
+            ]
+          },
+          {
+            "description": "Only has read/write access to namespaces granted.",
+            "type": "string",
+            "enum": [
+              "User"
+            ]
+          },
+          {
+            "description": "Special token given to extensions. Has access to any namespace, but does not have management access.",
+            "type": "string",
+            "enum": [
+              "Extension"
+            ]
+          },
+          {
+            "description": "Gofer has a special function that allows users to autogenerate a token and inject it into their run such that they can use it easily during the run. Has same access properties the user token with a more focused namespace.",
+            "type": "string",
+            "enum": [
+              "Run"
+            ]
+          }
+        ]
+      },
+      "UpdateExtensionRequest": {
+        "type": "object",
+        "properties": {
+          "enable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enable"
+        ]
+      },
+      "UpdateNamespaceRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "nullable": true,
+            "description": "Short description about what the namespace is used for.",
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "description": "Humanized name for the namespace.",
+            "type": "string"
+          }
+        }
+      },
+      "UpdateNamespaceResponse": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "description": "Information about the namespace updated.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Namespace"
+              }
+            ]
+          }
+        },
+        "required": [
+          "namespace"
+        ]
+      },
+      "UpdatePipelineRequest": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineState"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateSubscriptionStatus"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateSubscriptionStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "disabled"
+        ]
+      },
+      "UpdateTokenRequest": {
+        "type": "object",
+        "properties": {
+          "disabled": {
+            "nullable": true,
+            "type": "boolean"
+          }
+        }
+      },
+      "Variable": {
+        "description": "A variable is a key value pair that is used either at a run or task level. The variable is inserted as an environment variable to an eventual task execution. It can be owned by different parts of the system which control where the potentially sensitive variables might show up.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/VariableSource"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "source",
+          "value"
+        ]
+      },
+      "VariableSource": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "From the user's own pipeline configuration.",
+            "type": "string",
+            "enum": [
+              "pipeline_config"
+            ]
+          },
+          {
+            "description": "From the Gofer API executor itself.",
+            "type": "string",
+            "enum": [
+              "system"
+            ]
+          },
+          {
+            "description": "Injected at the beginning of a particular run.",
+            "type": "string",
+            "enum": [
+              "run_options"
+            ]
+          },
+          {
+            "description": "Injected by a subscribed extension.",
+            "type": "string",
+            "enum": [
+              "extension"
+            ]
+          }
+        ]
+      },
+      "WhoAmIResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "description": "The target token.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Token"
+              }
+            ]
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "deployment_state": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "Running",
+              "Complete"
+            ]
+          },
+          {
+            "description": "Should never be in this state.",
+            "type": "string",
+            "enum": [
+              "Unknown"
+            ]
+          }
+        ]
+      },
+      "deployment_status": {
+        "oneOf": [
+          {
+            "description": "Should only be in this state if the deployment is not yet complete.",
+            "type": "string",
+            "enum": [
+              "Unknown"
+            ]
+          },
+          {
+            "description": "Has encountered an issue, either container issue or scheduling issue.",
+            "type": "string",
+            "enum": [
+              "Failed"
+            ]
+          },
+          {
+            "description": "Finished with a proper exit code.",
+            "type": "string",
+            "enum": [
+              "Successful"
+            ]
+          }
+        ]
+      },
+      "deployment_status_reason": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "description": "A description of why the deployment might have failed and what was going on at the time.",
+            "type": "string"
+          },
+          "reason": {
+            "description": "The specific type of deployment failure.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/deployment_status_reason_type"
+              }
+            ]
+          }
+        },
+        "required": [
+          "description",
+          "reason"
+        ]
+      },
+      "deployment_status_reason_type": {
+        "type": "string",
+        "enum": [
+          "Unknown"
+        ]
+      },
+      "extension_state": {
+        "oneOf": [
+          {
+            "description": "Should never be in this state.",
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "Pre-scheduling validation and prep.",
+            "type": "string",
+            "enum": [
+              "processing"
+            ]
+          },
+          {
+            "description": "Currently running as reported by scheduler.",
+            "type": "string",
+            "enum": [
+              "running"
+            ]
+          },
+          {
+            "description": "Extension has exited; usually because of an error.",
+            "type": "string",
+            "enum": [
+              "exited"
+            ]
+          }
+        ]
+      },
+      "extension_status": {
+        "oneOf": [
+          {
+            "description": "Cannot determine status of Extension; should never be in this status.",
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "Installed and able to be used by pipelines.",
+            "type": "string",
+            "enum": [
+              "enabled"
+            ]
+          },
+          {
+            "description": "Not available to be used by pipelines, either through lack of installation or being disabled by an admin.",
+            "type": "string",
+            "enum": [
+              "disabled"
+            ]
+          }
+        ]
+      },
+      "run_state": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "Before the tasks in a run are sent to the scheduler it must complete various steps like validation checking. This state represents that step where the run and task executions are pre-checked.",
+            "type": "string",
+            "enum": [
+              "pending"
+            ]
+          },
+          {
+            "description": "Currently running.",
+            "type": "string",
+            "enum": [
+              "running"
+            ]
+          },
+          {
+            "description": "All tasks have been resolved and the run is no longer being executed.",
+            "type": "string",
+            "enum": [
+              "complete"
+            ]
+          }
+        ]
+      },
+      "run_status": {
+        "oneOf": [
+          {
+            "description": "Could not determine the current state of the status. Should only be in this state if the run has not yet completed.",
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "One or more tasks in run have failed.",
+            "type": "string",
+            "enum": [
+              "failed"
+            ]
+          },
+          {
+            "description": "All tasks in a run have completed with a non-failure state.",
+            "type": "string",
+            "enum": [
+              "successful"
+            ]
+          },
+          {
+            "description": "One or more tasks in a run have been cancelled.",
+            "type": "string",
+            "enum": [
+              "cancelled"
+            ]
+          }
+        ]
+      },
+      "run_status_reason": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "description": "A description of why the run might have failed and what was going on at the time.",
+            "type": "string"
+          },
+          "reason": {
+            "description": "The specific type of run failure.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/run_status_reason_type"
+              }
+            ]
+          }
+        },
+        "required": [
+          "description",
+          "reason"
+        ]
+      },
+      "run_status_reason_type": {
+        "oneOf": [
+          {
+            "description": "Gofer has no fucking clue how the run got into this state.",
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "While executing the run, one or more tasks exited with an abnormal exit code.",
+            "type": "string",
+            "enum": [
+              "abnormal_exit"
+            ]
+          },
+          {
+            "description": "While executing the run, one or more tasks returned errors from the scheduler or could not be scheduled.",
+            "type": "string",
+            "enum": [
+              "scheduler_error"
+            ]
+          },
+          {
+            "description": "The run could not be executed as requested due to user defined attributes given.",
+            "type": "string",
+            "enum": [
+              "failed_precondition"
+            ]
+          },
+          {
+            "description": "One or more tasks could not be completed due to a user cancelling the run.",
+            "type": "string",
+            "enum": [
+              "user_cancelled"
+            ]
+          },
+          {
+            "description": "One or more tasks could not be completed due to the system or admin cancelling the run.",
+            "type": "string",
+            "enum": [
+              "admin_cancelled"
+            ]
+          }
+        ]
+      },
+      "subscription_status": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "active",
+          "error",
+          "disabled"
+        ]
+      },
+      "subscription_status_reason": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "description": "A description of why the subscription might have failed and what was going on at the time.",
+            "type": "string"
+          },
+          "reason": {
+            "description": "The specific type of subscription failure.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/subscription_status_reason_type"
+              }
+            ]
+          }
+        },
+        "required": [
+          "description",
+          "reason"
+        ]
+      },
+      "subscription_status_reason_type": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "not_found",
+          "failed"
+        ]
+      },
+      "task_execution_state": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "complete"
+            ]
+          },
+          {
+            "description": "Should never be in this state.",
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "Pre-scheduler validation and prep.",
+            "type": "string",
+            "enum": [
+              "processing"
+            ]
+          },
+          {
+            "description": "Waiting to be scheduled.",
+            "type": "string",
+            "enum": [
+              "waiting"
+            ]
+          },
+          {
+            "description": "Currently running as reported by scheduler.",
+            "type": "string",
+            "enum": [
+              "running"
+            ]
+          }
+        ]
+      },
+      "task_execution_status": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "Has encountered an issue, either container issue or scheduling issue.",
+            "type": "string",
+            "enum": [
+              "failed"
+            ]
+          },
+          {
+            "description": "Finished with a proper exit code.",
+            "type": "string",
+            "enum": [
+              "successful"
+            ]
+          },
+          {
+            "description": "Cancelled mid run due to user requested cancellation.",
+            "type": "string",
+            "enum": [
+              "cancelled"
+            ]
+          },
+          {
+            "description": "Not run due to dependencies not being met.",
+            "type": "string",
+            "enum": [
+              "skipped"
+            ]
+          }
+        ]
+      },
+      "task_execution_status_reason": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "description": "A description of why the task execution might have failed and what was going on at the time.",
+            "type": "string"
+          },
+          "reason": {
+            "description": "The specific type of task execution failure.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/task_execution_status_reason_type"
+              }
+            ]
+          }
+        },
+        "required": [
+          "description",
+          "reason"
+        ]
+      },
+      "task_execution_status_reason_type": {
+        "oneOf": [
+          {
+            "description": "Gofer has no fucking clue how the run got into this state.",
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          },
+          {
+            "description": "A non-zero exit code has been received.",
+            "type": "string",
+            "enum": [
+              "abnormal_exit"
+            ]
+          },
+          {
+            "description": "Encountered an error with the container scheduler.",
+            "type": "string",
+            "enum": [
+              "scheduler_error"
+            ]
+          },
+          {
+            "description": "User error in task execution parameters.",
+            "type": "string",
+            "enum": [
+              "failed_precondition"
+            ]
+          },
+          {
+            "description": "User invoked cancellation.k",
+            "type": "string",
+            "enum": [
+              "cancelled"
+            ]
+          },
+          {
+            "description": "Task execution was lost due to extreme internal error.",
+            "type": "string",
+            "enum": [
+              "orphaned"
+            ]
+          }
+        ]
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Configs",
+      "description": "Pipeline configs are versioned configurations for a particular pipeline."
+    },
+    {
+      "name": "Deployments",
+      "description": "A deployment represents a transition between pipeline versions"
+    },
+    {
+      "name": "Events",
+      "description": "Gofer emits events for actions that happen within it's purview. You can use the event api to get a list of all events or request specific events."
+    },
+    {
+      "name": "Extensions",
+      "description": "An extension is a way to give pipelines more functionality. This might include automatically running your pipeline or printing the results of a run to Slack or more. Pipelines can subscribe to one or more extensions (usually with some individual configuration) and those extensions perform actions on behalf of the pipeline."
+    },
+    {
+      "name": "Namespaces",
+      "description": "A namespace represents a grouping of pipelines. Normally it is used to divide teams or logically different sections of workloads. It is the highest level unit as it sits above pipelines in the hierarchy of Gofer"
+    },
+    {
+      "name": "Objects",
+      "description": "The object store is a temporary key-vale storage mechanism for pipelines and runs. It allows the user to cache objects for the lifetime of multiple runs or for the lifetime of a single run.There are two separate types of objects, each useful for its own use case. Visit the documentation\n                    for more details on the associated lifetimes of pipeline specific and run specific objects"
+    },
+    {
+      "name": "Pipelines",
+      "description": "A pipeline is a graph of containers that accomplish some goal. Pipelines are created via a Pipeline configuration file and can be set to be run automatically via attached extensions"
+    },
+    {
+      "name": "Runs",
+      "description": "A run is a specific execution of a pipeline at a specific point in time. A run is made up of multiple tasks that all execute according to their dependency on each other."
+    },
+    {
+      "name": "Secrets",
+      "description": "Gofer allows user to enter secrets on both a global and pipeline scope. This is useful for workloads that need access to secret values and want a quick, convenient way to access those secrets. Global secrets are managed by admins and can grant pipelines access to secrets\n                    shared amongst many namespaces. Pipeline secrets on the other hand are only accessible from within\n                    that specific pipeline"
+    },
+    {
+      "name": "Subscriptions",
+      "description": "A subscription represents a pipeline's subscription to a extension."
+    },
+    {
+      "name": "System",
+      "description": "Routes focused on meta-information for the Gofer service"
+    },
+    {
+      "name": "Tasks",
+      "description": "A task is the lowest unit of execution for a pipeline. A task execution is the tracking of a task, which is to say a task execution is simply the tracking of the container that is in the act of being executed."
+    },
+    {
+      "name": "Tokens",
+      "description": "Gofer API Token"
+    }
+  ]
+}

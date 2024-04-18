@@ -1,18 +1,30 @@
 [package]
 name = "gofer_sdk"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-gofer_proto = { path = "../../proto/rust" }
-serde_json = "1"
-serde = { version = "1.0", features = ["derive"] }
-strum = { version = "0.24", features = ["derive"] }
-lazy-regex = "2.3.0"
-thiserror = "1.0.31"
-prost = "0.10.0"
-tonic = { version = "0.7.2", features = ["tls", "transport", "tls-roots"] }
-downcast-rs = "1.2.0"
+async-trait = "0.1.80"
+anyhow = "1.0.72"
+base64 = "0.22.0"
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", branch = "main" }
+futures = "0.3"
+http = "0.2.12"
+lazy-regex = "3.1.0"
+progenitor = { git = "https://github.com/oxidecomputer/progenitor" }
+rand = "0.8.5"
+reqwest = { version = "0.11", features = ["json", "stream"] }
+schemars = "0.8.21"
+serde = { version = "1.0.173", features = ["derive"] }
+serde_json = "1.0.115"
+slog = "2.7.0"
+slog-async = "2.8.0"
+strum = { version = "0.26", features = ["derive"] }
+thiserror = "1.0.60"
+tokio = "1.37.0"
+tracing = "0.1.40"
+hyper = { version = "0.14", features = ["server", "full"] }
 
-[build-dependencies]
-tonic-build = "0.7.0"
+[[bin]]
+name = "generate_openapi_sdk"
+path = "src/generate_openapi.rs"

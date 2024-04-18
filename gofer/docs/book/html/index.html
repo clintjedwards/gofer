@@ -1,0 +1,337 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Introduction - Gofer</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="Gofer documentation">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html" class="active">Introduction</a></li><li class="chapter-item expanded affix "><a href="how_does_gofer_work.html">How Does Gofer Work?</a></li><li class="chapter-item expanded affix "><a href="glossary.html">Glossary</a></li><li class="chapter-item expanded affix "><a href="faq.html">FAQ</a></li><li class="chapter-item expanded affix "><a href="features.html">Feature Guide</a></li><li class="chapter-item expanded affix "><a href="best_practices.html">Best Practices</a></li><li class="chapter-item expanded affix "><a href="troubleshooting.html">Troubleshooting</a></li><li class="chapter-item expanded affix "><a href="philosophy.html">Philosophy</a></li><li class="chapter-item expanded affix "><a href="api_reference.html">API Reference</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="guide/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guide/installing_gofer.html"><strong aria-hidden="true">1.1.</strong> Installing Gofer</a></li><li class="chapter-item expanded "><a href="guide/running_the_server_locally.html"><strong aria-hidden="true">1.2.</strong> Running the Server Locally</a></li><li class="chapter-item expanded "><a href="guide/create_your_first_pipeline_configuration.html"><strong aria-hidden="true">1.3.</strong> Create Your First Pipeline Config</a></li><li class="chapter-item expanded "><a href="guide/register_your_pipeline.html"><strong aria-hidden="true">1.4.</strong> Register your pipeline</a></li><li class="chapter-item expanded "><a href="guide/start_a_run.html"><strong aria-hidden="true">1.5.</strong> Start a Run</a></li><li class="chapter-item expanded "><a href="guide/whats_next.html"><strong aria-hidden="true">1.6.</strong> What's Next?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="ref/pipeline_configuration/index.html"><strong aria-hidden="true">2.</strong> Pipeline Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/pipeline_configuration/tasks.html"><strong aria-hidden="true">2.1.</strong> Tasks</a></li></ol></li><li class="chapter-item expanded "><a href="ref/server_configuration/index.html"><strong aria-hidden="true">3.</strong> Server Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/server_configuration/configuration_reference.html"><strong aria-hidden="true">3.1.</strong> Configuration Reference</a></li><li class="chapter-item expanded "><a href="ref/server_configuration/authentication.html"><strong aria-hidden="true">3.2.</strong> Authentication</a></li><li class="chapter-item expanded "><a href="ref/server_configuration/external_events.html"><strong aria-hidden="true">3.3.</strong> External Events</a></li></ol></li><li class="chapter-item expanded "><a href="ref/scheduler/index.html"><strong aria-hidden="true">4.</strong> Scheduler</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/scheduler/docker.html"><strong aria-hidden="true">4.1.</strong> Docker</a></li></ol></li><li class="chapter-item expanded "><a href="ref/object_store/index.html"><strong aria-hidden="true">5.</strong> Object Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/object_store/sqlite.html"><strong aria-hidden="true">5.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="ref/secret_store/index.html"><strong aria-hidden="true">6.</strong> Secret Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/secret_store/sqlite.html"><strong aria-hidden="true">6.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="ref/extensions/index.html"><strong aria-hidden="true">7.</strong> Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/extensions/provided/index.html"><strong aria-hidden="true">7.1.</strong> Provided Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ref/extensions/provided/cron.html"><strong aria-hidden="true">7.1.1.</strong> Cron</a></li><li class="chapter-item expanded "><a href="ref/extensions/provided/interval.html"><strong aria-hidden="true">7.1.2.</strong> Interval</a></li><li class="chapter-item expanded "><a href="ref/extensions/provided/github.html"><strong aria-hidden="true">7.1.3.</strong> Github</a></li></ol></li></ol></li><li class="chapter-item expanded "><li class="part-title">CLI</li><li class="chapter-item expanded "><a href="cli/index.html"><strong aria-hidden="true">8.</strong> Command Line</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/configuration.html"><strong aria-hidden="true">8.1.</strong> Configuration</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Gofer</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/clintjedwards/gofer" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<p>Welcome to the Gofer documentation! This documentation is a reference for all available features and options of Gofer.</p>
+<ul>
+<li>To kick the tires visit: <a href="./guide/index.html">Getting Started</a></li>
+<li>To read more about Gofer's Feature set visit: <a href="./features.html">Features</a></li>
+<li>To understand the why of Gofer visit: <a href="./philosophy.html">Philosophy</a></li>
+</ul>
+<h1 id="gofer-run-short-lived-jobs-easily"><a class="header" href="#gofer-run-short-lived-jobs-easily"><a href="https://clintjedwards.com/gofer/assets/urban_dictionary_gofer.png">Gofer</a>: Run short-lived jobs easily.</a></h1>
+<p align="center">
+    <img src="https://clintjedwards.com/gofer/assets/logo-name-hq.png" alt="gofer" width="200"/>
+</p>
+<p><img src="https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square" alt="website-badge" />
+<img src="https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square" alt="project status" /></p>
+<p>Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.</p>
+<p>It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. Once set up, Gofer takes care of scheduling and running your automation tasks—be it on Nomad, Kubernetes, or even Local Docker.</p>
+<p>Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.</p>
+<h2 id="features"><a class="header" href="#features">Features:</a></h2>
+<ul>
+<li><strong>Simple Deployment</strong>: Install Gofer effortlessly with a single static binary and manage it through its intuitive command-line interface.</li>
+<li><strong>Language Flexibility</strong>: Craft your pipelines in programming languages you're already comfortable with, such as Go or Rust—no more wrestling with unfamiliar YAML.</li>
+<li><strong>Local Testing</strong>: Validate and run your pipelines locally, eliminating the guesswork of "commit and see" testing.</li>
+<li><strong>Extensible Architecture</strong>: Easily extend Gofer's capabilities by writing your own plugins, backends, and more, in any language via OpenAPI.</li>
+<li><strong>Built-In Storage</strong>: Comes with an integrated Object and Secret store for your convenience.</li>
+<li><strong>DAG Support</strong>: Harness the power of Directed Acyclic Graphs (DAGs) for complex workflow automation.</li>
+<li><strong>Robust Reliability</strong>: Automatic versioning, Blue/Green deployments, and canary releases ensure the stability and dependability of your pipelines.</li>
+</ul>
+<h2 id="demo"><a class="header" href="#demo">Demo:</a></h2>
+<img src="https://clintjedwards.com/gofer/assets/demo.gif" />
+<h2 id="documentation--getting-started"><a class="header" href="#documentation--getting-started">Documentation &amp; Getting Started</a></h2>
+<p>If you want to fully dive into Gofer, check out the <a href="https://clintjedwards.github.io/gofer">documentation site</a>!</p>
+<h2 id="install"><a class="header" href="#install">Install</a></h2>
+<p>Extended installation information is available through the <a href="https://clintjedwards.com/gofer/guide/installing_gofer.html">documentation site</a>.</p>
+<h3 id="download-a-specific-release"><a class="header" href="#download-a-specific-release">Download a specific release:</a></h3>
+<p>You can <a href="https://github.com/clintjedwards/gofer/releases">view and download releases by version here</a>.</p>
+<h3 id="download-the-latest-release"><a class="header" href="#download-the-latest-release">Download the latest release:</a></h3>
+<ul>
+<li><strong>Linux:</strong> <code>wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer</code></li>
+</ul>
+<h3 id="build-from-source"><a class="header" href="#build-from-source">Build from source:</a></h3>
+<ol>
+<li><code>git clone https://github.com/clintjedwards/gofer &amp;&amp; cd gofer</code></li>
+<li><code>make build</code></li>
+<li><code>ls ./target/release/gofer</code></li>
+</ol>
+<p>The Gofer binary comes with a CLI to manage the server as well as act as a client.</p>
+<h2 id="dev-setup"><a class="header" href="#dev-setup">Dev Setup</a></h2>
+<p>Gofer is setup such that the base run mode is the development mode. So simply running the binary
+without any additional flags allows easy auth-less development. You can read more about how to deploy Gofer in a
+production environment <a href="https://clintjedwards.com/gofer/ref/server_configuration/index.html">here</a></p>
+<h3 id="youll-need-to-install-the-following-first"><a class="header" href="#youll-need-to-install-the-following-first">You'll need to install the following first:</a></h3>
+<p>To run Gofer dev mode:</p>
+<ul>
+<li><a href="https://www.docker.com/">Docker</a></li>
+</ul>
+<h3 id="run-from-the-makefile"><a class="header" href="#run-from-the-makefile">Run from the Makefile</a></h3>
+<p>Gofer uses flags, env vars, and files to manage configuration (in order of most important). The Makefile already includes all the commands and flags you need to run in dev mode by simply running <code>make run</code>.</p>
+<p>In case you want to run without the make file simply run:</p>
+<pre><code class="language-bash">cd gofer
+export GOFER_WEB_API__LOG_LEVEL=debug
+cargo run --bin gofer -- service start
+</code></pre>
+<h3 id="editing-openapi-spec-files"><a class="header" href="#editing-openapi-spec-files">Editing OpenAPI spec files</a></h3>
+<h4 id="where-are-the-openapi-spec-files"><a class="header" href="#where-are-the-openapi-spec-files">Where are the openapi spec files?</a></h4>
+<p>Gofer uses OpenAPI to generate a REST API in which is uses both to communicate with extensions and the main web service.</p>
+<ul>
+<li>You can find the OpenAPI spec files located in <code>sdk/openapi.json</code> and <code>gofer/docs/src/assets/openapi.json</code>.</li>
+<li>This means you can also access the API reference by going to <code>/docs/api_reference.html</code> in the main web service.</li>
+</ul>
+<h4 id="how-do-we-generate-new-spec-files"><a class="header" href="#how-do-we-generate-new-spec-files">How do we generate new spec files?</a></h4>
+<p>Gofer uses <a href="https://github.com/deepmap/oapi-codegen">oapi-codegen</a> to generate the Golang sdk and <a href="https://github.com/oxidecomputer/progenitor">progenitor</a> to generate the Rust SDK.</p>
+<p>You can download oapi-codegen by performing <code>go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest</code>.
+Progenitor is already included as a lib within the generation code.</p>
+<p>The OpenAPI Spec files are generated by the web framework used <a href="https://github.com/oxidecomputer/">dropshot</a>. It
+generates the files directly from the code.</p>
+<p>You can run the generate script by using <code>make generate-openapi</code> from the root directory.</p>
+<h3 id="editing-documentation"><a class="header" href="#editing-documentation">Editing Documentation</a></h3>
+<p>Documentation is done with <a href="https://rust-lang.github.io/mdBook/">mdbook</a>.</p>
+<p>To install:</p>
+<pre><code class="language-bash">cargo install mdbook
+cargo install mdbook-linkcheck
+</code></pre>
+<p>Once you have mdbook you can simply run <code>make run-docs</code> to give you an auto-reloading dev version of the documentation
+in a browser.</p>
+<h3 id="regenerating-demo-gif"><a class="header" href="#regenerating-demo-gif">Regenerating Demo Gif</a></h3>
+<p>The Gif on the README page uses <a href="https://github.com/charmbracelet/vhs">vhs</a>; a very handy tool that allows you to write a configuration file which will pop out
+a gif on the other side.</p>
+<p>In order to do this VHS has to run the commands so we must start the server first before we regenerate the gif.</p>
+<pre><code class="language-bash">rm -rf /tmp/gofer* # Start with a fresh database
+make run # Start the server in dev mode
+cd documentation/src/assets
+vhs &lt; demo.tape # this will start running commands against the server and output the gif as demo.gif.
+</code></pre>
+<h2 id="authors"><a class="header" href="#authors">Authors</a></h2>
+<ul>
+<li><strong>Clint Edwards</strong> - <a href="https://github.com/clintjedwards">Github</a></li>
+</ul>
+<p>This software is provided as-is. It's a hobby project, done in my free time, and I don't get paid for doing it.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+                            <a rel="next prefetch" href="how_does_gofer_work.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+                    <a rel="next prefetch" href="how_does_gofer_work.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

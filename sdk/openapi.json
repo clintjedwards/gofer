@@ -1,0 +1,355 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gofer Extension",
+    "version": "0.0.0"
+  },
+  "paths": {
+    "/api/debug": {
+      "get": {
+        "summary": "Returns inner state information about the extension to aid in debugging.",
+        "operationId": "debug",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DebugResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/external-event": {
+      "post": {
+        "summary": "Gofer supports external requests from third-parties to perform different actions. Upon receiving such a request",
+        "description": "Gofer will process the request and return the body via this endpoint.",
+        "operationId": "external_event",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Returns extension health information. Useful for health checks.",
+        "operationId": "health",
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/info": {
+      "get": {
+        "summary": "Returns general metadata about the extension.",
+        "operationId": "info",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfoResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/shutdown": {
+      "post": {
+        "summary": "Shutdown tells the extension to cleanup and gracefully shutdown. If a extension",
+        "description": "does not shutdown in a time defined by the Gofer API the extension will instead be forced to shutdown via SIGKILL.",
+        "operationId": "shutdown",
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/subscribe": {
+      "post": {
+        "summary": "Register pipeline with extension.",
+        "operationId": "subscribe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Unregister a pipeline with extension.",
+        "operationId": "unsubscribe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DebugResponse": {
+        "type": "object",
+        "properties": {
+          "info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "info"
+        ]
+      },
+      "Documentation": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "Anything the extension wants to explain to the user. This text is inserted into the documentation a user can look up about the extension. Supports AsciiDoc.",
+            "type": "string"
+          },
+          "config_params": {
+            "description": "Each extension has configuration parameters that can be passed in at extension startup. These parameters should control extension behavior for it's entire lifetime.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            }
+          },
+          "pipeline_subscription_params": {
+            "description": "Each extension has pipeline subscription parameters that are passed in by a pipeline when it attempts to subscribe to an extension. This controls how the extension treats that specific pipeline subscription.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            }
+          }
+        },
+        "required": [
+          "body",
+          "config_params",
+          "pipeline_subscription_params"
+        ]
+      },
+      "Error": {
+        "description": "Error information from a response.",
+        "type": "object",
+        "properties": {
+          "error_code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "request_id"
+        ]
+      },
+      "ExternalEventRequest": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "description": "The bytes of the response body for the external request.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          }
+        },
+        "required": [
+          "payload"
+        ]
+      },
+      "InfoResponse": {
+        "type": "object",
+        "properties": {
+          "documentation": {
+            "description": "Documentation about how to use the extension.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Documentation"
+              }
+            ]
+          },
+          "extension_id": {
+            "description": "The unique extension identifier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentation",
+          "extension_id"
+        ]
+      },
+      "Parameter": {
+        "type": "object",
+        "properties": {
+          "documentation": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "documentation",
+          "key",
+          "required"
+        ]
+      },
+      "SubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "namespace_id": {
+            "description": "The unique identifier for the target namespace.",
+            "type": "string"
+          },
+          "pipeline_id": {
+            "description": "The unique identifier for the target pipeline.",
+            "type": "string"
+          },
+          "pipeline_subscription_id": {
+            "description": "A unique name created by the pipeline owner to differentiate this pipeline subscription to the extension from any others to the same extension.",
+            "type": "string"
+          },
+          "pipeline_subscription_params": {
+            "description": "Each extension has pipeline subscription parameters that are passed in by a pipeline when it attempts to subscribe to an extension. This controls how the extension treats that specific pipeline subscription.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "namespace_id",
+          "pipeline_id",
+          "pipeline_subscription_id",
+          "pipeline_subscription_params"
+        ]
+      },
+      "UnsubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "namespace_id": {
+            "description": "The unique identifier for the target namespace.",
+            "type": "string"
+          },
+          "pipeline_id": {
+            "description": "The unique identifier for the target pipeline.",
+            "type": "string"
+          },
+          "pipeline_subscription_id": {
+            "description": "A unique name created by the pipeline owner to differentiate this pipeline subscription to the extension from any others to the same extension.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "namespace_id",
+          "pipeline_id",
+          "pipeline_subscription_id"
+        ]
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

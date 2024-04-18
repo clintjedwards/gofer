@@ -20,98 +20,78 @@ endif
 .RECIPEPREFIX = >
 
 # Colors
-
 COLOR_GREEN=\033[0;32m
 COLOR_RED=\033[0;31m
 COLOR_BLUE=\033[0;34m
 COLOR_END=\033[0m
 
-# App Vars
-
-APP_NAME = gofer
-GIT_COMMIT = $(shell git rev-parse --short HEAD)
-# Although go 1.18 has the git info baked into the binary now it still seems like there is no support
-# For including outside variables except this. So keep it for now.
-GO_LDFLAGS = '-X "github.com/clintjedwards/${APP_NAME}/internal/cli.appVersion=$(VERSION)" \
-				-X "github.com/clintjedwards/${APP_NAME}/internal/api.appVersion=$(VERSION)"'
-SHELL = /bin/bash
 SEMVER = 0.0.0
-VERSION = ${SEMVER}_${GIT_COMMIT}
 
-## build: run tests and compile application
-build: check-path-included check-semver-included build-protos build-sdk
-> go test ./...
-> go mod tidy
-> export CGO_ENABLED=1
-> go build -tags release -ldflags $(GO_LDFLAGS) -o $(OUTPUT)
-.PHONY: build
+## generate-openapi-backend: build json documents for openapi
+generate-openapi-backend:
+> cd gofer
+> cargo run --bin generate_openapi
 
-## build-protos: build protobufs
-build-protos:
-> protoc --proto_path=proto --go_out=proto/go --go_opt=paths=source_relative \
-	 --go-grpc_out=proto/go --go-grpc_opt=paths=source_relative proto/*.proto
-> cd proto/rust
-> cargo build --release
-.PHONY: build-protos
+## generate-openapi-sdk: build json documents for openapi
+generate-openapi-sdk:
+> cd sdk
+> oapi-codegen -generate "types,client" -response-type-suffix Resp -package sdk ../gofer/docs/src/assets/openapi.json > go/sdk.go
+> oapi-codegen -generate "types" -response-type-suffix Resp -package extensions openapi.json > go/extensions/sdk.go
+> cargo run --bin generate_openapi_sdk
 
-## build-sdk: build rust sdk
-build-sdk:
-> cd sdk/rust
-> cargo build
-.PHONY: build-sdk
+## generate-openapi
+generate-openapi: generate-openapi-backend generate-openapi-sdk
 
-## run: build application and run server with frontend
+## run: build and run Gofer web service
 run:
-> @$(MAKE) -j run-tailwind run-backend
-.PHONY: build
+> cd gofer
+> export GOFER_WEB_API__LOG_LEVEL=debug
+> cargo run --bin gofer -- service start
 
-## run-backend: build application and run server
-run-backend:
-> export GOFER_LOG_LEVEL=debug
-> go build -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
-> /tmp/${APP_NAME} service start --dev-mode
-.PHONY: run
-
-## run-tailwind: watch and build tailwind assets
-run-tailwind:
-> cd ./internal/frontend
-> npx tailwindcss -i ./main.css -o ./public/css/main.css --watch &> /dev/null
-
-## run-race: build application and run server with race detector
-run-race:
-> export GOFER_LOG_LEVEL=debug
-> go build -race -ldflags $(GO_LDFLAGS) -o /tmp/${APP_NAME}
-> /tmp/${APP_NAME} service start --dev-mode
-.PHONY: run-race
+## build: build gofer for release. Outputs to /tmp/gofer
+build:
+> cd gofer
+> cargo build --release
 
 ## run-docs: build and run documentation website for development
 run-docs:
-> cd documentation
+> cd gofer/docs
 > mdbook serve --open
 .PHONY: run-docs
 
+## run-integration-tests: Run integration tests using hurl.dev
+run-integration-tests: run-hurl-tests cleanup-integration-tests
+
+## run-hurl-tests: Run integration tests using hurl.dev
+run-hurl-tests:
+> @rm -rf /tmp/gofer* || true
+> @pkill -9 gofer || true
+> @cd gofer
+> @export GOFER_WEB_API__LOG_LEVEL=debug
+> @cargo run --bin gofer -- service start > /dev/null 2>&1 &
+
+> echo -n "Waiting for server to start responding..."
+> @while ! curl -o /dev/null -s -H "gofer-api-version: v0" --fail --connect-timeout 5 http://localhost:8080/api/system/metadata; do
+> 	@sleep 1;
+> done;
+
+> @cd tests
+> echo -ne "\r\033[K"  # Moves cursor to start of line and clears the line
+> echo "Hurl Results"
+> echo "--------------------------------"
+> hurl --test *.hurl
+
+## cleanup-integration-tests: Clean up the background gofer process.
+cleanup-integration-tests:
+> @pkill -9 gofer
+
 ## build-docs: build final documentation site artifacts
 build-docs:
-> cd documentation
+> cd gofer/docs
 > mdbook build
 .PHONY: build-docs
 
-## push-docs: push docs to github
-push-docs:
-> git checkout main
-> rm .gitignore
-> cd documentation
-> mdbook build
-> git add ./book/html/*
-> git commit -m "docs update"
-> cd ..
-> git subtree split --prefix documentation/book/html -b gh-pages
-> git push -f origin gh-pages:gh-pages
-> git branch -D gh-pages
-> git reset --hard origin/main
-.PHONY: push-docs
-
-## build-containers: build docker containers
+## build-containers: build containers
 build-containers: check-semver-included
 > cd containers
 > echo -e "$(COLOR_BLUE)Building Cron Extension$(COLOR_END)"
@@ -142,7 +122,7 @@ build-containers: check-semver-included
 > docker build -f debug/wait/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} ghcr.io/clintjedwards/gofer/debug/wait:latest
 
-## push-containers: push docker containers to github
+## push-containers: push containers to github
 push-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Push Cron Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER}
@@ -176,11 +156,6 @@ help:
 > @echo "Usage: "
 > @sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 .PHONY: help
-
-check-path-included:
-ifndef OUTPUT
->	$(error OUTPUT is undefined; ex. OUTPUT=/tmp/${APP_NAME})
-endif
 
 check-semver-included:
 ifeq ($(SEMVER), 0.0.0)

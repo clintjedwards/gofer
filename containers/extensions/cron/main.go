@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/clintjedwards/avail/v2"
-	proto "github.com/clintjedwards/gofer/proto/go"
-	sdk "github.com/clintjedwards/gofer/sdk/go/extensions"
+	sdk "github.com/clintjedwards/gofer/sdk/go"
+	extsdk "github.com/clintjedwards/gofer/sdk/go/extensions"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,213 +33,196 @@ type subscriptionID struct {
 }
 
 type extension struct {
-	isInitialized bool
 	subscriptions map[subscriptionID]*subscription
 }
 
-func (e *extension) Init(ctx context.Context, request *proto.ExtensionInitRequest) (*proto.ExtensionInitResponse, error) {
-	e.subscriptions = map[subscriptionID]*subscription{}
-	e.isInitialized = true
+func newExtension() extension {
+	extension := extension{
+		subscriptions: map[subscriptionID]*subscription{},
+	}
 
 	go func() {
 		for {
 			time.Sleep(checkInterval)
-			e.checkTimeFrames()
+			extension.checkTimeFrames()
 		}
 	}()
 
-	return &proto.ExtensionInitResponse{}, nil
+	return extension
 }
 
-func (t *extension) checkTimeFrames() {
-	for _, subscription := range t.subscriptions {
-		if subscription.timeframe.Able(time.Now()) {
-			client, ctx, err := sdk.Connect()
-			if err != nil {
-				log.Error().Str("namespace_id", subscription.namespace).Str("pipeline_id", subscription.pipeline).
-					Str("extension_label", subscription.pipelineExtensionLabel).Msg("could not connect to Gofer")
+func (e *extension) Health(_ context.Context) *extsdk.HttpError {
+	return nil
+}
 
-				continue
-			}
-
-			config, _ := sdk.GetExtensionSystemConfig()
-
-			resp, err := client.StartRun(ctx, &proto.StartRunRequest{
-				NamespaceId: subscription.namespace,
-				PipelineId:  subscription.pipeline,
-				Variables:   map[string]string{},
-				Initiator: &proto.Initiator{
-					Type:   proto.Initiator_EXTENSION,
-					Name:   fmt.Sprintf("%s (%s)", config.Name, subscription.pipelineExtensionLabel),
-					Reason: fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q", time.Now().Format(time.RFC1123), subscription.timeframe.Expression),
+func (e *extension) Info(_ context.Context) (*extsdk.InfoResponse, *extsdk.HttpError) {
+	return &extsdk.InfoResponse{
+		ExtensionId: "", // The extension wrapper automagically fills this in.
+		Documentation: extsdk.Documentation{
+			Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
+			PipelineSubscriptionParams: []extsdk.Parameter{
+				{
+					Key:           ParameterExpression,
+					Documentation: "The cron expression to run on. You can find more information on crafting this expression at https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
+					Required:      true,
 				},
-			})
-			if err != nil {
-				log.Error().Str("namespaceID", subscription.namespace).Str("pipelineID", subscription.pipeline).
-					Str("extension_label", subscription.pipelineExtensionLabel).Msg("could not start new run")
+			},
+			ConfigParams: []extsdk.Parameter{},
+		},
+	}, nil
+}
 
-				continue
-			}
+func (e *extension) Debug(_ context.Context) extsdk.DebugResponse {
+	registered := []string{}
+	for _, sub := range e.subscriptions {
+		registered = append(registered, fmt.Sprintf("%s/%s", sub.namespace, sub.pipeline))
+	}
 
-			log.Debug().Str("extension_label", subscription.pipelineExtensionLabel).Str("pipeline_id", subscription.pipeline).
-				Str("namespace_id", subscription.namespace).Int64("run_id", resp.Run.Id).
-				Msg("Pipeline within timeframe; new event spawned")
-		}
+	config, _ := extsdk.GetExtensionSystemConfig()
+
+	debug := struct {
+		RegisteredPipelines []string `json:"registered_pipelines"`
+		Config              extsdk.ExtensionSystemConfig
+	}{
+		RegisteredPipelines: registered,
+		Config:              config,
+	}
+
+	data, jsonErr := json.Marshal(debug)
+	if jsonErr != nil {
+		log.Error().Err(jsonErr).Msg("Could not serialize response for debug endpoint")
+	}
+
+	return extsdk.DebugResponse{
+		Info: string(data),
 	}
 }
 
-func (t *extension) Subscribe(ctx context.Context, request *proto.ExtensionSubscribeRequest) (*proto.ExtensionSubscribeResponse, error) {
-	expression, exists := request.Config[strings.ToUpper(ParameterExpression)]
+func (e *extension) Subscribe(_ context.Context, request extsdk.SubscriptionRequest) *extsdk.HttpError {
+	expression, exists := request.PipelineSubscriptionParams[ParameterExpression]
 	if !exists {
-		return nil, fmt.Errorf("could not find required configuration parameter %q", ParameterExpression)
+		return &extsdk.HttpError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Required parameter %q missing", ParameterExpression),
+		}
 	}
 
 	timeframe, err := avail.New(expression)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse expression: %q", err)
+		return &extsdk.HttpError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Could not parse expression: %q; %v", expression, err),
+		}
 	}
 
 	subID := subscriptionID{
 		request.NamespaceId,
 		request.PipelineId,
-		request.PipelineExtensionLabel,
+		request.PipelineSubscriptionId,
 	}
 
 	// It is perfectly possible for Gofer to attempt to subscribe an already subscribed pipeline. In this case,
 	// we can simply ignore the request.
-	_, exists = t.subscriptions[subID]
+	_, exists = e.subscriptions[subID]
 	if exists {
-		log.Debug().Str("namespace_id", request.NamespaceId).Str("extension_label", request.PipelineExtensionLabel).
+		log.Debug().Str("namespace_id", request.NamespaceId).Str("pipeline_subscription_id", request.PipelineSubscriptionId).
 			Str("pipeline_id", request.PipelineId).Msg("pipeline already subscribed; ignoring request")
-		return &proto.ExtensionSubscribeResponse{}, nil
+		return nil
 	}
 
 	// While it might result in a faster check to start a goroutine for each subscription the interval
 	// for most of these expressions should be on the order of minutes. So one event loop checking the
 	// result for all of them should still result in no missed checks.
-	t.subscriptions[subID] = &subscription{
+	e.subscriptions[subID] = &subscription{
 		namespace:              request.NamespaceId,
 		pipeline:               request.PipelineId,
-		pipelineExtensionLabel: request.PipelineExtensionLabel,
+		pipelineExtensionLabel: request.PipelineSubscriptionId,
 		timeframe:              timeframe,
 	}
 
-	log.Debug().Str("extension_label", request.PipelineExtensionLabel).Str("pipeline_id", request.PipelineId).
+	log.Debug().Str("pipeline_subscription_id", request.PipelineSubscriptionId).Str("pipeline_id", request.PipelineId).
 		Str("namespace_id", request.NamespaceId).Msg("subscribed pipeline")
-	return &proto.ExtensionSubscribeResponse{}, nil
+	return nil
 }
 
-func (t *extension) Unsubscribe(ctx context.Context, request *proto.ExtensionUnsubscribeRequest) (*proto.ExtensionUnsubscribeResponse, error) {
+func (e *extension) Unsubscribe(_ context.Context, request extsdk.UnsubscriptionRequest) *extsdk.HttpError {
 	subID := subscriptionID{
 		namespace:              request.NamespaceId,
 		pipeline:               request.PipelineId,
-		pipelineExtensionLabel: request.PipelineExtensionLabel,
+		pipelineExtensionLabel: request.PipelineSubscriptionId,
 	}
 
-	delete(t.subscriptions, subID)
+	delete(e.subscriptions, subID)
 
-	log.Debug().Str("extension_label", request.PipelineExtensionLabel).Str("pipeline_id", request.PipelineId).
+	log.Debug().Str("pipeline_subscription_id", request.PipelineSubscriptionId).Str("pipeline_id", request.PipelineId).
 		Str("namespace_id", request.NamespaceId).Msg("unsubscribed pipeline")
-	return &proto.ExtensionUnsubscribeResponse{}, nil
-}
-
-func (t *extension) Info(ctx context.Context, request *proto.ExtensionInfoRequest) (*proto.ExtensionInfoResponse, error) {
-	registered := []string{}
-	for _, sub := range t.subscriptions {
-		registered = append(registered, fmt.Sprintf("%s/%s", sub.namespace, sub.pipeline))
-	}
-
-	config, _ := sdk.GetExtensionSystemConfig()
-
-	return &proto.ExtensionInfoResponse{
-		Name:          config.Name,
-		Documentation: "https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
-		Registered:    registered,
-	}, nil
-}
-
-func (t *extension) Shutdown(ctx context.Context, request *proto.ExtensionShutdownRequest) (*proto.ExtensionShutdownResponse, error) {
-	return &proto.ExtensionShutdownResponse{}, nil
-}
-
-func (t *extension) ExternalEvent(ctx context.Context, request *proto.ExtensionExternalEventRequest) (*proto.ExtensionExternalEventResponse, error) {
-	return &proto.ExtensionExternalEventResponse{}, nil
-}
-
-// The ExtensionInstaller is a small script that gets piped to the admin who is trying to set up this particular
-// extension. The installer is meant to guide the user through the different configuration options that the
-// installer has globally.
-func (e *extension) RunExtensionInstaller(stream proto.ExtensionService_RunExtensionInstallerServer) error {
-	err := sdk.SendInstallerMessageToClient(stream, "The cron extension allows users to run their pipelines on the passage "+
-		"of time by setting particular timeframes. There are no configuration options for the cron extension.")
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-// The PipelineConfigurator is a small script that a pipeline owner can run when subscribing to this extension.
-// It's meant to guide the pipeline owner through the different options of the extension.
-func (e *extension) RunPipelineConfigurator(stream proto.ExtensionService_RunPipelineConfiguratorServer) error {
-	err := sdk.SendConfiguratorMessageToClient(stream, "The cron extension allows users to run their pipelines on the passage "+
-		"of time by setting particular timeframes.\n")
-	if err != nil {
-		return err
+func (e *extension) Shutdown(_ context.Context) {}
+
+func (e *extension) ExternalEvent(_ context.Context, _ extsdk.ExternalEventRequest) *extsdk.HttpError {
+	// We don't support external events.
+	return nil
+}
+
+func (e *extension) checkTimeFrames() {
+	config, _ := extsdk.GetExtensionSystemConfig()
+
+	scheme := "http://"
+
+	if config.UseTLS {
+		scheme = "https://"
 	}
 
-	err = sdk.SendConfiguratorMessageToClient(stream, `It uses a stripped down version of the cron syntax to do so:
-
-	Field           Allowed values  Allowed special characters
-
-	Minutes         0-59            * , -
-	Hours           0-23            * , -
-	Day of month    1-31            * , -
-	Month           1-12            * , -
-	Day of week     0-6             * , -
-	Year            1970-2100       * , -
-`)
+	client, err := sdk.NewClientWithHeaders(scheme+config.GoferHost, config.Secret, sdk.GoferAPIVersion0)
 	if err != nil {
-		return err
+		log.Fatal().Err(err).Msg("Could not initialize client while attempting to check time frames")
 	}
 
-	err = sdk.SendConfiguratorMessageToClient(stream, "For example the cron expression '0 1 25 12 * *' would run a pipeline every year on Christmas.")
-	if err != nil {
-		return err
-	}
+	for _, subscription := range e.subscriptions {
+		if subscription.timeframe.Able(time.Now()) {
+			log := log.With().Str("namespace_id", subscription.namespace).Str("pipeline_id", subscription.pipeline).
+				Str("pipeline_subscription_id", subscription.pipelineExtensionLabel).Logger()
 
-	err = sdk.SendConfiguratorMessageToClient(stream, "You can read more information about the cron format here: https://clintjedwards.com/gofer/ref/extensions/provided/cron.html\n")
-	if err != nil {
-		return err
-	}
+			resp, err := client.StartRun(context.Background(), subscription.namespace, subscription.pipeline, sdk.StartRunRequest{
+				Variables: map[string]string{},
+				Initiator: sdk.Initiator{
+					Kind: sdk.InitiatorTypeExtension,
+					Name: fmt.Sprintf("%s (%s)", config.ID, subscription.pipelineExtensionLabel),
+					Reason: fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q",
+						time.Now().Format(time.RFC1123), subscription.timeframe.Expression),
+				},
+			})
+			if err != nil {
+				log.Error().Err(err).Msg("could not start new run")
+				continue
+			}
+			defer resp.Body.Close()
 
-	err = sdk.SendConfiguratorQueryToClient(stream, "Set your pipeline run cron expression: ")
-	if err != nil {
-		return err
-	}
+			if resp.StatusCode < 200 || resp.StatusCode > 299 {
+				log.Error().Int("status_code", resp.StatusCode).Msg("could not start new run; received non 2xx status code")
+				continue
+			}
 
-	clientMsg, err := stream.Recv()
-	if err != nil {
-		return err
-	}
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Error().Err(err).Msg("could not read response body while attempting to start run")
+				continue
+			}
 
-	_, err = avail.New(clientMsg.Msg)
-	if err != nil {
-		err = sdk.SendConfiguratorMessageToClient(stream, fmt.Sprintf("Malformed expression %q; %v", clientMsg.Msg, err))
-		if err != nil {
-			return err
+			startRunResponse := sdk.StartRunResponse{}
+			if err := json.Unmarshal(body, &startRunResponse); err != nil {
+				log.Error().Err(err).Msg("could not parse response body while attempting to read start run response")
+				continue
+			}
+
+			log.Debug().Int64("run_id", int64(startRunResponse.Run.RunId)).Msg("Pipeline within timeframe; new event spawned")
 		}
 	}
-
-	err = sdk.SendConfiguratorParamSettingToClient(stream, ParameterExpression, clientMsg.Msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func main() {
-	extension := extension{}
-	sdk.NewExtension(&extension)
+	extension := newExtension()
+	extsdk.NewExtension(&extension)
 }

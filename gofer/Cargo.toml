@@ -1,0 +1,68 @@
+[package]
+name = "gofer"
+version = "0.7.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aes = "0.8.4"
+aes-gcm = "0.10.3"
+anyhow = "1.0.72"
+async-trait = "0.1.80"
+base64 = "0.22.1"
+bollard = "0.16.1"
+chrono = "0.4.31"
+chrono-humanize = "0.2.3"
+clap = { version = "4.4.8", features = ["derive", "wrap_help"] }
+colored = "2.0.4"
+comfy-table = "7.1.0"
+crossbeam = "0.8.4"
+dashmap = "5.5.3"
+derive_builder = "0.20.0"
+dirs = "5.0.1"
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", branch = "main" }
+figment = { version = "0.10.16", features = ["env", "toml"] }
+futures = "0.3.30"
+gofer_sdk = { path = "../sdk/rust" }
+http = "0.2.12"
+hyper = { version = "0.14", features = ["server", "full"] }
+lazy-regex = "3.1.0"
+mime_guess = "2.0.4"
+polyfmt = { git = "https://github.com/clintjedwards/polyfmt-rs.git", tag = "v0.0.12" }
+rand = "0.8.5"
+regex = "1.10.4"
+reqwest = { version = "0.11", features = ["json", "stream"] }
+rstest = "0.19.0"
+rust-embed = "8.0.0"
+schemars = "0.8.21"
+serde = { version = "1.0.173", features = ["derive"] }
+serde_json = "1.0.105"
+sha2 = "0.10.8"
+slog = "2.7.0"
+slog-async = "2.8.0"
+sqlx = { version = "0.7.4", features = ["runtime-tokio-rustls", "sqlite"] }
+strum = { version = "0.26", features = ["derive"] }
+tabwriter = "1.4.0"
+tera = "1.19.1"
+thiserror = "1.0.58"
+tokio = { version = "1.32.0", features = ["full"] }
+tokio-rustls = "0.26.0"
+tokio-tungstenite = "0.21.0"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+tungstenite = "0.21.0"
+uuid = { version = "1.8.0", features = ["v7"] }
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+tempfile = "3.2.0"
+pretty_assertions = "1.4.0"
+
+[[bin]]
+name = "gofer"
+path = "src/main.rs"
+
+[[bin]]
+name = "generate_openapi"
+path = "src/generate_openapi.rs"

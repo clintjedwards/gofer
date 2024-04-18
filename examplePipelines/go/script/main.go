@@ -11,13 +11,15 @@ const exampleScript string = `#!/bin/bash
 echo "This is a simple example of a script"
 echo "You quickly wrote and didn't want"
 echo "to go through the trouble of wrapping it in a docker container"
-uname -a`
+uname -a
+sleep 5m
+`
 
 func main() {
 	err := sdk.NewPipeline("script", "Script Example Pipeline").
 		Description(
 			"This pipeline shows how to run a simple multiline script in Gofer. "+
-				"Since Gofer is an extension of platforms that run docker containers the natural way to "+
+				"Since Gofer is an extension of platforms that run containers the natural way to "+
 				"run a script is to simply pass it in via the command field. \n\n"+
 				"Below, we'll simply run an ubuntu container containing bash and then pass in our script "+
 				"to the command field. Since Gofer uses a full programming language you can pass this "+

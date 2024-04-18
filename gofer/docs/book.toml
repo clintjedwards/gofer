@@ -1,0 +1,15 @@
+[book]
+authors = ["Clint J Edwards"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Gofer"
+description = "Gofer documentation"
+
+[output.html]
+site-url = "/docs/"
+git-repository-url = "https://github.com/clintjedwards/gofer"
+
+[output.linkcheck]
+# Keep this until [this bug](https://github.com/rust-lang/mdBook/issues/984) gets fixed
+exclude = ['index\.html']

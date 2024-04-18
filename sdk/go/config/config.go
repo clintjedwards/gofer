@@ -1,15 +1,12 @@
 package config
 
 import (
-	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 
-	proto "github.com/clintjedwards/gofer/proto/go"
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
-	pb "google.golang.org/protobuf/proto"
 )
 
 // RequiredParentStatus is used to describe the state you would like the parent dependency to be in
@@ -18,36 +15,19 @@ type RequiredParentStatus string
 
 const (
 	// Any means that no matter what the state of the parent is at end, the child will run.
-	RequiredParentStatusAny RequiredParentStatus = "ANY"
+	RequiredParentStatusAny RequiredParentStatus = "Any"
 
 	// Success requires that the parent pass with a SUCCESSFUL status before the child will run.
-	RequiredParentStatusSuccess RequiredParentStatus = "SUCCESS"
+	RequiredParentStatusSuccess RequiredParentStatus = "Success"
 
 	// Failure requires the parent fail in anyway before the child is run.
-	RequiredParentStatusFailure RequiredParentStatus = "FAILURE"
+	RequiredParentStatusFailure RequiredParentStatus = "Failure"
 )
 
 // RegistryAuth represents docker repository authentication.
 type RegistryAuth struct {
-	User string `json:"user"`
-	Pass string `json:"pass"`
-}
-
-func (ra *RegistryAuth) FromProto(proto *proto.RegistryAuth) {
-	ra.User = proto.User
-	ra.Pass = proto.Pass
-}
-
-// Returns the protobuf representation.
-func (ra *RegistryAuth) Proto() *proto.RegistryAuth {
-	if ra == nil {
-		return nil
-	}
-
-	return &proto.RegistryAuth{
-		User: ra.User,
-		Pass: ra.Pass,
-	}
+	User string `json:"user" example:"some_user" doc:"Container registry username"`
+	Pass string `json:"pass" example:"some_pass" doc:"Container registry password"`
 }
 
 // PipelineWrapper type simply exists so that we can make structs with fields like "id"
@@ -60,11 +40,31 @@ type PipelineWrapper struct {
 // A pipeline is a representation of a Gofer pipeline, the structure in which users represent what they
 // want to run in Gofer.
 type Pipeline struct {
-	ID          string         `json:"id"`          // Unique Identifier for the pipeline.
-	Name        string         `json:"name"`        // Humanized name for the pipeline.
-	Description string         `json:"description"` // A short description for the pipeline.
-	Parallelism int64          `json:"parallelism"` // How many runs are allowed to run at the same time.
-	Tasks       []*TaskWrapper `json:"tasks"`       // The task set of the pipeline. AKA which containers should be run.
+	ID          string         `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                       // Unique Identifier for the pipeline.
+	Name        string         `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                        // Humanized name for the pipeline.
+	Description string         `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"` // A short description for the pipeline.
+	Parallelism int64          `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`    // How many runs are allowed to run at the same time.
+	Tasks       []*TaskWrapper `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                    // The task set of the pipeline. AKA which containers should be run.
+}
+
+type UserPipelineTaskConfig struct {
+	ID             string                          `json:"id" example:"my_pipeline_task_name" doc:"Unique identifier for the task"`
+	Description    string                          `json:"description" example:"My pipeline does x" doc:"A short description for the task"`
+	Image          string                          `json:"image" example:"ubuntu:latest" doc:"Which container image to run for this specific task"`
+	RegistryAuth   *RegistryAuth                   `json:"registry_auth" doc:"Auth credentials for the image's registry"`
+	DependsOn      map[string]RequiredParentStatus `json:"depends_on" example:"{\"task_one\":\"SUCCESS\"}"`
+	Variables      map[string]string               `json:"variables" example:"{\"APP_VAR_ONE\":\"some_var_value\"}" doc:"Variables which will be passed in as env vars to the task"`
+	Entrypoint     []string                        `json:"entrypoint" example:"[\"printenv\"]" doc:"Command to run on init of container; can be overridden"`
+	Command        []string                        `json:"command" example:"[\"printenv\"]" doc:"Command to run on init of container; cannot be overridden"`
+	InjectAPIToken bool                            `json:"inject_api_token,omitempty" example:"true" doc:"Whether to inject a run specific Gofer API Key. Useful for using Gofer API within the container"`
+}
+
+type UserPipelineConfig struct {
+	ID          string                    `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                       // Unique Identifier for the pipeline.
+	Name        string                    `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                        // Humanized name for the pipeline.
+	Description string                    `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"` // A short description for the pipeline.
+	Parallelism int64                     `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`    // How many runs are allowed to run at the same time.
+	Tasks       []*UserPipelineTaskConfig `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                    // The task set of the pipeline. AKA which containers should be run.
 }
 
 // Create a new pipeline.
@@ -125,14 +125,14 @@ func (p *PipelineWrapper) Tasks(tasks ...*TaskWrapper) *PipelineWrapper {
 	return p
 }
 
-func (p *PipelineWrapper) Proto() *proto.UserPipelineConfig {
-	tasks := []*proto.UserPipelineTaskConfig{}
+func (p *PipelineWrapper) ToUserPipelineConfig() *UserPipelineConfig {
+	tasks := []*UserPipelineTaskConfig{}
 	for _, task := range p.Pipeline.Tasks {
-		tasks = append(tasks, task.Proto())
+		tasks = append(tasks, task.ToUserPipelineTaskConfig())
 	}
 
-	return &proto.UserPipelineConfig{
-		Id:          p.ID,
+	return &UserPipelineConfig{
+		ID:          p.ID,
 		Name:        p.Name,
 		Description: p.Pipeline.Description,
 		Parallelism: p.Pipeline.Parallelism,
@@ -141,24 +141,19 @@ func (p *PipelineWrapper) Proto() *proto.UserPipelineConfig {
 }
 
 // Call finish as the last method to the pipeline config. Finish validates and converts the pipeline
-// to Protobuf so that it can be read in by other programs.
+// to json so that it can be read in by other programs.
 func (p *PipelineWrapper) Finish() error {
 	err := p.Validate()
 	if err != nil {
 		return err
 	}
 
-	pipelineProto := p.Proto()
-
-	output, err := pb.Marshal(pipelineProto)
+	jsonData, err := json.Marshal(p)
 	if err != nil {
 		return err
 	}
 
-	err = binary.Write(os.Stdout, binary.LittleEndian, output)
-	if err != nil {
-		return err
-	}
+	fmt.Println(string(jsonData))
 
 	return nil
 }
@@ -202,14 +197,6 @@ func validateIdentifier(arg, value string) error {
 	if !alphanumericWithUnderscores.MatchString(value) {
 		return fmt.Errorf("config %q can only be made up of alphanumeric and underscore characters; found %q", arg, value)
 	}
-	return nil
-}
-
-// validateVariables checks to make sure all variables are in a parsable form and don't contain any requests for global secrets
-// as this will fail the pipeline.
-func validateVariables(variables map[string]string) error {
-	// TODO(clintjedwards): We should check to make sure that "interpolatevars" function in the main program will work here.
-
 	return nil
 }
 

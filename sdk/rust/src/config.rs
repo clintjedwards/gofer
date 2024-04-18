@@ -1,10 +1,10 @@
 use crate::{dag::DAGError, dag::Dag, validate_identifier};
-use gofer_proto::{UserPipelineConfig, UserPipelineTaskConfig};
-use prost::Message;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Write};
 use strum::{Display, EnumString};
 
-#[derive(Debug, Display, EnumString, PartialEq, Eq, Clone)]
+#[derive(Debug, Display, EnumString, PartialEq, Eq, Clone, Deserialize, Serialize, JsonSchema)]
 pub enum RequiredParentStatus {
     Unknown,
     Any,
@@ -12,13 +12,13 @@ pub enum RequiredParentStatus {
     Failure,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RegistryAuth {
     pub user: String,
     pub pass: String,
 }
 
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum ConfigError {
     #[error("unknown error found during config parsing; {0}")]
     Unknown(String),
@@ -43,19 +43,49 @@ pub enum ConfigError {
     DependencyNotFound(String, String),
 }
 
-/// Representation of a pipeline configuration.
+/// `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
+/// This structure allows you to organize and define the workflow for the tasks you want to execute.
+///
+/// # Example
+///
+/// The following example demonstrates how to create a simple pipeline in Gofer, which is familiar to those experienced with CI/CD tooling.
+/// It outlines how to define a simple task within a pipeline, use a standard Ubuntu container, and execute a basic command.
+///
+/// This simple example serves as a foundation, illustrating the pattern of defining tasks as building blocks of a pipeline.
+/// In practice, you would create custom containers designed specifically for the tasks in your Gofer workflows,
+/// keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.
+///
+/// ```ignore
+///  // Create a new pipeline with a name and a descriptive label.
+///  Pipeline::new("simple", "Simple Pipeline")
+///      .description("This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \
+///                    This pattern will be familiar to those experienced with CI/CD tools. \
+///                    Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.")
+///      // Adding a single task to the pipeline.
+///      .tasks(vec![
+///          Task::new("simple_task", "ubuntu:latest")
+///              .description("This task uses the Ubuntu container to print a 'Hello World' message.")
+///              .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
+///      ])
+///      .finish() // Finalize and validate the pipeline setup.
+///      .unwrap(); // Handle potential errors during pipeline creation.
+/// ```
 #[must_use = "complete pipeline config with the .finish() method"]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Pipeline {
     /// Unique user defined identifier.
     pub id: String,
+
     /// Humanized name, meant for display.
     pub name: String,
+
     /// Short description of what the pipeline is used for.
     pub description: Option<String>,
+
     /// Controls how many runs can be active at any single time.
     /// 0 defaults to whatever the global Gofer setting is.
     pub parallelism: i64,
+
     /// A mapping of pipeline owned tasks.
     pub tasks: Vec<Task>,
 }
@@ -131,29 +161,22 @@ impl Pipeline {
     pub fn finish(self) -> Result<(), ConfigError> {
         self.validate()?;
 
-        let pipeline_proto = self.proto();
-        let pipeline_bytes = pipeline_proto.encode_to_vec();
+        let json_str = serde_json::to_string(&self).map_err(|e| {
+            ConfigError::Parsing(format!(
+                "Could not successfully serialize pipeline; {:#?}",
+                e
+            ))
+        })?;
 
-        std::io::stdout().write_all(&pipeline_bytes).unwrap();
+        write!(std::io::stdout(), "{json_str}").map_err(|e| {
+            ConfigError::Unknown(format!(
+                "Could not successfully write out serialized pipeline; {:#?}",
+                e
+            ))
+        })?;
         std::io::stdout().flush().unwrap();
 
         Ok(())
-    }
-
-    fn proto(&self) -> UserPipelineConfig {
-        let mut tasks: Vec<UserPipelineTaskConfig> = vec![];
-
-        for task in &self.tasks {
-            tasks.push(task.proto())
-        }
-
-        UserPipelineConfig {
-            id: self.id.clone(),
-            name: self.name.clone(),
-            description: self.description.clone().unwrap_or_default(),
-            parallelism: self.parallelism,
-            tasks,
-        }
     }
 }
 
@@ -165,15 +188,44 @@ pub fn global_secret(key: &str) -> String {
     format!("global_secret{{{key}}}")
 }
 
+/// A convenience function for retrieving objects from the pipeline object store.
+///
+/// Pipeline objects are part of a ring buffer that pushes out the oldest pipeline object once it becomes full. This
+/// means that pipeline objects are kept forever until they are too many of them.
+///
+/// Objects can only be retrieved as part of a task's variables and once retrieved the object will be base64 encoded.
 pub fn pipeline_object(key: &str) -> String {
     format!("pipeline_object{{{key}}}")
 }
 
+/// A convenience function for retrieving objects from the run object store.
+///
+/// Run objects are scoped to a specific run. It is meant as a way for a task within a run to pass data to other tasks.
+///
+/// Objects can only be retrieved as part of a task's variables and once retrieved the object will be base64 encoded.
 pub fn run_object(key: &str) -> String {
     format!("run_object{{{key}}}")
 }
 
-#[derive(Debug)]
+/// Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container.
+/// Each task defines the operations to be performed and the container environment in which these operations will run.
+///
+/// # Example Usage
+/// ```ignore
+/// // Define a new task within a pipeline.
+/// let task = Task {
+///     id: "example_task".to_string(),
+///     description: Some("This task executes a simple print command in an Ubuntu container.".to_string()),
+///     image: "ubuntu:latest".to_string(),
+///     registry_auth: None,
+///     depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs.
+///     variables: HashMap::from([("KEY", "value".to_string())]),
+///     entrypoint: None, // Use the image's default entrypoint.
+///     command: Some(vec!["echo".to_string(), "Hello World!".to_string()]),
+///     inject_api_token: false,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Task {
     pub id: String,
     pub description: Option<String>,
@@ -265,46 +317,6 @@ impl Task {
     pub fn inject_api_token(mut self, inject_token: bool) -> Self {
         self.inject_api_token = inject_token;
         self
-    }
-
-    fn proto(&self) -> UserPipelineTaskConfig {
-        let mut depends_on: HashMap<String, i32> = HashMap::new();
-        for (key, value) in &self.depends_on {
-            let value = match value {
-                RequiredParentStatus::Unknown => {
-                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Unknown
-                }
-                RequiredParentStatus::Any => {
-                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Any
-                }
-                RequiredParentStatus::Success => {
-                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Success
-                }
-                RequiredParentStatus::Failure => {
-                    gofer_proto::user_pipeline_task_config::RequiredParentStatus::Failure
-                }
-            };
-
-            depends_on.insert(key.clone(), value.into());
-        }
-
-        UserPipelineTaskConfig {
-            id: self.id.clone(),
-            description: self.description.clone().unwrap_or_default(),
-            image: self.image.clone(),
-            registry_auth: self
-                .registry_auth
-                .clone()
-                .map(|ra| gofer_proto::RegistryAuth {
-                    user: ra.user,
-                    pass: ra.pass,
-                }),
-            depends_on,
-            variables: self.variables.clone(),
-            entrypoint: self.entrypoint.clone().unwrap_or_default(),
-            command: self.command.clone().unwrap_or_default(),
-            inject_api_token: self.inject_api_token,
-        }
     }
 }
 

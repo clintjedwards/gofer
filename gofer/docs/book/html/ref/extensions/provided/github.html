@@ -1,0 +1,340 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Github - Gofer</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="Gofer documentation">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../../favicon.svg">
+        <link rel="shortcut icon" href="../../../favicon.png">
+        <link rel="stylesheet" href="../../../css/variables.css">
+        <link rel="stylesheet" href="../../../css/general.css">
+        <link rel="stylesheet" href="../../../css/chrome.css">
+        <link rel="stylesheet" href="../../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../../highlight.css">
+        <link rel="stylesheet" href="../../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../../../introduction.html">Introduction</a></li><li class="chapter-item expanded affix "><a href="../../../how_does_gofer_work.html">How Does Gofer Work?</a></li><li class="chapter-item expanded affix "><a href="../../../glossary.html">Glossary</a></li><li class="chapter-item expanded affix "><a href="../../../faq.html">FAQ</a></li><li class="chapter-item expanded affix "><a href="../../../features.html">Feature Guide</a></li><li class="chapter-item expanded affix "><a href="../../../best_practices.html">Best Practices</a></li><li class="chapter-item expanded affix "><a href="../../../troubleshooting.html">Troubleshooting</a></li><li class="chapter-item expanded affix "><a href="../../../philosophy.html">Philosophy</a></li><li class="chapter-item expanded affix "><a href="../../../api_reference.html">API Reference</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="../../../guide/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../guide/installing_gofer.html"><strong aria-hidden="true">1.1.</strong> Installing Gofer</a></li><li class="chapter-item expanded "><a href="../../../guide/running_the_server_locally.html"><strong aria-hidden="true">1.2.</strong> Running the Server Locally</a></li><li class="chapter-item expanded "><a href="../../../guide/create_your_first_pipeline_configuration.html"><strong aria-hidden="true">1.3.</strong> Create Your First Pipeline Config</a></li><li class="chapter-item expanded "><a href="../../../guide/register_your_pipeline.html"><strong aria-hidden="true">1.4.</strong> Register your pipeline</a></li><li class="chapter-item expanded "><a href="../../../guide/start_a_run.html"><strong aria-hidden="true">1.5.</strong> Start a Run</a></li><li class="chapter-item expanded "><a href="../../../guide/whats_next.html"><strong aria-hidden="true">1.6.</strong> What's Next?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Reference</li><li class="chapter-item expanded "><a href="../../../ref/pipeline_configuration/index.html"><strong aria-hidden="true">2.</strong> Pipeline Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../ref/pipeline_configuration/tasks.html"><strong aria-hidden="true">2.1.</strong> Tasks</a></li></ol></li><li class="chapter-item expanded "><a href="../../../ref/server_configuration/index.html"><strong aria-hidden="true">3.</strong> Server Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../ref/server_configuration/configuration_reference.html"><strong aria-hidden="true">3.1.</strong> Configuration Reference</a></li><li class="chapter-item expanded "><a href="../../../ref/server_configuration/authentication.html"><strong aria-hidden="true">3.2.</strong> Authentication</a></li><li class="chapter-item expanded "><a href="../../../ref/server_configuration/external_events.html"><strong aria-hidden="true">3.3.</strong> External Events</a></li></ol></li><li class="chapter-item expanded "><a href="../../../ref/scheduler/index.html"><strong aria-hidden="true">4.</strong> Scheduler</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../ref/scheduler/docker.html"><strong aria-hidden="true">4.1.</strong> Docker</a></li></ol></li><li class="chapter-item expanded "><a href="../../../ref/object_store/index.html"><strong aria-hidden="true">5.</strong> Object Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../ref/object_store/sqlite.html"><strong aria-hidden="true">5.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="../../../ref/secret_store/index.html"><strong aria-hidden="true">6.</strong> Secret Store</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../ref/secret_store/sqlite.html"><strong aria-hidden="true">6.1.</strong> Sqlite</a></li></ol></li><li class="chapter-item expanded "><a href="../../../ref/extensions/index.html"><strong aria-hidden="true">7.</strong> Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../ref/extensions/provided/index.html"><strong aria-hidden="true">7.1.</strong> Provided Extensions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../ref/extensions/provided/cron.html"><strong aria-hidden="true">7.1.1.</strong> Cron</a></li><li class="chapter-item expanded "><a href="../../../ref/extensions/provided/interval.html"><strong aria-hidden="true">7.1.2.</strong> Interval</a></li><li class="chapter-item expanded "><a href="../../../ref/extensions/provided/github.html" class="active"><strong aria-hidden="true">7.1.3.</strong> Github</a></li></ol></li></ol></li><li class="chapter-item expanded "><li class="part-title">CLI</li><li class="chapter-item expanded "><a href="../../../cli/index.html"><strong aria-hidden="true">8.</strong> Command Line</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../../cli/configuration.html"><strong aria-hidden="true">8.1.</strong> Configuration</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Gofer</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/clintjedwards/gofer" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="github-extension"><a class="header" href="#github-extension">Github <small><em>Extension</em></small></a></h1>
+<p>The Github extension allows Gofer pipelines to be run on <a href="https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads">Github webhook events.</a> This makes it possible to write event driven
+workloads that depend on an action happening on Github.</p>
+<p>See the <a href="#events">events section below</a> for all supported events and the environment variables they pass to each
+pipeline.</p>
+<p>:::info
+Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.</p>
+<p><em>Steps to accomplish this can be found in the <a href="#additional-setup">additional steps section.</a></em>
+:::</p>
+<p>:::danger
+The Github extension requires the <a href="../../server_configuration/external_events.html">external events feature</a> of Gofer in order to accept webhooks from Github's servers. This requires your application to take traffic from external, potentially unknown sources.</p>
+<p>Visit the <a href="../../server_configuration/external_events.html">external events page</a> for more information on how to configure Gofer's external
+events endpoint.</p>
+<p>If Github is your only external extension, to increase security consider <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses">limiting the IP addresses</a> that can access Gofer's external events endpoint.
+:::</p>
+<h2 id="pipeline-configuration"><a class="header" href="#pipeline-configuration">Pipeline Configuration</a></h2>
+<ul>
+<li><code>repository</code> <string>: The Github repository you would like to listen for events from. The format is in the form
+<code>&lt;organization&gt;/&lt;repository&gt;</code>.</li>
+</ul>
+<h2 id="extension-configuration"><a class="header" href="#extension-configuration">Extension Configuration</a></h2>
+<p>Extension configurations are set upon startup and cannot be changed afterwards.</p>
+<p>The Github extension requires the setup and use of a <a href="https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps">new Github app</a>. You can <a href="#additional-setup">view setup instructions below</a> which will walk you through how to retrieve the required env var variables.</p>
+<div class="table-wrapper"><table><thead><tr><th>EnvVar</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td>GOFER_EXTENSION_GITHUB_APPS_ID</td><td>Required</td><td>The Github app ID</td></tr>
+<tr><td>GOFER_EXTENSION_GITHUB_APPS_INSTALLATION</td><td>Required</td><td>The Github installation ID. This can be found by viewing the webhook payload delivery. See a more details walkthrough on where to find this below.</td></tr>
+<tr><td>GOFER_EXTENSION_GITHUB_APPS_KEY</td><td>Required</td><td>The base64'd private key of the Github app. This can be generated during Github app creation time.</td></tr>
+<tr><td>GOFER_EXTENSION_GITHUB_APPS_WEBHOOK_SECRET</td><td>Required</td><td>The Github app webhook secret key. This should be a long, randomized character string. It will be used to verify that an event came from Github and not another source.</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-hcl">extensions {
+  registered_extensions "github" {
+    image = "ghcr.io/clintjedwards/gofer/extension_github:latest"
+    env_vars = {
+      "GOFER_EXTENSION_GITHUB_APPS_ID": "112348",
+      "GOFER_EXTENSION_GITHUB_APPS_INSTALLATION": "99560091",
+      "GOFER_EXTENSION_GITHUB_APPS_KEY": &lt;&lt;EOT
+TUtkUnhYY01LTUI1ejgzZU84MFhKQWhoNnBkaFlCQlg0NGl5awpUUTBuaENySGRVT2kvN3hVaHp6
+eTgxb3d0RUdpdUFQakJIOVhpSlczQm9hazYrSTZKWjU2RC95YllPbkVSaTdFClIxVkRQeGdGa0lE
+NHdUbmtHdU4vdFY1VzBuZ3Q1aW0yVG5OVGVqc0NnWUVBb0pBMlJXZ2ZaSDdobVo3VS82TFUKSi9a
+WTBZYmNkOU80anpYdWRUTUo1TXVKcVEwY004bnZhb09tS1Q1ekRadnBla01sRDlaYmZ4Rlg2Mzh3
+N2ZuZwp0N05lbGFZc3IxYUhFWi9Rd2pveFo2RXpEWUJSQ0M2SEFvQmJXZmdwc1FCMkhNV3lzb2ls
+LUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+EOT
+      "GOFER_EXTENSION_GITHUB_APPS_WEBHOOK_SECRET": "somereallylongstringofcharacters",
+    }
+  }
+}
+</code></pre>
+<h3 id="additional-setup"><a class="header" href="#additional-setup">Additional setup</a></h3>
+<p>Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.
+Once this app has been set up, you'll have access to all the required environment variables that you'll need to pass into Gofer's server configuration.</p>
+<p>Here is a quick and dirty walkthrough on the important parts of setting up the Github application.</p>
+<h4 id="1-create-a-new-github-application"><a class="header" href="#1-create-a-new-github-application">1. Create a new Github application:</a></h4>
+<p><a href="https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app">Github's documentation</a> will be the most up to date and relevant so please see their walkthrough.</p>
+<p>On the configuration page for the new Github application the following should be noted:</p>
+<ul>
+<li>
+<p><strong>APP ID</strong>: Take note of the id; it will be used later for extension configuration.</p>
+</li>
+<li>
+<p><strong>Webhook URL</strong>: Should be the address of your Gofer's external extension instance and pointing to the events/github endpoint:</p>
+<p><code>ex: https://mygoferinstance.yourdomain.com/external/github</code></p>
+</li>
+<li>
+<p><strong>Webhook Secret</strong>: Make this a secure, long, random string of characters and note it for future extension configuration.</p>
+</li>
+<li>
+<p><strong>Private Keys</strong>: Generate a private key and store it somewhere safe. You'll need to base64 this key and insert it into the extension configuration.</p>
+<p><code>base64 ~/Desktop/myorg-gofer.2022-01-24.private-key.pem</code></p>
+</li>
+</ul>
+<h4 id="2-find-the-installation-id"><a class="header" href="#2-find-the-installation-id">2. Find the installation ID</a></h4>
+<p>Once the Github application has been created, <a href="https://docs.github.com/en/developers/apps/managing-github-apps/installing-github-apps">install it.</a>
+This will give you an opportunity to configure the permissions and scope of the Github application.
+It is recommended that you give read-only permissions to any permissions that might include webhooks and read-write for <code>code-suite</code> and <code>code-runs</code>.</p>
+<p>The installation ID is unfortunately hidden in an event that gets sent once the Github app has been created and installed. You can find it by navigating to the settings page for the Github application and
+then viewing it in the "Recent Deliveries" page.</p>
+<blockquote>
+<p>🪧 These recent deliveries only last a short amount of time, so if you take a while to check on them, they might not exist anymore. If that has happened you should be able to create another event and that will create another recent delivery.</p>
+</blockquote>
+<p><img src="../../../assets/github-apps-recent-deliveries.png" alt="Recent Deliveries" />
+<img src="../../../assets/github-apps-installation-id.png" alt="Installation webhook event" /></p>
+<h2 id="events"><a class="header" href="#events">Events</a></h2>
+<p>Gofer's extensions have the ability to pass along event specific information in the form of environment variables that
+get injected into each container's run. Most of these variables are pulled from the webhook request that comes in.</p>
+<p>Below is a breakdown of the environment variables that are passed to a run based on the event that was generated.
+You can find more information about the format the variables will be in by <a href="https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads">referencing the payloads for the event</a>.</p>
+<p>Events below are the only events that are supported.</p>
+<div class="table-wrapper"><table><thead><tr><th>Event</th><th>Metadata</th></tr></thead><tbody>
+<tr><td>create</td><td>"GOFER_EXTENSION_GITHUB_REF<br/>"GOFER_EXTENSION_GITHUB_REF_TYPE"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"</td></tr>
+<tr><td>push</td><td>"GOFER_EXTENSION_GITHUB_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_NAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_NAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_USERNAME"</td></tr>
+<tr><td>release</td><td>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TAG_NAME"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TARGET_COMMITISH"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_AUTHOR_LOGIN"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_CREATED_AT"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_PUBLISHED_AT"</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../../ref/extensions/provided/interval.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../../cli/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../../ref/extensions/provided/interval.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../../cli/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../../elasticlunr.min.js"></script>
+        <script src="../../../mark.min.js"></script>
+        <script src="../../../searcher.js"></script>
+
+        <script src="../../../clipboard.min.js"></script>
+        <script src="../../../highlight.js"></script>
+        <script src="../../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

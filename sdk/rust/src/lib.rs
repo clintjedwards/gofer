@@ -1,5 +1,7 @@
+pub mod api;
 pub mod config;
 mod dag;
+pub mod extension;
 
 use config::ConfigError;
 use lazy_regex::regex;
@@ -28,7 +30,7 @@ fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
         });
     }
 
-    if !alphanumeric_w_underscores.is_match(arg) {
+    if !alphanumeric_w_underscores.is_match(value) {
         return Err(ConfigError::InvalidArgument {
             argument: arg.to_string(),
             value: value.to_string(),

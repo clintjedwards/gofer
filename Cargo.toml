@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "gofer",
+    "sdk/rust",
+    "examplePipelines/rust/simple",
+    "examplePipelines/rust/secrets",
+    "examplePipelines/rust/objects",
+    "examplePipelines/rust/dag",
+]
+resolver = "2"
+
+[profile.dev]
+# Disabling debug info speeds up builds a bunch,
+# and we don't rely on it for debugging that much.
+debug = 0

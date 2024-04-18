@@ -23,7 +23,7 @@ func main() {
 				DependsOn("first_task", sdk.RequiredParentStatusSuccess).
 				Variable("LOGS_HEADER", "This string is a stand in for something you might pass to your task"),
 
-			sdk.NewTask("depends_on_second", "docker.io/library/hello-world").
+			sdk.NewTask("depends_on_second", "hello-world").
 				Description(`This task depends on the second task, but will run after it's finished regardless of the result`).
 				DependsOn("depends_on_first", sdk.RequiredParentStatusAny),
 		).Finish()

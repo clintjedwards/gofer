@@ -1,25 +1,21 @@
 module github.com/clintjedwards/gofer/extensions/cron
 
-go 1.19
+go 1.22.3
 
 require (
 	github.com/clintjedwards/avail/v2 v2.0.1
-	github.com/clintjedwards/gofer v0.6.2
+	github.com/clintjedwards/gofer/sdk/go v0.0.0-20240531040532-e4b2360d5751
 	github.com/rs/zerolog v1.32.0
 )
 
 require (
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
+	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/deepmap/oapi-codegen/v2 v2.1.0 // indirect
+	github.com/go-chi/chi/v5 v5.0.12 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
-	google.golang.org/grpc v1.62.1 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
 )
