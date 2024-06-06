@@ -130,6 +130,8 @@ vhs < demo.tape # this will start running commands against the server and output
 
 This software is provided as-is. It's a hobby project, done in my free time, and I don't get paid for doing it.
 
+If you're looking for the previous Golang version you can [find it here.](https://github.com/clintjedwards/gofer/tree/e83adcd5c5164bba791f06e38702d81621b5624b)
+
 [website-url]: https://clintjedwards.github.io/gofer
 [concourse-url]: https://concourse-ci.org/
 [canarying-url]: https://sre.google/workbook/canarying-releases/
