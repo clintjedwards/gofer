@@ -58,7 +58,7 @@ pub struct Secret {
     pub namespaces: Vec<String>,
 
     /// Time in epoch milliseconds that this secret was registered.
-    pub created: u128,
+    pub created: u64,
 }
 
 impl Secret {
@@ -117,7 +117,7 @@ impl TryFrom<storage::secret_store_global_keys::SecretStoreGlobalKey> for Secret
     type Error = anyhow::Error;
 
     fn try_from(value: storage::secret_store_global_keys::SecretStoreGlobalKey) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created
@@ -164,7 +164,7 @@ impl TryFrom<storage::secret_store_pipeline_keys::SecretStorePipelineKey> for Se
     fn try_from(
         value: storage::secret_store_pipeline_keys::SecretStorePipelineKey,
     ) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created

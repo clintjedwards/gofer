@@ -90,10 +90,10 @@ pub struct Config {
     pub state: ConfigState,
 
     /// Time in epoch milliseconds when this pipeline config was registered.
-    pub registered: u128,
+    pub registered: u64,
 
     /// Time in epoch milliseconds when this pipeline config was not longer used.
-    pub deprecated: u128,
+    pub deprecated: u64,
 }
 
 impl Config {
@@ -161,14 +161,14 @@ impl Config {
         config: storage::pipeline_configs::PipelineConfig,
         tasks: Vec<storage::tasks::Task>,
     ) -> Result<Self> {
-        let registered = config.registered.parse::<u128>().with_context(|| {
+        let registered = config.registered.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'registered' from storage value '{}'",
                 config.registered
             )
         })?;
 
-        let deprecated = config.deprecated.parse::<u128>().with_context(|| {
+        let deprecated = config.deprecated.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'deprecated' from storage value '{}'",
                 config.deprecated

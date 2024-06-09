@@ -100,10 +100,10 @@ pub struct Registration {
     pub settings: Vec<Variable>,
 
     /// Time of registration creation in epoch milliseconds.
-    pub created: u128,
+    pub created: u64,
 
     /// Time of last modification in epoch milliseconds.
-    pub modified: u128,
+    pub modified: u64,
 
     /// Whether the extension is enabled or not; extensions can be disabled to prevent use by admins.
     pub status: Status,
@@ -118,14 +118,14 @@ impl TryFrom<storage::extension_registrations::ExtensionRegistration> for Regist
     type Error = anyhow::Error;
 
     fn try_from(value: storage::extension_registrations::ExtensionRegistration) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created
             )
         })?;
 
-        let modified = value.modified.parse::<u128>().with_context(|| {
+        let modified = value.modified.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'modified' from storage value '{}'",
                 value.modified
@@ -256,7 +256,7 @@ pub struct Extension {
     pub url: String,
 
     /// The start time of the extension in epoch milliseconds.
-    pub started: u128,
+    pub started: u64,
 
     /// The current state of the extension as it exists within Gofer's operating model.
     pub state: State,

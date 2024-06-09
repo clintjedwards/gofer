@@ -152,14 +152,14 @@ pub struct Event {
     pub kind: Kind,
 
     /// Time event was performed in epoch milliseconds.
-    pub emitted: u128,
+    pub emitted: u64,
 }
 
 impl TryFrom<storage::events::Event> for Event {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::events::Event) -> Result<Self> {
-        let emitted = value.emitted.parse::<u128>().with_context(|| {
+        let emitted = value.emitted.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'emitted' from storage value '{}'",
                 value.emitted
@@ -387,10 +387,10 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), stora
 
 fn is_past_cut_date(event: &storage::events::Event, limit: u64) -> bool {
     let now = epoch_milli();
-    let limit = Duration::from_secs(limit).as_millis();
+    let limit = Duration::from_secs(limit).as_millis() as u64;
     let expiry_time = now - limit;
 
-    let emitted = match event.emitted.parse::<u128>() {
+    let emitted = match event.emitted.parse::<u64>() {
         Ok(emitted) => emitted,
         Err(_) => return false,
     };

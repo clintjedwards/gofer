@@ -169,10 +169,10 @@ pub struct Run {
     pub run_id: u64,
 
     /// Time of run start in epoch milliseconds.
-    pub started: u128,
+    pub started: u64,
 
     /// Time of run end in epoch milliseconds.
-    pub ended: u128,
+    pub ended: u64,
 
     /// The current state of the run within the Gofer execution model. Describes if the run is in progress or not.
     pub state: State,
@@ -232,14 +232,14 @@ impl TryFrom<storage::runs::Run> for Run {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::runs::Run) -> Result<Self> {
-        let started = value.started.parse::<u128>().with_context(|| {
+        let started = value.started.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'started' from storage value '{}'",
                 value.started
             )
         })?;
 
-        let ended = value.ended.parse::<u128>().with_context(|| {
+        let ended = value.ended.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'ended' from storage value '{}'",
                 value.ended

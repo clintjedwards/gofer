@@ -34,10 +34,10 @@ pub struct Namespace {
     pub description: String,
 
     /// Time in epoch milliseconds when namespace was created.
-    pub created: u128,
+    pub created: u64,
 
     /// Time in epoch milliseconds when namespace would expire.
-    pub modified: u128,
+    pub modified: u64,
 }
 
 impl Namespace {
@@ -56,14 +56,14 @@ impl TryFrom<storage::namespaces::Namespace> for Namespace {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::namespaces::Namespace) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created
             )
         })?;
 
-        let modified = value.modified.parse::<u128>().with_context(|| {
+        let modified = value.modified.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'modified' from storage value '{}'",
                 value.modified

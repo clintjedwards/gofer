@@ -80,7 +80,7 @@ pub struct Object {
     pub key: String,
 
     /// Time in epoch milliseconds that this object was registered.
-    pub created: u128,
+    pub created: u64,
 }
 
 impl Object {
@@ -133,7 +133,7 @@ impl TryFrom<storage::object_store_run_keys::ObjectStoreRunKey> for Object {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::object_store_run_keys::ObjectStoreRunKey) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created
@@ -153,7 +153,7 @@ impl TryFrom<storage::object_store_pipeline_keys::ObjectStorePipelineKey> for Ob
     fn try_from(
         value: storage::object_store_pipeline_keys::ObjectStorePipelineKey,
     ) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created

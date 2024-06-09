@@ -57,7 +57,7 @@ pub struct Token {
     pub hash: String,
 
     /// Time in epoch milliseconds when token was created.
-    pub created: u128,
+    pub created: u64,
 
     /// The type of token. Management tokens are essentially root.
     pub token_type: TokenType,
@@ -69,7 +69,7 @@ pub struct Token {
     pub metadata: HashMap<String, String>,
 
     /// Time in epoch milliseconds when token would expire.
-    pub expires: u128,
+    pub expires: u64,
 
     /// If the token is inactive or not; disabled tokens cannot be used for requests.
     pub disabled: bool,
@@ -100,7 +100,7 @@ impl Token {
         token_type: TokenType,
         namespaces: HashSet<String>,
         metadata: HashMap<String, String>,
-        expiry: u128, // Seconds from creation that token should expire.
+        expiry: u64, // Seconds from creation that token should expire.
     ) -> Self {
         let now = epoch_milli();
         let expires = now.add(expiry * 1000);
@@ -129,14 +129,14 @@ impl TryFrom<storage::tokens::Token> for Token {
             )
         })?;
 
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created
             )
         })?;
 
-        let expires = value.expires.parse::<u128>().with_context(|| {
+        let expires = value.expires.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'expires' from storage value '{}'",
                 value.expires
@@ -487,7 +487,7 @@ pub async fn create_token(
         body.token_type,
         body.namespaces,
         body.metadata,
-        body.expires.into(),
+        body.expires,
     );
 
     let new_token_storage = match new_token.clone().try_into() {

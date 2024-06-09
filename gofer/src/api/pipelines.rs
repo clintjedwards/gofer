@@ -55,10 +55,10 @@ pub struct Metadata {
     pub pipeline_id: String,
 
     /// Time of pipeline creation in epoch milliseconds.
-    pub created: u128,
+    pub created: u64,
 
     /// Time pipeline was updated to a new version in epoch milliseconds.
-    pub modified: u128,
+    pub modified: u64,
 
     /// The current running state of the pipeline. This is used to determine if the pipeline should run or not.
     pub state: PipelineState,
@@ -80,14 +80,14 @@ impl TryFrom<storage::pipeline_metadata::PipelineMetadata> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::pipeline_metadata::PipelineMetadata) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created
             )
         })?;
 
-        let modified = value.modified.parse::<u128>().with_context(|| {
+        let modified = value.modified.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'modified' from storage value '{}'",
                 value.modified

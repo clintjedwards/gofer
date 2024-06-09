@@ -178,13 +178,13 @@ pub struct TaskExecution {
     pub task_id: String,
 
     /// Time of task execution creation in epoch milliseconds.
-    pub created: u128,
+    pub created: u64,
 
     /// Time of task execution start in epoch milliseconds.
-    pub started: u128,
+    pub started: u64,
 
     /// Time of task execution end in epoch milliseconds.
-    pub ended: u128,
+    pub ended: u64,
 
     /// The exit code of the task execution completion if it is finished.
     pub exit_code: Option<u8>,
@@ -239,21 +239,21 @@ impl TryFrom<storage::task_executions::TaskExecution> for TaskExecution {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::task_executions::TaskExecution) -> Result<Self> {
-        let created = value.created.parse::<u128>().with_context(|| {
+        let created = value.created.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'created' from storage value '{}'",
                 value.created
             )
         })?;
 
-        let started = value.started.parse::<u128>().with_context(|| {
+        let started = value.started.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'started' from storage value '{}'",
                 value.started
             )
         })?;
 
-        let ended = value.ended.parse::<u128>().with_context(|| {
+        let ended = value.ended.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'ended' from storage value '{}'",
                 value.ended

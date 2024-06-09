@@ -155,11 +155,11 @@ impl Db {
 }
 
 /// Return the current epoch time in milliseconds.
-pub fn epoch_milli() -> u128 {
+pub fn epoch_milli() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_millis()
+        .as_millis() as u64
 }
 
 #[cfg(test)]

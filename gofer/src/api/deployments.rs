@@ -84,10 +84,10 @@ pub struct Deployment {
     pub end_version: u64,
 
     /// Time of deployment start in epoch milliseconds.
-    pub started: u128,
+    pub started: u64,
 
     /// Time of deployment end in epoch milliseconds.
-    pub ended: u128,
+    pub ended: u64,
 
     /// The current state of the deployment as it exists within Gofer's operating model.
     pub state: State,
@@ -130,14 +130,14 @@ impl TryFrom<storage::deployments::Deployment> for Deployment {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::deployments::Deployment) -> Result<Self> {
-        let started = value.started.parse::<u128>().with_context(|| {
+        let started = value.started.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'started' from storage value '{}'",
                 value.started
             )
         })?;
 
-        let ended = value.ended.parse::<u128>().with_context(|| {
+        let ended = value.ended.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'ended' from storage value '{}'",
                 value.ended

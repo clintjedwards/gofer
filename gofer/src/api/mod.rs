@@ -1000,11 +1000,11 @@ fn in_progress_runs_key(namespace_id: &str, pipeline_id: &str) -> String {
 }
 
 /// Return the current epoch time in milliseconds.
-pub fn epoch_milli() -> u128 {
+pub fn epoch_milli() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_millis()
+        .as_millis() as u64
 }
 
 /// Gofer allows users to enter special interpolation strings such that
