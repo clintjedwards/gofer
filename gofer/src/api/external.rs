@@ -63,7 +63,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     tokio::spawn(wait_for_shutdown_signal(server));
 
     info!(
-        message = "started Gofer external http service",
+        message = "Started Gofer external http service",
         host = %bind_address.ip(),
         port = %bind_address.port(),
         tls = conf.server.use_tls,
@@ -118,7 +118,8 @@ pub async fn external_event_handler(
         }
     };
 
-    let client = extensions::new_extension_client(&extension.url, &extension.secret).map_err(|err| {
+    let client = extensions::new_extension_client(&extension.url, &extension.secret, api_state.config.extensions.verify_certs
+    ).map_err(|err| {
         error!(error = %err, extension_id = &path.extension_id, "Could not send external event to extension");
 
         HttpError::for_internal_error("Could not send external event to extension".into())

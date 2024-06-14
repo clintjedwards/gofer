@@ -486,7 +486,7 @@ async fn start_extension(
     // as they'll never be used.
     let (cert, key) = if api_state.config.extensions.use_tls {
         load_tls(
-            false,
+            api_state.config.development.use_included_certs,
             api_state.config.extensions.tls_cert_path.clone(),
             api_state.config.extensions.tls_key_path.clone(),
         )
@@ -628,8 +628,12 @@ async fn start_extension(
         &start_response.url.clone().unwrap_or_default()
     );
 
-    let extension_client = new_extension_client(&extension_url, &token)
-        .context("Could not create extension client while attempting to start extension")?;
+    let extension_client = new_extension_client(
+        &extension_url,
+        &token,
+        api_state.config.extensions.verify_certs,
+    )
+    .context("Could not create extension client while attempting to start extension")?;
 
     // We wait in a polling loop to see if the extension is ready by hitting the health endpoint.
     let mut attempts = 0;
@@ -680,7 +684,7 @@ async fn start_extension(
     info!(
         id = registration.extension_id.clone(),
         url = extension_url,
-        "started extension"
+        "Started extension"
     );
 
     Ok(new_extension)
@@ -718,7 +722,11 @@ pub async fn start_extensions(api_state: Arc<ApiState>) -> Result<()> {
 pub async fn stop_extensions(api_state: Arc<ApiState>) {
     for extension in api_state.extensions.iter() {
         let (id, extension) = extension.pair();
-        if let Ok(extension_client) = new_extension_client(&extension.url, &extension.secret) {
+        if let Ok(extension_client) = new_extension_client(
+            &extension.url,
+            &extension.secret,
+            api_state.config.extensions.verify_certs,
+        ) {
             if let Err(e) = extension_client.shutdown().await {
                 error!(error = %e, extension_id = id, "Could not call shutdown on extension");
                 continue;
@@ -1430,14 +1438,21 @@ pub async fn get_extension_logs(
 }
 
 /// Creates a new HTTP client that is set up to talk to Gofer extensions.
-pub fn new_extension_client(url: &str, token: &str) -> Result<gofer_sdk::extension::api::Client> {
+pub fn new_extension_client(
+    url: &str,
+    token: &str,
+    verify_certs: bool,
+) -> Result<gofer_sdk::extension::api::Client> {
     let mut headers = header::HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
         header::HeaderValue::from_str(&format!("Bearer {}", token))?,
     );
 
-    let client = Client::builder().default_headers(headers).build()?;
+    let client = Client::builder()
+        .danger_accept_invalid_certs(!verify_certs)
+        .default_headers(headers)
+        .build()?;
 
     Ok(gofer_sdk::extension::api::Client::new_with_client(
         url, client,

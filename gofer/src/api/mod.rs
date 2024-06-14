@@ -515,7 +515,11 @@ pub async fn start_web_services() -> Result<()> {
 /// Start the main Gofer api web service. Blocks until server finishes.
 pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiState>) -> Result<()> {
     if conf.development.bypass_auth {
-        warn!("bypass auth activated due to config value 'development.bypass_auth'");
+        warn!("Bypass auth activated due to config value 'development.bypass_auth'");
+    }
+
+    if conf.extensions.use_tls && !conf.extensions.verify_certs {
+        warn!("Skipping verification of cert on extensions due to 'extensions.verify_cert'");
     }
 
     let bind_address = std::net::SocketAddr::from_str(&conf.server.bind_address.clone()).with_context(|| {
@@ -569,7 +573,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     tokio::spawn(wait_for_shutdown_signal(server));
 
     info!(
-        message = "started Gofer http service",
+        message = "Started Gofer http service",
         host = %bind_address.ip(),
         port = %bind_address.port(),
         tls = conf.server.use_tls,
@@ -626,7 +630,7 @@ fn load_tls(
 ) -> Result<(Vec<u8>, Vec<u8>)> {
     if use_included_certs {
         warn!(
-            "using included localhost certs due to config value 'development.use_included_certs'"
+            "Using included localhost certs due to config value 'development.use_included_certs'"
         );
 
         return Ok((LOCALHOST_CERT.to_vec(), LOCALHOST_KEY.to_vec()));

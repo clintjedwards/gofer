@@ -758,8 +758,12 @@ async fn unsubscribe_extension(
         .ok_or(anyhow!("could not find extension"))?;
     let extension = extension.value();
 
-    let client = extensions::new_extension_client(&extension.url, &extension.secret)
-        .context("Could not establish client while attempting to unsubscribe")?;
+    let client = extensions::new_extension_client(
+        &extension.url,
+        &extension.secret,
+        api_state.config.extensions.verify_certs,
+    )
+    .context("Could not establish client while attempting to unsubscribe")?;
 
     client
         .unsubscribe(&gofer_sdk::extension::api::types::UnsubscriptionRequest {
@@ -790,8 +794,12 @@ async fn subscribe_extension(api_state: &ApiState, subscription: &Subscription) 
         .ok_or(anyhow!("could not find extension"))?;
     let extension = extension.value();
 
-    let client = extensions::new_extension_client(&extension.url, &extension.secret)
-        .context("Could not establish client while attempting to unsubscribe")?;
+    let client = extensions::new_extension_client(
+        &extension.url,
+        &extension.secret,
+        api_state.config.extensions.verify_certs,
+    )
+    .context("Could not establish client while attempting to unsubscribe")?;
 
     let settings = interpolate_vars(
         api_state,

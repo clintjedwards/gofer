@@ -80,6 +80,9 @@ pub struct Extensions {
     pub use_tls: bool,
     pub tls_cert_path: Option<String>,
     pub tls_key_path: Option<String>,
+
+    /// When attempting to communicate from Gofer to an extension verify the cert is correct and known.
+    pub verify_certs: bool,
 }
 
 #[derive(Deserialize, Default, Debug, Clone)]
