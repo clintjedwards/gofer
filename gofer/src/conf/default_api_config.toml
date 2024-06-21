@@ -11,7 +11,7 @@ task_execution_stop_timeout = 300  # 5 mins
 admin_key = "test"
 
 [server]
-url = "https://localhost:8080"
+url = "http://localhost:8080"
 bind_address = "0.0.0.0:8080"
 extension_address = "172.17.0.1:8080"
 shutdown_timeout = 15
