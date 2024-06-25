@@ -6,9 +6,12 @@
 
 #s ecret files
 .env
--docker/.env
+!docker/.env
 
 # rust build dir
 target/
 
+# Remove auto-built documentation
+gofer/docs/book/html/*
+!gofer/docs/book/html/.gitkeep
 
