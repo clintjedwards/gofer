@@ -48,8 +48,8 @@ run:
 > export GOFER_WEB_API__LOG_LEVEL=debug
 > cargo run --bin gofer -- service start
 
-## build: build gofer for release. Outputs to /tmp/gofer
-build:
+## build-release: build Gofer for release.
+build-release: build-docs
 > cd gofer
 > cargo build --release
 
@@ -88,6 +88,7 @@ cleanup-integration-tests:
 ## build-docs: build final documentation site artifacts
 build-docs:
 > cd gofer/docs
+> mkdir -p book/html
 > mdbook build
 .PHONY: build-docs
 
