@@ -51,7 +51,10 @@ run:
 ## build-release: build Gofer for release.
 build-release: build-docs
 > cd gofer
-> cargo build --release
+## > PKG_CONFIG_ALLOW_CROSS=1 cargo build --release --target=x86_64-unknown-linux-musl # PKG_CONFIG makes it so compilation to musl can be linked correctly.
+> cargo build --release --target=x86_64-unknown-linux-gnu
+> cd ..
+> mv ./target/x86_64-unknown-linux-gnu/release/gofer ./target/x86_64-unknown-linux-gnu/release/gofer_amd64_linux_gnu
 
 ## run-docs: build and run documentation website for development
 run-docs:
