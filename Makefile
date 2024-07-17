@@ -60,6 +60,7 @@ build-release: build-docs
 run-docs:
 > cd gofer/docs
 > mdbook serve --open
+> touch gofer/docs/book/html/.gitkeep
 .PHONY: run-docs
 
 ## run-integration-tests: Run integration tests using hurl.dev
@@ -93,6 +94,7 @@ build-docs:
 > cd gofer/docs
 > mkdir -p book/html
 > mdbook build
+> touch gofer/docs/book/html/.gitkeep
 .PHONY: build-docs
 
 ## build-containers: build containers
