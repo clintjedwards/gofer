@@ -58,9 +58,7 @@ build-release: build-docs
 
 ## run-docs: build and run documentation website for development
 run-docs:
-> cd gofer/docs
-> mdbook serve --open
-> touch gofer/docs/book/html/.gitkeep
+> @bash -c 'trap "touch book/html/.gitkeep" EXIT; cd gofer/docs && mdbook serve --open'
 .PHONY: run-docs
 
 ## run-integration-tests: Run integration tests using hurl.dev

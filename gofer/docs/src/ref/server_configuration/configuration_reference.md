@@ -14,7 +14,7 @@ If examples of these values are needed you can find a sample file by using `gofe
 
 ## Values
 
-### General
+### API
 
 | name                        | type              | default | description                                                                                                                                                                                                                                                                     |
 | --------------------------- | ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,6 +33,23 @@ If examples of these values are needed you can find a sample file by using `gofe
 | server                      | block             | N/A     | Controls the settings for the Gofer API service properties.                                                                                                                                                                                                                     |
 | extensions                  | block             | N/A     | Controls settings for Gofer's extension system. Extensions are different workflows for running pipelines usually based on some other event (like the passing of time).                                                                                                          |
 
+
+#### Example
+
+```toml
+[api]
+ignore_pipeline_run_events = false
+run_parallelism_limit = 200
+pipeline_version_retention = 10
+event_log_retention = 15768000     # 6 months
+event_prune_interval = 604800      # 1 week
+log_level = "info"
+task_execution_log_retention = 50  # total runs
+task_execution_logs_dir = "/tmp"
+task_execution_stop_timeout = 300  # 5 mins
+admin_key = "test"
+```
+
 ### Development (block)
 
 Special feature flags to make development easier
@@ -46,11 +63,12 @@ Special feature flags to make development easier
 
 #### Example
 
-````toml
+```toml
+[development]
 pretty_logging = true     # Tells the logging package to use human readable output.
 bypass_auth = true        # Turns off auth.
 use_included_certs = true # Automatically loads localhost certs for development.
-```                                                                                                   |
+```
 
 ### External Events API (block)
 
@@ -65,6 +83,7 @@ endpoint and Gofer routes them to the proper extension for handling.
 #### Example
 
 ```toml
+[external_events]
 enable = true
 bind_address = "0.0.0.0:8081"
 use_tls = false
@@ -174,6 +193,7 @@ Controls the settings for the Gofer service's server properties.
 | storage_results_limit | int    | 200            | The amount of results Gofer's database is allowed to return on one query.               |
 
 ```toml
+[server]
 url = "http://localhost:8080"
 bind_address = "0.0.0.0:8080"
 extension_address = "172.17.0.1:8080"
@@ -197,6 +217,7 @@ You can find [more information on the extension block here.](../extensions/index
 | tls_key_path            | string  | <Required> | The TLS certificate path key Gofer will use for the extensions. This should be a certificate that the main Gofer service will be able to access. |
 
 ```toml
+[extensions]
 install_std_extensions = true
 stop_timeout = 300            # 5 mins
 use_tls = false
