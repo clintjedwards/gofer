@@ -3,7 +3,7 @@ use aes_gcm::{
     aead::{generic_array::GenericArray, Aead},
     Aes256Gcm, KeyInit,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
 use futures::TryFutureExt;
 use rand::{rngs::OsRng, RngCore};
@@ -63,35 +63,35 @@ fn touch_file(path: &Path) -> io::Result<()> {
 }
 
 impl Engine {
-    pub async fn new(config: &Config) -> Self {
+    pub async fn new(config: &Config) -> Result<Self> {
         let config = config.clone();
+
+        if config.encryption_key.len() < 32 {
+            bail!("secret_store.sqlite.encryption_key must be at least 32 characters");
+        }
 
         touch_file(Path::new(&config.path)).unwrap();
 
         let connection_pool = SqlitePool::connect(&format!("file:{}", &config.path))
             .await
-            .unwrap();
+            .context("Could not open Sqlite database")?;
 
         // Setting PRAGMAs
         sqlx::query("PRAGMA journal_mode = WAL;")
             .execute(&connection_pool)
-            .await
-            .unwrap();
+            .await?;
 
         sqlx::query("PRAGMA busy_timeout = 5000;")
             .execute(&connection_pool)
-            .await
-            .unwrap();
+            .await?;
 
         sqlx::query("PRAGMA foreign_keys = ON;")
             .execute(&connection_pool)
-            .await
-            .unwrap();
+            .await?;
 
         sqlx::query("PRAGMA strict = ON;")
             .execute(&connection_pool)
-            .await
-            .unwrap();
+            .await?;
 
         sqlx::query(
             r#"CREATE TABLE IF NOT EXISTS secrets (
@@ -102,12 +102,12 @@ impl Engine {
         )
         .execute(&connection_pool)
         .await
-        .unwrap();
+        .context("Could not create schema")?;
 
-        Engine {
+        Ok(Engine {
             pool: connection_pool,
             encryption_key: config.encryption_key,
-        }
+        })
     }
 
     pub async fn conn(&self) -> Result<PoolConnection<Sqlite>, SecretStoreError> {
@@ -284,7 +284,8 @@ mod tests {
                 path: storage_path.clone(),
                 encryption_key: "mysuperduperdupersupersecretkey_".into(),
             })
-            .await;
+            .await
+            .unwrap();
 
             Self { db, storage_path }
         }

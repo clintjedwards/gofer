@@ -38,9 +38,6 @@
   Then we can just return the error to the main thread and bubble it up properly.
 - For the run token we should make sure we set namespace properly on behalf of the user.
 - There is a bug where token matching is broken; specifically tokens that have .\* in them.
-- Check for proper encryption key length on startup.
-  ~|⇒ gofer token whoami
-  x Failed to render 'main'
 - Copy Zed's way of clearly defining options you have instead of the way we do it right now. The problem is sometimes determinign whichi level you're at can be tough. So we need a breadcrumb type setup and at the top level we just say "param: " or "> " to denote the top breadcrumb
 
 Caused by:

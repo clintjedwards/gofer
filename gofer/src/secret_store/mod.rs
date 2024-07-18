@@ -1,6 +1,7 @@
 pub mod sqlite;
 
 use async_trait::async_trait;
+use futures::TryFutureExt;
 use serde::Deserialize;
 use sqlx::FromRow;
 use std::fmt::Debug;
@@ -62,7 +63,9 @@ pub async fn new(
                 ));
             }
 
-            let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap()).await;
+            let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap())
+                .map_err(|err| SecretStoreError::FailedPrecondition(err.to_string()))
+                .await?;
             Ok(Box::new(engine))
         }
     }
