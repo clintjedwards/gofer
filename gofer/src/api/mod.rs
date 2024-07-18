@@ -105,13 +105,21 @@ pub struct AuthContext {
 impl AuthContext {
     /// Verify that the namespace you're currently working within is allowed for that specific token.
     fn verify_namespace_match(&self, namespace: &str) -> Result<(), HttpError> {
-        if self.allowed_namespaces.contains("*") {
+        // If the allowed namspaces are anything then just let them through.
+        if self.allowed_namespaces.contains(".*") {
             return Ok(());
         };
 
-        if self.allowed_namespaces.contains(namespace) {
-            return Ok(());
-        };
+        for allowed_namespace in &self.allowed_namespaces {
+            let re = match regex::Regex::new(allowed_namespace) {
+                Ok(re) => re,
+                Err(_) => continue,
+            };
+
+            if re.is_match(namespace) {
+                return Ok(());
+            }
+        }
 
         Err(HttpError::for_client_error(
             None,
