@@ -36,10 +36,15 @@
 - Make the object store uploads multipart.
 - The way we use joinset right now it kinda suboptimal. We should return errors with our async functions instead of breaking.
   Then we can just return the error to the main thread and bubble it up properly.
-- When we shutdown the server we need a way to try to clean up all the webhook connections that might still be being used by
-  people.
 - For the run token we should make sure we set namespace properly on behalf of the user.
-- There is a bug where restarts will cause extensions to use brand new tokens. We should at least clean up the old ones.
+- There is a bug where token matching is broken; specifically tokens that have .\* in them.
+- Check for proper encryption key length on startup.
+  ~|⇒ gofer token whoami
+  x Failed to render 'main'
+- Copy Zed's way of clearly defining options you have instead of the way we do it right now. The problem is sometimes determinign whichi level you're at can be tough. So we need a breadcrumb type setup and at the top level we just say "param: " or "> " to denote the top breadcrumb
+
+Caused by:
+Variable `expires` not found in context while rendering 'main'
 
 ### Canaried pipelines
 

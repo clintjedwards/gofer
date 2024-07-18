@@ -440,16 +440,10 @@ async fn start_extension(
         }
     };
 
-    if !registration.key_id.is_empty() {
-        storage::tokens::delete(&mut tx, &registration.key_id)
-            .await
-            .map_err(|err| {
-                anyhow!(
-                "Could not clear previous extension key while attempting to start extension; {:#?}",
-                err
-            )
-            })?;
-    }
+    // If there was a previous key then just delete it, if there wasn't we don't particularly care.
+    let _ = storage::tokens::delete(&mut tx, &registration.key_id).await;
+
+    let registration_key_id = new_token.id.clone();
 
     let storage_new_token = new_token.try_into().map_err(|err| {
         anyhow!(
@@ -471,7 +465,7 @@ async fn start_extension(
             settings: None,
             status: None,
             modified: epoch_milli().to_string(),
-            key_id: Some(registration.key_id.clone()),
+            key_id: Some(registration_key_id),
         },
     )
     .await
