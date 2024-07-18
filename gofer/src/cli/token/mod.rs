@@ -304,7 +304,7 @@ impl Cli {
     {%- for key, value in metadata %}
     • {{ key }}: {{ value }}
     {%- endfor -%}
-  {%- endif -%}
+  {%- endif %}
 
   Created {{created}} | Expires {{expires}} | Active: {{disabled}}
 "#;
@@ -321,8 +321,8 @@ impl Cli {
             &humanize_relative_duration(token.created).unwrap_or_else(|| "Unknown".to_string()),
         );
         context.insert(
-            "created",
-            &humanize_relative_duration(token.expires).unwrap_or_else(|| "Unknown".to_string()),
+            "expires",
+            &humanize_future_time(token.expires).unwrap_or_else(|| "Unknown".to_string()),
         );
         context.insert("disabled", &token.disabled);
 
