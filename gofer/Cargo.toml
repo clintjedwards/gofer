@@ -21,7 +21,8 @@ crossbeam = "0.8.4"
 dashmap = "5.5.3"
 derive_builder = "0.20.0"
 dirs = "5.0.1"
-dropshot = { git = "https://github.com/clintjedwards/dropshot.git", branch = "main" }
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.0-dev" }
+dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.0-dev" }
 figment = { version = "0.10.16", features = ["env", "toml"] }
 futures = "0.3.30"
 gofer_sdk = { path = "../sdk/rust" }

@@ -1,13 +1,22 @@
 [package]
 name = "gofer_sdk"
-version = "0.0.1"
+version = "0.7.0"
 edition = "2021"
+description = "The SDK for Gofer: https://github.com/clintjedwards/gofer. Helps with creating extensions and pipelines."
+documentation = "https://clintjedwards.com/gofer"
+license = "MPL-2.0"
+homepage = "https://clintjedwards.com/gofer"
+repository = "https://github.com/clintjedwards/gofer"
+readme = "../../README.md"
+keywords = ["ci", "cd", "gofer", "pipeline", "cron", "execution", "automation"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 async-trait = "0.1.80"
 anyhow = "1.0.72"
 base64 = "0.22.0"
-dropshot = { git = "https://github.com/clintjedwards/dropshot.git", branch = "main" }
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.0-dev" }
+dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.0-dev" }
 futures = "0.3"
 http = "0.2.12"
 lazy-regex = "3.1.0"
