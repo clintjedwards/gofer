@@ -547,7 +547,7 @@ pub async fn get_task_execution(
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(None, "".into()));
+                return Err(HttpError::for_not_found(None, String::new()));
             }
             _ => {
                 return Err(http_error!(
@@ -635,7 +635,7 @@ pub async fn cancel_task_execution(
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(None, "".into()));
+                return Err(HttpError::for_not_found(None, String::new()));
             }
             _ => {
                 return Err(http_error!(
@@ -760,7 +760,7 @@ pub async fn get_logs(
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(Box::new(HttpError::for_not_found(None, "".into())));
+                return Err(Box::new(HttpError::for_not_found(None, String::new())));
             }
             _ => {
                 return Err(websocket_error(
@@ -1002,7 +1002,7 @@ pub async fn delete_logs(
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(None, "".into()));
+                return Err(HttpError::for_not_found(None, String::new()));
             }
             _ => {
                 error!(message = "Could not get task execution from database", error = %e);
@@ -1169,7 +1169,7 @@ pub async fn attach_task_execution(
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(Box::new(HttpError::for_not_found(None, "".into())));
+                return Err(Box::new(HttpError::for_not_found(None, String::new())));
             }
             _ => {
                 return Err(websocket_error(

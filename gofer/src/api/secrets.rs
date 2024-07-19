@@ -309,7 +309,7 @@ pub async fn get_global_secret(
         Ok(secret) => secret,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(None, "".into()));
+                return Err(HttpError::for_not_found(None, String::new()));
             }
             _ => {
                 error!(message = "Could not get secret from database", error = %e);
@@ -692,7 +692,7 @@ pub async fn get_pipeline_secret(
         Ok(secret) => secret,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(None, "".into()));
+                return Err(HttpError::for_not_found(None, String::new()));
             }
             _ => {
                 return Err(http_error!(
@@ -961,7 +961,7 @@ mod tests {
     #[case::regex_mismatch("test123", vec!["^test\\d{4}$".into()], false)]
     #[case::regex_invalid_pattern("namespace", vec!["[".into()], false)]
     #[case::match_everything("my_namespace", vec![".*".into()], true)]
-    #[case::match_nothing("my_namespace", vec!["".into()], false)]
+    #[case::match_nothing("my_namespace", vec![String::new()], false)]
     fn test_is_allowed_namespace(
         #[case] namespace: &str,
         #[case] allowed_namespaces: Vec<String>,

@@ -114,9 +114,9 @@ mod tests {
         let namespace = Namespace {
             id: "default".into(),
             name: "Default".into(),
-            description: "".into(),
-            created: "".into(),
-            modified: "".into(),
+            description: String::new(),
+            created: String::new(),
+            modified: String::new(),
         };
 
         namespaces::insert(&mut conn, &namespace).await.unwrap();
@@ -124,9 +124,9 @@ mod tests {
         let pipeline = PipelineMetadata {
             namespace_id: "default".into(),
             pipeline_id: "test".into(),
-            state: "".into(),
-            created: "".into(),
-            modified: "".into(),
+            state: String::new(),
+            created: String::new(),
+            modified: String::new(),
         };
 
         pipeline_metadata::insert(&mut conn, &pipeline)

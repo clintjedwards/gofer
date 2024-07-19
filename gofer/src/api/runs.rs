@@ -487,7 +487,7 @@ pub async fn get_run(
             Ok(run) => run,
             Err(e) => match e {
                 storage::StorageError::NotFound => {
-                    return Err(HttpError::for_not_found(None, "".into()));
+                    return Err(HttpError::for_not_found(None, String::new()));
                 }
                 _ => {
                     return Err(http_error!(
@@ -589,7 +589,7 @@ pub async fn start_run(
             Ok(pipeline) => pipeline,
             Err(e) => match e {
                 storage::StorageError::NotFound => {
-                    return Err(HttpError::for_not_found(None, "".into()));
+                    return Err(HttpError::for_not_found(None, String::new()));
                 }
                 _ => {
                     return Err(http_error!(
@@ -882,7 +882,7 @@ pub async fn cancel_run(
                 Ok(run) => run,
                 Err(e) => match e {
                     storage::StorageError::NotFound => {
-                        return Err(HttpError::for_not_found(None, "".into()));
+                        return Err(HttpError::for_not_found(None, String::new()));
                     }
                     _ => {
                         return Err(http_error!(

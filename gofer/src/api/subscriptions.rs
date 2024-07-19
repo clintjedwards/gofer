@@ -328,7 +328,7 @@ pub async fn get_subscription(
         Ok(subscription) => subscription,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(None, "".into()));
+                return Err(HttpError::for_not_found(None, String::new()));
             }
             _ => {
                 return Err(http_error!(

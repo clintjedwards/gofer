@@ -965,7 +965,7 @@ impl TryFrom<InstallExtensionRequest> for Registration {
             created: epoch_milli(),
             modified: 0,
             status: Status::Unknown,
-            key_id: "".into(),
+            key_id: String::new(),
         })
     }
 }

@@ -328,12 +328,12 @@ pub struct SystemConfig {
 impl Default for SystemConfig {
     fn default() -> Self {
         SystemConfig {
-            secret: "".into(),
-            id: "".into(),
+            secret: String::new(),
+            id: String::new(),
             log_level: "info".into(),
             use_tls: true,
-            tls_key: "".into(),
-            tls_cert: "".into(),
+            tls_key: String::new(),
+            tls_cert: String::new(),
             bind_address: "0.0.0.0:8082".into(),
             gofer_host: "http://localhost:8080".into(),
         }

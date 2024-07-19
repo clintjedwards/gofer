@@ -188,7 +188,7 @@ mod tests {
             registry_auth: "auth_token".to_string(),
             settings: "var1=value1,var2=value2".to_string(),
             created: "2023-04-15T12:34:56".to_string(),
-            modified: "".into(),
+            modified: String::new(),
             status: "Active".to_string(),
             key_id: "key456".to_string(),
         };

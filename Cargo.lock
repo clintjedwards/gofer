@@ -917,7 +917,49 @@ dependencies = [
  "camino",
  "chrono",
  "debug-ignore",
- "dropshot_endpoint",
+ "dropshot_endpoint 0.11.0-dev",
+ "form_urlencoded",
+ "futures",
+ "hostname",
+ "http 0.2.12",
+ "hyper 0.14.30",
+ "indexmap 2.2.6",
+ "multer",
+ "openapiv3",
+ "paste",
+ "percent-encoding",
+ "rustls 0.22.4",
+ "rustls-pemfile 2.1.2",
+ "schemars",
+ "scopeguard",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_urlencoded",
+ "sha1",
+ "tokio",
+ "tokio-rustls 0.25.0",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "version_check",
+ "waitgroup",
+]
+
+[[package]]
+name = "dropshot"
+version = "0.11.1-dev"
+source = "git+https://github.com/clintjedwards/dropshot.git?tag=v0.11.1-dev#72e5ef584905d678953502c005b4a85af2a6e36c"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "base64 0.22.1",
+ "bytes",
+ "camino",
+ "chrono",
+ "debug-ignore",
+ "dropshot_endpoint 0.11.1-dev",
  "form_urlencoded",
  "futures",
  "hostname",
@@ -951,6 +993,19 @@ dependencies = [
 name = "dropshot_endpoint"
 version = "0.11.0-dev"
 source = "git+https://github.com/clintjedwards/dropshot.git?tag=v0.11.0-dev#c889ae83d00d6a84e6dcbbe88c01659f581cb8d8"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_tokenstream",
+ "syn 2.0.70",
+]
+
+[[package]]
+name = "dropshot_endpoint"
+version = "0.11.1-dev"
+source = "git+https://github.com/clintjedwards/dropshot.git?tag=v0.11.1-dev#72e5ef584905d678953502c005b4a85af2a6e36c"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -1297,8 +1352,8 @@ dependencies = [
  "dashmap",
  "derive_builder",
  "dirs",
- "dropshot",
- "dropshot_endpoint",
+ "dropshot 0.11.1-dev",
+ "dropshot_endpoint 0.11.1-dev",
  "figment",
  "futures",
  "gofer_sdk",
@@ -1342,8 +1397,8 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.22.1",
- "dropshot",
- "dropshot_endpoint",
+ "dropshot 0.11.0-dev",
+ "dropshot_endpoint 0.11.0-dev",
  "futures",
  "http 0.2.12",
  "hyper 0.14.30",

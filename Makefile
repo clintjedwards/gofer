@@ -87,6 +87,10 @@ run-hurl-tests:
 cleanup-integration-tests:
 > @pkill -9 gofer
 
+## clippy-pedantic: Let clippy nitpick your code.
+clippy-pedantic:
+> cargo clippy --all -- -W clippy::all -W clippy::pedantic -W clippy::nursery -D warnings
+
 ## build-docs: build final documentation site artifacts
 build-docs:
 > cd gofer/docs
