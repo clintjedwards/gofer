@@ -1,42 +1,66 @@
-### On the floor
+# Large Projects on the dockett
 
-- A dope feature to bake into github extensions is the ability for it to act also as a communicator with the github
-  PR. When you start a pipeline not only does it handle the webhooks of starting the pipeline, but it will also
-  mark the PR in question as pending and query the Gofer API to figure out when it's done and mark the pipeline
-  as completed. Could also include some other goodies just like any other CI/CD platform.
-  - Github Extension:
-  - Restore ability to register a pipeline to be triggered every time some event happens.
-  - Update Github extension documentation in external docs
-  - Github extension also needs to do check-run stuff
-  - Mention the 'all' action in documentation
-  - Update Github documentation, it needs a lot of work.
-- Minify CSS when we release for frontend.
-- Registry auth is largely untested and possibly unsecured, don't use it for anything serious.
-- Make sure to test and document namespace glob matching for tokens
-- Include in dev docs how to build openapi stuff: (oapi-codegen)
-- Write a test for bootstrap tokens.
-- The CLI should allow you to dump the debug for an extension.
-- We should create a background job that all it does is attempt to clean out tokens which have been expired for a certain amount of time.
-- Write a test for force on objects and secrets
-- We need to make sure that the secret key name is always URL friendly since we use it as a key in the new REST API.
-- Implement run gofer_token in runs.rs
-- Document how to fix things with #[schemars(rename = "run_status_reason")] and how they will manifest.
-- Create sdkutils for rust sdk also.
-- Finish Deployments
-- still need to do Subscriptions (including the startup/restore function)
-- run cargo bloat and matklad's tool to see what crate is making compilation really slow.
-- Make sure is_valid_identifier is used in all the places where the user has to enter an id.
-- Remove the circular dependency on openapi and the code, it often ends in sadness since in order to generate things
-  we need the code to work and the code doesn't work if the sdk doesn't provide some functions. But the functions aren't provided
-  because it can't be generated and round we go.
-- When a user removes an extension we should remove the subscriptions also (check we don't already do this, due to cascade delete).
-- Restore the restore jobs functionality.
-- We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us. We should
+## Extensions should have object store access.
+
+Extensions might need object store access due to the fact that they don't keep any state. Right now what we do is
+we keep the state that we need to track subscriptions inside Gofer and on startup we have Gofer repopulate the
+extension with those subscriptions. But this is short-sighted as Gofer tries to restore subscriptions as fast as possible
+and has no idea what may be good or bad for the extension itself.
+
+Instead we should give the extension access to the object store such that it can save it's record of subscriptions
+and then on startup it can decide how it should handle things.
+
+The original example for why this is needed is the interval example. If all subscriptions were restored at the same time
+then the interval would start for each pipeline at the same time. Causing possible horrible thundering herd issues. Instead
+it would be better for the interval extension to reach out and restore it's own subscriptions at a pace that it can
+determine and in what order it wants to. This allows the interval to introduce jitter and other algorithms to better
+spread the load.
+
+## Github Extension followthrough
+
+A great feature to bake into the Github extension would be the ability for it to act as a communicator with the
+Github PR in question, if possible. This mirrors how other thingdoer tooling handles github.
+
+It might also be possible to bake in repo management. The extension would use its extension object store permissions
+(also a project that needs to be completed) and utilize that to give user's access to a repo, allowing it to have
+a local cache that could possible be faster.
+
+## Better debugging tooling.
+
+A huge problem with thingdoers is it's hard to debug because you can't really run the code locally in most situations.
+Because of this we should give the user as many tools as we can to make sure they can debug on the fly.
+
+* Make sure attach works correctly.
+* The CLI should output a debug command that dumps all the logs from a particular task.
+* The CLI should output a debug command that dumps all the info from the run in general.
+* Find other ways we can debug and make the user's life easier in this regard. It's possible that if we put a lot of
+thought into this feature that it can become a game changer for Gofer as a whole.
+
+# Small things I want to keep track of that I definitely need to do.
+
+* Minify CSS when we release for frontend.
+* Write a test for bootstrap tokens in hurl.
+* Write a test for tokens, namespace matching, and general auth in hurl.
+* Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
+yet.
+  * Make sure to set the namespace for the user automagically.
+* Allow users to query deployments from the CLI.
+* Make sure is_valid_identifier is used in all the places where the user has to enter an id.
+* Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
+* We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.
+* We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us. We should
   get rid of the global restriction and instead check for what the request size should be in the preflight.
-- Make the object store uploads multipart.
-- The way we use joinset right now it kinda suboptimal. We should return errors with our async functions instead of breaking.
-  Then we can just return the error to the main thread and bubble it up properly.
-- For the run token we should make sure we set namespace properly on behalf of the user.
+* Make the object store uploads multipart.
+
+# Small things I'll probably never get around to.
+
+* Registry auth is largely untested and possibly unsecured, don't use it for anything serious.
+* Write/Design a way to clean up expired tokens after long enough.
+* When a user removes an extension we should remove the subscriptions also (check we don't already do this, due to cascade delete).
+* Check that our websockets stuff makes sense we use joinset, make sure we're returning errors to the main thread and
+bubbling them up properly.
+
+# The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 
 ### Canaried pipelines
 
