@@ -35,8 +35,24 @@ Because of this we should give the user as many tools as we can to make sure the
 * The CLI should output a debug command that dumps all the info from the run in general.
 * Find other ways we can debug and make the user's life easier in this regard. It's possible that if we put a lot of
 thought into this feature that it can become a game changer for Gofer as a whole.
+* Maybe create a timeline on when each task execution happened for a particular run?
+
+## Event loop refactor
+
+Right now we use a midpoint of events and memory sharing to determine how to run each run/task execution. This was a
+holdover from the Gofer version of the application. Instead we should focus more on an event driven design. We already
+have our event processor, now we just need to make sure its the main driving force for how task executions are handled.
+
+This would allow us to do previously complicated things like cancellations.
+
+* The Shepard interface simply starts task executions and follows their progress.
+* It emits events as executions hit certain milestones.
+* It also listens for events, translates database updates, and responds to global run events.
+*
 
 # Small things I want to keep track of that I definitely need to do.
+
+## API
 
 * Minify CSS when we release for frontend.
 * Write a test for bootstrap tokens in hurl.
@@ -48,88 +64,44 @@ yet.
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.
-* We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us. We should
-  get rid of the global restriction and instead check for what the request size should be in the preflight.
+  * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
+  and started. This way we can have more accurate running times instead of just leaving it as whenever the server
+  restarted.
+* We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us.
+  We should get rid of the global restriction and instead check for what the request size should be in the preflight.
 * Make the object store uploads multipart.
+* Canaried deployments feature.
+* There should probably be a global timeout for all runs.
+* Create a setting to allow operators to turn off the ability to attach to a container.
+* If the parent does not exist for a particular thing it errors incorrectly. For example if you request a correct task
+execution but mistype the pipeline, you might get an error instead of a "hey that thing doesn't exist".
+* Management tokens with certain namespaces should only be able to create client tokens with those same namespaces.
+* Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
+
 
 # Small things I'll probably never get around to.
 
 * Registry auth is largely untested and possibly unsecured, don't use it for anything serious.
 * Write/Design a way to clean up expired tokens after long enough.
-* When a user removes an extension we should remove the subscriptions also (check we don't already do this, due to cascade delete).
+* When a user removes an extension we should remove the subscriptions also (check we don't already do this,
+  due to cascade delete).
 * Check that our websockets stuff makes sense we use joinset, make sure we're returning errors to the main thread and
 bubbling them up properly.
+* API needs validation for all endpoints.
+* User should be able to give their builds timeouts and we need to establish a global timeout.
+* When you schedule a job on a container orch, we should note where that job has run(which node).
+* Pass back custom errors via the API so that consumers can understand what has happened.
+* Pagination...everywhere.
+* The CLI should have a feature where you can start a pipeline and follow all logs and status updates
+from that pipeline in one place. Maybe this is a watch feature where each task reports the task 5 log lines until it
+finishes at which time it reflects a summary about what it did.
+* The CLI could have a diff command so we know exactly what is about the change from the last pipeline version.
+* When using the SDK to build a pipeline, that pipeline should print to stdout the json that will be collected
+* The attach prompt currently echos back user input, unsure how to fix that.
+
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 
-### Canaried pipelines
-
-- With versioned pipelines we now need the ability for Gofer to roll out your pipeline for you and watch telemetry on it.
-- We need to add "update methods" to pipeline settings which will control the manner in which we roll out updates. Runs will need to include which version of the pipeline has run
-
-### API
-
-- The API needs proper validation for all endpoints and probably some fuzz testing.
-- User should also be able to give their builds a per-task timeout. Limit this to 5 min - 8 hours. If this is not set the scheduler should set it to 8 hours.
-- We should have a feature that allows individual tasks and pipelines the ability to turn off logging.
-- Implement a Global timeout for all runs.
-- Implement the feature allowing people to attach into their containers and allow maintainers to turn that off.
-- Offer the ability to run two different versions of a container at the same time so that people can slowly roll out new jobs in a safe fashion. (green blue/canary)
-- Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped and started. This way we can have more accurate running times instead of just leaving it as whenever
-  the server restarted.
-- The CLI does some checking to make sure that the config pushed will work. Should the API do further checking when someone registers a new pipeline config? Or should we just error?
-- When you ask to list a pipeline or run or task run, if that thing or it's parent does not exist we should tell the user it doesn't.(This is most likely just simply passing up the not found error from the db)
-- Reconstructing a timeline of any given pipeline run would be a really cool feature.
-- Check that management token only with the same namespaces are able to create client tokens with those same namespaces.
-- We need to address all the minor bugs around namespaces and pipelines and their existance when calling upon the api
-- Github actions just downloads it's cache, we should do the same thing or make it easy for users to do so.
-- Change description for models.go to reflect new thinking on shared objects
-- We need to make a distinct between bot api keys and human api keys so we can know who used which, this might be useful for the metadata type.
-- Possible redesign for the shepard interface is needed, right now it doesn't support cancellations and other stuff very well.
-  - A possible option is to leverage the internal event system that we have and have the shepard as a "supervisor".
-  - It's job will be to start threads that follow each task_execution as it attempts to run. Those task_executions will
-    also produce events.
-  - As events are read the supervisor will be in charge of database updates and such from those events.It will also keep
-    track of the overall run state.
-  - For example when all task_executions have sent a "complete" event, then the supervisor will mark the overall run as
-    finished and update the database to say as much.
-  - Another example would be that when we execute a "cancel" run. Each task_execution will hear that cancellation request
-    and perform the container cancellation and emit a "cancelled event". The supervisor will hear the original cancel request
-    and the cancelled status update from the task_executions and then mark the run as appropriately cancelled.
-  - This structure allows a bit more flexbility for the tons of green threads we'll be running to track the task_executions
-    without binding them all to some context object and then doing cancellations from there.
-- Attach is a bit broken, it doesn't properly close the connection when the client drops(might be other too)
-- Fix the "no fields updated", return better errors.
-- The websockets situation can be cleaned up and better errors could be returned.
-
-### SDK
-
-- Rust sdk needs documentation.
-- Rust documentation possibly needs to be on cargo.io.
-- Rust needs more love in general, the stack rank has golang first.
-
-### CLI
-
-- When you schedule a job the job should tell you where your task is running. Maybe it does this through the contianer name?
-- Provide custom errors at the api level so we can pass back intelligent errors to users.
-- Improve CLI errors overall.
-- Add command line options for controlling pagination
-- Combined logs feature: Ability to attach to all task runs at the same time and dump from the run.
-- We should have a watch function for run that nicely displays the task runs as they start and finish.
-  (We could even have the active task_executions display the last 5 log lines as it runs each in their own personal terminal print load bar thing)
-- CLI now just compiles from language. This means that we can also just straight up read from things like json/toml since it all compiles back to proto anyway.
-- https://github.com/clintjedwards/gofer/commit/955e1b7da76fdfa5aa26bcb5dd0b138af605aa45
-  - Reimplement this and make it so it shows the parent status.
-- Create an init function for both rust and golang(simply just prompts you for your language) and then creates a new default vanilla pipeline. (similar to the old "config init" command)
-- Inspiration for CLI design: https://github.com/bensadeh/circumflex
-  - Look into bubble tea for some interactions.
-- A diff command might be awesome.
-- Expand the CLI up command to actually walk the user through the deployment using watch. Right now it just starts the deployment and walks away.
-- When a user runs up, should we compare their config to known configs and reject
-  registration if it's the same?
-- We should allow when people build Gofer manifests to print it out in pretty json. This will allow people to write tests against Gofer manifests very easily.
-- In the CLI as the user a question with a prompt like ?
-- The attach command echo's back the user's input. I'm currently unsure of how to fix that.
 
 ### Scheduler
 
