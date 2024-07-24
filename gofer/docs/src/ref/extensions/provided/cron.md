@@ -30,7 +30,7 @@ It uses a stripped down version of the cron syntax to do so:
 
 ## Pipeline Configuration
 
-- `expression` <string>: Specifies the cron expression of the interval desired.
+- `expression` \<string\>: Specifies the cron expression of the interval desired.
 
 ### Every year on Xmas
 

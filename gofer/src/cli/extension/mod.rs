@@ -6,7 +6,7 @@ use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
-use polyfmt::{error, print, println, success};
+use polyfmt::{error, print, println, question, success};
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::Message;
 
@@ -28,12 +28,25 @@ pub enum ExtensionCommands {
     List,
 
     /// Install a specific Gofer extension.
+    ///
+    /// You can find a list of provided extensions here: https://gofer.clintjedwards.com/docs/ref/extensions/provided/index.html
+    ///
+    /// Ex. gofer extension install github ghcr.io/clintjedwards/gofer/extensions/github:0.7.0
     Install {
         id: String,
         image: String,
 
+        /// Extension configuration values. These are usually documented by the extension and may be required to
+        /// install the extension.
+        ///
+        /// Ex. --config="APP_ID=some_id" --config="APP_NAME=some_name"
         #[arg(short, long)]
         config: Vec<String>,
+
+        /// Collect config values interactively rather than purely by command line. Useful if you have to do a lot of
+        /// copy pasting of values.
+        #[arg(short, long, default_value = "false")]
+        interactive: bool,
     },
     Uninstall {
         /// Extension Identifier.
@@ -65,8 +78,14 @@ impl Cli {
         match cmds {
             ExtensionCommands::Get { id } => self.extension_get(&id).await,
             ExtensionCommands::List => self.extension_list().await,
-            ExtensionCommands::Install { id, image, config } => {
-                self.extension_install(&id, &image, config).await
+            ExtensionCommands::Install {
+                id,
+                image,
+                config,
+                interactive,
+            } => {
+                self.extension_install(&id, &image, config, interactive)
+                    .await
             }
             ExtensionCommands::Uninstall { id } => self.extension_uninstall(&id).await,
             ExtensionCommands::Enable { id } => self.extension_enable(&id).await,
@@ -191,6 +210,7 @@ impl Cli {
         id: &str,
         image: &str,
         config: Vec<String>,
+        interactive: bool,
     ) -> Result<()> {
         let mut settings = std::collections::HashMap::new();
 
@@ -203,6 +223,25 @@ impl Cli {
             };
 
             settings.insert(key, value);
+        }
+
+        if interactive {
+            println!("Enter the extension config values below;");
+            println!("Enter an empty key when finished;");
+            println!("Entering a duplicate key overrides the previous one:");
+
+            println!("\n");
+            loop {
+                let key = question!("Key: ");
+                if key.is_empty() {
+                    break;
+                }
+
+                let value = question!("Value: ");
+
+                success!("Recorded: {} > {}", &key, &value);
+                settings.insert(key, value);
+            }
         }
 
         self.client

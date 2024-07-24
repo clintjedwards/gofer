@@ -6,25 +6,46 @@ workloads that depend on an action happening on Github.
 See the [events section below](#events) for all supported events and the environment variables they pass to each
 pipeline.
 
-:::info
-Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.
+<div class="box note">
+  <div class="text">
+  <strong>Note:</strong>
 
-_Steps to accomplish this can be found in the [additional steps section.](#additional-setup)_
-:::
+  <p>Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.</p>
+  <i>
 
-:::danger
-The Github extension requires the [external events feature](../../server_configuration/external_events.md) of Gofer in order to accept webhooks from Github's servers. This requires your application to take traffic from external, potentially unknown sources.
+  Steps to accomplish this can be found in the [additional steps section.](#additional-setup)
 
-Visit the [external events page](../../server_configuration/external_events.md) for more information on how to configure Gofer's external
-events endpoint.
+  </i>
+  </div>
+</div>
 
-If Github is your only external extension, to increase security consider [limiting the IP addresses](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses) that can access Gofer's external events endpoint.
-:::
+<div class="box danger">
+  <div class="text">
+  <strong>Danger:</strong>
+
+  <p>
+
+  The Github extension requires the [external events feature](../../server_configuration/external_events.md) of Gofer in order to accept webhooks from Github's servers. This requires your application to take traffic from external, potentially unknown sources.
+
+  Visit the [external events page](../../server_configuration/external_events.md) for more information on how to configure Gofer's external
+  events endpoint.
+
+  If Github is your only external extension, to increase security consider [limiting the IP addresses](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses) that can access Gofer's external events endpoint.
+  </p>
+  </div>
+</div>
 
 ## Pipeline Configuration
 
-- `repository` <string>: The Github repository you would like to listen for events from. The format is in the form
-  `<organization>/<repository>`.
+- `repository` \[string\]: The Github repository you would like to listen for events from. The format is in the form
+  `<organization>/<repository>`: Ex. `clintjedwards/gofer`.
+- `event_filter` \[string\]: The event/action combination the pipeline will be triggered upon. It's presented in
+  the form: `<event>/<action>,<action2>...`. For events that do not have actions or if you simply want to trigger on any
+  action, just putting the \<event\> will suffice.
+
+  To be clear if you don't include actions on an event that has multiple, Gofer will be triggered on any action. You can
+  find a list of events and their actions here(Actions listed as 'activity type' in Github nomenclature.):
+  https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
 
 ## Extension Configuration
 
@@ -32,32 +53,21 @@ Extension configurations are set upon startup and cannot be changed afterwards.
 
 The Github extension requires the setup and use of a [new Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps). You can [view setup instructions below](#additional-setup) which will walk you through how to retrieve the required env var variables.
 
-| EnvVar                                     | Default  | Description                                                                                                                                                             |
-| ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GOFER_EXTENSION_GITHUB_APPS_ID             | Required | The Github app ID                                                                                                                                                       |
-| GOFER_EXTENSION_GITHUB_APPS_INSTALLATION   | Required | The Github installation ID. This can be found by viewing the webhook payload delivery. See a more details walkthrough on where to find this below.                      |
-| GOFER_EXTENSION_GITHUB_APPS_KEY            | Required | The base64'd private key of the Github app. This can be generated during Github app creation time.                                                                      |
-| GOFER_EXTENSION_GITHUB_APPS_WEBHOOK_SECRET | Required | The Github app webhook secret key. This should be a long, randomized character string. It will be used to verify that an event came from Github and not another source. |
+| EnvVar             | Default  | Description                                                                                                                                                             |
+| -------------------| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| APP_ID             | Required | The Github app ID                                                                                                                                                       |
+| APP_INSTALLATION   | Required | The Github installation ID. This can be found by viewing the webhook payload delivery. See a more details walkthrough on where to find this below.                      |
+| APP_KEY            | Required | The base64'd private key of the Github app. This can be generated during Github app creation time.                                                                      |
+| APP_WEBHOOK_SECRET | Required | The Github app webhook secret key. This should be a long, randomized character string. It will be used to verify that an event came from Github and not another source. |
 
-```hcl
-extensions {
-  registered_extensions "github" {
-    image = "ghcr.io/clintjedwards/gofer/extension_github:latest"
-    env_vars = {
-      "GOFER_EXTENSION_GITHUB_APPS_ID": "112348",
-      "GOFER_EXTENSION_GITHUB_APPS_INSTALLATION": "99560091",
-      "GOFER_EXTENSION_GITHUB_APPS_KEY": <<EOT
-TUtkUnhYY01LTUI1ejgzZU84MFhKQWhoNnBkaFlCQlg0NGl5awpUUTBuaENySGRVT2kvN3hVaHp6
-eTgxb3d0RUdpdUFQakJIOVhpSlczQm9hazYrSTZKWjU2RC95YllPbkVSaTdFClIxVkRQeGdGa0lE
-NHdUbmtHdU4vdFY1VzBuZ3Q1aW0yVG5OVGVqc0NnWUVBb0pBMlJXZ2ZaSDdobVo3VS82TFUKSi9a
-WTBZYmNkOU80anpYdWRUTUo1TXVKcVEwY004bnZhb09tS1Q1ekRadnBla01sRDlaYmZ4Rlg2Mzh3
-N2ZuZwp0N05lbGFZc3IxYUhFWi9Rd2pveFo2RXpEWUJSQ0M2SEFvQmJXZmdwc1FCMkhNV3lzb2ls
-LUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-EOT
-      "GOFER_EXTENSION_GITHUB_APPS_WEBHOOK_SECRET": "somereallylongstringofcharacters",
-    }
-  }
-}
+### Example
+
+```bash
+gofer extension install github ghcr.io/clintjedwards/gofer/extension_github:latest \
+    -c "APP_ID=112348" \
+    -c "APP_INSTALLATION=99560091" \
+    -c "APP_KEY=TUtkUnhYY01LTUI1ejgzZU84MFhKQWhoNnBka..." \
+    -c "APP_WEBHOOK_SECRET=somereallylongstringofcharacters"
 ```
 
 ### Additional setup
@@ -83,6 +93,17 @@ On the configuration page for the new Github application the following should be
 
   `base64 ~/Desktop/myorg-gofer.2022-01-24.private-key.pem`
 
+<div class="box note">
+  <div class="text">
+  <strong>Note:</strong>
+
+  <p>
+
+  If you need a logo for your new Github application you're welcome to use [logo-small](../../../assets/logo-small.png)
+  </p>
+  </div>
+</div>
+
 #### 2. Find the installation ID
 
 Once the Github application has been created, [install it.](https://docs.github.com/en/developers/apps/managing-github-apps/installing-github-apps)
@@ -107,8 +128,26 @@ You can find more information about the format the variables will be in by [refe
 
 Events below are the only events that are supported.
 
-| Event   | Metadata                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| create  | "GOFER_EXTENSION_GITHUB_REF<br/>"GOFER_EXTENSION_GITHUB_REF_TYPE"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"                                                                                                                                                                                                                                                                                                                                                      |
-| push    | "GOFER_EXTENSION_GITHUB_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_NAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_NAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITER_USERNAME" |
-| release | "GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TAG_NAME"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TARGET_COMMITISH"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_AUTHOR_LOGIN"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_CREATED_AT"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_PUBLISHED_AT"                                                                                                                                |
+| Event         | Metadata                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pull_request  | "GOFER_EXTENSION_GITHUB_EVENT" <br/>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_SHA"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_USERNAME"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_NAME"<br/>                                                                       |                                                                                                                                                                                                                                                                        |
+| push          | "GOFER_EXTENSION_GITHUB_EVENT":<br/>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_NAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_NAME"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_EMAIL"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_USERNAME"<br />|
+| release       | "GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TAG_NAME"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TARGET_COMMITISH"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_AUTHOR_LOGIN"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_CREATED_AT"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_PUBLISHED_AT"                                                                                                                                |
+
+
+
+<style>
+.box {
+    padding: 10px 15px;
+    margin: 10px 0;
+    align-items: center;
+}
+
+.note {
+    border-left: 5px solid #0074d9;
+}
+
+.danger {
+    border-left: 5px solid #FF6961;
+}
+</style>

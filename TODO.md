@@ -48,7 +48,6 @@ This would allow us to do previously complicated things like cancellations.
 * The Shepard interface simply starts task executions and follows their progress.
 * It emits events as executions hit certain milestones.
 * It also listens for events, translates database updates, and responds to global run events.
-*
 
 # Small things I want to keep track of that I definitely need to do.
 
@@ -77,6 +76,10 @@ yet.
 execution but mistype the pipeline, you might get an error instead of a "hey that thing doesn't exist".
 * Management tokens with certain namespaces should only be able to create client tokens with those same namespaces.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
+* By default docker doesn't allow you to do versioning tricks like pinning to a major version but freely updating the minor
+version. I wonder if there is a way we can offer this feature for free for the purposes of extensions. Since extensions with
+the same major version should work, but extensions might all have different minor versions, it would be useful to be able
+to tell Gofer to use a major version of the extension but we always want the latest minor version.
 
 
 # Small things I'll probably never get around to.
