@@ -348,8 +348,8 @@ func (config *ExtensionSystemConfig) validate() error {
 
 // Convenience function for grabbing the extension specific config value from the environment.
 // Gofer passes in these values into the environment when the extension first starts.
-func GetConfigFromEnv(config string) string {
-	return os.Getenv(fmt.Sprintf("GOFER_EXTENSION_CONFIG_%s", strings.ToUpper(config)))
+func GetConfigFromEnv(key string) string {
+	return os.Getenv(strings.ToUpper(key))
 }
 
 // setupLogging inits a global logging configuration that is used by all extensions.

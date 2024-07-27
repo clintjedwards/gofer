@@ -23,10 +23,10 @@ import (
 // These are general settings needed for github apps:
 // https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id
 const (
-	configAppID           = "app_id"
-	configAppInstallation = "app_installation"
-	configAppKey          = "app_key"
-	configAppWebhookKey   = "app_webhook_secret"
+	configAppID            = "app_id"
+	configAppInstallation  = "app_installation"
+	configAppKey           = "app_key"
+	configAppWebhookSecret = "app_webhook_secret"
 )
 
 // Pipeline configuration parameters.
@@ -127,9 +127,9 @@ func newExtension() extension {
 		log.Fatal().Err(err).Str(configAppKey, keyStr).Msg("could not decode base64 private key")
 	}
 
-	webhookSecret := extsdk.GetConfigFromEnv(configAppWebhookKey)
+	webhookSecret := extsdk.GetConfigFromEnv(configAppWebhookSecret)
 	if webhookSecret == "" {
-		log.Fatal().Err(err).Str("env_var", configAppWebhookKey).Msg("could not find required env var")
+		log.Fatal().Err(err).Str("env_var", configAppWebhookSecret).Msg("could not find required env var")
 	}
 
 	client, err := newGithubClient(int64(app), int64(installation), key)
@@ -428,7 +428,7 @@ func (e *extension) Info(_ context.Context) (*extsdk.InfoResponse, *extsdk.HttpE
 					Required:      true,
 				},
 				{
-					Key:           configAppWebhookKey,
+					Key:           configAppWebhookSecret,
 					Documentation: "General settings for all Github apps: https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id",
 					Required:      true,
 				},
