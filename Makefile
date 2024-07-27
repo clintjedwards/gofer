@@ -96,7 +96,7 @@ build-docs:
 > cd gofer/docs
 > mkdir -p book/html
 > mdbook build
-> touch gofer/docs/book/html/.gitkeep
+> touch book/html/.gitkeep
 .PHONY: build-docs
 
 ## build-containers: build containers

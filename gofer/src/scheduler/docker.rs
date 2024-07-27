@@ -290,11 +290,27 @@ impl super::Scheduler for Scheduler {
                 )
             })?;
 
-            let ports = ports[&format!("{port}/tcp")].as_ref().ok_or_else(|| {
-                SchedulerError::Unknown(
-                    "could not get networking settings (ports binding)".to_string(),
-                )
-            })?;
+            dbg!(&ports);
+
+            let ports = ports.get(&format!("{port}/tcp"));
+            let ports = match ports {
+                Some(ports) => ports,
+                None => {
+                    return Err(SchedulerError::Unknown(format!(
+                        "could not get network settings (ports binding); {:#?}",
+                        ports
+                    )))
+                }
+            };
+            let ports = match ports {
+                Some(ports) => ports,
+                None => {
+                    return Err(SchedulerError::Unknown(format!(
+                        "could not get network settings (ports binding); {:#?}",
+                        ports
+                    )))
+                }
+            };
 
             let port = ports.first().ok_or_else(|| {
                 SchedulerError::Unknown("could not get networking settings (port)".to_string())

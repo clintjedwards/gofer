@@ -53,6 +53,7 @@ This would allow us to do previously complicated things like cancellations.
 
 ## API
 
+* There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
 * Write a test for bootstrap tokens in hurl.
 * Write a test for tokens, namespace matching, and general auth in hurl.
