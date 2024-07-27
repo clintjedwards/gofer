@@ -290,8 +290,6 @@ impl super::Scheduler for Scheduler {
                 )
             })?;
 
-            dbg!(&ports);
-
             let ports = ports.get(&format!("{port}/tcp"));
             let ports = match ports {
                 Some(ports) => ports,

@@ -180,8 +180,7 @@ impl SecretStore for Engine {
 
     async fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), SecretStoreError> {
         let encrypted_value = encrypt(&self.encryption_key.clone().into_bytes(), &content)
-            .map_err(|e| {
-                dbg!(e);
+            .map_err(|_| {
                 SecretStoreError::Internal("Could not encrypt value while inserting secret".into())
             })?;
 
