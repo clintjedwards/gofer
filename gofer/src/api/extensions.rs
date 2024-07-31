@@ -494,7 +494,7 @@ async fn start_extension(
     // We first need to populate the extension with their required environment variables.
     // These are passed to every extension.
 
-    let mut system_extension_vars: Vec<Variable> = vec![
+    let system_extension_vars: Vec<Variable> = vec![
         Variable {
             key: "GOFER_EXTENSION_SYSTEM_USE_TLS".into(),
             value: api_state.config.extensions.use_tls.to_string(),
