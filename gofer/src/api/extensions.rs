@@ -491,10 +491,10 @@ async fn start_extension(
 
     // Next we prep to start the Extension.
     //
-    // We first need to populate the extension with their required environment variable.
+    // We first need to populate the extension with their required environment variables.
     // These are passed to every extension.
 
-    let system_extension_vars: Vec<Variable> = vec![
+    let mut system_extension_vars: Vec<Variable> = vec![
         Variable {
             key: "GOFER_EXTENSION_SYSTEM_USE_TLS".into(),
             value: api_state.config.extensions.use_tls.to_string(),
@@ -543,6 +543,14 @@ async fn start_extension(
         },
     ];
 
+    // Now that we've defined the system vars that are included on every extension launch we need to
+    // insert the env vars that are from the extension registration.
+    let extension_vars: Vec<Variable> = system_extension_vars
+        .iter()
+        .chain(registration.settings.iter())
+        .cloned()
+        .collect();
+
     debug!(id = registration.extension_id.clone(), "Starting extension");
 
     let ext_container_id = extension_container_id(&registration.extension_id);
@@ -550,7 +558,7 @@ async fn start_extension(
     let start_container_request = scheduler::StartContainerRequest {
         id: ext_container_id.clone(),
         image: registration.image.clone(),
-        variables: system_extension_vars
+        variables: extension_vars
             .into_iter()
             .map(|var| (var.key, var.value))
             .collect(),
