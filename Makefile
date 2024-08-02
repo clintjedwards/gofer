@@ -44,6 +44,10 @@ generate-openapi: generate-openapi-backend generate-openapi-sdk
 
 ## run: build and run Gofer web service
 run:
+> @$(MAKE) -j run-tailwind run-backend
+.PHONY: run
+
+run-backend:
 > cd gofer
 > export GOFER_WEB_API__LOG_LEVEL=debug
 > cargo run --bin gofer -- service start
@@ -86,6 +90,10 @@ run-hurl-tests:
 ## cleanup-integration-tests: Clean up the background gofer process.
 cleanup-integration-tests:
 > @pkill -9 gofer
+
+## run-tailwind: Run the tailwind compiler
+run-tailwind:
+> npx tailwindcss -i ./gofer/src/main.css -o ./gofer/public/css/main.css --watch >/dev/null 2>&1
 
 ## clippy-pedantic: Let clippy nitpick your code.
 clippy-pedantic:

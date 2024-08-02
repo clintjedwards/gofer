@@ -233,7 +233,7 @@ impl ApiState {
         let auth_ctx = if bypass_auth {
             AuthContext {
                 // allow any namespace
-                allowed_namespaces: HashSet::from(["*".into()]),
+                allowed_namespaces: HashSet::from([".*".into()]),
                 key_id: "dev".into(),
                 key_type: tokens::TokenType::Management,
             }

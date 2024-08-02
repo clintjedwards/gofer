@@ -43,6 +43,7 @@ pub struct RunPathArgs {
     pub run_id: u64,
 }
 
+/// The current state of the run. The state is described as the progress of the run towards completion.
 #[derive(
     Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
 )]
@@ -65,6 +66,7 @@ pub enum State {
     Complete,
 }
 
+/// The current status of the run. Status is described as if the run succeeded or not.
 #[derive(
     Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
 )]

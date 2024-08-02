@@ -49,10 +49,18 @@ This would allow us to do previously complicated things like cancellations.
 * It emits events as executions hit certain milestones.
 * It also listens for events, translates database updates, and responds to global run events.
 
+## Fill out the frontend
+
+We should fill out some more stuff for the frontend, so that Gofer feels somewhat populated when you start to use it.
+
+* Also list the version
+
 # Small things I want to keep track of that I definitely need to do.
 
 ## API
 
+* Now that API keys have IDs we can map them back to actual users and we should mark this down inside the initiator
+* See if we can move request logging to purely be user based, having it in app is frought with things that can't be done.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
 * Write a test for bootstrap tokens in hurl.

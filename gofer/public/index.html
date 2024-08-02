@@ -1,22 +1,35 @@
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link href="css/main.css" rel="stylesheet" />
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="css/main.css" rel="stylesheet">
+        <link rel="icon" type="image/png" href="images/favicon.ico" />
+        <script src="main.js" defer></script>
+        <title>Gofer</title>
+    </head>
 
-    <link rel="icon" type="image/png" href="images/favicon.ico">
-    <title>Gofer</title>
-</head>
+    <body>
+        <div class="pt-12 pl-12">
+            <h1 class="pb-2 text-6xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 from-10% to-30% to-black">Gofer │ Run short lived jobs easily.</h1>
 
-<body>
-    <p>Hello from Gofer!</p>
+            <div class="flex justify-between w-4/5 text-sm text-slate-800 pt-3 pl-6">
+                <ul class="flex space-x-4">
+                    <li id="version">v0.0.0</li>
+                    <li>│</li>
+                    <li><a href="/docs">Documentation</a></li>
+                    <li><a href="/docs/api_reference.html">API Reference</a></li>
+                    <li><a href="https://github.com/clintjedwards/gofer">Github</a></li>
+                </ul>
+                <div class="flex items-center space-x-4">
+                    <label id="token-prompt-label" for="token" class="text-gray-700">Token</label>
+                    <input id="token-prompt" type="text" name="token" id="token" class="block w-full border-0 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-400 sm:text-sm sm:leading-6" placeholder="  press enter when done" />
+                    <p id="token-saved" class="hidden">Token Saved!</p>
+                </div>
+            </div>
+        </div>
 
-    <ul>
-        <li><a href="/docs">Documentation</a></li>
-        <li><a href="/docs/api_reference.html">Main API Reference</a></li>
-        <li><a href="https://github.com/clintjedwards/gofer">Github Repo</a></li>
-    </ul>
-</body>
-
+        <div id="run-list-container" class="pt-36 pl-80 pr-80 text-slate-800"></div>
+    </body>
 </html>
