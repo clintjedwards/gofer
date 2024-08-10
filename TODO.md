@@ -49,17 +49,17 @@ This would allow us to do previously complicated things like cancellations.
 * It emits events as executions hit certain milestones.
 * It also listens for events, translates database updates, and responds to global run events.
 
-## Fill out the frontend
-
-We should fill out some more stuff for the frontend, so that Gofer feels somewhat populated when you start to use it.
-
-* Also list the version
-
 # Small things I want to keep track of that I definitely need to do.
 
 ## API
 
+* We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.
+  * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
+  and started. This way we can have more accurate running times instead of just leaving it as whenever the server
+  restarted.
 * Now that API keys have IDs we can map them back to actual users and we should mark this down inside the initiator
+* Now that we use tokens as the initator it would be more user friendly to give tokens a username field. So that we
+can mirror this back to others on the frontend. WHen making these replacements look for `initiator.id`
 * See if we can move request logging to purely be user based, having it in app is frought with things that can't be done.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
@@ -71,10 +71,6 @@ yet.
 * Allow users to query deployments from the CLI.
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
-* We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.
-  * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
-  and started. This way we can have more accurate running times instead of just leaving it as whenever the server
-  restarted.
 * We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us.
   We should get rid of the global restriction and instead check for what the request size should be in the preflight.
 * Make the object store uploads multipart.

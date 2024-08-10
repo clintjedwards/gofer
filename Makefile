@@ -13,7 +13,7 @@ SHELL := bash
 # Tells make not to do crazy shit.
 MAKEFLAGS += --no-builtin-rules
 
-# Allows me to replace tabs with > characters. This makes the things a bit easier to use things like forloops in bash.
+# Allows me to replace tabs with > characters. This makes it a bit easier to use things like forloops in bash.
 ifeq ($(origin .RECIPEPREFIX), undefined)
   $(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or later)
 endif

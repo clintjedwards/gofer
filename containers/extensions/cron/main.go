@@ -187,12 +187,6 @@ func (e *extension) checkTimeFrames() {
 
 			resp, err := client.StartRun(context.Background(), subscription.namespace, subscription.pipeline, sdk.StartRunRequest{
 				Variables: map[string]string{},
-				Initiator: sdk.Initiator{
-					Kind: sdk.InitiatorTypeExtension,
-					Name: fmt.Sprintf("%s (%s)", config.ID, subscription.pipelineExtensionLabel),
-					Reason: fmt.Sprintf("Triggered due to current time %q being within the timeframe expression %q",
-						time.Now().Format(time.RFC1123), subscription.timeframe.Expression),
-				},
 			})
 			if err != nil {
 				log.Error().Err(err).Msg("could not start new run")

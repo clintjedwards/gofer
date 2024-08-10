@@ -157,11 +157,6 @@ func (e *extension) startInterval(ctx context.Context,
 		case <-time.After(duration):
 			resp, err := client.StartRun(ctx, namespace, pipeline, sdk.StartRunRequest{
 				Variables: map[string]string{},
-				Initiator: sdk.Initiator{
-					Kind:   sdk.InitiatorTypeExtension,
-					Name:   fmt.Sprintf("%s (%s)", e.systemConfig.ID, pipelineExtensionLabel),
-					Reason: "Triggered due to the completion of interval's set period",
-				},
 			})
 			if err != nil {
 				log.Error().Err(err).Msg("could not start new run")

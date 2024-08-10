@@ -58,10 +58,6 @@ pub enum RunCommands {
         /// Optional environment variables to pass to your run. Format: Key=Value
         #[arg(short, long)]
         variable: Vec<String>,
-
-        /// Optional environment variables to pass to your run. Format: Key=Value
-        #[arg(short, long)]
-        reason: Option<String>,
     },
     Cancel {
         /// Pipeline Identifier.
@@ -101,10 +97,9 @@ impl Cli {
             } => self.run_get(command.namespace, &pipeline_id, run_id).await,
             RunCommands::Start {
                 pipeline_id,
-                reason,
                 variable,
             } => {
-                self.run_start(command.namespace, &pipeline_id, reason, variable)
+                self.run_start(command.namespace, &pipeline_id, variable)
                     .await
             }
             RunCommands::Cancel {
@@ -185,7 +180,7 @@ impl Cli {
                 Cell::new(duration(run.started as i64, run.ended as i64)),
                 Cell::new(run.state).fg(colorize_status_text_comfy(run.state)),
                 Cell::new(run.status).fg(colorize_status_text_comfy(run.status)),
-                Cell::new(run.initiator.name),
+                Cell::new(run.initiator.id),
             ]);
         }
 
@@ -294,7 +289,7 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("initiator_name", &run.initiator.name.cyan().to_string());
+        context.insert("initiator_name", &run.initiator.id.cyan().to_string());
         context.insert(
             "initiator_type",
             &format!("[{}]", run.initiator.kind.to_string())
@@ -326,7 +321,6 @@ impl Cli {
         &self,
         namespace_id: Option<String>,
         pipeline_id: &str,
-        reason: Option<String>,
         variables: Vec<String>,
     ) -> Result<()> {
         let namespace = match namespace_id {
@@ -357,11 +351,6 @@ impl Cli {
                 &namespace,
                 pipeline_id,
                 &gofer_sdk::api::types::StartRunRequest {
-                    initiator: gofer_sdk::api::types::Initiator {
-                        kind: gofer_sdk::api::types::InitiatorType::Human,
-                        name: "cli".into(),
-                        reason: reason.unwrap_or_default(),
-                    },
                     variables: variable_map,
                 },
             )

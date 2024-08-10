@@ -22,6 +22,8 @@ use std::{
 use strum::{Display, EnumString};
 use tracing::{debug, error};
 
+use super::tokens::TokenType;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RunPathArgsRoot {
     /// The unique identifier for the target namespace.
@@ -128,30 +130,13 @@ pub struct StatusReason {
     pub description: String,
 }
 
-#[derive(
-    Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-#[strum(ascii_case_insensitive)]
-pub enum InitiatorType {
-    #[default]
-    Other,
-    Bot,
-    Human,
-    Extension,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct Initiator {
-    /// Which type of user initiated the run.
-    pub kind: InitiatorType,
+    /// The unique identifier for the token that initiated the request.
+    pub id: String,
 
-    /// The name of the user which initiated the run.
-    pub name: String,
-
-    /// The reason the run was initiated.
-    pub reason: String,
+    /// The type of token that initiated the request.
+    pub kind: TokenType,
 }
 
 /// A run is one or more tasks being executed on behalf of some extension.
@@ -519,7 +504,6 @@ pub async fn get_run(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct StartRunRequest {
     pub variables: HashMap<String, String>,
-    pub initiator: Initiator,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -542,7 +526,7 @@ pub async fn start_run(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let body = body.into_inner();
-    let _req_metadata = api_state
+    let req_metadata = api_state
         .run_preflight(
             &rqctx.request,
             PreflightOptions {
@@ -689,13 +673,18 @@ pub async fn start_run(
 
     let new_run_id = latest_run_id + 1;
 
+    let initiator = Initiator {
+        id: req_metadata.auth.key_id,
+        kind: req_metadata.auth.key_type,
+    };
+
     //TODO(): Implement run_api_token
     let new_run = Run::new(
         &path.namespace_id,
         &path.pipeline_id,
         latest_pipeline_config_storage.version.try_into().unwrap(),
         new_run_id.try_into().unwrap(),
-        body.initiator,
+        initiator,
         body.variables
             .into_iter()
             .map(|(key, value)| Variable {

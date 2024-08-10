@@ -48,6 +48,9 @@ pub enum TokenType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 /// Gofer API Token.
+///
+/// The hash field is skipped during serialization to prevent it from being exposed to the user.
+/// This isn't a foolproof practice, but it'll work for now.
 pub struct Token {
     /// Unique identifier for token.
     pub id: String,

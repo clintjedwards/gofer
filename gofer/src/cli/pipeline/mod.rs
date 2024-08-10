@@ -41,10 +41,6 @@ pub enum PipelineCommands {
         /// Optional environment variables to pass to your run. Format: Key=Value
         #[arg(short, long)]
         variable: Vec<String>,
-
-        /// Optional environment variables to pass to your run. Format: Key=Value
-        #[arg(short, long)]
-        reason: Option<String>,
     },
 
     /// Move a pipeline from a disabled state to a enabled.
@@ -126,13 +122,8 @@ impl Cli {
         match cmds {
             PipelineCommands::List => self.pipeline_list(command.namespace).await,
             PipelineCommands::Get { id } => self.pipeline_get(command.namespace, &id).await,
-            PipelineCommands::Run {
-                id,
-                variable,
-                reason,
-            } => {
-                self.pipeline_run(command.namespace, &id, reason, variable)
-                    .await
+            PipelineCommands::Run { id, variable } => {
+                self.pipeline_run(command.namespace, &id, variable).await
             }
             PipelineCommands::Enable { id } => self.pipeline_enable(command.namespace, &id).await,
             PipelineCommands::Disable { id } => self.pipeline_disable(command.namespace, &id).await,
@@ -288,7 +279,7 @@ impl Cli {
                 Cell::new(format!(
                     "{} by {}",
                     humanize_relative_duration(run.started).unwrap_or("Never".into()),
-                    run.initiator.name
+                    run.initiator.id
                 )),
                 Cell::new(format!(
                     "{} {}",
@@ -407,10 +398,9 @@ impl Cli {
         &self,
         namespace_id: Option<String>,
         id: &str,
-        reason: Option<String>,
         variables: Vec<String>,
     ) -> Result<()> {
-        self.run_start(namespace_id, id, reason, variables).await
+        self.run_start(namespace_id, id, variables).await
     }
 
     pub async fn pipeline_enable(&self, namespace_id: Option<String>, id: &str) -> Result<()> {

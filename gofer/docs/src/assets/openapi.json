@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Gofer",
-    "version": "0.7.0"
+    "version": "0.7.2"
   },
   "paths": {
     "/api/events": {
@@ -3020,7 +3020,7 @@
           "deprecated": {
             "description": "Time in epoch milliseconds when this pipeline config was not longer used.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "description": {
@@ -3048,7 +3048,7 @@
           "registered": {
             "description": "Time in epoch milliseconds when this pipeline config was registered.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "state": {
@@ -3289,7 +3289,7 @@
           "ended": {
             "description": "Time of deployment end in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "logs": {
@@ -3316,7 +3316,7 @@
           "started": {
             "description": "Time of deployment start in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "state": {
@@ -3412,7 +3412,7 @@
           "emitted": {
             "description": "Time event was performed in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "id": {
@@ -3457,7 +3457,7 @@
           "started": {
             "description": "The start time of the extension in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "state": {
@@ -3737,36 +3737,22 @@
       "Initiator": {
         "type": "object",
         "properties": {
+          "id": {
+            "description": "The unique identifier for the token that initiated the request.",
+            "type": "string"
+          },
           "kind": {
-            "description": "Which type of user initiated the run.",
+            "description": "The type of token that initiated the request.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/InitiatorType"
+                "$ref": "#/components/schemas/TokenType"
               }
             ]
-          },
-          "name": {
-            "description": "The name of the user which initiated the run.",
-            "type": "string"
-          },
-          "reason": {
-            "description": "The reason the run was initiated.",
-            "type": "string"
           }
         },
         "required": [
-          "kind",
-          "name",
-          "reason"
-        ]
-      },
-      "InitiatorType": {
-        "type": "string",
-        "enum": [
-          "other",
-          "bot",
-          "human",
-          "extension"
+          "id",
+          "kind"
         ]
       },
       "InstallExtensionRequest": {
@@ -4565,13 +4551,13 @@
           "created": {
             "description": "Time of pipeline creation in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "modified": {
             "description": "Time pipeline was updated to a new version in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "namespace_id": {
@@ -4606,7 +4592,7 @@
           "created": {
             "description": "Time in epoch milliseconds when namespace was created.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "description": {
@@ -4620,7 +4606,7 @@
           "modified": {
             "description": "Time in epoch milliseconds when namespace would expire.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "name": {
@@ -4642,7 +4628,7 @@
           "created": {
             "description": "Time in epoch milliseconds that this object was registered.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "key": {
@@ -4954,7 +4940,7 @@
           "created": {
             "description": "Time of registration creation in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "extension_id": {
@@ -4968,7 +4954,7 @@
           "modified": {
             "description": "Time of last modification in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "registry_auth": {
@@ -5061,7 +5047,7 @@
           "ended": {
             "description": "Time of run end in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "initiator": {
@@ -5095,7 +5081,7 @@
           "started": {
             "description": "Time of run start in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "state": {
@@ -5160,7 +5146,7 @@
           "created": {
             "description": "Time in epoch milliseconds that this secret was registered.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "key": {
@@ -5184,9 +5170,6 @@
       "StartRunRequest": {
         "type": "object",
         "properties": {
-          "initiator": {
-            "$ref": "#/components/schemas/Initiator"
-          },
           "variables": {
             "type": "object",
             "additionalProperties": {
@@ -5195,7 +5178,6 @@
           }
         },
         "required": [
-          "initiator",
           "variables"
         ]
       },
@@ -5404,13 +5386,13 @@
           "created": {
             "description": "Time of task execution creation in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "ended": {
             "description": "Time of task execution end in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "exit_code": {
@@ -5445,7 +5427,7 @@
           "started": {
             "description": "Time of task execution start in epoch milliseconds.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "state": {
@@ -5510,13 +5492,13 @@
         ]
       },
       "Token": {
-        "description": "Gofer API Token.",
+        "description": "Gofer API Token.\n\nThe hash field is skipped during serialization to prevent it from being exposed to the user. This isn't a foolproof practice, but it'll work for now.",
         "type": "object",
         "properties": {
           "created": {
             "description": "Time in epoch milliseconds when token was created.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "disabled": {
@@ -5526,7 +5508,7 @@
           "expires": {
             "description": "Time in epoch milliseconds when token would expire.",
             "type": "integer",
-            "format": "uint128",
+            "format": "uint64",
             "minimum": 0
           },
           "id": {
@@ -5885,6 +5867,7 @@
         ]
       },
       "run_state": {
+        "description": "The current state of the run. The state is described as the progress of the run towards completion.",
         "oneOf": [
           {
             "type": "string",
@@ -5916,6 +5899,7 @@
         ]
       },
       "run_status": {
+        "description": "The current status of the run. Status is described as if the run succeeded or not.",
         "oneOf": [
           {
             "description": "Could not determine the current state of the status. Should only be in this state if the run has not yet completed.",

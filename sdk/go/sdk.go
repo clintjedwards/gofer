@@ -36,14 +36,6 @@ const (
 	Deprecated ConfigState3 = "deprecated"
 )
 
-// Defines values for InitiatorType.
-const (
-	InitiatorTypeBot       InitiatorType = "bot"
-	InitiatorTypeExtension InitiatorType = "extension"
-	InitiatorTypeHuman     InitiatorType = "human"
-	InitiatorTypeOther     InitiatorType = "other"
-)
-
 // Defines values for Kind0.
 const (
 	Kind0Any Kind0 = "any"
@@ -357,7 +349,7 @@ const (
 // Config A representation of the user's configuration settings for a particular pipeline.
 type Config struct {
 	// Deprecated Time in epoch milliseconds when this pipeline config was not longer used.
-	Deprecated int `json:"deprecated"`
+	Deprecated uint64 `json:"deprecated"`
 
 	// Description Description of pipeline's purpose and other details.
 	Description string `json:"description"`
@@ -375,7 +367,7 @@ type Config struct {
 	PipelineId string `json:"pipeline_id"`
 
 	// Registered Time in epoch milliseconds when this pipeline config was registered.
-	Registered int `json:"registered"`
+	Registered uint64 `json:"registered"`
 
 	// State The deployment state of the config. This is used to determine the state of this particular config and if it is currently being used or not.
 	State ConfigState `json:"state"`
@@ -474,7 +466,7 @@ type Deployment struct {
 	EndVersion uint64 `json:"end_version"`
 
 	// Ended Time of deployment end in epoch milliseconds.
-	Ended int `json:"ended"`
+	Ended uint64 `json:"ended"`
 
 	// Logs The event logs from the deployment.
 	Logs []Event `json:"logs"`
@@ -489,7 +481,7 @@ type Deployment struct {
 	StartVersion uint64 `json:"start_version"`
 
 	// Started Time of deployment start in epoch milliseconds.
-	Started int `json:"started"`
+	Started uint64 `json:"started"`
 
 	// State The current state of the deployment as it exists within Gofer's operating model.
 	State DeploymentState `json:"state"`
@@ -523,7 +515,7 @@ type Error struct {
 // Event A single event
 type Event struct {
 	// Emitted Time event was performed in epoch milliseconds.
-	Emitted int `json:"emitted"`
+	Emitted uint64 `json:"emitted"`
 
 	// Id Unique identifier for event.
 	Id string `json:"id"`
@@ -541,7 +533,7 @@ type Extension struct {
 	Registration Registration `json:"registration"`
 
 	// Started The start time of the extension in epoch milliseconds.
-	Started int `json:"started"`
+	Started uint64 `json:"started"`
 
 	// State The current state of the extension as it exists within Gofer's operating model.
 	State ExtensionState `json:"state"`
@@ -651,18 +643,12 @@ type GetTokenByIDResponse struct {
 
 // Initiator defines model for Initiator.
 type Initiator struct {
-	// Kind Which type of user initiated the run.
-	Kind InitiatorType `json:"kind"`
+	// Id The unique identifier for the token that initiated the request.
+	Id string `json:"id"`
 
-	// Name The name of the user which initiated the run.
-	Name string `json:"name"`
-
-	// Reason The reason the run was initiated.
-	Reason string `json:"reason"`
+	// Kind The type of token that initiated the request.
+	Kind TokenType `json:"kind"`
 }
-
-// InitiatorType defines model for InitiatorType.
-type InitiatorType string
 
 // InstallExtensionRequest defines model for InstallExtensionRequest.
 type InstallExtensionRequest struct {
@@ -771,10 +757,12 @@ type Kind9 struct {
 // Kind10 defines model for .
 type Kind10 struct {
 	CompletedRun struct {
-		NamespaceId string    `json:"namespace_id"`
-		PipelineId  string    `json:"pipeline_id"`
-		RunId       uint64    `json:"run_id"`
-		Status      RunStatus `json:"status"`
+		NamespaceId string `json:"namespace_id"`
+		PipelineId  string `json:"pipeline_id"`
+		RunId       uint64 `json:"run_id"`
+
+		// Status The current status of the run. Status is described as if the run succeeded or not.
+		Status RunStatus `json:"status"`
 	} `json:"completed_run"`
 }
 
@@ -942,10 +930,10 @@ type ListTokensResponse struct {
 // Metadata Details about the pipeline itself, not including the configuration that the user can change. All these values are changed by the system or never changed at all. This sits in contrast to the config which the user can change freely.
 type Metadata struct {
 	// Created Time of pipeline creation in epoch milliseconds.
-	Created int `json:"created"`
+	Created uint64 `json:"created"`
 
 	// Modified Time pipeline was updated to a new version in epoch milliseconds.
-	Modified int `json:"modified"`
+	Modified uint64 `json:"modified"`
 
 	// NamespaceId Unique identifier of the target namespace.
 	NamespaceId string `json:"namespace_id"`
@@ -960,7 +948,7 @@ type Metadata struct {
 // Namespace A namespace represents a grouping of pipelines. Normally it is used to divide teams or logically different sections of workloads. It is the highest level unit as it sits above pipelines in the hierarchy of Gofer.
 type Namespace struct {
 	// Created Time in epoch milliseconds when namespace was created.
-	Created int `json:"created"`
+	Created uint64 `json:"created"`
 
 	// Description Short description about what the namespace is used for.
 	Description string `json:"description"`
@@ -969,7 +957,7 @@ type Namespace struct {
 	Id string `json:"id"`
 
 	// Modified Time in epoch milliseconds when namespace would expire.
-	Modified int `json:"modified"`
+	Modified uint64 `json:"modified"`
 
 	// Name Humanized name for the namespace.
 	Name string `json:"name"`
@@ -978,7 +966,7 @@ type Namespace struct {
 // Object defines model for Object.
 type Object struct {
 	// Created Time in epoch milliseconds that this object was registered.
-	Created int `json:"created"`
+	Created uint64 `json:"created"`
 
 	// Key The identifier for the object value.
 	Key string `json:"key"`
@@ -1119,7 +1107,7 @@ type RegisterPipelineConfigResponse struct {
 // Registration When installing a new extension, we allow the extension installer to pass a bunch of settings that allow us to go get that extension on future startups.
 type Registration struct {
 	// Created Time of registration creation in epoch milliseconds.
-	Created int `json:"created"`
+	Created uint64 `json:"created"`
 
 	// ExtensionId Unique identifier for the extension.
 	ExtensionId string `json:"extension_id"`
@@ -1128,7 +1116,7 @@ type Registration struct {
 	Image string `json:"image"`
 
 	// Modified Time of last modification in epoch milliseconds.
-	Modified int `json:"modified"`
+	Modified uint64 `json:"modified"`
 
 	// RegistryAuth Auth credentials for the image's registry.
 	RegistryAuth *RegistryAuth `json:"registry_auth"`
@@ -1161,7 +1149,7 @@ type RequiredParentStatus2 string
 // Run A run is one or more tasks being executed on behalf of some extension. Run is a third level unit containing tasks and being contained in a pipeline.
 type Run struct {
 	// Ended Time of run end in epoch milliseconds.
-	Ended int `json:"ended"`
+	Ended uint64 `json:"ended"`
 
 	// Initiator Information about what started the run.
 	Initiator Initiator `json:"initiator"`
@@ -1179,7 +1167,7 @@ type Run struct {
 	RunId uint64 `json:"run_id"`
 
 	// Started Time of run start in epoch milliseconds.
-	Started int `json:"started"`
+	Started uint64 `json:"started"`
 
 	// State The current state of the run within the Gofer execution model. Describes if the run is in progress or not.
 	State RunState `json:"state"`
@@ -1205,7 +1193,7 @@ type Run struct {
 // Secret defines model for Secret.
 type Secret struct {
 	// Created Time in epoch milliseconds that this secret was registered.
-	Created int `json:"created"`
+	Created uint64 `json:"created"`
 
 	// Key The identifier for the secret value.
 	Key string `json:"key"`
@@ -1216,7 +1204,6 @@ type Secret struct {
 
 // StartRunRequest defines model for StartRunRequest.
 type StartRunRequest struct {
-	Initiator Initiator         `json:"initiator"`
 	Variables map[string]string `json:"variables"`
 }
 
@@ -1300,10 +1287,10 @@ type Task2 struct {
 // TaskExecution a task execution is a specific execution of a task/container. It represents a 4th level unit in the hierarchy. namespace -> pipeline -> run -> task execution. It is the last and most specific object in Gofer's execution model.
 type TaskExecution struct {
 	// Created Time of task execution creation in epoch milliseconds.
-	Created int `json:"created"`
+	Created uint64 `json:"created"`
 
 	// Ended Time of task execution end in epoch milliseconds.
-	Ended int `json:"ended"`
+	Ended uint64 `json:"ended"`
 
 	// ExitCode The exit code of the task execution completion if it is finished.
 	ExitCode *uint8 `json:"exit_code"`
@@ -1324,7 +1311,7 @@ type TaskExecution struct {
 	RunId uint64 `json:"run_id"`
 
 	// Started Time of task execution start in epoch milliseconds.
-	Started int `json:"started"`
+	Started uint64 `json:"started"`
 
 	// State The current state of the task execution within the Gofer execution model. Describes if the execution is in progress or not.
 	State TaskExecutionState `json:"state"`
@@ -1346,15 +1333,17 @@ type TaskExecution struct {
 }
 
 // Token Gofer API Token.
+//
+// The hash field is skipped during serialization to prevent it from being exposed to the user. This isn't a foolproof practice, but it'll work for now.
 type Token struct {
 	// Created Time in epoch milliseconds when token was created.
-	Created int `json:"created"`
+	Created uint64 `json:"created"`
 
 	// Disabled If the token is inactive or not; disabled tokens cannot be used for requests.
 	Disabled bool `json:"disabled"`
 
 	// Expires Time in epoch milliseconds when token would expire.
-	Expires int `json:"expires"`
+	Expires uint64 `json:"expires"`
 
 	// Id Unique identifier for token.
 	Id string `json:"id"`
@@ -1525,7 +1514,7 @@ type ExtensionStatus1 string
 // ExtensionStatus2 Not available to be used by pipelines, either through lack of installation or being disabled by an admin.
 type ExtensionStatus2 string
 
-// RunState defines model for run_state.
+// RunState The current state of the run. The state is described as the progress of the run towards completion.
 type RunState struct {
 	union json.RawMessage
 }
@@ -1542,7 +1531,7 @@ type RunState2 string
 // RunState3 All tasks have been resolved and the run is no longer being executed.
 type RunState3 string
 
-// RunStatus defines model for run_status.
+// RunStatus The current status of the run. Status is described as if the run succeeded or not.
 type RunStatus struct {
 	union json.RawMessage
 }

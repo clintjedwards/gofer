@@ -234,11 +234,6 @@ func (e *extension) processNewEvent(req *http.Request) error {
 
 		resp, err := client.StartRun(context.Background(), sub.namespace, sub.pipeline, sdk.StartRunRequest{
 			Variables: metadata,
-			Initiator: sdk.Initiator{
-				Kind:   sdk.InitiatorTypeExtension,
-				Name:   fmt.Sprintf("%s (%s)", e.config.ID, sub.extensionLabel),
-				Reason: fmt.Sprintf("New %q event from %q", github.WebHookType(req), repo),
-			},
 		})
 		if err != nil {
 			log.Error().Err(err).Msg("could not start new run")
