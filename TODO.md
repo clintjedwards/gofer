@@ -57,9 +57,6 @@ This would allow us to do previously complicated things like cancellations.
   * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
   and started. This way we can have more accurate running times instead of just leaving it as whenever the server
   restarted.
-* Now that API keys have IDs we can map them back to actual users and we should mark this down inside the initiator
-* Now that we use tokens as the initator it would be more user friendly to give tokens a username field. So that we
-can mirror this back to others on the frontend. WHen making these replacements look for `initiator.id`
 * See if we can move request logging to purely be user based, having it in app is frought with things that can't be done.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.

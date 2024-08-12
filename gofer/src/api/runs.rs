@@ -137,6 +137,9 @@ pub struct Initiator {
 
     /// The type of token that initiated the request.
     pub kind: TokenType,
+
+    /// The plaintext username for of the token.
+    pub user: String,
 }
 
 /// A run is one or more tasks being executed on behalf of some extension.
@@ -676,6 +679,7 @@ pub async fn start_run(
     let initiator = Initiator {
         id: req_metadata.auth.key_id,
         kind: req_metadata.auth.key_type,
+        user: req_metadata.auth.key_user,
     };
 
     //TODO(): Implement run_api_token

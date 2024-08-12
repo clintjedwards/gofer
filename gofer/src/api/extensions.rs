@@ -422,6 +422,7 @@ async fn start_extension(
         HashSet::from([".*".into()]), // Allow access to any namespace.
         HashMap::from([("extension_id".into(), registration.extension_id.clone())]),
         946728000, // 30 years
+        registration.extension_id.clone(),
     );
 
     let mut conn = match api_state.storage.conn().await {

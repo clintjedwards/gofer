@@ -213,6 +213,15 @@ function generateNewRunElement(run) {
   const runElement = document.createElement("div");
   runElement.className = "overflow-hidden w-[1200px]";
 
+  let duration = 0;
+
+  if (run.ended == 0) {
+    const currentTimeInMilliseconds = Date.now();
+    duration = humanizeDuration(run.started, currentTimeInMilliseconds);
+  } else {
+    duration = humanizeDuration(run.started, run.ended);
+  }
+
   runElement.innerHTML = `
       <div class="px-4 py-5 sm:px-6">
           <div class="flex justify-between">
@@ -225,10 +234,10 @@ function generateNewRunElement(run) {
           <div class="pl-4">
               <div class="border-l-2 border-emerald-400">
                   <div class="flex space-x-2 pl-4 pt-4">
-                      <p>Initiated by ${run.initiator.id}</p>
+                      <p>Initiated by ${run.initiator.user}</p>
                       <span class="text-slate-500/40 rounded-sm h-5 text-white">(${run.initiator.kind})</span>
                   </div>
-                  <p class="pl-4 pt-8 text-sm">Started: ${formatTimestampToUTC(run.started)} │ Ended: ${formatTimestampToUTC(run.ended)} │ Duration: ${humanizeDuration(run.started, run.ended)}</p>
+                  <p class="pl-4 pt-8 text-sm">Started: ${formatTimestampToUTC(run.started)} │ Ended: ${formatTimestampToUTC(run.ended)} │ Duration: ${duration}</p>
               </div>
           </div>
       </div>

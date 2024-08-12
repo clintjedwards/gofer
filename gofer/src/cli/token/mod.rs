@@ -32,6 +32,11 @@ pub enum TokenCommands {
         /// Valid values are: "Management" or "User".
         token_type: gofer_sdk::api::types::TokenType,
 
+        /// The username for the token.
+        ///
+        /// This will appear as a helper to see which user performed which action.
+        user: String,
+
         /// Total time in seconds until token expires.
         #[arg(short, long, default_value = "31536000")] // default is a year
         expiry: u64,
@@ -80,8 +85,9 @@ impl Cli {
                 expiry,
                 namespace,
                 metadata,
+                user,
             } => {
-                self.token_create(token_type, expiry, namespace, metadata)
+                self.token_create(token_type, expiry, namespace, metadata, user)
                     .await
             }
             TokenCommands::Bootstrap {} => self.token_bootstrap().await,
@@ -204,6 +210,7 @@ impl Cli {
         expiry: u64,
         namespace: Vec<String>,
         metadata: Vec<String>,
+        user: String,
     ) -> Result<()> {
         let mut metadata_map = HashMap::new();
 
@@ -229,6 +236,7 @@ impl Cli {
                 metadata: metadata_map,
                 namespaces: namespace,
                 token_type,
+                user,
             })
             .await
             .context("Could not successfully create token from Gofer api")?

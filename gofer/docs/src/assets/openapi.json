@@ -3224,13 +3224,18 @@
                 "$ref": "#/components/schemas/TokenType"
               }
             ]
+          },
+          "user": {
+            "description": "The plaintext username of the token user.",
+            "type": "string"
           }
         },
         "required": [
           "expires",
           "metadata",
           "namespaces",
-          "token_type"
+          "token_type",
+          "user"
         ]
       },
       "CreateTokenResponse": {
@@ -5537,6 +5542,10 @@
                 "$ref": "#/components/schemas/TokenType"
               }
             ]
+          },
+          "user": {
+            "description": "The user of the token in plaintext.",
+            "type": "string"
           }
         },
         "required": [
@@ -5546,7 +5555,8 @@
           "id",
           "metadata",
           "namespaces",
-          "token_type"
+          "token_type",
+          "user"
         ]
       },
       "TokenType": {

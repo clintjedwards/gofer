@@ -76,6 +76,9 @@ pub struct Token {
 
     /// If the token is inactive or not; disabled tokens cannot be used for requests.
     pub disabled: bool,
+
+    /// The user of the token in plaintext.
+    pub user: String,
 }
 
 fn generate_rand_str(size: usize) -> String {
@@ -104,6 +107,7 @@ impl Token {
         namespaces: HashSet<String>,
         metadata: HashMap<String, String>,
         expiry: u64, // Seconds from creation that token should expire.
+        user: String,
     ) -> Self {
         let now = epoch_milli();
         let expires = now.add(expiry * 1000);
@@ -117,6 +121,7 @@ impl Token {
             metadata,
             expires,
             disabled: false,
+            user,
         }
     }
 }
@@ -171,6 +176,7 @@ impl TryFrom<storage::tokens::Token> for Token {
             metadata,
             expires,
             disabled: value.disabled,
+            user: value.user,
         })
     }
 }
@@ -202,6 +208,7 @@ impl TryFrom<Token> for storage::tokens::Token {
             metadata,
             expires: value.expires.to_string(),
             disabled: value.disabled,
+            user: value.user,
         })
     }
 }
@@ -434,6 +441,9 @@ pub struct CreateTokenRequest {
 
     /// The amount of time the token is valid for in seconds.
     pub expires: u64,
+
+    /// The plaintext username of the token user.
+    pub user: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -491,6 +501,7 @@ pub async fn create_token(
         body.namespaces,
         body.metadata,
         body.expires,
+        body.user,
     );
 
     let new_token_storage = match new_token.clone().try_into() {
@@ -673,6 +684,7 @@ pub async fn create_bootstrap_token(
         HashSet::from([".*".into()]),
         HashMap::from([("bootstrap_token".into(), "true".into())]),
         1103760000, // 35 years in seconds
+        "root".into(),
     );
 
     let new_token_storage = match new_token.clone().try_into() {

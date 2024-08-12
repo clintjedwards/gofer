@@ -440,6 +440,9 @@ type CreateTokenRequest struct {
 
 	// TokenType The type of token to be created. Can be management or client.
 	TokenType TokenType `json:"token_type"`
+
+	// User The plaintext username of the token user.
+	User string `json:"user"`
 }
 
 // CreateTokenResponse defines model for CreateTokenResponse.
@@ -1356,6 +1359,9 @@ type Token struct {
 
 	// TokenType The type of token. Management tokens are essentially root.
 	TokenType TokenType `json:"token_type"`
+
+	// User The user of the token in plaintext.
+	User string `json:"user"`
 }
 
 // TokenType defines model for TokenType.

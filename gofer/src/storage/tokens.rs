@@ -12,6 +12,7 @@ pub struct Token {
     pub metadata: String,
     pub expires: String,
     pub disabled: bool,
+    pub user: String,
 }
 
 #[derive(Clone, Debug)]
@@ -21,8 +22,8 @@ pub struct UpdatableFields {
 
 pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), StorageError> {
     let query = sqlx::query(
-        "INSERT INTO tokens (id, hash, created, token_type, namespaces, metadata, expires, disabled)\
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO tokens (id, hash, created, token_type, namespaces, metadata, expires, disabled, user)\
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
     )
     .bind(&token.id)
     .bind(&token.hash)
@@ -31,7 +32,8 @@ pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), St
     .bind(&token.namespaces)
     .bind(&token.metadata)
     .bind(&token.expires)
-    .bind(token.disabled);
+    .bind(token.disabled)
+    .bind(&token.user);
 
     let sql = query.sql();
 
@@ -46,7 +48,7 @@ pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), St
 pub async fn management_token_exists(conn: &mut SqliteConnection) -> Result<bool, StorageError> {
     let query = sqlx::query_as::<_, Token>(
         "SELECT id, hash, created, token_type, \
-        namespaces, metadata, expires, disabled FROM tokens WHERE token_type = 'management';",
+        namespaces, metadata, expires, disabled, user FROM tokens WHERE token_type = 'management';",
     );
 
     let sql = query.sql();
@@ -68,7 +70,7 @@ pub async fn management_token_exists(conn: &mut SqliteConnection) -> Result<bool
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageError> {
     let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, token_type, namespaces, metadata, expires, disabled FROM tokens;",
+        "SELECT id, hash, created, token_type, namespaces, metadata, expires, disabled, user FROM tokens;",
     );
 
     let sql = query.sql();
@@ -80,7 +82,10 @@ pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageErro
 }
 
 pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, StorageError> {
-    let query = sqlx::query_as::<_, Token>("SELECT id, hash, created, token_type, namespaces, metadata, expires, disabled FROM tokens WHERE id = ?;")
+    let query = sqlx::query_as::<_, Token>(
+        "SELECT id, hash, created, token_type, namespaces, metadata, expires, \
+        disabled, user FROM tokens WHERE id = ?;",
+    )
     .bind(id);
 
     let sql = query.sql();
@@ -92,7 +97,10 @@ pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, S
 }
 
 pub async fn get_by_hash(conn: &mut SqliteConnection, hash: &str) -> Result<Token, StorageError> {
-    let query = sqlx::query_as::<_,Token>("SELECT id, hash, created, token_type, namespaces, metadata, expires, disabled FROM tokens WHERE hash = ?;")
+    let query = sqlx::query_as::<_, Token>(
+        "SELECT id, hash, created, token_type, namespaces, metadata, expires,\
+        disabled, user FROM tokens WHERE hash = ?;",
+    )
     .bind(hash);
 
     let sql = query.sql();
@@ -170,6 +178,7 @@ mod tests {
             namespaces: "some_json_list".into(),
             metadata: "some_json_hashmap".into(),
             expires: "some_expiry".into(),
+            user: "some_user".into(),
             disabled: false,
         };
 

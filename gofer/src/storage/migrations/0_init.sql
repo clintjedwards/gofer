@@ -202,8 +202,8 @@ CREATE TABLE IF NOT EXISTS tokens (
     namespaces  TEXT    NOT NULL,
     metadata    TEXT    NOT NULL,
     expires     TEXT    NOT NULL,
-    disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1))
+    disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1)),
+    user        TEXT    NOT NULL
 ) STRICT;
 
 CREATE INDEX idx_tokens_hash ON tokens (hash);
-

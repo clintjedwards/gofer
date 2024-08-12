@@ -100,6 +100,9 @@ pub struct AuthContext {
 
     /// What type of api key the current request is made with.
     pub key_type: tokens::TokenType,
+
+    /// The plaintext username attached to the token.
+    pub key_user: String,
 }
 
 impl AuthContext {
@@ -234,8 +237,9 @@ impl ApiState {
             AuthContext {
                 // allow any namespace
                 allowed_namespaces: HashSet::from([".*".into()]),
-                key_id: "dev".into(),
+                key_id: "0".into(),
                 key_type: tokens::TokenType::Management,
+                key_user: "dev".into(),
             }
         } else {
             self.get_auth_context(request).await?
@@ -352,6 +356,7 @@ impl ApiState {
             allowed_namespaces: token.namespaces,
             key_id: token.id,
             key_type: token.token_type,
+            key_user: token.user,
         })
     }
 }
