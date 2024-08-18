@@ -57,7 +57,6 @@ This would allow us to do previously complicated things like cancellations.
   * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
   and started. This way we can have more accurate running times instead of just leaving it as whenever the server
   restarted.
-* See if we can move request logging to purely be user based, having it in app is frought with things that can't be done.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
 * Write a test for bootstrap tokens in hurl.
@@ -82,6 +81,7 @@ execution but mistype the pipeline, you might get an error instead of a "hey tha
 version. I wonder if there is a way we can offer this feature for free for the purposes of extensions. Since extensions with
 the same major version should work, but extensions might all have different minor versions, it would be useful to be able
 to tell Gofer to use a major version of the extension but we always want the latest minor version.
+* Turn off the incoming request in the dropshot logging. Probably check all logging to make sure we need it.
 
 
 # Small things I'll probably never get around to.
@@ -103,7 +103,9 @@ finishes at which time it reflects a summary about what it did.
 * The CLI could have a diff command so we know exactly what is about the change from the last pipeline version.
 * When using the SDK to build a pipeline, that pipeline should print to stdout the json that will be collected
 * The attach prompt currently echos back user input, unsure how to fix that.
-
+* In monitor_task_execution calls to the scheduler to check on container status are expected to succeed. If they fail
+the whole thing is aborted, which is obviously bad because when we implement networked schedulers network calls will fail
+sometimes.
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 

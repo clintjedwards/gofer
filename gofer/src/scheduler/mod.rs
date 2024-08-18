@@ -41,7 +41,6 @@ pub enum ContainerState {
     Paused,
     Restarting,
     Exited,
-    Cancelled,
 }
 
 /// Private repositories sometimes require authentication.

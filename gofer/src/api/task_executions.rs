@@ -623,7 +623,7 @@ pub async fn cancel_task_execution(
         }
     };
 
-    let storage_task_execution = match storage::task_executions::get(
+    if let Err(e) = storage::task_executions::get(
         &mut conn,
         &path.namespace_id,
         &path.pipeline_id,
@@ -632,58 +632,31 @@ pub async fn cancel_task_execution(
     )
     .await
     {
-        Ok(task_execution) => task_execution,
-        Err(e) => match e {
+        match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(None, String::new()));
             }
             _ => {
                 return Err(http_error!(
-                    "Could not get objects from database",
+                    "Could not get task execution from database",
                     http::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
             }
-        },
+        }
     };
 
-    let task_execution = TaskExecution::try_from(storage_task_execution).map_err(|err| {
-        http_error!(
-            "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(err.into())
-        )
-    })?;
-
-    let timeout_i64 = query.wait_for.try_into().map_err(|err: std::num::TryFromIntError| {
-        http_error!(
-            "Could not parse object timeout value from configuration while trying to cancel task execution",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(err.into())
-        )
-    })?;
-
     api_state
-        .scheduler
-        .cancel_task_execution(task_execution, timeout_i64)
-        .await
-        .map_err(|err| {
-            let all_errors = err
-                .chain()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join(" | ");
-
-            http_error!(
-                "Could not cancel task execution",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(all_errors.into())
-            )
-        })?;
+        .event_bus
+        .clone()
+        .publish(event_utils::Kind::StartedTaskExecutionCancellation {
+            namespace_id: path.namespace_id,
+            pipeline_id: path.pipeline_id,
+            run_id: run_id as u64,
+            task_execution_id: path.task_id,
+            timeout: query.wait_for,
+        });
 
     Ok(HttpResponseDeleted())
 }

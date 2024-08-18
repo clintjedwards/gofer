@@ -881,7 +881,7 @@ pub async fn deploy_config(
     api_state
         .event_bus
         .clone()
-        .publish(event_utils::Kind::DeploymentStarted {
+        .publish(event_utils::Kind::StartedDeployment {
             namespace_id: path.namespace_id.clone(),
             pipeline_id: path.pipeline_id.clone(),
             start_version: start_version as u64,
@@ -1008,7 +1008,7 @@ pub async fn deploy_config(
     api_state
         .event_bus
         .clone()
-        .publish(event_utils::Kind::DeploymentCompleted {
+        .publish(event_utils::Kind::CompletedDeployment {
             namespace_id: path.namespace_id.clone(),
             pipeline_id: path.pipeline_id.clone(),
             start_version: start_version as u64,

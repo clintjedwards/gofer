@@ -5,13 +5,11 @@ use super::{
 };
 use async_trait::async_trait;
 use bollard::exec::{CreateExecOptions, StartExecOptions};
-use dashmap::DashMap;
 use futures::stream::TryStreamExt;
 use futures::Stream;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, error, info, instrument, trace};
 
@@ -30,13 +28,6 @@ pub struct Config {
 #[derive(Debug, Clone)]
 pub struct Scheduler {
     client: bollard::Docker,
-    /// Cancelled keeps track of cancelled containers. This is needed due to there being no way to differentiate a
-    /// container that was stopped in docker from a container that exited naturally.
-    /// When we cancel a container we insert it into this map so that downstream readers of GetState can relay the
-    /// cancellation to its users. After a predetermined about of time we clear the cancelled container from this list.
-    ///
-    /// Map takes in <ContainerID, ExpiryTimeInEpochSeconds>
-    cancelled: Arc<DashMap<String, u64>>,
 }
 
 impl Scheduler {
@@ -51,7 +42,6 @@ impl Scheduler {
         })?;
         let client = client.with_timeout(tokio::time::Duration::from_secs(config.timeout));
         let prune_client = client.clone();
-        let cancellations = Arc::new(DashMap::new());
 
         // Check that we can actually get a connection.
         let version = client.version().await.map_err(|e| {
@@ -68,38 +58,12 @@ impl Scheduler {
             tokio::spawn(prune_containers(prune_client, config.prune_interval));
         }
 
-        tokio::spawn(prune_cancellations(cancellations.clone()));
-
         debug!(
             version = version.version.unwrap_or_default(),
             "Local docker scheduler successfully connected"
         );
 
-        Ok(Self {
-            client,
-            cancelled: cancellations,
-        })
-    }
-}
-
-#[instrument(fields(origin = "scheduler::docker"))]
-async fn prune_cancellations(cancellations: Arc<DashMap<String, u64>>) {
-    loop {
-        for cancellation in cancellations.iter() {
-            let (container_id, expiry) = cancellation.pair();
-
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
-
-            if *expiry < now {
-                cancellations.remove(container_id);
-                debug!(container_id, "Removed cancelled container reference")
-            };
-        }
-
-        tokio::time::sleep(tokio::time::Duration::from_secs(259200)).await; // Sleep for three days.
+        Ok(Self { client })
     }
 }
 
@@ -325,15 +289,6 @@ impl super::Scheduler for Scheduler {
     }
 
     async fn stop_container(&self, req: StopContainerRequest) -> Result<(), SchedulerError> {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        let expiry = now + 86400;
-
-        self.cancelled.insert(req.id.clone(), expiry);
-
         self.client
             .stop_container(
                 &req.id,
@@ -385,13 +340,6 @@ impl super::Scheduler for Scheduler {
                 });
             }
             bollard::models::ContainerStateStatusEnum::EXITED => {
-                if self.cancelled.contains_key(&req.id) {
-                    return Ok(GetStateResponse {
-                        exit_code: Some(container_info.state.unwrap().exit_code.unwrap() as u8),
-                        state: ContainerState::Cancelled,
-                    });
-                }
-
                 return Ok(GetStateResponse {
                     exit_code: Some(container_info.state.unwrap().exit_code.unwrap() as u8),
                     state: ContainerState::Exited,

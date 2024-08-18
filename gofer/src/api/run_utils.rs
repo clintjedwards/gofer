@@ -6,62 +6,723 @@ use crate::{
     scheduler, storage,
 };
 use anyhow::{bail, Context, Result};
-use dashmap::DashMap;
-use futures::future::join_all;
 use futures::StreamExt;
 use gofer_sdk::config::pipeline_secret;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::{atomic, Arc};
-use tokio::io::AsyncWriteExt;
-use tokio::sync::Mutex;
-use tracing::{debug, error};
+use std::sync::{atomic, Arc, Barrier};
+use tokio::{io::AsyncWriteExt, sync::Mutex};
+use tracing::{debug, error, trace};
 
 fn run_specific_api_key_id(run_id: u64) -> String {
     format!("gofer_api_token_run_id_{run_id}")
 }
 
-/// The shepherd is a run specific object that guides Gofer runs and tasks through their execution.
-/// It's a core construct within the Gofer execution model and contains most of the logic of how a run operates with
-/// is mostly consisted of state-machine like actions.
-#[derive(Debug)]
+/// Shepherd is a run specific object that guides Gofer runs and tasks through their execution.
+/// It's a core construct within the Gofer execution model and contains most of the logic of how a run operates.
+///
+/// TODO(): Explain more about how the shepard arch works.
+#[derive(Debug, Clone)]
 pub struct Shepherd {
     pub api_state: Arc<ApiState>,
     pub pipeline: pipelines::Pipeline,
     pub run: runs::Run,
-    pub task_executions: DashMap<String, task_executions::TaskExecution>,
-    pub stop_run: atomic::AtomicBool,
 }
 
 impl Shepherd {
     pub fn new(api_state: Arc<ApiState>, pipeline: pipelines::Pipeline, run: runs::Run) -> Self {
-        api_state
+        Self {
+            api_state,
+            pipeline,
+            run,
+        }
+    }
+
+    /// Start run launches the run and its tasks and then listens to the event bus for related run events and task events.
+    /// Upon recieving one of these events it then appropriately updates the run entry in the database with the
+    /// correct data.
+    pub async fn start_run(self) -> Result<()> {
+        trace!(
+            namespace_id = self.pipeline.metadata.namespace_id.clone(),
+            pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+            run_id = self.run.run_id,
+            "Starting run"
+        );
+
+        // First launch per-run clean up jobs.
+        // These jobs help keep resources from filling up.
+        tokio::spawn(self.clone().handle_run_object_expiry());
+        tokio::spawn(self.clone().handle_run_log_expiry());
+
+        // Then make sure people who need to know that this run is starting are informed.
+        self.api_state
             .in_progress_runs
             .entry(in_progress_runs_key(
-                &pipeline.metadata.namespace_id,
-                &pipeline.metadata.pipeline_id,
+                &self.pipeline.metadata.namespace_id,
+                &self.pipeline.metadata.pipeline_id,
             ))
             .and_modify(|value| {
                 value.fetch_add(1, atomic::Ordering::SeqCst);
             })
             .or_insert(atomic::AtomicU64::from(1));
 
-        api_state
+        self.api_state
             .event_bus
             .clone()
             .publish(event_utils::Kind::StartedRun {
-                namespace_id: pipeline.metadata.namespace_id.clone(),
-                pipeline_id: pipeline.metadata.pipeline_id.clone(),
-                run_id: run.run_id,
+                namespace_id: self.pipeline.metadata.namespace_id.clone(),
+                pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
+                run_id: self.run.run_id,
             });
 
-        Self {
-            api_state,
-            pipeline,
-            run,
-            task_executions: DashMap::new(),
-            stop_run: false.into(),
+        let fields = storage::runs::UpdatableFields {
+            state: Some(runs::State::Running.to_string()),
+            ..Default::default()
+        };
+
+        let mut conn = self
+            .api_state
+            .storage
+            .conn()
+            .await
+            .context("Could not open connection to database")?;
+
+        if let Err(e) = storage::runs::update(
+            &mut conn,
+            &self.pipeline.metadata.namespace_id,
+            &self.pipeline.metadata.pipeline_id,
+            self.run.run_id.try_into().unwrap_or_default(),
+            fields,
+        )
+        .await
+        {
+            bail!(
+                "Could not update run while attempting to start run; {:#?}",
+                e
+            )
+        };
+
+        // Lastly start the run monitor and the launch the task executions. We use a barrier here to make sure
+        // that all threads are able to grab event bus listeners at roughly the same point so that they don't
+        // end up missing any messages from threads that might be faster.
+
+        // The barrier knows when to tell all tasks to continue by waiting until all tasks check in.
+        // We calculate this value by taking the number of all the tasks we are about to start and then adding
+        // one more for the run monitor itself.
+        let barrier_threshold = self.pipeline.config.tasks.len() + 1;
+
+        let barrier = Arc::new(std::sync::Barrier::new(barrier_threshold));
+
+        for task in self.pipeline.config.tasks.values() {
+            let thread_barrier = barrier.clone();
+            tokio::spawn(
+                self.clone()
+                    .launch_task_execution(thread_barrier, task.clone()),
+            );
         }
+
+        let thread_barrier = barrier.clone();
+        let self_clone = self.clone();
+        tokio::spawn(async move { self_clone.monitor_run(thread_barrier).await });
+
+        Ok(())
+    }
+
+    /// Listens to messages from the event bus and updates the status of the run in-progress.
+    async fn monitor_run(&self, barrier: Arc<std::sync::Barrier>) {
+        let mut event_stream = self.api_state.event_bus.subscribe();
+
+        // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
+        barrier.wait();
+
+        let mut completed_tasks = std::collections::HashMap::new();
+        let mut is_cancelled = false;
+        let mut is_failed = false;
+
+        // Wait for events and then process what should happen after we recieve them.
+        loop {
+            let event = match event_stream.recv().await {
+                Ok(event) => event,
+                Err(err) => {
+                    error!(error = %err,
+                           namespace_id = self.pipeline.metadata.namespace_id.clone(),
+                           pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+                           run_id = self.run.run_id,
+                           "Could not recieve event from event stream during run monitoring.");
+                    continue;
+                }
+            };
+
+            // When we get an event see if its an event that pertains to us and then handle it.
+            match event.kind {
+                event_utils::Kind::CompletedTaskExecution {
+                    namespace_id,
+                    pipeline_id,
+                    run_id,
+                    task_execution_id,
+                    status,
+                } => {
+                    // Make sure we only handle events for our specific run.
+                    if namespace_id != self.pipeline.metadata.namespace_id
+                        || pipeline_id != self.pipeline.metadata.pipeline_id
+                        || run_id != self.run.run_id
+                    {
+                        continue;
+                    }
+
+                    completed_tasks.insert(task_execution_id, status);
+                }
+                event_utils::Kind::StartedTaskExecutionCancellation {
+                    namespace_id,
+                    pipeline_id,
+                    run_id,
+                    ..
+                } => {
+                    // Make sure we only handle events for our specific run.
+                    if namespace_id != self.pipeline.metadata.namespace_id
+                        || pipeline_id != self.pipeline.metadata.pipeline_id
+                        || run_id != self.run.run_id
+                    {
+                        continue;
+                    }
+                    is_cancelled = true;
+                }
+                event_utils::Kind::StartedRunCancellation {
+                    namespace_id,
+                    pipeline_id,
+                    run_id,
+                } => {
+                    // Make sure we only handle events for our specific run.
+                    if namespace_id != self.pipeline.metadata.namespace_id
+                        || pipeline_id != self.pipeline.metadata.pipeline_id
+                        || run_id != self.run.run_id
+                    {
+                        continue;
+                    }
+
+                    // When we get a notification of a run cancellation we start issuing cancellation requests to all
+                    // task executions.
+                    //
+                    // When they are all completed we then mark the run as cancelled.
+
+                    for task in self.pipeline.config.tasks.values() {
+                        self.api_state.event_bus.clone().publish(
+                            event_utils::Kind::StartedTaskExecutionCancellation {
+                                namespace_id: self.pipeline.metadata.namespace_id.clone(),
+                                pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
+                                run_id: self.run.run_id,
+                                task_execution_id: task.id.clone(),
+                                timeout: self.api_state.config.api.task_execution_stop_timeout,
+                            },
+                        )
+                    }
+
+                    is_cancelled = true;
+                }
+                _ => {}
+            }
+
+            // If we are under the total amount of tasks then we still need to wait for the tasks to complete.
+            // If we aren't then we can just break and mark the run as complete.
+            if completed_tasks.len() == self.pipeline.config.tasks.len() {
+                break;
+            }
+        }
+
+        // Run is complete so we determine which state it finished in and stop.
+
+        for status in completed_tasks.values() {
+            if *status == task_executions::Status::Failed {
+                is_failed = true;
+            }
+        }
+
+        if is_cancelled {
+            let result = self
+                .set_run_complete(
+                    runs::Status::Cancelled,
+                    Some(runs::StatusReason {
+                        reason: runs::StatusReasonType::AbnormalExit,
+                        description: "One or more task executions were cancelled during execution"
+                            .into(),
+                    }),
+                )
+                .await;
+
+            if let Err(e) = result {
+                error!(
+                namespace_id = &self.pipeline.metadata.namespace_id,
+                pipeline_id = &self.pipeline.metadata.pipeline_id,
+                error = %e,
+                "Could not set run finished while attempting to wait for finish");
+            }
+            return;
+        }
+
+        if is_failed {
+            let result = self
+                .set_run_complete(
+                    runs::Status::Failed,
+                    Some(runs::StatusReason {
+                        reason: runs::StatusReasonType::AbnormalExit,
+                        description: "One or more task executions failed during execution".into(),
+                    }),
+                )
+                .await;
+
+            if let Err(e) = result {
+                error!(
+                    namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    error = %e,
+                    "Could not set run finished while attempting to wait for finish");
+            }
+            return;
+        }
+
+        if let Err(e) = self.set_run_complete(runs::Status::Successful, None).await {
+            error!(
+                namespace_id = &self.pipeline.metadata.namespace_id,
+                pipeline_id = &self.pipeline.metadata.pipeline_id,
+                run_id = &self.run.run_id,
+                error = %e,
+                "Could not set run finished while attempting to wait for finish");
+        }
+    }
+
+    /// Launches a brand new task execution as part of a larger run for a specific task.
+    /// It blocks until the task execution has completed, reading and posting to the event bus to facilitate further
+    /// run actions.
+    async fn launch_task_execution(self, barrier: Arc<Barrier>, task: tasks::Task) {
+        let mut event_stream = self.api_state.event_bus.subscribe();
+
+        // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
+        barrier.wait();
+
+        // Start by creating a new task execution and saving it to the state machine and disk.
+        let new_task_execution = task_executions::TaskExecution::new(
+            &self.pipeline.metadata.namespace_id,
+            &self.pipeline.metadata.pipeline_id,
+            self.run.run_id,
+            task.clone(),
+        );
+
+        let mut conn = match self.api_state.storage.conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    task_id = task.id,
+                    error = %e, "Could not establish connection to database");
+                return;
+            }
+        };
+
+        let storage_task_execution = match new_task_execution.clone().try_into() {
+            Ok(execution) => execution,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    task_id = task.id,
+                    error = %e, "Could not serialize task execution to storage object");
+                return;
+            }
+        };
+
+        if let Err(e) = storage::task_executions::insert(&mut conn, &storage_task_execution).await {
+            match e {
+                // If the task execution already exists then we're probably attempting to recover it.
+                storage::StorageError::Exists => {}
+
+                // If it's any other error we probably want to return.
+                _ => {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                            pipeline_id = &self.pipeline.metadata.pipeline_id,
+                            run_id = self.run.run_id,
+                            task_id = task.id,
+                            error = %e, "Could not insert new task_execution into storage");
+                    return;
+                }
+            }
+        }
+
+        let env_vars = combine_variables(&self.run, &task);
+        let env_vars_json = match serde_json::to_string(&env_vars) {
+            Ok(env_vars) => env_vars,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    task_id = task.id,
+                    error = %e, "Could not serialize env vars into json");
+                return;
+            }
+        };
+
+        // Determine the task executions final variable set and pass them in.
+        let run_id_i64 = match self.run.run_id.try_into() {
+            Ok(id) => id,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    task_id = task.id,
+                    error = %e, "Could not convert run id to appropriate integer type");
+                return;
+            }
+        };
+
+        if let Err(e) = storage::task_executions::update(
+            &mut conn,
+            &self.pipeline.metadata.namespace_id,
+            &self.pipeline.metadata.pipeline_id,
+            run_id_i64,
+            &task.id,
+            storage::task_executions::UpdatableFields {
+                variables: Some(env_vars_json),
+                ..Default::default()
+            },
+        )
+        .await
+        {
+            error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                pipeline_id = &self.pipeline.metadata.pipeline_id,
+                run_id = self.run.run_id,
+                task_id = task.id,
+                error = %e, "Could not update task_execution with correct variables");
+            return;
+        };
+
+        if let Err(e) = self
+            .set_task_execution_state(&new_task_execution, task_executions::State::Waiting)
+            .await
+        {
+            error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                pipeline_id = &self.pipeline.metadata.pipeline_id,
+                run_id = self.run.run_id,
+                task_id = task.id,
+                error = %e, "Could not update task_execution state to waiting");
+            return;
+        };
+
+        // <task_execution_id> => <status>
+        let mut completed_tasks = HashMap::new();
+
+        // Wait for events and then process what should happen after we recieve them.
+        // When we get an event see if its an event that pertains to us and then handle it.
+        // At this stage we haven't started the task execution yet, we're simply checking to see
+        // if we should start it.
+        if !new_task_execution.task.depends_on.is_empty() {
+            'main_loop: loop {
+                let event = match event_stream.recv().await {
+                    Ok(event) => event,
+                    Err(err) => {
+                        error!(error = %err,
+                           namespace_id = self.pipeline.metadata.namespace_id.clone(),
+                           pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+                           run_id = self.run.run_id,
+                           "Could not recieve event from event stream during run monitoring.");
+                        continue;
+                    }
+                };
+
+                match event.kind {
+                    // Listen for parent task executions and log them to see when we should run.
+                    event_utils::Kind::CompletedTaskExecution {
+                        namespace_id,
+                        pipeline_id,
+                        run_id,
+                        task_execution_id,
+                        status,
+                    } => {
+                        // Make sure we only handle events for our specific run's tasks.
+                        if namespace_id != self.pipeline.metadata.namespace_id
+                            || pipeline_id != self.pipeline.metadata.pipeline_id
+                            || run_id != self.run.run_id
+                        {
+                            continue;
+                        }
+
+                        completed_tasks.insert(task_execution_id, status);
+                    }
+
+                    // Listen to see if we should stop the container and set task execution as cancelled.
+                    event_utils::Kind::StartedTaskExecutionCancellation {
+                        namespace_id,
+                        pipeline_id,
+                        run_id,
+                        task_execution_id,
+                        ..
+                    } => {
+                        // Make sure we only handle events for our specific task execution.
+                        if namespace_id != self.pipeline.metadata.namespace_id
+                            || pipeline_id != self.pipeline.metadata.pipeline_id
+                            || run_id != self.run.run_id
+                            || task_execution_id != task.id
+                        {
+                            continue;
+                        }
+
+                        if let Err(e) = self
+                            .set_task_execution_complete(
+                                &task.id,
+                                1,
+                                task_executions::Status::Cancelled,
+                                None,
+                            )
+                            .await
+                        {
+                            error!(error = %e,
+                                   namespace_id = self.pipeline.metadata.namespace_id.clone(),
+                                   pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+                                   run_id = self.run.run_id,
+                                   task_execution_id = task.id.clone(),
+                                   "Could not recieve event from event stream during run monitoring.");
+                        }
+
+                        self.api_state.event_bus.clone().publish(
+                            event_utils::Kind::CompletedTaskExecution {
+                                namespace_id: self.pipeline.metadata.namespace_id.clone(),
+                                pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
+                                run_id: self.run.run_id,
+                                task_execution_id: new_task_execution.task_id.clone(),
+                                status: task_executions::Status::Cancelled,
+                            },
+                        );
+
+                        return;
+                    }
+                    _ => {}
+                }
+
+                // Here we need to see if our parents exist in the set that contains completed tasks.
+                // If it does we launch our own, if it doesn't we continue the loop.
+                for parent_id in new_task_execution.task.depends_on.keys() {
+                    if !completed_tasks.contains_key(parent_id) {
+                        continue 'main_loop;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        if let Err(e) = self
+            .set_task_execution_state(&new_task_execution, task_executions::State::Processing)
+            .await
+        {
+            error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                pipeline_id = &self.pipeline.metadata.pipeline_id,
+                run_id = self.run.run_id,
+                task_id = task.id,
+                error = %e, "Could not update task_execution state to processing");
+            return;
+        };
+
+        // Then check to make sure that the parents all finished in the required states. If not
+        // we'll mark this task as skipped since it's requirements for running weren't met.
+        if let Err(e) =
+            self.task_dependencies_satisfied(completed_tasks, &new_task_execution.task.depends_on)
+        {
+            if let Err(e) = self
+                .set_task_execution_complete(
+                    &new_task_execution.task_id,
+                    1,
+                    task_executions::Status::Skipped,
+                    Some(task_executions::StatusReason {
+                        reason: task_executions::StatusReasonType::FailedPrecondition,
+                        description: format!(
+                            "Task could not be run due to unmet dependencies; {}",
+                            e
+                        ),
+                    }),
+                )
+                .await
+            {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    task_id = task.id,
+                    error = %e, "Could not mark task execution as skipped during the processing of task dependencies");
+                return;
+            }
+
+            return;
+        };
+
+        // After this point we're sure the task is in a state to be run. So we attempt to
+        // contact the scheduler and start the container.
+
+        // First we attempt to find any object/secret store variables and replace them
+        // with the correct var. At first glance this may seem like a task that can move upwards
+        // but it's important that this run only after a task's parents have already run
+        // this enables users to be sure that one task can pass variables to other downstream tasks.
+
+        // We create a copy of variables so that we can substitute in secrets and objects.
+        // to eventually pass them into the start container function.
+        let env_vars = match interpolate_vars(
+            &self.api_state,
+            &self.pipeline.metadata.namespace_id,
+            &self.pipeline.metadata.pipeline_id,
+            Some(self.run.run_id),
+            &env_vars,
+        )
+        .await
+        {
+            Ok(env_vars) => env_vars,
+            Err(e) => {
+                if let Err(e) = self
+                    .set_task_execution_complete(
+                        &new_task_execution.task_id,
+                        1,
+                        task_executions::Status::Failed,
+                        Some(task_executions::StatusReason {
+                            reason: task_executions::StatusReasonType::FailedPrecondition,
+                            description: format!(
+                                "Task could not be run due to inability to retrieve interpolated variables; {}",
+                                e
+                            ),
+                        }),
+                    )
+                    .await
+                {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                        pipeline_id = &self.pipeline.metadata.pipeline_id,
+                        run_id = self.run.run_id,
+                        task_id = task.id,
+                        error = %e, "Could not mark task execution as failed during the processing of task env vars");
+                    return;
+                };
+
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    task_id = task.id,
+                    error = %e, "Could not properly interpolate variables for task execution");
+                return;
+            }
+        };
+
+        let container_name = task_executions::task_execution_container_id(
+            &self.pipeline.metadata.namespace_id,
+            &self.pipeline.metadata.pipeline_id,
+            self.run.run_id,
+            &new_task_execution.task_id,
+        );
+
+        if let Err(e) = self
+            .api_state
+            .scheduler
+            .start_container(scheduler::StartContainerRequest {
+                id: container_name.clone(),
+                image: new_task_execution.task.image.clone(),
+                variables: env_vars
+                    .into_iter()
+                    .map(|var| (var.key, var.value))
+                    .collect(),
+                registry_auth: new_task_execution
+                    .task
+                    .registry_auth
+                    .clone()
+                    .map(|auth| auth.into()),
+                always_pull: false,
+                networking: None,
+                entrypoint: new_task_execution.task.entrypoint.clone(),
+                command: new_task_execution.task.command.clone(),
+            })
+            .await
+        {
+            if let Err(e) = self
+                .set_task_execution_complete(
+                    &new_task_execution.task_id,
+                    1,
+                    task_executions::Status::Failed,
+                    Some(task_executions::StatusReason {
+                        reason: task_executions::StatusReasonType::SchedulerError,
+                        description: format!(
+                            "Task could not be run due to inability to be scheduled; {}",
+                            e
+                        ),
+                    }),
+                )
+                .await
+            {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    task_id = task.id,
+                    error = %e, "Could not mark task execution as failed during scheduling of task");
+            };
+            return;
+        };
+
+        trace!(
+            namespace_id = self.pipeline.metadata.namespace_id.clone(),
+            pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+            run_id = self.run.run_id,
+            task_execution_id = &new_task_execution.task_id,
+            "Started task execution"
+        );
+
+        if let Err(e) = storage::task_executions::update(
+            &mut conn,
+            &self.pipeline.metadata.namespace_id,
+            &self.pipeline.metadata.pipeline_id,
+            run_id_i64,
+            &new_task_execution.task_id,
+            storage::task_executions::UpdatableFields {
+                state: Some(task_executions::State::Running.to_string()),
+                started: Some(epoch_milli().to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        {
+            error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                pipeline_id = &self.pipeline.metadata.pipeline_id,
+                run_id = self.run.run_id,
+                task_id = task.id,
+                error = %e, "Could not update task execution while attempting to launch task");
+            return;
+        }
+
+        let mut new_task_execution = new_task_execution;
+        new_task_execution.state = task_executions::State::Running;
+
+        self.api_state
+            .event_bus
+            .clone()
+            .publish(event_utils::Kind::StartedTaskExecution {
+                namespace_id: self.pipeline.metadata.namespace_id.clone(),
+                pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
+                run_id: self.run.run_id,
+                task_execution_id: new_task_execution.task_id.clone(),
+            });
+
+        let self_clone = self.clone();
+        let container_name_clone = container_name.clone();
+        let task_id_clone = new_task_execution.task_id.clone();
+        tokio::spawn(async move {
+            self_clone
+                .handle_log_updates(container_name_clone, task_id_clone)
+                .await;
+        });
+
+        tokio::spawn(async move {
+            if let Err(e) = self
+                .clone()
+                .monitor_task_execution(event_stream, container_name.clone(), new_task_execution)
+                .await
+            {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                        pipeline_id = &self.pipeline.metadata.pipeline_id,
+                        run_id = self.run.run_id,
+                        task_id = task.id,
+                        error = %e, "Error occurred during monitoring of task execution");
+            }
+        });
     }
 
     async fn set_task_execution_complete(
@@ -71,16 +732,6 @@ impl Shepherd {
         status: task_executions::Status,
         reason: Option<task_executions::StatusReason>,
     ) -> Result<()> {
-        if !self.task_executions.contains_key(id) {
-            bail!("Could not find task execution");
-        }
-
-        self.task_executions.alter(id, |_, mut value| {
-            value.state = task_executions::State::Complete;
-            value.status = status.clone();
-            value
-        });
-
         let mut conn = self
             .api_state
             .storage
@@ -216,32 +867,7 @@ impl Shepherd {
         .await
         .context("Could not update task execution status in storage")?;
 
-        self.task_executions
-            .alter(&task_execution.task_id, |_, mut value| {
-                value.state = state.clone();
-                value
-            });
-
         Ok(())
-    }
-
-    /// Check the dependency tree of a task to see if all it's parents have finished.
-    fn parent_tasks_complete(
-        &self,
-        dependency_map: &HashMap<String, tasks::RequiredParentStatus>,
-    ) -> bool {
-        for parent_id in dependency_map.keys() {
-            let parent = match self.task_executions.get(parent_id) {
-                Some(parent) => parent,
-                None => return false,
-            };
-
-            if parent.state != task_executions::State::Complete {
-                return false;
-            }
-        }
-
-        true
     }
 
     pub async fn parallelism_limit_exceeded(&self) -> bool {
@@ -277,11 +903,12 @@ impl Shepherd {
     /// Check a dependency tree to see if all parent tasks are in the correct states.
     fn task_dependencies_satisfied(
         &self,
+        completed_tasks_map: HashMap<String, task_executions::Status>,
         dependency_map: &HashMap<String, tasks::RequiredParentStatus>,
     ) -> Result<()> {
         for (parent, required_status) in dependency_map {
-            let parent_execution = match self.task_executions.get(parent) {
-                Some(p) => p,
+            let parent_status = match completed_tasks_map.get(parent) {
+                Some(p) => p.clone(),
                 None => bail!(
                     "Could not find parent dependency in task execution list while attempting to \
                 verify task dependency satisfaction"
@@ -293,24 +920,27 @@ impl Shepherd {
                     bail!("Found a parent dependency in state 'Unknown'; Invalid state")
                 }
                 tasks::RequiredParentStatus::Any => {
-                    if parent_execution.status != task_executions::Status::Successful
-                        && parent_execution.status != task_executions::Status::Failed
-                        && parent_execution.status != task_executions::Status::Skipped
+                    if parent_status != task_executions::Status::Successful
+                        && parent_status != task_executions::Status::Failed
+                        && parent_status != task_executions::Status::Skipped
                     {
-                        bail!("Parent '{:#?}' has incorrect status '{}' for required 'any' dependency",
-                        parent_execution, parent_execution.status);
+                        bail!(
+                            "Parent '{}' has incorrect status '{}' for required 'any' dependency",
+                            parent,
+                            parent_status
+                        );
                     }
                 }
                 tasks::RequiredParentStatus::Success => {
-                    if parent_execution.status != task_executions::Status::Successful {
-                        bail!("Parent '{:#?}' has incorrect status '{}' for required 'successful' dependency",
-                        parent_execution, parent_execution.status);
+                    if parent_status != task_executions::Status::Successful {
+                        bail!("Parent '{}' has incorrect status '{}' for required 'successful' dependency",
+                        parent, parent_status);
                     }
                 }
                 tasks::RequiredParentStatus::Failure => {
-                    if parent_execution.status != task_executions::Status::Failed {
-                        bail!("Parent '{:#?}' has incorrect status '{}' for required 'failed' dependency",
-                        parent_execution, parent_execution.status);
+                    if parent_status != task_executions::Status::Failed {
+                        bail!("Parent '{}' has incorrect status '{}' for required 'failed' dependency",
+                        parent, parent_status);
                     }
                 }
             }
@@ -319,185 +949,200 @@ impl Shepherd {
         Ok(())
     }
 
-    /// Determines the final run status based on all finished task executions.
-    async fn process_run_finish(&self) {
-        // A run is only successful if all task_executions were successful. If any task_execution is in an
-        // unknown or failed state we fail the run, if any task_execution is cancelled we mark the run as cancelled.
+    /// Monitors the container status from the scheduler and listens for any relevant events.
+    /// Update the status of the task accordingly.
+    async fn monitor_task_execution(
+        &self,
+        mut event_stream: tokio::sync::broadcast::Receiver<event_utils::Event>,
+        container_id: String,
+        task_execution: task_executions::TaskExecution,
+    ) -> Result<()> {
+        trace!(
+            namespace_id = self.pipeline.metadata.namespace_id.clone(),
+            pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+            run_id = self.run.run_id,
+            task_execution_id = &task_execution.task_id,
+            "Monitoring task execution"
+        );
 
-        for execution in self.task_executions.iter() {
-            let task_execution = execution.value();
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+        let task_id = task_execution.task_id.clone();
 
-            match task_execution.status {
-                task_executions::Status::Unknown | task_executions::Status::Failed => {
-                    let result = self
-                        .set_run_complete(
-                            runs::Status::Failed,
-                            Some(runs::StatusReason {
-                                reason: runs::StatusReasonType::AbnormalExit,
-                                description: "One or more task executions failed during execution"
-                                    .into(),
-                            }),
-                        )
-                        .await;
-
-                    if let Err(e) = result {
-                        error!(
-                            namespace_id = &self.pipeline.metadata.namespace_id,
-                            pipeline_id = &self.pipeline.metadata.pipeline_id,
-                            error = %e,
-                            "Could not set run finished while attempting to wait for finish");
-                    }
-                    return;
-                }
-                task_executions::Status::Successful => {}
-                task_executions::Status::Cancelled => {
-                    let result = self
-                        .set_run_complete(
-                            runs::Status::Cancelled,
-                            Some(runs::StatusReason {
-                                reason: runs::StatusReasonType::AbnormalExit,
-                                description:
-                                    "One or more task executions were cancelled during execution"
-                                        .into(),
-                            }),
-                        )
-                        .await;
-
-                    if let Err(e) = result {
-                        error!(
-                        namespace_id = &self.pipeline.metadata.namespace_id,
-                        pipeline_id = &self.pipeline.metadata.pipeline_id,
-                        error = %e,
-                        "Could not set run finished while attempting to wait for finish");
-                    }
-                    return;
-                }
-                task_executions::Status::Skipped => {}
-            }
-        }
-
-        if let Err(e) = self.set_run_complete(runs::Status::Successful, None).await {
-            error!(
-                namespace_id = &self.pipeline.metadata.namespace_id,
-                pipeline_id = &self.pipeline.metadata.pipeline_id,
-                run_id = &self.run.run_id,
-                error = %e,
-                "Could not set run finished while attempting to wait for finish");
-        }
-    }
-
-    /// Monitors all task execution statuses and determines the final run status based on all
-    /// finished task executions. It will block until all task executions have finished.
-    async fn wait_task_execution_finish(&self, container_id: &str, task_id: &str) -> Result<()> {
         loop {
-            let response = match self
-                .api_state
-                .scheduler
-                .get_state(scheduler::GetStateRequest {
-                    id: container_id.into(),
-                })
-                .await
-            {
-                Ok(resp) => resp,
-                Err(err) => {
-                    if let Err(e) = self
-                        .set_task_execution_complete(
-                            task_id,
-                            1,
-                            task_executions::Status::Unknown,
-                            Some(task_executions::StatusReason {
-                                reason: task_executions::StatusReasonType::SchedulerError,
-                                description:
-                                    "Could not query the scheduler for the task execution state"
-                                        .into(),
-                            }),
-                        )
+            tokio::select! {
+                _ = interval.tick() => {
+                    // TODO(): This should be more robust, if when we start implementing networked schedulers there is a chance
+                    // that they can fail when we request a status update and we don't want to fail the entire thing just
+                    // because they didn't return an update once.
+                    let response = match self
+                        .api_state
+                        .scheduler
+                        .get_state(scheduler::GetStateRequest {
+                            id: container_id.clone(),
+                        })
                         .await
                     {
-                        error!(error = %e, "Could not update task execution while attempting to set execution as complete")
+                        Ok(resp) => resp,
+                        Err(err) => {
+                            if let Err(e) = self
+                                .set_task_execution_complete(
+                                    &task_id,
+                                    1,
+                                    task_executions::Status::Unknown,
+                                    Some(task_executions::StatusReason {
+                                        reason: task_executions::StatusReasonType::SchedulerError,
+                                        description:
+                                            "Could not query the scheduler for the task execution state"
+                                                .into(),
+                                    }),
+                                )
+                                .await
+                            {
+                                error!(error = %e, "Could not update task execution while attempting to set execution as complete")
+                            };
+                            bail!("Could not update task execution while attempting to set execution as complete; {:#?}", err)
+                        }
                     };
-                    bail!("Could not update task execution while attempting to set execution as complete; {:#?}", err)
-                }
-            };
 
-            match response.state {
-                scheduler::ContainerState::Unknown => {
-                    if let Err(e) = self
-                        .set_task_execution_complete(
-                            task_id,
-                            1,
-                            task_executions::Status::Unknown,
-                            Some(task_executions::StatusReason {
-                                reason: task_executions::StatusReasonType::SchedulerError,
-                                description:
-                                    "An unknown error has occurred on the scheduler level; This should (ideally) never happen. Please contact support or file a bug."
-                                        .into(),
-                            }),
-                        )
-                        .await
-                    {
-                        bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
-                    };
-                    return Ok(());
-                }
-                scheduler::ContainerState::Running
-                | scheduler::ContainerState::Paused
-                | scheduler::ContainerState::Restarting => continue,
-                scheduler::ContainerState::Exited => {
-                    // We determine if something worked based on the exit code of the container.
-                    let mut exit_code = 1;
+                    match response.state {
+                        scheduler::ContainerState::Unknown => {
+                            if let Err(e) = self
+                                .set_task_execution_complete(
+                                    &task_id,
+                                    1,
+                                    task_executions::Status::Unknown,
+                                    Some(task_executions::StatusReason {
+                                        reason: task_executions::StatusReasonType::SchedulerError,
+                                        description:
+                                            "An unknown error has occurred on the scheduler level; This should (ideally) never happen. Please contact support or file a bug."
+                                                .into(),
+                                    }),
+                                )
+                                .await
+                            {
+                                bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
+                            };
+                            return Ok(());
+                        }
+                        scheduler::ContainerState::Running
+                        | scheduler::ContainerState::Paused
+                        | scheduler::ContainerState::Restarting => {}
+                        scheduler::ContainerState::Exited => {
+                            // We determine if something worked based on the exit code of the container.
+                            let mut exit_code = 1;
 
-                    if let Some(code) = response.exit_code {
-                        exit_code = code
+                            if let Some(code) = response.exit_code {
+                                exit_code = code
+                            }
+
+                            if exit_code == 0 {
+                                if let Err(e) = self
+                                    .set_task_execution_complete(
+                                        &task_id,
+                                        exit_code,
+                                        task_executions::Status::Successful,
+                                        None,
+                                    )
+                                    .await
+                                {
+                                    bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
+                                };
+                            } else if let Err(e) = self
+                                .set_task_execution_complete(
+                                    &task_id,
+                                    exit_code,
+                                    task_executions::Status::Failed,
+                                    Some(task_executions::StatusReason {
+                                        reason: task_executions::StatusReasonType::AbnormalExit,
+                                        description:
+                                            "Task execution has exited with an abnormal exit code.".into(),
+                                    }),
+                                )
+                                .await
+                            {
+                                bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
+                            }
+
+                            return Ok(());
+                        }
                     }
+                },
+                result = event_stream.recv() => {
+                    let event = match result {
+                        Ok(event) => event,
+                        Err(err) => {
+                            error!(error = %err,
+                                   namespace_id = self.pipeline.metadata.namespace_id.clone(),
+                                   pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+                                   run_id = self.run.run_id,
+                                   task_execution_id = &task_execution.task_id,
+                                   "Could not recieve event from event stream during task execution monitoring.");
+                            continue;
+                        }
+                    };
 
-                    if exit_code == 0 {
+                    // We're specifically looking for cancellation events so that we can stop the container, set the
+                    // task as completed and then exit.
+                    if let event_utils::Kind::StartedTaskExecutionCancellation {
+                        namespace_id,
+                        pipeline_id,
+                        run_id,
+                        task_execution_id,
+                        timeout,
+                    } = event.kind
+                    {
+
+                        dbg!("attempting to cancel task {}", &task_execution_id);
+                        // Make sure we only handle events for our specific task execution.
+                        if namespace_id != self.pipeline.metadata.namespace_id
+                            || pipeline_id != self.pipeline.metadata.pipeline_id
+                            || run_id != self.run.run_id
+                            || task_execution_id != task_id
+                        {
+                            continue;
+                        }
+
+                        // TODO(): We should probably log the result of this, but for now best effort is fine.
+                        _ = self.api_state
+                            .scheduler
+                            .cancel_task_execution(task_execution.clone(), timeout as i64)
+                            .await
+                            .map_err(|err| {
+                                let all_errors = err
+                                    .chain()
+                                    .map(|e| e.to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(" | ");
+
+                                error!(error = %all_errors,
+                                       namespace_id = self.pipeline.metadata.namespace_id.clone(),
+                                       pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+                                       run_id = self.run.run_id,
+                                       task_execution_id = &task_id,
+                                       "Could not cancel task execution");
+                            });
+
+
+                        // If we try to cancel the task and it doesn't actually cancel we still need to mark
+                        // it as cancelled.
+
                         if let Err(e) = self
                             .set_task_execution_complete(
-                                task_id,
-                                exit_code,
-                                task_executions::Status::Successful,
-                                None,
+                                &task_id,
+                                1,
+                                task_executions::Status::Cancelled,
+                                Some(task_executions::StatusReason {
+                                    reason: task_executions::StatusReasonType::Cancelled,
+                                    description: "The task execution was cancelled".into(),
+                                }),
                             )
                             .await
                         {
                             bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
                         };
-                    } else if let Err(e) = self
-                        .set_task_execution_complete(
-                            task_id,
-                            exit_code,
-                            task_executions::Status::Failed,
-                            Some(task_executions::StatusReason {
-                                reason: task_executions::StatusReasonType::AbnormalExit,
-                                description:
-                                    "Task execution has exited with an abnormal exit code.".into(),
-                            }),
-                        )
-                        .await
-                    {
-                        bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
+
+                        return Ok(());
                     }
-
-                    return Ok(());
-                }
-                scheduler::ContainerState::Cancelled => {
-                    if let Err(e) = self
-                        .set_task_execution_complete(
-                            task_id,
-                            1,
-                            task_executions::Status::Cancelled,
-                            Some(task_executions::StatusReason {
-                                reason: task_executions::StatusReasonType::Cancelled,
-                                description: "The task execution was cancelled".into(),
-                            }),
-                        )
-                        .await
-                    {
-                        bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
-                    };
-
-                    return Ok(());
                 }
             }
         }
@@ -606,33 +1251,8 @@ impl Shepherd {
         }
     }
 
-    /// Tracks state and log progress of a task execution. It automatically updates the provided task execution
-    /// with the resulting state change(s). This function will block until the task-run has
-    /// reached a terminal state.
-    async fn monitor_task_execution(
-        self: Arc<Self>,
-        container_id: &str,
-        task_id: &str,
-    ) -> Result<()> {
-        let container_id_clone = container_id.to_owned();
-        let task_id_clone = task_id.to_owned();
-        let self_clone = self.clone();
-
-        tokio::spawn(async move {
-            self_clone
-                .handle_log_updates(container_id_clone, task_id_clone)
-                .await
-        });
-
-        self.wait_task_execution_finish(container_id, task_id)
-            .await
-            .context("Encountered error while waiting for task execution result")?;
-
-        Ok(())
-    }
-
     /// Removes run level objects from the object store once a run is past it's expiry threshold.
-    async fn handle_run_object_expiry(self: Arc<Self>) {
+    async fn handle_run_object_expiry(self) {
         let limit = self.api_state.config.object_store.run_object_expiry;
 
         let mut conn = match self.api_state.storage.conn().await {
@@ -831,7 +1451,7 @@ impl Shepherd {
         }
     }
 
-    async fn handle_run_log_expiry(self: Arc<Self>) {
+    async fn handle_run_log_expiry(self) {
         let limit = self.api_state.config.api.task_execution_log_retention;
 
         let mut conn = match self.api_state.storage.conn().await {
@@ -1049,378 +1669,6 @@ impl Shepherd {
             pipeline_id = &self.pipeline.metadata.pipeline_id,
             run_id = self.run.run_id,
             removed_files = ?removed_files, "Removed task execution log files");
-    }
-
-    /// Registers[^1] and launches a brand new task execution as part of a larger run for a specific task.
-    /// It blocks until the task execution has completed.
-    ///
-    /// [^1]: The register parameter controls whether the task is registered in the database, announces it's creation
-    /// via events. It's useful to turn this off when we're trying to revive a task execution that is previously lost.
-    async fn launch_task_execution(self: Arc<Self>, task: tasks::Task, register: bool) {
-        // Start by creating a new task execution and saving it to the state machine and disk.
-        let new_task_execution = task_executions::TaskExecution::new(
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            self.run.run_id,
-            task.clone(),
-        );
-
-        self.task_executions.insert(
-            new_task_execution.task_id.clone(),
-            new_task_execution.clone(),
-        );
-
-        let mut conn = match self.api_state.storage.conn().await {
-            Ok(conn) => conn,
-            Err(e) => {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not establish connection to database");
-                return;
-            }
-        };
-
-        let storage_task_execution = match new_task_execution.clone().try_into() {
-            Ok(execution) => execution,
-            Err(e) => {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not serialize task execution to storage object");
-                return;
-            }
-        };
-
-        if register {
-            if let Err(e) =
-                storage::task_executions::insert(&mut conn, &storage_task_execution).await
-            {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not insert new task_execution into storage");
-                return;
-            }
-        }
-
-        let env_vars = combine_variables(&self.run, &task);
-        let env_vars_json = match serde_json::to_string(&env_vars) {
-            Ok(env_vars) => env_vars,
-            Err(e) => {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not serialize env vars into json");
-                return;
-            }
-        };
-
-        // Determine the task executions final variable set and pass them in.
-        let run_id_i64 = match self.run.run_id.try_into() {
-            Ok(id) => id,
-            Err(e) => {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not convert run id to appropriate integer type");
-                return;
-            }
-        };
-
-        if let Err(e) = storage::task_executions::update(
-            &mut conn,
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            run_id_i64,
-            &task.id,
-            storage::task_executions::UpdatableFields {
-                variables: Some(env_vars_json),
-                ..Default::default()
-            },
-        )
-        .await
-        {
-            error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                pipeline_id = &self.pipeline.metadata.pipeline_id,
-                run_id = self.run.run_id,
-                task_id = task.id,
-                error = %e, "Could not update task_execution with correct variables");
-            return;
-        };
-
-        // Now we examine the validity of the task execution to be started and wait for it's dependents to finish running.
-        if let Err(e) = self
-            .set_task_execution_state(&new_task_execution, task_executions::State::Waiting)
-            .await
-        {
-            error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                pipeline_id = &self.pipeline.metadata.pipeline_id,
-                run_id = self.run.run_id,
-                task_id = task.id,
-                error = %e, "Could not update task_execution state to waiting");
-            return;
-        };
-
-        // First we need to make sure all the parents of the current task are in a finished state.
-        while !self.parent_tasks_complete(&new_task_execution.task.depends_on) {
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        }
-
-        if let Err(e) = self
-            .set_task_execution_state(&new_task_execution, task_executions::State::Processing)
-            .await
-        {
-            error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                pipeline_id = &self.pipeline.metadata.pipeline_id,
-                run_id = self.run.run_id,
-                task_id = task.id,
-                error = %e, "Could not update task_execution state to processing");
-            return;
-        };
-
-        // Then check to make sure that the parents all finished in the required states. If not
-        // we'll mark this task as skipped since it's requirements for running weren't met.
-        if let Err(e) = self.task_dependencies_satisfied(&new_task_execution.task.depends_on) {
-            if let Err(e) = self
-                .set_task_execution_complete(
-                    &new_task_execution.task_id,
-                    1,
-                    task_executions::Status::Skipped,
-                    Some(task_executions::StatusReason {
-                        reason: task_executions::StatusReasonType::FailedPrecondition,
-                        description: format!(
-                            "Task could not be run due to unmet dependencies; {}",
-                            e
-                        ),
-                    }),
-                )
-                .await
-            {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not mark task execution as skipped during the processing of task dependencies");
-                return;
-            }
-        };
-
-        // After this point we're sure the task is in a state to be run. So we attempt to
-        // contact the scheduler and start the container.
-
-        // First we attempt to find any object/secret store variables and replace them
-        // with the correct var. At first glance this may seem like a task that can move upwards
-        // but it's important that this run only after a task's parents have already run
-        // this enables users to be sure that one task can pass variables to other downstream tasks.
-
-        // We create a copy of variables so that we can substitute in secrets and objects.
-        // to eventually pass them into the start container function.
-        let env_vars = match interpolate_vars(
-            &self.api_state,
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            Some(self.run.run_id),
-            &env_vars,
-        )
-        .await
-        {
-            Ok(env_vars) => env_vars,
-            Err(e) => {
-                if let Err(e) = self
-                    .set_task_execution_complete(
-                        &new_task_execution.task_id,
-                        1,
-                        task_executions::Status::Failed,
-                        Some(task_executions::StatusReason {
-                            reason: task_executions::StatusReasonType::FailedPrecondition,
-                            description: format!(
-                                "Task could not be run due to inability to retrieve interpolated variables; {}",
-                                e
-                            ),
-                        }),
-                    )
-                    .await
-                {
-                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                        pipeline_id = &self.pipeline.metadata.pipeline_id,
-                        run_id = self.run.run_id,
-                        task_id = task.id,
-                        error = %e, "Could not mark task execution as failed during the processing of task env vars");
-                    return;
-                };
-
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not properly interpolate variables for task execution");
-                return;
-            }
-        };
-
-        let container_name = task_executions::task_execution_container_id(
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            self.run.run_id,
-            &new_task_execution.task_id,
-        );
-
-        if let Err(e) = self
-            .api_state
-            .scheduler
-            .start_container(scheduler::StartContainerRequest {
-                id: container_name.clone(),
-                image: new_task_execution.task.image.clone(),
-                variables: env_vars
-                    .into_iter()
-                    .map(|var| (var.key, var.value))
-                    .collect(),
-                registry_auth: new_task_execution
-                    .task
-                    .registry_auth
-                    .clone()
-                    .map(|auth| auth.into()),
-                always_pull: false,
-                networking: None,
-                entrypoint: new_task_execution.task.entrypoint.clone(),
-                command: new_task_execution.task.command.clone(),
-            })
-            .await
-        {
-            if let Err(e) = self
-                .set_task_execution_complete(
-                    &new_task_execution.task_id,
-                    1,
-                    task_executions::Status::Failed,
-                    Some(task_executions::StatusReason {
-                        reason: task_executions::StatusReasonType::SchedulerError,
-                        description: format!(
-                            "Task could not be run due to inability to be scheduled; {}",
-                            e
-                        ),
-                    }),
-                )
-                .await
-            {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    task_id = task.id,
-                    error = %e, "Could not mark task execution as failed during scheduling of task");
-            };
-            return;
-        };
-
-        if let Err(e) = storage::task_executions::update(
-            &mut conn,
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            run_id_i64,
-            &new_task_execution.task_id,
-            storage::task_executions::UpdatableFields {
-                state: Some(task_executions::State::Running.to_string()),
-                started: Some(epoch_milli().to_string()),
-                ..Default::default()
-            },
-        )
-        .await
-        {
-            error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                pipeline_id = &self.pipeline.metadata.pipeline_id,
-                run_id = self.run.run_id,
-                task_id = task.id,
-                error = %e, "Could not update task execution while attempting to launch task");
-            return;
-        }
-
-        let mut new_task_execution = new_task_execution;
-        new_task_execution.state = task_executions::State::Running;
-        self.task_executions.insert(
-            new_task_execution.task_id.clone(),
-            new_task_execution.clone(),
-        );
-
-        self.api_state
-            .event_bus
-            .clone()
-            .publish(event_utils::Kind::StartedTaskExecution {
-                namespace_id: self.pipeline.metadata.namespace_id.clone(),
-                pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
-                run_id: self.run.run_id,
-                task_execution_id: new_task_execution.task_id.clone(),
-            });
-
-        // Since we move self we just copy these values so we can put it in the error log.
-        // There is probably a better way to do this.
-        let namespace_id = self.pipeline.metadata.namespace_id.clone();
-        let pipeline_id = self.pipeline.metadata.pipeline_id.clone();
-        let run_id = self.run.run_id;
-
-        // Block until task_execution is finished and log results.
-        if let Err(e) = self
-            .monitor_task_execution(&container_name, &new_task_execution.task_id)
-            .await
-        {
-            error!(namespace_id = namespace_id,
-                pipeline_id = pipeline_id,
-                run_id = run_id,
-                task_id = task.id,
-                error = %e, "Encountered error while waiting for task_execution to finish");
-        };
-    }
-
-    pub async fn execute_task_tree(self: Arc<Self>) {
-        // Launch per-run clean up jobs.
-        tokio::spawn(self.clone().handle_run_object_expiry());
-        tokio::spawn(self.clone().handle_run_log_expiry());
-
-        let mut conn = match self.api_state.storage.conn().await {
-            Ok(conn) => conn,
-            Err(e) => {
-                error!(error = %e, "Could not establish connection to database while attempting to wait for run finish");
-                return;
-            }
-        };
-
-        let fields = storage::runs::UpdatableFields {
-            state: Some(runs::State::Running.to_string()),
-            ..Default::default()
-        };
-
-        if let Err(e) = storage::runs::update(
-            &mut conn,
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            self.run.run_id.try_into().unwrap_or_default(),
-            fields,
-        )
-        .await
-        {
-            error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                   pipeline_id = &self.pipeline.metadata.pipeline_id,
-                   run_id = self.run.run_id,
-                   error = %e, "Could not update run while attempting to execute task tree");
-            return;
-        };
-
-        let mut task_handles = vec![];
-
-        for task in self.pipeline.config.tasks.values() {
-            let handle = tokio::spawn(self.clone().launch_task_execution(task.clone(), true));
-            task_handles.push(handle);
-        }
-
-        // Wait for all the task executions to finish.
-        join_all(task_handles).await;
-
-        // Finally process the run now that all the tasks have finished.
-        self.process_run_finish().await
     }
 }
 

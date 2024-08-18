@@ -62,13 +62,13 @@ pub enum Kind {
     },
 
     // Deployment events
-    DeploymentStarted {
+    StartedDeployment {
         namespace_id: String,
         pipeline_id: String,
         start_version: u64,
         end_version: u64,
     },
-    DeploymentCompleted {
+    CompletedDeployment {
         namespace_id: String,
         pipeline_id: String,
         start_version: u64,
@@ -86,6 +86,11 @@ pub enum Kind {
         pipeline_id: String,
         run_id: u64,
         status: runs::Status,
+    },
+    StartedRunCancellation {
+        namespace_id: String,
+        pipeline_id: String,
+        run_id: u64,
     },
 
     // Task execution events
@@ -107,6 +112,13 @@ pub enum Kind {
         run_id: u64,
         task_execution_id: String,
         status: task_executions::Status,
+    },
+    StartedTaskExecutionCancellation {
+        namespace_id: String,
+        pipeline_id: String,
+        run_id: u64,
+        task_execution_id: String,
+        timeout: u64,
     },
 
     // Extension events
@@ -295,8 +307,7 @@ impl EventBus {
         Ok(new_event)
     }
 
-    /// Allows caller to emit a new event to the eventbus. Returns the resulting
-    /// event once it has been successfully published.
+    /// Allows caller to emit a new event to the eventbus.
     pub fn publish(self, kind: Kind) {
         tokio::spawn(async move {
             let new_event = Event::new(kind.clone());

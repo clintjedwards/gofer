@@ -604,7 +604,7 @@ async fn start_extension(
             scheduler::ContainerState::Unknown
             | scheduler::ContainerState::Paused
             | scheduler::ContainerState::Restarting => continue,
-            scheduler::ContainerState::Exited | scheduler::ContainerState::Cancelled => {
+            scheduler::ContainerState::Exited => {
                 error!(
                     extension_container_id = ext_container_id,
                     state = extension_container_state.state.to_string(),

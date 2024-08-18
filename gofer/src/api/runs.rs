@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        epoch_milli, pipeline_configs, pipelines, run_utils, task_executions, ApiState,
+        epoch_milli, event_utils, pipeline_configs, pipelines, run_utils, ApiState,
         PreflightOptions, Variable, VariableSource,
     },
     http_error, storage,
@@ -748,15 +748,13 @@ pub async fn start_run(
         new_run.clone(),
     );
 
-    let new_run_shepard = Arc::new(new_run_shepard);
-
     // Make sure the pipeline is read for a new run.
     while new_run_shepard.parallelism_limit_exceeded().await {
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 
     // Finally, launch the thread that will launch all the task executions for the run.
-    tokio::spawn(new_run_shepard.execute_task_tree());
+    tokio::spawn(new_run_shepard.start_run());
 
     let resp = StartRunResponse { run: new_run };
 
@@ -773,9 +771,6 @@ pub async fn cancel_run(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<RunPathArgs>,
 ) -> Result<HttpResponseDeleted, HttpError> {
-    // Cancels all task executions for a given run by calling the scheduler's StopContainer function on each one.
-    // It then waits to collect all the task execution's final states before returning which might cause the code
-    // below to block for a bit.
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
@@ -801,151 +796,38 @@ pub async fn cancel_run(
         }
     };
 
-    let run_id_i64: i64 = path.run_id.try_into().map_err(|err| {
-        HttpError::for_bad_request(None, format!("Could not parse field 'run_id'; {:#?}", err))
-    })?;
-
-    let storage_task_executions = match storage::task_executions::list(
+    if let Err(e) = storage::runs::get(
         &mut conn,
         &path.namespace_id,
         &path.pipeline_id,
-        run_id_i64,
+        path.run_id as i64,
     )
     .await
     {
-        Ok(task_executions) => task_executions,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
-
-    let timeout = api_state.config.api.task_execution_stop_timeout;
-    let timeout = timeout
-        .try_into()
-        .map_err(|err: std::num::TryFromIntError| {
-            http_error!(
-                "Could not serialize timeout while attempting to cancel run",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into())
-            )
-        })?;
-
-    loop {
-        for task in &storage_task_executions {
-            let task_execution = task_executions::TaskExecution::try_from(task.to_owned())
-                .map_err(|err| {
-                    http_error!(
-                        "Could not parse object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id.clone(),
-                        Some(err.into())
-                    )
-                })?;
-
-            // Since runs are handled by an async process that updates their state we need to check for the tasks to actually
-            // be running before we attempt to cancel them or else we can possibly get into a state where the run executor
-            // is still updating the run. This would end in a race condition where we cancel the run but the database has
-            // it listed as a different state.
-            if task_execution.state != task_executions::State::Running {
-                continue;
+        match e {
+            storage::StorageError::NotFound => {
+                return Err(HttpError::for_not_found(None, String::new()));
             }
-
-            if let Err(err) = api_state
-                .scheduler
-                .cancel_task_execution(task_execution, timeout)
-                .await
-            {
+            _ => {
                 return Err(http_error!(
-                    "Could not cancel task execution",
+                    "Could not get task execution from database",
                     http::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
-                    Some(err.into())
+                    Some(e.into())
                 ));
             }
         }
+    };
 
-        let storage_run =
-            match storage::runs::get(&mut conn, &path.namespace_id, &path.pipeline_id, run_id_i64)
-                .await
-            {
-                Ok(run) => run,
-                Err(e) => match e {
-                    storage::StorageError::NotFound => {
-                        return Err(HttpError::for_not_found(None, String::new()));
-                    }
-                    _ => {
-                        return Err(http_error!(
-                            "Could not get objects from database",
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            rqctx.request_id.clone(),
-                            Some(e.into())
-                        ));
-                    }
-                },
-            };
+    // Send an event to the run monitor so it can start the process of cancellations.
+    api_state
+        .event_bus
+        .clone()
+        .publish(event_utils::Kind::StartedRunCancellation {
+            namespace_id: path.namespace_id,
+            pipeline_id: path.pipeline_id,
+            run_id: path.run_id,
+        });
 
-        let run = Run::try_from(storage_run).map_err(|err| {
-            http_error!(
-                "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into())
-            )
-        })?;
-
-        if run.state != State::Complete {
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            continue;
-        }
-
-        if run.status == Status::Failed || run.status == Status::Successful {
-            return Ok(HttpResponseDeleted());
-        }
-
-        if run.status == Status::Cancelled {
-            let status_reason = StatusReason {
-                reason: StatusReasonType::UserCancelled,
-                description: "Run was cancelled via API at the user's request".into(),
-            };
-
-            let status_reason_json = serde_json::to_string(&status_reason).map_err(|err| {
-                http_error!(
-                    "Could not serialize status_reason to storage object while attempting to cancel job",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(err.into())
-                )
-            })?;
-
-            storage::runs::update(
-                &mut conn,
-                &path.namespace_id,
-                &path.pipeline_id,
-                run_id_i64,
-                storage::runs::UpdatableFields {
-                    status_reason: Some(status_reason_json),
-                    ..Default::default()
-                },
-            )
-            .await
-            .map_err(|err| {
-                http_error!(
-                    "Could not update run to reflect cancelled status",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(err.into())
-                )
-            })?;
-
-            return Ok(HttpResponseDeleted());
-        }
-
-        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await
-    }
+    Ok(HttpResponseDeleted())
 }

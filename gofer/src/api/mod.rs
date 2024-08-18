@@ -408,6 +408,7 @@ fn init_logger(log_level: &str, pretty: bool) -> Result<()> {
         .add_directive("bollard=off".parse().expect("Invalid directive"))
         .add_directive("reqwest=off".parse().expect("Invalid directive"))
         .add_directive("tungstenite=off".parse().expect("Invalid directive"))
+        .add_directive("dropshot=off".parse().expect("Invalid directive"))
         .add_directive(level.into()); // Accept debug level logs and above for everything else
 
     if pretty {
