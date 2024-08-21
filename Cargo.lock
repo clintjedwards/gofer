@@ -1335,7 +1335,7 @@ dependencies = [
 
 [[package]]
 name = "gofer"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1392,7 +1392,7 @@ dependencies = [
 
 [[package]]
 name = "gofer_sdk"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "async-trait",

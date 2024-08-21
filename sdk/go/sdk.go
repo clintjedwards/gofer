@@ -651,6 +651,9 @@ type Initiator struct {
 
 	// Kind The type of token that initiated the request.
 	Kind TokenType `json:"kind"`
+
+	// User The plaintext username for of the token.
+	User string `json:"user"`
 }
 
 // InstallExtensionRequest defines model for InstallExtensionRequest.
@@ -730,22 +733,22 @@ type Kind6 struct {
 
 // Kind7 defines model for .
 type Kind7 struct {
-	DeploymentStarted struct {
+	StartedDeployment struct {
 		EndVersion   uint64 `json:"end_version"`
 		NamespaceId  string `json:"namespace_id"`
 		PipelineId   string `json:"pipeline_id"`
 		StartVersion uint64 `json:"start_version"`
-	} `json:"deployment_started"`
+	} `json:"started_deployment"`
 }
 
 // Kind8 defines model for .
 type Kind8 struct {
-	DeploymentCompleted struct {
+	CompletedDeployment struct {
 		EndVersion   uint64 `json:"end_version"`
 		NamespaceId  string `json:"namespace_id"`
 		PipelineId   string `json:"pipeline_id"`
 		StartVersion uint64 `json:"start_version"`
-	} `json:"deployment_completed"`
+	} `json:"completed_deployment"`
 }
 
 // Kind9 defines model for .
@@ -771,6 +774,15 @@ type Kind10 struct {
 
 // Kind11 defines model for .
 type Kind11 struct {
+	StartedRunCancellation struct {
+		NamespaceId string `json:"namespace_id"`
+		PipelineId  string `json:"pipeline_id"`
+		RunId       uint64 `json:"run_id"`
+	} `json:"started_run_cancellation"`
+}
+
+// Kind12 defines model for .
+type Kind12 struct {
 	CreatedTaskExecution struct {
 		NamespaceId     string `json:"namespace_id"`
 		PipelineId      string `json:"pipeline_id"`
@@ -779,8 +791,8 @@ type Kind11 struct {
 	} `json:"created_task_execution"`
 }
 
-// Kind12 defines model for .
-type Kind12 struct {
+// Kind13 defines model for .
+type Kind13 struct {
 	StartedTaskExecution struct {
 		NamespaceId     string `json:"namespace_id"`
 		PipelineId      string `json:"pipeline_id"`
@@ -789,8 +801,8 @@ type Kind12 struct {
 	} `json:"started_task_execution"`
 }
 
-// Kind13 defines model for .
-type Kind13 struct {
+// Kind14 defines model for .
+type Kind14 struct {
 	CompletedTaskExecution struct {
 		NamespaceId     string              `json:"namespace_id"`
 		PipelineId      string              `json:"pipeline_id"`
@@ -800,56 +812,67 @@ type Kind13 struct {
 	} `json:"completed_task_execution"`
 }
 
-// Kind14 defines model for .
-type Kind14 struct {
+// Kind15 defines model for .
+type Kind15 struct {
+	StartedTaskExecutionCancellation struct {
+		NamespaceId     string `json:"namespace_id"`
+		PipelineId      string `json:"pipeline_id"`
+		RunId           uint64 `json:"run_id"`
+		TaskExecutionId string `json:"task_execution_id"`
+		Timeout         uint64 `json:"timeout"`
+	} `json:"started_task_execution_cancellation"`
+}
+
+// Kind16 defines model for .
+type Kind16 struct {
 	InstalledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"installed_extension"`
 }
 
-// Kind15 defines model for .
-type Kind15 struct {
+// Kind17 defines model for .
+type Kind17 struct {
 	UninstalledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"uninstalled_extension"`
 }
 
-// Kind16 defines model for .
-type Kind16 struct {
+// Kind18 defines model for .
+type Kind18 struct {
 	EnabledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"enabled_extension"`
 }
 
-// Kind17 defines model for .
-type Kind17 struct {
+// Kind19 defines model for .
+type Kind19 struct {
 	DisabledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"disabled_extension"`
 }
 
-// Kind18 defines model for .
-type Kind18 struct {
-	ExtensionSubscription struct {
+// Kind20 defines model for .
+type Kind20 struct {
+	PipelineExtensionSubscriptionRegistered struct {
 		ExtensionId    string `json:"extension_id"`
 		NamespaceId    string `json:"namespace_id"`
 		PipelineId     string `json:"pipeline_id"`
 		SubscriptionId string `json:"subscription_id"`
-	} `json:"extension_subscription"`
+	} `json:"pipeline_extension_subscription_registered"`
 }
 
-// Kind19 defines model for .
-type Kind19 struct {
-	ExtensionUnsubscription struct {
+// Kind21 defines model for .
+type Kind21 struct {
+	PipelineExtensionSubscriptionUnregistered struct {
 		ExtensionId    string `json:"extension_id"`
 		NamespaceId    string `json:"namespace_id"`
 		PipelineId     string `json:"pipeline_id"`
 		SubscriptionId string `json:"subscription_id"`
-	} `json:"extension_unsubscription"`
+	} `json:"pipeline_extension_subscription_unregistered"`
 }
 
 // ListDeploymentsResponse defines model for ListDeploymentsResponse.
@@ -2381,6 +2404,58 @@ func (t *Kind) FromKind19(v Kind19) error {
 
 // MergeKind19 performs a merge with any union data inside the Kind, using the provided Kind19
 func (t *Kind) MergeKind19(v Kind19) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsKind20 returns the union data inside the Kind as a Kind20
+func (t Kind) AsKind20() (Kind20, error) {
+	var body Kind20
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromKind20 overwrites any union data inside the Kind as the provided Kind20
+func (t *Kind) FromKind20(v Kind20) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeKind20 performs a merge with any union data inside the Kind, using the provided Kind20
+func (t *Kind) MergeKind20(v Kind20) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsKind21 returns the union data inside the Kind as a Kind21
+func (t Kind) AsKind21() (Kind21, error) {
+	var body Kind21
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromKind21 overwrites any union data inside the Kind as the provided Kind21
+func (t *Kind) FromKind21(v Kind21) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeKind21 performs a merge with any union data inside the Kind, using the provided Kind21
+func (t *Kind) MergeKind21(v Kind21) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err

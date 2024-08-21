@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Gofer",
-    "version": "0.7.2"
+    "version": "0.7.3"
   },
   "paths": {
     "/api/events": {
@@ -3753,11 +3753,16 @@
                 "$ref": "#/components/schemas/TokenType"
               }
             ]
+          },
+          "user": {
+            "description": "The plaintext username for of the token.",
+            "type": "string"
           }
         },
         "required": [
           "id",
-          "kind"
+          "kind",
+          "user"
         ]
       },
       "InstallExtensionRequest": {
@@ -3953,7 +3958,7 @@
           {
             "type": "object",
             "properties": {
-              "deployment_started": {
+              "started_deployment": {
                 "type": "object",
                 "properties": {
                   "end_version": {
@@ -3982,14 +3987,14 @@
               }
             },
             "required": [
-              "deployment_started"
+              "started_deployment"
             ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "deployment_completed": {
+              "completed_deployment": {
                 "type": "object",
                 "properties": {
                   "end_version": {
@@ -4018,7 +4023,7 @@
               }
             },
             "required": [
-              "deployment_completed"
+              "completed_deployment"
             ],
             "additionalProperties": false
           },
@@ -4083,6 +4088,36 @@
             },
             "required": [
               "completed_run"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "started_run_cancellation": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id"
+                ]
+              }
+            },
+            "required": [
+              "started_run_cancellation"
             ],
             "additionalProperties": false
           },
@@ -4195,6 +4230,46 @@
           {
             "type": "object",
             "properties": {
+              "started_task_execution_cancellation": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  },
+                  "task_execution_id": {
+                    "type": "string"
+                  },
+                  "timeout": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id",
+                  "task_execution_id",
+                  "timeout"
+                ]
+              }
+            },
+            "required": [
+              "started_task_execution_cancellation"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
               "installed_extension": {
                 "type": "object",
                 "properties": {
@@ -4291,7 +4366,7 @@
           {
             "type": "object",
             "properties": {
-              "extension_subscription": {
+              "pipeline_extension_subscription_registered": {
                 "type": "object",
                 "properties": {
                   "extension_id": {
@@ -4316,14 +4391,14 @@
               }
             },
             "required": [
-              "extension_subscription"
+              "pipeline_extension_subscription_registered"
             ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "extension_unsubscription": {
+              "pipeline_extension_subscription_unregistered": {
                 "type": "object",
                 "properties": {
                   "extension_id": {
@@ -4348,7 +4423,7 @@
               }
             },
             "required": [
-              "extension_unsubscription"
+              "pipeline_extension_subscription_unregistered"
             ],
             "additionalProperties": false
           }
