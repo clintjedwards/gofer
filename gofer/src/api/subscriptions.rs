@@ -624,15 +624,14 @@ pub async fn create_subscription(
         ));
     };
 
-    api_state
-        .event_bus
-        .clone()
-        .publish(event_utils::Kind::ExtensionSubscription {
+    api_state.event_bus.clone().publish(
+        event_utils::Kind::PipelineExtensionSubscriptionRegistered {
             namespace_id: path.namespace_id.clone(),
             pipeline_id: path.pipeline_id.clone(),
             extension_id: body.extension_id.clone(),
             subscription_id: new_subscription.subscription_id.clone(),
-        });
+        },
+    );
 
     let resp = CreateSubscriptionResponse {
         subscription: new_subscription,

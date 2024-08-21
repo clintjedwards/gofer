@@ -140,13 +140,13 @@ pub enum Kind {
     },
 
     // Subscriptions
-    ExtensionSubscription {
+    PipelineExtensionSubscriptionRegistered {
         namespace_id: String,
         pipeline_id: String,
         extension_id: String,
         subscription_id: String,
     },
-    ExtensionUnsubscription {
+    PipelineExtensionSubscriptionUnregistered {
         namespace_id: String,
         pipeline_id: String,
         extension_id: String,

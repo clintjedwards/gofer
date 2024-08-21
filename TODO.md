@@ -37,18 +37,6 @@ Because of this we should give the user as many tools as we can to make sure the
 thought into this feature that it can become a game changer for Gofer as a whole.
 * Maybe create a timeline on when each task execution happened for a particular run?
 
-## Event loop refactor
-
-Right now we use a midpoint of events and memory sharing to determine how to run each run/task execution. This was a
-holdover from the Gofer version of the application. Instead we should focus more on an event driven design. We already
-have our event processor, now we just need to make sure its the main driving force for how task executions are handled.
-
-This would allow us to do previously complicated things like cancellations.
-
-* The Shepard interface simply starts task executions and follows their progress.
-* It emits events as executions hit certain milestones.
-* It also listens for events, translates database updates, and responds to global run events.
-
 # Small things I want to keep track of that I definitely need to do.
 
 ## API
@@ -106,6 +94,7 @@ finishes at which time it reflects a summary about what it did.
 * In monitor_task_execution calls to the scheduler to check on container status are expected to succeed. If they fail
 the whole thing is aborted, which is obviously bad because when we implement networked schedulers network calls will fail
 sometimes.
+* Deployment logs need to be reinstated.
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 

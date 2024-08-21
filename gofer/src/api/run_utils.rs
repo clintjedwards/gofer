@@ -1091,8 +1091,6 @@ impl Shepherd {
                         timeout,
                     } = event.kind
                     {
-
-                        dbg!("attempting to cancel task {}", &task_execution_id);
                         // Make sure we only handle events for our specific task execution.
                         if namespace_id != self.pipeline.metadata.namespace_id
                             || pipeline_id != self.pipeline.metadata.pipeline_id

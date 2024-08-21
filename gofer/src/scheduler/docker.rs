@@ -10,7 +10,6 @@ use futures::Stream;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::pin::Pin;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, error, info, instrument, trace};
 
 fn format_env_var(key: &str, value: &str) -> String {

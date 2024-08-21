@@ -1,4 +1,5 @@
 mod config;
+mod deployment;
 mod object;
 
 use crate::cli::{
@@ -107,6 +108,9 @@ pub enum PipelineCommands {
 
     /// Manage pipeline configs/manifests.
     Config(config::ConfigSubcommands),
+
+    /// Manage pipeline deployments
+    Deployment(deployment::DeploymentSubcommands),
 }
 
 #[derive(Serialize)]
@@ -150,6 +154,10 @@ impl Cli {
             }
             PipelineCommands::Config(config) => {
                 self.handle_pipeline_config_subcommands(config).await
+            }
+            PipelineCommands::Deployment(deployment) => {
+                self.handle_pipeline_deployment_subcommands(deployment)
+                    .await
             }
         }
     }
