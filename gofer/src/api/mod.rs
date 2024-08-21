@@ -1312,12 +1312,20 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
         let method = request.method().as_str().to_string();
         let uri = request.uri().to_string();
 
+        let remote_ip = match request.headers().get("X-Forwarded-For") {
+            Some(value) => value
+                .to_str()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|_| remote_addr.to_string()),
+            None => remote_addr.to_string(),
+        };
+
         let response = next(server.clone(), request, request_id.clone(), remote_addr).await;
 
         match &response {
             Ok(response) => {
                 info!(
-                    remote_addr = %remote_addr,
+                    remote_addr = remote_ip,
                     req_id = request_id,
                     method = method,
                     uri = uri,
