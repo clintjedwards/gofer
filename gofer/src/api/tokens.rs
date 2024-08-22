@@ -232,7 +232,7 @@ pub async fn list_tokens(
 ) -> Result<HttpResponseOk<ListTokensResponse>, HttpError> {
     let api_state = rqctx.context();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -304,7 +304,7 @@ pub async fn get_token_by_id(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -373,7 +373,7 @@ pub async fn whoami(
 ) -> Result<HttpResponseOk<WhoAmIResponse>, HttpError> {
     let api_state = rqctx.context();
     let req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -469,7 +469,7 @@ pub async fn create_token(
 ) -> Result<HttpResponseCreated<CreateTokenResponse>, HttpError> {
     let api_state = rqctx.context();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -564,7 +564,7 @@ pub async fn delete_token(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -622,7 +622,7 @@ pub async fn create_bootstrap_token(
 ) -> Result<HttpResponseCreated<CreateTokenResponse>, HttpError> {
     let api_state = rqctx.context();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: true,
@@ -756,7 +756,7 @@ pub async fn update_token(
     let body = body.into_inner();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,

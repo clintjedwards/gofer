@@ -216,7 +216,7 @@ pub async fn list_subscriptions(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -294,7 +294,7 @@ pub async fn get_subscription(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -383,7 +383,7 @@ pub async fn update_subscription(
     let body = body.into_inner();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -481,7 +481,7 @@ pub async fn create_subscription(
     let body = body.into_inner();
     let path = path.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -653,7 +653,7 @@ pub async fn delete_subscription(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,

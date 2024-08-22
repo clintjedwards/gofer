@@ -186,7 +186,7 @@ pub async fn list_run_objects(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -275,7 +275,7 @@ pub async fn get_run_object(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -347,7 +347,7 @@ pub async fn put_run_object(
     let path = path_params.into_inner();
     let body = body.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -447,7 +447,7 @@ pub async fn delete_run_object(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -546,7 +546,7 @@ pub async fn list_pipeline_objects(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -624,7 +624,7 @@ pub async fn get_pipeline_object(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -695,7 +695,7 @@ pub async fn put_pipeline_object(
     let body = body.into_inner();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -789,7 +789,7 @@ pub async fn delete_pipeline_object(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,

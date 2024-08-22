@@ -27,7 +27,7 @@ pub async fn get_metadata(
 ) -> Result<HttpResponseOk<GetSystemMetadataResponse>, HttpError> {
     let api_state = rqctx.context();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: true, // Anyone can query for the version/commit of the system.

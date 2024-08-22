@@ -420,7 +420,7 @@ pub async fn list_task_executions(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -506,7 +506,7 @@ pub async fn get_task_execution(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -594,7 +594,7 @@ pub async fn cancel_task_execution(
     let path = path_params.into_inner();
     let query = query_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -675,7 +675,7 @@ pub async fn get_logs(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -934,7 +934,7 @@ pub async fn delete_logs(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -1076,7 +1076,7 @@ pub async fn attach_task_execution(
     let path = path_params.into_inner();
     let query = query_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,

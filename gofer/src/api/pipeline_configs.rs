@@ -226,7 +226,7 @@ pub async fn list_configs(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -342,7 +342,7 @@ pub async fn get_config(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -494,7 +494,7 @@ pub async fn register_config(
     let path = path_params.into_inner();
     let body = body.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -712,7 +712,7 @@ pub async fn deploy_config(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -1035,7 +1035,7 @@ pub async fn delete_config(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,

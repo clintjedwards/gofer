@@ -862,7 +862,7 @@ pub async fn list_extensions(
 ) -> Result<HttpResponseOk<ListExtensionsResponse>, HttpError> {
     let api_state = rqctx.context();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -902,7 +902,7 @@ pub async fn get_extension(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -994,7 +994,7 @@ pub async fn install_extension(
     let api_state = rqctx.context();
     let body = body.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -1116,7 +1116,7 @@ pub async fn update_extension(
     let body = body.into_inner();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -1192,7 +1192,7 @@ pub async fn uninstall_extension(
     let api_state = rqctx.context();
     let path_params = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -1265,7 +1265,7 @@ pub async fn get_extension_logs(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,

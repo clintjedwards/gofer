@@ -109,7 +109,7 @@ pub async fn list_namespaces(
 ) -> Result<HttpResponseOk<ListNamespacesResponse>, HttpError> {
     let api_state = rqctx.context();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -181,7 +181,7 @@ pub async fn get_namespace(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -266,7 +266,7 @@ pub async fn create_namespace(
     let api_state = rqctx.context();
     let body = body.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -379,7 +379,7 @@ pub async fn update_namespace(
     let body = body.into_inner();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
@@ -492,7 +492,7 @@ pub async fn delete_namespace(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,

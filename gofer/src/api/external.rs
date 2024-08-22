@@ -98,7 +98,7 @@ pub async fn external_event_handler(
     let api_state = rqctx.context();
     let path = path.into_inner();
     let _req_metadata = api_state
-        .run_preflight(
+        .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: true,

@@ -220,7 +220,7 @@ impl ApiState {
     ///
     /// We specifically use a struct here so that the reader can easily verify which options are in which state.
     /// The different options here map to different actions that are checked per call.
-    async fn run_preflight(
+    async fn preflight_check(
         &self,
         request: &RequestInfo,
         options: PreflightOptions,
