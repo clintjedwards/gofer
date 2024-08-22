@@ -4,8 +4,8 @@
     <img src="https://clintjedwards.com/gofer/assets/logo-name-hq.png" alt="gofer" width="200"/>
 </p>
 
-![website-badge](https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square)
-![project status](https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square)
+[![website-badge](https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square)](https://gofer.clintjedwards.com/docs)
+[![project status](https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square)](https://github.com/clintjedwards/gofer/releases)
 
 Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.
 

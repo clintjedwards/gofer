@@ -1312,6 +1312,8 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
         let method = request.method().as_str().to_string();
         let uri = request.uri().to_string();
 
+        // If we're behind a reverse proxy we want the "X-Forwarded-For" header since that gives us the caller's external
+        // ip. If not just log whatever the default remote address is.
         let remote_ip = match request.headers().get("X-Forwarded-For") {
             Some(value) => value
                 .to_str()
