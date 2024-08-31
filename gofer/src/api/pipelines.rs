@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{epoch_milli, pipeline_configs, ApiState, PreflightOptions},
     http_error, storage,
@@ -160,8 +161,12 @@ pub async fn list_pipelines(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines("".into()),
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -233,8 +238,12 @@ pub async fn get_pipeline(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -308,8 +317,12 @@ pub async fn update_pipeline(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -380,8 +393,12 @@ pub async fn delete_pipeline(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                ],
+                action: Action::Delete,
             },
         )
         .await?;

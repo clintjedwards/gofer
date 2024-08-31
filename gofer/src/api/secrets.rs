@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{epoch_milli, ApiState, PreflightOptions},
     http_error, secret_store, storage,
@@ -187,7 +188,7 @@ pub struct ListGlobalSecretsResponse {
 
 /// List all global secrets.
 ///
-/// Management tokens required.
+/// Admin tokens required.
 #[endpoint(
     method = GET,
     path = "/api/secrets/global",
@@ -202,8 +203,9 @@ pub async fn list_global_secrets(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Secrets],
+                action: Action::Read,
             },
         )
         .await?;
@@ -268,7 +270,7 @@ pub struct GetGlobalSecretResponse {
 
 /// Get global secret by key.
 ///
-/// Management token required.
+/// Admin token required.
 #[endpoint(
     method = GET,
     path = "/api/secrets/global/{key}",
@@ -287,8 +289,9 @@ pub async fn get_global_secret(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Secrets],
+                action: Action::Read,
             },
         )
         .await?;
@@ -382,7 +385,7 @@ pub struct PutGlobalSecretResponse {
 
 /// Insert a new secret into the global secret store.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = POST,
     path = "/api/secrets/global",
@@ -399,8 +402,9 @@ pub async fn put_global_secret(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Secrets],
+                action: Action::Write,
             },
         )
         .await?;
@@ -481,7 +485,7 @@ pub async fn put_global_secret(
 
 /// Delete global secret by key.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = DELETE,
     path = "/api/secrets/global/{key}",
@@ -498,8 +502,9 @@ pub async fn delete_global_secret(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Secrets],
+                action: Action::Delete,
             },
         )
         .await?;
@@ -574,8 +579,13 @@ pub async fn list_pipeline_secrets(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Secrets,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -663,8 +673,13 @@ pub async fn get_pipeline_secret(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Secrets,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -784,8 +799,13 @@ pub async fn put_pipeline_secret(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Secrets,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -883,8 +903,13 @@ pub async fn delete_pipeline_secret(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Secrets,
+                ],
+                action: Action::Read,
             },
         )
         .await?;

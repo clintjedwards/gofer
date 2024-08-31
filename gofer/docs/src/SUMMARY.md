@@ -27,7 +27,7 @@
   - [Tasks](./ref/pipeline_configuration/tasks.md)
 - [Server Configuration](./ref/server_configuration/README.md)
   - [Configuration Reference](./ref/server_configuration/configuration_reference.md)
-  - [Authentication](./ref/server_configuration/authentication.md)
+  - [Authentication and Authorization](./ref/server_configuration/authz_n.md)
   - [External Events](./ref/server_configuration/external_events.md)
 - [Scheduler](./ref/scheduler/README.md)
   - [Docker](./ref/scheduler/docker.md)

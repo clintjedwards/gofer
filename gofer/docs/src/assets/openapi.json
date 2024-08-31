@@ -87,7 +87,7 @@
           "Events"
         ],
         "summary": "Delete api event by id.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible by admin tokens.",
         "operationId": "delete_event",
         "parameters": [
           {
@@ -144,7 +144,7 @@
           "Extensions"
         ],
         "summary": "Register and start a new extension.",
-        "description": "This route is only available to management tokens.",
+        "description": "This route is only available to admin tokens.",
         "operationId": "install_extension",
         "requestBody": {
           "content": {
@@ -218,7 +218,7 @@
           "Extensions"
         ],
         "summary": "Uninstall a registered extension.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible for admin tokens.",
         "operationId": "uninstall_extension",
         "parameters": [
           {
@@ -248,7 +248,7 @@
           "Extensions"
         ],
         "summary": "Enable or disable an extension.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible for admin tokens.",
         "operationId": "update_extension",
         "parameters": [
           {
@@ -346,7 +346,7 @@
           "Namespaces"
         ],
         "summary": "Create a new namespace.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible for admin tokens.",
         "operationId": "create_namespace",
         "requestBody": {
           "content": {
@@ -420,7 +420,7 @@
           "Namespaces"
         ],
         "summary": "Delete api namespace by id.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible for admin tokens.",
         "operationId": "delete_namespace",
         "parameters": [
           {
@@ -450,7 +450,7 @@
           "Namespaces"
         ],
         "summary": "Update a namespace's details.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible for admin tokens.",
         "operationId": "update_namespace",
         "parameters": [
           {
@@ -2614,13 +2614,191 @@
         }
       }
     },
+    "/api/roles": {
+      "get": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "List all roles.",
+        "operationId": "list_roles",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRolesResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Create a new role.",
+        "description": "This route is only accessible for admin tokens.",
+        "operationId": "create_role",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateRoleResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/roles/{role_id}": {
+      "get": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Get api role by id.",
+        "operationId": "get_role",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "description": "The unique identifier for the target role.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetRoleResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Delete api role by id.",
+        "description": "This route is only accessible for admin tokens.",
+        "operationId": "delete_role",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "description": "The unique identifier for the target role.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Update a role's details.",
+        "description": "This route is only accessible for admin tokens.",
+        "operationId": "update_role",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "description": "The unique identifier for the target role.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRoleResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/secrets/global": {
       "get": {
         "tags": [
           "Secrets"
         ],
         "summary": "List all global secrets.",
-        "description": "Management tokens required.",
+        "description": "Admin tokens required.",
         "operationId": "list_global_secrets",
         "responses": {
           "200": {
@@ -2646,7 +2824,7 @@
           "Secrets"
         ],
         "summary": "Insert a new secret into the global secret store.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible for admin tokens.",
         "operationId": "put_global_secret",
         "requestBody": {
           "content": {
@@ -2684,7 +2862,7 @@
           "Secrets"
         ],
         "summary": "Get global secret by key.",
-        "description": "Management token required.",
+        "description": "Admin token required.",
         "operationId": "get_global_secret",
         "parameters": [
           {
@@ -2730,7 +2908,7 @@
           "Secrets"
         ],
         "summary": "Delete global secret by key.",
-        "description": "This route is only accessible for management tokens.",
+        "description": "This route is only accessible for admin tokens.",
         "operationId": "delete_global_secret",
         "parameters": [
           {
@@ -2746,6 +2924,68 @@
         "responses": {
           "204": {
             "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/system": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Get system parameters.",
+        "operationId": "get_system_preferences",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSystemPreferencesResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Update system parameters.",
+        "operationId": "update_system_preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSystemPreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateSystemPreferencesResponse"
+                }
+              }
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -2790,7 +3030,7 @@
           "Tokens"
         ],
         "summary": "List all Gofer API tokens.",
-        "description": "This endpoint is restricted to management tokens only.",
+        "description": "This endpoint is restricted to admin tokens only.",
         "operationId": "list_tokens",
         "responses": {
           "200": {
@@ -2816,7 +3056,7 @@
           "Tokens"
         ],
         "summary": "Create a new token.",
-        "description": "This endpoint is restricted to management tokens only.",
+        "description": "This endpoint is restricted to admin tokens only.",
         "operationId": "create_token",
         "requestBody": {
           "content": {
@@ -2853,8 +3093,8 @@
         "tags": [
           "Tokens"
         ],
-        "summary": "Create root management token.",
-        "description": "This endpoint can only be hit once and will create the root management token, from which all other tokens can be created.",
+        "summary": "Create root admin token.",
+        "description": "This endpoint can only be hit once and will create the root admin token, from which all other tokens can be created.",
         "operationId": "create_bootstrap_token",
         "responses": {
           "201": {
@@ -2945,7 +3185,7 @@
           "Tokens"
         ],
         "summary": "Delete api token by id.",
-        "description": "This endpoint is restricted to management tokens only.",
+        "description": "This endpoint is restricted to admin tokens only.",
         "operationId": "delete_token",
         "parameters": [
           {
@@ -3013,6 +3253,14 @@
   },
   "components": {
     "schemas": {
+      "Action": {
+        "type": "string",
+        "enum": [
+          "read",
+          "write",
+          "delete"
+        ]
+      },
       "Config": {
         "description": "A representation of the user's configuration settings for a particular pipeline.",
         "type": "object",
@@ -3155,6 +3403,47 @@
           "namespace"
         ]
       },
+      "CreateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "description": "Short description about what the role is used for.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The unique identifier for the role. Only accepts alphanumeric chars with hyphens. No spaces.",
+            "type": "string"
+          },
+          "permissions": {
+            "description": "Permissions that the role allows.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          }
+        },
+        "required": [
+          "description",
+          "id",
+          "permissions"
+        ]
+      },
+      "CreateRoleResponse": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "Information about the role created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              }
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
       "CreateSubscriptionRequest": {
         "type": "object",
         "properties": {
@@ -3197,33 +3486,25 @@
         "type": "object",
         "properties": {
           "expires": {
-            "description": "The amount of time the token is valid for in seconds.",
+            "description": "The amount of time the token is valid for in seconds. An expiry of 0 means that token does not expire.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
           },
           "metadata": {
+            "nullable": true,
             "description": "Various other bits of data you can attach to tokens. This is used by Gofer to track some details about tokens, but can also be used by users to attach bits of information that would make the token easier to programmatically manage.",
             "type": "object",
             "additionalProperties": {
               "type": "string"
             }
           },
-          "namespaces": {
-            "description": "The namespaces this token applies to. Token will be unauthorized for any namespace not listed. Accepts regexes.",
+          "roles": {
+            "description": "The list of roles to apply to the token.",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "token_type": {
-            "description": "The type of token to be created. Can be management or client.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TokenType"
-              }
-            ]
+            }
           },
           "user": {
             "description": "The plaintext username of the token user.",
@@ -3232,9 +3513,7 @@
         },
         "required": [
           "expires",
-          "metadata",
-          "namespaces",
-          "token_type",
+          "roles",
           "user"
         ]
       },
@@ -3641,6 +3920,22 @@
           "metadata"
         ]
       },
+      "GetRoleResponse": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "The target role.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              }
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
       "GetRunObjectResponse": {
         "type": "object",
         "properties": {
@@ -3707,6 +4002,21 @@
           "semver"
         ]
       },
+      "GetSystemPreferencesResponse": {
+        "type": "object",
+        "properties": {
+          "bootstrap_token_created": {
+            "type": "boolean"
+          },
+          "ignore_pipeline_run_events": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bootstrap_token_created",
+          "ignore_pipeline_run_events"
+        ]
+      },
       "GetTaskExecutionResponse": {
         "type": "object",
         "properties": {
@@ -3746,14 +4056,6 @@
             "description": "The unique identifier for the token that initiated the request.",
             "type": "string"
           },
-          "kind": {
-            "description": "The type of token that initiated the request.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TokenType"
-              }
-            ]
-          },
           "user": {
             "description": "The plaintext username for of the token.",
             "type": "string"
@@ -3761,7 +4063,6 @@
         },
         "required": [
           "id",
-          "kind",
           "user"
         ]
       },
@@ -4426,6 +4727,46 @@
               "pipeline_extension_subscription_unregistered"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "created_role": {
+                "type": "object",
+                "properties": {
+                  "role_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "role_id"
+                ]
+              }
+            },
+            "required": [
+              "created_role"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deleted_role": {
+                "type": "object",
+                "properties": {
+                  "role_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "role_id"
+                ]
+              }
+            },
+            "required": [
+              "deleted_role"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -4547,6 +4888,21 @@
         },
         "required": [
           "pipelines"
+        ]
+      },
+      "ListRolesResponse": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "description": "A list of all roles.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        },
+        "required": [
+          "roles"
         ]
       },
       "ListRunObjectsResponse": {
@@ -4738,6 +5094,29 @@
           "documentation",
           "key",
           "required"
+        ]
+      },
+      "Permission": {
+        "type": "object",
+        "properties": {
+          "actions": {
+            "description": "Actions are specific operations a user is allowed to perform for those resources. Endpoints will define which \"action\" they belong under.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            }
+          },
+          "resources": {
+            "description": "Which resource we're targeting. A resource is also know as a collection in REST APIs. It refers to a particular group of endpoints. Resources might also have specific objects being targeted.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            }
+          }
+        },
+        "required": [
+          "actions",
+          "resources"
         ]
       },
       "Pipeline": {
@@ -5118,6 +5497,261 @@
           "Any",
           "Success",
           "Failure"
+        ]
+      },
+      "Resource": {
+        "description": "Resources are representitive group names for collections of endpoints and concepts within Gofer. It's used mostly by the permissioning system to identify collections and grant users permissions to those collections.",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "configs"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "deployments"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "events"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "extensions"
+                ]
+              },
+              "target": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "resource",
+              "target"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "namespaces"
+                ]
+              },
+              "target": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "resource",
+              "target"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "objects"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "permissions"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "pipelines"
+                ]
+              },
+              "target": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "resource",
+              "target"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "runs"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "secrets"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "subscriptions"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "system"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "task_executions"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "tokens"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          }
+        ]
+      },
+      "Role": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Alphanumeric with dashes only",
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "system_role": {
+            "description": "If this role was created by Gofer itself. System roles cannot be modified.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "description",
+          "id",
+          "permissions",
+          "system_role"
         ]
       },
       "Run": {
@@ -5586,7 +6220,7 @@
             "type": "boolean"
           },
           "expires": {
-            "description": "Time in epoch milliseconds when token would expire.",
+            "description": "Time in epoch milliseconds when token would expire. An expiry of 0 means that token does not expire.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -5602,21 +6236,12 @@
               "type": "string"
             }
           },
-          "namespaces": {
-            "description": "List of namespaces this token has access to, strings in this list can be a regex",
+          "roles": {
+            "description": "The role ids for the current token.",
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "token_type": {
-            "description": "The type of token. Management tokens are essentially root.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TokenType"
-              }
-            ]
+            }
           },
           "user": {
             "description": "The user of the token in plaintext.",
@@ -5629,41 +6254,8 @@
           "expires",
           "id",
           "metadata",
-          "namespaces",
-          "token_type",
+          "roles",
           "user"
-        ]
-      },
-      "TokenType": {
-        "oneOf": [
-          {
-            "description": "Admin token; has access to just about everything.",
-            "type": "string",
-            "enum": [
-              "Management"
-            ]
-          },
-          {
-            "description": "Only has read/write access to namespaces granted.",
-            "type": "string",
-            "enum": [
-              "User"
-            ]
-          },
-          {
-            "description": "Special token given to extensions. Has access to any namespace, but does not have management access.",
-            "type": "string",
-            "enum": [
-              "Extension"
-            ]
-          },
-          {
-            "description": "Gofer has a special function that allows users to autogenerate a token and inject it into their run such that they can use it easily during the run. Has same access properties the user token with a more focused namespace.",
-            "type": "string",
-            "enum": [
-              "Run"
-            ]
-          }
         ]
       },
       "UpdateExtensionRequest": {
@@ -5721,6 +6313,40 @@
           }
         }
       },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "nullable": true,
+            "description": "Short description about what the role is used for.",
+            "type": "string"
+          },
+          "permissions": {
+            "nullable": true,
+            "description": "Permissions that the role allows.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          }
+        }
+      },
+      "UpdateRoleResponse": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "Information about the role updated.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              }
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
       "UpdateSubscriptionRequest": {
         "type": "object",
         "properties": {
@@ -5740,6 +6366,18 @@
           "active",
           "disabled"
         ]
+      },
+      "UpdateSystemPreferencesRequest": {
+        "type": "object",
+        "properties": {
+          "ignore_pipeline_run_events": {
+            "nullable": true,
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateSystemPreferencesResponse": {
+        "type": "object"
       },
       "UpdateTokenRequest": {
         "type": "object",
@@ -6302,6 +6940,10 @@
     {
       "name": "Objects",
       "description": "The object store is a temporary key-vale storage mechanism for pipelines and runs. It allows the user to cache objects for the lifetime of multiple runs or for the lifetime of a single run.There are two separate types of objects, each useful for its own use case. Visit the documentation\n                    for more details on the associated lifetimes of pipeline specific and run specific objects"
+    },
+    {
+      "name": "Permissions",
+      "description": "Gofer has an RBAC system which can be utilized to give different tokens/users\n                        permissions."
     },
     {
       "name": "Pipelines",

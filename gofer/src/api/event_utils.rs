@@ -152,6 +152,14 @@ pub enum Kind {
         extension_id: String,
         subscription_id: String,
     },
+
+    // Permissioning eventss
+    CreatedRole {
+        role_id: String,
+    },
+    DeletedRole {
+        role_id: String,
+    },
 }
 
 /// A single event

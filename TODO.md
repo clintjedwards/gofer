@@ -16,6 +16,8 @@ it would be better for the interval extension to reach out and restore it's own 
 determine and in what order it wants to. This allows the interval to introduce jitter and other algorithms to better
 spread the load.
 
+* Make sure to give extensions access to the new object store.
+
 ## Github Extension followthrough
 
 A great feature to bake into the Github extension would be the ability for it to act as a communicator with the
@@ -63,13 +65,14 @@ yet.
 * Create a setting to allow operators to turn off the ability to attach to a container.
 * If the parent does not exist for a particular thing it errors incorrectly. For example if you request a correct task
 execution but mistype the pipeline, you might get an error instead of a "hey that thing doesn't exist".
-* Management tokens with certain namespaces should only be able to create client tokens with those same namespaces.
+* Admin tokens with certain namespaces should only be able to create client tokens with those same namespaces.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * By default docker doesn't allow you to do versioning tricks like pinning to a major version but freely updating the minor
 version. I wonder if there is a way we can offer this feature for free for the purposes of extensions. Since extensions with
 the same major version should work, but extensions might all have different minor versions, it would be useful to be able
 to tell Gofer to use a major version of the extension but we always want the latest minor version.
 * Turn off the incoming request in the dropshot logging. Probably check all logging to make sure we need it.
+* Deployments needs a type parameter so when we add extra deployments.
 
 
 # Small things I'll probably never get around to.
@@ -95,6 +98,7 @@ finishes at which time it reflects a summary about what it did.
 the whole thing is aborted, which is obviously bad because when we implement networked schedulers network calls will fail
 sometimes.
 * Deployment logs need to be reinstated.
+* Simplify how we check our RBAC permissions.
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 

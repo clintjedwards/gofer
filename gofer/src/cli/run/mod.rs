@@ -267,7 +267,7 @@ impl Cli {
         }
 
         const TEMPLATE: &str = r#"
-  Initiated by {{ initiator_name }} {{ initiator_type }} {{ started }} and ran for {{ duration }}
+  Initiated by {{ initiator_name }} {{ started }} and ran for {{ duration }}
   {%- if task_executions is defined and task_executions | length > 0 %}
 
   🗒 Task Executions
@@ -289,13 +289,7 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("initiator_name", &run.initiator.id.cyan().to_string());
-        context.insert(
-            "initiator_type",
-            &format!("[{}]", run.initiator.kind.to_string())
-                .dimmed()
-                .to_string(),
-        );
+        context.insert("initiator_name", &run.initiator.user.cyan().to_string());
         context.insert(
             "started",
             &humanize_relative_duration(run.started).unwrap_or_else(|| "Not yet".to_string()),

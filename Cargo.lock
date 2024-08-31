@@ -2513,8 +2513,8 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "polyfmt"
-version = "0.0.12"
-source = "git+https://github.com/clintjedwards/polyfmt-rs.git?tag=v0.0.12#ac0bf23d960702d917681a2d45a1747b50bde7d7"
+version = "0.0.13"
+source = "git+https://github.com/clintjedwards/polyfmt-rs.git?tag=v0.0.13#247965ac1837a180e8b7ae0a5bdf0aa0f5d8d81a"
 dependencies = [
  "anyhow",
  "colored",

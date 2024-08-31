@@ -60,15 +60,15 @@ You will notice upon service start that the Gofer CLI is unable to make any requ
 You will first need to handle the problem of auth. Every request to Gofer must use an API key so Gofer can
 appropriately direct requests.
 
-More information about auth in general terms [can be found here.](./authentication.md)
+More information about auth in general terms [can be found here.](./authz_n.md)
 
-To create your root management token use the command: `gofer token bootstrap`
+To create your root/bootstrap token use the command: `gofer token bootstrap`
 
 <div class="box note">
   <div class="text">
   <strong>Note:</strong>
 
-  <p>The token returned is a management token and as such has access to all routes within Gofer. It is advised that:</p>
+  <p>The token returned is a bootstrap token and as such has access to all routes within Gofer. It is advised that:</p>
     <ol>
       <li> You use this token only in admin situations and to generate other lesser permissioned tokens.</li>
       <li> Store this token somewhere safe. </li>

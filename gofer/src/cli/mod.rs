@@ -2,6 +2,7 @@ mod event;
 mod extension;
 mod namespace;
 mod pipeline;
+mod role;
 mod run;
 mod secret;
 mod service;
@@ -122,6 +123,11 @@ enum Commands {
     /// that all execute according to their dependency on each other.
     Run(run::RunSubcommands),
 
+    /// Manage permissions and roles.
+    ///
+    /// A role is a group of permissions assigned to tokens to give user's access.
+    Role(role::RoleSubcommands),
+
     /// Manage task executions.
     ///
     /// A task is the lowest unit of execution for a pipeline. A task execution is the
@@ -197,6 +203,7 @@ impl Cli {
             Commands::Namespace(namespace) => self.handle_namespace_subcommands(namespace).await,
             Commands::Pipeline(pipeline) => self.handle_pipeline_subcommands(pipeline).await,
             Commands::Run(run) => self.handle_run_subcommands(run).await,
+            Commands::Role(role) => self.handle_role_subcommands(role).await,
             Commands::Secret(secret) => self.handle_secret_subcommands(secret).await,
             Commands::Task(task) => self.handle_task_subcommands(task).await,
             Commands::Extension(extension) => self.handle_extension_subcommands(extension).await,

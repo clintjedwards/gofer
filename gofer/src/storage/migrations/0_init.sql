@@ -198,12 +198,27 @@ CREATE TABLE IF NOT EXISTS tokens (
     id          TEXT    NOT NULL,
     hash        TEXT    NOT NULL,
     created     TEXT    NOT NULL,
-    token_type  TEXT    NOT NULL,
-    namespaces  TEXT    NOT NULL,
     metadata    TEXT    NOT NULL,
     expires     TEXT    NOT NULL,
     disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1)),
+    roles       TEXT    NOT NULL,
     user        TEXT    NOT NULL
 ) STRICT;
 
 CREATE INDEX idx_tokens_hash ON tokens (hash);
+
+CREATE TABLE IF NOT EXISTS roles (
+    id          TEXT    NOT NULL,
+    description TEXT    NOT NULL,
+    permissions TEXT    NOT NULL,
+    system_role INTEGER NOT NULL CHECK (system_role IN (0, 1)),
+    PRIMARY KEY (id)
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS system (
+    id                         INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+    bootstrap_token_created    INTEGER NOT NULL CHECK (bootstrap_token_created IN (0, 1)),
+    ignore_pipeline_run_events INTEGER NOT NULL CHECK (ignore_pipeline_run_events IN (0, 1))
+) STRICT;
+
+INSERT INTO system (id, bootstrap_token_created, ignore_pipeline_run_events) VALUES (1, 0, 0) ON CONFLICT(id) DO NOTHING;

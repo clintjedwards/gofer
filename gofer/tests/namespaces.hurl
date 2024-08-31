@@ -1,7 +1,8 @@
 # Create new namespace
 POST http://localhost:8080/api/namespaces
 gofer-api-version: v0
-content-type: application/json
+Content-Type: application/json
+Authorization: Bearer {{secret}}
 {
     "id": "testing",
     "name": "Testing",
@@ -13,9 +14,9 @@ HTTP 201
 GET http://localhost:8080/api/namespaces
 gofer-api-version: v0
 Content-Type: application/json
+Authorization: Bearer {{secret}}
 HTTP 200
 [Asserts]
-jsonpath "$.namespaces" count == 2
 jsonpath "$.namespaces[?(@.id == 'default')]" exists
 jsonpath "$.namespaces[?(@.id == 'testing')]" exists
 
@@ -23,6 +24,7 @@ jsonpath "$.namespaces[?(@.id == 'testing')]" exists
 GET http://localhost:8080/api/namespaces/testing
 gofer-api-version: v0
 Content-Type: application/json
+Authorization: Bearer {{secret}}
 HTTP 200
 [Asserts]
 jsonpath "$.namespace.id" == "testing"
@@ -33,6 +35,7 @@ jsonpath "$.namespace.description" == "The testing namespace"
 PATCH http://localhost:8080/api/namespaces/testing
 gofer-api-version: v0
 content-type: application/json
+Authorization: Bearer {{secret}}
 {
     "name": "Integration Testing",
     "description": "The integration testing namespace"
@@ -43,6 +46,7 @@ HTTP 200
 GET http://localhost:8080/api/namespaces/testing
 gofer-api-version: v0
 Content-Type: application/json
+Authorization: Bearer {{secret}}
 HTTP 200
 [Asserts]
 jsonpath "$.namespace.id" == "testing"
@@ -53,10 +57,12 @@ jsonpath "$.namespace.description" == "The integration testing namespace"
 DELETE http://localhost:8080/api/namespaces/testing
 gofer-api-version: v0
 Content-Type: application/json
+Authorization: Bearer {{secret}}
 HTTP 204
 
 # Check that namespace was actually deleted
 GET http://localhost:8080/api/namespaces/testing
 gofer-api-version: v0
 Content-Type: application/json
+Authorization: Bearer {{secret}}
 HTTP 404

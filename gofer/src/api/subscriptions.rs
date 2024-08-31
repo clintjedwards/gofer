@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{
         event_utils, extensions, interpolate_vars, is_valid_identifier, ApiState, PreflightOptions,
@@ -220,8 +221,13 @@ pub async fn list_subscriptions(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Subscriptions,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -298,8 +304,13 @@ pub async fn get_subscription(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Subscriptions,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -387,8 +398,13 @@ pub async fn update_subscription(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Subscriptions,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -485,8 +501,13 @@ pub async fn create_subscription(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Subscriptions,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -657,8 +678,13 @@ pub async fn delete_subscription(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Subscriptions,
+                ],
+                action: Action::Delete,
             },
         )
         .await?;

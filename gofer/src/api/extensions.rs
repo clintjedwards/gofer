@@ -1,7 +1,9 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        epoch_milli, format_duration, listen_for_terminate_signal, load_tls, tokens,
-        websocket_error, ApiState, PreflightOptions, RegistryAuth, Variable, VariableSource,
+        epoch_milli, format_duration, listen_for_terminate_signal, load_tls,
+        permissioning::SystemRoles, tokens, websocket_error, ApiState, PreflightOptions,
+        RegistryAuth, Variable, VariableSource,
     },
     http_error,
     scheduler::{self, GetLogsRequest},
@@ -18,11 +20,7 @@ use reqwest::{header, Client};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::Acquire;
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
 use tracing::{debug, error, info};
 use tungstenite::protocol::{frame::coding::CloseCode, Role};
@@ -418,11 +416,10 @@ async fn start_extension(
     let (token, hash) = tokens::create_new_api_token();
     let new_token = tokens::Token::new(
         &hash.to_string(),
-        tokens::TokenType::Extension,
-        HashSet::from([".*".into()]), // Allow access to any namespace.
         HashMap::from([("extension_id".into(), registration.extension_id.clone())]),
         946728000, // 30 years
         registration.extension_id.clone(),
+        vec![SystemRoles::Extension.to_string()],
     );
 
     let mut conn = match api_state.storage.conn().await {
@@ -866,8 +863,9 @@ pub async fn list_extensions(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![Resource::Extensions("".into())],
+                action: Action::Read,
             },
         )
         .await?;
@@ -906,8 +904,9 @@ pub async fn get_extension(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                action: Action::Read,
             },
         )
         .await?;
@@ -981,7 +980,7 @@ impl TryFrom<InstallExtensionRequest> for Registration {
 
 /// Register and start a new extension.
 ///
-/// This route is only available to management tokens.
+/// This route is only available to admin tokens.
 #[endpoint(
     method = POST,
     path = "/api/extensions",
@@ -998,8 +997,9 @@ pub async fn install_extension(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Extensions("".into())],
+                action: Action::Write,
             },
         )
         .await?;
@@ -1101,7 +1101,7 @@ pub struct UpdateExtensionRequest {
 
 /// Enable or disable an extension.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = PATCH,
     path = "/api/extensions/{extension_id}",
@@ -1120,8 +1120,9 @@ pub async fn update_extension(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                action: Action::Write,
             },
         )
         .await?;
@@ -1179,7 +1180,7 @@ pub async fn update_extension(
 
 /// Uninstall a registered extension.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = DELETE,
     path = "/api/extensions/{extension_id}",
@@ -1190,29 +1191,27 @@ pub async fn uninstall_extension(
     path_params: Path<ExtensionPathArgs>,
 ) -> Result<HttpResponseDeleted, HttpError> {
     let api_state = rqctx.context();
-    let path_params = path_params.into_inner();
+    let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                action: Action::Delete,
             },
         )
         .await?;
 
-    if !api_state.extensions.contains_key(&path_params.extension_id) {
+    if !api_state.extensions.contains_key(&path.extension_id) {
         return Err(HttpError::for_not_found(
             None,
-            format!(
-                "Extension id '{}' does not exist",
-                &path_params.extension_id
-            ),
+            format!("Extension id '{}' does not exist", &path.extension_id),
         ));
     };
 
-    let container_id = extension_container_id(&path_params.extension_id);
+    let container_id = extension_container_id(&path.extension_id);
 
     // We don't care about the error here. We'll just try to shut it down on best effort.
     let _ = api_state
@@ -1223,7 +1222,7 @@ pub async fn uninstall_extension(
         })
         .await;
 
-    let _ = api_state.extensions.remove(&path_params.extension_id);
+    let _ = api_state.extensions.remove(&path.extension_id);
 
     let mut conn = match api_state.storage.conn().await {
         Ok(conn) => conn,
@@ -1237,7 +1236,7 @@ pub async fn uninstall_extension(
         }
     };
 
-    storage::extension_registrations::delete(&mut conn, &path_params.extension_id)
+    storage::extension_registrations::delete(&mut conn, &path.extension_id)
         .await
         .map_err(|err| {
             http_error!(
@@ -1269,8 +1268,9 @@ pub async fn get_extension_logs(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                action: Action::Read,
             },
         )
         .await?;

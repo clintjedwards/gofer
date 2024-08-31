@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{epoch_milli, event_utils, ApiState, PreflightOptions},
     http_error, storage,
@@ -308,8 +309,13 @@ pub async fn list_deployments(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Deployments,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -381,8 +387,13 @@ pub async fn get_deployment(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Deployments,
+                ],
+                action: Action::Read,
             },
         )
         .await?;

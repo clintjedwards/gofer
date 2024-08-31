@@ -7,11 +7,10 @@ pub struct Token {
     pub id: String,
     pub hash: String,
     pub created: String,
-    pub token_type: String,
-    pub namespaces: String,
     pub metadata: String,
     pub expires: String,
     pub disabled: bool,
+    pub roles: String,
     pub user: String,
 }
 
@@ -22,18 +21,17 @@ pub struct UpdatableFields {
 
 pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), StorageError> {
     let query = sqlx::query(
-        "INSERT INTO tokens (id, hash, created, token_type, namespaces, metadata, expires, disabled, user)\
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO tokens (id, hash, created, metadata, expires, disabled, user, roles)\
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     )
     .bind(&token.id)
     .bind(&token.hash)
     .bind(&token.created)
-    .bind(&token.token_type)
-    .bind(&token.namespaces)
     .bind(&token.metadata)
     .bind(&token.expires)
     .bind(token.disabled)
-    .bind(&token.user);
+    .bind(&token.user)
+    .bind(&token.roles);
 
     let sql = query.sql();
 
@@ -45,32 +43,9 @@ pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), St
     Ok(())
 }
 
-pub async fn management_token_exists(conn: &mut SqliteConnection) -> Result<bool, StorageError> {
-    let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, token_type, \
-        namespaces, metadata, expires, disabled, user FROM tokens WHERE token_type = 'management';",
-    );
-
-    let sql = query.sql();
-
-    let result = query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await;
-
-    if let Err(e) = result {
-        match e {
-            StorageError::NotFound => return Ok(false),
-            _ => return Err(e),
-        }
-    };
-
-    Ok(true)
-}
-
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageError> {
     let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, token_type, namespaces, metadata, expires, disabled, user FROM tokens;",
+        "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens;",
     );
 
     let sql = query.sql();
@@ -83,8 +58,8 @@ pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageErro
 
 pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, StorageError> {
     let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, token_type, namespaces, metadata, expires, \
-        disabled, user FROM tokens WHERE id = ?;",
+        "SELECT id, hash, created, metadata, expires, \
+        disabled, user, roles FROM tokens WHERE id = ?;",
     )
     .bind(id);
 
@@ -98,8 +73,7 @@ pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, S
 
 pub async fn get_by_hash(conn: &mut SqliteConnection, hash: &str) -> Result<Token, StorageError> {
     let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, token_type, namespaces, metadata, expires,\
-        disabled, user FROM tokens WHERE hash = ?;",
+        "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens WHERE hash = ?;",
     )
     .bind(hash);
 
@@ -174,38 +148,16 @@ mod tests {
             id: "some_id".into(),
             hash: "some_hash".into(),
             created: "some_time".into(),
-            token_type: "management".into(),
-            namespaces: "some_json_list".into(),
             metadata: "some_json_hashmap".into(),
             expires: "some_expiry".into(),
             user: "some_user".into(),
+            roles: "{some_role_scheme}".into(),
             disabled: false,
         };
 
         insert(&mut conn, &token).await?;
 
         Ok((harness, conn))
-    }
-
-    #[tokio::test]
-    async fn test_management_token_exists() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
-
-        let exists = management_token_exists(&mut conn)
-            .await
-            .expect("Failed to check for management token");
-
-        assert!(exists);
-
-        delete(&mut conn, "some_id")
-            .await
-            .expect("Failed to delete Token");
-
-        let exists = management_token_exists(&mut conn)
-            .await
-            .expect("Failed to check for management token");
-
-        assert!(!exists);
     }
 
     #[tokio::test]
@@ -255,7 +207,7 @@ mod tests {
             .await
             .expect("Failed to get Token");
         assert_eq!(fetched_token.id, "some_id");
-        assert_eq!(fetched_token.namespaces, "some_json_list");
+        assert_eq!(fetched_token.roles, "{some_role_scheme}",);
     }
 
     #[tokio::test]

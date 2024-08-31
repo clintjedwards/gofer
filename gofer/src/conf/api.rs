@@ -19,9 +19,6 @@ pub struct ApiConfig {
 
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Api {
-    /// Controls the ability to extension runs. This setting can be toggled while the server is running.
-    pub ignore_pipeline_run_events: bool,
-
     /// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
     pub run_parallelism_limit: u64,
 

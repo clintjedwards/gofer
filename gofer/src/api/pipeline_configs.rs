@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{
         deployments, epoch_milli, event_utils, is_valid_identifier, pipelines, tasks, ApiState,
@@ -230,8 +231,13 @@ pub async fn list_configs(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Configs,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -346,8 +352,13 @@ pub async fn get_config(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Configs,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -498,8 +509,13 @@ pub async fn register_config(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Configs,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -716,8 +732,13 @@ pub async fn deploy_config(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: true,
+                admin_only: true,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Configs,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -1039,8 +1060,13 @@ pub async fn delete_config(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Configs,
+                ],
+                action: Action::Delete,
             },
         )
         .await?;

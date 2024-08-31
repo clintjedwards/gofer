@@ -1,3 +1,4 @@
+use super::permissioning::Action;
 use crate::api::{
     extensions, load_tls, wait_for_shutdown_signal, ApiState, Middleware, PreflightOptions,
 };
@@ -84,7 +85,7 @@ pub struct ExternalEventPathArgs {
 ///
 /// The data here will be passed to the targeted extension.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = POST,
     path = "/api/external/{extension_id}",
@@ -102,8 +103,9 @@ pub async fn external_event_handler(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: true,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![],
+                action: Action::Write,
             },
         )
         .await?;

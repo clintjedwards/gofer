@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{epoch_milli, ApiState, PreflightOptions},
     http_error, object_store, storage,
@@ -190,8 +191,14 @@ pub async fn list_run_objects(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::Objects,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -279,8 +286,14 @@ pub async fn get_run_object(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::Objects,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -351,8 +364,14 @@ pub async fn put_run_object(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::Objects,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -451,8 +470,14 @@ pub async fn delete_run_object(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::Objects,
+                ],
+                action: Action::Delete,
             },
         )
         .await?;
@@ -550,8 +575,13 @@ pub async fn list_pipeline_objects(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Objects,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -628,8 +658,13 @@ pub async fn get_pipeline_object(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Objects,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -699,8 +734,13 @@ pub async fn put_pipeline_object(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Objects,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -793,8 +833,13 @@ pub async fn delete_pipeline_object(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Objects,
+                ],
+                action: Action::Delete,
             },
         )
         .await?;

@@ -74,6 +74,7 @@ run-hurl-tests:
 > @pkill -9 gofer || true
 > @cd gofer
 > @export GOFER_WEB_API__LOG_LEVEL=debug
+> @export GOFER_WEB_DEVELOPMENT__BYPASS_AUTH=false
 > @cargo run --bin gofer -- service start > /dev/null 2>&1 &
 
 > echo -n "Waiting for server to start responding..."
@@ -82,10 +83,16 @@ run-hurl-tests:
 > done;
 
 > @cd tests
+> SECRET=$$(curl -s --fail --request POST \
+  --url http://localhost:8080/api/tokens/bootstrap \
+  --header 'gofer-api-version: v0' \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' | jq -r '.secret')
 > echo -ne "\r\033[K"  # Moves cursor to start of line and clears the line
 > echo "Hurl Results"
 > echo "--------------------------------"
-> hurl --test *.hurl
+> hurl --color --test *.hurl --variable secret=$$SECRET
+
 
 ## cleanup-integration-tests: Clean up the background gofer process.
 cleanup-integration-tests:

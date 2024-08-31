@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{
         event_utils::Event, format_duration, listen_for_terminate_signal, websocket_error,
@@ -62,8 +63,9 @@ pub async fn stream_events(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![Resource::Events],
+                action: Action::Read,
             },
         )
         .await?;
@@ -296,8 +298,9 @@ pub async fn get_event(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![Resource::Events],
+                action: Action::Read,
             },
         )
         .await?;
@@ -346,7 +349,7 @@ pub async fn get_event(
 
 /// Delete api event by id.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible by admin tokens.
 #[endpoint(
     method = DELETE,
     path = "/api/events/{event_id}",
@@ -363,8 +366,9 @@ pub async fn delete_event(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Events],
+                action: Action::Delete,
             },
         )
         .await?;

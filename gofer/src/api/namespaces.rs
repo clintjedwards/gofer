@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{epoch_milli, event_utils, is_valid_identifier, ApiState, PreflightOptions},
     http_error, storage,
@@ -113,8 +114,9 @@ pub async fn list_namespaces(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![Resource::Namespaces("".into())],
+                action: Action::Read,
             },
         )
         .await?;
@@ -185,8 +187,9 @@ pub async fn get_namespace(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: false,
+                admin_only: false,
+                resources: vec![Resource::Namespaces(path.namespace_id.clone())],
+                action: Action::Read,
             },
         )
         .await?;
@@ -253,7 +256,7 @@ pub struct CreateNamespaceResponse {
 
 /// Create a new namespace.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = POST,
     path = "/api/namespaces",
@@ -270,8 +273,9 @@ pub async fn create_namespace(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Namespaces("".into())],
+                action: Action::Write,
             },
         )
         .await?;
@@ -364,7 +368,7 @@ pub struct UpdateNamespaceResponse {
 
 /// Update a namespace's details.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = PATCH,
     path = "/api/namespaces/{namespace_id}",
@@ -383,8 +387,9 @@ pub async fn update_namespace(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Namespaces(path.namespace_id.clone())],
+                action: Action::Write,
             },
         )
         .await?;
@@ -479,7 +484,7 @@ pub async fn update_namespace(
 
 /// Delete api namespace by id.
 ///
-/// This route is only accessible for management tokens.
+/// This route is only accessible for admin tokens.
 #[endpoint(
     method = DELETE,
     path = "/api/namespaces/{namespace_id}",
@@ -496,8 +501,9 @@ pub async fn delete_namespace(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: None,
-                management_only: true,
+                admin_only: true,
+                resources: vec![Resource::Namespaces(path.namespace_id.clone())],
+                action: Action::Delete,
             },
         )
         .await?;
@@ -566,7 +572,7 @@ pub async fn create_default_namespace(api_state: Arc<ApiState>) -> Result<()> {
                 return Ok(());
             }
             _ => {
-                bail!("e")
+                bail!("{e}")
             }
         }
     }

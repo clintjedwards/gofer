@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{
         epoch_milli, event_utils, pipeline_configs, pipelines, run_utils, ApiState,
@@ -21,8 +22,6 @@ use std::{
 };
 use strum::{Display, EnumString};
 use tracing::{debug, error};
-
-use super::tokens::TokenType;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RunPathArgsRoot {
@@ -134,9 +133,6 @@ pub struct StatusReason {
 pub struct Initiator {
     /// The unique identifier for the token that initiated the request.
     pub id: String,
-
-    /// The type of token that initiated the request.
-    pub kind: TokenType,
 
     /// The plaintext username for of the token.
     pub user: String,
@@ -366,8 +362,13 @@ pub async fn list_runs(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -447,8 +448,13 @@ pub async fn get_run(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -534,8 +540,13 @@ pub async fn start_run(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
@@ -677,9 +688,8 @@ pub async fn start_run(
     let new_run_id = latest_run_id + 1;
 
     let initiator = Initiator {
-        id: req_metadata.auth.key_id,
-        kind: req_metadata.auth.key_type,
-        user: req_metadata.auth.key_user,
+        id: req_metadata.auth.token_id,
+        user: req_metadata.auth.token_user,
     };
 
     //TODO(): Implement run_api_token
@@ -778,8 +788,13 @@ pub async fn cancel_run(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                ],
+                action: Action::Read,
             },
         )
         .await?;

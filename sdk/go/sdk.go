@@ -16,6 +16,13 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for Action.
+const (
+	Delete Action = "delete"
+	Read   Action = "read"
+	Write  Action = "write"
+)
+
 // Defines values for ConfigState0.
 const (
 	ConfigState0Unknown ConfigState0 = "unknown"
@@ -62,26 +69,6 @@ const (
 	RequiredParentStatus2Failure RequiredParentStatus2 = "Failure"
 	RequiredParentStatus2Success RequiredParentStatus2 = "Success"
 	RequiredParentStatus2Unknown RequiredParentStatus2 = "Unknown"
-)
-
-// Defines values for TokenType0.
-const (
-	Management TokenType0 = "Management"
-)
-
-// Defines values for TokenType1.
-const (
-	User TokenType1 = "User"
-)
-
-// Defines values for TokenType2.
-const (
-	TokenType2Extension TokenType2 = "Extension"
-)
-
-// Defines values for TokenType3.
-const (
-	TokenType3Run TokenType3 = "Run"
 )
 
 // Defines values for UpdateSubscriptionStatus.
@@ -346,6 +333,9 @@ const (
 	Orphaned TaskExecutionStatusReasonType5 = "orphaned"
 )
 
+// Action defines model for Action.
+type Action string
+
 // Config A representation of the user's configuration settings for a particular pipeline.
 type Config struct {
 	// Deprecated Time in epoch milliseconds when this pipeline config was not longer used.
@@ -414,6 +404,24 @@ type CreateNamespaceResponse struct {
 	Namespace Namespace `json:"namespace"`
 }
 
+// CreateRoleRequest defines model for CreateRoleRequest.
+type CreateRoleRequest struct {
+	// Description Short description about what the role is used for.
+	Description string `json:"description"`
+
+	// Id The unique identifier for the role. Only accepts alphanumeric chars with hyphens. No spaces.
+	Id string `json:"id"`
+
+	// Permissions Permissions that the role allows.
+	Permissions []Permission `json:"permissions"`
+}
+
+// CreateRoleResponse defines model for CreateRoleResponse.
+type CreateRoleResponse struct {
+	// Role Information about the role created.
+	Role Role `json:"role"`
+}
+
 // CreateSubscriptionRequest defines model for CreateSubscriptionRequest.
 type CreateSubscriptionRequest struct {
 	ExtensionId    string            `json:"extension_id"`
@@ -429,17 +437,14 @@ type CreateSubscriptionResponse struct {
 
 // CreateTokenRequest defines model for CreateTokenRequest.
 type CreateTokenRequest struct {
-	// Expires The amount of time the token is valid for in seconds.
+	// Expires The amount of time the token is valid for in seconds. An expiry of 0 means that token does not expire.
 	Expires uint64 `json:"expires"`
 
 	// Metadata Various other bits of data you can attach to tokens. This is used by Gofer to track some details about tokens, but can also be used by users to attach bits of information that would make the token easier to programmatically manage.
-	Metadata map[string]string `json:"metadata"`
+	Metadata *map[string]string `json:"metadata"`
 
-	// Namespaces The namespaces this token applies to. Token will be unauthorized for any namespace not listed. Accepts regexes.
-	Namespaces []string `json:"namespaces"`
-
-	// TokenType The type of token to be created. Can be management or client.
-	TokenType TokenType `json:"token_type"`
+	// Roles The list of roles to apply to the token.
+	Roles []string `json:"roles"`
 
 	// User The plaintext username of the token user.
 	User string `json:"user"`
@@ -605,6 +610,12 @@ type GetPipelineSecretResponse struct {
 	Secret *string `json:"secret"`
 }
 
+// GetRoleResponse defines model for GetRoleResponse.
+type GetRoleResponse struct {
+	// Role The target role.
+	Role Role `json:"role"`
+}
+
 // GetRunObjectResponse defines model for GetRunObjectResponse.
 type GetRunObjectResponse struct {
 	// Object The requested object data.
@@ -632,6 +643,12 @@ type GetSystemMetadataResponse struct {
 	Semver string `json:"semver"`
 }
 
+// GetSystemPreferencesResponse defines model for GetSystemPreferencesResponse.
+type GetSystemPreferencesResponse struct {
+	BootstrapTokenCreated   bool `json:"bootstrap_token_created"`
+	IgnorePipelineRunEvents bool `json:"ignore_pipeline_run_events"`
+}
+
 // GetTaskExecutionResponse defines model for GetTaskExecutionResponse.
 type GetTaskExecutionResponse struct {
 	// TaskExecution The task execution requested.
@@ -648,9 +665,6 @@ type GetTokenByIDResponse struct {
 type Initiator struct {
 	// Id The unique identifier for the token that initiated the request.
 	Id string `json:"id"`
-
-	// Kind The type of token that initiated the request.
-	Kind TokenType `json:"kind"`
 
 	// User The plaintext username for of the token.
 	User string `json:"user"`
@@ -875,6 +889,20 @@ type Kind21 struct {
 	} `json:"pipeline_extension_subscription_unregistered"`
 }
 
+// Kind22 defines model for .
+type Kind22 struct {
+	CreatedRole struct {
+		RoleId string `json:"role_id"`
+	} `json:"created_role"`
+}
+
+// Kind23 defines model for .
+type Kind23 struct {
+	DeletedRole struct {
+		RoleId string `json:"role_id"`
+	} `json:"deleted_role"`
+}
+
 // ListDeploymentsResponse defines model for ListDeploymentsResponse.
 type ListDeploymentsResponse struct {
 	// Deployments A list of all deployments.
@@ -921,6 +949,12 @@ type ListPipelineSecretsResponse struct {
 type ListPipelinesResponse struct {
 	// Pipelines A list of all pipelines metadata.
 	Pipelines []Metadata `json:"pipelines"`
+}
+
+// ListRolesResponse defines model for ListRolesResponse.
+type ListRolesResponse struct {
+	// Roles A list of all roles.
+	Roles []Role `json:"roles"`
 }
 
 // ListRunObjectsResponse defines model for ListRunObjectsResponse.
@@ -1003,6 +1037,15 @@ type Parameter struct {
 	Documentation string `json:"documentation"`
 	Key           string `json:"key"`
 	Required      bool   `json:"required"`
+}
+
+// Permission defines model for Permission.
+type Permission struct {
+	// Actions Actions are specific operations a user is allowed to perform for those resources. Endpoints will define which "action" they belong under.
+	Actions []Action `json:"actions"`
+
+	// Resources Which resource we're targeting. A resource is also know as a collection in REST APIs. It refers to a particular group of endpoints. Resources might also have specific objects being targeted.
+	Resources []Resource `json:"resources"`
 }
 
 // Pipeline `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute.
@@ -1171,6 +1214,101 @@ type RequiredParentStatus string
 
 // RequiredParentStatus2 defines model for RequiredParentStatus2.
 type RequiredParentStatus2 string
+
+// Resource Resources are representitive group names for collections of endpoints and concepts within Gofer. It's used mostly by the permissioning system to identify collections and grant users permissions to those collections.
+type Resource struct {
+	union json.RawMessage
+}
+
+// Resource0 defines model for .
+type Resource0 struct {
+	Resource Resource0Resource `json:"resource"`
+}
+
+// Resource1 defines model for .
+type Resource1 struct {
+	Resource Resource1Resource `json:"resource"`
+}
+
+// Resource2 defines model for .
+type Resource2 struct {
+	Resource Resource2Resource `json:"resource"`
+}
+
+// Resource3 defines model for .
+type Resource3 struct {
+	Resource Resource3Resource `json:"resource"`
+}
+
+// Resource4 defines model for .
+type Resource4 struct {
+	Resource Resource4Resource `json:"resource"`
+	Target   string            `json:"target"`
+}
+
+// Resource5 defines model for .
+type Resource5 struct {
+	Resource Resource5Resource `json:"resource"`
+	Target   string            `json:"target"`
+}
+
+// Resource6 defines model for .
+type Resource6 struct {
+	Resource Resource6Resource `json:"resource"`
+}
+
+// Resource7 defines model for .
+type Resource7 struct {
+	Resource Resource7Resource `json:"resource"`
+}
+
+// Resource8 defines model for .
+type Resource8 struct {
+	Resource Resource8Resource `json:"resource"`
+	Target   string            `json:"target"`
+}
+
+// Resource9 defines model for .
+type Resource9 struct {
+	Resource Resource9Resource `json:"resource"`
+}
+
+// Resource10 defines model for .
+type Resource10 struct {
+	Resource Resource10Resource `json:"resource"`
+}
+
+// Resource11 defines model for .
+type Resource11 struct {
+	Resource Resource11Resource `json:"resource"`
+}
+
+// Resource12 defines model for .
+type Resource12 struct {
+	Resource Resource12Resource `json:"resource"`
+}
+
+// Resource13 defines model for .
+type Resource13 struct {
+	Resource Resource13Resource `json:"resource"`
+}
+
+// Resource14 defines model for .
+type Resource14 struct {
+	Resource Resource14Resource `json:"resource"`
+}
+
+// Role defines model for Role.
+type Role struct {
+	Description string `json:"description"`
+
+	// Id Alphanumeric with dashes only
+	Id          string       `json:"id"`
+	Permissions []Permission `json:"permissions"`
+
+	// SystemRole If this role was created by Gofer itself. System roles cannot be modified.
+	SystemRole bool `json:"system_role"`
+}
 
 // Run A run is one or more tasks being executed on behalf of some extension. Run is a third level unit containing tasks and being contained in a pipeline.
 type Run struct {
@@ -1368,7 +1506,7 @@ type Token struct {
 	// Disabled If the token is inactive or not; disabled tokens cannot be used for requests.
 	Disabled bool `json:"disabled"`
 
-	// Expires Time in epoch milliseconds when token would expire.
+	// Expires Time in epoch milliseconds when token would expire. An expiry of 0 means that token does not expire.
 	Expires uint64 `json:"expires"`
 
 	// Id Unique identifier for token.
@@ -1377,32 +1515,12 @@ type Token struct {
 	// Metadata Extra information about this token in label form
 	Metadata map[string]string `json:"metadata"`
 
-	// Namespaces List of namespaces this token has access to, strings in this list can be a regex
-	Namespaces []string `json:"namespaces"`
-
-	// TokenType The type of token. Management tokens are essentially root.
-	TokenType TokenType `json:"token_type"`
+	// Roles The role ids for the current token.
+	Roles []string `json:"roles"`
 
 	// User The user of the token in plaintext.
 	User string `json:"user"`
 }
-
-// TokenType defines model for TokenType.
-type TokenType struct {
-	union json.RawMessage
-}
-
-// TokenType0 Admin token; has access to just about everything.
-type TokenType0 string
-
-// TokenType1 Only has read/write access to namespaces granted.
-type TokenType1 string
-
-// TokenType2 Special token given to extensions. Has access to any namespace, but does not have management access.
-type TokenType2 string
-
-// TokenType3 Gofer has a special function that allows users to autogenerate a token and inject it into their run such that they can use it easily during the run. Has same access properties the user token with a more focused namespace.
-type TokenType3 string
 
 // UpdateExtensionRequest defines model for UpdateExtensionRequest.
 type UpdateExtensionRequest struct {
@@ -1429,6 +1547,21 @@ type UpdatePipelineRequest struct {
 	State *PipelineState `json:"state"`
 }
 
+// UpdateRoleRequest defines model for UpdateRoleRequest.
+type UpdateRoleRequest struct {
+	// Description Short description about what the role is used for.
+	Description *string `json:"description"`
+
+	// Permissions Permissions that the role allows.
+	Permissions *[]Permission `json:"permissions"`
+}
+
+// UpdateRoleResponse defines model for UpdateRoleResponse.
+type UpdateRoleResponse struct {
+	// Role Information about the role updated.
+	Role Role `json:"role"`
+}
+
 // UpdateSubscriptionRequest defines model for UpdateSubscriptionRequest.
 type UpdateSubscriptionRequest struct {
 	Status *UpdateSubscriptionStatus `json:"status"`
@@ -1436,6 +1569,14 @@ type UpdateSubscriptionRequest struct {
 
 // UpdateSubscriptionStatus defines model for UpdateSubscriptionStatus.
 type UpdateSubscriptionStatus string
+
+// UpdateSystemPreferencesRequest defines model for UpdateSystemPreferencesRequest.
+type UpdateSystemPreferencesRequest struct {
+	IgnorePipelineRunEvents *bool `json:"ignore_pipeline_run_events"`
+}
+
+// UpdateSystemPreferencesResponse defines model for UpdateSystemPreferencesResponse.
+type UpdateSystemPreferencesResponse = map[string]interface{}
 
 // UpdateTokenRequest defines model for UpdateTokenRequest.
 type UpdateTokenRequest struct {
@@ -1771,8 +1912,17 @@ type CreateSubscriptionJSONRequestBody = CreateSubscriptionRequest
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequest
 
+// CreateRoleJSONRequestBody defines body for CreateRole for application/json ContentType.
+type CreateRoleJSONRequestBody = CreateRoleRequest
+
+// UpdateRoleJSONRequestBody defines body for UpdateRole for application/json ContentType.
+type UpdateRoleJSONRequestBody = UpdateRoleRequest
+
 // PutGlobalSecretJSONRequestBody defines body for PutGlobalSecret for application/json ContentType.
 type PutGlobalSecretJSONRequestBody = PutGlobalSecretRequest
+
+// UpdateSystemPreferencesJSONRequestBody defines body for UpdateSystemPreferences for application/json ContentType.
+type UpdateSystemPreferencesJSONRequestBody = UpdateSystemPreferencesRequest
 
 // CreateTokenJSONRequestBody defines body for CreateToken for application/json ContentType.
 type CreateTokenJSONRequestBody = CreateTokenRequest
@@ -2466,6 +2616,58 @@ func (t *Kind) MergeKind21(v Kind21) error {
 	return err
 }
 
+// AsKind22 returns the union data inside the Kind as a Kind22
+func (t Kind) AsKind22() (Kind22, error) {
+	var body Kind22
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromKind22 overwrites any union data inside the Kind as the provided Kind22
+func (t *Kind) FromKind22(v Kind22) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeKind22 performs a merge with any union data inside the Kind, using the provided Kind22
+func (t *Kind) MergeKind22(v Kind22) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsKind23 returns the union data inside the Kind as a Kind23
+func (t Kind) AsKind23() (Kind23, error) {
+	var body Kind23
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromKind23 overwrites any union data inside the Kind as the provided Kind23
+func (t *Kind) FromKind23(v Kind23) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeKind23 performs a merge with any union data inside the Kind, using the provided Kind23
+func (t *Kind) MergeKind23(v Kind23) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t Kind) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -2476,22 +2678,22 @@ func (t *Kind) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// AsTokenType0 returns the union data inside the TokenType as a TokenType0
-func (t TokenType) AsTokenType0() (TokenType0, error) {
-	var body TokenType0
+// AsResource0 returns the union data inside the Resource as a Resource0
+func (t Resource) AsResource0() (Resource0, error) {
+	var body Resource0
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromTokenType0 overwrites any union data inside the TokenType as the provided TokenType0
-func (t *TokenType) FromTokenType0(v TokenType0) error {
+// FromResource0 overwrites any union data inside the Resource as the provided Resource0
+func (t *Resource) FromResource0(v Resource0) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeTokenType0 performs a merge with any union data inside the TokenType, using the provided TokenType0
-func (t *TokenType) MergeTokenType0(v TokenType0) error {
+// MergeResource0 performs a merge with any union data inside the Resource, using the provided Resource0
+func (t *Resource) MergeResource0(v Resource0) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -2502,22 +2704,22 @@ func (t *TokenType) MergeTokenType0(v TokenType0) error {
 	return err
 }
 
-// AsTokenType1 returns the union data inside the TokenType as a TokenType1
-func (t TokenType) AsTokenType1() (TokenType1, error) {
-	var body TokenType1
+// AsResource1 returns the union data inside the Resource as a Resource1
+func (t Resource) AsResource1() (Resource1, error) {
+	var body Resource1
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromTokenType1 overwrites any union data inside the TokenType as the provided TokenType1
-func (t *TokenType) FromTokenType1(v TokenType1) error {
+// FromResource1 overwrites any union data inside the Resource as the provided Resource1
+func (t *Resource) FromResource1(v Resource1) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeTokenType1 performs a merge with any union data inside the TokenType, using the provided TokenType1
-func (t *TokenType) MergeTokenType1(v TokenType1) error {
+// MergeResource1 performs a merge with any union data inside the Resource, using the provided Resource1
+func (t *Resource) MergeResource1(v Resource1) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -2528,22 +2730,22 @@ func (t *TokenType) MergeTokenType1(v TokenType1) error {
 	return err
 }
 
-// AsTokenType2 returns the union data inside the TokenType as a TokenType2
-func (t TokenType) AsTokenType2() (TokenType2, error) {
-	var body TokenType2
+// AsResource2 returns the union data inside the Resource as a Resource2
+func (t Resource) AsResource2() (Resource2, error) {
+	var body Resource2
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromTokenType2 overwrites any union data inside the TokenType as the provided TokenType2
-func (t *TokenType) FromTokenType2(v TokenType2) error {
+// FromResource2 overwrites any union data inside the Resource as the provided Resource2
+func (t *Resource) FromResource2(v Resource2) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeTokenType2 performs a merge with any union data inside the TokenType, using the provided TokenType2
-func (t *TokenType) MergeTokenType2(v TokenType2) error {
+// MergeResource2 performs a merge with any union data inside the Resource, using the provided Resource2
+func (t *Resource) MergeResource2(v Resource2) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -2554,22 +2756,22 @@ func (t *TokenType) MergeTokenType2(v TokenType2) error {
 	return err
 }
 
-// AsTokenType3 returns the union data inside the TokenType as a TokenType3
-func (t TokenType) AsTokenType3() (TokenType3, error) {
-	var body TokenType3
+// AsResource3 returns the union data inside the Resource as a Resource3
+func (t Resource) AsResource3() (Resource3, error) {
+	var body Resource3
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromTokenType3 overwrites any union data inside the TokenType as the provided TokenType3
-func (t *TokenType) FromTokenType3(v TokenType3) error {
+// FromResource3 overwrites any union data inside the Resource as the provided Resource3
+func (t *Resource) FromResource3(v Resource3) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeTokenType3 performs a merge with any union data inside the TokenType, using the provided TokenType3
-func (t *TokenType) MergeTokenType3(v TokenType3) error {
+// MergeResource3 performs a merge with any union data inside the Resource, using the provided Resource3
+func (t *Resource) MergeResource3(v Resource3) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -2580,12 +2782,298 @@ func (t *TokenType) MergeTokenType3(v TokenType3) error {
 	return err
 }
 
-func (t TokenType) MarshalJSON() ([]byte, error) {
+// AsResource4 returns the union data inside the Resource as a Resource4
+func (t Resource) AsResource4() (Resource4, error) {
+	var body Resource4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource4 overwrites any union data inside the Resource as the provided Resource4
+func (t *Resource) FromResource4(v Resource4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource4 performs a merge with any union data inside the Resource, using the provided Resource4
+func (t *Resource) MergeResource4(v Resource4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource5 returns the union data inside the Resource as a Resource5
+func (t Resource) AsResource5() (Resource5, error) {
+	var body Resource5
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource5 overwrites any union data inside the Resource as the provided Resource5
+func (t *Resource) FromResource5(v Resource5) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource5 performs a merge with any union data inside the Resource, using the provided Resource5
+func (t *Resource) MergeResource5(v Resource5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource6 returns the union data inside the Resource as a Resource6
+func (t Resource) AsResource6() (Resource6, error) {
+	var body Resource6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource6 overwrites any union data inside the Resource as the provided Resource6
+func (t *Resource) FromResource6(v Resource6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource6 performs a merge with any union data inside the Resource, using the provided Resource6
+func (t *Resource) MergeResource6(v Resource6) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource7 returns the union data inside the Resource as a Resource7
+func (t Resource) AsResource7() (Resource7, error) {
+	var body Resource7
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource7 overwrites any union data inside the Resource as the provided Resource7
+func (t *Resource) FromResource7(v Resource7) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource7 performs a merge with any union data inside the Resource, using the provided Resource7
+func (t *Resource) MergeResource7(v Resource7) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource8 returns the union data inside the Resource as a Resource8
+func (t Resource) AsResource8() (Resource8, error) {
+	var body Resource8
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource8 overwrites any union data inside the Resource as the provided Resource8
+func (t *Resource) FromResource8(v Resource8) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource8 performs a merge with any union data inside the Resource, using the provided Resource8
+func (t *Resource) MergeResource8(v Resource8) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource9 returns the union data inside the Resource as a Resource9
+func (t Resource) AsResource9() (Resource9, error) {
+	var body Resource9
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource9 overwrites any union data inside the Resource as the provided Resource9
+func (t *Resource) FromResource9(v Resource9) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource9 performs a merge with any union data inside the Resource, using the provided Resource9
+func (t *Resource) MergeResource9(v Resource9) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource10 returns the union data inside the Resource as a Resource10
+func (t Resource) AsResource10() (Resource10, error) {
+	var body Resource10
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource10 overwrites any union data inside the Resource as the provided Resource10
+func (t *Resource) FromResource10(v Resource10) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource10 performs a merge with any union data inside the Resource, using the provided Resource10
+func (t *Resource) MergeResource10(v Resource10) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource11 returns the union data inside the Resource as a Resource11
+func (t Resource) AsResource11() (Resource11, error) {
+	var body Resource11
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource11 overwrites any union data inside the Resource as the provided Resource11
+func (t *Resource) FromResource11(v Resource11) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource11 performs a merge with any union data inside the Resource, using the provided Resource11
+func (t *Resource) MergeResource11(v Resource11) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource12 returns the union data inside the Resource as a Resource12
+func (t Resource) AsResource12() (Resource12, error) {
+	var body Resource12
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource12 overwrites any union data inside the Resource as the provided Resource12
+func (t *Resource) FromResource12(v Resource12) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource12 performs a merge with any union data inside the Resource, using the provided Resource12
+func (t *Resource) MergeResource12(v Resource12) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource13 returns the union data inside the Resource as a Resource13
+func (t Resource) AsResource13() (Resource13, error) {
+	var body Resource13
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource13 overwrites any union data inside the Resource as the provided Resource13
+func (t *Resource) FromResource13(v Resource13) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource13 performs a merge with any union data inside the Resource, using the provided Resource13
+func (t *Resource) MergeResource13(v Resource13) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsResource14 returns the union data inside the Resource as a Resource14
+func (t Resource) AsResource14() (Resource14, error) {
+	var body Resource14
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromResource14 overwrites any union data inside the Resource as the provided Resource14
+func (t *Resource) FromResource14(v Resource14) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeResource14 performs a merge with any union data inside the Resource, using the provided Resource14
+func (t *Resource) MergeResource14(v Resource14) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t Resource) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
 }
 
-func (t *TokenType) UnmarshalJSON(b []byte) error {
+func (t *Resource) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -4175,6 +4663,25 @@ type ClientInterface interface {
 
 	UpdateSubscription(ctx context.Context, namespaceId string, pipelineId string, extensionId string, subscriptionId string, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListRoles request
+	ListRoles(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRoleWithBody request with any body
+	CreateRoleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateRole(ctx context.Context, body CreateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRole request
+	DeleteRole(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRole request
+	GetRole(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateRoleWithBody request with any body
+	UpdateRoleWithBody(ctx context.Context, roleId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateRole(ctx context.Context, roleId string, body UpdateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListGlobalSecrets request
 	ListGlobalSecrets(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -4188,6 +4695,14 @@ type ClientInterface interface {
 
 	// GetGlobalSecret request
 	GetGlobalSecret(ctx context.Context, key string, params *GetGlobalSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSystemPreferences request
+	GetSystemPreferences(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSystemPreferencesWithBody request with any body
+	UpdateSystemPreferencesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateSystemPreferences(ctx context.Context, body UpdateSystemPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMetadata request
 	GetMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4986,6 +5501,90 @@ func (c *Client) UpdateSubscription(ctx context.Context, namespaceId string, pip
 	return c.Client.Do(req)
 }
 
+func (c *Client) ListRoles(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRolesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateRoleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRoleRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateRole(ctx context.Context, body CreateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRoleRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteRole(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRoleRequest(c.Server, roleId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRole(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRoleRequest(c.Server, roleId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateRoleWithBody(ctx context.Context, roleId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRoleRequestWithBody(c.Server, roleId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateRole(ctx context.Context, roleId string, body UpdateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateRoleRequest(c.Server, roleId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) ListGlobalSecrets(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGlobalSecretsRequest(c.Server)
 	if err != nil {
@@ -5036,6 +5635,42 @@ func (c *Client) DeleteGlobalSecret(ctx context.Context, key string, reqEditors 
 
 func (c *Client) GetGlobalSecret(ctx context.Context, key string, params *GetGlobalSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGlobalSecretRequest(c.Server, key, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetSystemPreferences(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSystemPreferencesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateSystemPreferencesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSystemPreferencesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateSystemPreferences(ctx context.Context, body UpdateSystemPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSystemPreferencesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7691,6 +8326,188 @@ func NewUpdateSubscriptionRequestWithBody(server string, namespaceId string, pip
 	return req, nil
 }
 
+// NewListRolesRequest generates requests for ListRoles
+func NewListRolesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/roles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateRoleRequest calls the generic CreateRole builder with application/json body
+func NewCreateRoleRequest(server string, body CreateRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateRoleRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateRoleRequestWithBody generates requests for CreateRole with any type of body
+func NewCreateRoleRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/roles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteRoleRequest generates requests for DeleteRole
+func NewDeleteRoleRequest(server string, roleId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "role_id", runtime.ParamLocationPath, roleId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/roles/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRoleRequest generates requests for GetRole
+func NewGetRoleRequest(server string, roleId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "role_id", runtime.ParamLocationPath, roleId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/roles/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateRoleRequest calls the generic UpdateRole builder with application/json body
+func NewUpdateRoleRequest(server string, roleId string, body UpdateRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateRoleRequestWithBody(server, roleId, "application/json", bodyReader)
+}
+
+// NewUpdateRoleRequestWithBody generates requests for UpdateRole with any type of body
+func NewUpdateRoleRequestWithBody(server string, roleId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "role_id", runtime.ParamLocationPath, roleId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/roles/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListGlobalSecretsRequest generates requests for ListGlobalSecrets
 func NewListGlobalSecretsRequest(server string) (*http.Request, error) {
 	var err error
@@ -7840,6 +8657,73 @@ func NewGetGlobalSecretRequest(server string, key string, params *GetGlobalSecre
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetSystemPreferencesRequest generates requests for GetSystemPreferences
+func NewGetSystemPreferencesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/system")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateSystemPreferencesRequest calls the generic UpdateSystemPreferences builder with application/json body
+func NewUpdateSystemPreferencesRequest(server string, body UpdateSystemPreferencesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateSystemPreferencesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateSystemPreferencesRequestWithBody generates requests for UpdateSystemPreferences with any type of body
+func NewUpdateSystemPreferencesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/system")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -8330,6 +9214,25 @@ type ClientWithResponsesInterface interface {
 
 	UpdateSubscriptionWithResponse(ctx context.Context, namespaceId string, pipelineId string, extensionId string, subscriptionId string, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResp, error)
 
+	// ListRolesWithResponse request
+	ListRolesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRolesResp, error)
+
+	// CreateRoleWithBodyWithResponse request with any body
+	CreateRoleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRoleResp, error)
+
+	CreateRoleWithResponse(ctx context.Context, body CreateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRoleResp, error)
+
+	// DeleteRoleWithResponse request
+	DeleteRoleWithResponse(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*DeleteRoleResp, error)
+
+	// GetRoleWithResponse request
+	GetRoleWithResponse(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*GetRoleResp, error)
+
+	// UpdateRoleWithBodyWithResponse request with any body
+	UpdateRoleWithBodyWithResponse(ctx context.Context, roleId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRoleResp, error)
+
+	UpdateRoleWithResponse(ctx context.Context, roleId string, body UpdateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRoleResp, error)
+
 	// ListGlobalSecretsWithResponse request
 	ListGlobalSecretsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListGlobalSecretsResp, error)
 
@@ -8343,6 +9246,14 @@ type ClientWithResponsesInterface interface {
 
 	// GetGlobalSecretWithResponse request
 	GetGlobalSecretWithResponse(ctx context.Context, key string, params *GetGlobalSecretParams, reqEditors ...RequestEditorFn) (*GetGlobalSecretResp, error)
+
+	// GetSystemPreferencesWithResponse request
+	GetSystemPreferencesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSystemPreferencesResp, error)
+
+	// UpdateSystemPreferencesWithBodyWithResponse request with any body
+	UpdateSystemPreferencesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSystemPreferencesResp, error)
+
+	UpdateSystemPreferencesWithResponse(ctx context.Context, body UpdateSystemPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSystemPreferencesResp, error)
 
 	// GetMetadataWithResponse request
 	GetMetadataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMetadataResp, error)
@@ -9594,6 +10505,125 @@ func (r UpdateSubscriptionResp) StatusCode() int {
 	return 0
 }
 
+type ListRolesResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListRolesResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRolesResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRolesResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateRoleResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateRoleResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateRoleResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateRoleResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteRoleResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRoleResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRoleResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRoleResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetRoleResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRoleResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRoleResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateRoleResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateRoleResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateRoleResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateRoleResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type ListGlobalSecretsResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -9683,6 +10713,54 @@ func (r GetGlobalSecretResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetGlobalSecretResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetSystemPreferencesResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetSystemPreferencesResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSystemPreferencesResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSystemPreferencesResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateSystemPreferencesResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateSystemPreferencesResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateSystemPreferencesResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateSystemPreferencesResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10443,6 +11521,67 @@ func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context
 	return ParseUpdateSubscriptionResp(rsp)
 }
 
+// ListRolesWithResponse request returning *ListRolesResp
+func (c *ClientWithResponses) ListRolesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRolesResp, error) {
+	rsp, err := c.ListRoles(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRolesResp(rsp)
+}
+
+// CreateRoleWithBodyWithResponse request with arbitrary body returning *CreateRoleResp
+func (c *ClientWithResponses) CreateRoleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRoleResp, error) {
+	rsp, err := c.CreateRoleWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRoleResp(rsp)
+}
+
+func (c *ClientWithResponses) CreateRoleWithResponse(ctx context.Context, body CreateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRoleResp, error) {
+	rsp, err := c.CreateRole(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRoleResp(rsp)
+}
+
+// DeleteRoleWithResponse request returning *DeleteRoleResp
+func (c *ClientWithResponses) DeleteRoleWithResponse(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*DeleteRoleResp, error) {
+	rsp, err := c.DeleteRole(ctx, roleId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRoleResp(rsp)
+}
+
+// GetRoleWithResponse request returning *GetRoleResp
+func (c *ClientWithResponses) GetRoleWithResponse(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*GetRoleResp, error) {
+	rsp, err := c.GetRole(ctx, roleId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRoleResp(rsp)
+}
+
+// UpdateRoleWithBodyWithResponse request with arbitrary body returning *UpdateRoleResp
+func (c *ClientWithResponses) UpdateRoleWithBodyWithResponse(ctx context.Context, roleId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateRoleResp, error) {
+	rsp, err := c.UpdateRoleWithBody(ctx, roleId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRoleResp(rsp)
+}
+
+func (c *ClientWithResponses) UpdateRoleWithResponse(ctx context.Context, roleId string, body UpdateRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateRoleResp, error) {
+	rsp, err := c.UpdateRole(ctx, roleId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateRoleResp(rsp)
+}
+
 // ListGlobalSecretsWithResponse request returning *ListGlobalSecretsResp
 func (c *ClientWithResponses) ListGlobalSecretsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListGlobalSecretsResp, error) {
 	rsp, err := c.ListGlobalSecrets(ctx, reqEditors...)
@@ -10485,6 +11624,32 @@ func (c *ClientWithResponses) GetGlobalSecretWithResponse(ctx context.Context, k
 		return nil, err
 	}
 	return ParseGetGlobalSecretResp(rsp)
+}
+
+// GetSystemPreferencesWithResponse request returning *GetSystemPreferencesResp
+func (c *ClientWithResponses) GetSystemPreferencesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSystemPreferencesResp, error) {
+	rsp, err := c.GetSystemPreferences(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSystemPreferencesResp(rsp)
+}
+
+// UpdateSystemPreferencesWithBodyWithResponse request with arbitrary body returning *UpdateSystemPreferencesResp
+func (c *ClientWithResponses) UpdateSystemPreferencesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSystemPreferencesResp, error) {
+	rsp, err := c.UpdateSystemPreferencesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSystemPreferencesResp(rsp)
+}
+
+func (c *ClientWithResponses) UpdateSystemPreferencesWithResponse(ctx context.Context, body UpdateSystemPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSystemPreferencesResp, error) {
+	rsp, err := c.UpdateSystemPreferences(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSystemPreferencesResp(rsp)
 }
 
 // GetMetadataWithResponse request returning *GetMetadataResp
@@ -12454,6 +13619,199 @@ func ParseUpdateSubscriptionResp(rsp *http.Response) (*UpdateSubscriptionResp, e
 	return response, nil
 }
 
+// ParseListRolesResp parses an HTTP response from a ListRolesWithResponse call
+func ParseListRolesResp(rsp *http.Response) (*ListRolesResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRolesResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListRolesResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateRoleResp parses an HTTP response from a CreateRoleWithResponse call
+func ParseCreateRoleResp(rsp *http.Response) (*CreateRoleResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateRoleResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateRoleResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRoleResp parses an HTTP response from a DeleteRoleWithResponse call
+func ParseDeleteRoleResp(rsp *http.Response) (*DeleteRoleResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRoleResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRoleResp parses an HTTP response from a GetRoleWithResponse call
+func ParseGetRoleResp(rsp *http.Response) (*GetRoleResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRoleResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetRoleResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateRoleResp parses an HTTP response from a UpdateRoleWithResponse call
+func ParseUpdateRoleResp(rsp *http.Response) (*UpdateRoleResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateRoleResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateRoleResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListGlobalSecretsResp parses an HTTP response from a ListGlobalSecretsWithResponse call
 func ParseListGlobalSecretsResp(rsp *http.Response) (*ListGlobalSecretsResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -12583,6 +13941,86 @@ func ParseGetGlobalSecretResp(rsp *http.Response) (*GetGlobalSecretResp, error) 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GetGlobalSecretResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSystemPreferencesResp parses an HTTP response from a GetSystemPreferencesWithResponse call
+func ParseGetSystemPreferencesResp(rsp *http.Response) (*GetSystemPreferencesResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSystemPreferencesResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetSystemPreferencesResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateSystemPreferencesResp parses an HTTP response from a UpdateSystemPreferencesWithResponse call
+func ParseUpdateSystemPreferencesResp(rsp *http.Response) (*UpdateSystemPreferencesResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateSystemPreferencesResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateSystemPreferencesResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

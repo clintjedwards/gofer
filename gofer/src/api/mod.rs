@@ -7,6 +7,7 @@ pub mod extensions;
 mod external;
 mod namespaces;
 mod objects;
+mod permissioning;
 mod pipeline_configs;
 mod pipelines;
 mod run_utils;
@@ -29,15 +30,13 @@ use dropshot::{
 };
 use futures::Future;
 use http::Request;
-use http::StatusCode;
 use hyper::upgrade::Upgraded;
 use hyper::Body;
 use lazy_regex::regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -89,49 +88,6 @@ impl FromStr for ApiVersion {
     }
 }
 
-/// Contains information about the auth token sent with a request.
-#[derive(Debug, Clone)]
-pub struct AuthContext {
-    /// The namespaces this key is allowed to access. The wildcard character '*' means all namespaces.
-    pub allowed_namespaces: HashSet<String>,
-
-    /// The unique identifier for the api token the current user is using.
-    pub key_id: String,
-
-    /// What type of api key the current request is made with.
-    pub key_type: tokens::TokenType,
-
-    /// The plaintext username attached to the token.
-    pub key_user: String,
-}
-
-impl AuthContext {
-    /// Verify that the namespace you're currently working within is allowed for that specific token.
-    fn verify_namespace_match(&self, namespace: &str) -> Result<(), HttpError> {
-        // If the allowed namspaces are anything then just let them through.
-        if self.allowed_namespaces.contains(".*") {
-            return Ok(());
-        };
-
-        for allowed_namespace in &self.allowed_namespaces {
-            let re = match regex::Regex::new(allowed_namespace) {
-                Ok(re) => re,
-                Err(_) => continue,
-            };
-
-            if re.is_match(namespace) {
-                return Ok(());
-            }
-        }
-
-        Err(HttpError::for_client_error(
-            None,
-            StatusCode::UNAUTHORIZED,
-            "Unauthorized; Token has incorrect namespaces for targeted namespace".into(),
-        ))
-    }
-}
-
 /// Holds objects that are created and used over the lifetime of a single request.
 ///
 /// This is different from [`dropshot::RequestContext`] since that is automatically created for us but we need some
@@ -141,14 +97,26 @@ pub struct RequestMetadata {
     #[allow(dead_code)]
     api_version: ApiVersion,
     #[allow(dead_code)]
-    auth: AuthContext,
+    auth: permissioning::AuthContext,
 }
 
 #[derive(Debug, Clone)]
-struct PreflightOptions {
+pub struct PreflightOptions {
     bypass_auth: bool,
-    check_namespace: Option<String>,
-    management_only: bool,
+    admin_only: bool,
+
+    /// The resources the user should have permission for in order to access this route.
+    ///
+    /// Certain resources also are able to take 'targets' which allows token creators to restrict specific objects
+    /// under a specific resource. For example, a 'Namespace' resource might have a specifier of '^devops_.*' this
+    /// would make it so the token that has this resource/target combination can access routes that use any
+    /// namespace with a prefix of 'devops_'.
+    ///
+    /// When including these resources inside a route handler you should include the 'target' resource that was asked
+    /// for in the path. This will be used to check that the user has the correct permissions to access that
+    /// resource/target combination.
+    resources: Vec<permissioning::Resource>,
+    action: permissioning::Action,
 }
 
 /// Holds all objects that need to exist for the entire runtime of the API server.
@@ -197,167 +165,19 @@ impl ApiState {
         event_bus: event_utils::EventBus,
         object_store: Box<dyn object_store::ObjectStore>,
         secret_store: Box<dyn secret_store::SecretStore>,
+        ignore_pipeline_run_events: atomic::AtomicBool,
     ) -> Self {
         Self {
             config: conf.clone(),
             extensions: DashMap::new(),
             event_bus,
             in_progress_runs: DashMap::new(),
-            ignore_pipeline_run_events: atomic::AtomicBool::new(
-                conf.api.ignore_pipeline_run_events,
-            ),
+            ignore_pipeline_run_events,
             storage,
             scheduler,
             object_store,
             secret_store,
         }
-    }
-
-    /// Resolves request specific context for handlers. This is used to perform auth checks and generally other
-    /// actions that should happen before a route runs it's handler.
-    ///
-    /// **Should be called at the start of every handler**, regardless of if that handler needs auth or req_context.
-    ///
-    /// We specifically use a struct here so that the reader can easily verify which options are in which state.
-    /// The different options here map to different actions that are checked per call.
-    async fn preflight_check(
-        &self,
-        request: &RequestInfo,
-        options: PreflightOptions,
-    ) -> Result<RequestMetadata, HttpError> {
-        let mut bypass_auth = options.bypass_auth;
-
-        if self.config.development.bypass_auth {
-            bypass_auth = self.config.development.bypass_auth
-        }
-
-        // This is somewhat dangerous since we just assume the user is global admin, but since you cannot auth to
-        // a different endpoint from this point on I think it's okay.
-        let auth_ctx = if bypass_auth {
-            AuthContext {
-                // allow any namespace
-                allowed_namespaces: HashSet::from([".*".into()]),
-                key_id: "0".into(),
-                key_type: tokens::TokenType::Management,
-                key_user: "dev".into(),
-            }
-        } else {
-            self.get_auth_context(request).await?
-        };
-        let api_version = check_version_handler(request)?;
-
-        if let Some(namespace) = options.check_namespace {
-            auth_ctx.verify_namespace_match(&namespace)?;
-        }
-
-        if options.management_only && (auth_ctx.key_type != tokens::TokenType::Management) {
-            return Err(HttpError::for_client_error(
-                None,
-                StatusCode::UNAUTHORIZED,
-                "Route requires management level token".into(),
-            ));
-        }
-
-        Ok(RequestMetadata {
-            auth: auth_ctx,
-            api_version,
-        })
-    }
-
-    /// Checks request authentication and returns valid auth information.
-    async fn get_auth_context(&self, request: &RequestInfo) -> Result<AuthContext, HttpError> {
-        let auth_header =
-            request
-                .headers()
-                .get("Authorization")
-                .ok_or(HttpError::for_bad_request(
-                    None,
-                    "Authorization header not found but required".into(),
-                ))?;
-
-        let auth_header = auth_header.to_str().map_err(|e| {
-            HttpError::for_bad_request(
-                None,
-                format!("Could not parse Authorization header; {:#?}", e),
-            )
-        })?;
-        if !auth_header.starts_with("Bearer ") {
-            return Err(HttpError::for_bad_request(
-                None,
-                "Authorization header malformed; should start with 'Bearer'".into(),
-            ));
-        }
-
-        let token = auth_header.strip_prefix("Bearer ").unwrap();
-
-        let mut hasher = Sha256::new();
-        hasher.update(token.as_bytes());
-        let hash = format!("{:x}", hasher.finalize());
-
-        let mut conn = match self.storage.conn().await {
-            Ok(conn) => conn,
-            Err(e) => {
-                return Err(crate::http_error!(
-                    "Could not open connection to database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    "None".into(),
-                    Some(e.into())
-                ));
-            }
-        };
-
-        let storage_token = match storage::tokens::get_by_hash(&mut conn, &hash).await {
-            Ok(token) => token,
-            Err(e) => match e {
-                storage::StorageError::NotFound => {
-                    return Err(HttpError::for_client_error(
-                        None,
-                        StatusCode::UNAUTHORIZED,
-                        "Unauthorized".into(),
-                    ));
-                }
-                _ => {
-                    return Err(crate::http_error!(
-                        "Could not query database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
-                        "None".into(),
-                        Some(e.into())
-                    ));
-                }
-            },
-        };
-
-        let token = tokens::Token::try_from(storage_token).map_err(|e| {
-            crate::http_error!(
-                "Could not parse token object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                "None".into(),
-                Some(e.into())
-            )
-        })?;
-
-        if token.disabled {
-            return Err(HttpError::for_client_error(
-                None,
-                http::StatusCode::UNAUTHORIZED,
-                "Token disabled".into(),
-            ));
-        }
-
-        if epoch_milli() > token.expires {
-            return Err(HttpError::for_client_error(
-                None,
-                http::StatusCode::UNAUTHORIZED,
-                "Token expired".into(),
-            ));
-        }
-
-        Ok(AuthContext {
-            allowed_namespaces: token.namespaces,
-            key_id: token.id,
-            key_type: token.token_type,
-            key_user: token.user,
-        })
     }
 }
 
@@ -467,6 +287,25 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
         conf.api.event_prune_interval,
     );
 
+    // Load our current value for ignore_pipeline_run_events into memory.
+    let mut conn = match storage.conn().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            bail!(
+                "Could not establish connection to database during api initialization: {:#?}",
+                e
+            );
+        }
+    };
+
+    let ignore_pipeline_runs = match storage::system::get_system_parameters(&mut conn).await {
+        Ok(value) => atomic::AtomicBool::new(value.ignore_pipeline_run_events),
+        Err(e) => bail!(
+            "Could not get system parameters during api initialization; {:#?}",
+            e
+        ),
+    };
+
     let api_state = Arc::new(ApiState::new(
         conf.clone(),
         storage,
@@ -474,6 +313,7 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
         event_bus,
         object_store,
         secret_store,
+        ignore_pipeline_runs,
     ));
 
     // Then we perform additional housekeeping.
@@ -489,6 +329,10 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
     namespaces::create_default_namespace(api_state.clone())
         .await
         .context("Could not create default namespace")?;
+
+    permissioning::create_system_roles(api_state.clone())
+        .await
+        .context("Could not create system roles")?;
 
     if let Err(e) = subscriptions::restore_extension_subscriptions(&api_state).await {
         // We report the error but continue with startup. This avoids the issue of a chicken
@@ -804,8 +648,21 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
     api.register(events::get_event).unwrap();
     api.register(events::delete_event).unwrap();
 
+    /* /api/system */
+    api.register(system::get_system_preferences).unwrap();
+    api.register(system::update_system_preferences).unwrap();
+
     /* /api/system/metadata */
     api.register(system::get_metadata).unwrap();
+
+    /* /api/roles */
+    api.register(permissioning::list_roles).unwrap();
+    api.register(permissioning::create_role).unwrap();
+
+    /* /api/roles/{role_id} */
+    api.register(permissioning::get_role).unwrap();
+    api.register(permissioning::delete_role).unwrap();
+    api.register(permissioning::update_role).unwrap();
 
     // /docs/*
     api.register(static_router::static_documentation_handler)
@@ -868,6 +725,14 @@ fn set_tagging_policy(api: ApiDescription<Arc<ApiState>>) -> ApiDescription<Arc<
                     description: Some("A pipeline is a graph of containers that accomplish some goal. Pipelines are \
                     created via a Pipeline configuration file and can be set to be run automatically via attached \
                     extensions".into()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "Permissions".to_string(),
+                TagDetails {
+                    description: Some("Gofer has an RBAC system which can be utilized to give different tokens/users
+                        permissions.".into()),
                     ..Default::default()
                 },
             ),

@@ -27,29 +27,25 @@ pub enum TokenCommands {
 
     /// Create a new token.
     Create {
-        /// The type of token to create
-        ///
-        /// Valid values are: "Management" or "User".
-        token_type: gofer_sdk::api::types::TokenType,
-
         /// The username for the token.
         ///
         /// This will appear as a helper to see which user performed which action.
         user: String,
 
+        /// The roles that should be assigned to this token.
+        #[arg(short, long)]
+        roles: Vec<String>,
+
         /// Total time in seconds until token expires.
-        #[arg(short, long, default_value = "31536000")] // default is a year
+        /// Expiry of 0 means the token does not expire.
+        #[arg(short, long, default_value = "0")]
         expiry: u64,
 
-        /// Which namespaces the token will have access to.
-        #[arg(short, long, default_value = "[]")]
-        namespace: Vec<String>,
-
-        #[arg(short, long, default_value = "[]")]
+        #[arg(short, long)]
         metadata: Vec<String>,
     },
 
-    /// Creates the initial management token.
+    /// Creates the initial root access token.
     Bootstrap,
 
     /// Enable specific token.
@@ -81,15 +77,11 @@ impl Cli {
             TokenCommands::List => self.token_list().await,
             TokenCommands::Get { id } => self.token_get(&id).await,
             TokenCommands::Create {
-                token_type,
+                roles,
                 expiry,
-                namespace,
                 metadata,
                 user,
-            } => {
-                self.token_create(token_type, expiry, namespace, metadata, user)
-                    .await
-            }
+            } => self.token_create(roles, expiry, metadata, user).await,
             TokenCommands::Bootstrap {} => self.token_bootstrap().await,
             TokenCommands::Enable { id } => self.token_enable(&id).await,
             TokenCommands::Disable { id } => self.token_disable(&id).await,
@@ -117,7 +109,7 @@ impl Cli {
                 Cell::new("id")
                     .set_alignment(CellAlignment::Center)
                     .fg(Color::Blue),
-                Cell::new("type")
+                Cell::new("roles")
                     .set_alignment(CellAlignment::Center)
                     .fg(Color::Blue),
                 Cell::new("created")
@@ -136,7 +128,7 @@ impl Cli {
 
             table.add_row(vec![
                 Cell::new(token.id).fg(Color::Green),
-                Cell::new(token.token_type),
+                Cell::new(format!("{:?}", token.roles)),
                 Cell::new(
                     humanize_relative_duration(token.created)
                         .unwrap_or_else(|| "Unknown".to_string()),
@@ -162,10 +154,10 @@ impl Cli {
             .token;
 
         const TEMPLATE: &str = r#"
-  {%- if namespaces %}
-  Valid for Namespaces:
-    {%- for namespace in namespaces %}
-    • {{ namespace }}
+  {%- if roles %}
+  Roles:
+    {%- for role in roles %}
+    • {{ role }}
     {%- endfor -%}
   {%- endif -%}
   {% if metadata %}
@@ -183,7 +175,7 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("namespaces", &token.namespaces);
+        context.insert("roles", &token.roles);
         context.insert("metadata", &token.metadata);
         context.insert(
             "created",
@@ -199,16 +191,15 @@ impl Cli {
         context.insert("disabled", &colorize_status_text(active.to_string()));
 
         let content = tera.render("main", &context)?;
-        println!("[{}] :: {} Token", &token.id, &token.token_type.to_string());
+        println!("[{}] :: User: {}", &token.id, &token.user);
         print!("{}", content);
         Ok(())
     }
 
     pub async fn token_create(
         &self,
-        token_type: gofer_sdk::api::types::TokenType,
+        roles: Vec<String>,
         expiry: u64,
-        namespace: Vec<String>,
         metadata: Vec<String>,
         user: String,
     ) -> Result<()> {
@@ -229,13 +220,18 @@ impl Cli {
             }
         }
 
+        let metadata = if metadata_map.is_empty() {
+            None
+        } else {
+            Some(metadata_map)
+        };
+
         let token = self
             .client
             .create_token(&gofer_sdk::api::types::CreateTokenRequest {
                 expires: expiry,
-                metadata: metadata_map,
-                namespaces: namespace,
-                token_type,
+                metadata,
+                roles,
                 user,
             })
             .await
@@ -300,21 +296,20 @@ impl Cli {
             .token;
 
         const TEMPLATE: &str = r#"
-  {%- if namespaces %}
-  Valid for Namespaces:
-    {%- for namespace in namespaces %}
-    • {{ namespace }}
-    {%- endfor -%}
-  {%- endif -%}
+    {%- if roles %}
+    Roles:
+        {%- for role in roles %}
+        • {{ role }}
+        {%- endfor -%}
+    {%- endif -%}
+    {% if metadata %}
+    Metadata:
+        {%- for key, value in metadata %}
+        • {{ key }}: {{ value }}
+        {%- endfor -%}
+    {%- endif %}
 
-  {%- if metadata %}
-  Metadata:
-    {%- for key, value in metadata %}
-    • {{ key }}: {{ value }}
-    {%- endfor -%}
-  {%- endif %}
-
-  Created {{created}} | Expires {{expires}} | Active: {{disabled}}
+    Created {{created}} | Expires {{expires}} | Active: {{disabled}}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -322,7 +317,7 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("namespaces", &token.namespaces);
+        context.insert("roles", &token.roles);
         context.insert("metadata", &token.metadata);
         context.insert(
             "created",
@@ -335,7 +330,7 @@ impl Cli {
         context.insert("disabled", &token.disabled);
 
         let content = tera.render("main", &context)?;
-        println!("[{}] :: {} Token", &token.id, &token.token_type.to_string());
+        println!("[{}] :: User {}", &token.id, &token.user);
         print!("{}", content);
         Ok(())
     }

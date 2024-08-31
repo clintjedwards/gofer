@@ -1,3 +1,4 @@
+use super::permissioning::{Action, Resource};
 use crate::{
     api::{
         epoch_milli, event_utils, format_duration, listen_for_terminate_signal, tasks,
@@ -424,8 +425,14 @@ pub async fn list_task_executions(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::TaskExecutions,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -510,8 +517,14 @@ pub async fn get_task_execution(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::TaskExecutions,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -598,8 +611,14 @@ pub async fn cancel_task_execution(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::TaskExecutions,
+                ],
+                action: Action::Delete,
             },
         )
         .await?;
@@ -679,8 +698,14 @@ pub async fn get_logs(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::TaskExecutions,
+                ],
+                action: Action::Read,
             },
         )
         .await?;
@@ -938,8 +963,14 @@ pub async fn delete_logs(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::TaskExecutions,
+                ],
+                action: Action::Delete,
             },
         )
         .await?;
@@ -1080,8 +1111,14 @@ pub async fn attach_task_execution(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
-                check_namespace: Some(path.namespace_id.clone()),
-                management_only: false,
+                admin_only: false,
+                resources: vec![
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::TaskExecutions,
+                ],
+                action: Action::Write,
             },
         )
         .await?;
