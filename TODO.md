@@ -49,7 +49,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
   restarted.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
-* Write a test for bootstrap tokens in hurl.
 * Write a test for tokens, namespace matching, and general auth in hurl.
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
 yet.

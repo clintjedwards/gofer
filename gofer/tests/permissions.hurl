@@ -1,3 +1,9 @@
+# Test that bootstrap token cannot be requested twice.
+POST http://localhost:8080/api/tokens/bootstrap
+gofer-api-version: v0
+Content-Type: application/json
+HTTP 409
+
 # Create new namespaces to test permissions
 POST http://localhost:8080/api/namespaces
 gofer-api-version: v0
