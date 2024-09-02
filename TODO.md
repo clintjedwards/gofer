@@ -49,11 +49,9 @@ thought into this feature that it can become a game changer for Gofer as a whole
   restarted.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
-* Write a test for tokens, namespace matching, and general auth in hurl.
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
 yet.
-  * Make sure to set the namespace for the user automagically.
-* Allow users to query deployments from the CLI.
+  * Make sure to set the permissions for the user automagically.
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us.
@@ -64,7 +62,6 @@ yet.
 * Create a setting to allow operators to turn off the ability to attach to a container.
 * If the parent does not exist for a particular thing it errors incorrectly. For example if you request a correct task
 execution but mistype the pipeline, you might get an error instead of a "hey that thing doesn't exist".
-* Admin tokens with certain namespaces should only be able to create client tokens with those same namespaces.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * By default docker doesn't allow you to do versioning tricks like pinning to a major version but freely updating the minor
 version. I wonder if there is a way we can offer this feature for free for the purposes of extensions. Since extensions with

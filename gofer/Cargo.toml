@@ -27,6 +27,7 @@ figment = { version = "0.10.16", features = ["env", "toml"] }
 futures = "0.3.30"
 gofer_sdk = { path = "../sdk/rust" }
 http = "0.2.12"
+human-panic = "2.0.1"
 hyper = { version = "0.14", features = ["server", "full"] }
 lazy-regex = "3.1.0"
 mime_guess = "2.0.4"
