@@ -44,8 +44,8 @@ Authorization: Bearer {{secret}}
         "delete"
       ],
       "resources": [
-        { "resource": "namespaces", "target": "^devops.*" },
-        { "resource": "pipelines", "target": ".*" }
+        "namespaces:^devops.*",
+        "pipelines:.*"
       ]
     }
   ]

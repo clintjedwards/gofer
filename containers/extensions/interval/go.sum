@@ -6,6 +6,8 @@ github.com/clintjedwards/gofer/sdk/go v0.0.0-20240531040532-e4b2360d5751 h1:+AcY
 github.com/clintjedwards/gofer/sdk/go v0.0.0-20240531040532-e4b2360d5751/go.mod h1:+28WkcNBQom74tMXeHUJbUhwS+9pQFgUtwQk1ADsjAs=
 github.com/clintjedwards/gofer/sdk/go v0.0.0-20240727090259-c90bf5070f4d h1:UeewxyEJM0VUmpOOm3HgQD0/byEli367rl4k/+zzEV8=
 github.com/clintjedwards/gofer/sdk/go v0.0.0-20240727090259-c90bf5070f4d/go.mod h1:+28WkcNBQom74tMXeHUJbUhwS+9pQFgUtwQk1ADsjAs=
+github.com/clintjedwards/gofer/sdk/go v0.0.0-20240902054027-bfd9d317a3c8 h1:vLw8GhmNlQ0or7mEOsrAjpsH9hFLsLv0ak1ceKQ/u1g=
+github.com/clintjedwards/gofer/sdk/go v0.0.0-20240902054027-bfd9d317a3c8/go.mod h1:+28WkcNBQom74tMXeHUJbUhwS+9pQFgUtwQk1ADsjAs=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -52,5 +54,7 @@ golang.org/x/sys v0.18.0 h1:DBdB3niSjOA/O0blCZBqDefyWNYveAYMNF1Wum0DYQ4=
 golang.org/x/sys v0.18.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/sys v0.22.0 h1:RI27ohtqKCnwULzJLqkv897zojh5/DwS/ENaMzUOaWI=
 golang.org/x/sys v0.22.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+golang.org/x/sys v0.25.0 h1:r+8e+loiHxRqhXVl6ML1nO3l1+oFoWbnlu2Ehimmi34=
+golang.org/x/sys v0.25.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

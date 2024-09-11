@@ -91,7 +91,7 @@ run-hurl-tests:
 > echo -ne "\r\033[K"  # Moves cursor to start of line and clears the line
 > echo "Hurl Results"
 > echo "--------------------------------"
-> hurl --color --test *.hurl --variable secret=$$SECRET
+> hurl --color --test *.hurl --variable secret=$$SECRET --error-format long
 
 
 ## cleanup-integration-tests: Clean up the background gofer process.

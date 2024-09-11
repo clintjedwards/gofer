@@ -1,8 +1,9 @@
 use crate::cli::Cli;
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
+use colored::Colorize;
 use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
-use gofer_sdk::api::types::{Action, Permission, Resource};
+use gofer_sdk::api::types::{Action, Permission};
 use polyfmt::{error, print, println, question, success};
 use std::collections::{HashMap, HashSet};
 
@@ -203,21 +204,21 @@ impl Cli {
         let mut permissions: Vec<Permission> = vec![];
 
         let resources = vec![
-            Resource::All,
-            Resource::Configs,
-            Resource::Deployments,
-            Resource::Events,
-            Resource::Extensions("".into()),
-            Resource::Namespaces("".into()),
-            Resource::Objects,
-            Resource::Permissions,
-            Resource::Pipelines("".into()),
-            Resource::Runs,
-            Resource::Secrets,
-            Resource::Subscriptions,
-            Resource::System,
-            Resource::TaskExecutions,
-            Resource::Tokens,
+            "all",
+            "configs",
+            "deployments",
+            "events",
+            "extensions (target capable)", // target capable
+            "namespaces (target capable)", // target capable
+            "objects",
+            "permissions",
+            "pipelines (target capable)", // target capable
+            "runs",
+            "secrets",
+            "subscriptions",
+            "system",
+            "task_executions",
+            "tokens",
         ];
 
         println!("Choose permissions for role:");
@@ -227,9 +228,15 @@ impl Cli {
         println!("For some resources you are allowed to enter a 'target'. You can enter that target after a colon \
             after the resource name.");
         println!();
-        println!("Normal resource: `deployments`");
-        println!("Resource with target specifier: `namespaces:^default$`");
-        println!("Mixed: `namespaces:^default$,deployments,configs,pipelines:.*`");
+        println!("Example normal resource: {}", "deployments".cyan());
+        println!(
+            "Example resource with target specifier: {}",
+            "namespaces:^default$".cyan()
+        );
+        println!(
+            "Example mixed: {}",
+            "namespaces:^default$,deployments,configs,pipelines:.*".cyan()
+        );
         println!();
         println!("Enter a comma separated list of resources to give this token access to.");
         println!();
@@ -239,39 +246,10 @@ impl Cli {
             println!();
 
             let user_given_resources: Vec<&str> = user_given_resources.split(',').collect();
-
-            let mut resources: Vec<Resource> = vec![];
-
-            for user_resource_target in user_given_resources {
-                let user_resource_target_split: Vec<&str> =
-                    user_resource_target.split(':').collect();
-                let user_resource = user_resource_target_split.first().unwrap().to_lowercase();
-                let user_target = user_resource_target_split.get(1).unwrap_or(&"").to_string();
-
-                let resource = match user_resource.as_str() {
-                    "all" => Resource::All,
-                    "configs" => Resource::Configs,
-                    "deployments" => Resource::Deployments,
-                    "events" => Resource::Events,
-                    "extensions" => Resource::Extensions(user_target),
-                    "namespaces" => Resource::Namespaces(user_target),
-                    "objects" => Resource::Objects,
-                    "permissions" => Resource::Permissions,
-                    "pipelines" => Resource::Pipelines(user_target),
-                    "runs" => Resource::Runs,
-                    "secrets" => Resource::Secrets,
-                    "subscriptions" => Resource::Subscriptions,
-                    "system" => Resource::System,
-                    "taskexecutions" => Resource::TaskExecutions,
-                    "tokens" => Resource::Tokens,
-                    _ => {
-                        println!("{} is not a valid resource type", user_resource);
-                        continue;
-                    }
-                };
-
-                resources.push(resource);
-            }
+            let resources: Vec<String> = user_given_resources
+                .into_iter()
+                .map(|resource| resource.to_string())
+                .collect();
 
             if resources.is_empty() {
                 error!("Must choose at least one resource");

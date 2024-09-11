@@ -22,7 +22,6 @@ use tracing::error;
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 #[strum(ascii_case_insensitive)]
-#[serde(tag = "resource", content = "target")]
 /// Resources are representitive group names for collections of endpoints and concepts within Gofer.
 /// It's used mostly by the permissioning system to identify collections and grant users permissions
 /// to those collections.
@@ -44,6 +43,37 @@ pub enum Resource {
     Tokens,
 }
 
+impl Resource {
+    fn from_str(input: &str) -> Option<Self> {
+        let user_resource_target_split: Vec<&str> = input.split(':').collect();
+        let user_resource = user_resource_target_split.first().unwrap().to_lowercase();
+        let user_target = user_resource_target_split.get(1).unwrap_or(&"").to_string();
+
+        let resource = match user_resource.as_str() {
+            "all" => Resource::All,
+            "configs" => Resource::Configs,
+            "deployments" => Resource::Deployments,
+            "events" => Resource::Events,
+            "extensions" => Resource::Extensions(user_target),
+            "namespaces" => Resource::Namespaces(user_target),
+            "objects" => Resource::Objects,
+            "permissions" => Resource::Permissions,
+            "pipelines" => Resource::Pipelines(user_target),
+            "runs" => Resource::Runs,
+            "secrets" => Resource::Secrets,
+            "subscriptions" => Resource::Subscriptions,
+            "system" => Resource::System,
+            "task_executions" => Resource::TaskExecutions,
+            "tokens" => Resource::Tokens,
+            _ => {
+                return None;
+            }
+        };
+
+        Some(resource)
+    }
+}
+
 #[derive(Debug, Clone, Display, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -54,6 +84,100 @@ pub enum Action {
     Delete,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct InternalRole {
+    /// Alphanumeric with dashes only
+    pub id: String,
+    pub description: String,
+    pub permissions: Vec<InternalPermission>,
+
+    /// If this role was created by Gofer itself. System roles cannot be modified.
+    pub system_role: bool,
+}
+
+impl InternalRole {
+    pub fn new(
+        id: &str,
+        description: &str,
+        permissions: Vec<InternalPermission>,
+        system_role: bool,
+    ) -> Self {
+        InternalRole {
+            id: id.into(),
+            description: description.into(),
+            permissions,
+            system_role,
+        }
+    }
+}
+
+impl TryFrom<storage::roles::Role> for InternalRole {
+    type Error = anyhow::Error;
+
+    fn try_from(value: storage::roles::Role) -> Result<Self> {
+        let permissions: Vec<InternalPermission> = serde_json::from_str(&value.permissions)
+            .with_context(|| {
+                format!(
+                    "Could not parse field 'permissions' from storage value '{}'",
+                    value.permissions
+                )
+            })?;
+
+        Ok(InternalRole {
+            id: value.id,
+            description: value.description,
+            permissions,
+            system_role: value.system_role,
+        })
+    }
+}
+
+impl TryFrom<InternalRole> for storage::roles::Role {
+    type Error = anyhow::Error;
+
+    fn try_from(value: InternalRole) -> Result<Self> {
+        let permissions = serde_json::to_string(&value.permissions).with_context(|| {
+            format!(
+                "Could not parse field 'permissions' from storage value; '{:#?}'",
+                value.permissions
+            )
+        })?;
+
+        Ok(Self {
+            id: value.id,
+            description: value.description,
+            permissions,
+            system_role: value.system_role,
+        })
+    }
+}
+
+impl TryFrom<InternalRole> for Role {
+    type Error = anyhow::Error;
+
+    fn try_from(value: InternalRole) -> Result<Self> {
+        let mut permissions = vec![];
+
+        for permission_real in value.permissions {
+            let permission: Permission = permission_real.into();
+            permissions.push(permission);
+        }
+
+        Ok(Role {
+            id: value.id,
+            description: value.description,
+            permissions,
+            system_role: value.system_role,
+        })
+    }
+}
+
+/// Role is exactly like ['InternalRole'] except it abstracts away the type specification of the permissions.
+/// This is used to interface with the user via the API.
+///
+/// The ['InternalRole'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types.
+/// Instead we replace the complicated enum system with a simple string declaration and manually do the translation
+/// between the two types.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct Role {
     /// Alphanumeric with dashes only
@@ -65,55 +189,18 @@ pub struct Role {
     pub system_role: bool,
 }
 
-impl Role {
-    pub fn new(
-        id: &str,
-        description: &str,
-        permissions: Vec<Permission>,
-        system_role: bool,
-    ) -> Self {
-        Role {
-            id: id.into(),
-            description: description.into(),
-            permissions,
-            system_role,
-        }
-    }
-}
-
-impl TryFrom<storage::roles::Role> for Role {
-    type Error = anyhow::Error;
-
-    fn try_from(value: storage::roles::Role) -> Result<Self> {
-        let permissions: Vec<Permission> =
-            serde_json::from_str(&value.permissions).with_context(|| {
-                format!(
-                    "Could not parse field 'permissions' from storage value '{}'",
-                    value.permissions
-                )
-            })?;
-
-        Ok(Role {
-            id: value.id,
-            description: value.description,
-            permissions,
-            system_role: value.system_role,
-        })
-    }
-}
-
-impl TryFrom<Role> for storage::roles::Role {
+impl TryFrom<Role> for InternalRole {
     type Error = anyhow::Error;
 
     fn try_from(value: Role) -> Result<Self> {
-        let permissions = serde_json::to_string(&value.permissions).with_context(|| {
-            format!(
-                "Could not parse field 'permissions' from storage value; '{:#?}'",
-                value.permissions
-            )
-        })?;
+        let mut permissions = vec![];
 
-        Ok(Self {
+        for permission in value.permissions {
+            let internal_permission: InternalPermission = permission.try_into()?;
+            permissions.push(internal_permission);
+        }
+
+        Ok(InternalRole {
             id: value.id,
             description: value.description,
             permissions,
@@ -140,8 +227,8 @@ pub enum SystemRoles {
     Extension,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
-pub struct Permission {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct InternalPermission {
     /// Which resource we're targeting. A resource is also know as a collection in REST APIs. It refers to a particular
     /// group of endpoints. Resources might also have specific objects being targeted.
     pub resources: Vec<Resource>,
@@ -149,6 +236,86 @@ pub struct Permission {
     /// Actions are specific operations a user is allowed to perform for those resources. Endpoints will define which
     /// "action" they belong under.
     pub actions: Vec<Action>,
+}
+
+/// Permission is exactly like ['InternalPermission'] except it abstracts away the type specification
+/// of the permissions. This is used to interface with the user via the API.
+///
+/// The ['InternalPermissions'] object cannot be used due to issues with openapi and the generation of the
+/// ['Resource'] types. Instead we replace the enum system with a simple string declaration and manually
+/// do the translation between the two types.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+pub struct Permission {
+    /// Which resource to target. A resource refers to a particular group of endpoints. Resources might also have
+    /// specific objects being targeted. (Denoted by a '(target)')
+    ///
+    /// The current list of resources:
+    ///
+    /// "all"
+    /// "configs"
+    /// "deployments"
+    /// "events"
+    /// "extensions:(target)"
+    /// "namespaces:(target)"
+    /// "objects"
+    /// "permissions"
+    /// "pipelines:(target)"
+    /// "runs"
+    /// "secrets"
+    /// "subscriptions"
+    /// "system"
+    /// "task_executions"
+    /// "tokens"
+    ///
+    /// Example: ["configs", "namespaces:^default$", "pipelines:.*"]
+    pub resources: Vec<String>,
+
+    /// Actions are specific operations a user is allowed to perform for those resources. Endpoints will define which
+    /// "action" they belong under.
+    pub actions: Vec<Action>,
+}
+
+impl TryFrom<Permission> for InternalPermission {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Permission) -> Result<Self> {
+        let mut resources = vec![];
+
+        for resource_str in value.resources {
+            let resource = match Resource::from_str(&resource_str) {
+                Some(resource) => resource,
+                None => {
+                    bail!(
+                        "Could not parse resource '{}', not a valid resource type",
+                        resource_str
+                    );
+                }
+            };
+
+            resources.push(resource);
+        }
+
+        Ok(InternalPermission {
+            resources,
+            actions: value.actions,
+        })
+    }
+}
+
+impl From<InternalPermission> for Permission {
+    fn from(value: InternalPermission) -> Self {
+        let mut resources = vec![];
+
+        for resource in value.resources {
+            let internal_resource = Resource::to_string(&resource);
+            resources.push(internal_resource);
+        }
+
+        Permission {
+            resources,
+            actions: value.actions,
+        }
+    }
 }
 
 /// Contains information about the auth token sent with a request.
@@ -249,7 +416,7 @@ impl ApiState {
                 },
             };
 
-            let role = Role::try_from(storage_role).map_err(|err| {
+            let role = InternalRole::try_from(storage_role).map_err(|err| {
                 error!(message = "Could not serialize role from storage", error = %err);
                 http_error!(
                     "Could not parse role object from database",
@@ -510,35 +677,35 @@ impl ApiState {
 ///
 /// We create most of the roles mentioned in the [`SystemRoles`] enum.
 pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<()> {
-    let bootstrap_role = Role::new(
+    let bootstrap_role = InternalRole::new(
         &SystemRoles::Bootstrap.to_string(),
         "The original role that all other tokens/roles are created from.",
-        vec![Permission {
+        vec![InternalPermission {
             resources: vec![Resource::All],
             actions: vec![Action::Read, Action::Write, Action::Delete],
         }],
         true,
     );
 
-    let admin_role = Role::new(
+    let admin_role = InternalRole::new(
         &SystemRoles::Admin.to_string(),
         "Essentially root access. This role has unmitigated access to every resource.",
-        vec![Permission {
+        vec![InternalPermission {
             resources: vec![Resource::All],
             actions: vec![Action::Read, Action::Write, Action::Delete],
         }],
         true,
     );
 
-    let user_role = Role::new(
+    let user_role = InternalRole::new(
         &SystemRoles::User.to_string(),
         "A common user role that has access to the default namespace, but read-only for most other things.",
         vec![
-            Permission {
+            InternalPermission {
                 resources: vec![Resource::All],
                 actions: vec![Action::Read],
             },
-            Permission {
+            InternalPermission {
                 resources: vec![Resource::Namespaces("^default$".into()),
                     Resource::Pipelines(".*".into()),
                     Resource::Configs, Resource::Deployments,
@@ -549,10 +716,10 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
         true,
     );
 
-    let extension_role = Role::new(
+    let extension_role = InternalRole::new(
         &SystemRoles::Extension.to_string(),
         "Role assigned to extensions by default, allows extensions to have read permissions to things they may need.",
-        vec![Permission {
+        vec![InternalPermission {
             resources: vec![Resource::All],
             actions: vec![Action::Read],
         }],
@@ -642,10 +809,10 @@ pub async fn list_roles(
         }
     };
 
-    let mut roles: Vec<Role> = vec![];
+    let mut roles: Vec<InternalRole> = vec![];
 
     for storage_role in storage_roles {
-        let role = Role::try_from(storage_role).map_err(|e| {
+        let role = InternalRole::try_from(storage_role).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -656,6 +823,16 @@ pub async fn list_roles(
 
         roles.push(role);
     }
+
+    let roles: Result<Vec<Role>> = roles.into_iter().map(|role| role.try_into()).collect();
+    let roles = roles.map_err(|e| {
+        http_error!(
+            "Could not parse object role from database into api contract",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
 
     let resp = ListRolesResponse { roles };
     Ok(HttpResponseOk(resp))
@@ -726,9 +903,18 @@ pub async fn get_role(
         },
     };
 
-    let role = Role::try_from(storage_role).map_err(|e| {
+    let internal_role = InternalRole::try_from(storage_role).map_err(|e| {
         http_error!(
             "Could not parse object from database",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    let role: Role = internal_role.try_into().map_err(|e: anyhow::Error| {
+        http_error!(
+            "Could not parse object into api contract object",
             http::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
@@ -806,7 +992,26 @@ pub async fn create_role(
         }
     };
 
-    let new_role = Role::new(&body.id, &body.description, body.permissions, false);
+    let permissions: Result<Vec<InternalPermission>> = body
+        .permissions
+        .into_iter()
+        .map(|permission| permission.try_into())
+        .collect();
+    let permissions = permissions.map_err(|e| {
+        http_error!(
+            "Could not parse permissions from api contract",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    let new_role = InternalRole {
+        id: body.id.to_string(),
+        description: body.description.to_string(),
+        permissions,
+        system_role: false,
+    };
 
     let new_role_storage = match new_role.clone().try_into() {
         Ok(role) => role,
@@ -847,7 +1052,16 @@ pub async fn create_role(
             role_id: new_role.id.clone(),
         });
 
-    let resp = CreateRoleResponse { role: new_role };
+    let role = new_role.try_into().map_err(|e: anyhow::Error| {
+        http_error!(
+            "Could not parse role into api contract object",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    let resp = CreateRoleResponse { role };
 
     Ok(HttpResponseCreated(resp))
 }
@@ -1032,9 +1246,18 @@ pub async fn update_role(
         )));
     };
 
-    let role = Role::try_from(storage_role).map_err(|e| {
+    let internal_role = InternalRole::try_from(storage_role).map_err(|e| {
         http_error!(
             "Could not parse object from database",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    let role = internal_role.try_into().map_err(|e: anyhow::Error| {
+        http_error!(
+            "Could not parse role into api contract object",
             http::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())

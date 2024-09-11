@@ -562,6 +562,12 @@ type GetEventResponse struct {
 	Event Event `json:"event"`
 }
 
+// GetExtensionObjectResponse defines model for GetExtensionObjectResponse.
+type GetExtensionObjectResponse struct {
+	// Object The requested object data.
+	Object []uint8 `json:"object"`
+}
+
 // GetExtensionResponse defines model for GetExtensionResponse.
 type GetExtensionResponse struct {
 	// Extension The extension requested.
@@ -909,6 +915,12 @@ type ListDeploymentsResponse struct {
 	Deployments []Deployment `json:"deployments"`
 }
 
+// ListExtensionObjectsResponse defines model for ListExtensionObjectsResponse.
+type ListExtensionObjectsResponse struct {
+	// Objects A list of all extension objects.
+	Objects []Object `json:"objects"`
+}
+
 // ListExtensionsResponse defines model for ListExtensionsResponse.
 type ListExtensionsResponse struct {
 	// Extensions A list of all extensions.
@@ -1039,13 +1051,21 @@ type Parameter struct {
 	Required      bool   `json:"required"`
 }
 
-// Permission defines model for Permission.
+// Permission Permission is exactly like ['InternalPermission'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.
+//
+// The ['InternalPermissions'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the enum system with a simple string declaration and manually do the translation between the two types.
 type Permission struct {
 	// Actions Actions are specific operations a user is allowed to perform for those resources. Endpoints will define which "action" they belong under.
 	Actions []Action `json:"actions"`
 
-	// Resources Which resource we're targeting. A resource is also know as a collection in REST APIs. It refers to a particular group of endpoints. Resources might also have specific objects being targeted.
-	Resources []Resource `json:"resources"`
+	// Resources Which resource to target. A resource refers to a particular group of endpoints. Resources might also have specific objects being targeted. (Denoted by a '(target)')
+	//
+	// The current list of resources:
+	//
+	// "all" "configs" "deployments" "events" "extensions:(target)" "namespaces:(target)" "objects" "permissions" "pipelines:(target)" "runs" "secrets" "subscriptions" "system" "task_executions" "tokens"
+	//
+	// Example: ["configs", "namespaces:^default$", "pipelines:.*"]
+	Resources []string `json:"resources"`
 }
 
 // Pipeline `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute.
@@ -1085,6 +1105,24 @@ type Pipeline2 struct {
 
 // PipelineState defines model for PipelineState.
 type PipelineState string
+
+// PutExtensionObjectRequest defines model for PutExtensionObjectRequest.
+type PutExtensionObjectRequest struct {
+	// Content The bytes for the object.
+	Content []uint8 `json:"content"`
+
+	// Force Overwrite a value of a object if it already exists.
+	Force bool `json:"force"`
+
+	// Key The name for the object you would like to store.
+	Key string `json:"key"`
+}
+
+// PutExtensionObjectResponse defines model for PutExtensionObjectResponse.
+type PutExtensionObjectResponse struct {
+	// Object Information about the object created.
+	Object Object `json:"object"`
+}
 
 // PutGlobalSecretRequest defines model for PutGlobalSecretRequest.
 type PutGlobalSecretRequest struct {
@@ -1215,90 +1253,9 @@ type RequiredParentStatus string
 // RequiredParentStatus2 defines model for RequiredParentStatus2.
 type RequiredParentStatus2 string
 
-// Resource Resources are representitive group names for collections of endpoints and concepts within Gofer. It's used mostly by the permissioning system to identify collections and grant users permissions to those collections.
-type Resource struct {
-	union json.RawMessage
-}
-
-// Resource0 defines model for .
-type Resource0 struct {
-	Resource Resource0Resource `json:"resource"`
-}
-
-// Resource1 defines model for .
-type Resource1 struct {
-	Resource Resource1Resource `json:"resource"`
-}
-
-// Resource2 defines model for .
-type Resource2 struct {
-	Resource Resource2Resource `json:"resource"`
-}
-
-// Resource3 defines model for .
-type Resource3 struct {
-	Resource Resource3Resource `json:"resource"`
-}
-
-// Resource4 defines model for .
-type Resource4 struct {
-	Resource Resource4Resource `json:"resource"`
-	Target   string            `json:"target"`
-}
-
-// Resource5 defines model for .
-type Resource5 struct {
-	Resource Resource5Resource `json:"resource"`
-	Target   string            `json:"target"`
-}
-
-// Resource6 defines model for .
-type Resource6 struct {
-	Resource Resource6Resource `json:"resource"`
-}
-
-// Resource7 defines model for .
-type Resource7 struct {
-	Resource Resource7Resource `json:"resource"`
-}
-
-// Resource8 defines model for .
-type Resource8 struct {
-	Resource Resource8Resource `json:"resource"`
-	Target   string            `json:"target"`
-}
-
-// Resource9 defines model for .
-type Resource9 struct {
-	Resource Resource9Resource `json:"resource"`
-}
-
-// Resource10 defines model for .
-type Resource10 struct {
-	Resource Resource10Resource `json:"resource"`
-}
-
-// Resource11 defines model for .
-type Resource11 struct {
-	Resource Resource11Resource `json:"resource"`
-}
-
-// Resource12 defines model for .
-type Resource12 struct {
-	Resource Resource12Resource `json:"resource"`
-}
-
-// Resource13 defines model for .
-type Resource13 struct {
-	Resource Resource13Resource `json:"resource"`
-}
-
-// Resource14 defines model for .
-type Resource14 struct {
-	Resource Resource14Resource `json:"resource"`
-}
-
-// Role defines model for Role.
+// Role Role is exactly like ['InternalRole'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.
+//
+// The ['InternalRole'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the complicated enum system with a simple string declaration and manually do the translation between the two types.
 type Role struct {
 	Description string `json:"description"`
 
@@ -1881,6 +1838,9 @@ type InstallExtensionJSONRequestBody = InstallExtensionRequest
 
 // UpdateExtensionJSONRequestBody defines body for UpdateExtension for application/json ContentType.
 type UpdateExtensionJSONRequestBody = UpdateExtensionRequest
+
+// PutExtensionObjectJSONRequestBody defines body for PutExtensionObject for application/json ContentType.
+type PutExtensionObjectJSONRequestBody = PutExtensionObjectRequest
 
 // CreateNamespaceJSONRequestBody defines body for CreateNamespace for application/json ContentType.
 type CreateNamespaceJSONRequestBody = CreateNamespaceRequest
@@ -2674,406 +2634,6 @@ func (t Kind) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Kind) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsResource0 returns the union data inside the Resource as a Resource0
-func (t Resource) AsResource0() (Resource0, error) {
-	var body Resource0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource0 overwrites any union data inside the Resource as the provided Resource0
-func (t *Resource) FromResource0(v Resource0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource0 performs a merge with any union data inside the Resource, using the provided Resource0
-func (t *Resource) MergeResource0(v Resource0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource1 returns the union data inside the Resource as a Resource1
-func (t Resource) AsResource1() (Resource1, error) {
-	var body Resource1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource1 overwrites any union data inside the Resource as the provided Resource1
-func (t *Resource) FromResource1(v Resource1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource1 performs a merge with any union data inside the Resource, using the provided Resource1
-func (t *Resource) MergeResource1(v Resource1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource2 returns the union data inside the Resource as a Resource2
-func (t Resource) AsResource2() (Resource2, error) {
-	var body Resource2
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource2 overwrites any union data inside the Resource as the provided Resource2
-func (t *Resource) FromResource2(v Resource2) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource2 performs a merge with any union data inside the Resource, using the provided Resource2
-func (t *Resource) MergeResource2(v Resource2) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource3 returns the union data inside the Resource as a Resource3
-func (t Resource) AsResource3() (Resource3, error) {
-	var body Resource3
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource3 overwrites any union data inside the Resource as the provided Resource3
-func (t *Resource) FromResource3(v Resource3) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource3 performs a merge with any union data inside the Resource, using the provided Resource3
-func (t *Resource) MergeResource3(v Resource3) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource4 returns the union data inside the Resource as a Resource4
-func (t Resource) AsResource4() (Resource4, error) {
-	var body Resource4
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource4 overwrites any union data inside the Resource as the provided Resource4
-func (t *Resource) FromResource4(v Resource4) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource4 performs a merge with any union data inside the Resource, using the provided Resource4
-func (t *Resource) MergeResource4(v Resource4) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource5 returns the union data inside the Resource as a Resource5
-func (t Resource) AsResource5() (Resource5, error) {
-	var body Resource5
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource5 overwrites any union data inside the Resource as the provided Resource5
-func (t *Resource) FromResource5(v Resource5) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource5 performs a merge with any union data inside the Resource, using the provided Resource5
-func (t *Resource) MergeResource5(v Resource5) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource6 returns the union data inside the Resource as a Resource6
-func (t Resource) AsResource6() (Resource6, error) {
-	var body Resource6
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource6 overwrites any union data inside the Resource as the provided Resource6
-func (t *Resource) FromResource6(v Resource6) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource6 performs a merge with any union data inside the Resource, using the provided Resource6
-func (t *Resource) MergeResource6(v Resource6) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource7 returns the union data inside the Resource as a Resource7
-func (t Resource) AsResource7() (Resource7, error) {
-	var body Resource7
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource7 overwrites any union data inside the Resource as the provided Resource7
-func (t *Resource) FromResource7(v Resource7) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource7 performs a merge with any union data inside the Resource, using the provided Resource7
-func (t *Resource) MergeResource7(v Resource7) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource8 returns the union data inside the Resource as a Resource8
-func (t Resource) AsResource8() (Resource8, error) {
-	var body Resource8
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource8 overwrites any union data inside the Resource as the provided Resource8
-func (t *Resource) FromResource8(v Resource8) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource8 performs a merge with any union data inside the Resource, using the provided Resource8
-func (t *Resource) MergeResource8(v Resource8) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource9 returns the union data inside the Resource as a Resource9
-func (t Resource) AsResource9() (Resource9, error) {
-	var body Resource9
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource9 overwrites any union data inside the Resource as the provided Resource9
-func (t *Resource) FromResource9(v Resource9) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource9 performs a merge with any union data inside the Resource, using the provided Resource9
-func (t *Resource) MergeResource9(v Resource9) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource10 returns the union data inside the Resource as a Resource10
-func (t Resource) AsResource10() (Resource10, error) {
-	var body Resource10
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource10 overwrites any union data inside the Resource as the provided Resource10
-func (t *Resource) FromResource10(v Resource10) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource10 performs a merge with any union data inside the Resource, using the provided Resource10
-func (t *Resource) MergeResource10(v Resource10) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource11 returns the union data inside the Resource as a Resource11
-func (t Resource) AsResource11() (Resource11, error) {
-	var body Resource11
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource11 overwrites any union data inside the Resource as the provided Resource11
-func (t *Resource) FromResource11(v Resource11) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource11 performs a merge with any union data inside the Resource, using the provided Resource11
-func (t *Resource) MergeResource11(v Resource11) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource12 returns the union data inside the Resource as a Resource12
-func (t Resource) AsResource12() (Resource12, error) {
-	var body Resource12
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource12 overwrites any union data inside the Resource as the provided Resource12
-func (t *Resource) FromResource12(v Resource12) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource12 performs a merge with any union data inside the Resource, using the provided Resource12
-func (t *Resource) MergeResource12(v Resource12) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource13 returns the union data inside the Resource as a Resource13
-func (t Resource) AsResource13() (Resource13, error) {
-	var body Resource13
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource13 overwrites any union data inside the Resource as the provided Resource13
-func (t *Resource) FromResource13(v Resource13) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource13 performs a merge with any union data inside the Resource, using the provided Resource13
-func (t *Resource) MergeResource13(v Resource13) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsResource14 returns the union data inside the Resource as a Resource14
-func (t Resource) AsResource14() (Resource14, error) {
-	var body Resource14
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromResource14 overwrites any union data inside the Resource as the provided Resource14
-func (t *Resource) FromResource14(v Resource14) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeResource14 performs a merge with any union data inside the Resource, using the provided Resource14
-func (t *Resource) MergeResource14(v Resource14) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t Resource) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *Resource) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -4514,6 +4074,20 @@ type ClientInterface interface {
 	// GetExtensionLogs request
 	GetExtensionLogs(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExtensionObjects request
+	ListExtensionObjects(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutExtensionObjectWithBody request with any body
+	PutExtensionObjectWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutExtensionObject(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteExtensionObject request
+	DeleteExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetExtensionObject request
+	GetExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListNamespaces request
 	ListNamespaces(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -4855,6 +4429,66 @@ func (c *Client) UpdateExtension(ctx context.Context, extensionId string, body U
 
 func (c *Client) GetExtensionLogs(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetExtensionLogsRequest(c.Server, extensionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListExtensionObjects(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExtensionObjectsRequest(c.Server, extensionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutExtensionObjectWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutExtensionObjectRequestWithBody(c.Server, extensionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutExtensionObject(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutExtensionObjectRequest(c.Server, extensionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteExtensionObjectRequest(c.Server, extensionId, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExtensionObjectRequest(c.Server, extensionId, key)
 	if err != nil {
 		return nil, err
 	}
@@ -6133,6 +5767,169 @@ func NewGetExtensionLogsRequest(server string, extensionId string) (*http.Reques
 	}
 
 	operationPath := fmt.Sprintf("/api/extensions/%s/logs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListExtensionObjectsRequest generates requests for ListExtensionObjects
+func NewListExtensionObjectsRequest(server string, extensionId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/%s/objects", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutExtensionObjectRequest calls the generic PutExtensionObject builder with application/json body
+func NewPutExtensionObjectRequest(server string, extensionId string, body PutExtensionObjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutExtensionObjectRequestWithBody(server, extensionId, "application/json", bodyReader)
+}
+
+// NewPutExtensionObjectRequestWithBody generates requests for PutExtensionObject with any type of body
+func NewPutExtensionObjectRequestWithBody(server string, extensionId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/%s/objects", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteExtensionObjectRequest generates requests for DeleteExtensionObject
+func NewDeleteExtensionObjectRequest(server string, extensionId string, key string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/%s/objects/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetExtensionObjectRequest generates requests for GetExtensionObject
+func NewGetExtensionObjectRequest(server string, extensionId string, key string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/%s/objects/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9065,6 +8862,20 @@ type ClientWithResponsesInterface interface {
 	// GetExtensionLogsWithResponse request
 	GetExtensionLogsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*GetExtensionLogsResp, error)
 
+	// ListExtensionObjectsWithResponse request
+	ListExtensionObjectsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionObjectsResp, error)
+
+	// PutExtensionObjectWithBodyWithResponse request with any body
+	PutExtensionObjectWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error)
+
+	PutExtensionObjectWithResponse(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error)
+
+	// DeleteExtensionObjectWithResponse request
+	DeleteExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*DeleteExtensionObjectResp, error)
+
+	// GetExtensionObjectWithResponse request
+	GetExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*GetExtensionObjectResp, error)
+
 	// ListNamespacesWithResponse request
 	ListNamespacesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListNamespacesResp, error)
 
@@ -9485,6 +9296,101 @@ func (r GetExtensionLogsResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetExtensionLogsResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListExtensionObjectsResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListExtensionObjectsResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExtensionObjectsResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExtensionObjectsResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutExtensionObjectResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *PutExtensionObjectResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PutExtensionObjectResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutExtensionObjectResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteExtensionObjectResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteExtensionObjectResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteExtensionObjectResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetExtensionObjectResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetExtensionObjectResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExtensionObjectResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExtensionObjectResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11054,6 +10960,50 @@ func (c *ClientWithResponses) GetExtensionLogsWithResponse(ctx context.Context, 
 	return ParseGetExtensionLogsResp(rsp)
 }
 
+// ListExtensionObjectsWithResponse request returning *ListExtensionObjectsResp
+func (c *ClientWithResponses) ListExtensionObjectsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionObjectsResp, error) {
+	rsp, err := c.ListExtensionObjects(ctx, extensionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExtensionObjectsResp(rsp)
+}
+
+// PutExtensionObjectWithBodyWithResponse request with arbitrary body returning *PutExtensionObjectResp
+func (c *ClientWithResponses) PutExtensionObjectWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error) {
+	rsp, err := c.PutExtensionObjectWithBody(ctx, extensionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutExtensionObjectResp(rsp)
+}
+
+func (c *ClientWithResponses) PutExtensionObjectWithResponse(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error) {
+	rsp, err := c.PutExtensionObject(ctx, extensionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutExtensionObjectResp(rsp)
+}
+
+// DeleteExtensionObjectWithResponse request returning *DeleteExtensionObjectResp
+func (c *ClientWithResponses) DeleteExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*DeleteExtensionObjectResp, error) {
+	rsp, err := c.DeleteExtensionObject(ctx, extensionId, key, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteExtensionObjectResp(rsp)
+}
+
+// GetExtensionObjectWithResponse request returning *GetExtensionObjectResp
+func (c *ClientWithResponses) GetExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*GetExtensionObjectResp, error) {
+	rsp, err := c.GetExtensionObject(ctx, extensionId, key, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExtensionObjectResp(rsp)
+}
+
 // ListNamespacesWithResponse request returning *ListNamespacesResp
 func (c *ClientWithResponses) ListNamespacesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListNamespacesResp, error) {
 	rsp, err := c.ListNamespaces(ctx, reqEditors...)
@@ -12026,6 +11976,159 @@ func ParseGetExtensionLogsResp(rsp *http.Response) (*GetExtensionLogsResp, error
 	response := &GetExtensionLogsResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseListExtensionObjectsResp parses an HTTP response from a ListExtensionObjectsWithResponse call
+func ParseListExtensionObjectsResp(rsp *http.Response) (*ListExtensionObjectsResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExtensionObjectsResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListExtensionObjectsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutExtensionObjectResp parses an HTTP response from a PutExtensionObjectWithResponse call
+func ParsePutExtensionObjectResp(rsp *http.Response) (*PutExtensionObjectResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutExtensionObjectResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PutExtensionObjectResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteExtensionObjectResp parses an HTTP response from a DeleteExtensionObjectWithResponse call
+func ParseDeleteExtensionObjectResp(rsp *http.Response) (*DeleteExtensionObjectResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteExtensionObjectResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetExtensionObjectResp parses an HTTP response from a GetExtensionObjectWithResponse call
+func ParseGetExtensionObjectResp(rsp *http.Response) (*GetExtensionObjectResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExtensionObjectResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetExtensionObjectResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
 	}
 
 	return response, nil
