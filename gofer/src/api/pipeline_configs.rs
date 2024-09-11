@@ -882,7 +882,7 @@ pub async fn deploy_config(
         .await
         .map_err(|err| {
             http_error!(
-                "Could not insert object from database",
+                "Could not insert object into database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())

@@ -315,6 +315,175 @@
         "x-dropshot-websocket": {}
       }
     },
+    "/api/extensions/{extension_id}/objects": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "List all extension objects.",
+        "operationId": "list_extension_objects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListExtensionObjectsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Insert a new object into the extension object store.",
+        "operationId": "put_extension_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutExtensionObjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutExtensionObjectResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions/{extension_id}/objects/{key}": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Get extension object by key.",
+        "operationId": "get_extension_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetExtensionObjectResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Delete extension object by key.",
+        "operationId": "delete_extension_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/namespaces": {
       "get": {
         "tags": [
@@ -3797,6 +3966,23 @@
           "event"
         ]
       },
+      "GetExtensionObjectResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "description": "The requested object data.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          }
+        },
+        "required": [
+          "object"
+        ]
+      },
       "GetExtensionResponse": {
         "type": "object",
         "properties": {
@@ -4785,6 +4971,21 @@
           "deployments"
         ]
       },
+      "ListExtensionObjectsResponse": {
+        "type": "object",
+        "properties": {
+          "objects": {
+            "description": "A list of all extension objects.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        },
+        "required": [
+          "objects"
+        ]
+      },
       "ListExtensionsResponse": {
         "type": "object",
         "properties": {
@@ -5097,6 +5298,7 @@
         ]
       },
       "Permission": {
+        "description": "Permission is exactly like ['InternalPermission'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.\n\nThe ['InternalPermissions'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the enum system with a simple string declaration and manually do the translation between the two types.",
         "type": "object",
         "properties": {
           "actions": {
@@ -5107,10 +5309,10 @@
             }
           },
           "resources": {
-            "description": "Which resource we're targeting. A resource is also know as a collection in REST APIs. It refers to a particular group of endpoints. Resources might also have specific objects being targeted.",
+            "description": "Which resource to target. A resource refers to a particular group of endpoints. Resources might also have specific objects being targeted. (Denoted by a '(target)')\n\nThe current list of resources:\n\n\"all\" \"configs\" \"deployments\" \"events\" \"extensions:(target)\" \"namespaces:(target)\" \"objects\" \"permissions\" \"pipelines:(target)\" \"runs\" \"secrets\" \"subscriptions\" \"system\" \"task_executions\" \"tokens\"\n\nExample: [\"configs\", \"namespaces:^default$\", \"pipelines:.*\"]",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Resource"
+              "type": "string"
             }
           }
         },
@@ -5188,6 +5390,49 @@
           "unknown",
           "active",
           "disabled"
+        ]
+      },
+      "PutExtensionObjectRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "description": "The bytes for the object.",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0
+            }
+          },
+          "force": {
+            "description": "Overwrite a value of a object if it already exists.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The name for the object you would like to store.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "force",
+          "key"
+        ]
+      },
+      "PutExtensionObjectResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "description": "Information about the object created.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "object"
         ]
       },
       "PutGlobalSecretRequest": {
@@ -5499,234 +5744,8 @@
           "Failure"
         ]
       },
-      "Resource": {
-        "description": "Resources are representitive group names for collections of endpoints and concepts within Gofer. It's used mostly by the permissioning system to identify collections and grant users permissions to those collections.",
-        "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "all"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "configs"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "deployments"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "events"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "extensions"
-                ]
-              },
-              "target": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "resource",
-              "target"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "namespaces"
-                ]
-              },
-              "target": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "resource",
-              "target"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "objects"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "permissions"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "pipelines"
-                ]
-              },
-              "target": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "resource",
-              "target"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "runs"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "secrets"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "subscriptions"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "system"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "task_executions"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "resource": {
-                "type": "string",
-                "enum": [
-                  "tokens"
-                ]
-              }
-            },
-            "required": [
-              "resource"
-            ]
-          }
-        ]
-      },
       "Role": {
+        "description": "Role is exactly like ['InternalRole'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.\n\nThe ['InternalRole'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the complicated enum system with a simple string declaration and manually do the translation between the two types.",
         "type": "object",
         "properties": {
           "description": {

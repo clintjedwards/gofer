@@ -141,6 +141,16 @@ CREATE TABLE IF NOT EXISTS object_store_run_keys(
 
 CREATE INDEX idx_object_run_keys_created ON object_store_run_keys (created);
 
+CREATE TABLE IF NOT EXISTS object_store_extension_keys(
+    extension_id  TEXT    NOT NULL,
+    key           TEXT    NOT NULL,
+    created       TEXT    NOT NULL,
+    FOREIGN KEY (extension_id) REFERENCES extension_registrations(extension_id) ON DELETE CASCADE,
+    PRIMARY KEY (extension_id, key)
+) STRICT;
+
+CREATE INDEX idx_object_extension_keys_created ON object_store_extension_keys (created);
+
 CREATE TABLE IF NOT EXISTS secret_store_pipeline_keys(
     namespace_id  TEXT    NOT NULL,
     pipeline_id   TEXT    NOT NULL,

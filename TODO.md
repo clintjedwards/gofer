@@ -16,6 +16,10 @@ it would be better for the interval extension to reach out and restore it's own 
 determine and in what order it wants to. This allows the interval to introduce jitter and other algorithms to better
 spread the load.
 
+- Extensions aren't particularly durable. If a container orchestrator moves them (to potentially make room
+  for other things) they lose all state. Maybe we can allow extensions to use Gofer's object store such that they can persist state.
+  It's possible that on Extension startup we can have it grab objects and then just return an error on the health endpoint until it's ready.
+
 * Make sure to give extensions access to the new object store.
 
 ## Github Extension followthrough
@@ -43,6 +47,8 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 ## API
 
+* Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
+try to register the same thing twice.
 * We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.
   * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
   and started. This way we can have more accurate running times instead of just leaving it as whenever the server
@@ -69,6 +75,8 @@ the same major version should work, but extensions might all have different mino
 to tell Gofer to use a major version of the extension but we always want the latest minor version.
 * Turn off the incoming request in the dropshot logging. Probably check all logging to make sure we need it.
 * Deployments needs a type parameter so when we add extra deployments.
+* Integration tests should use a different database location so we can start fresh all the time and not clobber existing
+dev state.
 
 
 # Small things I'll probably never get around to.
@@ -98,7 +106,6 @@ sometimes.
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 
-
 ### Scheduler
 
 - Implement CPU/MEMORY per task values since all non-local schedulers will need this.
@@ -117,8 +124,6 @@ sometimes.
 
 ### Extensions
 
-- Extensions aren't particularly durable. If a container orchestrator moves them (to potentially make room for other things) they lose all state. Maybe we can allow extensions to use Gofer's object store such that they can persist state.
-  It's possible that on Extension startup we can have it grab objects and then just return an error on the health endpoint until it's ready.
 - Test that unsubscribing works with all extensions. And create a test suite that extensions can run against.
 - The interval extension should create jitter of about 2-5 mins. During that time it can choose when to start counting to extension an event. This is so that when we restart the server all events don't perfectly line up with each other and cause a storm. There might be other, smarter ways to handle this queue and api calling as well.
 - Extensions should follow semver. Extensions that use the same major version of Gofer should be compatible.
@@ -149,14 +154,8 @@ There are several useful things we can do with the concept of extensions:
   then run once every day or so to calculate metrics.
 - On the first page a constantly updating event log would be really cool for the default namespace.
 
-### Things I need to do but probably will never get around to
-
-- Test registry auth.
-- Write tests for all "TO" and "FROM" functions.
-
 ### General
 
-- For FromProto methods where the reference might be nil; auto-create the reference before attempting to fill it. Look at registry auth for an example.
 - Metrics via openTelemetry
 - Check that when we create the run specific token for a run and enter it into the user's run stuff. We also need to make sure we clean that token up after the run is done.
 - Create a container for custom use that has gofer-cli already packed in and possibly allows

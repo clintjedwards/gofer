@@ -21,6 +21,7 @@ pub mod events;
 pub mod extension_registrations;
 pub mod extension_subscriptions;
 pub mod namespaces;
+pub mod object_store_extension_keys;
 pub mod object_store_pipeline_keys;
 pub mod object_store_run_keys;
 pub mod pipeline_configs;
