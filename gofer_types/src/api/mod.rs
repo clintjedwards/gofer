@@ -1,2 +1,9 @@
 pub mod deployment;
 pub mod event;
+pub mod extension;
+pub mod external;
+pub mod namespace;
+pub mod object;
+pub mod run;
+pub mod task;
+pub mod task_execution;

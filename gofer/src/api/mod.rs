@@ -684,8 +684,8 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
 fn set_tagging_policy(api: ApiDescription<Arc<ApiState>>) -> ApiDescription<Arc<ApiState>> {
     api.tag_config(TagConfig {
         allow_other_tags: false,
-        endpoint_tag_policy: EndpointTagPolicy::ExactlyOne,
-        tag_definitions: vec![
+        policy: EndpointTagPolicy::ExactlyOne,
+        tags: vec![
             (
                 "Configs".to_string(),
                 TagDetails {

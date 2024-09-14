@@ -1,2 +1,11 @@
 pub mod deployment;
 pub mod event;
+pub mod extension_registration;
+pub mod extension_subscription;
+pub mod namespace;
+pub mod object_store_extension_key;
+pub mod object_store_pipeline_key;
+pub mod object_store_run_key;
+pub mod run;
+pub mod task;
+pub mod task_execution;

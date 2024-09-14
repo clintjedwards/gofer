@@ -1,3 +1,4 @@
+use crate::api::{run, task_execution};
 use crate::{epoch_milli, storage};
 use anyhow::{Context, Result};
 use schemars::JsonSchema;
@@ -79,7 +80,7 @@ pub enum Kind {
         namespace_id: String,
         pipeline_id: String,
         run_id: u64,
-        status: runs::Status,
+        status: run::Status,
     },
     StartedRunCancellation {
         namespace_id: String,
@@ -105,7 +106,7 @@ pub enum Kind {
         pipeline_id: String,
         run_id: u64,
         task_execution_id: String,
-        status: task_executions::Status,
+        status: task_execution::Status,
     },
     StartedTaskExecutionCancellation {
         namespace_id: String,
@@ -223,4 +224,27 @@ impl Event {
             emitted: epoch_milli(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct EventPathArgs {
+    /// The unique identifier for the target event.
+    pub event_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct EventQueryArgs {
+    /// If set to true Gofer first exhausts events that have already passed before it starts to stream
+    /// new events.
+    pub history: Option<bool>,
+
+    /// Reverses the order of events by the time they were emitted. By default Gofer lists events in ascending order;
+    /// setting reverse to true causes events to be in descending order.
+    pub reverse: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ListEventsResponse {
+    /// A list of all events.
+    pub events: Vec<Event>,
 }
