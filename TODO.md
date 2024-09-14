@@ -20,7 +20,12 @@ spread the load.
   for other things) they lose all state. Maybe we can allow extensions to use Gofer's object store such that they can persist state.
   It's possible that on Extension startup we can have it grab objects and then just return an error on the health endpoint until it's ready.
 
-* Make sure to give extensions access to the new object store.
+* We need to change how subscriptions currently function such that we better suppor the new paradigm. Also during extension
+start up remove the subscription dissemination. 
+* When we register a new extension the user has the option to accept the default extension role, which gives limited
+permissions that satisfy most extensions (read to most things that aren't sensitive and write to runs, write to it's own object store).
+Or they can insert their own extension role to give their extension more features.
+* Need to update the SDK and all extensions to reflect this new paradigm.
 
 ## Github Extension followthrough
 

@@ -9,7 +9,7 @@ edition = "2021"
 aes = "0.8.4"
 aes-gcm = "0.10.3"
 anyhow = "1.0.72"
-async-trait = "0.1.80"
+async-trait = "0.1.82"
 base64 = "0.22.1"
 bollard = "0.16.1"
 chrono = "0.4.31"
@@ -21,8 +21,8 @@ crossbeam = "0.8.4"
 dashmap = "5.5.3"
 derive_builder = "0.20.0"
 dirs = "5.0.1"
-dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.1-dev" }
-dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.1-dev" }
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.0" }
+dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.0" }
 figment = { version = "0.10.16", features = ["env", "toml"] }
 futures = "0.3.30"
 gofer_sdk = { path = "../sdk/rust" }

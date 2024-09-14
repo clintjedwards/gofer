@@ -1,11 +1,12 @@
 [workspace]
 members = [
     "gofer",
+    "gofer_types",
     "sdk/rust",
     "examplePipelines/rust/simple",
     "examplePipelines/rust/secrets",
     "examplePipelines/rust/objects",
-    "examplePipelines/rust/dag",
+    "examplePipelines/rust/dag", "gofer_types",
 ]
 resolver = "2"
 
