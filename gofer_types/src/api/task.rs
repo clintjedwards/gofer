@@ -1,5 +1,6 @@
-use crate::{storage, RegistryAuth, Variable};
+use crate::{storage, RegistryAuth, Variable, VariableSource};
 use anyhow::Result;
+use gofer_sdk;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -19,16 +20,16 @@ pub enum RequiredParentStatus {
     Failure,
 }
 
-// impl From<gofer_sdk::config::RequiredParentStatus> for RequiredParentStatus {
-//     fn from(value: gofer_sdk::config::RequiredParentStatus) -> Self {
-//         match value {
-//             gofer_sdk::config::RequiredParentStatus::Unknown => RequiredParentStatus::Unknown,
-//             gofer_sdk::config::RequiredParentStatus::Any => RequiredParentStatus::Any,
-//             gofer_sdk::config::RequiredParentStatus::Success => RequiredParentStatus::Success,
-//             gofer_sdk::config::RequiredParentStatus::Failure => RequiredParentStatus::Failure,
-//         }
-//     }
-// }
+impl From<gofer_sdk::config::RequiredParentStatus> for RequiredParentStatus {
+    fn from(value: gofer_sdk::config::RequiredParentStatus) -> Self {
+        match value {
+            gofer_sdk::config::RequiredParentStatus::Unknown => RequiredParentStatus::Unknown,
+            gofer_sdk::config::RequiredParentStatus::Any => RequiredParentStatus::Any,
+            gofer_sdk::config::RequiredParentStatus::Success => RequiredParentStatus::Success,
+            gofer_sdk::config::RequiredParentStatus::Failure => RequiredParentStatus::Failure,
+        }
+    }
+}
 
 /// A task represents a particular workload within a pipeline. Tasks are composable within a larger pipeline, meaning
 /// they can be run before, after, or alongside other tasks. Tasks represent the lowest level of the Gofer hierarchy
@@ -65,33 +66,33 @@ pub struct Task {
     pub inject_api_token: bool,
 }
 
-// impl From<gofer_sdk::config::Task> for Task {
-//     fn from(value: gofer_sdk::config::Task) -> Self {
-//         Task {
-//             id: value.id,
-//             description: value.description.unwrap_or_default(),
-//             image: value.image,
-//             registry_auth: value.registry_auth.map(RegistryAuth::from),
-//             depends_on: value
-//                 .depends_on
-//                 .into_iter()
-//                 .map(|(task_id, status)| (task_id, RequiredParentStatus::from(status)))
-//                 .collect(),
-//             variables: value
-//                 .variables
-//                 .into_iter()
-//                 .map(|(key, value)| Variable {
-//                     key,
-//                     value,
-//                     source: VariableSource::PipelineConfig,
-//                 })
-//                 .collect(),
-//             entrypoint: value.entrypoint,
-//             command: value.command,
-//             inject_api_token: value.inject_api_token,
-//         }
-//     }
-// }
+impl From<gofer_sdk::config::Task> for Task {
+    fn from(value: gofer_sdk::config::Task) -> Self {
+        Task {
+            id: value.id,
+            description: value.description.unwrap_or_default(),
+            image: value.image,
+            registry_auth: value.registry_auth.map(RegistryAuth::from),
+            depends_on: value
+                .depends_on
+                .into_iter()
+                .map(|(task_id, status)| (task_id, RequiredParentStatus::from(status)))
+                .collect(),
+            variables: value
+                .variables
+                .into_iter()
+                .map(|(key, value)| Variable {
+                    key,
+                    value,
+                    source: VariableSource::PipelineConfig,
+                })
+                .collect(),
+            entrypoint: value.entrypoint,
+            command: value.command,
+            inject_api_token: value.inject_api_token,
+        }
+    }
+}
 
 impl Task {
     pub fn to_storage(

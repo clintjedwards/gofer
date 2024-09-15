@@ -32,14 +32,14 @@ pub struct RegistryAuth {
     pub pass: String,
 }
 
-// impl From<gofer_sdk::config::RegistryAuth> for RegistryAuth {
-//     fn from(value: gofer_sdk::config::RegistryAuth) -> Self {
-//         RegistryAuth {
-//             user: value.user,
-//             pass: value.pass,
-//         }
-//     }
-// }
+impl From<gofer_sdk::config::RegistryAuth> for RegistryAuth {
+    fn from(value: gofer_sdk::config::RegistryAuth) -> Self {
+        RegistryAuth {
+            user: value.user,
+            pass: value.pass,
+        }
+    }
+}
 
 #[derive(
     Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,

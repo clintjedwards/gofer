@@ -1,5 +1,6 @@
 use crate::{storage, RegistryAuth, Variable};
 use anyhow::{Context, Result};
+use gofer_sdk;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -190,31 +191,31 @@ pub struct Documentation {
     pub body: String,
 }
 
-// impl From<gofer_sdk::extension::api::types::Documentation> for Documentation {
-//     fn from(value: gofer_sdk::extension::api::types::Documentation) -> Self {
-//         Documentation {
-//             config_params: value
-//                 .config_params
-//                 .into_iter()
-//                 .map(|param| Parameter {
-//                     key: param.key,
-//                     required: param.required,
-//                     documentation: param.documentation,
-//                 })
-//                 .collect(),
-//             pipeline_subscription_params: value
-//                 .pipeline_subscription_params
-//                 .into_iter()
-//                 .map(|param| Parameter {
-//                     key: param.key,
-//                     required: param.required,
-//                     documentation: param.documentation,
-//                 })
-//                 .collect(),
-//             body: value.body,
-//         }
-//     }
-// }
+impl From<gofer_sdk::extension::api::types::Documentation> for Documentation {
+    fn from(value: gofer_sdk::extension::api::types::Documentation) -> Self {
+        Documentation {
+            config_params: value
+                .config_params
+                .into_iter()
+                .map(|param| Parameter {
+                    key: param.key,
+                    required: param.required,
+                    documentation: param.documentation,
+                })
+                .collect(),
+            pipeline_subscription_params: value
+                .pipeline_subscription_params
+                .into_iter()
+                .map(|param| Parameter {
+                    key: param.key,
+                    required: param.required,
+                    documentation: param.documentation,
+                })
+                .collect(),
+            body: value.body,
+        }
+    }
+}
 
 /// An Extension is the way that pipelines add extra functionality to themselves. Pipelines can "subscribe" to
 /// extensions and extensions then act on behalf of that pipeline.
