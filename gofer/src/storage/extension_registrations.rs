@@ -12,6 +12,7 @@ pub struct ExtensionRegistration {
     pub modified: String,
     pub status: String,
     pub key_id: String,
+    pub additional_roles: String,
 }
 
 #[derive(Clone, Debug)]
@@ -21,6 +22,7 @@ pub struct UpdatableFields {
     pub settings: Option<String>,
     pub status: Option<String>,
     pub key_id: Option<String>,
+    pub additional_roles: Option<String>,
     pub modified: String,
 }
 
@@ -32,6 +34,7 @@ impl Default for UpdatableFields {
             settings: Default::default(),
             status: Default::default(),
             key_id: Default::default(),
+            additional_roles: Default::default(),
             modified: epoch_milli().to_string(),
         }
     }
@@ -42,7 +45,8 @@ pub async fn insert(
     registration: &ExtensionRegistration,
 ) -> Result<(), StorageError> {
     let query = sqlx::query(
-        "INSERT INTO extension_registrations (extension_id, image, registry_auth, settings, created, modified, status, key_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
+        "INSERT INTO extension_registrations (extension_id, image, registry_auth, settings, created, modified, \
+        status, key_id, additional_roles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
     )
     .bind(&registration.extension_id)
     .bind(&registration.image)
@@ -51,7 +55,8 @@ pub async fn insert(
     .bind(&registration.created)
     .bind(&registration.modified)
     .bind(&registration.status)
-    .bind(&registration.key_id);
+    .bind(&registration.key_id)
+    .bind(&registration.additional_roles);
 
     let sql = query.sql();
 
@@ -64,7 +69,10 @@ pub async fn insert(
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<ExtensionRegistration>, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionRegistration>("SELECT extension_id, image, registry_auth, settings, created, modified, status, key_id FROM extension_registrations;");
+    let query = sqlx::query_as::<_, ExtensionRegistration>(
+        "SELECT extension_id, image, registry_auth, settings, \
+        created, modified, status, key_id, additional_roles FROM extension_registrations;",
+    );
 
     let sql = query.sql();
 
@@ -79,7 +87,8 @@ pub async fn get(
     extension_id: &str,
 ) -> Result<ExtensionRegistration, StorageError> {
     let query = sqlx::query_as::<_, ExtensionRegistration>(
-        "SELECT extension_id, image, registry_auth, settings, created, modified, status, key_id FROM extension_registrations WHERE extension_id = ?;",
+        "SELECT extension_id, image, registry_auth, settings, created, modified, status, key_id, additional_roles \
+        FROM extension_registrations WHERE extension_id = ?;",
     )
     .bind(extension_id);
 
@@ -141,6 +150,15 @@ pub async fn update(
             update_query.push(", ");
         }
         update_query.push("key_id = ");
+        update_query.push_bind(value);
+        updated_fields_total += 1;
+    }
+
+    if let Some(value) = &fields.additional_roles {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("additional_roles = ");
         update_query.push_bind(value);
         updated_fields_total += 1;
     }
@@ -210,6 +228,7 @@ mod tests {
             created: "2023-04-15T12:34:56".to_string(),
             modified: String::new(),
             status: "Active".to_string(),
+            additional_roles: "[some_role_here]".to_string(),
             key_id: "key456".to_string(),
         };
 
@@ -266,6 +285,7 @@ mod tests {
             settings: Some("new_settings".to_string()),
             status: Some("Active".to_string()),
             key_id: Some("12345".to_string()),
+            additional_roles: Some("some_other_role_here".to_string()),
             modified: "".to_string(),
         };
 

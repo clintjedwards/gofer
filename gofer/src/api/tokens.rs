@@ -78,7 +78,7 @@ impl Token {
     pub fn new(
         hash: &str,
         metadata: HashMap<String, String>,
-        expiry: u64, // Seconds from creation that token should expire.
+        expiry: u64, // Seconds from creation that token should expire. 0 means that token does not expire.
         user: String,
         roles: Vec<String>,
     ) -> Self {

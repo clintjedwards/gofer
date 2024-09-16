@@ -20,6 +20,7 @@ spread the load.
   for other things) they lose all state. Maybe we can allow extensions to use Gofer's object store such that they can persist state.
   It's possible that on Extension startup we can have it grab objects and then just return an error on the health endpoint until it's ready.
 
+* Make sure to remove role access after a extension has been unregistered.
 * Make sure to give extensions access to the new object store.
 
 ## Github Extension followthrough
@@ -42,6 +43,7 @@ Because of this we should give the user as many tools as we can to make sure the
 * Find other ways we can debug and make the user's life easier in this regard. It's possible that if we put a lot of
 thought into this feature that it can become a game changer for Gofer as a whole.
 * Maybe create a timeline on when each task execution happened for a particular run?
+* It should be possible to create a timegraph of what ran and for how long and display that to the user.
 
 # Small things I want to keep track of that I definitely need to do.
 
@@ -81,6 +83,9 @@ dev state.
 
 # Small things I'll probably never get around to.
 
+* Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
+code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers
+in one very large file or split them up). https://github.com/oxidecomputer/dropshot/issues/1069 should fix this.
 * Registry auth is largely untested and possibly unsecured, don't use it for anything serious.
 * Write/Design a way to clean up expired tokens after long enough.
 * When a user removes an extension we should remove the subscriptions also (check we don't already do this,

@@ -85,6 +85,7 @@ mod tests {
             created: "some_date".into(),
             modified: "some_modified".into(),
             status: "some_status".into(),
+            additional_roles: "some_role".into(),
             key_id: "some_key_id".into(),
         };
 

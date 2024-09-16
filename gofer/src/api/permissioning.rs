@@ -222,9 +222,6 @@ pub enum SystemRoles {
 
     /// A regular user of the system.
     User,
-
-    /// Special token given to extensions.
-    Extension,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -716,17 +713,7 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
         true,
     );
 
-    let extension_role = InternalRole::new(
-        &SystemRoles::Extension.to_string(),
-        "Role assigned to extensions by default, allows extensions to have read permissions to things they may need.",
-        vec![InternalPermission {
-            resources: vec![Resource::All],
-            actions: vec![Action::Read],
-        }],
-        true,
-    );
-
-    let roles = vec![bootstrap_role, admin_role, user_role, extension_role];
+    let roles = vec![bootstrap_role, admin_role, user_role];
 
     let mut conn = match api_state.storage.conn().await {
         Ok(conn) => conn,

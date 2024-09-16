@@ -1,9 +1,9 @@
-use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        epoch_milli, format_duration, listen_for_terminate_signal, load_tls,
-        permissioning::SystemRoles, tokens, websocket_error, ApiState, PreflightOptions,
-        RegistryAuth, Variable, VariableSource,
+        epoch_milli, event_utils, format_duration, listen_for_terminate_signal, load_tls,
+        permissioning::{Action, InternalPermission, InternalRole, Resource},
+        tokens, websocket_error, ApiState, PreflightOptions, RegistryAuth, Variable,
+        VariableSource,
     },
     http_error,
     scheduler::{self, GetLogsRequest},
@@ -31,6 +31,10 @@ const EXTENSION_BIND_ADDRESS: &str = "0.0.0.0:8082";
 
 fn extension_container_id(id: &str) -> String {
     format!("extension_{id}")
+}
+
+fn extension_role_id(extension_id: &str) -> String {
+    format!("extension_{extension_id}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -106,6 +110,10 @@ pub struct Registration {
     /// Whether the extension is enabled or not; extensions can be disabled to prevent use by admins.
     pub status: Status,
 
+    /// Additional roles allow the operator to add additional roles to the extension token. This allow extensions to
+    /// have greater ranges of permissioning than the default.
+    pub additional_roles: Vec<String>,
+
     /// Gofer creates an API key that it passes to extensions on start up in order to facilitate extensions talking
     /// back to the Gofer API. This is the identifier for that key.
     #[serde(skip)]
@@ -151,6 +159,14 @@ impl TryFrom<storage::extension_registrations::ExtensionRegistration> for Regist
             )
         })?;
 
+        let additional_roles =
+            serde_json::from_str(&value.additional_roles).with_context(|| {
+                format!(
+                    "Could not parse field 'additional_roles' from storage value; '{:#?}'",
+                    value.additional_roles
+                )
+            })?;
+
         Ok(Registration {
             extension_id: value.extension_id,
             image: value.image,
@@ -159,6 +175,7 @@ impl TryFrom<storage::extension_registrations::ExtensionRegistration> for Regist
             created,
             modified,
             status,
+            additional_roles,
             key_id: value.key_id,
         })
     }
@@ -182,6 +199,14 @@ impl TryFrom<Registration> for storage::extension_registrations::ExtensionRegist
             )
         })?;
 
+        let additional_roles =
+            serde_json::to_string(&value.additional_roles).with_context(|| {
+                format!(
+                    "Could not parse field 'additional_roles' to storage value; '{:#?}'",
+                    value.additional_roles
+                )
+            })?;
+
         Ok(Self {
             extension_id: value.extension_id,
             image: value.image,
@@ -190,6 +215,7 @@ impl TryFrom<Registration> for storage::extension_registrations::ExtensionRegist
             created: value.created.to_string(),
             modified: value.modified.to_string(),
             status: value.status.to_string(),
+            additional_roles,
             key_id: value.key_id,
         })
     }
@@ -413,13 +439,19 @@ async fn start_extension(
 ) -> Result<Extension> {
     // First we create a new token for the extension and then update the registration with the key_id.
 
+    let token_roles = [
+        vec![extension_role_id(&registration.extension_id)],
+        registration.additional_roles.clone(),
+    ]
+    .concat();
+
     let (token, hash) = tokens::create_new_api_token();
     let new_token = tokens::Token::new(
         &hash.to_string(),
         HashMap::from([("extension_id".into(), registration.extension_id.clone())]),
-        946728000, // 30 years
+        0, // Do not expire token.
         registration.extension_id.clone(),
-        vec![SystemRoles::Extension.to_string()],
+        token_roles,
     );
 
     let mut conn = match api_state.storage.conn().await {
@@ -463,6 +495,7 @@ async fn start_extension(
             settings: None,
             status: None,
             modified: epoch_milli().to_string(),
+            additional_roles: None,
             key_id: Some(registration_key_id),
         },
     )
@@ -787,6 +820,7 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
             image: "ghcr.io/clintjedwards/gofer/extensions/cron:latest".into(),
             settings: HashMap::new(),
             registry_auth: None,
+            additional_roles: None,
         };
 
         let registration: Registration = install_req
@@ -816,6 +850,7 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
             image: "ghcr.io/clintjedwards/gofer/extensions/interval:latest".into(),
             settings: HashMap::new(),
             registry_auth: None,
+            additional_roles: None,
         };
 
         let registration: Registration = install_req
@@ -944,6 +979,10 @@ pub struct InstallExtensionRequest {
 
     /// Registry auth credentials
     pub registry_auth: Option<RegistryAuth>,
+
+    /// Additional roles to add to the extension. This allows operators to extend extension access to things that
+    /// otherwise the extension might not be able to do with it's default role.
+    pub additional_roles: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -973,6 +1012,7 @@ impl TryFrom<InstallExtensionRequest> for Registration {
             created: epoch_milli(),
             modified: 0,
             status: Status::Unknown,
+            additional_roles: value.additional_roles.unwrap_or_default(),
             key_id: String::new(),
         })
     }
@@ -1047,6 +1087,83 @@ pub async fn install_extension(
             }
         },
     };
+
+    // We need to create a new role for the extension so that it has appropriate permissions to perform actions
+    // to aid the user.
+    let new_role = InternalRole {
+        id: extension_role_id(&registration.extension_id),
+        description:
+            "Auto-created role for registered extension; Allows extension to access needful \
+            resources"
+                .to_string(),
+        permissions: vec![
+            // The only write access extensions need is to their own object store so they can use that as a database.
+            InternalPermission {
+                resources: vec![Resource::Extensions(format!(
+                    "^{}$", // Match only exactly extension targets with this name.
+                    registration.extension_id.to_string()
+                ))],
+                actions: vec![Action::Read, Action::Write, Action::Delete],
+            },
+            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
+            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
+            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
+            // intellectual propety.
+            InternalPermission {
+                resources: vec![
+                    Resource::Configs,
+                    Resource::Deployments,
+                    Resource::Events,
+                    Resource::Namespaces(".*".to_string()),
+                    Resource::Pipelines(".*".to_string()),
+                    Resource::Subscriptions,
+                    Resource::System,
+                    Resource::TaskExecutions,
+                ],
+                actions: vec![Action::Read],
+            },
+        ],
+        system_role: true,
+    };
+
+    let new_role_storage = match new_role.clone().try_into() {
+        Ok(role) => role,
+        Err(e) => {
+            return Err(http_error!(
+                "Could not parse token into storage type while creating role",
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(anyhow::anyhow!("{}", e).into())
+            ));
+        }
+    };
+
+    if let Err(e) = storage::roles::insert(&mut conn, &new_role_storage).await {
+        match e {
+            storage::StorageError::Exists => {
+                return Err(HttpError::for_client_error(
+                    None,
+                    http::StatusCode::CONFLICT,
+                    "role entry already exists".into(),
+                ));
+            }
+            _ => {
+                return Err(http_error!(
+                    "Could not insert objects into database",
+                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        }
+    };
+
+    api_state
+        .event_bus
+        .clone()
+        .publish(event_utils::Kind::CreatedRole {
+            role_id: new_role.id.clone(),
+        });
 
     let new_extension = start_extension(api_state.clone(), registration.clone())
         .await
@@ -1150,6 +1267,7 @@ pub async fn update_extension(
         settings: None,
         key_id: None,
         status: Some(status.to_string()),
+        additional_roles: None,
         modified: epoch_milli().to_string(),
     };
 

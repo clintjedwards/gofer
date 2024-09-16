@@ -190,6 +190,7 @@ mod tests {
             created: "2023-04-15T12:34:56".to_string(),
             modified: String::new(),
             status: "Active".to_string(),
+            additional_roles: "some_role".to_string(),
             key_id: "key456".to_string(),
         };
 

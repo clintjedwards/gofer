@@ -104,14 +104,15 @@ CREATE TABLE IF NOT EXISTS tasks (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS extension_registrations (
-    extension_id  TEXT    NOT NULL,
-    image         TEXT    NOT NULL,
-    registry_auth TEXT    NOT NULL,
-    settings      TEXT    NOT NULL,
-    created       TEXT    NOT NULL,
-    modified      TEXT    NOT NULL,
-    status        TEXT    NOT NULL,
-    key_id        TEXT    NOT NULL,
+    extension_id     TEXT NOT NULL,
+    image            TEXT NOT NULL,
+    registry_auth    TEXT NOT NULL,
+    settings         TEXT NOT NULL,
+    created          TEXT NOT NULL,
+    modified         TEXT NOT NULL,
+    status           TEXT NOT NULL,
+    key_id           TEXT NOT NULL,
+    additional_roles TEXT NOT NULL,
     PRIMARY KEY (extension_id)
 ) STRICT;
 
