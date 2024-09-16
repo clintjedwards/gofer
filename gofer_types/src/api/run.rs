@@ -2,6 +2,7 @@ use crate::{epoch_milli, storage, Variable};
 use anyhow::{Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::str::FromStr;
 use strum::{Display, EnumString};
 
@@ -321,4 +322,21 @@ pub struct ListRunsQueryArgs {
     pub limit: Option<u64>,
     pub offset: Option<u64>,
     pub reverse: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetRunResponse {
+    /// The run requested.
+    pub run: Run,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct StartRunRequest {
+    pub variables: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct StartRunResponse {
+    /// Information about the run started.
+    pub run: Run,
 }

@@ -162,3 +162,78 @@ pub struct ListGlobalSecretsResponse {
     /// A list of all global secrets.
     pub secrets: Vec<Secret>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetGlobalSecretQueryArgs {
+    /// Includes the actual plaintext secret in the response.
+    pub include_secret: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetGlobalSecretResponse {
+    /// The target secret metadata.
+    pub metadata: Secret,
+
+    /// The actual secret, only included if "include_secret" param is true.
+    pub secret: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PutGlobalSecretRequest {
+    /// The name for the secret you would like to store.
+    pub key: String,
+
+    /// The actual plaintext secret.
+    pub content: String,
+
+    /// The namespaces you want this secret to be accessible by. Accepts Regexes.
+    pub namespaces: Vec<String>,
+
+    /// Overwrite a value of a secret if it already exists.
+    pub force: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PutGlobalSecretResponse {
+    /// Information about the secret created.
+    pub secret: Secret,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ListPipelineSecretsResponse {
+    /// A list of all pipeline secrets.
+    pub secrets: Vec<Secret>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetPipelineSecretQueryArgs {
+    /// Includes the actual plaintext secret in the response.
+    pub include_secret: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetPipelineSecretResponse {
+    /// The target secret metadata.
+    pub metadata: Secret,
+
+    /// The actual secret, only included if "include_secret" param is true.
+    pub secret: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PutPipelineSecretRequest {
+    /// The name for the secret you would like to store.
+    pub key: String,
+
+    /// The actual plaintext secret.
+    pub content: String,
+
+    /// Overwrite a value of a secret if it already exists.
+    pub force: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PutPipelineSecretResponse {
+    /// Information about the secret created.
+    pub secret: Secret,
+}

@@ -132,3 +132,14 @@ pub struct ListPipelinesResponse {
     /// A list of all pipelines metadata.
     pub pipelines: Vec<Metadata>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetPipelineResponse {
+    /// The metadata for the pipeline.
+    pub pipeline: Metadata,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct UpdatePipelineRequest {
+    pub state: Option<PipelineState>,
+}

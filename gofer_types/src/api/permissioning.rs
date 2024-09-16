@@ -304,3 +304,79 @@ impl From<InternalPermission> for Permission {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ListRolesResponse {
+    /// A list of all roles.
+    pub roles: Vec<Role>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetRoleResponse {
+    /// The target role.
+    pub role: Role,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RolePathArgs {
+    /// The unique identifier for the target role.
+    pub role_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CreateRoleRequest {
+    /// The unique identifier for the role. Only accepts alphanumeric chars with hyphens. No spaces.
+    pub id: String,
+
+    /// Short description about what the role is used for.
+    pub description: String,
+
+    /// Permissions that the role allows.
+    pub permissions: Vec<Permission>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CreateRoleResponse {
+    /// Information about the role created.
+    pub role: Role,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct UpdateRoleRequest {
+    /// Short description about what the role is used for.
+    pub description: Option<String>,
+
+    /// Permissions that the role allows.
+    pub permissions: Option<Vec<Permission>>,
+}
+
+impl TryFrom<UpdateRoleRequest> for storage::role::UpdatableFields {
+    type Error = anyhow::Error;
+
+    fn try_from(value: UpdateRoleRequest) -> Result<Self> {
+        let permissions: Option<String> = match value.permissions {
+            Some(value) => {
+                let permission_str = serde_json::to_string(&value).with_context(|| {
+                    format!(
+                        "Could not parse field 'permissions' from value '{:#?}'",
+                        value
+                    )
+                })?;
+
+                Some(permission_str)
+            }
+            None => None,
+        };
+
+        Ok(Self {
+            description: value.description,
+            permissions,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct UpdateRoleResponse {
+    /// Information about the role updated.
+    pub role: Role,
+}

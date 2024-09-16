@@ -1,4 +1,4 @@
-use super::task;
+use super::{deployment, pipeline, task};
 use crate::{epoch_milli, storage};
 use anyhow::{Context, Result};
 use gofer_sdk;
@@ -197,4 +197,29 @@ impl Config {
 pub struct ListPipelineConfigsResponse {
     /// A list of all pipelines configs.
     pub configs: Vec<Config>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetPipelineConfigResponse {
+    /// The target pipeline config.
+    pub config: Config,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RegisterPipelineConfigRequest {
+    /// The pipeline configuration. This is usually supplied by the CLI which translates written code into
+    /// this format.
+    pub config: gofer_sdk::config::Pipeline,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RegisterPipelineConfigResponse {
+    /// The current pipeline.
+    pub pipeline: pipeline::Pipeline,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct DeployPipelineConfigResponse {
+    /// Information about the pipeline created.
+    pub deployment: deployment::Deployment,
 }
