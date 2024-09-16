@@ -248,3 +248,9 @@ pub struct ListEventsResponse {
     /// A list of all events.
     pub events: Vec<Event>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetEventResponse {
+    /// The target event.
+    pub event: Event,
+}

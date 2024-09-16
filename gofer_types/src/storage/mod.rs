@@ -10,5 +10,8 @@ pub mod pipeline_config;
 pub mod pipeline_metadata;
 pub mod role;
 pub mod run;
+pub mod secret_store_global_key;
+pub mod secret_store_pipeline_key;
 pub mod task;
 pub mod task_execution;
+pub mod token;

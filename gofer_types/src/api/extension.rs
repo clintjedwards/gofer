@@ -1,4 +1,4 @@
-use crate::{storage, RegistryAuth, Variable};
+use crate::{epoch_milli, storage, RegistryAuth, Variable, VariableSource};
 use anyhow::{Context, Result};
 use gofer_sdk;
 use schemars::JsonSchema;
@@ -379,4 +379,70 @@ impl TryFrom<Subscription> for storage::extension_subscription::ExtensionSubscri
             status_reason,
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ListExtensionsResponse {
+    /// A list of all extensions.
+    pub extensions: Vec<Extension>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetExtensionResponse {
+    /// The extension requested.
+    pub extension: Extension,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct InstallExtensionRequest {
+    /// A unique id for the extension. Since this needs to only be unique across extensions simply using the
+    /// extension's name usually suffices.
+    pub id: String,
+
+    /// The container image this extension should use.
+    pub image: String,
+
+    /// Each extension has a list of settings it takes to configure how it runs. You can usually find this in the
+    /// documentation.
+    pub settings: HashMap<String, String>,
+
+    /// Registry auth credentials
+    pub registry_auth: Option<RegistryAuth>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct InstallExtensionResponse {
+    pub extension: Extension,
+}
+
+impl TryFrom<InstallExtensionRequest> for Registration {
+    type Error = anyhow::Error;
+
+    fn try_from(value: InstallExtensionRequest) -> Result<Self> {
+        let mut settings: Vec<Variable> = vec![];
+
+        for (key, value) in value.settings {
+            settings.push(Variable {
+                key,
+                value,
+                source: VariableSource::System,
+            })
+        }
+
+        Ok(Registration {
+            extension_id: value.id,
+            image: value.image,
+            registry_auth: value.registry_auth,
+            settings,
+            created: epoch_milli(),
+            modified: 0,
+            status: Status::Unknown,
+            key_id: String::new(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct UpdateExtensionRequest {
+    pub enable: bool,
 }

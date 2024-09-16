@@ -286,3 +286,9 @@ pub struct ListDeploymentsResponse {
     /// A list of all deployments.
     pub deployments: Vec<Deployment>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetDeploymentResponse {
+    /// The target deployment.
+    pub deployment: Deployment,
+}
