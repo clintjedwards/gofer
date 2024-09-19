@@ -20,9 +20,6 @@ spread the load.
   for other things) they lose all state. Maybe we can allow extensions to use Gofer's object store such that they can persist state.
   It's possible that on Extension startup we can have it grab objects and then just return an error on the health endpoint until it's ready.
 
-* Make sure to remove role access after a extension has been unregistered.
-* Make sure to give extensions access to the new object store.
-
 ## Github Extension followthrough
 
 A great feature to bake into the Github extension would be the ability for it to act as a communicator with the
@@ -47,8 +44,7 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-## API
-
+* Implement CLI for extension debug feature.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
 * We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.

@@ -46,7 +46,7 @@ pub async fn insert(
     Ok(())
 }
 
-pub async fn list(
+pub async fn list_by_pipeline(
     conn: &mut SqliteConnection,
     namespace_id: &str,
     pipeline_id: &str,
@@ -54,6 +54,22 @@ pub async fn list(
     let query = sqlx::query_as::<_, ExtensionSubscription>("SELECT namespace_id, pipeline_id, extension_id, \
     extension_subscription_id, settings, status, status_reason FROM extension_subscriptions WHERE namespace_id = ? \
     AND pipeline_id = ?;").bind(namespace_id).bind(pipeline_id);
+
+    let sql = query.sql();
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+pub async fn list_by_extension(
+    conn: &mut SqliteConnection,
+    extension_id: &str,
+) -> Result<Vec<ExtensionSubscription>, StorageError> {
+    let query = sqlx::query_as::<_, ExtensionSubscription>("SELECT namespace_id, pipeline_id, extension_id, \
+    extension_subscription_id, settings, status, status_reason FROM extension_subscriptions WHERE extension_id= ?;").
+    bind(extension_id);
 
     let sql = query.sql();
 
@@ -235,7 +251,7 @@ mod tests {
     async fn test_list_extension_subscriptions() {
         let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
 
-        let subscriptions = list(&mut conn, "namespace1", "pipeline1")
+        let subscriptions = list_by_pipeline(&mut conn, "namespace1", "pipeline1")
             .await
             .expect("Failed to list extension subscriptions");
 

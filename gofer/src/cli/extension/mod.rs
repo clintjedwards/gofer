@@ -47,6 +47,14 @@ pub enum ExtensionCommands {
         /// copy pasting of values.
         #[arg(short, long, default_value = "false")]
         interactive: bool,
+
+        /// Add additional roles to the extension.
+        ///
+        /// Extensions by default are provisioned with tokens that only have access to a base set of things the extension
+        /// might need access to. To provide extensions with additional functionality you can create a new role and
+        /// add it to the extension here by role_id.
+        #[arg(short, long)]
+        additional_roles: Vec<String>,
     },
     Uninstall {
         /// Extension Identifier.
@@ -83,8 +91,9 @@ impl Cli {
                 image,
                 config,
                 interactive,
+                additional_roles,
             } => {
-                self.extension_install(&id, &image, config, interactive)
+                self.extension_install(&id, &image, config, interactive, additional_roles)
                     .await
             }
             ExtensionCommands::Uninstall { id } => self.extension_uninstall(&id).await,
@@ -211,6 +220,7 @@ impl Cli {
         image: &str,
         config: Vec<String>,
         interactive: bool,
+        additional_roles: Vec<String>,
     ) -> Result<()> {
         let mut settings = std::collections::HashMap::new();
 
@@ -246,6 +256,7 @@ impl Cli {
 
         self.client
             .install_extension(&gofer_sdk::api::types::InstallExtensionRequest {
+                additional_roles: Some(additional_roles),
                 id: id.to_string(),
                 image: image.to_string(),
                 registry_auth: None,

@@ -334,18 +334,6 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
         .await
         .context("Could not create system roles")?;
 
-    if let Err(e) = subscriptions::restore_extension_subscriptions(&api_state).await {
-        // We report the error but continue with startup. This avoids the issue of a chicken
-        // and an egg problem where an extension might have been removed, but the subscription
-        // hasn't. And as such if we failed we wouldn't be able to remove the subscription in
-        // question. Instead we print a big error in the logs and inform user that they should
-        // fix the subscription in question and restart.
-        error!(error= %e, "Could not properly restore extension subscriptions; Gofer will continue with startup \
-        but you should fix this error before continuing. Normally this means that some extension has been removed \
-        but there were previous subscribers that weren't properly removed. Deleting those subscriber will allow \
-        for a successful start");
-    }
-
     Ok(api_state)
 }
 
@@ -632,6 +620,10 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
     /* /api/extensions/{extension_id}/objects/{key} */
     api.register(objects::get_extension_object).unwrap();
     api.register(objects::delete_extension_object).unwrap();
+
+    /* /api/extensions/{extension_id}/subscriptions */
+    api.register(extensions::list_extension_subscriptions)
+        .unwrap();
 
     /* /api/secrets/global */
     api.register(secrets::list_global_secrets).unwrap();

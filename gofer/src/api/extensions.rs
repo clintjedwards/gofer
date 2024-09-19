@@ -1101,7 +1101,7 @@ pub async fn install_extension(
             InternalPermission {
                 resources: vec![Resource::Extensions(format!(
                     "^{}$", // Match only exactly extension targets with this name.
-                    registration.extension_id.to_string()
+                    registration.extension_id
                 ))],
                 actions: vec![Action::Read, Action::Write, Action::Delete],
             },
@@ -1365,6 +1365,17 @@ pub async fn uninstall_extension(
             )
         })?;
 
+    storage::roles::delete(&mut conn, &extension_role_id(&path.extension_id))
+        .await
+        .map_err(|err| {
+            http_error!(
+                "Could not delete object from database",
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(err.into())
+            )
+        })?;
+
     Ok(HttpResponseDeleted())
 }
 
@@ -1556,6 +1567,82 @@ pub async fn get_extension_logs(
     );
 
     Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ListExtensionSubscriptionsResponse {
+    /// A list of all pipeline subscriptions for the given extension.
+    pub subscriptions: Vec<Subscription>,
+}
+
+/// List all extension subscriptions.
+#[endpoint(
+    method = GET,
+    path = "/api/extensions/{extension_id}/subscriptions",
+    tags = ["Extensions"],
+)]
+pub async fn list_extension_subscriptions(
+    rqctx: RequestContext<Arc<ApiState>>,
+    path_params: Path<ExtensionPathArgs>,
+) -> Result<HttpResponseOk<ListExtensionSubscriptionsResponse>, HttpError> {
+    let api_state = rqctx.context();
+    let path = path_params.into_inner();
+    let _req_metadata = api_state
+        .preflight_check(
+            &rqctx.request,
+            PreflightOptions {
+                bypass_auth: false,
+                admin_only: false,
+                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                action: Action::Read,
+            },
+        )
+        .await?;
+
+    let mut conn = match api_state.storage.conn().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return Err(http_error!(
+                "Could not open connection to database",
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id,
+                Some(e.into())
+            ));
+        }
+    };
+
+    let storage_subscriptions =
+        match storage::extension_subscriptions::list_by_extension(&mut conn, &path.extension_id)
+            .await
+        {
+            Ok(subscriptions) => subscriptions,
+            Err(e) => {
+                return Err(http_error!(
+                    "Could not get objects from database",
+                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        };
+
+    let mut subscriptions: Vec<Subscription> = vec![];
+
+    for storage_subscription in storage_subscriptions {
+        let subscription = Subscription::try_from(storage_subscription).map_err(|e| {
+            http_error!(
+                "Could not parse object from database",
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+        subscriptions.push(subscription);
+    }
+
+    let resp = ListExtensionSubscriptionsResponse { subscriptions };
+    Ok(HttpResponseOk(resp))
 }
 
 /// Creates a new HTTP client that is set up to talk to Gofer extensions.

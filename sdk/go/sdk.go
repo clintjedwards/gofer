@@ -678,6 +678,9 @@ type Initiator struct {
 
 // InstallExtensionRequest defines model for InstallExtensionRequest.
 type InstallExtensionRequest struct {
+	// AdditionalRoles Additional roles to add to the extension. This allows operators to extend extension access to things that otherwise the extension might not be able to do with it's default role.
+	AdditionalRoles *[]string `json:"additional_roles"`
+
 	// Id A unique id for the extension. Since this needs to only be unique across extensions simply using the extension's name usually suffices.
 	Id string `json:"id"`
 
@@ -1213,6 +1216,9 @@ type RegisterPipelineConfigResponse struct {
 
 // Registration When installing a new extension, we allow the extension installer to pass a bunch of settings that allow us to go get that extension on future startups.
 type Registration struct {
+	// AdditionalRoles Additional roles allow the operator to add additional roles to the extension token. This allow extensions to have greater ranges of permissioning than the default.
+	AdditionalRoles []string `json:"additional_roles"`
+
 	// Created Time of registration creation in epoch milliseconds.
 	Created uint64 `json:"created"`
 

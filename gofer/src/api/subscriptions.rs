@@ -6,7 +6,7 @@ use crate::{
     },
     http_error, storage,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use dropshot::{
     endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
     HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
@@ -17,7 +17,7 @@ use sqlx::Acquire;
 use std::sync::Arc;
 use std::{collections::HashMap, str::FromStr};
 use strum::{Display, EnumString};
-use tracing::{debug, error};
+use tracing::debug;
 
 #[derive(
     Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
@@ -244,7 +244,7 @@ pub async fn list_subscriptions(
         }
     };
 
-    let storage_subscriptions = match storage::extension_subscriptions::list(
+    let storage_subscriptions = match storage::extension_subscriptions::list_by_pipeline(
         &mut conn,
         &path.namespace_id,
         &path.pipeline_id,
@@ -865,78 +865,6 @@ async fn subscribe_extension(api_state: &ApiState, subscription: &Subscription) 
         subscription_id = subscription.subscription_id,
         "subscribed pipeline to extension"
     );
-
-    Ok(())
-}
-
-/// Iterates through all pipelines and subscribes them all back to their defined extensions.
-/// We need to do this because of the fact that extensions are stateless and ephemeral and the only way they even know
-/// of the existence of pipelines is through the "subscribe" function.
-pub async fn restore_extension_subscriptions(api_state: &ApiState) -> Result<()> {
-    let mut conn = match api_state.storage.conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            bail!("could not open connection to database; {:#?}", e);
-        }
-    };
-
-    let storage_namespaces = match storage::namespaces::list(&mut conn).await {
-        Ok(namespaces) => namespaces,
-        Err(e) => {
-            bail!("could not get namespaces from database; {:#?}", e);
-        }
-    };
-
-    // Get all pipelines from all namespaces.
-    let mut pipelines = vec![];
-
-    for namespace in storage_namespaces {
-        let storage_pipelines =
-            match storage::pipeline_metadata::list(&mut conn, &namespace.id).await {
-                Ok(pipelines) => pipelines,
-                Err(e) => {
-                    bail!("could not get pipelines from database; {:#?}", e);
-                }
-            };
-
-        for pipeline in storage_pipelines {
-            pipelines.push(pipeline);
-        }
-    }
-
-    for pipeline in pipelines {
-        let subscriptions = match storage::extension_subscriptions::list(
-            &mut conn,
-            &pipeline.namespace_id,
-            &pipeline.pipeline_id,
-        )
-        .await
-        {
-            Ok(subs) => subs,
-            Err(e) => {
-                bail!("could not list subs from database; {:#?}", e);
-            }
-        };
-
-        for subscription in subscriptions {
-            let subscription: Subscription = subscription
-                .try_into()
-                .context("Could not serialize subscription from storage")?;
-
-            if subscription.status == Status::Disabled {
-                continue;
-            }
-
-            if let Err(e) = subscribe_extension(api_state, &subscription).await {
-                error!(namespace_id = &subscription.namespace_id,
-                    pipeline_id = &subscription.pipeline_id,
-                    extension_id = &subscription.extension_id,
-                    subscription_id = &subscription.subscription_id,
-                    error = %e, "could not re-subscribe subscription while restoring subscriptions");
-                bail!("Could not re-subscribe subscription while restoring subscriptions")
-            };
-        }
-    }
 
     Ok(())
 }

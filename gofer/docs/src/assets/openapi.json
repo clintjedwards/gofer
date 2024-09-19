@@ -4255,6 +4255,14 @@
       "InstallExtensionRequest": {
         "type": "object",
         "properties": {
+          "additional_roles": {
+            "nullable": true,
+            "description": "Additional roles to add to the extension. This allows operators to extend extension access to things that otherwise the extension might not be able to do with it's default role.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "id": {
             "description": "A unique id for the extension. Since this needs to only be unique across extensions simply using the extension's name usually suffices.",
             "type": "string"
@@ -5641,6 +5649,13 @@
         "description": "When installing a new extension, we allow the extension installer to pass a bunch of settings that allow us to go get that extension on future startups.",
         "type": "object",
         "properties": {
+          "additional_roles": {
+            "description": "Additional roles allow the operator to add additional roles to the extension token. This allow extensions to have greater ranges of permissioning than the default.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "created": {
             "description": "Time of registration creation in epoch milliseconds.",
             "type": "integer",
@@ -5687,6 +5702,7 @@
           }
         },
         "required": [
+          "additional_roles",
           "created",
           "extension_id",
           "image",
