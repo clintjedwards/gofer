@@ -924,6 +924,12 @@ type ListExtensionObjectsResponse struct {
 	Objects []Object `json:"objects"`
 }
 
+// ListExtensionSubscriptionsResponse defines model for ListExtensionSubscriptionsResponse.
+type ListExtensionSubscriptionsResponse struct {
+	// Subscriptions A list of all pipeline subscriptions for the given extension.
+	Subscriptions []Subscription `json:"subscriptions"`
+}
+
 // ListExtensionsResponse defines model for ListExtensionsResponse.
 type ListExtensionsResponse struct {
 	// Extensions A list of all extensions.
@@ -4094,6 +4100,9 @@ type ClientInterface interface {
 	// GetExtensionObject request
 	GetExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExtensionSubscriptions request
+	ListExtensionSubscriptions(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListNamespaces request
 	ListNamespaces(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -4495,6 +4504,18 @@ func (c *Client) DeleteExtensionObject(ctx context.Context, extensionId string, 
 
 func (c *Client) GetExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetExtensionObjectRequest(c.Server, extensionId, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListExtensionSubscriptions(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExtensionSubscriptionsRequest(c.Server, extensionId)
 	if err != nil {
 		return nil, err
 	}
@@ -5936,6 +5957,40 @@ func NewGetExtensionObjectRequest(server string, extensionId string, key string)
 	}
 
 	operationPath := fmt.Sprintf("/api/extensions/%s/objects/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListExtensionSubscriptionsRequest generates requests for ListExtensionSubscriptions
+func NewListExtensionSubscriptionsRequest(server string, extensionId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/%s/subscriptions", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8882,6 +8937,9 @@ type ClientWithResponsesInterface interface {
 	// GetExtensionObjectWithResponse request
 	GetExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*GetExtensionObjectResp, error)
 
+	// ListExtensionSubscriptionsWithResponse request
+	ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error)
+
 	// ListNamespacesWithResponse request
 	ListNamespacesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListNamespacesResp, error)
 
@@ -9397,6 +9455,30 @@ func (r GetExtensionObjectResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetExtensionObjectResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListExtensionSubscriptionsResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListExtensionSubscriptionsResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExtensionSubscriptionsResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExtensionSubscriptionsResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11010,6 +11092,15 @@ func (c *ClientWithResponses) GetExtensionObjectWithResponse(ctx context.Context
 	return ParseGetExtensionObjectResp(rsp)
 }
 
+// ListExtensionSubscriptionsWithResponse request returning *ListExtensionSubscriptionsResp
+func (c *ClientWithResponses) ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error) {
+	rsp, err := c.ListExtensionSubscriptions(ctx, extensionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExtensionSubscriptionsResp(rsp)
+}
+
 // ListNamespacesWithResponse request returning *ListNamespacesResp
 func (c *ClientWithResponses) ListNamespacesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListNamespacesResp, error) {
 	rsp, err := c.ListNamespaces(ctx, reqEditors...)
@@ -12116,6 +12207,46 @@ func ParseGetExtensionObjectResp(rsp *http.Response) (*GetExtensionObjectResp, e
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GetExtensionObjectResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListExtensionSubscriptionsResp parses an HTTP response from a ListExtensionSubscriptionsWithResponse call
+func ParseListExtensionSubscriptionsResp(rsp *http.Response) (*ListExtensionSubscriptionsResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExtensionSubscriptionsResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListExtensionSubscriptionsResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

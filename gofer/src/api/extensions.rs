@@ -2,7 +2,7 @@ use crate::{
     api::{
         epoch_milli, event_utils, format_duration, listen_for_terminate_signal, load_tls,
         permissioning::{Action, InternalPermission, InternalRole, Resource},
-        tokens, websocket_error, ApiState, PreflightOptions, RegistryAuth, Variable,
+        subscriptions, tokens, websocket_error, ApiState, PreflightOptions, RegistryAuth, Variable,
         VariableSource,
     },
     http_error,
@@ -293,144 +293,6 @@ pub struct Extension {
     /// extensions directly.
     #[serde(skip)]
     pub secret: String,
-}
-
-#[derive(
-    Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-#[strum(ascii_case_insensitive)]
-pub enum SubscriptionStatus {
-    #[default]
-    Unknown,
-
-    /// Successfully connected and active.
-    Active,
-
-    /// Not connected and inactive due to error.
-    Error,
-
-    /// Inactive due to user or operator request.
-    Disabled,
-}
-
-#[derive(
-    Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-#[strum(ascii_case_insensitive)]
-pub enum SubscriptionStatusReasonType {
-    /// Gofer has no fucking clue how the run got into this state.
-    #[default]
-    Unknown,
-
-    /// Subscription is not registered within Gofer.
-    NotFound,
-
-    SubscriptionFailed,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
-pub struct SubscriptionStatusReason {
-    /// The specific type of subscription failure.
-    pub reason: SubscriptionStatusReasonType,
-
-    /// A description of why the subscription might have failed and what was going on at the time.
-    pub description: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
-pub struct Subscription {
-    /// Unique identifier of the target namespace.
-    pub namespace_id: String,
-
-    /// Unique identifier of the target pipeline.
-    pub pipeline_id: String,
-
-    /// Unique identifier for the target extension.
-    pub extension_id: String,
-
-    /// A per pipeline unique identifier to differentiate multiple subscriptions to a single pipeline.
-    pub label: String,
-
-    /// Each extension defines per pipeline settings that the user can subscribe with to perform different functionalities;
-    /// These are generally listed in the extension documentation and passed through here.
-    pub settings: HashMap<String, String>,
-
-    /// The state of the subscription for the pipeline; defines whether this subscription is still active.
-    pub status: SubscriptionStatus,
-
-    /// More details about why a subscription has a particular status.
-    pub status_reason: SubscriptionStatusReason,
-}
-
-impl TryFrom<storage::extension_subscriptions::ExtensionSubscription> for Subscription {
-    type Error = anyhow::Error;
-
-    fn try_from(value: storage::extension_subscriptions::ExtensionSubscription) -> Result<Self> {
-        let settings = serde_json::from_str(&value.settings).with_context(|| {
-            format!(
-                "Could not parse field 'settings' from storage value; '{:#?}'",
-                value.settings
-            )
-        })?;
-
-        let status = SubscriptionStatus::from_str(&value.status).with_context(|| {
-            format!(
-                "Could not parse field 'status' from storage value; '{:#?}'",
-                value.status
-            )
-        })?;
-
-        let status_reason = serde_json::from_str(&value.status_reason).with_context(|| {
-            format!(
-                "Could not parse field 'status_reason' from storage value; '{:#?}'",
-                value.status_reason
-            )
-        })?;
-
-        Ok(Subscription {
-            namespace_id: value.namespace_id,
-            pipeline_id: value.pipeline_id,
-            extension_id: value.extension_id,
-            label: value.extension_subscription_id,
-            settings,
-            status,
-            status_reason,
-        })
-    }
-}
-
-impl TryFrom<Subscription> for storage::extension_subscriptions::ExtensionSubscription {
-    type Error = anyhow::Error;
-
-    fn try_from(value: Subscription) -> Result<Self> {
-        let settings = serde_json::to_string(&value.settings).with_context(|| {
-            format!(
-                "Could not parse field 'settings' from storage value; '{:#?}'",
-                value.settings
-            )
-        })?;
-
-        let status_reason = serde_json::to_string(&value.status_reason).with_context(|| {
-            format!(
-                "Could not parse field 'status_reason' from storage value; '{:#?}'",
-                value.status_reason
-            )
-        })?;
-
-        Ok(Self {
-            namespace_id: value.namespace_id,
-            pipeline_id: value.pipeline_id,
-            extension_id: value.extension_id,
-            extension_subscription_id: value.label,
-            settings,
-            status: value.status.to_string(),
-            status_reason,
-        })
-    }
 }
 
 async fn start_extension(
@@ -1572,7 +1434,7 @@ pub async fn get_extension_logs(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ListExtensionSubscriptionsResponse {
     /// A list of all pipeline subscriptions for the given extension.
-    pub subscriptions: Vec<Subscription>,
+    pub subscriptions: Vec<subscriptions::Subscription>,
 }
 
 /// List all extension subscriptions.
@@ -1626,17 +1488,18 @@ pub async fn list_extension_subscriptions(
             }
         };
 
-    let mut subscriptions: Vec<Subscription> = vec![];
+    let mut subscriptions: Vec<subscriptions::Subscription> = vec![];
 
     for storage_subscription in storage_subscriptions {
-        let subscription = Subscription::try_from(storage_subscription).map_err(|e| {
-            http_error!(
-                "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            )
-        })?;
+        let subscription =
+            subscriptions::Subscription::try_from(storage_subscription).map_err(|e| {
+                http_error!(
+                    "Could not parse object from database",
+                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                )
+            })?;
 
         subscriptions.push(subscription);
     }

@@ -484,6 +484,44 @@
         }
       }
     },
+    "/api/extensions/{extension_id}/subscriptions": {
+      "get": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "List all extension subscriptions.",
+        "operationId": "list_extension_subscriptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListExtensionSubscriptionsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/namespaces": {
       "get": {
         "tags": [
@@ -4992,6 +5030,21 @@
         },
         "required": [
           "objects"
+        ]
+      },
+      "ListExtensionSubscriptionsResponse": {
+        "type": "object",
+        "properties": {
+          "subscriptions": {
+            "description": "A list of all pipeline subscriptions for the given extension.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subscription"
+            }
+          }
+        },
+        "required": [
+          "subscriptions"
         ]
       },
       "ListExtensionsResponse": {
