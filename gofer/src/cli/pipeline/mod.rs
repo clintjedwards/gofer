@@ -287,7 +287,7 @@ impl Cli {
                 Cell::new(format!(
                     "{} by {}",
                     humanize_relative_duration(run.started).unwrap_or("Never".into()),
-                    run.initiator.id
+                    run.initiator.user
                 )),
                 Cell::new(format!(
                     "{} {}",
@@ -353,11 +353,11 @@ impl Cli {
     {%- endfor -%}
     {%- endif -%}
     {%- endfor -%}
-  {%- endif %}
-
+  {% endif %}
   {%- if has_subscriptions %}
-    🗘 Extension Subscriptions:
-      {{ subscriptions }}
+  
+  🗘 Extension Subscriptions:
+   {{ subscriptions }}
   {%- endif %}
 
   Created {{ created }} | Last Run {{ last_run }}

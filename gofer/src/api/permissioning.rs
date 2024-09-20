@@ -356,7 +356,7 @@ impl ApiState {
         let auth_ctx = if bypass_auth {
             AuthContext {
                 token_id: "0".into(),
-                token_user: "none".into(),
+                token_user: "Anonymous".into(),
                 // Allow access to all routes.
                 roles: vec![SystemRoles::Admin.to_string()],
             }

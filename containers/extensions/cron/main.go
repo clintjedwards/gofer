@@ -41,6 +41,32 @@ func newExtension() extension {
 		subscriptions: map[subscriptionID]*subscription{},
 	}
 
+	config, err := extsdk.GetExtensionSystemConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not parse system configuration")
+	}
+
+	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Could not query subscriptions from Gofer host")
+	}
+
+	// TODO: Eventually we should make this more intelligent to prevent thundering herd problems. But for right now
+	// this should suffice.
+	for _, subscription := range subscriptions {
+		// We just call the internal subscribe function here since it does all the validation we'd have to redo either
+		// way.
+		err := extension.Subscribe(context.Background(), extsdk.SubscriptionRequest{
+			NamespaceId:                subscription.NamespaceId,
+			PipelineId:                 subscription.PipelineId,
+			PipelineSubscriptionId:     subscription.SubscriptionId,
+			PipelineSubscriptionParams: subscription.Settings,
+		})
+		if err != nil {
+			log.Fatal().Str("err", err.Message).Msg("Could not restore subscription")
+		}
+	}
+
 	go func() {
 		for {
 			time.Sleep(checkInterval)
@@ -169,13 +195,7 @@ func (e *extension) ExternalEvent(_ context.Context, _ extsdk.ExternalEventReque
 func (e *extension) checkTimeFrames() {
 	config, _ := extsdk.GetExtensionSystemConfig()
 
-	scheme := "http://"
-
-	if config.UseTLS {
-		scheme = "https://"
-	}
-
-	client, err := sdk.NewClientWithHeaders(scheme+config.GoferHost, config.Secret, sdk.GoferAPIVersion0)
+	client, err := sdk.NewClientWithHeaders(config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not initialize client while attempting to check time frames")
 	}

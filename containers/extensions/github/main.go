@@ -149,6 +149,27 @@ func newExtension() extension {
 		subscriptions: map[string]map[string][]pipelineSubscription{},
 	}
 
+	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Could not query subscriptions from Gofer host")
+	}
+
+	// TODO: Eventually we should make this more intelligent to prevent thundering herd problems. But for right now
+	// this should suffice.
+	for _, subscription := range subscriptions {
+		// We just call the internal subscribe function here since it does all the validation we'd have to redo either
+		// way.
+		err := extension.Subscribe(context.Background(), extsdk.SubscriptionRequest{
+			NamespaceId:                subscription.NamespaceId,
+			PipelineId:                 subscription.PipelineId,
+			PipelineSubscriptionId:     subscription.SubscriptionId,
+			PipelineSubscriptionParams: subscription.Settings,
+		})
+		if err != nil {
+			log.Fatal().Str("err", err.Message).Msg("Could not restore subscription")
+		}
+	}
+
 	return extension
 }
 
@@ -220,13 +241,7 @@ func (e *extension) processNewEvent(req *http.Request) error {
 		log := log.With().Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
 			Str("pipeline_subscription_id", sub.extensionLabel).Logger()
 
-		scheme := "http://"
-
-		if e.config.UseTLS {
-			scheme = "https://"
-		}
-
-		client, err := sdk.NewClientWithHeaders(scheme+e.config.GoferHost, e.config.Secret, sdk.GoferAPIVersion0)
+		client, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, e.config.UseTLS, sdk.GoferAPIVersion0)
 		if err != nil {
 			log.Error().Err(err).Msg("Could not establish Gofer client")
 			continue

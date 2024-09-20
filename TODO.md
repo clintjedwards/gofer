@@ -44,6 +44,11 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* The event list cli command needs attention. It seems to tail by default which is fine, but there doesn't seem
+to be a way to turn that off and just list what events have already occurred.
+* We occasionally get database is locked errors which we should handle by simply retrying the query.
+* When a user subscribes with invalid parameters to an extension they don't get back an valid error. Instead they
+get back an internal error. We should simply detect the Bad request error code and pass that back to the calling user.
 * Implement CLI for extension debug feature.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.

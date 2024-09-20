@@ -322,10 +322,6 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
         .await
         .context("Could not register standard extensions")?;
 
-    extensions::start_extensions(api_state.clone())
-        .await
-        .context("Could not start extensions")?;
-
     namespaces::create_default_namespace(api_state.clone())
         .await
         .context("Could not create default namespace")?;
@@ -389,9 +385,14 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     let api = init_api_description()?;
 
     let server = if !conf.server.use_tls {
-        HttpServerStarter::new(&dropshot_conf, api, Some(Arc::new(Middleware)), api_state)
-            .map_err(|error| anyhow!("failed to create server: {}", error))?
-            .start()
+        HttpServerStarter::new(
+            &dropshot_conf,
+            api,
+            Some(Arc::new(Middleware)),
+            api_state.clone(),
+        )
+        .map_err(|error| anyhow!("failed to create server: {}", error))?
+        .start()
     } else {
         let (tls_cert, tls_key) = load_tls(
             conf.server.use_tls,
@@ -408,7 +409,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
             &dropshot_conf,
             api,
             Some(Arc::new(Middleware)),
-            api_state,
+            api_state.clone(),
             tls_config,
         )
         .map_err(|error| anyhow!("failed to create server: {}", error))?
@@ -424,6 +425,13 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
         port = %bind_address.port(),
         tls = conf.server.use_tls,
     );
+
+    // This might cause a race conditions if the containers somehow start up before the API, but this could be trivially
+    // solved on either side by either delaying this call a bit or probably less brittly writing some retry logic
+    // on the container side.
+    extensions::start_extensions(api_state.clone())
+        .await
+        .context("Could not start extensions")?;
 
     shutdown
         .await
