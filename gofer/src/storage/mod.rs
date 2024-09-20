@@ -36,7 +36,8 @@ pub mod tasks;
 pub mod tokens;
 
 use anyhow::Result;
-use sqlx::{migrate, pool::PoolConnection, Pool, Sqlite, SqlitePool};
+use sqlx::{migrate, pool::PoolConnection, sqlite::SqliteConnectOptions, Pool, Sqlite, SqlitePool};
+use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs::File, io, ops::Deref, path::Path};
 
@@ -118,26 +119,13 @@ impl Db {
     pub async fn new(path: &str) -> Result<Self> {
         touch_file(Path::new(path)).unwrap();
 
-        let connection_pool = SqlitePool::connect(&format!("file:{}", path))
-            .await
-            .unwrap();
+        let database_options = SqliteConnectOptions::from_str(&format!("sqlite://{}", path))?
+            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            .read_only(false)
+            .busy_timeout(std::time::Duration::from_secs(10))
+            .foreign_keys(true);
 
-        // Setting PRAGMAs
-        sqlx::query("PRAGMA journal_mode = WAL;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA busy_timeout = 5000;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA foreign_keys = ON;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA strict = ON;")
-            .execute(&connection_pool)
-            .await?;
+        let connection_pool = SqlitePool::connect_with(database_options).await.unwrap();
 
         migrate!("src/storage/migrations")
             .run(&connection_pool)

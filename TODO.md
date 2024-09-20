@@ -44,6 +44,8 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* If a subscription has already been made we still print the log for user subscribed. Fix this.
+* Interval is having trouble running multiple jobs at once. Needs investigation.
 * The event list cli command needs attention. It seems to tail by default which is fine, but there doesn't seem
 to be a way to turn that off and just list what events have already occurred.
 * We occasionally get database is locked errors which we should handle by simply retrying the query.
