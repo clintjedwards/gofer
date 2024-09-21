@@ -179,14 +179,14 @@ func (e *extension) startInterval(ctx context.Context,
 			}
 			defer resp.Body.Close()
 
-			if resp.StatusCode < 200 || resp.StatusCode > 299 {
-				log.Error().Int("status_code", resp.StatusCode).Msg("could not start new run; received non 2xx status code")
-				continue
-			}
-
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				log.Error().Err(err).Msg("could not read response body while attempting to start run")
+				continue
+			}
+
+			if resp.StatusCode < 200 || resp.StatusCode > 299 {
+				log.Error().Bytes("message", body).Int("status_code", resp.StatusCode).Msg("could not start new run; received non 2xx status code")
 				continue
 			}
 
@@ -278,14 +278,9 @@ func (e *extension) Unsubscribe(_ context.Context, request extsdk.Unsubscription
 		pipeline:               request.PipelineId,
 		pipelineExtensionLabel: request.PipelineSubscriptionId,
 	}]
-
-	log := log.With().Str("namespace_id", subscription.namespace).Str("pipeline_id", subscription.pipeline).
-		Str("pipeline_subscription_id", subscription.pipelineExtensionLabel).Logger()
-
 	// It is perfectly possible for Gofer to attempt to unsubscribe an already unsubscribed pipeline. In this case,
 	// we can simply ignore the request.
 	if !exists {
-		log.Debug().Msg("no subscription found for pipeline")
 		return nil
 	}
 

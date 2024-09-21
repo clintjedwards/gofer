@@ -221,7 +221,7 @@ fn init_logger(log_level: &str, pretty: bool) -> Result<()> {
     let filter = EnvFilter::from_default_env()
         // These directives filter out debug information that is too numerous and we generally don't need during
         // development.
-        .add_directive("sqlx=off".parse().expect("Invalid directive"))
+        // .add_directive("sqlx=off".parse().expect("Invalid directive"))
         .add_directive("h2=off".parse().expect("Invalid directive"))
         .add_directive("hyper=off".parse().expect("Invalid directive"))
         .add_directive("rustls=off".parse().expect("Invalid directive"))
