@@ -40,21 +40,22 @@ reqwest = { version = "0.11", features = [
     "rustls-tls",
 ], default-features = false }
 rstest = "0.19.0"
+rusqlite = { version = "0.32.1", features = ["bundled"] }
 rust-embed = "8.0.0"
 schemars = "0.8.21"
-serde = { version = "1.0.173", features = ["derive"] }
+sea-query = "0.31.0"
 serde_json = "1.0.105"
+serde = { version = "1.0.173", features = ["derive"] }
 sha2 = "0.10.8"
 slog = "2.7.0"
 slog-async = "2.8.0"
-sqlx = { version = "0.7.4", features = ["runtime-tokio-rustls", "sqlite"] }
 strum = { version = "0.26", features = ["derive"] }
 tabwriter = "1.4.0"
 tera = "1.19.1"
 thiserror = "1.0.58"
-tokio = { version = "1.32.0", features = ["full"] }
 tokio-rustls = "0.26.0"
 tokio-tungstenite = "0.21.0"
+tokio = { version = "1.32.0", features = ["full"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 tungstenite = "0.21.0"
