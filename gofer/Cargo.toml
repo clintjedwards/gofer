@@ -60,6 +60,8 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 tungstenite = "0.21.0"
 uuid = { version = "1.8.0", features = ["v7"] }
+r2d2 = "0.8.10"
+r2d2_sqlite = { version = "0.25.0", features = ["bundled"] }
 
 [dev-dependencies]
 lazy_static = "1.4.0"

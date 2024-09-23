@@ -16,6 +16,8 @@
 //! The tx object consumes the conn object preventing any further calls outside the transaction for the scope of
 //! tx.
 //!
+//! Sqlite tuning with help from: https://kerkour.com/sqlite-for-servers
+//!
 pub mod deployments;
 pub mod events;
 pub mod extension_registrations;
@@ -36,9 +38,11 @@ pub mod tasks;
 pub mod tokens;
 
 use anyhow::Result;
-use sqlx::{migrate, pool::PoolConnection, Pool, Sqlite, SqlitePool};
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs::File, io, ops::Deref, path::Path};
+use tracing::instrument::WithSubscriber;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum StorageError {
@@ -102,7 +106,8 @@ fn map_sqlx_error(e: sqlx::Error, query: &str) -> StorageError {
 
 #[derive(Debug, Clone)]
 pub struct Db {
-    pool: Pool<Sqlite>,
+    read_pool: Pool<SqliteConnectionManager>,
+    write_pool: Pool<SqliteConnectionManager>,
 }
 
 // Create file if not exists.
@@ -116,7 +121,27 @@ fn touch_file(path: &Path) -> io::Result<()> {
 
 impl Db {
     pub async fn new(path: &str) -> Result<Self> {
-        touch_file(Path::new(path)).unwrap();
+        let path = Path::new(path);
+        touch_file(&path).unwrap();
+
+        let read_manager = r2d2_sqlite::SqliteConnectionManager::file(&path).with_init(|conn| {
+            conn.execute_batch(
+                "PRAGMA journal_mode = WAL;
+                 PRAGMA synchronous = NORMAL;
+                 PRAGMA foreign_keys = ON;",
+            )
+        });
+        let write_manager = r2d2_sqlite::SqliteConnectionManager::file(&path);
+
+        // We create two different pools of connections. The read pool has many connections and is high concurrency.
+        // The write pool is essentially a single connection in which only one write can be made at a time.
+        // Not using this paradigm may result in sqlite "database is locked(error: 5)" errors because of the
+        // manner in which sqlite handles transactions.
+        let read_pool = r2d2::Pool::builder().build(read_manager).unwrap();
+        let write_pool = r2d2::Pool::builder()
+            .max_size(1)
+            .build(write_manager)
+            .unwrap();
 
         let connection_pool = SqlitePool::connect(&format!("file:{}", path))
             .await
