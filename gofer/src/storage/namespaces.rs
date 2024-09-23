@@ -1,4 +1,4 @@
-use crate::storage::{epoch_milli, map_sqlx_error, StorageError};
+use crate::storage::{epoch_milli, map_rusqlite_error, StorageError};
 use futures::TryFutureExt;
 use rusqlite::Connection;
 
@@ -29,21 +29,17 @@ impl Default for UpdatableFields {
 }
 
 pub async fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), StorageError> {
-    let query = sqlx::query(
+    conn.execute(
         "INSERT INTO namespaces (id, name, description, created, modified) VALUES (?, ?, ?, ?, ?);",
+        (
+            &namespace.id,
+            &namespace.name,
+            &namespace.description,
+            &namespace.created,
+            &namespace.modified,
+        ),
     )
-    .bind(&namespace.id)
-    .bind(&namespace.name)
-    .bind(&namespace.description)
-    .bind(&namespace.created)
-    .bind(&namespace.modified);
-
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    .map_err(|e| map_rusqlite_error(e, sql));
 
     Ok(())
 }

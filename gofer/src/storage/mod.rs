@@ -5,13 +5,12 @@
 //!
 //! ## Transactions
 //!
-//! Transactions are handled by calling `begin` on [`Db::conn`] like so:
+//! Transactions are handled by calling `open_tx` on [`PooledConnection<SqliteConnectionManager>`] like so:
 //!
 //! ```ignore
-//! let mut tx = match conn.begin().await.unwrap();
-//! let some_db_call(&mut tx).await;
-//! let some_other_db_call(&mut tx).await;
-//! tx.commit() // Make sure you call commit or changes made inside the transaction wont be changed.
+//! let mut conn = db.write_conn();
+//! let tx = db.open_tx(&mut conn);
+//! tx.commit() // Make sure you call commit or changes made inside the transaction wont be written.
 //! ```
 //! The tx object consumes the conn object preventing any further calls outside the transaction for the scope of
 //! tx.
@@ -40,8 +39,14 @@ pub mod tokens;
 use anyhow::Result;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::{Connection, Transaction};
+use rust_embed::RustEmbed;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs::File, io, path::Path};
+
+#[derive(RustEmbed)]
+#[folder = "src/storage/migrations"]
+pub struct EmbeddedMigrations;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum StorageError {
@@ -70,27 +75,45 @@ pub enum StorageError {
     },
 }
 
-/// Sqlite Errors are determined by database error code. We map these to the specific code so that
+/// In order to make downstream storage functions support taking the possibility of a [`rusqlite::Transaction`]
+/// or a [`rusqlite::Connection`] object we must create an interface over the common functions.
+pub trait Executable {
+    fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize>;
+}
+
+impl Executable for Connection {
+    fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize> {
+        self.execute(query, params)
+    }
+}
+
+impl Executable for Transaction<'_> {
+    fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize> {
+        self.execute(query, params)
+    }
+}
+
+/// Rusqlite Errors are determined by database error code. We map these to the specific code so that
 /// when we come back with a database error we can detect which one happened.
 /// See the codes here: https://www.sqlite.org/rescode.html
-fn map_sqlx_error(e: sqlx::Error, query: &str) -> StorageError {
+fn map_rusqlite_error(e: rusqlite::Error, query: &str) -> StorageError {
     match e {
-        sqlx::Error::RowNotFound => StorageError::NotFound,
-        sqlx::Error::Database(database_err) => {
-            if let Some(err_code) = database_err.code() {
+        rusqlite::Error::QueryReturnedNoRows => StorageError::NotFound,
+        rusqlite::Error::SqliteFailure(error, err_str) => {
+            if let Some(err_code) = error.code() {
                 match err_code.deref() {
                     "1555" => StorageError::Exists,
-                    "787" => StorageError::ForeignKeyViolation(database_err.to_string()),
+                    "787" => StorageError::ForeignKeyViolation(err_str.to_string()),
                     _ => StorageError::GenericDBError {
                         code: Some(err_code.to_string()),
-                        message: format!("Unmapped error occurred; {}", database_err),
+                        message: format!("Unmapped error occurred; {}", err_str),
                         query: query.into(),
                     },
                 }
             } else {
                 StorageError::GenericDBError {
                     code: None,
-                    message: database_err.to_string(),
+                    message: err_str.to_string(),
                     query: query.into(),
                 }
             }
@@ -125,7 +148,7 @@ impl Db {
 
         let read_manager = r2d2_sqlite::SqliteConnectionManager::file(&path).with_init(|conn| {
             // The PRAGMA settings here control various sqlite settings that are required for a working and performant
-            // sqlite database. In order:
+            // sqlite database tuned for a highly concurrent web server. In order:
             // * journal_mode: Turns on WAL mode which increases concurrency and reliability.
             // * synchronous: Tells sqlite to not sync to disk as often and specifically only focus on syncing at critcal
             //   junctures. This makes sqlite speedier and also has no downside because we have WAL mode.
@@ -165,11 +188,8 @@ impl Db {
             .build(write_manager)
             .unwrap();
 
-        // TODO: Figure out migrations
-        // migrate!("src/storage/migrations")
-        //     .run(&connection_pool)
-        //     .await
-        //     .unwrap();
+        let mut conn = write_pool.get().unwrap();
+        run_migrations(&mut conn).unwrap();
 
         Ok(Db {
             read_pool,
@@ -177,17 +197,49 @@ impl Db {
         })
     }
 
+    /// Grab a read connection from the pool. Read connections have high concurrency and don't
+    /// block other reads or writes from happening.
     pub fn read_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, StorageError> {
         self.read_pool
             .get()
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))
     }
 
+    /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
+    /// writer. Attempting to execute a write will hold a global lock and prevent both reads and writes
+    /// from happening during that time.
     pub fn write_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, StorageError> {
         self.write_pool
             .get()
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))
     }
+
+    /// We always open transactions with the Immediate type. This causes sqlite to immediately hold a lock for that
+    /// transaction, instead of its default behavior which is only to attempt to grab a lock before the first write
+    /// call. Declaring that we're in a transaction early prevents sqlite_busy errors by preventing the race condition
+    /// where we'll open a transaction, make a bunch of read calls and then finally a write call only to realize that
+    /// the underlying data has changed because the transaction was deferred and another writer had it's way with
+    /// the database.
+    pub fn open_tx<'a>(&self, conn: &'a mut Connection) -> Transaction<'a> {
+        let tx = conn
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .unwrap();
+
+        tx
+    }
+}
+
+fn run_migrations(conn: &PooledConnection<SqliteConnectionManager>) -> Result<()> {
+    let tx = conn.transaction()?;
+
+    for migration in EmbeddedMigrations::iter() {
+        let sql_content = std::fs::read_to_string(migration).expect("Failed to read the .sql file");
+        tx.execute_batch(&sql_content)?;
+    }
+
+    tx.commit()?;
+
+    Ok(())
 }
 
 /// Return the current epoch time in milliseconds.
