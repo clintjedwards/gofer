@@ -43,7 +43,6 @@ rstest = "0.19.0"
 rusqlite = { version = "0.32.1", features = ["bundled"] }
 rust-embed = "8.0.0"
 schemars = "0.8.21"
-sea-query = "0.31.0"
 serde_json = "1.0.105"
 serde = { version = "1.0.173", features = ["derive"] }
 sha2 = "0.10.8"

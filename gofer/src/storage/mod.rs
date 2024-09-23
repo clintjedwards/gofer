@@ -38,11 +38,10 @@ pub mod tasks;
 pub mod tokens;
 
 use anyhow::Result;
-use r2d2::Pool;
+use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{fs::File, io, ops::Deref, path::Path};
-use tracing::instrument::WithSubscriber;
+use std::{fs::File, io, path::Path};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum StorageError {
@@ -125,13 +124,36 @@ impl Db {
         touch_file(&path).unwrap();
 
         let read_manager = r2d2_sqlite::SqliteConnectionManager::file(&path).with_init(|conn| {
+            // The PRAGMA settings here control various sqlite settings that are required for a working and performant
+            // sqlite database. In order:
+            // * journal_mode: Turns on WAL mode which increases concurrency and reliability.
+            // * synchronous: Tells sqlite to not sync to disk as often and specifically only focus on syncing at critcal
+            //   junctures. This makes sqlite speedier and also has no downside because we have WAL mode.
+            // * foreign_keys: Turns on relational style foreign keys. A must have.
+            // * busy_timeout: How long should a sqlite query try before it returns an error. Very helpful to avoid
+            // * sqlite "database busy/database is locked" errors.
+            // * cache_size(-1048576): Refers to the amount of memory sqlite will use as a cache. Obviously more memory
+            //    is good. The negative sign means use KB, the value is in Kilobytes. In total it means use 1GB of memory.
+            // * temp_store: Tells sqlite to store temporary objects in memory rather than disk.
             conn.execute_batch(
                 "PRAGMA journal_mode = WAL;
                  PRAGMA synchronous = NORMAL;
-                 PRAGMA foreign_keys = ON;",
+                 PRAGMA foreign_keys = ON;
+                 PRAGMA busy_timeout = 5000;
+                 PRAGMA cache_size = -1048576;
+                 PRAGMA temp_store = MEMORY;",
             )
         });
-        let write_manager = r2d2_sqlite::SqliteConnectionManager::file(&path);
+        let write_manager = r2d2_sqlite::SqliteConnectionManager::file(&path).with_init(|conn| {
+            conn.execute_batch(
+                "PRAGMA journal_mode = WAL;
+                 PRAGMA synchronous = NORMAL;
+                 PRAGMA foreign_keys = ON;
+                 PRAGMA busy_timeout = 5000;
+                 PRAGMA cache_size = -1048576;
+                 PRAGMA temp_store = MEMORY;",
+            )
+        });
 
         // We create two different pools of connections. The read pool has many connections and is high concurrency.
         // The write pool is essentially a single connection in which only one write can be made at a time.
@@ -143,41 +165,27 @@ impl Db {
             .build(write_manager)
             .unwrap();
 
-        let connection_pool = SqlitePool::connect(&format!("file:{}", path))
-            .await
-            .unwrap();
-
-        // Setting PRAGMAs
-        sqlx::query("PRAGMA journal_mode = WAL;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA busy_timeout = 5000;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA foreign_keys = ON;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA strict = ON;")
-            .execute(&connection_pool)
-            .await?;
-
-        migrate!("src/storage/migrations")
-            .run(&connection_pool)
-            .await
-            .unwrap();
+        // TODO: Figure out migrations
+        // migrate!("src/storage/migrations")
+        //     .run(&connection_pool)
+        //     .await
+        //     .unwrap();
 
         Ok(Db {
-            pool: connection_pool,
+            read_pool,
+            write_pool,
         })
     }
 
-    pub async fn conn(&self) -> Result<PoolConnection<Sqlite>, StorageError> {
-        self.pool
-            .acquire()
-            .await
+    pub fn read_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, StorageError> {
+        self.read_pool
+            .get()
+            .map_err(|e| StorageError::Connection(format!("{:?}", e)))
+    }
+
+    pub fn write_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, StorageError> {
+        self.write_pool
+            .get()
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))
     }
 }

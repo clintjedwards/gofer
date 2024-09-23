@@ -1,8 +1,8 @@
 use crate::storage::{epoch_milli, map_sqlx_error, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::Connection;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct Namespace {
     pub id: String,
     pub name: String,
@@ -28,10 +28,7 @@ impl Default for UpdatableFields {
     }
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
-    namespace: &Namespace,
-) -> Result<(), StorageError> {
+pub async fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), StorageError> {
     let query = sqlx::query(
         "INSERT INTO namespaces (id, name, description, created, modified) VALUES (?, ?, ?, ?, ?);",
     )
