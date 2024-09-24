@@ -1,6 +1,8 @@
 use crate::storage::{epoch_milli, map_rusqlite_error, StorageError};
 use futures::TryFutureExt;
-use rusqlite::Connection;
+use rusqlite::{Connection, Row};
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace {
@@ -9,6 +11,28 @@ pub struct Namespace {
     pub description: String,
     pub created: String,
     pub modified: String,
+}
+
+impl From<&Row<'_>> for Namespace {
+    fn from(row: &Row) -> Self {
+        Self {
+            id: row.get_unwrap("id"),
+            name: row.get_unwrap("name"),
+            description: row.get_unwrap("description"),
+            created: row.get_unwrap("created"),
+            modified: row.get_unwrap("modified"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum NamespaceTable {
+    Table,
+    Id,
+    Name,
+    Description,
+    Created,
+    Modified,
 }
 
 #[derive(Clone, Debug)]
@@ -29,119 +53,135 @@ impl Default for UpdatableFields {
 }
 
 pub async fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), StorageError> {
-    conn.execute(
-        "INSERT INTO namespaces (id, name, description, created, modified) VALUES (?, ?, ?, ?, ?);",
-        (
-            &namespace.id,
-            &namespace.name,
-            &namespace.description,
-            &namespace.created,
-            &namespace.modified,
-        ),
-    )
-    .map_err(|e| map_rusqlite_error(e, sql));
+    let (sql, values) = Query::insert()
+        .into_table(NamespaceTable::Table)
+        .columns([
+            NamespaceTable::Id,
+            NamespaceTable::Name,
+            NamespaceTable::Description,
+            NamespaceTable::Created,
+            NamespaceTable::Modified,
+        ])
+        .values_panic([
+            namespace.id.clone().into(),
+            namespace.name.clone().into(),
+            namespace.description.clone().into(),
+            namespace.created.clone().into(),
+            namespace.modified.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
+
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Namespace>, StorageError> {
-    let query = sqlx::query_as::<_, Namespace>(
-        "SELECT id, name, description, created, modified FROM namespaces;",
-    );
+pub async fn list(conn: &mut Connection) -> Result<Vec<Namespace>, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            NamespaceTable::Id,
+            NamespaceTable::Name,
+            NamespaceTable::Description,
+            NamespaceTable::Created,
+            NamespaceTable::Modified,
+        ])
+        .from(NamespaceTable::Table)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<Namespace> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(Namespace::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Namespace, StorageError> {
-    let query = sqlx::query_as::<_, Namespace>(
-        "SELECT id, name, description, created, modified FROM namespaces WHERE id = ?;",
-    )
-    .bind(id);
+pub async fn get(conn: &mut Connection, id: &str) -> Result<Namespace, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            NamespaceTable::Id,
+            NamespaceTable::Name,
+            NamespaceTable::Description,
+            NamespaceTable::Created,
+            NamespaceTable::Modified,
+        ])
+        .from(NamespaceTable::Table)
+        .and_where(Expr::col(NamespaceTable::Id).eq(id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Namespace::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
 pub async fn update(
-    conn: &mut SqliteConnection,
+    conn: &mut Connection,
     id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE namespaces SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query
+        .table(NamespaceTable::Table)
+        .values([(NamespaceTable::Modified, fields.modified.clone().into())]);
 
-    if let Some(value) = &fields.name {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("name = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.name {
+        query.value(NamespaceTable::Name, value);
     }
 
-    if let Some(value) = &fields.description {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("description = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.description {
+        query.value(NamespaceTable::Description, value);
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
-        return Err(StorageError::NoFieldsUpdated);
-    }
+    query.and_where(Expr::col(NamespaceTable::Id).eq(id));
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    update_query.push(", ");
-    update_query.push("modified = ");
-    update_query.push_bind(fields.modified);
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    update_query.push(" WHERE id = ");
-    update_query.push_bind(id);
-    update_query.push(";");
-
-    let update_query = update_query.build();
-
-    let sql = update_query.sql();
-
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
-pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM namespaces WHERE id = ?;").bind(id);
+pub async fn delete(conn: &mut Connection, id: &str) -> Result<(), StorageError> {
+    let (sql, values) = Query::delete()
+        .from_table(NamespaceTable::Table)
+        .and_where(Expr::col(NamespaceTable::Id).eq(id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
+    async fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
         let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = Namespace {
             id: "some_id".into(),

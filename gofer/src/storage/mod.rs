@@ -17,27 +17,27 @@
 //!
 //! Sqlite tuning with help from: https://kerkour.com/sqlite-for-servers
 //!
-pub mod deployments;
-pub mod events;
-pub mod extension_registrations;
-pub mod extension_subscriptions;
+// pub mod deployments;
+// pub mod events;
+// pub mod extension_registrations;
+// pub mod extension_subscriptions;
 pub mod namespaces;
-pub mod object_store_extension_keys;
-pub mod object_store_pipeline_keys;
-pub mod object_store_run_keys;
-pub mod pipeline_configs;
-pub mod pipeline_metadata;
-pub mod roles;
-pub mod runs;
-pub mod secret_store_global_keys;
-pub mod secret_store_pipeline_keys;
-pub mod system;
-pub mod task_executions;
-pub mod tasks;
-pub mod tokens;
+// pub mod object_store_extension_keys;
+// pub mod object_store_pipeline_keys;
+// pub mod object_store_run_keys;
+// pub mod pipeline_configs;
+// pub mod pipeline_metadata;
+// pub mod roles;
+// pub mod runs;
+// pub mod secret_store_global_keys;
+// pub mod secret_store_pipeline_keys;
+// pub mod system;
+// pub mod task_executions;
+// pub mod tasks;
+// pub mod tokens;
 
 use anyhow::Result;
-use r2d2::{Pool, PooledConnection};
+use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{Connection, Transaction};
 use rust_embed::RustEmbed;
@@ -79,17 +79,26 @@ pub enum StorageError {
 /// or a [`rusqlite::Connection`] object we must create an interface over the common functions.
 pub trait Executable {
     fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize>;
+    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>>;
 }
 
 impl Executable for Connection {
     fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize> {
         self.execute(query, params)
     }
+
+    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
+        self.prepare(query)
+    }
 }
 
 impl Executable for Transaction<'_> {
     fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize> {
         self.execute(query, params)
+    }
+
+    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
+        self.prepare(query)
     }
 }
 
@@ -199,7 +208,7 @@ impl Db {
 
     /// Grab a read connection from the pool. Read connections have high concurrency and don't
     /// block other reads or writes from happening.
-    pub fn read_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, StorageError> {
+    pub fn read_conn(&self) -> Result<Connection, StorageError> {
         self.read_pool
             .get()
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))
@@ -208,7 +217,7 @@ impl Db {
     /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
     /// writer. Attempting to execute a write will hold a global lock and prevent both reads and writes
     /// from happening during that time.
-    pub fn write_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, StorageError> {
+    pub fn write_conn(&self) -> Result<Connection, StorageError> {
         self.write_pool
             .get()
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))
@@ -229,7 +238,7 @@ impl Db {
     }
 }
 
-fn run_migrations(conn: &PooledConnection<SqliteConnectionManager>) -> Result<()> {
+fn run_migrations(conn: &Connection) -> Result<()> {
     let tx = conn.transaction()?;
 
     for migration in EmbeddedMigrations::iter() {
