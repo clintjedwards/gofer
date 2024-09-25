@@ -1,8 +1,10 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{map_rusqlite_error, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::{Connection, Row};
+use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct Run {
     pub namespace_id: String,
     pub pipeline_id: String,
@@ -19,6 +21,46 @@ pub struct Run {
     pub store_objects_expired: bool,
 }
 
+// Implementing From<&Row> for Run to extract values from the rusqlite Row
+impl From<&Row<'_>> for Run {
+    fn from(row: &Row) -> Self {
+        Self {
+            namespace_id: row.get_unwrap("namespace_id"),
+            pipeline_id: row.get_unwrap("pipeline_id"),
+            pipeline_config_version: row.get_unwrap("pipeline_config_version"),
+            run_id: row.get_unwrap("run_id"),
+            started: row.get_unwrap("started"),
+            ended: row.get_unwrap("ended"),
+            state: row.get_unwrap("state"),
+            status: row.get_unwrap("status"),
+            status_reason: row.get_unwrap("status_reason"),
+            initiator: row.get_unwrap("initiator"),
+            variables: row.get_unwrap("variables"),
+            token_id: row.get_unwrap("token_id"),
+            store_objects_expired: row.get_unwrap("store_objects_expired"),
+        }
+    }
+}
+
+// Enum representing the columns of the Run table using the Iden trait from sea-query
+#[derive(Iden)]
+enum RunTable {
+    Table,
+    NamespaceId,
+    PipelineId,
+    PipelineConfigVersion,
+    RunId,
+    Started,
+    Ended,
+    State,
+    Status,
+    StatusReason,
+    Initiator,
+    Variables,
+    TokenId,
+    StoreObjectsExpired,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct UpdatableFields {
     pub ended: Option<String>,
@@ -29,229 +71,267 @@ pub struct UpdatableFields {
     pub store_objects_expired: Option<bool>,
 }
 
-pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO runs (namespace_id, pipeline_id, pipeline_config_version, run_id, \
-        started, ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired)\
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&run.namespace_id)
-    .bind(&run.pipeline_id)
-    .bind(run.pipeline_config_version)
-    .bind(run.run_id)
-    .bind(&run.started)
-    .bind(&run.ended)
-    .bind(&run.state)
-    .bind(&run.status)
-    .bind(&run.status_reason)
-    .bind(&run.initiator)
-    .bind(&run.variables)
-    .bind(&run.token_id)
-    .bind(run.store_objects_expired);
+pub fn insert(conn: &mut Connection, run: &Run) -> Result<(), StorageError> {
+    let (sql, values) = Query::insert()
+        .into_table(RunTable::Table)
+        .columns([
+            RunTable::NamespaceId,
+            RunTable::PipelineId,
+            RunTable::PipelineConfigVersion,
+            RunTable::RunId,
+            RunTable::Started,
+            RunTable::Ended,
+            RunTable::State,
+            RunTable::Status,
+            RunTable::StatusReason,
+            RunTable::Initiator,
+            RunTable::Variables,
+            RunTable::TokenId,
+            RunTable::StoreObjectsExpired,
+        ])
+        .values_panic([
+            run.namespace_id.clone().into(),
+            run.pipeline_id.clone().into(),
+            run.pipeline_config_version.into(),
+            run.run_id.into(),
+            run.started.clone().into(),
+            run.ended.clone().into(),
+            run.state.clone().into(),
+            run.status.clone().into(),
+            run.status_reason.clone().into(),
+            run.initiator.clone().into(),
+            run.variables.clone().into(),
+            run.token_id.clone().into(),
+            run.store_objects_expired.into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
 /// Sorted by run_id ascending by default.
-pub async fn list(
-    conn: &mut SqliteConnection,
+pub fn list(
+    conn: &mut Connection,
     namespace_id: &str,
     pipeline_id: &str,
     offset: i64,
     limit: i64,
     reverse: bool,
 ) -> Result<Vec<Run>, StorageError> {
-    let order_by = if reverse { "DESC" } else { "ASC" };
+    let order = if reverse { Order::Desc } else { Order::Asc };
 
-    let query_str = format!(
-        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
-    state, status, status_reason, initiator, variables, token_id, store_objects_expired FROM \
-    runs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY run_id {} LIMIT ? OFFSET ?;",
-        order_by
-    );
+    let (sql, values) = Query::select()
+        .columns([
+            RunTable::NamespaceId,
+            RunTable::PipelineId,
+            RunTable::PipelineConfigVersion,
+            RunTable::RunId,
+            RunTable::Started,
+            RunTable::Ended,
+            RunTable::State,
+            RunTable::Status,
+            RunTable::StatusReason,
+            RunTable::Initiator,
+            RunTable::Variables,
+            RunTable::TokenId,
+            RunTable::StoreObjectsExpired,
+        ])
+        .from(RunTable::Table)
+        .and_where(Expr::col(RunTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(RunTable::PipelineId).eq(pipeline_id))
+        .order_by(RunTable::RunId, order)
+        .limit(limit)
+        .offset(offset)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let query = sqlx::query_as::<_, Run>(&query_str)
-        .bind(namespace_id)
-        .bind(pipeline_id)
-        .bind(limit)
-        .bind(offset);
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    let sql = query.sql();
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut objects: Vec<Run> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(Run::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(
-    conn: &mut SqliteConnection,
+pub fn get(
+    conn: &mut Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<Run, StorageError> {
-    let query = sqlx::query_as::<_, Run>("SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
-    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired FROM runs WHERE \
-    namespace_id = ? AND pipeline_id = ? AND run_id = ?;",)
-        .bind(namespace_id)
-        .bind(pipeline_id)
-        .bind(run_id);
+    let (sql, values) = Query::select()
+        .columns([
+            RunTable::NamespaceId,
+            RunTable::PipelineId,
+            RunTable::PipelineConfigVersion,
+            RunTable::RunId,
+            RunTable::Started,
+            RunTable::Ended,
+            RunTable::State,
+            RunTable::Status,
+            RunTable::StatusReason,
+            RunTable::Initiator,
+            RunTable::Variables,
+            RunTable::TokenId,
+            RunTable::StoreObjectsExpired,
+        ])
+        .from(RunTable::Table)
+        .and_where(Expr::col(RunTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(RunTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(RunTable::RunId).eq(run_id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Run::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn get_latest(
-    conn: &mut SqliteConnection,
+pub fn get_latest(
+    conn: &mut Connection,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Run, StorageError> {
-    let query = sqlx::query_as::<_, Run>("SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
-    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired FROM runs WHERE \
-    namespace_id = ? AND pipeline_id = ? Order By run_id DESC;",)
-        .bind(namespace_id)
-        .bind(pipeline_id);
+    let (sql, values) = Query::select()
+        .columns([
+            RunTable::NamespaceId,
+            RunTable::PipelineId,
+            RunTable::PipelineConfigVersion,
+            RunTable::RunId,
+            RunTable::Started,
+            RunTable::Ended,
+            RunTable::State,
+            RunTable::Status,
+            RunTable::StatusReason,
+            RunTable::Initiator,
+            RunTable::Variables,
+            RunTable::TokenId,
+            RunTable::StoreObjectsExpired,
+        ])
+        .from(RunTable::Table)
+        .and_where(Expr::col(RunTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(RunTable::PipelineId).eq(pipeline_id))
+        .order_by(RunTable::RunId, Order::Desc)
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Run::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &mut Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE runs SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query
+        .table(RunTable::Table)
+        .and_where(Expr::col(RunTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(RunTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(RunTable::RunId).eq(run_id));
 
-    if let Some(value) = &fields.ended {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("ended = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.ended {
+        query.value(RunTable::Ended, value.into());
     }
 
-    if let Some(value) = &fields.state {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("state = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.state {
+        query.value(RunTable::State, value.into());
     }
 
-    if let Some(value) = &fields.status {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status {
+        query.value(RunTable::Status, value.into());
     }
 
-    if let Some(value) = &fields.status_reason {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status_reason = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status_reason {
+        query.value(RunTable::StatusReason, value.into());
     }
 
-    if let Some(value) = &fields.variables {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("variables = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.variables {
+        query.value(RunTable::Variables, value.into());
     }
 
-    if let Some(value) = &fields.store_objects_expired {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("store_objects_expired = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.store_objects_expired {
+        query.value(RunTable::StoreObjectsExpired, value.into());
     }
 
     // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    if query.values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(" WHERE namespace_id = ");
-    update_query.push_bind(namespace_id);
-    update_query.push(" AND pipeline_id = ");
-    update_query.push_bind(pipeline_id);
-    update_query.push(" AND run_id = ");
-    update_query.push_bind(run_id);
-    update_query.push(";");
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let update_query = update_query.build();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    let sql = update_query.sql();
-
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
 // For the time being there is no need to delete a run and normally a run should not be deleted. But we might make
 // an admin route that allows this.
 #[allow(dead_code)]
-pub async fn delete(
-    conn: &mut SqliteConnection,
+pub fn delete(
+    conn: &mut Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<(), StorageError> {
-    let query =
-        sqlx::query("DELETE FROM runs WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ?;")
-            .bind(namespace_id)
-            .bind(pipeline_id)
-            .bind(run_id);
+    let (sql, values) = Query::delete()
+        .from_table(RunTable::Table)
+        .and_where(Expr::col(RunTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(RunTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(RunTable::RunId).eq(run_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "some_id".into(),
@@ -261,7 +341,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let pipeline_metadata = crate::storage::pipeline_metadata::PipelineMetadata {
             namespace_id: "some_id".into(),
@@ -271,7 +351,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata).await?;
+        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata)?;
 
         let new_pipeline_config = crate::storage::pipeline_configs::PipelineConfig {
             namespace_id: "some_id".to_string(),
@@ -286,7 +366,6 @@ mod tests {
         };
 
         crate::storage::pipeline_configs::insert(&mut conn, &new_pipeline_config)
-            .await
             .expect("Failed to insert pipeline_config");
 
         let run1 = Run {
@@ -337,20 +416,18 @@ mod tests {
             store_objects_expired: false,
         };
 
-        insert(&mut conn, &run1).await?;
-        insert(&mut conn, &run2).await?;
-        insert(&mut conn, &run3).await?;
+        insert(&mut conn, &run1)?;
+        insert(&mut conn, &run2)?;
+        insert(&mut conn, &run3)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_runs() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_runs() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         // Test fetching with sorting by run_id ascending
         let runs_asc = list(&mut conn, "some_id", "some_pipeline_id", 0, 10, false)
-            .await
             .expect("Failed to list runs in ascending order");
 
         assert_eq!(runs_asc.len(), 3, "Should return all runs");
@@ -360,7 +437,6 @@ mod tests {
 
         // Test fetching with sorting by run_id descending
         let runs_desc = list(&mut conn, "some_id", "some_pipeline_id", 0, 10, true)
-            .await
             .expect("Failed to list runs in descending order");
 
         assert_eq!(runs_desc.len(), 3, "Should return all runs");
@@ -370,7 +446,6 @@ mod tests {
 
         // Test limit and offset
         let limited_runs = list(&mut conn, "some_id", "some_pipeline_id", 1, 1, false)
-            .await
             .expect("Failed to list runs with limit and offset");
 
         assert_eq!(limited_runs.len(), 1, "Should return one run due to limit");
@@ -380,33 +455,27 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn test_get_latest_run() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_latest_run() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         // Test fetching with sorting by run_id ascending
-        let run = get_latest(&mut conn, "some_id", "some_pipeline_id")
-            .await
-            .expect("Failed to get last run");
+        let run =
+            get_latest(&mut conn, "some_id", "some_pipeline_id").expect("Failed to get last run");
 
         assert_eq!(run.run_id, 3, "latest run should be 3");
     }
 
-    #[tokio::test]
-    async fn test_get_run() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_run() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let run = get(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
-            .expect("Failed to get run");
+        let run = get(&mut conn, "some_id", "some_pipeline_id", 1).expect("Failed to get run");
 
         assert_eq!(run.pipeline_id, "some_pipeline_id");
         assert_eq!(run.state, "Running");
     }
 
-    #[tokio::test]
-    async fn test_update_run() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_run() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
             ended: Some("2021-01-01T02:00:00Z".to_string()),
@@ -424,29 +493,22 @@ mod tests {
             1,
             fields_to_update,
         )
-        .await
         .expect("Failed to update run");
 
         let updated_run = get(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
             .expect("Failed to retrieve updated run");
 
         assert_eq!(updated_run.state, "Failed");
         assert_eq!(updated_run.status, "Error");
     }
 
-    #[tokio::test]
-    async fn test_delete_run() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_run() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        delete(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
-            .expect("Failed to delete run");
+        delete(&mut conn, "some_id", "some_pipeline_id", 1).expect("Failed to delete run");
 
         assert!(
-            get(&mut conn, "some_id", "some_pipeline_id", 1)
-                .await
-                .is_err(),
+            get(&mut conn, "some_id", "some_pipeline_id", 1).is_err(),
             "Run was not deleted"
         );
     }

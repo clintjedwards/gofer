@@ -17,24 +17,24 @@
 //!
 //! Sqlite tuning with help from: https://kerkour.com/sqlite-for-servers
 //!
-// pub mod deployments;
-// pub mod events;
-// pub mod extension_registrations;
-// pub mod extension_subscriptions;
+pub mod deployments;
+pub mod events;
+pub mod extension_registrations;
+pub mod extension_subscriptions;
 pub mod namespaces;
-// pub mod object_store_extension_keys;
-// pub mod object_store_pipeline_keys;
-// pub mod object_store_run_keys;
-// pub mod pipeline_configs;
-// pub mod pipeline_metadata;
-// pub mod roles;
-// pub mod runs;
-// pub mod secret_store_global_keys;
-// pub mod secret_store_pipeline_keys;
-// pub mod system;
-// pub mod task_executions;
-// pub mod tasks;
-// pub mod tokens;
+pub mod object_store_extension_keys;
+pub mod object_store_pipeline_keys;
+pub mod object_store_run_keys;
+pub mod pipeline_configs;
+pub mod pipeline_metadata;
+pub mod roles;
+pub mod runs;
+pub mod secret_store_global_keys;
+pub mod secret_store_pipeline_keys;
+pub mod system;
+pub mod task_executions;
+pub mod tasks;
+pub mod tokens;
 
 use anyhow::Result;
 use r2d2::Pool;
@@ -151,7 +151,7 @@ fn touch_file(path: &Path) -> io::Result<()> {
 }
 
 impl Db {
-    pub async fn new(path: &str) -> Result<Self> {
+    pub fn new(path: &str) -> Result<Self> {
         let path = Path::new(path);
         touch_file(&path).unwrap();
 
@@ -271,12 +271,12 @@ mod tests {
     }
 
     impl TestHarness {
-        pub async fn new() -> Self {
+        pub fn new() -> Self {
             let mut rng = rand::thread_rng();
             let append_num: u16 = rng.gen();
             let storage_path = format!("/tmp/gofer_tests_storage{}.db", append_num);
 
-            let db = Db::new(&storage_path).await.unwrap();
+            let db = Db::new(&storage_path).unwrap();
 
             Self { db, storage_path }
         }

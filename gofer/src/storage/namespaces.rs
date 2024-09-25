@@ -52,7 +52,7 @@ impl Default for UpdatableFields {
     }
 }
 
-pub async fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), StorageError> {
+pub fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(NamespaceTable::Table)
         .columns([
@@ -77,7 +77,7 @@ pub async fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), 
     Ok(())
 }
 
-pub async fn list(conn: &mut Connection) -> Result<Vec<Namespace>, StorageError> {
+pub fn list(conn: &mut Connection) -> Result<Vec<Namespace>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             NamespaceTable::Id,
@@ -106,7 +106,7 @@ pub async fn list(conn: &mut Connection) -> Result<Vec<Namespace>, StorageError>
     Ok(objects)
 }
 
-pub async fn get(conn: &mut Connection, id: &str) -> Result<Namespace, StorageError> {
+pub fn get(conn: &mut Connection, id: &str) -> Result<Namespace, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             NamespaceTable::Id,
@@ -135,7 +135,7 @@ pub async fn get(conn: &mut Connection, id: &str) -> Result<Namespace, StorageEr
     Err(StorageError::NotFound)
 }
 
-pub async fn update(
+pub fn update(
     conn: &mut Connection,
     id: &str,
     fields: UpdatableFields,
@@ -162,7 +162,7 @@ pub async fn update(
     Ok(())
 }
 
-pub async fn delete(conn: &mut Connection, id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &mut Connection, id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(NamespaceTable::Table)
         .and_where(Expr::col(NamespaceTable::Id).eq(id))
@@ -180,7 +180,7 @@ mod tests {
     use crate::storage::{tests::TestHarness, Executable};
 
     async fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
+        let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 
         let namespace = Namespace {
@@ -191,16 +191,15 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        insert(&mut conn, &namespace).await?;
+        insert(&mut conn, &namespace)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_namespaces() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_namespaces() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let namespaces = list(&mut conn).await.expect("Failed to list namespaces");
+        let namespaces = list(&mut conn).expect("Failed to list namespaces");
 
         // Assert that we got at least one namespace back
         assert!(!namespaces.is_empty(), "No namespaces returned");
@@ -214,9 +213,8 @@ mod tests {
         assert_eq!(some_namespace.description, "some_description");
     }
 
-    #[tokio::test]
-    async fn test_insert_namespace() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_insert_namespace() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let new_namespace = Namespace {
             id: "new_id".into(),
@@ -226,39 +224,31 @@ mod tests {
             modified: "some_other_time".into(),
         };
 
-        insert(&mut conn, &new_namespace)
-            .await
-            .expect("Failed to insert namespace");
+        insert(&mut conn, &new_namespace).expect("Failed to insert namespace");
 
-        let retrieved_namespace = get(&mut conn, "new_id")
-            .await
-            .expect("Failed to retrieve namespace");
+        let retrieved_namespace = get(&mut conn, "new_id").expect("Failed to retrieve namespace");
 
         assert_eq!(retrieved_namespace.id, "new_id");
         assert_eq!(retrieved_namespace.name, "new_name");
         assert_eq!(retrieved_namespace.description, "new_description");
     }
 
-    #[tokio::test]
-    async fn test_get_namespace() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_namespace() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let namespace = get(&mut conn, "some_id")
-            .await
-            .expect("Failed to get namespace");
+        let namespace = get(&mut conn, "some_id").expect("Failed to get namespace");
 
         assert_eq!(namespace.id, "some_id");
         assert_eq!(namespace.name, "some_name");
 
         assert!(
-            get(&mut conn, "non_existent").await.is_err(),
+            get(&mut conn, "non_existent").is_err(),
             "Unexpectedly found a namespace"
         );
     }
 
-    #[tokio::test]
-    async fn test_update_namespace() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_namespace() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
             name: Some("updated_name".into()),
@@ -266,28 +256,22 @@ mod tests {
             modified: "updated_time".into(),
         };
 
-        update(&mut conn, "some_id", fields_to_update)
-            .await
-            .expect("Failed to update namespace");
+        update(&mut conn, "some_id", fields_to_update).expect("Failed to update namespace");
 
-        let updated_namespace = get(&mut conn, "some_id")
-            .await
-            .expect("Failed to retrieve updated namespace");
+        let updated_namespace =
+            get(&mut conn, "some_id").expect("Failed to retrieve updated namespace");
 
         assert_eq!(updated_namespace.name, "updated_name");
         assert_eq!(updated_namespace.description, "updated_description");
     }
 
-    #[tokio::test]
-    async fn test_delete_namespace() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_namespace() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        delete(&mut conn, "some_id")
-            .await
-            .expect("Failed to delete namespace");
+        delete(&mut conn, "some_id").expect("Failed to delete namespace");
 
         assert!(
-            get(&mut conn, "some_id").await.is_err(),
+            get(&mut conn, "some_id").is_err(),
             "Namespace was not deleted"
         );
     }

@@ -1,13 +1,35 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{map_rusqlite_error, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::{Connection, Row};
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct Role {
     pub id: String,
     pub description: String,
     pub permissions: String,
     pub system_role: bool,
+}
+
+impl From<&Row<'_>> for Role {
+    fn from(row: &Row) -> Self {
+        Self {
+            id: row.get_unwrap("id"),
+            description: row.get_unwrap("description"),
+            permissions: row.get_unwrap("permissions"),
+            system_role: row.get_unwrap("system_role"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum RoleTable {
+    Table,
+    Id,
+    Description,
+    Permissions,
+    SystemRole,
 }
 
 #[derive(Clone, Debug)]
@@ -16,118 +38,136 @@ pub struct UpdatableFields {
     pub permissions: Option<String>,
 }
 
-pub async fn insert(conn: &mut SqliteConnection, role: &Role) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO roles (id, description, permissions, system_role) VALUES (?, ?, ?, ?);",
-    )
-    .bind(&role.id)
-    .bind(&role.description)
-    .bind(&role.permissions)
-    .bind(role.system_role);
+pub fn insert(conn: &mut Connection, role: &Role) -> Result<(), StorageError> {
+    let (sql, values) = Query::insert()
+        .into_table(RoleTable::Table)
+        .columns([
+            RoleTable::Id,
+            RoleTable::Description,
+            RoleTable::Permissions,
+            RoleTable::SystemRole,
+        ])
+        .values_panic([
+            role.id.clone().into(),
+            role.description.clone().into(),
+            role.permissions.clone().into(),
+            role.system_role.into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Role>, StorageError> {
-    let query =
-        sqlx::query_as::<_, Role>("SELECT id, description, permissions, system_role FROM roles;");
+pub fn list(conn: &mut Connection) -> Result<Vec<Role>, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            RoleTable::Id,
+            RoleTable::Description,
+            RoleTable::Permissions,
+            RoleTable::SystemRole,
+        ])
+        .from(RoleTable::Table)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut roles: Vec<Role> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        roles.push(Role::from(row));
+    }
+
+    Ok(roles)
 }
 
-pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Role, StorageError> {
-    let query = sqlx::query_as::<_, Role>(
-        "SELECT id, description, permissions, system_role FROM roles WHERE id = ?;",
-    )
-    .bind(id);
+pub fn get(conn: &mut Connection, id: &str) -> Result<Role, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            RoleTable::Id,
+            RoleTable::Description,
+            RoleTable::Permissions,
+            RoleTable::SystemRole,
+        ])
+        .from(RoleTable::Table)
+        .and_where(Expr::col(RoleTable::Id).eq(id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Role::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &mut Connection,
     id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE roles SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query
+        .table(RoleTable::Table)
+        .and_where(Expr::col(RoleTable::Id).eq(id));
 
-    if let Some(value) = &fields.permissions {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("permissions = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.permissions {
+        query.value(RoleTable::Permissions, value.into());
     }
 
-    if let Some(value) = &fields.description {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("description = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.description {
+        query.value(RoleTable::Description, value.into());
     }
 
     // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    if query.values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(" WHERE id = ");
-    update_query.push_bind(id);
-    update_query.push(";");
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let update_query = update_query.build();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    let sql = update_query.sql();
-
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
-pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM roles WHERE id = ?;").bind(id);
+pub fn delete(conn: &mut Connection, id: &str) -> Result<(), StorageError> {
+    let (sql, values) = Query::delete()
+        .from_table(RoleTable::Table)
+        .and_where(Expr::col(RoleTable::Id).eq(id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let role = Role {
             id: "some_id".into(),
@@ -136,16 +176,15 @@ mod tests {
             system_role: false,
         };
 
-        insert(&mut conn, &role).await?;
+        insert(&mut conn, &role)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_roles() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_roles() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let roles = list(&mut conn).await.expect("Failed to list roles");
+        let roles = list(&mut conn).expect("Failed to list roles");
 
         // Assert that we got at least one role back
         assert!(!roles.is_empty(), "No roles returned");
@@ -160,22 +199,17 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_update_roles() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_roles() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
             description: None,
             permissions: Some("some_permissioning".into()),
         };
 
-        update(&mut conn, "some_id", fields_to_update.clone())
-            .await
-            .expect("Failed to update role");
+        update(&mut conn, "some_id", fields_to_update.clone()).expect("Failed to update role");
 
-        let updated_role = get(&mut conn, "some_id")
-            .await
-            .expect("Failed to retrieve updated role");
+        let updated_role = get(&mut conn, "some_id").expect("Failed to retrieve updated role");
 
         assert_eq!(
             fields_to_update.permissions.unwrap(),
@@ -183,24 +217,20 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn test_insert_and_get() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_insert_and_get() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let fetched_role = get(&mut conn, "some_id").await.expect("Failed to get Role");
+        let fetched_role = get(&mut conn, "some_id").expect("Failed to get Role");
         assert_eq!(fetched_role.id, "some_id");
         assert_eq!(fetched_role.permissions, "permissioning",);
     }
 
-    #[tokio::test]
-    async fn test_delete() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        delete(&mut conn, "some_id")
-            .await
-            .expect("Failed to delete Role");
+        delete(&mut conn, "some_id").expect("Failed to delete Role");
 
-        let result = get(&mut conn, "some_id").await;
+        let result = get(&mut conn, "some_id");
         assert!(matches!(result, Err(StorageError::NotFound)));
     }
 }
