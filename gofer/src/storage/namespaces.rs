@@ -1,6 +1,6 @@
-use crate::storage::{epoch_milli, map_rusqlite_error, StorageError};
+use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use rusqlite::{Connection, Row};
+use rusqlite::Row;
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -52,7 +52,7 @@ impl Default for UpdatableFields {
     }
 }
 
-pub fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), StorageError> {
+pub fn insert(conn: &dyn Executable, namespace: &Namespace) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(NamespaceTable::Table)
         .columns([
@@ -77,7 +77,7 @@ pub fn insert(conn: &mut Connection, namespace: &Namespace) -> Result<(), Storag
     Ok(())
 }
 
-pub fn list(conn: &mut Connection) -> Result<Vec<Namespace>, StorageError> {
+pub fn list(conn: &dyn Executable) -> Result<Vec<Namespace>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             NamespaceTable::Id,
@@ -106,7 +106,7 @@ pub fn list(conn: &mut Connection) -> Result<Vec<Namespace>, StorageError> {
     Ok(objects)
 }
 
-pub fn get(conn: &mut Connection, id: &str) -> Result<Namespace, StorageError> {
+pub fn get(conn: &dyn Executable, id: &str) -> Result<Namespace, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             NamespaceTable::Id,
@@ -136,7 +136,7 @@ pub fn get(conn: &mut Connection, id: &str) -> Result<Namespace, StorageError> {
 }
 
 pub fn update(
-    conn: &mut Connection,
+    conn: &dyn Executable,
     id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
@@ -162,7 +162,7 @@ pub fn update(
     Ok(())
 }
 
-pub fn delete(conn: &mut Connection, id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(NamespaceTable::Table)
         .and_where(Expr::col(NamespaceTable::Id).eq(id))

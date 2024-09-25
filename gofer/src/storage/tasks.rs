@@ -1,6 +1,6 @@
-use crate::storage::{map_rusqlite_error, StorageError};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use rusqlite::{Connection, Row};
+use rusqlite::Row;
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -56,7 +56,7 @@ enum TaskTable {
     InjectApiToken,
 }
 
-pub fn insert(conn: &mut Connection, task: &Task) -> Result<(), StorageError> {
+pub fn insert(conn: &dyn Executable, task: &Task) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(TaskTable::Table)
         .columns([
@@ -96,7 +96,7 @@ pub fn insert(conn: &mut Connection, task: &Task) -> Result<(), StorageError> {
 }
 
 pub fn list(
-    conn: &mut Connection,
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     version: i64,
@@ -143,7 +143,7 @@ pub fn list(
 // task. But for the sake of standardization we'll keep this crud function here.
 #[allow(dead_code)]
 pub fn get(
-    conn: &mut Connection,
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     version: i64,

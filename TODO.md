@@ -44,6 +44,7 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* Improve robustness by signaling to wait for jobs to finish before shutting down Gofer, using signals. Maybe also include a double-c pattern?
 * Implement CLI for extension debug feature.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.

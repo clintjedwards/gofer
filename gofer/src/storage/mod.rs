@@ -78,12 +78,12 @@ pub enum StorageError {
 /// In order to make downstream storage functions support taking the possibility of a [`rusqlite::Transaction`]
 /// or a [`rusqlite::Connection`] object we must create an interface over the common functions.
 pub trait Executable {
-    fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize>;
+    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize>;
     fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>>;
 }
 
 impl Executable for Connection {
-    fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize> {
+    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
         self.execute(query, params)
     }
 
@@ -93,7 +93,7 @@ impl Executable for Connection {
 }
 
 impl Executable for Transaction<'_> {
-    fn exec(&self, query: &str, params: impl rusqlite::Params) -> rusqlite::Result<usize> {
+    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
         self.execute(query, params)
     }
 

@@ -1,6 +1,6 @@
-use crate::storage::{map_rusqlite_error, StorageError};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use rusqlite::{Connection, Row};
+use rusqlite::Row;
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -38,7 +38,7 @@ pub struct UpdatableFields {
     pub permissions: Option<String>,
 }
 
-pub fn insert(conn: &mut Connection, role: &Role) -> Result<(), StorageError> {
+pub fn insert(conn: &dyn Executable, role: &Role) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(RoleTable::Table)
         .columns([
@@ -61,7 +61,7 @@ pub fn insert(conn: &mut Connection, role: &Role) -> Result<(), StorageError> {
     Ok(())
 }
 
-pub fn list(conn: &mut Connection) -> Result<Vec<Role>, StorageError> {
+pub fn list(conn: &dyn Executable) -> Result<Vec<Role>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             RoleTable::Id,
@@ -89,7 +89,7 @@ pub fn list(conn: &mut Connection) -> Result<Vec<Role>, StorageError> {
     Ok(roles)
 }
 
-pub fn get(conn: &mut Connection, id: &str) -> Result<Role, StorageError> {
+pub fn get(conn: &dyn Executable, id: &str) -> Result<Role, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             RoleTable::Id,
@@ -118,7 +118,7 @@ pub fn get(conn: &mut Connection, id: &str) -> Result<Role, StorageError> {
 }
 
 pub fn update(
-    conn: &mut Connection,
+    conn: &dyn Executable,
     id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
@@ -136,7 +136,7 @@ pub fn update(
     }
 
     // If no fields were updated, return an error
-    if query.values().is_empty() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
@@ -148,7 +148,7 @@ pub fn update(
     Ok(())
 }
 
-pub fn delete(conn: &mut Connection, id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(RoleTable::Table)
         .and_where(Expr::col(RoleTable::Id).eq(id))

@@ -1,79 +1,93 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct System {
     pub bootstrap_token_created: bool,
     pub ignore_pipeline_run_events: bool,
 }
 
-pub async fn get_system_parameters(conn: &mut SqliteConnection) -> Result<System, StorageError> {
-    let query = sqlx::query_as::<_, System>(
-        "SELECT bootstrap_token_created, ignore_pipeline_run_events FROM system; WHERE id = 1",
-    );
-
-    let sql = query.sql();
-
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+impl From<&Row<'_>> for System {
+    fn from(row: &Row) -> Self {
+        Self {
+            bootstrap_token_created: row.get_unwrap("bootstrap_token_created"),
+            ignore_pipeline_run_events: row.get_unwrap("ignore_pipeline_run_events"),
+        }
+    }
 }
 
-pub async fn update_system_parameters(
-    conn: &mut SqliteConnection,
+#[derive(Iden)]
+enum SystemTable {
+    Table,
+    BootstrapTokenCreated,
+    IgnorePipelineRunEvents,
+}
+
+pub fn get_system_parameters(conn: &dyn Executable) -> Result<System, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            SystemTable::BootstrapTokenCreated,
+            SystemTable::IgnorePipelineRunEvents,
+        ])
+        .from(SystemTable::Table)
+        .and_where(Expr::col(SystemTable::Id).eq(1))
+        .build_rusqlite(SqliteQueryBuilder);
+
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(System::from(row));
+    }
+
+    Err(StorageError::NotFound)
+}
+
+pub fn update_system_parameters(
+    conn: &dyn Executable,
     bootstrap_token_created: Option<bool>,
     ignore_pipeline_run_events: Option<bool>,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE system SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query.table(SystemTable::Table);
 
-    if let Some(value) = &bootstrap_token_created {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("bootstrap_token_created = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = bootstrap_token_created {
+        query.value(SystemTable::BootstrapTokenCreated, value.into());
     }
 
-    if let Some(value) = &ignore_pipeline_run_events {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("ignore_pipeline_run_events = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = ignore_pipeline_run_events {
+        query.value(SystemTable::IgnorePipelineRunEvents, value.into());
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    if query.is_empty_values() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(" WHERE id = 1;");
+    query.and_where(Expr::col(SystemTable::Id).eq(1));
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let update_query = update_query.build();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    let sql = update_query.sql();
-
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let conn = harness.conn().await.unwrap();
+    async fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let conn = harness.write_conn().unwrap();
 
         Ok((harness, conn))
     }

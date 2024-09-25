@@ -1,14 +1,38 @@
-use crate::storage::{epoch_milli, map_sqlx_error, StorageError};
+use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct PipelineMetadata {
     pub namespace_id: String,
     pub pipeline_id: String,
     pub state: String,
     pub created: String,
     pub modified: String,
+}
+
+impl From<&Row<'_>> for PipelineMetadata {
+    fn from(row: &Row) -> Self {
+        Self {
+            namespace_id: row.get_unwrap("namespace_id"),
+            pipeline_id: row.get_unwrap("pipeline_id"),
+            state: row.get_unwrap("state"),
+            created: row.get_unwrap("created"),
+            modified: row.get_unwrap("modified"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum PipelineMetadataTable {
+    Table,
+    NamespaceId,
+    PipelineId,
+    State,
+    Created,
+    Modified,
 }
 
 #[derive(Clone, Debug)]
@@ -26,138 +50,157 @@ impl Default for UpdatableFields {
     }
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
+pub fn insert(
+    conn: &dyn Executable,
     pipeline_metadata: &PipelineMetadata,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO pipeline_metadata (namespace_id, pipeline_id, state, created, modified) VALUES (?, ?, ?, ?, ?);",
-    )
-    .bind(&pipeline_metadata.namespace_id)
-    .bind(&pipeline_metadata.pipeline_id)
-    .bind(&pipeline_metadata.state)
-    .bind(&pipeline_metadata.created)
-    .bind(&pipeline_metadata.modified);
+    let (sql, values) = Query::insert()
+        .into_table(PipelineMetadataTable::Table)
+        .columns([
+            PipelineMetadataTable::NamespaceId,
+            PipelineMetadataTable::PipelineId,
+            PipelineMetadataTable::State,
+            PipelineMetadataTable::Created,
+            PipelineMetadataTable::Modified,
+        ])
+        .values_panic([
+            pipeline_metadata.namespace_id.clone().into(),
+            pipeline_metadata.pipeline_id.clone().into(),
+            pipeline_metadata.state.clone().into(),
+            pipeline_metadata.created.clone().into(),
+            pipeline_metadata.modified.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(
-    conn: &mut SqliteConnection,
+pub fn list(
+    conn: &dyn Executable,
     namespace_id: &str,
 ) -> Result<Vec<PipelineMetadata>, StorageError> {
-    let query = sqlx::query_as::<_, PipelineMetadata>(
-        "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ?;",
-    )
-    .bind(namespace_id);
+    let (sql, values) = Query::select()
+        .columns([
+            PipelineMetadataTable::NamespaceId,
+            PipelineMetadataTable::PipelineId,
+            PipelineMetadataTable::State,
+            PipelineMetadataTable::Created,
+            PipelineMetadataTable::Modified,
+        ])
+        .from(PipelineMetadataTable::Table)
+        .and_where(Expr::col(PipelineMetadataTable::NamespaceId).eq(namespace_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<PipelineMetadata> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(PipelineMetadata::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(
-    conn: &mut SqliteConnection,
+pub fn get(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<PipelineMetadata, StorageError> {
-    let query = sqlx::query_as(
-        "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ? AND pipeline_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let (sql, values) = Query::select()
+        .columns([
+            PipelineMetadataTable::NamespaceId,
+            PipelineMetadataTable::PipelineId,
+            PipelineMetadataTable::State,
+            PipelineMetadataTable::Created,
+            PipelineMetadataTable::Modified,
+        ])
+        .from(PipelineMetadataTable::Table)
+        .and_where(Expr::col(PipelineMetadataTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(PipelineMetadataTable::PipelineId).eq(pipeline_id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(PipelineMetadata::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> =
-        QueryBuilder::new(r#"UPDATE pipeline_metadata SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query.table(PipelineMetadataTable::Table);
 
-    if let Some(value) = &fields.state {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("state = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.state {
+        query.value(PipelineMetadataTable::State, value.into());
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    query.value(PipelineMetadataTable::Modified, fields.modified.into());
+
+    if query.is_empty_values() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(", ");
-    update_query.push("modified = ");
-    update_query.push_bind(fields.modified);
+    query
+        .and_where(Expr::col(PipelineMetadataTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(PipelineMetadataTable::PipelineId).eq(pipeline_id));
 
-    update_query.push(" WHERE namespace_id = ");
-    update_query.push_bind(namespace_id);
-    update_query.push(" AND pipeline_id = ");
-    update_query.push_bind(pipeline_id);
-    update_query.push(";");
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let update_query = update_query.build();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    let sql = update_query.sql();
-
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
-pub async fn delete(
-    conn: &mut SqliteConnection,
+pub fn delete(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<(), StorageError> {
-    let query =
-        sqlx::query("DELETE FROM pipeline_metadata WHERE namespace_id = ? AND pipeline_id = ?;")
-            .bind(namespace_id)
-            .bind(pipeline_id);
+    let (sql, values) = Query::delete()
+        .from_table(PipelineMetadataTable::Table)
+        .and_where(Expr::col(PipelineMetadataTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(PipelineMetadataTable::PipelineId).eq(pipeline_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "some_id".into(),
@@ -167,7 +210,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let pipeline_metadata = PipelineMetadata {
             namespace_id: "some_id".into(),
@@ -177,18 +220,16 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        insert(&mut conn, &pipeline_metadata).await?;
+        insert(&mut conn, &pipeline_metadata)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_pipeline_metadatas() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_pipeline_metadatas() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let pipeline_metadatas = list(&mut conn, "some_id")
-            .await
-            .expect("Failed to list pipeline_metadatas");
+        let pipeline_metadatas =
+            list(&mut conn, "some_id").expect("Failed to list pipeline_metadatas");
 
         // Assert that we got at least one pipeline_metadata back
         assert!(
@@ -205,9 +246,8 @@ mod tests {
         assert_eq!(some_pipeline_metadata.state, "some_state");
     }
 
-    #[tokio::test]
-    async fn test_insert_pipeline_metadata() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_insert_pipeline_metadata() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let new_pipeline_metadata = PipelineMetadata {
             namespace_id: "some_id".into(),
@@ -217,12 +257,9 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        insert(&mut conn, &new_pipeline_metadata)
-            .await
-            .expect("Failed to insert pipeline_metadata");
+        insert(&mut conn, &new_pipeline_metadata).expect("Failed to insert pipeline_metadata");
 
         let retrieved_pipeline_metadata = get(&mut conn, "some_id", "new_pipeline_id")
-            .await
             .expect("Failed to retrieve pipeline_metadata");
 
         assert_eq!(retrieved_pipeline_metadata.namespace_id, "some_id");
@@ -230,21 +267,18 @@ mod tests {
         assert_eq!(retrieved_pipeline_metadata.state, "new_state");
     }
 
-    #[tokio::test]
-    async fn test_get_pipeline_metadata() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_pipeline_metadata() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let pipeline_metadata = get(&mut conn, "some_id", "some_pipeline_id")
-            .await
-            .expect("Failed to get pipeline_metadata");
+        let pipeline_metadata =
+            get(&mut conn, "some_id", "some_pipeline_id").expect("Failed to get pipeline_metadata");
 
         assert_eq!(pipeline_metadata.namespace_id, "some_id");
         assert_eq!(pipeline_metadata.pipeline_id, "some_pipeline_id");
     }
 
-    #[tokio::test]
-    async fn test_update_pipeline_metadata() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_pipeline_metadata() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
             state: Some("updated_state".into()),
@@ -252,26 +286,22 @@ mod tests {
         };
 
         update(&mut conn, "some_id", "some_pipeline_id", fields_to_update)
-            .await
             .expect("Failed to update pipeline_metadata");
 
         let updated_pipeline_metadata = get(&mut conn, "some_id", "some_pipeline_id")
-            .await
             .expect("Failed to retrieve updated pipeline_metadata");
 
         assert_eq!(updated_pipeline_metadata.state, "updated_state");
     }
 
-    #[tokio::test]
-    async fn test_delete_pipeline_metadata() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_pipeline_metadata() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         delete(&mut conn, "some_id", "some_pipeline_id")
-            .await
             .expect("Failed to delete pipeline_metadata");
 
         assert!(
-            get(&mut conn, "some_id", "some_pipeline_id").await.is_err(),
+            get(&mut conn, "some_id", "some_pipeline_id").is_err(),
             "PipelineMetadata was not deleted"
         );
     }

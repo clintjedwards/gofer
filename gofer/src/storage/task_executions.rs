@@ -1,8 +1,10 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct TaskExecution {
     pub namespace_id: String,
     pub pipeline_id: String,
@@ -21,6 +23,48 @@ pub struct TaskExecution {
     pub variables: String,
 }
 
+impl From<&Row<'_>> for TaskExecution {
+    fn from(row: &Row) -> Self {
+        Self {
+            namespace_id: row.get_unwrap("namespace_id"),
+            pipeline_id: row.get_unwrap("pipeline_id"),
+            run_id: row.get_unwrap("run_id"),
+            task_id: row.get_unwrap("task_id"),
+            task: row.get_unwrap("task"),
+            created: row.get_unwrap("created"),
+            started: row.get_unwrap("started"),
+            ended: row.get_unwrap("ended"),
+            exit_code: row.get_unwrap("exit_code"),
+            logs_expired: row.get_unwrap("logs_expired"),
+            logs_removed: row.get_unwrap("logs_removed"),
+            state: row.get_unwrap("state"),
+            status: row.get_unwrap("status"),
+            status_reason: row.get_unwrap("status_reason"),
+            variables: row.get_unwrap("variables"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum TaskExecutionTable {
+    Table,
+    NamespaceId,
+    PipelineId,
+    RunId,
+    TaskId,
+    Task,
+    Created,
+    Started,
+    Ended,
+    ExitCode,
+    LogsExpired,
+    LogsRemoved,
+    State,
+    Status,
+    StatusReason,
+    Variables,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct UpdatableFields {
     pub started: Option<String>,
@@ -34,238 +78,243 @@ pub struct UpdatableFields {
     pub variables: Option<String>,
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
-    task_execution: &TaskExecution,
-) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO task_executions (namespace_id, pipeline_id, run_id, task_id, task, created, started, ended, \
-            exit_code, logs_expired, logs_removed, state, status, status_reason, variables) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&task_execution.namespace_id)
-    .bind(&task_execution.pipeline_id)
-    .bind(task_execution.run_id)
-    .bind(&task_execution.task_id)
-    .bind(&task_execution.task)
-    .bind(&task_execution.created)
-    .bind(&task_execution.started)
-    .bind(&task_execution.ended)
-    .bind(task_execution.exit_code)
-    .bind(task_execution.logs_expired)
-    .bind(task_execution.logs_removed)
-    .bind(&task_execution.state)
-    .bind(&task_execution.status)
-    .bind(&task_execution.status_reason)
-    .bind(&task_execution.variables);
+pub fn insert(conn: &dyn Executable, task_execution: &TaskExecution) -> Result<(), StorageError> {
+    let (sql, values) = Query::insert()
+        .into_table(TaskExecutionTable::Table)
+        .columns([
+            TaskExecutionTable::NamespaceId,
+            TaskExecutionTable::PipelineId,
+            TaskExecutionTable::RunId,
+            TaskExecutionTable::TaskId,
+            TaskExecutionTable::Task,
+            TaskExecutionTable::Created,
+            TaskExecutionTable::Started,
+            TaskExecutionTable::Ended,
+            TaskExecutionTable::ExitCode,
+            TaskExecutionTable::LogsExpired,
+            TaskExecutionTable::LogsRemoved,
+            TaskExecutionTable::State,
+            TaskExecutionTable::Status,
+            TaskExecutionTable::StatusReason,
+            TaskExecutionTable::Variables,
+        ])
+        .values_panic([
+            task_execution.namespace_id.clone().into(),
+            task_execution.pipeline_id.clone().into(),
+            task_execution.run_id.into(),
+            task_execution.task_id.clone().into(),
+            task_execution.task.clone().into(),
+            task_execution.created.clone().into(),
+            task_execution.started.clone().into(),
+            task_execution.ended.clone().into(),
+            task_execution.exit_code.into(),
+            task_execution.logs_expired.into(),
+            task_execution.logs_removed.into(),
+            task_execution.state.clone().into(),
+            task_execution.status.clone().into(),
+            task_execution.status_reason.clone().into(),
+            task_execution.variables.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(
-    conn: &mut SqliteConnection,
+pub fn list(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<Vec<TaskExecution>, StorageError> {
-    let query = sqlx::query_as::<_, TaskExecution>(
-        "SELECT namespace_id, pipeline_id, run_id, task_id, task, created, started, ended, exit_code, logs_expired, \
-        logs_removed, state, status, status_reason, variables FROM task_executions \
-        WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ?;",
-    )
-    .bind(namespace_id).bind(pipeline_id).bind(run_id);
+    let (sql, values) = Query::select()
+        .columns([
+            TaskExecutionTable::NamespaceId,
+            TaskExecutionTable::PipelineId,
+            TaskExecutionTable::RunId,
+            TaskExecutionTable::TaskId,
+            TaskExecutionTable::Task,
+            TaskExecutionTable::Created,
+            TaskExecutionTable::Started,
+            TaskExecutionTable::Ended,
+            TaskExecutionTable::ExitCode,
+            TaskExecutionTable::LogsExpired,
+            TaskExecutionTable::LogsRemoved,
+            TaskExecutionTable::State,
+            TaskExecutionTable::Status,
+            TaskExecutionTable::StatusReason,
+            TaskExecutionTable::Variables,
+        ])
+        .from(TaskExecutionTable::Table)
+        .and_where(Expr::col(TaskExecutionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(TaskExecutionTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(TaskExecutionTable::RunId).eq(run_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<TaskExecution> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(TaskExecution::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(
-    conn: &mut SqliteConnection,
+pub fn get(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
     task_id: &str,
 ) -> Result<TaskExecution, StorageError> {
-    let query = sqlx::query_as(
-        "SELECT namespace_id, pipeline_id, run_id, task_id, task, created, started, ended, exit_code, logs_expired, \
-        logs_removed, state, status, status_reason, variables FROM task_executions \
-        WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND task_id = ?;"
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(run_id)
-    .bind(task_id);
+    let (sql, values) = Query::select()
+        .columns([
+            TaskExecutionTable::NamespaceId,
+            TaskExecutionTable::PipelineId,
+            TaskExecutionTable::RunId,
+            TaskExecutionTable::TaskId,
+            TaskExecutionTable::Task,
+            TaskExecutionTable::Created,
+            TaskExecutionTable::Started,
+            TaskExecutionTable::Ended,
+            TaskExecutionTable::ExitCode,
+            TaskExecutionTable::LogsExpired,
+            TaskExecutionTable::LogsRemoved,
+            TaskExecutionTable::State,
+            TaskExecutionTable::Status,
+            TaskExecutionTable::StatusReason,
+            TaskExecutionTable::Variables,
+        ])
+        .from(TaskExecutionTable::Table)
+        .and_where(Expr::col(TaskExecutionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(TaskExecutionTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(TaskExecutionTable::RunId).eq(run_id))
+        .and_where(Expr::col(TaskExecutionTable::TaskId).eq(task_id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(TaskExecution::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
     task_id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> =
-        QueryBuilder::new(r#"UPDATE task_executions SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query.table(TaskExecutionTable::Table);
 
-    if let Some(value) = &fields.started {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("started = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.started {
+        query.value(TaskExecutionTable::Started, value.into());
     }
 
-    if let Some(value) = &fields.ended {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("ended = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.ended {
+        query.value(TaskExecutionTable::Ended, value.into());
     }
 
-    if let Some(value) = &fields.exit_code {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("exit_code = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.exit_code {
+        query.value(TaskExecutionTable::ExitCode, value.into());
     }
 
-    if let Some(value) = &fields.state {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("state = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.state {
+        query.value(TaskExecutionTable::State, value.into());
     }
 
-    if let Some(value) = &fields.status {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status {
+        query.value(TaskExecutionTable::Status, value.into());
     }
 
-    if let Some(value) = &fields.status_reason {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status_reason = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status_reason {
+        query.value(TaskExecutionTable::StatusReason, value.into());
     }
 
-    if let Some(value) = &fields.logs_expired {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("logs_expired = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.logs_expired {
+        query.value(TaskExecutionTable::LogsExpired, value.into());
     }
 
-    if let Some(value) = &fields.logs_removed {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("logs_removed = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.logs_removed {
+        query.value(TaskExecutionTable::LogsRemoved, value.into());
     }
 
-    if let Some(value) = &fields.variables {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("variables = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.variables {
+        query.value(TaskExecutionTable::Variables, value.into());
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    if query.is_empty_values() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(" WHERE namespace_id = ");
-    update_query.push_bind(namespace_id);
-    update_query.push(" AND pipeline_id = ");
-    update_query.push_bind(pipeline_id);
-    update_query.push(" AND run_id = ");
-    update_query.push_bind(run_id);
-    update_query.push(" AND task_id = ");
-    update_query.push_bind(task_id);
-    update_query.push(";");
+    query
+        .and_where(Expr::col(TaskExecutionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(TaskExecutionTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(TaskExecutionTable::RunId).eq(run_id))
+        .and_where(Expr::col(TaskExecutionTable::TaskId).eq(task_id));
 
-    let update_query = update_query.build();
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let sql = update_query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
 // For now we don't allow deletion of task_executions and there really shouldn't be a need for it, but in the future
 // we might allow it through an admin route.
 #[allow(dead_code)]
-pub async fn delete(
-    conn: &mut SqliteConnection,
+pub fn delete(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
     task_id: &str,
 ) -> Result<(), StorageError> {
-    let query =
-        sqlx::query("DELETE FROM task_executions WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND task_id = ?;")
-            .bind(namespace_id)
-            .bind(pipeline_id).bind(run_id).bind(task_id);
+    let (sql, values) = Query::delete()
+        .from_table(TaskExecutionTable::Table)
+        .and_where(Expr::col(TaskExecutionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(TaskExecutionTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(TaskExecutionTable::RunId).eq(run_id))
+        .and_where(Expr::col(TaskExecutionTable::TaskId).eq(task_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "some_id".into(),
@@ -275,7 +324,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let pipeline_metadata = crate::storage::pipeline_metadata::PipelineMetadata {
             namespace_id: "some_id".into(),
@@ -285,7 +334,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata).await?;
+        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata)?;
 
         let new_pipeline_config = crate::storage::pipeline_configs::PipelineConfig {
             namespace_id: "some_id".to_string(),
@@ -300,7 +349,6 @@ mod tests {
         };
 
         crate::storage::pipeline_configs::insert(&mut conn, &new_pipeline_config)
-            .await
             .expect("Failed to insert pipeline_config");
 
         let run = crate::storage::runs::Run {
@@ -319,7 +367,7 @@ mod tests {
             store_objects_expired: false,
         };
 
-        crate::storage::runs::insert(&mut conn, &run).await?;
+        crate::storage::runs::insert(&mut conn, &run)?;
 
         let task_execution = TaskExecution {
             namespace_id: "some_id".to_string(),
@@ -339,17 +387,15 @@ mod tests {
             variables: "key=value".to_string(),
         };
 
-        insert(&mut conn, &task_execution).await?;
+        insert(&mut conn, &task_execution)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_task_executions() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_task_executions() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let task_executions = list(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
             .expect("Failed to list task_executions");
 
         assert!(!task_executions.is_empty(), "No task_executions returned");
@@ -362,20 +408,17 @@ mod tests {
         assert_eq!(some_task_execution.state, "some_state");
     }
 
-    #[tokio::test]
-    async fn test_get_task_execution() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_task_execution() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let task_execution = get(&mut conn, "some_id", "some_pipeline_id", 1, "task001")
-            .await
             .expect("Failed to get task_execution");
 
         assert_eq!(task_execution.pipeline_id, "some_pipeline_id");
     }
 
-    #[tokio::test]
-    async fn test_update_task_execution() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_task_execution() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
             started: Some("2021-01-01T03:00:00Z".to_string()),
@@ -397,28 +440,22 @@ mod tests {
             "task001",
             fields_to_update,
         )
-        .await
         .expect("Failed to update task_execution");
 
         let updated_task_execution = get(&mut conn, "some_id", "some_pipeline_id", 1, "task001")
-            .await
             .expect("Failed to retrieve updated task_execution");
 
         assert_eq!(updated_task_execution.state, "updated_state");
     }
 
-    #[tokio::test]
-    async fn test_delete_task_execution() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_task_execution() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         delete(&mut conn, "some_id", "some_pipeline_id", 1, "task001")
-            .await
             .expect("Failed to delete task_execution");
 
         assert!(
-            get(&mut conn, "some_id", "some_pipeline_id", 1, "task001")
-                .await
-                .is_err(),
+            get(&mut conn, "some_id", "some_pipeline_id", 1, "task001").is_err(),
             "TaskExecution was not deleted"
         );
     }

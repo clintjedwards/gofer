@@ -1,8 +1,10 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct Deployment {
     pub namespace_id: String,
     pub pipeline_id: String,
@@ -17,6 +19,40 @@ pub struct Deployment {
     pub logs: String,
 }
 
+impl From<&Row<'_>> for Deployment {
+    fn from(row: &Row) -> Self {
+        Self {
+            namespace_id: row.get_unwrap("namespace_id"),
+            pipeline_id: row.get_unwrap("pipeline_id"),
+            deployment_id: row.get_unwrap("deployment_id"),
+            start_version: row.get_unwrap("start_version"),
+            end_version: row.get_unwrap("end_version"),
+            started: row.get_unwrap("started"),
+            ended: row.get_unwrap("ended"),
+            state: row.get_unwrap("state"),
+            status: row.get_unwrap("status"),
+            status_reason: row.get_unwrap("status_reason"),
+            logs: row.get_unwrap("logs"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum DeploymentTable {
+    Table,
+    NamespaceId,
+    PipelineId,
+    DeploymentId,
+    StartVersion,
+    EndVersion,
+    Started,
+    Ended,
+    State,
+    Status,
+    StatusReason,
+    Logs,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct UpdatableFields {
     pub ended: Option<String>,
@@ -26,233 +62,286 @@ pub struct UpdatableFields {
     pub logs: Option<String>,
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
-    deployment: &Deployment,
-) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO deployments (namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, \
-        state, status, status_reason, logs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&deployment.namespace_id)
-    .bind(&deployment.pipeline_id)
-    .bind(deployment.deployment_id)
-    .bind(deployment.start_version)
-    .bind(deployment.end_version)
-    .bind(&deployment.started)
-    .bind(&deployment.ended)
-    .bind(&deployment.state)
-    .bind(&deployment.status)
-    .bind(&deployment.status_reason)
-    .bind(&deployment.logs);
+pub fn insert(conn: &dyn Executable, deployment: &Deployment) -> Result<(), StorageError> {
+    let (sql, values) = Query::insert()
+        .into_table(DeploymentTable::Table)
+        .columns([
+            DeploymentTable::NamespaceId,
+            DeploymentTable::PipelineId,
+            DeploymentTable::DeploymentId,
+            DeploymentTable::StartVersion,
+            DeploymentTable::EndVersion,
+            DeploymentTable::Started,
+            DeploymentTable::Ended,
+            DeploymentTable::State,
+            DeploymentTable::Status,
+            DeploymentTable::StatusReason,
+            DeploymentTable::Logs,
+        ])
+        .values_panic([
+            deployment.namespace_id.clone().into(),
+            deployment.pipeline_id.clone().into(),
+            deployment.deployment_id.into(),
+            deployment.start_version.into(),
+            deployment.end_version.into(),
+            deployment.started.clone().into(),
+            deployment.ended.clone().into(),
+            deployment.state.clone().into(),
+            deployment.status.clone().into(),
+            deployment.status_reason.clone().into(),
+            deployment.logs.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(
-    conn: &mut SqliteConnection,
+pub fn list(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<Deployment>, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, state, status, \
-        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let (sql, values) = Query::select()
+        .columns([
+            DeploymentTable::NamespaceId,
+            DeploymentTable::PipelineId,
+            DeploymentTable::DeploymentId,
+            DeploymentTable::StartVersion,
+            DeploymentTable::EndVersion,
+            DeploymentTable::Started,
+            DeploymentTable::Ended,
+            DeploymentTable::State,
+            DeploymentTable::Status,
+            DeploymentTable::StatusReason,
+            DeploymentTable::Logs,
+        ])
+        .from(DeploymentTable::Table)
+        .and_where(Expr::col(DeploymentTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(DeploymentTable::PipelineId).eq(pipeline_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<Deployment> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(Deployment::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn list_running(
-    conn: &mut SqliteConnection,
+pub fn list_running(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<Deployment>, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, state, status, \
-        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND state = 'RUNNING';",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let (sql, values) = Query::select()
+        .columns([
+            DeploymentTable::NamespaceId,
+            DeploymentTable::PipelineId,
+            DeploymentTable::DeploymentId,
+            DeploymentTable::StartVersion,
+            DeploymentTable::EndVersion,
+            DeploymentTable::Started,
+            DeploymentTable::Ended,
+            DeploymentTable::State,
+            DeploymentTable::Status,
+            DeploymentTable::StatusReason,
+            DeploymentTable::Logs,
+        ])
+        .from(DeploymentTable::Table)
+        .and_where(Expr::col(DeploymentTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(DeploymentTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(DeploymentTable::State).eq("RUNNING"))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<Deployment> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(Deployment::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(
-    conn: &mut SqliteConnection,
+pub fn get(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     deployment_id: i64,
 ) -> Result<Deployment, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, \
-    end_version, started, ended, state, status, status_reason, logs FROM deployments \
-    WHERE namespace_id = ? AND pipeline_id = ? AND deployment_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(deployment_id);
+    let (sql, values) = Query::select()
+        .columns([
+            DeploymentTable::NamespaceId,
+            DeploymentTable::PipelineId,
+            DeploymentTable::DeploymentId,
+            DeploymentTable::StartVersion,
+            DeploymentTable::EndVersion,
+            DeploymentTable::Started,
+            DeploymentTable::Ended,
+            DeploymentTable::State,
+            DeploymentTable::Status,
+            DeploymentTable::StatusReason,
+            DeploymentTable::Logs,
+        ])
+        .from(DeploymentTable::Table)
+        .and_where(Expr::col(DeploymentTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(DeploymentTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(DeploymentTable::DeploymentId).eq(deployment_id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Deployment::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn get_latest(
-    conn: &mut SqliteConnection,
+pub fn get_latest(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Deployment, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, \
-    end_version, started, ended, state, status, status_reason, logs FROM deployments \
-    WHERE namespace_id = ? AND pipeline_id = ? ORDER BY deployment_id DESC LIMIT 1;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let (sql, values) = Query::select()
+        .columns([
+            DeploymentTable::NamespaceId,
+            DeploymentTable::PipelineId,
+            DeploymentTable::DeploymentId,
+            DeploymentTable::StartVersion,
+            DeploymentTable::EndVersion,
+            DeploymentTable::Started,
+            DeploymentTable::Ended,
+            DeploymentTable::State,
+            DeploymentTable::Status,
+            DeploymentTable::StatusReason,
+            DeploymentTable::Logs,
+        ])
+        .from(DeploymentTable::Table)
+        .and_where(Expr::col(DeploymentTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(DeploymentTable::PipelineId).eq(pipeline_id))
+        .order_by(DeploymentTable::DeploymentId, Order::Desc)
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Deployment::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     deployment_id: i64,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE deployments SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query.table(DeploymentTable::Table);
 
-    if let Some(value) = &fields.ended {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("ended = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.ended {
+        query.value(DeploymentTable::Ended, value.into());
     }
 
-    if let Some(value) = &fields.state {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("state = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.state {
+        query.value(DeploymentTable::State, value.into());
     }
 
-    if let Some(value) = &fields.status {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status {
+        query.value(DeploymentTable::Status, value.into());
     }
 
-    if let Some(value) = &fields.status_reason {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status_reason = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status_reason {
+        query.value(DeploymentTable::StatusReason, value.into());
     }
 
-    if let Some(value) = &fields.logs {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("logs = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.logs {
+        query.value(DeploymentTable::Logs, value.into());
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    if query.is_empty_values() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(" WHERE namespace_id = ");
-    update_query.push_bind(namespace_id);
-    update_query.push(" AND pipeline_id = ");
-    update_query.push_bind(pipeline_id);
-    update_query.push(" AND deployment_id = ");
-    update_query.push_bind(deployment_id);
-    update_query.push(";");
+    query
+        .and_where(Expr::col(DeploymentTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(DeploymentTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(DeploymentTable::DeploymentId).eq(deployment_id));
 
-    let update_query = update_query.build();
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let sql = update_query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
 // For the time being there is no need to delete a deployment and normally a deployment should not be deleted.
 // But we might make an admin route that allows this.
 #[allow(dead_code)]
-pub async fn delete(
-    conn: &mut SqliteConnection,
+pub fn delete(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     deployment_id: i64,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND deployment_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(deployment_id);
+    let (sql, values) = Query::delete()
+        .from_table(DeploymentTable::Table)
+        .and_where(Expr::col(DeploymentTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(DeploymentTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(DeploymentTable::DeploymentId).eq(deployment_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "some_id".into(),
@@ -262,7 +351,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let pipeline_metadata = crate::storage::pipeline_metadata::PipelineMetadata {
             namespace_id: "some_id".into(),
@@ -272,7 +361,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata).await?;
+        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata)?;
 
         let new_pipeline_config = crate::storage::pipeline_configs::PipelineConfig {
             namespace_id: "some_id".to_string(),
@@ -287,7 +376,6 @@ mod tests {
         };
 
         crate::storage::pipeline_configs::insert(&mut conn, &new_pipeline_config)
-            .await
             .expect("Failed to insert pipeline_config");
 
         let deployment = Deployment {
@@ -304,18 +392,16 @@ mod tests {
             logs: "some_logs".into(),
         };
 
-        insert(&mut conn, &deployment).await?;
+        insert(&mut conn, &deployment)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_deployments() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_deployments() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let deployments = list(&mut conn, "some_id", "some_pipeline_id")
-            .await
-            .expect("Failed to list deployments");
+        let deployments =
+            list(&mut conn, "some_id", "some_pipeline_id").expect("Failed to list deployments");
 
         assert!(!deployments.is_empty(), "No deployments returned");
 
@@ -327,21 +413,18 @@ mod tests {
         assert_eq!(some_deployment.state, "Deploymenting");
     }
 
-    #[tokio::test]
-    async fn test_get_deployment() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_deployment() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let deployment = get(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
-            .expect("Failed to get deployment");
+        let deployment =
+            get(&mut conn, "some_id", "some_pipeline_id", 1).expect("Failed to get deployment");
 
         assert_eq!(deployment.pipeline_id, "some_pipeline_id");
         assert_eq!(deployment.state, "Deploymenting");
     }
 
-    #[tokio::test]
-    async fn test_update_deployment() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_deployment() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
             ended: Some("2021-01-01T02:00:00Z".to_string()),
@@ -358,29 +441,22 @@ mod tests {
             1,
             fields_to_update,
         )
-        .await
         .expect("Failed to update deployment");
 
         let updated_deployment = get(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
             .expect("Failed to retrieve updated deployment");
 
         assert_eq!(updated_deployment.state, "Failed");
         assert_eq!(updated_deployment.status, "Error");
     }
 
-    #[tokio::test]
-    async fn test_delete_deployment() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_deployment() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        delete(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
-            .expect("Failed to delete deployment");
+        delete(&mut conn, "some_id", "some_pipeline_id", 1).expect("Failed to delete deployment");
 
         assert!(
-            get(&mut conn, "some_id", "some_pipeline_id", 1)
-                .await
-                .is_err(),
+            get(&mut conn, "some_id", "some_pipeline_id", 1).is_err(),
             "Deployment was not deleted"
         );
     }

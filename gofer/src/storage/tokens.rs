@@ -1,8 +1,10 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct Token {
     pub id: String,
     pub hash: String,
@@ -14,135 +16,211 @@ pub struct Token {
     pub user: String,
 }
 
+impl From<&Row<'_>> for Token {
+    fn from(row: &Row) -> Self {
+        Self {
+            id: row.get_unwrap("id"),
+            hash: row.get_unwrap("hash"),
+            created: row.get_unwrap("created"),
+            metadata: row.get_unwrap("metadata"),
+            expires: row.get_unwrap("expires"),
+            disabled: row.get_unwrap("disabled"),
+            roles: row.get_unwrap("roles"),
+            user: row.get_unwrap("user"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum TokenTable {
+    Table,
+    Id,
+    Hash,
+    Created,
+    Metadata,
+    Expires,
+    Disabled,
+    Roles,
+    User,
+}
+
 #[derive(Clone, Debug)]
 pub struct UpdatableFields {
     pub disabled: Option<bool>,
 }
 
-pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO tokens (id, hash, created, metadata, expires, disabled, user, roles)\
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&token.id)
-    .bind(&token.hash)
-    .bind(&token.created)
-    .bind(&token.metadata)
-    .bind(&token.expires)
-    .bind(token.disabled)
-    .bind(&token.user)
-    .bind(&token.roles);
+pub fn insert(conn: &dyn Executable, token: &Token) -> Result<(), StorageError> {
+    let (sql, values) = Query::insert()
+        .into_table(TokenTable::Table)
+        .columns([
+            TokenTable::Id,
+            TokenTable::Hash,
+            TokenTable::Created,
+            TokenTable::Metadata,
+            TokenTable::Expires,
+            TokenTable::Disabled,
+            TokenTable::User,
+            TokenTable::Roles,
+        ])
+        .values_panic([
+            token.id.clone().into(),
+            token.hash.clone().into(),
+            token.created.clone().into(),
+            token.metadata.clone().into(),
+            token.expires.clone().into(),
+            token.disabled.into(),
+            token.user.clone().into(),
+            token.roles.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageError> {
-    let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens;",
-    );
+pub fn list(conn: &dyn Executable) -> Result<Vec<Token>, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            TokenTable::Id,
+            TokenTable::Hash,
+            TokenTable::Created,
+            TokenTable::Metadata,
+            TokenTable::Expires,
+            TokenTable::Disabled,
+            TokenTable::User,
+            TokenTable::Roles,
+        ])
+        .from(TokenTable::Table)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<Token> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(Token::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, StorageError> {
-    let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, metadata, expires, \
-        disabled, user, roles FROM tokens WHERE id = ?;",
-    )
-    .bind(id);
+pub fn get_by_id(conn: &dyn Executable, id: &str) -> Result<Token, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            TokenTable::Id,
+            TokenTable::Hash,
+            TokenTable::Created,
+            TokenTable::Metadata,
+            TokenTable::Expires,
+            TokenTable::Disabled,
+            TokenTable::User,
+            TokenTable::Roles,
+        ])
+        .from(TokenTable::Table)
+        .and_where(Expr::col(TokenTable::Id).eq(id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Token::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn get_by_hash(conn: &mut SqliteConnection, hash: &str) -> Result<Token, StorageError> {
-    let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens WHERE hash = ?;",
-    )
-    .bind(hash);
+pub fn get_by_hash(conn: &dyn Executable, hash: &str) -> Result<Token, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            TokenTable::Id,
+            TokenTable::Hash,
+            TokenTable::Created,
+            TokenTable::Metadata,
+            TokenTable::Expires,
+            TokenTable::Disabled,
+            TokenTable::User,
+            TokenTable::Roles,
+        ])
+        .from(TokenTable::Table)
+        .and_where(Expr::col(TokenTable::Hash).eq(hash))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(Token::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &dyn Executable,
     id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE tokens SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query.table(TokenTable::Table);
 
-    if let Some(value) = &fields.disabled {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("disabled = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.disabled {
+        query.value(TokenTable::Disabled, value.into());
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    if query.is_empty_values() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(" WHERE id = ");
-    update_query.push_bind(id);
-    update_query.push(";");
+    query.and_where(Expr::col(TokenTable::Id).eq(id));
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let update_query = update_query.build();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    let sql = update_query.sql();
-
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
-pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM tokens WHERE id = ?;").bind(id);
+pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
+    let (sql, values) = Query::delete()
+        .from_table(TokenTable::Table)
+        .and_where(Expr::col(TokenTable::Id).eq(id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    async fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let token = Token {
             id: "some_id".into(),
@@ -155,16 +233,16 @@ mod tests {
             disabled: false,
         };
 
-        insert(&mut conn, &token).await?;
+        insert(&mut conn, &token)?;
 
         Ok((harness, conn))
     }
 
     #[tokio::test]
     async fn test_list_tokens() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let tokens = list(&mut conn).await.expect("Failed to list tokens");
+        let tokens = list(&mut conn).expect("Failed to list tokens");
 
         // Assert that we got at least one token back
         assert!(!tokens.is_empty(), "No tokens returned");
@@ -182,43 +260,36 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_tokens() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
             disabled: Some(true),
         };
 
-        update(&mut conn, "some_id", fields_to_update)
-            .await
-            .expect("Failed to update token");
+        update(&mut conn, "some_id", fields_to_update).expect("Failed to update token");
 
-        let updated_token = get_by_id(&mut conn, "some_id")
-            .await
-            .expect("Failed to retrieve updated token");
+        let updated_token =
+            get_by_id(&mut conn, "some_id").expect("Failed to retrieve updated token");
 
         assert!(updated_token.disabled);
     }
 
     #[tokio::test]
     async fn test_insert_and_get() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let fetched_token = get_by_id(&mut conn, "some_id")
-            .await
-            .expect("Failed to get Token");
+        let fetched_token = get_by_id(&mut conn, "some_id").expect("Failed to get Token");
         assert_eq!(fetched_token.id, "some_id");
         assert_eq!(fetched_token.roles, "{some_role_scheme}",);
     }
 
     #[tokio::test]
     async fn test_delete() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        delete(&mut conn, "some_id")
-            .await
-            .expect("Failed to delete Token");
+        delete(&mut conn, "some_id").expect("Failed to delete Token");
 
-        let result = get_by_id(&mut conn, "some_id").await;
+        let result = get_by_id(&mut conn, "some_id");
         assert!(matches!(result, Err(StorageError::NotFound)));
     }
 }
