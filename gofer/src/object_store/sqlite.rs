@@ -1,9 +1,10 @@
 use super::{ObjectStore, ObjectStoreError, Value};
 use anyhow::Result;
 use async_trait::async_trait;
-use futures::TryFutureExt;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::{Connection, Transaction};
 use serde::Deserialize;
-use sqlx::{pool::PoolConnection, Execute, Pool, Sqlite, SqlitePool};
 use std::{fs::File, io, ops::Deref, path::Path};
 
 #[derive(Deserialize, Default, Debug, Clone)]
@@ -12,30 +13,41 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone)]
-pub struct Engine(Pool<Sqlite>);
+pub struct Engine {
+    read_pool: Pool<SqliteConnectionManager>,
+    write_pool: Pool<SqliteConnectionManager>,
+}
 
-/// Sqlite Errors are determined by database error code. We map these to the specific code so that
+/// Rusqlite Errors are determined by database error code. We map these to the specific code so that
 /// when we come back with a database error we can detect which one happened.
 /// See the codes here: https://www.sqlite.org/rescode.html
-fn map_sqlx_error(e: sqlx::Error, query: &str) -> ObjectStoreError {
+fn map_rusqlite_error(e: rusqlite::Error, query: &str) -> ObjectStoreError {
     match e {
-        sqlx::Error::RowNotFound => ObjectStoreError::NotFound,
-        sqlx::Error::Database(database_err) => {
-            if let Some(err_code) = database_err.code() {
+        rusqlite::Error::QueryReturnedNoRows => ObjectStoreError::NotFound,
+        rusqlite::Error::SqliteFailure(error, err_str) => {
+            if let Some(err_code) = error.code() {
                 match err_code.deref() {
                     "1555" => ObjectStoreError::Exists,
-                    _ => ObjectStoreError::Internal(format!("Error occurred while running object store query; [{err_code}] {database_err}; query: {query}")),
+                    "787" => ObjectStoreError::ForeignKeyViolation(err_str.to_string()),
+                    _ => ObjectStoreError::GenericDBError {
+                        code: Some(err_code.to_string()),
+                        message: format!("Unmapped error occurred; {}", err_str),
+                        query: query.into(),
+                    },
                 }
             } else {
-                ObjectStoreError::Internal(format!(
-                    "Error occurred while running object store query; {database_err}; query: {query}"
-                ))
+                ObjectStoreError::GenericDBError {
+                    code: None,
+                    message: err_str.to_string(),
+                    query: query.into(),
+                }
             }
         }
-        _ => ObjectStoreError::Internal(format!(
-            "Error occurred while running query; {:#?}; query: {query}",
-            e
-        )),
+        _ => ObjectStoreError::GenericDBError {
+            code: None,
+            message: e.to_string(),
+            query: query.into(),
+        },
     }
 }
 
@@ -54,52 +66,97 @@ impl Engine {
 
         touch_file(Path::new(&config.path)).unwrap();
 
-        let connection_pool = SqlitePool::connect(&format!("file:{}", &config.path))
-            .await
+        let read_manager =
+            r2d2_sqlite::SqliteConnectionManager::file(&config.path).with_init(|conn| {
+                // The PRAGMA settings here control various sqlite settings that are required for a working and performant
+                // sqlite database tuned for a highly concurrent web server. In order:
+                // * journal_mode: Turns on WAL mode which increases concurrency and reliability.
+                // * synchronous: Tells sqlite to not sync to disk as often and specifically only focus on syncing at critcal
+                //   junctures. This makes sqlite speedier and also has no downside because we have WAL mode.
+                // * foreign_keys: Turns on relational style foreign keys. A must have.
+                // * busy_timeout: How long should a sqlite query try before it returns an error. Very helpful to avoid
+                // * sqlite "database busy/database is locked" errors.
+                // * cache_size(-1048576): Refers to the amount of memory sqlite will use as a cache. Obviously more memory
+                //    is good. The negative sign means use KB, the value is in Kilobytes. In total it means use 1GB of memory.
+                // * temp_store: Tells sqlite to store temporary objects in memory rather than disk.
+                conn.execute_batch(
+                    "PRAGMA journal_mode = WAL;
+                 PRAGMA synchronous = NORMAL;
+                 PRAGMA foreign_keys = ON;
+                 PRAGMA busy_timeout = 5000;
+                 PRAGMA cache_size = -1048576;
+                 PRAGMA temp_store = MEMORY;",
+                )
+            });
+        let write_manager =
+            r2d2_sqlite::SqliteConnectionManager::file(&config.path).with_init(|conn| {
+                conn.execute_batch(
+                    "PRAGMA journal_mode = WAL;
+                 PRAGMA synchronous = NORMAL;
+                 PRAGMA foreign_keys = ON;
+                 PRAGMA busy_timeout = 5000;
+                 PRAGMA cache_size = -1048576;
+                 PRAGMA temp_store = MEMORY;",
+                )
+            });
+
+        // We create two different pools of connections. The read pool has many connections and is high concurrency.
+        // The write pool is essentially a single connection in which only one write can be made at a time.
+        // Not using this paradigm may result in sqlite "database is locked(error: 5)" errors because of the
+        // manner in which sqlite handles transactions.
+        let read_pool = r2d2::Pool::builder().build(read_manager).unwrap();
+        let write_pool = r2d2::Pool::builder()
+            .max_size(1)
+            .build(write_manager)
             .unwrap();
 
-        // Setting PRAGMAs
-        sqlx::query("PRAGMA journal_mode = WAL;")
-            .execute(&connection_pool)
-            .await
-            .unwrap();
+        let mut conn = write_pool.get().unwrap();
+        //TODO: Sqlquery this table
 
-        sqlx::query("PRAGMA busy_timeout = 5000;")
-            .execute(&connection_pool)
-            .await
-            .unwrap();
+        do something here
 
-        sqlx::query("PRAGMA foreign_keys = ON;")
-            .execute(&connection_pool)
-            .await
-            .unwrap();
+        run_migrations(&mut conn).unwrap();
 
-        sqlx::query("PRAGMA strict = ON;")
-            .execute(&connection_pool)
-            .await
-            .unwrap();
-
-        sqlx::query(
-            r#"CREATE TABLE IF NOT EXISTS objects (
-            key   TEXT NOT NULL,
-            value BLOB NOT NULL,
-            PRIMARY KEY (key)
-        ) STRICT;"#,
-        )
-        .execute(&connection_pool)
-        .await
-        .unwrap();
-
-        Engine(connection_pool)
+        Engine {
+            read_pool,
+            write_pool,
+        }
     }
 
-    pub async fn conn(&self) -> Result<PoolConnection<Sqlite>, ObjectStoreError> {
-        self.0.acquire().await.map_err(|e| {
-            ObjectStoreError::Connection(format!(
-                "Could not establish connection to object store {:?}",
-                e
-            ))
-        })
+    /// Grab a read connection from the pool. Read connections have high concurrency and don't
+    /// block other reads or writes from happening.
+    pub fn read_conn(&self) -> Result<Connection, ObjectStoreError> {
+        self.read_pool
+            .get()
+            .map_err(|e| ObjectStoreError::Connection(format!("{:?}", e)))
+    }
+
+    /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
+    /// writer. Attempting to execute a write will hold a global lock and prevent both reads and writes
+    /// from happening during that time.
+    pub fn write_conn(&self) -> Result<Connection, ObjectStoreError> {
+        self.write_pool
+            .get()
+            .map_err(|e| ObjectStoreError::Connection(format!("{:?}", e)))
+    }
+
+    /// We always open transactions with the Immediate type. This causes sqlite to immediately hold a lock for that
+    /// transaction, instead of its default behavior which is only to attempt to grab a lock before the first write
+    /// call. Declaring that we're in a transaction early prevents sqlite_busy errors by preventing the race condition
+    /// where we'll open a transaction, make a bunch of read calls and then finally a write call only to realize that
+    /// the underlying data has changed because the transaction was deferred and another writer had it's way with
+    /// the database.
+    pub fn open_tx<'a>(
+        &self,
+        conn: &'a mut Connection,
+    ) -> Result<Transaction<'a>, ObjectStoreError> {
+        let tx = conn
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(|e| {
+                ObjectStoreError::Connection(format!("Could not open transaction: {:?}", e))
+            });
+
+        tx
     }
 }
 
@@ -114,7 +171,7 @@ impl ObjectStore for Engine {
 
         query
             .fetch_one(&mut *conn)
-            .map_err(|e| map_sqlx_error(e, sql))
+            .map_err(|e| map_lx_error(e, sql))
             .await
     }
 

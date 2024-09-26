@@ -82,7 +82,7 @@ pub async fn get_system_preferences(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -94,7 +94,7 @@ pub async fn get_system_preferences(
         }
     };
 
-    let system_preferences = match storage::system::get_system_parameters(&mut conn).await {
+    let system_preferences = match storage::system::get_system_parameters(&mut conn) {
         Ok(perf) => perf,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -150,7 +150,7 @@ pub async fn update_system_preferences(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -164,7 +164,6 @@ pub async fn update_system_preferences(
 
     if let Err(e) =
         storage::system::update_system_parameters(&mut conn, None, body.ignore_pipeline_run_events)
-            .await
     {
         match e {
             storage::StorageError::NotFound => {

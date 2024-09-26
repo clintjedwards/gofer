@@ -444,7 +444,7 @@ pub async fn list_task_executions(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -461,9 +461,7 @@ pub async fn list_task_executions(
         &path.namespace_id,
         &path.pipeline_id,
         run_id,
-    )
-    .await
-    {
+    ) {
         Ok(task_executions) => task_executions,
         Err(e) => {
             return Err(http_error!(
@@ -536,7 +534,7 @@ pub async fn get_task_execution(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -554,9 +552,7 @@ pub async fn get_task_execution(
         &path.pipeline_id,
         run_id,
         &path.task_id,
-    )
-    .await
-    {
+    ) {
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -630,7 +626,7 @@ pub async fn cancel_task_execution(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -648,9 +644,7 @@ pub async fn cancel_task_execution(
         &path.pipeline_id,
         run_id,
         &path.task_id,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(None, String::new()));
@@ -716,7 +710,7 @@ pub async fn get_logs(
         tokio_tungstenite::WebSocketStream::from_raw_socket(conn.into_inner(), Role::Server, None)
             .await;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(websocket_error(
@@ -752,9 +746,7 @@ pub async fn get_logs(
         &path.pipeline_id,
         run_id,
         &path.task_id,
-    )
-    .await
-    {
+    ) {
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -982,7 +974,7 @@ pub async fn delete_logs(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1000,9 +992,7 @@ pub async fn delete_logs(
         &path.pipeline_id,
         run_id,
         &path.task_id,
-    )
-    .await
-    {
+    ) {
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -1059,9 +1049,7 @@ pub async fn delete_logs(
             logs_removed: Some(true),
             ..Default::default()
         },
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -1152,7 +1140,7 @@ pub async fn attach_task_execution(
         &path.task_id,
     );
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(websocket_error(
@@ -1173,9 +1161,7 @@ pub async fn attach_task_execution(
         &path.pipeline_id,
         run_id,
         &path.task_id,
-    )
-    .await
-    {
+    ) {
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {

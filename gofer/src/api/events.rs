@@ -92,7 +92,7 @@ pub async fn stream_events(
         return Ok(());
     }
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(websocket_error(
@@ -139,14 +139,14 @@ pub async fn stream_events(
             let mut offset = 0;
 
             loop {
-                let storage_events =
-                    match storage::events::list(&mut conn, offset, limit, reverse).await {
-                        Ok(events) => events,
-                        Err(err) => {
-                            error!(error = %err,"Could not get events from database");
-                            return Err("Could not get events from database".into());
-                        }
-                    };
+                let storage_events = match storage::events::list(&mut conn, offset, limit, reverse)
+                {
+                    Ok(events) => events,
+                    Err(err) => {
+                        error!(error = %err,"Could not get events from database");
+                        return Err("Could not get events from database".into());
+                    }
+                };
 
                 // If there are no more events then we can move on to streaming current events.
                 if storage_events.is_empty() {
@@ -305,7 +305,7 @@ pub async fn get_event(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -317,7 +317,7 @@ pub async fn get_event(
         }
     };
 
-    let storage_event = match storage::events::get(&mut conn, &path.event_id).await {
+    let storage_event = match storage::events::get(&mut conn, &path.event_id) {
         Ok(event) => event,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -373,7 +373,7 @@ pub async fn delete_event(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -385,7 +385,7 @@ pub async fn delete_event(
         }
     };
 
-    if let Err(e) = storage::events::delete(&mut conn, &path.event_id).await {
+    if let Err(e) = storage::events::delete(&mut conn, &path.event_id) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(

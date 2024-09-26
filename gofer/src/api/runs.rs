@@ -14,7 +14,6 @@ use dropshot::{
 use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::{
     collections::HashMap,
     str::FromStr,
@@ -373,7 +372,7 @@ pub async fn list_runs(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -392,9 +391,7 @@ pub async fn list_runs(
         query.offset.unwrap_or_default() as i64,
         query.limit.unwrap_or(50) as i64,
         query.reverse.unwrap_or_default(),
-    )
-    .await
-    {
+    ) {
         Ok(runs) => runs,
         Err(e) => {
             return Err(http_error!(
@@ -466,7 +463,7 @@ pub async fn get_run(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -479,7 +476,7 @@ pub async fn get_run(
     };
 
     let storage_runs =
-        match storage::runs::get(&mut conn, &path.namespace_id, &path.pipeline_id, run_id).await {
+        match storage::runs::get(&mut conn, &path.namespace_id, &path.pipeline_id, run_id) {
             Ok(run) => run,
             Err(e) => match e {
                 storage::StorageError::NotFound => {
@@ -559,7 +556,7 @@ pub async fn start_run(
             "Pipeline run request ignored due to api setting 'ignore_pipeline_run_events' in state 'true'".into()));
     }
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -571,7 +568,7 @@ pub async fn start_run(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -584,8 +581,7 @@ pub async fn start_run(
     };
 
     let storage_pipeline_metadata =
-        match storage::pipeline_metadata::get(&mut tx, &path.namespace_id, &path.pipeline_id).await
-        {
+        match storage::pipeline_metadata::get(&mut tx, &path.namespace_id, &path.pipeline_id) {
             Ok(pipeline) => pipeline,
             Err(e) => match e {
                 storage::StorageError::NotFound => {
@@ -624,7 +620,6 @@ pub async fn start_run(
 
     let latest_pipeline_config_storage =
         match storage::pipeline_configs::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id)
-            .await
         {
             Ok(config) => config,
             Err(e) => {
@@ -642,9 +637,7 @@ pub async fn start_run(
         &path.namespace_id,
         &path.pipeline_id,
         latest_pipeline_config_storage.version,
-    )
-    .await
-    {
+    ) {
         Ok(tasks) => tasks,
         Err(e) => {
             return Err(http_error!(
@@ -670,7 +663,7 @@ pub async fn start_run(
     })?;
 
     let latest_run_id =
-        match storage::runs::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id).await {
+        match storage::runs::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id) {
             Ok(latest_run) => latest_run.run_id,
             Err(err) => match err {
                 storage::StorageError::NotFound => 0,
@@ -719,7 +712,7 @@ pub async fn start_run(
         )
     })?;
 
-    if let Err(e) = storage::runs::insert(&mut tx, &new_run_storage).await {
+    if let Err(e) = storage::runs::insert(&mut tx, &new_run_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -739,7 +732,7 @@ pub async fn start_run(
         }
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -799,7 +792,7 @@ pub async fn cancel_run(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -816,9 +809,7 @@ pub async fn cancel_run(
         &path.namespace_id,
         &path.pipeline_id,
         path.run_id as i64,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(None, String::new()));

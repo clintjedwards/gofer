@@ -269,9 +269,8 @@ fn init_api_description() -> Result<ApiDescription<Arc<ApiState>>> {
 /// before Gofer can successfully start serving requests.
 async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
     // First we initialize all the main subsystems.
-    let storage = storage::Db::new(&conf.server.storage_path)
-        .await
-        .context("Could not initialize storage")?;
+    let storage =
+        storage::Db::new(&conf.server.storage_path).context("Could not initialize storage")?;
     let scheduler = scheduler::new(&conf.scheduler)
         .await
         .context("Could not initialize scheduler")?;
@@ -288,7 +287,7 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
     );
 
     // Load our current value for ignore_pipeline_run_events into memory.
-    let mut conn = match storage.conn().await {
+    let mut conn = match storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             bail!(
@@ -298,7 +297,7 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
         }
     };
 
-    let ignore_pipeline_runs = match storage::system::get_system_parameters(&mut conn).await {
+    let ignore_pipeline_runs = match storage::system::get_system_parameters(&mut conn) {
         Ok(value) => atomic::AtomicBool::new(value.ignore_pipeline_run_events),
         Err(e) => bail!(
             "Could not get system parameters during api initialization; {:#?}",
@@ -973,7 +972,7 @@ pub async fn interpolate_vars(
                 });
             }
             InterpolationKind::GlobalSecret => {
-                let mut conn = match api_state.storage.conn().await {
+                let mut conn = match api_state.storage.read_conn() {
                     Ok(conn) => conn,
                     Err(e) => {
                         bail!("Could not establish a connection to the database during interpolation; {:#?}", e);
@@ -982,9 +981,7 @@ pub async fn interpolate_vars(
 
                 let retrieved_key_metadata = match storage::secret_store_global_keys::get(
                     &mut conn, &value,
-                )
-                .await
-                {
+                ) {
                     Ok(val) => val,
                     Err(e) => {
                         bail!("Encountered error while attempting to retrieve global secret during interpolation: {:#?}", e)

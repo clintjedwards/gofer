@@ -229,10 +229,10 @@ impl Db {
     /// where we'll open a transaction, make a bunch of read calls and then finally a write call only to realize that
     /// the underlying data has changed because the transaction was deferred and another writer had it's way with
     /// the database.
-    pub fn open_tx<'a>(&self, conn: &'a mut Connection) -> Transaction<'a> {
+    pub fn open_tx<'a>(&self, conn: &'a mut Connection) -> Result<Transaction<'a>, StorageError> {
         let tx = conn
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .unwrap();
+            .map_err(|e| StorageError::Connection(format!("Could not open transaction: {:?}", e)));
 
         tx
     }

@@ -19,7 +19,6 @@ use futures::{SinkExt, StreamExt};
 use reqwest::{header, Client};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
 use tracing::{debug, error, info};
@@ -316,7 +315,7 @@ async fn start_extension(
         token_roles,
     );
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -324,7 +323,7 @@ async fn start_extension(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             error!(message = "Could not open transaction to database", error = %e);
@@ -333,7 +332,7 @@ async fn start_extension(
     };
 
     // If there was a previous key then just delete it, if there wasn't we don't particularly care.
-    let _ = storage::tokens::delete(&mut tx, &registration.key_id).await;
+    let _ = storage::tokens::delete(&mut tx, &registration.key_id);
 
     let registration_key_id = new_token.id.clone();
 
@@ -345,7 +344,6 @@ async fn start_extension(
     })?;
 
     storage::tokens::insert(&mut tx, &storage_new_token)
-        .await
         .map_err(|err| anyhow!("Could not insert token into storage; {:#?}", err))?;
 
     storage::extension_registrations::update(
@@ -361,10 +359,9 @@ async fn start_extension(
             key_id: Some(registration_key_id),
         },
     )
-    .await
     .map_err(|err| anyhow!("Could not update registration in storage; {:#?}", err))?;
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         error!(message = "Could not close transaction from database", error = %e);
         bail!("Could not close transaction from database; {:#?}", e)
     };
@@ -589,7 +586,7 @@ async fn start_extension(
 /// the initial extension information so it can check for connectivity and store the network location.
 /// This information will eventually be used in other parts of the API to communicate with said extensions.
 pub async fn start_extensions(api_state: Arc<ApiState>) -> Result<()> {
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -598,7 +595,6 @@ pub async fn start_extensions(api_state: Arc<ApiState>) -> Result<()> {
     };
 
     let registrations = storage::extension_registrations::list(&mut conn)
-        .await
         .context("Could not load extensions while attempting to start all extensions")?;
 
     for registration_raw in registrations {
@@ -651,7 +647,7 @@ pub async fn stop_extensions(api_state: Arc<ApiState>) {
 /// This function doesn't start those extensions it just makes sure they are registered
 /// so the more broad [`start_extensions`] function can start them.
 pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -660,7 +656,6 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
     };
 
     let extensions = storage::extension_registrations::list(&mut conn)
-        .await
         .context("Could not list extensions while trying to register std extensions")?;
 
     let mut cron_installed = false;
@@ -696,7 +691,6 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
             )?;
 
         storage::extension_registrations::insert(&mut conn, &storage_registration)
-            .await
             .context("Could not insert registration into storage for extension 'cron'")?;
 
         info!(
@@ -726,7 +720,6 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
             )?;
 
         storage::extension_registrations::insert(&mut conn, &storage_registration)
-            .await
             .context("Could not insert registration into storage for extension 'interval'")?;
 
         info!(
@@ -914,7 +907,7 @@ pub async fn install_extension(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -927,7 +920,7 @@ pub async fn install_extension(
     };
 
     // Check to make sure extension doesn't exist already.
-    match storage::extension_registrations::get(&mut conn, &registration.extension_id).await {
+    match storage::extension_registrations::get(&mut conn, &registration.extension_id) {
         Ok(_) => {
             return Err(HttpError::for_bad_request(
                 None,
@@ -1000,7 +993,7 @@ pub async fn install_extension(
         }
     };
 
-    if let Err(e) = storage::roles::insert(&mut conn, &new_role_storage).await {
+    if let Err(e) = storage::roles::insert(&mut conn, &new_role_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -1054,17 +1047,15 @@ pub async fn install_extension(
                 )
             })?;
 
-    storage::extension_registrations::insert(&mut conn, &new_extension_storage)
-        .await
-        .map_err(|err| {
-            http_error!(
-                "Could not insert object into database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into()),
-                id = registration.extension_id
-            )
-        })?;
+    storage::extension_registrations::insert(&mut conn, &new_extension_storage).map_err(|err| {
+        http_error!(
+            "Could not insert object into database",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(err.into()),
+            id = registration.extension_id
+        )
+    })?;
 
     let resp = InstallExtensionResponse {
         extension: new_extension,
@@ -1106,7 +1097,7 @@ pub async fn update_extension(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1135,7 +1126,6 @@ pub async fn update_extension(
 
     if let Err(e) =
         storage::extension_registrations::update(&mut conn, &path.extension_id, updatable_fields)
-            .await
     {
         match e {
             storage::StorageError::NotFound => {
@@ -1204,7 +1194,7 @@ pub async fn uninstall_extension(
 
     let _ = api_state.extensions.remove(&path.extension_id);
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1216,27 +1206,23 @@ pub async fn uninstall_extension(
         }
     };
 
-    storage::extension_registrations::delete(&mut conn, &path.extension_id)
-        .await
-        .map_err(|err| {
-            http_error!(
-                "Could not delete object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into())
-            )
-        })?;
+    storage::extension_registrations::delete(&mut conn, &path.extension_id).map_err(|err| {
+        http_error!(
+            "Could not delete object from database",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(err.into())
+        )
+    })?;
 
-    storage::roles::delete(&mut conn, &extension_role_id(&path.extension_id))
-        .await
-        .map_err(|err| {
-            http_error!(
-                "Could not delete object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into())
-            )
-        })?;
+    storage::roles::delete(&mut conn, &extension_role_id(&path.extension_id)).map_err(|err| {
+        http_error!(
+            "Could not delete object from database",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(err.into())
+        )
+    })?;
 
     Ok(HttpResponseDeleted())
 }
@@ -1461,7 +1447,7 @@ pub async fn list_extension_subscriptions(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1474,9 +1460,7 @@ pub async fn list_extension_subscriptions(
     };
 
     let storage_subscriptions =
-        match storage::extension_subscriptions::list_by_extension(&mut conn, &path.extension_id)
-            .await
-        {
+        match storage::extension_subscriptions::list_by_extension(&mut conn, &path.extension_id) {
             Ok(subscriptions) => subscriptions,
             Err(e) => {
                 return Err(http_error!(

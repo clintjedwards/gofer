@@ -210,7 +210,7 @@ pub async fn list_global_secrets(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -222,7 +222,7 @@ pub async fn list_global_secrets(
         }
     };
 
-    let storage_secrets = match storage::secret_store_global_keys::list(&mut conn).await {
+    let storage_secrets = match storage::secret_store_global_keys::list(&mut conn) {
         Ok(secrets) => secrets,
         Err(e) => {
             return Err(http_error!(
@@ -296,7 +296,7 @@ pub async fn get_global_secret(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -308,7 +308,7 @@ pub async fn get_global_secret(
         }
     };
 
-    let storage_secret = match storage::secret_store_global_keys::get(&mut conn, &path.key).await {
+    let storage_secret = match storage::secret_store_global_keys::get(&mut conn, &path.key) {
         Ok(secret) => secret,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -409,7 +409,7 @@ pub async fn put_global_secret(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -435,8 +435,7 @@ pub async fn put_global_secret(
         }
     };
 
-    if let Err(e) = storage::secret_store_global_keys::insert(&mut conn, &new_secret_storage).await
-    {
+    if let Err(e) = storage::secret_store_global_keys::insert(&mut conn, &new_secret_storage) {
         match e {
             storage::StorageError::Exists => {
                 if !body.force {
@@ -509,7 +508,7 @@ pub async fn delete_global_secret(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -521,7 +520,7 @@ pub async fn delete_global_secret(
         }
     };
 
-    if let Err(e) = storage::secret_store_global_keys::delete(&mut conn, &path.key).await {
+    if let Err(e) = storage::secret_store_global_keys::delete(&mut conn, &path.key) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -590,7 +589,7 @@ pub async fn list_pipeline_secrets(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -606,9 +605,7 @@ pub async fn list_pipeline_secrets(
         &mut conn,
         &path.namespace_id,
         &path.pipeline_id,
-    )
-    .await
-    {
+    ) {
         Ok(secrets) => secrets,
         Err(e) => {
             return Err(http_error!(
@@ -684,7 +681,7 @@ pub async fn get_pipeline_secret(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -701,9 +698,7 @@ pub async fn get_pipeline_secret(
         &path.namespace_id,
         &path.pipeline_id,
         &path.key,
-    )
-    .await
-    {
+    ) {
         Ok(secret) => secret,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -810,7 +805,7 @@ pub async fn put_pipeline_secret(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -837,9 +832,7 @@ pub async fn put_pipeline_secret(
             }
         };
 
-    if let Err(e) =
-        storage::secret_store_pipeline_keys::insert(&mut conn, &new_secret_storage).await
-    {
+    if let Err(e) = storage::secret_store_pipeline_keys::insert(&mut conn, &new_secret_storage) {
         match e {
             storage::StorageError::Exists => {
                 if !body.force {
@@ -914,7 +907,7 @@ pub async fn delete_pipeline_secret(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -931,9 +924,7 @@ pub async fn delete_pipeline_secret(
         &path.namespace_id,
         &path.pipeline_id,
         &path.key,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(

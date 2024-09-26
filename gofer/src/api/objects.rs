@@ -255,7 +255,7 @@ pub async fn list_run_objects(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -282,9 +282,7 @@ pub async fn list_run_objects(
         &path.namespace_id,
         &path.pipeline_id,
         run_id_i64,
-    )
-    .await
-    {
+    ) {
         Ok(objects) => objects,
         Err(e) => {
             return Err(http_error!(
@@ -428,7 +426,7 @@ pub async fn put_run_object(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -458,7 +456,7 @@ pub async fn put_run_object(
         }
     };
 
-    if let Err(e) = storage::object_store_run_keys::insert(&mut conn, &new_object_storage).await {
+    if let Err(e) = storage::object_store_run_keys::insert(&mut conn, &new_object_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -534,7 +532,7 @@ pub async fn delete_run_object(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -562,9 +560,7 @@ pub async fn delete_run_object(
         &path.pipeline_id,
         run_id_i64,
         &path.key,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -638,7 +634,7 @@ pub async fn list_pipeline_objects(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -654,9 +650,7 @@ pub async fn list_pipeline_objects(
         &mut conn,
         &path.namespace_id,
         &path.pipeline_id,
-    )
-    .await
-    {
+    ) {
         Ok(objects) => objects,
         Err(e) => {
             return Err(http_error!(
@@ -797,7 +791,7 @@ pub async fn put_pipeline_object(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -824,9 +818,7 @@ pub async fn put_pipeline_object(
             }
         };
 
-    if let Err(e) =
-        storage::object_store_pipeline_keys::insert(&mut conn, &new_object_storage).await
-    {
+    if let Err(e) = storage::object_store_pipeline_keys::insert(&mut conn, &new_object_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -896,7 +888,7 @@ pub async fn delete_pipeline_object(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -913,9 +905,7 @@ pub async fn delete_pipeline_object(
         &path.namespace_id,
         &path.pipeline_id,
         &path.key,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -987,7 +977,7 @@ pub async fn list_extension_objects(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1000,7 +990,7 @@ pub async fn list_extension_objects(
     };
 
     let storage_objects =
-        match storage::object_store_extension_keys::list(&mut conn, &path.extension_id).await {
+        match storage::object_store_extension_keys::list(&mut conn, &path.extension_id) {
             Ok(objects) => objects,
             Err(e) => {
                 return Err(http_error!(
@@ -1135,7 +1125,7 @@ pub async fn put_extension_object(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1161,9 +1151,7 @@ pub async fn put_extension_object(
         }
     };
 
-    if let Err(e) =
-        storage::object_store_extension_keys::insert(&mut conn, &new_object_storage).await
-    {
+    if let Err(e) = storage::object_store_extension_keys::insert(&mut conn, &new_object_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -1232,7 +1220,7 @@ pub async fn delete_extension_object(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1245,7 +1233,7 @@ pub async fn delete_extension_object(
     };
 
     if let Err(e) =
-        storage::object_store_extension_keys::delete(&mut conn, &path.extension_id, &path.key).await
+        storage::object_store_extension_keys::delete(&mut conn, &path.extension_id, &path.key)
     {
         match e {
             storage::StorageError::NotFound => {

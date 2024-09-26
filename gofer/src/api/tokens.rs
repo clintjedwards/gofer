@@ -13,7 +13,6 @@ use rand::{distributions::Alphanumeric, Rng};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sqlx::Acquire;
 use std::{collections::HashMap, ops::Add, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -209,7 +208,7 @@ pub async fn list_tokens(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -221,7 +220,7 @@ pub async fn list_tokens(
         }
     };
 
-    let storage_tokens = match storage::tokens::list(&mut conn).await {
+    let storage_tokens = match storage::tokens::list(&mut conn) {
         Ok(tokens) => tokens,
         Err(e) => {
             return Err(http_error!(
@@ -282,7 +281,7 @@ pub async fn get_token_by_id(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -294,7 +293,7 @@ pub async fn get_token_by_id(
         }
     };
 
-    let storage_token = match storage::tokens::get_by_id(&mut conn, &path.id).await {
+    let storage_token = match storage::tokens::get_by_id(&mut conn, &path.id) {
         Ok(token) => token,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -352,7 +351,7 @@ pub async fn whoami(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -364,23 +363,22 @@ pub async fn whoami(
         }
     };
 
-    let storage_token =
-        match storage::tokens::get_by_id(&mut conn, &req_metadata.auth.token_id).await {
-            Ok(token) => token,
-            Err(e) => match e {
-                storage::StorageError::NotFound => {
-                    return Err(HttpError::for_not_found(None, String::new()));
-                }
-                _ => {
-                    return Err(http_error!(
-                        "Could not get object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id.clone(),
-                        Some(e.into())
-                    ));
-                }
-            },
-        };
+    let storage_token = match storage::tokens::get_by_id(&mut conn, &req_metadata.auth.token_id) {
+        Ok(token) => token,
+        Err(e) => match e {
+            storage::StorageError::NotFound => {
+                return Err(HttpError::for_not_found(None, String::new()));
+            }
+            _ => {
+                return Err(http_error!(
+                    "Could not get object from database",
+                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        },
+    };
 
     let token = Token::try_from(storage_token).map_err(|e| {
         http_error!(
@@ -448,7 +446,7 @@ pub async fn create_token(
 
     let body = body.into_inner();
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -493,7 +491,7 @@ pub async fn create_token(
         }
     };
 
-    if let Err(e) = storage::tokens::insert(&mut conn, &new_token_storage).await {
+    if let Err(e) = storage::tokens::insert(&mut conn, &new_token_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -552,7 +550,7 @@ pub async fn delete_token(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -564,7 +562,7 @@ pub async fn delete_token(
         }
     };
 
-    if let Err(e) = storage::tokens::delete(&mut conn, &path.id).await {
+    if let Err(e) = storage::tokens::delete(&mut conn, &path.id) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -611,7 +609,7 @@ pub async fn create_bootstrap_token(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -623,7 +621,7 @@ pub async fn create_bootstrap_token(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -635,7 +633,7 @@ pub async fn create_bootstrap_token(
         }
     };
 
-    let system_parameters = match storage::system::get_system_parameters(&mut tx).await {
+    let system_parameters = match storage::system::get_system_parameters(&mut tx) {
         Ok(system_parameters) => system_parameters,
         Err(e) => {
             return Err(http_error!(
@@ -677,7 +675,7 @@ pub async fn create_bootstrap_token(
         }
     };
 
-    if let Err(e) = storage::tokens::insert(&mut tx, &new_token_storage).await {
+    if let Err(e) = storage::tokens::insert(&mut tx, &new_token_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -697,7 +695,7 @@ pub async fn create_bootstrap_token(
         }
     };
 
-    if let Err(e) = storage::system::update_system_parameters(&mut tx, Some(true), None).await {
+    if let Err(e) = storage::system::update_system_parameters(&mut tx, Some(true), None) {
         return Err(http_error!(
             "Could not update system_parameters into database",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -706,7 +704,7 @@ pub async fn create_bootstrap_token(
         ));
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -763,7 +761,7 @@ pub async fn update_token(
         ));
     }
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -779,7 +777,7 @@ pub async fn update_token(
         disabled: body.disabled,
     };
 
-    if let Err(e) = storage::tokens::update(&mut conn, &path.id, updatable_fields).await {
+    if let Err(e) = storage::tokens::update(&mut conn, &path.id, updatable_fields) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(

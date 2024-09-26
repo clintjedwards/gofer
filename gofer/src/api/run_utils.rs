@@ -83,8 +83,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
-            .await
+            .write_conn()
             .context("Could not open connection to database")?;
 
         if let Err(e) = storage::runs::update(
@@ -93,9 +92,7 @@ impl Shepherd {
             &self.pipeline.metadata.pipeline_id,
             self.run.run_id.try_into().unwrap_or_default(),
             fields,
-        )
-        .await
-        {
+        ) {
             bail!(
                 "Could not update run while attempting to start run; {:#?}",
                 e
@@ -307,7 +304,7 @@ impl Shepherd {
             task.clone(),
         );
 
-        let mut conn = match self.api_state.storage.conn().await {
+        let mut conn = match self.api_state.storage.write_conn() {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -331,7 +328,7 @@ impl Shepherd {
             }
         };
 
-        if let Err(e) = storage::task_executions::insert(&mut conn, &storage_task_execution).await {
+        if let Err(e) = storage::task_executions::insert(&mut conn, &storage_task_execution) {
             match e {
                 // If the task execution already exists then we're probably attempting to recover it.
                 storage::StorageError::Exists => {}
@@ -384,9 +381,7 @@ impl Shepherd {
                 variables: Some(env_vars_json),
                 ..Default::default()
             },
-        )
-        .await
-        {
+        ) {
             error!(namespace_id = &self.pipeline.metadata.namespace_id,
                 pipeline_id = &self.pipeline.metadata.pipeline_id,
                 run_id = self.run.run_id,
@@ -677,9 +672,7 @@ impl Shepherd {
                 started: Some(epoch_milli().to_string()),
                 ..Default::default()
             },
-        )
-        .await
-        {
+        ) {
             error!(namespace_id = &self.pipeline.metadata.namespace_id,
                 pipeline_id = &self.pipeline.metadata.pipeline_id,
                 run_id = self.run.run_id,
@@ -735,8 +728,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
-            .await
+            .write_conn()
             .context("Could not open connection to database")?;
 
         let status_reason = reason.map(|value| {
@@ -762,7 +754,6 @@ impl Shepherd {
             id,
             fields,
         )
-        .await
         .context("Could not update task execution status in storage")?;
 
         self.api_state
@@ -798,8 +789,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
-            .await
+            .write_conn()
             .context("Could not open connection to database")?;
 
         let status_reason = reason.map(|value| {
@@ -823,7 +813,6 @@ impl Shepherd {
             self.run.run_id.try_into()?,
             fields,
         )
-        .await
         .context("Could not update run status in storage")?;
 
         self.api_state
@@ -847,8 +836,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
-            .await
+            .write_conn()
             .context("Could not open connection to database")?;
 
         let fields = storage::task_executions::UpdatableFields {
@@ -864,7 +852,6 @@ impl Shepherd {
             &task_execution.task_id,
             fields,
         )
-        .await
         .context("Could not update task execution status in storage")?;
 
         Ok(())
@@ -1253,7 +1240,7 @@ impl Shepherd {
     async fn handle_run_object_expiry(self) {
         let limit = self.api_state.config.object_store.run_object_expiry;
 
-        let mut conn = match self.api_state.storage.conn().await {
+        let mut conn = match self.api_state.storage.write_conn() {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1271,9 +1258,7 @@ impl Shepherd {
             0,
             limit as i64 + 1,
             true,
-        )
-        .await
-        {
+        ) {
             Ok(runs) => runs,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1329,9 +1314,7 @@ impl Shepherd {
                 &self.pipeline.metadata.namespace_id,
                 &self.pipeline.metadata.pipeline_id,
                 run_id,
-            )
-            .await
-            {
+            ) {
                 Ok(updated_run) => updated_run,
                 Err(e) => {
                     error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1379,9 +1362,7 @@ impl Shepherd {
             &self.pipeline.metadata.namespace_id,
             &self.pipeline.metadata.pipeline_id,
             expired_run_id,
-        )
-        .await
-        {
+        ) {
             Ok(objects) => objects,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1419,9 +1400,7 @@ impl Shepherd {
                 &self.pipeline.metadata.pipeline_id,
                 expired_run_id,
                 &object.key,
-            )
-            .await
-            {
+            ) {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
                     pipeline_id = &self.pipeline.metadata.pipeline_id,
                     run_id = self.run.run_id,
@@ -1439,9 +1418,7 @@ impl Shepherd {
                 store_objects_expired: Some(true),
                 ..Default::default()
             },
-        )
-        .await
-        {
+        ) {
             error!(namespace_id = &self.pipeline.metadata.namespace_id,
                 pipeline_id = &self.pipeline.metadata.pipeline_id,
                 run_id = self.run.run_id,
@@ -1452,7 +1429,7 @@ impl Shepherd {
     async fn handle_run_log_expiry(self) {
         let limit = self.api_state.config.api.task_execution_log_retention;
 
-        let mut conn = match self.api_state.storage.conn().await {
+        let mut conn = match self.api_state.storage.write_conn() {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1470,9 +1447,7 @@ impl Shepherd {
             0,
             limit as i64 + 1,
             true,
-        )
-        .await
-        {
+        ) {
             Ok(runs) => runs,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1528,9 +1503,7 @@ impl Shepherd {
                 &self.pipeline.metadata.namespace_id,
                 &self.pipeline.metadata.pipeline_id,
                 run_id,
-            )
-            .await
-            {
+            ) {
                 Ok(updated_run) => updated_run,
                 Err(e) => {
                     error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1576,9 +1549,7 @@ impl Shepherd {
                 &self.pipeline.metadata.namespace_id,
                 &self.pipeline.metadata.pipeline_id,
                 expired_run_id,
-            )
-            .await
-            {
+            ) {
                 Ok(executions) => executions,
                 Err(e) => {
                     error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1652,9 +1623,7 @@ impl Shepherd {
                     logs_removed: Some(true),
                     ..Default::default()
                 },
-            )
-            .await
-            {
+            ) {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
                     pipeline_id = &self.pipeline.metadata.pipeline_id,
                     run_id = self.run.run_id,

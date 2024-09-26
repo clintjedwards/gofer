@@ -320,7 +320,7 @@ pub async fn list_deployments(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -333,7 +333,7 @@ pub async fn list_deployments(
     };
 
     let storage_deployments =
-        match storage::deployments::list(&mut conn, &path.namespace_id, &path.pipeline_id).await {
+        match storage::deployments::list(&mut conn, &path.namespace_id, &path.pipeline_id) {
             Ok(deployments) => deployments,
             Err(e) => {
                 return Err(http_error!(
@@ -398,7 +398,7 @@ pub async fn get_deployment(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -426,9 +426,7 @@ pub async fn get_deployment(
         &path.namespace_id,
         &path.pipeline_id,
         deployment_id_i64,
-    )
-    .await
-    {
+    ) {
         Ok(deployment) => deployment,
         Err(e) => match e {
             storage::StorageError::NotFound => {

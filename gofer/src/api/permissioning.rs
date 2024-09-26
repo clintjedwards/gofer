@@ -13,7 +13,6 @@ use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sqlx::Acquire;
 use std::sync::Arc;
 use strum::{Display, EnumString};
 use tracing::error;
@@ -381,7 +380,7 @@ impl ApiState {
             ));
         }
 
-        let mut conn = match self.storage.conn().await {
+        let mut conn = match self.storage.read_conn() {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(crate::http_error!(
@@ -395,7 +394,7 @@ impl ApiState {
 
         // Check that token actually has the correct permissions for the targeted resource.
         for role_id in &auth_ctx.roles {
-            let storage_role = match storage::roles::get(&mut conn, role_id).await {
+            let storage_role = match storage::roles::get(&mut conn, role_id) {
                 Ok(role) => role,
                 Err(e) => match e {
                     storage::StorageError::NotFound => {
@@ -603,7 +602,7 @@ impl ApiState {
         hasher.update(token.as_bytes());
         let hash = format!("{:x}", hasher.finalize());
 
-        let mut conn = match self.storage.conn().await {
+        let mut conn = match self.storage.read_conn() {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(crate::http_error!(
@@ -615,7 +614,7 @@ impl ApiState {
             }
         };
 
-        let storage_token = match storage::tokens::get_by_hash(&mut conn, &hash).await {
+        let storage_token = match storage::tokens::get_by_hash(&mut conn, &hash) {
             Ok(token) => token,
             Err(e) => match e {
                 storage::StorageError::NotFound => {
@@ -715,7 +714,7 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
 
     let roles = vec![bootstrap_role, admin_role, user_role];
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -729,7 +728,7 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
             while attempting to insert system roles.",
         )?;
 
-        if let Err(e) = storage::roles::insert(&mut conn, &storage_role).await {
+        if let Err(e) = storage::roles::insert(&mut conn, &storage_role) {
             match e {
                 storage::StorageError::Exists => {
                     return Ok(());
@@ -772,7 +771,7 @@ pub async fn list_roles(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -784,7 +783,7 @@ pub async fn list_roles(
         }
     };
 
-    let storage_roles = match storage::roles::list(&mut conn).await {
+    let storage_roles = match storage::roles::list(&mut conn) {
         Ok(roles) => roles,
         Err(e) => {
             return Err(http_error!(
@@ -861,7 +860,7 @@ pub async fn get_role(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -873,7 +872,7 @@ pub async fn get_role(
         }
     };
 
-    let storage_role = match storage::roles::get(&mut conn, &path.role_id).await {
+    let storage_role = match storage::roles::get(&mut conn, &path.role_id) {
         Ok(role) => role,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -967,7 +966,7 @@ pub async fn create_role(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1012,7 +1011,7 @@ pub async fn create_role(
         }
     };
 
-    if let Err(e) = storage::roles::insert(&mut conn, &new_role_storage).await {
+    if let Err(e) = storage::roles::insert(&mut conn, &new_role_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -1121,7 +1120,7 @@ pub async fn update_role(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1145,7 +1144,7 @@ pub async fn update_role(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -1157,7 +1156,7 @@ pub async fn update_role(
         }
     };
 
-    let storage_role = match storage::roles::get(&mut tx, &path.role_id).await {
+    let storage_role = match storage::roles::get(&mut tx, &path.role_id) {
         Ok(role) => role,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -1186,7 +1185,7 @@ pub async fn update_role(
         ));
     }
 
-    if let Err(e) = storage::roles::update(&mut tx, &path.role_id, updatable_fields).await {
+    if let Err(e) = storage::roles::update(&mut tx, &path.role_id, updatable_fields) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -1205,7 +1204,7 @@ pub async fn update_role(
         }
     };
 
-    let storage_role = match storage::roles::get(&mut tx, &path.role_id).await {
+    let storage_role = match storage::roles::get(&mut tx, &path.role_id) {
         Ok(role) => role,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -1225,7 +1224,7 @@ pub async fn update_role(
         },
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         error!(message = "Could not close transaction from database", error = %e);
         return Err(HttpError::for_internal_error(format!(
             "Encountered error when attempting to write role to database; {:#?}",
@@ -1282,7 +1281,7 @@ pub async fn delete_role(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1294,7 +1293,7 @@ pub async fn delete_role(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -1306,7 +1305,7 @@ pub async fn delete_role(
         }
     };
 
-    let storage_role = match storage::roles::get(&mut tx, &path.role_id).await {
+    let storage_role = match storage::roles::get(&mut tx, &path.role_id) {
         Ok(role) => role,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -1335,7 +1334,7 @@ pub async fn delete_role(
         ));
     }
 
-    if let Err(e) = storage::roles::delete(&mut tx, &path.role_id).await {
+    if let Err(e) = storage::roles::delete(&mut tx, &path.role_id) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -1354,7 +1353,7 @@ pub async fn delete_role(
         }
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         error!(message = "Could not close transaction from database", error = %e);
         return Err(HttpError::for_internal_error(format!(
             "Encountered error when attempting to write role to database; {:#?}",

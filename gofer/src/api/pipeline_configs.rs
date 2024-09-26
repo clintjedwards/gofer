@@ -16,7 +16,6 @@ use gofer_sdk::config;
 use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::sync::Arc;
 use std::{collections::HashMap, str::FromStr};
 use strum::{Display, EnumString};
@@ -242,7 +241,7 @@ pub async fn list_configs(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -254,7 +253,7 @@ pub async fn list_configs(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -267,8 +266,7 @@ pub async fn list_configs(
     };
 
     let storage_configs =
-        match storage::pipeline_configs::list(&mut tx, &path.namespace_id, &path.pipeline_id).await
-        {
+        match storage::pipeline_configs::list(&mut tx, &path.namespace_id, &path.pipeline_id) {
             Ok(pipelines) => pipelines,
             Err(e) => {
                 return Err(http_error!(
@@ -288,9 +286,7 @@ pub async fn list_configs(
             &path.namespace_id,
             &path.pipeline_id,
             storage_config.version,
-        )
-        .await
-        {
+        ) {
             Ok(tasks) => tasks,
             Err(e) => {
                 return Err(http_error!(
@@ -314,7 +310,7 @@ pub async fn list_configs(
         configs.push(config);
     }
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -365,7 +361,7 @@ pub async fn get_config(
 
     let mut version = path.version;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -377,7 +373,7 @@ pub async fn get_config(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -394,9 +390,7 @@ pub async fn get_config(
             &mut tx,
             &path.namespace_id,
             &path.pipeline_id,
-        )
-        .await
-        {
+        ) {
             Ok(pipeline) => pipeline,
             Err(e) => match e {
                 storage::StorageError::NotFound => {
@@ -421,9 +415,7 @@ pub async fn get_config(
         &path.namespace_id,
         &path.pipeline_id,
         version,
-    )
-    .await
-    {
+    ) {
         Ok(pipeline) => pipeline,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -441,7 +433,7 @@ pub async fn get_config(
     };
 
     let storage_tasks =
-        match storage::tasks::list(&mut tx, &path.namespace_id, &path.pipeline_id, version).await {
+        match storage::tasks::list(&mut tx, &path.namespace_id, &path.pipeline_id, version) {
             Ok(tasks) => tasks,
             Err(e) => {
                 return Err(http_error!(
@@ -462,7 +454,7 @@ pub async fn get_config(
         )
     })?;
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -538,7 +530,7 @@ pub async fn register_config(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -550,7 +542,7 @@ pub async fn register_config(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -565,7 +557,7 @@ pub async fn register_config(
     let new_pipeline_metadata = pipelines::Metadata::new(&path.namespace_id, &path.pipeline_id);
 
     if let Err(e) =
-        storage::pipeline_metadata::insert(&mut tx, &new_pipeline_metadata.clone().into()).await
+        storage::pipeline_metadata::insert(&mut tx, &new_pipeline_metadata.clone().into())
     {
         match e {
             storage::StorageError::Exists => {
@@ -584,7 +576,6 @@ pub async fn register_config(
 
     let latest_config: Option<storage::pipeline_configs::PipelineConfig> =
         match storage::pipeline_configs::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id)
-            .await
         {
             Ok(pipeline) => Some(pipeline),
             Err(e) => match e {
@@ -640,7 +631,7 @@ pub async fn register_config(
             )
         })?;
 
-    if let Err(e) = storage::pipeline_configs::insert(&mut tx, &storage_config).await {
+    if let Err(e) = storage::pipeline_configs::insert(&mut tx, &storage_config) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -661,7 +652,7 @@ pub async fn register_config(
     };
 
     for storage_task_config in storage_task_configs {
-        if let Err(e) = storage::tasks::insert(&mut tx, &storage_task_config).await {
+        if let Err(e) = storage::tasks::insert(&mut tx, &storage_task_config) {
             match e {
                 storage::StorageError::Exists => {
                     return Err(HttpError::for_client_error(
@@ -682,7 +673,7 @@ pub async fn register_config(
         };
     }
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -743,7 +734,7 @@ pub async fn deploy_config(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -755,7 +746,7 @@ pub async fn deploy_config(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -772,7 +763,7 @@ pub async fn deploy_config(
     // Step 1: Insert the new deployment
 
     // First we check that there are no currently running deployments
-    match storage::deployments::list_running(&mut tx, &path.namespace_id, &path.pipeline_id).await {
+    match storage::deployments::list_running(&mut tx, &path.namespace_id, &path.pipeline_id) {
         Ok(running) => {
             if !running.is_empty() {
                 return Err(HttpError::for_client_error(
@@ -801,9 +792,7 @@ pub async fn deploy_config(
         &path.namespace_id,
         &path.pipeline_id,
         &ConfigState::Live.to_string(),
-    )
-    .await
-    {
+    ) {
         Ok(config) => Some(config),
         Err(err) => {
             if err == StorageError::NotFound {
@@ -829,27 +818,22 @@ pub async fn deploy_config(
     // Finally get the latest deployment so we can increment the id by one.
     let mut latest_deployment_id = 0;
 
-    let latest_deployment = match storage::deployments::get_latest(
-        &mut tx,
-        &path.namespace_id,
-        &path.pipeline_id,
-    )
-    .await
-    {
-        Ok(deployment) => Some(deployment),
-        Err(err) => {
-            if err == StorageError::NotFound {
-                None
-            } else {
-                return Err(http_error!(
-                    "Could not retrieve latest config while attempting to deploy new config",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(err.into())
-                ));
+    let latest_deployment =
+        match storage::deployments::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id) {
+            Ok(deployment) => Some(deployment),
+            Err(err) => {
+                if err == StorageError::NotFound {
+                    None
+                } else {
+                    return Err(http_error!(
+                        "Could not retrieve latest config while attempting to deploy new config",
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(err.into())
+                    ));
+                }
             }
-        }
-    };
+        };
 
     if let Some(deployment) = latest_deployment {
         latest_deployment_id = deployment.deployment_id;
@@ -878,18 +862,16 @@ pub async fn deploy_config(
             )
         })?;
 
-    storage::deployments::insert(&mut tx, &storage_deployment)
-        .await
-        .map_err(|err| {
-            http_error!(
-                "Could not insert object into database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into())
-            )
-        })?;
+    storage::deployments::insert(&mut tx, &storage_deployment).map_err(|err| {
+        http_error!(
+            "Could not insert object into database",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(err.into())
+        )
+    })?;
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -914,7 +896,7 @@ pub async fn deploy_config(
     // TODO(clintjedwards): Eventually this will become a more intricate function which will allow for more
     // complex deployment types.
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -937,7 +919,6 @@ pub async fn deploy_config(
             ..Default::default()
         },
     )
-    .await
     .map_err(|err| {
         http_error!(
             "Could not update end_version pipeline config",
@@ -959,7 +940,6 @@ pub async fn deploy_config(
                 deprecated: Some(epoch_milli().to_string()),
             },
         )
-        .await
         .map_err(|err| {
             http_error!(
                 "Could not update start_version pipeline config",
@@ -970,7 +950,7 @@ pub async fn deploy_config(
         })?;
     }
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         let status_reason_json = serde_json::to_string(&deployments::StatusReason {
             reason: deployments::StatusReasonType::Unknown,
             description: format!("Deployment has failed due to an internal error; {:#?}", e),
@@ -991,7 +971,6 @@ pub async fn deploy_config(
                 ..Default::default()
             },
         )
-        .await
         .ok();
 
         return Err(http_error!(
@@ -1015,7 +994,6 @@ pub async fn deploy_config(
             ..Default::default()
         },
     )
-    .await
     .map_err(|err| {
         http_error!(
             "Could not update object to database",
@@ -1071,7 +1049,7 @@ pub async fn delete_config(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1083,7 +1061,7 @@ pub async fn delete_config(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -1097,7 +1075,6 @@ pub async fn delete_config(
 
     let latest_config =
         match storage::pipeline_configs::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id)
-            .await
         {
             Ok(pipeline) => pipeline,
             Err(e) => match e {
@@ -1125,9 +1102,7 @@ pub async fn delete_config(
         &path.namespace_id,
         &path.pipeline_id,
         path.version,
-    )
-    .await
-    {
+    ) {
         Ok(pipeline) => pipeline,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -1163,9 +1138,7 @@ pub async fn delete_config(
         &path.namespace_id,
         &path.pipeline_id,
         path.version,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -1184,7 +1157,7 @@ pub async fn delete_config(
         }
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,

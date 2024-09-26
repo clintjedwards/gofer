@@ -171,7 +171,7 @@ pub async fn list_pipelines(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -183,18 +183,17 @@ pub async fn list_pipelines(
         }
     };
 
-    let storage_pipelines =
-        match storage::pipeline_metadata::list(&mut conn, &path.namespace_id).await {
-            Ok(pipelines) => pipelines,
-            Err(e) => {
-                return Err(http_error!(
-                    "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(e.into())
-                ));
-            }
-        };
+    let storage_pipelines = match storage::pipeline_metadata::list(&mut conn, &path.namespace_id) {
+        Ok(pipelines) => pipelines,
+        Err(e) => {
+            return Err(http_error!(
+                "Could not get objects from database",
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
+    };
 
     let mut pipelines: Vec<Metadata> = vec![];
 
@@ -248,7 +247,7 @@ pub async fn get_pipeline(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -261,9 +260,7 @@ pub async fn get_pipeline(
     };
 
     let storage_pipeline_metadata =
-        match storage::pipeline_metadata::get(&mut conn, &path.namespace_id, &path.pipeline_id)
-            .await
-        {
+        match storage::pipeline_metadata::get(&mut conn, &path.namespace_id, &path.pipeline_id) {
             Ok(pipeline) => pipeline,
             Err(e) => match e {
                 storage::StorageError::NotFound => {
@@ -327,7 +324,7 @@ pub async fn update_pipeline(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -349,9 +346,7 @@ pub async fn update_pipeline(
         &path.namespace_id,
         &path.pipeline_id,
         updatable_fields,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -403,7 +398,7 @@ pub async fn delete_pipeline(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -416,7 +411,7 @@ pub async fn delete_pipeline(
     };
 
     if let Err(e) =
-        storage::pipeline_metadata::delete(&mut conn, &path.namespace_id, &path.pipeline_id).await
+        storage::pipeline_metadata::delete(&mut conn, &path.namespace_id, &path.pipeline_id)
     {
         match e {
             storage::StorageError::NotFound => {

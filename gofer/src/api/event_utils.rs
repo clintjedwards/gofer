@@ -278,7 +278,7 @@ impl EventBus {
     pub async fn try_publish(&self, kind: Kind) -> Result<Event> {
         let new_event = Event::new(kind.clone());
 
-        let mut conn = self.storage.conn().await.with_context(|| {
+        let mut conn = self.storage.write_conn().with_context(|| {
             format!(
                 "could not publish event for kind '{}'; Database error;",
                 new_event.kind,
@@ -293,14 +293,12 @@ impl EventBus {
                 )
             })?;
 
-        storage::events::insert(&mut conn, &new_event_storage)
-            .await
-            .with_context(|| {
-                format!(
-                    "could not publish event for kind '{}'; Database insert error",
-                    &kind.to_string()
-                )
-            })?;
+        storage::events::insert(&mut conn, &new_event_storage).with_context(|| {
+            format!(
+                "could not publish event for kind '{}'; Database insert error",
+                &kind.to_string()
+            )
+        })?;
 
         debug!(kind = %kind, emitted = new_event.emitted, "new event");
         self.broadcast_channel
@@ -362,7 +360,7 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), stora
     let mut offset = 0;
     let mut total_pruned = 0;
 
-    let mut conn = match storage.conn().await {
+    let mut conn = match storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             error!("could not prune events; connection error");
@@ -371,7 +369,7 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), stora
     };
 
     loop {
-        let events = storage::events::list(&mut conn, offset, 50, false).await?;
+        let events = storage::events::list(&mut conn, offset, 50, false)?;
 
         for event in &events {
             if is_past_cut_date(event, retention) {
@@ -384,7 +382,7 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), stora
 
                 total_pruned += 1;
 
-                storage::events::delete(&mut conn, &event.id).await?;
+                storage::events::delete(&mut conn, &event.id)?;
             }
         }
 

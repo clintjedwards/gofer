@@ -11,7 +11,6 @@ use dropshot::{
 use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::sync::Arc;
 use tracing::error;
 
@@ -121,7 +120,7 @@ pub async fn list_namespaces(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -133,7 +132,7 @@ pub async fn list_namespaces(
         }
     };
 
-    let storage_namespaces = match storage::namespaces::list(&mut conn).await {
+    let storage_namespaces = match storage::namespaces::list(&mut conn) {
         Ok(namespaces) => namespaces,
         Err(e) => {
             return Err(http_error!(
@@ -194,7 +193,7 @@ pub async fn get_namespace(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -206,7 +205,7 @@ pub async fn get_namespace(
         }
     };
 
-    let storage_namespace = match storage::namespaces::get(&mut conn, &path.namespace_id).await {
+    let storage_namespace = match storage::namespaces::get(&mut conn, &path.namespace_id) {
         Ok(namespace) => namespace,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -291,7 +290,7 @@ pub async fn create_namespace(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -307,7 +306,7 @@ pub async fn create_namespace(
 
     let new_namespace_storage = new_namespace.clone().into();
 
-    if let Err(e) = storage::namespaces::insert(&mut conn, &new_namespace_storage).await {
+    if let Err(e) = storage::namespaces::insert(&mut conn, &new_namespace_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -394,7 +393,7 @@ pub async fn update_namespace(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -408,7 +407,7 @@ pub async fn update_namespace(
 
     let updatable_fields = storage::namespaces::UpdatableFields::from(body.clone());
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -420,8 +419,7 @@ pub async fn update_namespace(
         }
     };
 
-    if let Err(e) = storage::namespaces::update(&mut tx, &path.namespace_id, updatable_fields).await
-    {
+    if let Err(e) = storage::namespaces::update(&mut tx, &path.namespace_id, updatable_fields) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -440,7 +438,7 @@ pub async fn update_namespace(
         }
     };
 
-    let storage_namespace = match storage::namespaces::get(&mut tx, &path.namespace_id).await {
+    let storage_namespace = match storage::namespaces::get(&mut tx, &path.namespace_id) {
         Ok(namespace) => namespace,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -460,7 +458,7 @@ pub async fn update_namespace(
         },
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         error!(message = "Could not close transaction from database", error = %e);
         return Err(HttpError::for_internal_error(format!(
             "Encountered error when attempting to write namespace to database; {:#?}",
@@ -508,7 +506,7 @@ pub async fn delete_namespace(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -520,7 +518,7 @@ pub async fn delete_namespace(
         }
     };
 
-    if let Err(e) = storage::namespaces::delete(&mut conn, &path.namespace_id).await {
+    if let Err(e) = storage::namespaces::delete(&mut conn, &path.namespace_id) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -557,7 +555,7 @@ pub async fn create_default_namespace(api_state: Arc<ApiState>) -> Result<()> {
         "The original namespace created automatically by the Gofer system.",
     );
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -565,8 +563,7 @@ pub async fn create_default_namespace(api_state: Arc<ApiState>) -> Result<()> {
         }
     };
 
-    if let Err(e) = storage::namespaces::insert(&mut conn, &default_namespace.clone().into()).await
-    {
+    if let Err(e) = storage::namespaces::insert(&mut conn, &default_namespace.clone().into()) {
         match e {
             storage::StorageError::Exists => {
                 return Ok(());

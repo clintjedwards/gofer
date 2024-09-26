@@ -2,14 +2,13 @@ pub mod sqlite;
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use sqlx::FromRow;
 use std::fmt::Debug;
 use strum::{Display, EnumString};
 
-#[derive(Debug, Clone, PartialEq, Eq, FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Value(pub Vec<u8>);
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, FromRow)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Object {
     pub key: String,
     pub value: Vec<u8>,

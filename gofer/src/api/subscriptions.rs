@@ -13,7 +13,6 @@ use dropshot::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::sync::Arc;
 use std::{collections::HashMap, str::FromStr};
 use strum::{Display, EnumString};
@@ -232,7 +231,7 @@ pub async fn list_subscriptions(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -248,9 +247,7 @@ pub async fn list_subscriptions(
         &mut conn,
         &path.namespace_id,
         &path.pipeline_id,
-    )
-    .await
-    {
+    ) {
         Ok(subscriptions) => subscriptions,
         Err(e) => {
             return Err(http_error!(
@@ -315,7 +312,7 @@ pub async fn get_subscription(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -333,9 +330,7 @@ pub async fn get_subscription(
         &path.pipeline_id,
         &path.extension_id,
         &path.subscription_id,
-    )
-    .await
-    {
+    ) {
         Ok(subscription) => subscription,
         Err(e) => match e {
             storage::StorageError::NotFound => {
@@ -409,7 +404,7 @@ pub async fn update_subscription(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -445,9 +440,7 @@ pub async fn update_subscription(
         &path.extension_id,
         &path.subscription_id,
         updatable_fields,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -523,7 +516,7 @@ pub async fn create_subscription(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -551,7 +544,7 @@ pub async fn create_subscription(
                 )
             })?;
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -563,8 +556,7 @@ pub async fn create_subscription(
         }
     };
 
-    if let Err(e) =
-        storage::pipeline_metadata::get(&mut tx, &path.namespace_id, &path.pipeline_id).await
+    if let Err(e) = storage::pipeline_metadata::get(&mut tx, &path.namespace_id, &path.pipeline_id)
     {
         match e {
             storage::StorageError::NotFound => {
@@ -585,7 +577,7 @@ pub async fn create_subscription(
         }
     };
 
-    if let Err(e) = storage::extension_registrations::get(&mut tx, &body.extension_id).await {
+    if let Err(e) = storage::extension_registrations::get(&mut tx, &body.extension_id) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_client_error(
@@ -614,9 +606,7 @@ pub async fn create_subscription(
         ));
     };
 
-    if let Err(e) =
-        storage::extension_subscriptions::insert(&mut tx, &new_subscription_storage).await
-    {
+    if let Err(e) = storage::extension_subscriptions::insert(&mut tx, &new_subscription_storage) {
         match e {
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
@@ -636,7 +626,7 @@ pub async fn create_subscription(
         }
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database connection",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -689,7 +679,7 @@ pub async fn delete_subscription(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn() {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -701,7 +691,7 @@ pub async fn delete_subscription(
         }
     };
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx(&mut conn) {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -719,9 +709,7 @@ pub async fn delete_subscription(
         &path.pipeline_id,
         &path.extension_id,
         &path.subscription_id,
-    )
-    .await
-    {
+    ) {
         match e {
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_not_found(
@@ -757,7 +745,7 @@ pub async fn delete_subscription(
         ));
     };
 
-    if let Err(e) = tx.commit().await {
+    if let Err(e) = tx.commit() {
         return Err(http_error!(
             "Could not close database transaction",
             http::StatusCode::INTERNAL_SERVER_ERROR,
