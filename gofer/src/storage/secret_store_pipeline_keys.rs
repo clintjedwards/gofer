@@ -1,8 +1,9 @@
-use crate::storage::{map_sqlx_error, StorageError};
-use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct SecretStorePipelineKey {
     pub namespace_id: String,
     pub pipeline_id: String,
@@ -10,102 +11,148 @@ pub struct SecretStorePipelineKey {
     pub created: String,
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
+impl From<&Row<'_>> for SecretStorePipelineKey {
+    fn from(row: &Row) -> Self {
+        Self {
+            namespace_id: row.get_unwrap("namespace_id"),
+            pipeline_id: row.get_unwrap("pipeline_id"),
+            key: row.get_unwrap("key"),
+            created: row.get_unwrap("created"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum SecretStorePipelineKeyTable {
+    Table,
+    NamespaceId,
+    PipelineId,
+    Key,
+    Created,
+}
+
+pub fn insert(
+    conn: &dyn Executable,
     secret_store_pipeline_key: &SecretStorePipelineKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO secret_store_pipeline_keys (namespace_id, pipeline_id, key, created) VALUES (?, ?, ?, ?);",
-    )
-    .bind(&secret_store_pipeline_key.namespace_id)
-    .bind(&secret_store_pipeline_key.pipeline_id)
-    .bind(&secret_store_pipeline_key.key)
-    .bind(&secret_store_pipeline_key.created);
+    let (sql, values) = Query::insert()
+        .into_table(SecretStorePipelineKeyTable::Table)
+        .columns([
+            SecretStorePipelineKeyTable::NamespaceId,
+            SecretStorePipelineKeyTable::PipelineId,
+            SecretStorePipelineKeyTable::Key,
+            SecretStorePipelineKeyTable::Created,
+        ])
+        .values_panic([
+            secret_store_pipeline_key.namespace_id.clone().into(),
+            secret_store_pipeline_key.pipeline_id.clone().into(),
+            secret_store_pipeline_key.key.clone().into(),
+            secret_store_pipeline_key.created.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(
-    conn: &mut SqliteConnection,
+pub fn list(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<SecretStorePipelineKey>, StorageError> {
-    let query = sqlx::query_as::<_, SecretStorePipelineKey>(
-        "SELECT namespace_id, pipeline_id, key, created FROM secret_store_pipeline_keys \
-        WHERE namespace_id = ? AND pipeline_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let (sql, values) = Query::select()
+        .columns([
+            SecretStorePipelineKeyTable::NamespaceId,
+            SecretStorePipelineKeyTable::PipelineId,
+            SecretStorePipelineKeyTable::Key,
+            SecretStorePipelineKeyTable::Created,
+        ])
+        .from(SecretStorePipelineKeyTable::Table)
+        .and_where(Expr::col(SecretStorePipelineKeyTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(SecretStorePipelineKeyTable::PipelineId).eq(pipeline_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<SecretStorePipelineKey> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(SecretStorePipelineKey::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(
-    conn: &mut SqliteConnection,
+pub fn get(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     key: &str,
 ) -> Result<SecretStorePipelineKey, StorageError> {
-    let query = sqlx::query_as::<_, SecretStorePipelineKey>(
-        "SELECT namespace_id, pipeline_id, key, created FROM secret_store_pipeline_keys \
-        WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(key);
+    let (sql, values) = Query::select()
+        .columns([
+            SecretStorePipelineKeyTable::NamespaceId,
+            SecretStorePipelineKeyTable::PipelineId,
+            SecretStorePipelineKeyTable::Key,
+            SecretStorePipelineKeyTable::Created,
+        ])
+        .from(SecretStorePipelineKeyTable::Table)
+        .and_where(Expr::col(SecretStorePipelineKeyTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(SecretStorePipelineKeyTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(SecretStorePipelineKeyTable::Key).eq(key))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(SecretStorePipelineKey::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn delete(
-    conn: &mut SqliteConnection,
+pub fn delete(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     key: &str,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM secret_store_pipeline_keys \
-    WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(key);
+    let (sql, values) = Query::delete()
+        .from_table(SecretStorePipelineKeyTable::Table)
+        .and_where(Expr::col(SecretStorePipelineKeyTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(SecretStorePipelineKeyTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(SecretStorePipelineKeyTable::Key).eq(key))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "some_id".into(),
@@ -115,7 +162,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let pipeline_metadata = crate::storage::pipeline_metadata::PipelineMetadata {
             namespace_id: "some_id".into(),
@@ -125,7 +172,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata).await?;
+        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata)?;
 
         let secret_store_pipeline_key = SecretStorePipelineKey {
             namespace_id: "some_id".into(),
@@ -134,17 +181,15 @@ mod tests {
             created: "some_time".into(),
         };
 
-        insert(&mut conn, &secret_store_pipeline_key).await?;
+        insert(&mut conn, &secret_store_pipeline_key)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_secret_store_pipeline_keys() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_secret_store_pipeline_keys() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let secret_store_pipeline_keys = list(&mut conn, "some_id", "some_pipeline_id")
-            .await
             .expect("Failed to list secret_store_pipeline_keys");
 
         // Assert that we got at least one secret_store_pipeline_key back
@@ -165,37 +210,29 @@ mod tests {
         assert_eq!(some_secret_store_pipeline_key.created, "some_time");
     }
 
-    #[tokio::test]
-    async fn test_get_secret_store_pipeline_key() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_secret_store_pipeline_key() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let secret_store_pipeline_key = get(&mut conn, "some_id", "some_pipeline_id", "some_id")
-            .await
             .expect("Failed to get secret_store_pipeline_key");
 
         assert_eq!(secret_store_pipeline_key.key, "some_id");
         assert_eq!(secret_store_pipeline_key.created, "some_time");
 
         assert!(
-            get(&mut conn, "some_id", "some_pipeline_id", "non_existent")
-                .await
-                .is_err(),
+            get(&mut conn, "some_id", "some_pipeline_id", "non_existent").is_err(),
             "Unexpectedly found a secret_store_pipeline_key"
         );
     }
 
-    #[tokio::test]
-    async fn test_delete_secret_store_pipeline_key() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_secret_store_pipeline_key() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         delete(&mut conn, "some_id", "some_pipeline_id", "some_id")
-            .await
             .expect("Failed to delete secret_store_pipeline_key");
 
         assert!(
-            get(&mut conn, "some_id", "some_pipeline_id", "some_id")
-                .await
-                .is_err(),
+            get(&mut conn, "some_id", "some_pipeline_id", "some_id").is_err(),
             "SecretStorePipelineKey was not deleted"
         );
     }

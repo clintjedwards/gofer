@@ -1,81 +1,110 @@
-use crate::storage::{map_sqlx_error, StorageError};
-use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct ObjectStoreExtensionKey {
     pub extension_id: String,
     pub key: String,
     pub created: String,
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
+impl From<&Row<'_>> for ObjectStoreExtensionKey {
+    fn from(row: &Row) -> Self {
+        Self {
+            extension_id: row.get_unwrap("extension_id"),
+            key: row.get_unwrap("key"),
+            created: row.get_unwrap("created"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum ObjectStoreExtensionKeyTable {
+    Table,
+    ExtensionId,
+    Key,
+    Created,
+}
+
+pub fn insert(
+    conn: &dyn Executable,
     object_store_extension_key: &ObjectStoreExtensionKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO object_store_extension_keys (extension_id, key, created) VALUES (?, ?, ?);",
-    )
-    .bind(&object_store_extension_key.extension_id)
-    .bind(&object_store_extension_key.key)
-    .bind(&object_store_extension_key.created);
+    let (sql, values) = Query::insert()
+        .into_table(ObjectStoreExtensionKeyTable::Table)
+        .columns([
+            ObjectStoreExtensionKeyTable::ExtensionId,
+            ObjectStoreExtensionKeyTable::Key,
+            ObjectStoreExtensionKeyTable::Created,
+        ])
+        .values_panic([
+            object_store_extension_key.extension_id.clone().into(),
+            object_store_extension_key.key.clone().into(),
+            object_store_extension_key.created.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(
-    conn: &mut SqliteConnection,
+pub fn list(
+    conn: &dyn Executable,
     extension_id: &str,
 ) -> Result<Vec<ObjectStoreExtensionKey>, StorageError> {
-    let query = sqlx::query_as::<_, ObjectStoreExtensionKey>(
-        "SELECT extension_id, key, created FROM object_store_extension_keys \
-        WHERE extension_id = ? ORDER BY created ASC;",
-    )
-    .bind(extension_id);
+    let (sql, values) = Query::select()
+        .columns([
+            ObjectStoreExtensionKeyTable::ExtensionId,
+            ObjectStoreExtensionKeyTable::Key,
+            ObjectStoreExtensionKeyTable::Created,
+        ])
+        .from(ObjectStoreExtensionKeyTable::Table)
+        .and_where(Expr::col(ObjectStoreExtensionKeyTable::ExtensionId).eq(extension_id))
+        .order_by(ObjectStoreExtensionKeyTable::Created, Order::Asc)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<ObjectStoreExtensionKey> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(ObjectStoreExtensionKey::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn delete(
-    conn: &mut SqliteConnection,
-    extension_id: &str,
-    key: &str,
-) -> Result<(), StorageError> {
-    let query =
-        sqlx::query("DELETE FROM object_store_extension_keys WHERE extension_id = ? AND key = ?;")
-            .bind(extension_id)
-            .bind(key);
+pub fn delete(conn: &dyn Executable, extension_id: &str, key: &str) -> Result<(), StorageError> {
+    let (sql, values) = Query::delete()
+        .from_table(ObjectStoreExtensionKeyTable::Table)
+        .and_where(Expr::col(ObjectStoreExtensionKeyTable::ExtensionId).eq(extension_id))
+        .and_where(Expr::col(ObjectStoreExtensionKeyTable::Key).eq(key))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let extension = crate::storage::extension_registrations::ExtensionRegistration {
             extension_id: "some_id".into(),
@@ -89,7 +118,7 @@ mod tests {
             key_id: "some_key_id".into(),
         };
 
-        crate::storage::extension_registrations::insert(&mut conn, &extension).await?;
+        crate::storage::extension_registrations::insert(&mut conn, &extension)?;
 
         let object_store_extension_key = ObjectStoreExtensionKey {
             extension_id: "some_id".into(),
@@ -97,18 +126,16 @@ mod tests {
             created: "some_time".into(),
         };
 
-        insert(&mut conn, &object_store_extension_key).await?;
+        insert(&mut conn, &object_store_extension_key)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_object_store_extension_keys() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_object_store_extension_keys() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let object_store_extension_keys = list(&mut conn, "some_id")
-            .await
-            .expect("Failed to list object_store_extension_keys");
+        let object_store_extension_keys =
+            list(&mut conn, "some_id").expect("Failed to list object_store_extension_keys");
 
         // Assert that we got at least one object_store_extension_key back
         assert!(
@@ -124,12 +151,10 @@ mod tests {
         assert_eq!(some_object_store_extension_key.created, "some_time");
     }
 
-    #[tokio::test]
-    async fn test_delete_object_store_extension_key() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_object_store_extension_key() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         delete(&mut conn, "some_id", "some_key_id")
-            .await
             .expect("Failed to delete object_store_extension_key");
     }
 }

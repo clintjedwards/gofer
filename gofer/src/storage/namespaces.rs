@@ -1,5 +1,4 @@
 use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
-use futures::TryFutureExt;
 use rusqlite::Row;
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;

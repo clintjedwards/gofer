@@ -1,8 +1,9 @@
-use crate::storage::{map_sqlx_error, StorageError};
-use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct ExtensionSubscription {
     pub namespace_id: String,
     pub pipeline_id: String,
@@ -13,6 +14,32 @@ pub struct ExtensionSubscription {
     pub status_reason: String,
 }
 
+impl From<&Row<'_>> for ExtensionSubscription {
+    fn from(row: &Row) -> Self {
+        Self {
+            namespace_id: row.get_unwrap("namespace_id"),
+            pipeline_id: row.get_unwrap("pipeline_id"),
+            extension_id: row.get_unwrap("extension_id"),
+            extension_subscription_id: row.get_unwrap("extension_subscription_id"),
+            settings: row.get_unwrap("settings"),
+            status: row.get_unwrap("status"),
+            status_reason: row.get_unwrap("status_reason"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum ExtensionSubscriptionTable {
+    Table,
+    NamespaceId,
+    PipelineId,
+    ExtensionId,
+    ExtensionSubscriptionId,
+    Settings,
+    Status,
+    StatusReason,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct UpdatableFields {
     pub settings: Option<String>,
@@ -20,183 +47,229 @@ pub struct UpdatableFields {
     pub status_reason: Option<String>,
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
+pub fn insert(
+    conn: &dyn Executable,
     subscription: &ExtensionSubscription,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO extension_subscriptions (namespace_id, pipeline_id, extension_id, extension_subscription_id, \
-            settings, status, status_reason) VALUES (?, ?, ?, ?, ?, ?, ?);"
-    )
-    .bind(&subscription.namespace_id)
-    .bind(&subscription.pipeline_id)
-    .bind(&subscription.extension_id)
-    .bind(&subscription.extension_subscription_id)
-    .bind(&subscription.settings)
-    .bind(&subscription.status)
-    .bind(&subscription.status_reason);
+    let (sql, values) = Query::insert()
+        .into_table(ExtensionSubscriptionTable::Table)
+        .columns([
+            ExtensionSubscriptionTable::NamespaceId,
+            ExtensionSubscriptionTable::PipelineId,
+            ExtensionSubscriptionTable::ExtensionId,
+            ExtensionSubscriptionTable::ExtensionSubscriptionId,
+            ExtensionSubscriptionTable::Settings,
+            ExtensionSubscriptionTable::Status,
+            ExtensionSubscriptionTable::StatusReason,
+        ])
+        .values_panic([
+            subscription.namespace_id.clone().into(),
+            subscription.pipeline_id.clone().into(),
+            subscription.extension_id.clone().into(),
+            subscription.extension_subscription_id.clone().into(),
+            subscription.settings.clone().into(),
+            subscription.status.clone().into(),
+            subscription.status_reason.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list_by_pipeline(
-    conn: &mut SqliteConnection,
+pub fn list_by_pipeline(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<ExtensionSubscription>, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionSubscription>("SELECT namespace_id, pipeline_id, extension_id, \
-    extension_subscription_id, settings, status, status_reason FROM extension_subscriptions WHERE namespace_id = ? \
-    AND pipeline_id = ?;").bind(namespace_id).bind(pipeline_id);
+    let (sql, values) = Query::select()
+        .columns([
+            ExtensionSubscriptionTable::NamespaceId,
+            ExtensionSubscriptionTable::PipelineId,
+            ExtensionSubscriptionTable::ExtensionId,
+            ExtensionSubscriptionTable::ExtensionSubscriptionId,
+            ExtensionSubscriptionTable::Settings,
+            ExtensionSubscriptionTable::Status,
+            ExtensionSubscriptionTable::StatusReason,
+        ])
+        .from(ExtensionSubscriptionTable::Table)
+        .and_where(Expr::col(ExtensionSubscriptionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(ExtensionSubscriptionTable::PipelineId).eq(pipeline_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<ExtensionSubscription> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(ExtensionSubscription::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn list_by_extension(
-    conn: &mut SqliteConnection,
+pub fn list_by_extension(
+    conn: &dyn Executable,
     extension_id: &str,
 ) -> Result<Vec<ExtensionSubscription>, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionSubscription>("SELECT namespace_id, pipeline_id, extension_id, \
-    extension_subscription_id, settings, status, status_reason FROM extension_subscriptions WHERE extension_id= ?;").
-    bind(extension_id);
+    let (sql, values) = Query::select()
+        .columns([
+            ExtensionSubscriptionTable::NamespaceId,
+            ExtensionSubscriptionTable::PipelineId,
+            ExtensionSubscriptionTable::ExtensionId,
+            ExtensionSubscriptionTable::ExtensionSubscriptionId,
+            ExtensionSubscriptionTable::Settings,
+            ExtensionSubscriptionTable::Status,
+            ExtensionSubscriptionTable::StatusReason,
+        ])
+        .from(ExtensionSubscriptionTable::Table)
+        .and_where(Expr::col(ExtensionSubscriptionTable::ExtensionId).eq(extension_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<ExtensionSubscription> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(ExtensionSubscription::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(
-    conn: &mut SqliteConnection,
+pub fn get(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     extension_id: &str,
     extension_subscription_id: &str,
 ) -> Result<ExtensionSubscription, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionSubscription>(
-        "SELECT namespace_id, pipeline_id, extension_id, extension_subscription_id, settings, status, status_reason \
-        FROM extension_subscriptions WHERE namespace_id = ? AND pipeline_id = ? AND extension_id = ? AND \
-        extension_subscription_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(extension_id)
-    .bind(extension_subscription_id);
+    let (sql, values) = Query::select()
+        .columns([
+            ExtensionSubscriptionTable::NamespaceId,
+            ExtensionSubscriptionTable::PipelineId,
+            ExtensionSubscriptionTable::ExtensionId,
+            ExtensionSubscriptionTable::ExtensionSubscriptionId,
+            ExtensionSubscriptionTable::Settings,
+            ExtensionSubscriptionTable::Status,
+            ExtensionSubscriptionTable::StatusReason,
+        ])
+        .from(ExtensionSubscriptionTable::Table)
+        .and_where(Expr::col(ExtensionSubscriptionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(ExtensionSubscriptionTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(ExtensionSubscriptionTable::ExtensionId).eq(extension_id))
+        .and_where(
+            Expr::col(ExtensionSubscriptionTable::ExtensionSubscriptionId)
+                .eq(extension_subscription_id),
+        )
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(ExtensionSubscription::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     extension_id: &str,
     extension_subscription_id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> =
-        QueryBuilder::new(r#"UPDATE extension_subscriptions SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query.table(ExtensionSubscriptionTable::Table);
 
-    if let Some(value) = &fields.settings {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("settings = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.settings {
+        query.value(ExtensionSubscriptionTable::Settings, value.into());
     }
 
-    if let Some(value) = &fields.status {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status {
+        query.value(ExtensionSubscriptionTable::Status, value.into());
     }
 
-    if let Some(value) = &fields.status_reason {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status_reason = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status_reason {
+        query.value(ExtensionSubscriptionTable::StatusReason, value.into());
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    if query.is_empty_values() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(" WHERE namespace_id = ");
-    update_query.push_bind(namespace_id);
-    update_query.push(" AND pipeline_id = ");
-    update_query.push_bind(pipeline_id);
-    update_query.push(" AND extension_id = ");
-    update_query.push_bind(extension_id);
-    update_query.push(" AND extension_subscription_id = ");
-    update_query.push_bind(extension_subscription_id);
-    update_query.push(";");
+    query
+        .and_where(Expr::col(ExtensionSubscriptionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(ExtensionSubscriptionTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(ExtensionSubscriptionTable::ExtensionId).eq(extension_id))
+        .and_where(
+            Expr::col(ExtensionSubscriptionTable::ExtensionSubscriptionId)
+                .eq(extension_subscription_id),
+        );
 
-    let update_query = update_query.build();
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let sql = update_query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
-pub async fn delete(
-    conn: &mut SqliteConnection,
+pub fn delete(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     extension_id: &str,
     extension_subscription_id: &str,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM extension_subscriptions WHERE namespace_id = ? AND pipeline_id = ? AND extension_id = ? AND extension_subscription_id = ?;")
-        .bind(namespace_id).bind(pipeline_id).bind(extension_id).bind(extension_subscription_id);
+    let (sql, values) = Query::delete()
+        .from_table(ExtensionSubscriptionTable::Table)
+        .and_where(Expr::col(ExtensionSubscriptionTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(ExtensionSubscriptionTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(ExtensionSubscriptionTable::ExtensionId).eq(extension_id))
+        .and_where(
+            Expr::col(ExtensionSubscriptionTable::ExtensionSubscriptionId)
+                .eq(extension_subscription_id),
+        )
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let registration = crate::storage::extension_registrations::ExtensionRegistration {
             extension_id: "ext123".to_string(),
@@ -210,7 +283,7 @@ mod tests {
             key_id: "key456".to_string(),
         };
 
-        crate::storage::extension_registrations::insert(&mut conn, &registration).await?;
+        crate::storage::extension_registrations::insert(&mut conn, &registration)?;
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "namespace1".into(),
@@ -220,7 +293,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let pipeline_metadata = crate::storage::pipeline_metadata::PipelineMetadata {
             namespace_id: "namespace1".into(),
@@ -230,7 +303,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata).await?;
+        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata)?;
 
         let subscription = ExtensionSubscription {
             namespace_id: "namespace1".to_string(),
@@ -242,17 +315,15 @@ mod tests {
             status_reason: "Initial setup".to_string(),
         };
 
-        insert(&mut conn, &subscription).await?;
+        insert(&mut conn, &subscription)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_extension_subscriptions() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_extension_subscriptions() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let subscriptions = list_by_pipeline(&mut conn, "namespace1", "pipeline1")
-            .await
             .expect("Failed to list extension subscriptions");
 
         assert!(
@@ -269,21 +340,18 @@ mod tests {
         assert_eq!(some_subscription.status, "Active");
     }
 
-    #[tokio::test]
-    async fn test_get_extension_subscription() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_extension_subscription() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let subscription = get(&mut conn, "namespace1", "pipeline1", "ext123", "sub123")
-            .await
             .expect("Failed to get extension subscription");
 
         assert_eq!(subscription.settings, "var1=value1,var2=value2");
         assert_eq!(subscription.status, "Active");
     }
 
-    #[tokio::test]
-    async fn test_update_extension_subscription() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_extension_subscription() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields = UpdatableFields {
             settings: Some("new_variables".to_string()),
@@ -299,11 +367,9 @@ mod tests {
             "sub123",
             fields,
         )
-        .await
         .unwrap();
 
         let updated = get(&mut conn, "namespace1", "pipeline1", "ext123", "sub123")
-            .await
             .expect("Failed to retrieve updated subscription");
 
         assert_eq!(updated.settings, "new_variables");
@@ -311,18 +377,14 @@ mod tests {
         assert_eq!(updated.status_reason, "Manual Update");
     }
 
-    #[tokio::test]
-    async fn test_delete_extension_subscription() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_extension_subscription() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         delete(&mut conn, "namespace1", "pipeline1", "ext123", "sub123")
-            .await
             .expect("Failed to delete extension subscription");
 
         assert!(
-            get(&mut conn, "namespace1", "pipeline1", "ext123", "sub123")
-                .await
-                .is_err(),
+            get(&mut conn, "namespace1", "pipeline1", "ext123", "sub123").is_err(),
             "Extension subscription was not deleted"
         );
     }

@@ -1,8 +1,9 @@
-use crate::storage::{epoch_milli, map_sqlx_error, StorageError};
-use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct ExtensionRegistration {
     pub extension_id: String,
     pub image: String,
@@ -13,6 +14,36 @@ pub struct ExtensionRegistration {
     pub status: String,
     pub key_id: String,
     pub additional_roles: String,
+}
+
+impl From<&Row<'_>> for ExtensionRegistration {
+    fn from(row: &Row) -> Self {
+        Self {
+            extension_id: row.get_unwrap("extension_id"),
+            image: row.get_unwrap("image"),
+            registry_auth: row.get_unwrap("registry_auth"),
+            settings: row.get_unwrap("settings"),
+            created: row.get_unwrap("created"),
+            modified: row.get_unwrap("modified"),
+            status: row.get_unwrap("status"),
+            key_id: row.get_unwrap("key_id"),
+            additional_roles: row.get_unwrap("additional_roles"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum ExtensionRegistrationTable {
+    Table,
+    ExtensionId,
+    Image,
+    RegistryAuth,
+    Settings,
+    Created,
+    Modified,
+    Status,
+    KeyId,
+    AdditionalRoles,
 }
 
 #[derive(Clone, Debug)]
@@ -40,175 +71,179 @@ impl Default for UpdatableFields {
     }
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
+pub fn insert(
+    conn: &dyn Executable,
     registration: &ExtensionRegistration,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO extension_registrations (extension_id, image, registry_auth, settings, created, modified, \
-        status, key_id, additional_roles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
-    )
-    .bind(&registration.extension_id)
-    .bind(&registration.image)
-    .bind(&registration.registry_auth)
-    .bind(&registration.settings)
-    .bind(&registration.created)
-    .bind(&registration.modified)
-    .bind(&registration.status)
-    .bind(&registration.key_id)
-    .bind(&registration.additional_roles);
+    let (sql, values) = Query::insert()
+        .into_table(ExtensionRegistrationTable::Table)
+        .columns([
+            ExtensionRegistrationTable::ExtensionId,
+            ExtensionRegistrationTable::Image,
+            ExtensionRegistrationTable::RegistryAuth,
+            ExtensionRegistrationTable::Settings,
+            ExtensionRegistrationTable::Created,
+            ExtensionRegistrationTable::Modified,
+            ExtensionRegistrationTable::Status,
+            ExtensionRegistrationTable::KeyId,
+            ExtensionRegistrationTable::AdditionalRoles,
+        ])
+        .values_panic([
+            registration.extension_id.clone().into(),
+            registration.image.clone().into(),
+            registration.registry_auth.clone().into(),
+            registration.settings.clone().into(),
+            registration.created.clone().into(),
+            registration.modified.clone().into(),
+            registration.status.clone().into(),
+            registration.key_id.clone().into(),
+            registration.additional_roles.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<ExtensionRegistration>, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionRegistration>(
-        "SELECT extension_id, image, registry_auth, settings, \
-        created, modified, status, key_id, additional_roles FROM extension_registrations;",
-    );
+pub fn list(conn: &dyn Executable) -> Result<Vec<ExtensionRegistration>, StorageError> {
+    let (sql, values) = Query::select()
+        .columns([
+            ExtensionRegistrationTable::ExtensionId,
+            ExtensionRegistrationTable::Image,
+            ExtensionRegistrationTable::RegistryAuth,
+            ExtensionRegistrationTable::Settings,
+            ExtensionRegistrationTable::Created,
+            ExtensionRegistrationTable::Modified,
+            ExtensionRegistrationTable::Status,
+            ExtensionRegistrationTable::KeyId,
+            ExtensionRegistrationTable::AdditionalRoles,
+        ])
+        .from(ExtensionRegistrationTable::Table)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<ExtensionRegistration> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(ExtensionRegistration::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn get(
-    conn: &mut SqliteConnection,
+pub fn get(
+    conn: &dyn Executable,
     extension_id: &str,
 ) -> Result<ExtensionRegistration, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionRegistration>(
-        "SELECT extension_id, image, registry_auth, settings, created, modified, status, key_id, additional_roles \
-        FROM extension_registrations WHERE extension_id = ?;",
-    )
-    .bind(extension_id);
+    let (sql, values) = Query::select()
+        .columns([
+            ExtensionRegistrationTable::ExtensionId,
+            ExtensionRegistrationTable::Image,
+            ExtensionRegistrationTable::RegistryAuth,
+            ExtensionRegistrationTable::Settings,
+            ExtensionRegistrationTable::Created,
+            ExtensionRegistrationTable::Modified,
+            ExtensionRegistrationTable::Status,
+            ExtensionRegistrationTable::KeyId,
+            ExtensionRegistrationTable::AdditionalRoles,
+        ])
+        .from(ExtensionRegistrationTable::Table)
+        .and_where(Expr::col(ExtensionRegistrationTable::ExtensionId).eq(extension_id))
+        .limit(1)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_one(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        return Ok(ExtensionRegistration::from(row));
+    }
+
+    Err(StorageError::NotFound)
 }
 
-pub async fn update(
-    conn: &mut SqliteConnection,
+pub fn update(
+    conn: &dyn Executable,
     extension_id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
-    let mut update_query: QueryBuilder<Sqlite> =
-        QueryBuilder::new(r#"UPDATE extension_registrations SET "#);
-    let mut updated_fields_total = 0;
+    let mut query = Query::update();
+    query.table(ExtensionRegistrationTable::Table);
 
-    if let Some(value) = &fields.image {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("image = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.image {
+        query.value(ExtensionRegistrationTable::Image, value.into());
     }
 
-    if let Some(value) = &fields.registry_auth {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("registry_auth = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.registry_auth {
+        query.value(ExtensionRegistrationTable::RegistryAuth, value.into());
     }
 
-    if let Some(value) = &fields.settings {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("settings = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.settings {
+        query.value(ExtensionRegistrationTable::Settings, value.into());
     }
 
-    if let Some(value) = &fields.status {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("status = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.status {
+        query.value(ExtensionRegistrationTable::Status, value.into());
     }
 
-    if let Some(value) = &fields.key_id {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("key_id = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.key_id {
+        query.value(ExtensionRegistrationTable::KeyId, value.into());
     }
 
-    if let Some(value) = &fields.additional_roles {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("additional_roles = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
+    if let Some(value) = fields.additional_roles {
+        query.value(ExtensionRegistrationTable::AdditionalRoles, value.into());
     }
 
-    // If no fields were updated, return an error
-    if updated_fields_total == 0 {
+    query.value(ExtensionRegistrationTable::Modified, fields.modified.into());
+
+    if query.is_empty_values() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
-    update_query.push(", ");
-    update_query.push("modified = ");
-    update_query.push_bind(fields.modified);
+    query.and_where(Expr::col(ExtensionRegistrationTable::ExtensionId).eq(extension_id));
 
-    update_query.push(" WHERE extension_id = ");
-    update_query.push_bind(extension_id);
-    update_query.push(";");
+    let (sql, values) = query.build_rusqlite(SqliteQueryBuilder);
 
-    let update_query = update_query.build();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    let sql = update_query.sql();
-
-    update_query
-        .execute(conn)
-        .await
-        .map(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
+    Ok(())
 }
 
-pub async fn delete(conn: &mut SqliteConnection, extension_id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM extension_registrations WHERE extension_id = ?;")
-        .bind(extension_id);
+pub fn delete(conn: &dyn Executable, extension_id: &str) -> Result<(), StorageError> {
+    let (sql, values) = Query::delete()
+        .from_table(ExtensionRegistrationTable::Table)
+        .and_where(Expr::col(ExtensionRegistrationTable::ExtensionId).eq(extension_id))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "some_id".into(),
@@ -218,7 +253,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let registration = ExtensionRegistration {
             extension_id: "ext123".to_string(),
@@ -232,18 +267,16 @@ mod tests {
             key_id: "key456".to_string(),
         };
 
-        insert(&mut conn, &registration).await?;
+        insert(&mut conn, &registration)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_extension_registrations() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_extension_registrations() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let extension_registrations = list(&mut conn)
-            .await
-            .expect("Failed to list extension_registrations");
+        let extension_registrations =
+            list(&mut conn).expect("Failed to list extension_registrations");
 
         // Assert that we got at least one extension_registration back
         assert!(
@@ -263,21 +296,18 @@ mod tests {
         assert_eq!(some_extension_registration.status, "Active");
     }
 
-    #[tokio::test]
-    async fn test_get_extension_registration() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_get_extension_registration() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        let extension_registration = get(&mut conn, "ext123")
-            .await
-            .expect("Failed to get extension_registration");
+        let extension_registration =
+            get(&mut conn, "ext123").expect("Failed to get extension_registration");
 
         assert_eq!(extension_registration.settings, "var1=value1,var2=value2");
         assert_eq!(extension_registration.status, "Active");
     }
 
-    #[tokio::test]
-    async fn test_update_extension_registration() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_extension_registration() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields = UpdatableFields {
             image: Some("new_image.png".to_string()),
@@ -289,26 +319,21 @@ mod tests {
             modified: "".to_string(),
         };
 
-        update(&mut conn, "ext123", fields).await.unwrap();
+        update(&mut conn, "ext123", fields).unwrap();
 
-        let updated = get(&mut conn, "ext123")
-            .await
-            .expect("Failed to retrieve updated namespace");
+        let updated = get(&mut conn, "ext123").expect("Failed to retrieve updated namespace");
 
         assert_eq!(updated.image, "new_image.png".to_string());
         assert_eq!(updated.status, "Active".to_string());
     }
 
-    #[tokio::test]
-    async fn test_delete_extension_registration() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_extension_registration() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
-        delete(&mut conn, "ext123")
-            .await
-            .expect("Failed to delete extension_registration");
+        delete(&mut conn, "ext123").expect("Failed to delete extension_registration");
 
         assert!(
-            get(&mut conn, "ext123").await.is_err(),
+            get(&mut conn, "ext123").is_err(),
             "ExtensionRegistration was not deleted"
         );
     }

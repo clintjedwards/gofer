@@ -1,8 +1,9 @@
-use crate::storage::{map_sqlx_error, StorageError};
-use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use crate::storage::{map_rusqlite_error, Executable, StorageError};
+use rusqlite::Row;
+use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
+use sea_query_rusqlite::RusqliteBinder;
 
-#[derive(Clone, Debug, Default, FromRow)]
+#[derive(Clone, Debug, Default)]
 pub struct ObjectStoreRunKey {
     pub namespace_id: String,
     pub pipeline_id: String,
@@ -11,84 +12,123 @@ pub struct ObjectStoreRunKey {
     pub created: String,
 }
 
-pub async fn insert(
-    conn: &mut SqliteConnection,
+impl From<&Row<'_>> for ObjectStoreRunKey {
+    fn from(row: &Row) -> Self {
+        Self {
+            namespace_id: row.get_unwrap("namespace_id"),
+            pipeline_id: row.get_unwrap("pipeline_id"),
+            run_id: row.get_unwrap("run_id"),
+            key: row.get_unwrap("key"),
+            created: row.get_unwrap("created"),
+        }
+    }
+}
+
+#[derive(Iden)]
+enum ObjectStoreRunKeyTable {
+    Table,
+    NamespaceId,
+    PipelineId,
+    RunId,
+    Key,
+    Created,
+}
+
+pub fn insert(
+    conn: &dyn Executable,
     object_store_run_key: &ObjectStoreRunKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO object_store_run_keys (namespace_id, pipeline_id, run_id, key, created) VALUES (?, ?, ?, ?, ?);",
-    )
-    .bind(&object_store_run_key.namespace_id)
-    .bind(&object_store_run_key.pipeline_id)
-    .bind(object_store_run_key.run_id)
-    .bind(&object_store_run_key.key)
-    .bind(&object_store_run_key.created);
+    let (sql, values) = Query::insert()
+        .into_table(ObjectStoreRunKeyTable::Table)
+        .columns([
+            ObjectStoreRunKeyTable::NamespaceId,
+            ObjectStoreRunKeyTable::PipelineId,
+            ObjectStoreRunKeyTable::RunId,
+            ObjectStoreRunKeyTable::Key,
+            ObjectStoreRunKeyTable::Created,
+        ])
+        .values_panic([
+            object_store_run_key.namespace_id.clone().into(),
+            object_store_run_key.pipeline_id.clone().into(),
+            object_store_run_key.run_id.into(),
+            object_store_run_key.key.clone().into(),
+            object_store_run_key.created.clone().into(),
+        ])
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
-
-    query
-        .execute(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await?;
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
     Ok(())
 }
 
-pub async fn list(
-    conn: &mut SqliteConnection,
+pub fn list(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<Vec<ObjectStoreRunKey>, StorageError> {
-    let query = sqlx::query_as::<_, ObjectStoreRunKey>(
-        "SELECT namespace_id, pipeline_id, run_id, key, created FROM object_store_run_keys \
-        WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? ORDER BY created ASC;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(run_id);
+    let (sql, values) = Query::select()
+        .columns([
+            ObjectStoreRunKeyTable::NamespaceId,
+            ObjectStoreRunKeyTable::PipelineId,
+            ObjectStoreRunKeyTable::RunId,
+            ObjectStoreRunKeyTable::Key,
+            ObjectStoreRunKeyTable::Created,
+        ])
+        .from(ObjectStoreRunKeyTable::Table)
+        .and_where(Expr::col(ObjectStoreRunKeyTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(ObjectStoreRunKeyTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(ObjectStoreRunKeyTable::RunId).eq(run_id))
+        .order_by(ObjectStoreRunKeyTable::Created, Order::Asc)
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    let mut statement = conn
+        .prepare(sql.as_str())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .fetch_all(conn)
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    let mut rows = statement
+        .query(&*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+    let mut objects: Vec<ObjectStoreRunKey> = vec![];
+
+    while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+        objects.push(ObjectStoreRunKey::from(row));
+    }
+
+    Ok(objects)
 }
 
-pub async fn delete(
-    conn: &mut SqliteConnection,
+pub fn delete(
+    conn: &dyn Executable,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
     key: &str,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM object_store_run_keys WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND key = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(run_id)
-    .bind(key);
+    let (sql, values) = Query::delete()
+        .from_table(ObjectStoreRunKeyTable::Table)
+        .and_where(Expr::col(ObjectStoreRunKeyTable::NamespaceId).eq(namespace_id))
+        .and_where(Expr::col(ObjectStoreRunKeyTable::PipelineId).eq(pipeline_id))
+        .and_where(Expr::col(ObjectStoreRunKeyTable::RunId).eq(run_id))
+        .and_where(Expr::col(ObjectStoreRunKeyTable::Key).eq(key))
+        .build_rusqlite(SqliteQueryBuilder);
 
-    let sql = query.sql();
+    conn.execute(sql.as_str(), &*values.as_params())
+        .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-    query
-        .execute(conn)
-        .map_ok(|_| ())
-        .map_err(|e| map_sqlx_error(e, sql))
-        .await
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use crate::storage::{tests::TestHarness, Executable};
 
-    async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+        let harness = TestHarness::new();
+        let mut conn = harness.write_conn().unwrap();
 
         let namespace = crate::storage::namespaces::Namespace {
             id: "some_id".into(),
@@ -98,7 +138,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::namespaces::insert(&mut conn, &namespace).await?;
+        crate::storage::namespaces::insert(&mut conn, &namespace)?;
 
         let pipeline_metadata = crate::storage::pipeline_metadata::PipelineMetadata {
             namespace_id: "some_id".into(),
@@ -108,7 +148,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata).await?;
+        crate::storage::pipeline_metadata::insert(&mut conn, &pipeline_metadata)?;
 
         let new_pipeline_config = crate::storage::pipeline_configs::PipelineConfig {
             namespace_id: "some_id".to_string(),
@@ -123,7 +163,6 @@ mod tests {
         };
 
         crate::storage::pipeline_configs::insert(&mut conn, &new_pipeline_config)
-            .await
             .expect("Failed to insert pipeline_config");
 
         let run = crate::storage::runs::Run {
@@ -142,7 +181,7 @@ mod tests {
             store_objects_expired: false,
         };
 
-        crate::storage::runs::insert(&mut conn, &run).await?;
+        crate::storage::runs::insert(&mut conn, &run)?;
 
         let object_store_run_key = ObjectStoreRunKey {
             namespace_id: "some_id".into(),
@@ -152,17 +191,15 @@ mod tests {
             created: "some_time".into(),
         };
 
-        insert(&mut conn, &object_store_run_key).await?;
+        insert(&mut conn, &object_store_run_key)?;
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_object_store_run_keys() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_list_object_store_run_keys() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let object_store_run_keys = list(&mut conn, "some_id", "some_pipeline_id", 1)
-            .await
             .expect("Failed to list object_store_run_keys");
 
         // Assert that we got at least one object_store_run_key back
@@ -180,12 +217,10 @@ mod tests {
         assert_eq!(some_object_store_run_key.created, "some_time");
     }
 
-    #[tokio::test]
-    async fn test_delete_object_store_run_key() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_delete_object_store_run_key() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         delete(&mut conn, "some_id", "some_pipeline_id", 1, "some_id")
-            .await
             .expect("Failed to delete object_store_run_key");
     }
 }
