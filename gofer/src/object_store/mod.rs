@@ -1,6 +1,5 @@
 pub mod sqlite;
 
-use async_trait::async_trait;
 use serde::Deserialize;
 use std::fmt::Debug;
 use strum::{Display, EnumString};
@@ -32,14 +31,22 @@ pub enum ObjectStoreError {
     /// Failed to start due to misconfigured settings, usually from a misconfigured settings file.
     #[error("could not init object store; {0}")]
     FailedPrecondition(String),
+
+    #[error(
+        "unexpected storage error occurred; code: {code:?}; message: {message}; query: {query}"
+    )]
+    GenericDBError {
+        code: Option<String>,
+        message: String,
+        query: String,
+    },
 }
 
-#[async_trait]
 pub trait ObjectStore: Debug + Send + Sync + 'static {
-    async fn get(&self, key: &str) -> Result<Value, ObjectStoreError>;
-    async fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), ObjectStoreError>;
-    async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, ObjectStoreError>;
-    async fn delete(&self, key: &str) -> Result<(), ObjectStoreError>;
+    fn get(&self, key: &str) -> Result<Value, ObjectStoreError>;
+    fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), ObjectStoreError>;
+    fn list_keys(&self, prefix: &str) -> Result<Vec<String>, ObjectStoreError>;
+    fn delete(&self, key: &str) -> Result<(), ObjectStoreError>;
 }
 
 #[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq, Display, EnumString)]
@@ -49,7 +56,7 @@ pub enum Engine {
     Sqlite,
 }
 
-pub async fn new(
+pub fn new(
     config: &crate::conf::api::ObjectStore,
 ) -> Result<Box<dyn ObjectStore>, ObjectStoreError> {
     #[allow(clippy::match_single_binding)]
@@ -61,7 +68,7 @@ pub async fn new(
                 ));
             }
 
-            let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap()).await;
+            let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap());
             Ok(Box::new(engine))
         }
     }

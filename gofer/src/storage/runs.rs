@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -70,7 +70,7 @@ pub struct UpdatableFields {
     pub store_objects_expired: Option<bool>,
 }
 
-pub fn insert(conn: &dyn Executable, run: &Run) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, run: &Run) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(RunTable::Table)
         .columns([
@@ -113,7 +113,7 @@ pub fn insert(conn: &dyn Executable, run: &Run) -> Result<(), StorageError> {
 
 /// Sorted by run_id ascending by default.
 pub fn list(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     offset: i64,
@@ -164,7 +164,7 @@ pub fn list(
 }
 
 pub fn get(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
@@ -208,7 +208,7 @@ pub fn get(
 }
 
 pub fn get_latest(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Run, StorageError> {
@@ -251,7 +251,7 @@ pub fn get_latest(
 }
 
 pub fn update(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
@@ -305,7 +305,7 @@ pub fn update(
 // an admin route that allows this.
 #[allow(dead_code)]
 pub fn delete(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
@@ -326,9 +326,9 @@ pub fn delete(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

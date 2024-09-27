@@ -1,15 +1,50 @@
 use super::{ObjectStore, ObjectStoreError, Value};
 use anyhow::Result;
-use async_trait::async_trait;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{Connection, Transaction};
+use sea_query::SqliteQueryBuilder;
+use sea_query::{ColumnDef, Expr, Iden, Query, Table};
 use serde::Deserialize;
-use std::{fs::File, io, ops::Deref, path::Path};
+use std::{fs::File, io, path::Path};
+
+/// In order to make downstream storage functions support taking the possibility of a [`rusqlite::Transaction`]
+/// or a [`rusqlite::Connection`] object we must create an interface over the common functions.
+pub trait Executable {
+    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize>;
+    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>>;
+}
+
+impl Executable for Connection {
+    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
+        self.execute(query, params)
+    }
+
+    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
+        self.prepare(query)
+    }
+}
+
+impl Executable for Transaction<'_> {
+    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
+        self.execute(query, params)
+    }
+
+    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
+        self.prepare(query)
+    }
+}
 
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Config {
     pub path: String,
+}
+
+#[derive(Iden)]
+enum ObjectTable {
+    Table,
+    Key,
+    Value,
 }
 
 #[derive(Debug, Clone)]
@@ -61,7 +96,7 @@ fn touch_file(path: &Path) -> io::Result<()> {
 }
 
 impl Engine {
-    pub async fn new(config: &Config) -> Self {
+    pub fn new(config: &Config) -> Self {
         let config = config.clone();
 
         touch_file(Path::new(&config.path)).unwrap();
@@ -81,22 +116,22 @@ impl Engine {
                 // * temp_store: Tells sqlite to store temporary objects in memory rather than disk.
                 conn.execute_batch(
                     "PRAGMA journal_mode = WAL;
-                 PRAGMA synchronous = NORMAL;
-                 PRAGMA foreign_keys = ON;
-                 PRAGMA busy_timeout = 5000;
-                 PRAGMA cache_size = -1048576;
-                 PRAGMA temp_store = MEMORY;",
+                     PRAGMA synchronous = NORMAL;
+                     PRAGMA foreign_keys = ON;
+                     PRAGMA busy_timeout = 5000;
+                     PRAGMA cache_size = -1048576;
+                     PRAGMA temp_store = MEMORY;",
                 )
             });
         let write_manager =
             r2d2_sqlite::SqliteConnectionManager::file(&config.path).with_init(|conn| {
                 conn.execute_batch(
                     "PRAGMA journal_mode = WAL;
-                 PRAGMA synchronous = NORMAL;
-                 PRAGMA foreign_keys = ON;
-                 PRAGMA busy_timeout = 5000;
-                 PRAGMA cache_size = -1048576;
-                 PRAGMA temp_store = MEMORY;",
+                     PRAGMA synchronous = NORMAL;
+                     PRAGMA foreign_keys = ON;
+                     PRAGMA busy_timeout = 5000;
+                     PRAGMA cache_size = -1048576;
+                     PRAGMA temp_store = MEMORY;",
                 )
             });
 
@@ -110,12 +145,22 @@ impl Engine {
             .build(write_manager)
             .unwrap();
 
-        let mut conn = write_pool.get().unwrap();
-        //TODO: Sqlquery this table
+        let conn = write_pool.get().unwrap();
 
-        do something here
+        // Create initial table.
+        let create_table_statement = Table::create()
+            .table(ObjectTable::Table)
+            .if_not_exists()
+            .col(
+                ColumnDef::new(ObjectTable::Key)
+                    .text()
+                    .not_null()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new(ObjectTable::Value).blob().not_null())
+            .to_string(SqliteQueryBuilder);
 
-        run_migrations(&mut conn).unwrap();
+        conn.execute(&create_table_statement, []).unwrap();
 
         Engine {
             read_pool,
@@ -160,97 +205,110 @@ impl Engine {
     }
 }
 
-#[async_trait]
 impl ObjectStore for Engine {
-    async fn get(&self, key: &str) -> Result<Value, ObjectStoreError> {
-        let mut conn = self.conn().await?;
+    fn get(&self, key: &str) -> Result<Value, ObjectStoreError> {
+        let mut conn = self.read_conn()?;
 
-        let query = sqlx::query_as("SELECT value FROM objects WHERE key = ?;").bind(key);
+        let (sql, values) = Query::select()
+            .column(ObjectTable::Value)
+            .from(ObjectTable::Table)
+            .and_where(Expr::col(ObjectTable::Key).eq(key))
+            .limit(1)
+            .build_rusqlite(SqliteQueryBuilder);
 
-        let sql = query.sql();
+        let mut statement = conn
+            .prepare(sql.as_str())
+            .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-        query
-            .fetch_one(&mut *conn)
-            .map_err(|e| map_lx_error(e, sql))
-            .await
+        let mut rows = statement
+            .query(&*values.as_params())
+            .map_err(|e| map_rusqlite_error(e, &sql))?;
+
+        if let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+            Ok(row.get_unwrap("value"))
+        } else {
+            Err(ObjectStoreError::NotFound)
+        }
     }
 
-    async fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), ObjectStoreError> {
-        let mut conn = self.conn().await?;
+    fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), ObjectStoreError> {
+        let mut conn = self.write_conn()?;
 
-        let query = sqlx::query("INSERT INTO objects (key, value) VALUES (?, ?);")
-            .bind(key)
-            .bind(content.clone());
+        let (sql, values) = Query::insert()
+            .into_table(ObjectTable::Table)
+            .columns([ObjectTable::Key, ObjectTable::Value])
+            .values_panic([key.into(), content.clone().into()])
+            .build_rusqlite(SqliteQueryBuilder);
 
-        let sql = query.sql();
+        let insert_result = conn.execute(sql.as_str(), &*values.as_params());
 
-        // If there is already a key we provide the functionality to update that key instead of passing back up
-        // the conflict error.
-        if let Err(e) = query.execute(&mut *conn).await {
-            match e {
-                sqlx::Error::Database(ref database_err) => {
-                    if let Some(err_code) = database_err.code() {
-                        match err_code.deref() {
-                            "1555" => {
-                                if force {
-                                    let update_query =
-                                        sqlx::query("UPDATE objects SET value = ? WHERE key = ?")
-                                            .bind(content)
-                                            .bind(key);
+        if let Err(e) = insert_result {
+            if let rusqlite::Error::SqliteFailure(ref err, _) = e {
+                if let Some(err_code) = err.extended_code {
+                    if err_code == 1555 {
+                        if force {
+                            let (update_sql, update_values) = Query::update()
+                                .table(ObjectTable::Table)
+                                .value(ObjectTable::Value, content.into())
+                                .and_where(Expr::col(ObjectTable::Key).eq(key))
+                                .build_rusqlite(SqliteQueryBuilder);
 
-                                    let update_sql = update_query.sql();
-
-                                    update_query
-                                        .execute(&mut *conn)
-                                        .await
-                                        .map_err(|err| map_sqlx_error(err, update_sql))?;
-                                } else {
-                                    return Err(map_sqlx_error(e, sql));
-                                };
-                            }
-                            _ => return Err(map_sqlx_error(e, sql)),
+                            conn.execute(update_sql.as_str(), &*update_values.as_params())
+                                .map_err(|err| map_rusqlite_error(err, &update_sql))?;
+                        } else {
+                            return Err(map_rusqlite_error(e, &sql));
                         }
                     } else {
-                        return Err(map_sqlx_error(e, sql));
+                        return Err(map_rusqlite_error(e, &sql));
                     }
+                } else {
+                    return Err(map_rusqlite_error(e, &sql));
                 }
-                _ => return Err(map_sqlx_error(e, sql)),
-            };
-        };
+            } else {
+                return Err(map_rusqlite_error(e, &sql));
+            }
+        }
 
         Ok(())
     }
 
-    async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, ObjectStoreError> {
-        let mut conn = self.conn().await?;
+    fn list_keys(&self, prefix: &str) -> Result<Vec<String>, ObjectStoreError> {
+        let mut conn = self.read_conn()?;
 
-        let query = sqlx::query_as::<_, (String,)>("SELECT key FROM objects WHERE key LIKE ?%;")
-            .bind(prefix);
+        let (sql, values) = Query::select()
+            .column(ObjectTable::Key)
+            .from(ObjectTable::Table)
+            .and_where(Expr::col(ObjectTable::Key).like(format!("{}%", prefix)))
+            .build_rusqlite(SqliteQueryBuilder);
 
-        let sql = query.sql();
+        let mut statement = conn
+            .prepare(sql.as_str())
+            .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-        let rows = query
-            .fetch_all(&mut *conn)
-            .map_err(|e| map_sqlx_error(e, sql))
-            .await?;
+        let mut rows = statement
+            .query(&*values.as_params())
+            .map_err(|e| map_rusqlite_error(e, &sql))?;
 
-        let keys = rows.into_iter().map(|(key,)| key).collect();
+        let mut keys: Vec<String> = vec![];
+
+        while let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
+            keys.push(row.get_unwrap("key"));
+        }
 
         Ok(keys)
     }
 
-    async fn delete(&self, key: &str) -> Result<(), ObjectStoreError> {
-        let mut conn = self.conn().await?;
+    fn delete(&self, key: &str) -> Result<(), ObjectStoreError> {
+        let mut conn = self.write_conn()?;
 
-        let query = sqlx::query("DELETE FROM objects WHERE key = ?;").bind(key);
+        let (sql, values) = Query::delete()
+            .from_table(ObjectTable::Table)
+            .and_where(Expr::col(ObjectTable::Key).eq(key))
+            .build_rusqlite(SqliteQueryBuilder);
 
-        let sql = query.sql();
-
-        query
-            .execute(&mut *conn)
+        conn.execute(sql.as_str(), &*values.as_params())
             .map_ok(|_| ())
-            .map_err(|e| map_sqlx_error(e, sql))
-            .await
+            .map_err(|e| map_rusqlite_error(e, &sql))
     }
 }
 
@@ -266,15 +324,14 @@ mod tests {
     }
 
     impl TestHarness {
-        pub async fn new() -> Self {
+        pub fn new() -> Self {
             let mut rng = rand::thread_rng();
             let append_num: u16 = rng.gen();
             let storage_path = format!("/tmp/gofer_tests_object_store{}.db", append_num);
 
             let db = Engine::new(&Config {
                 path: storage_path.clone(),
-            })
-            .await;
+            });
 
             Self { db, storage_path }
         }
@@ -297,12 +354,12 @@ mod tests {
     }
 
     async fn setup() -> Result<TestHarness, Box<dyn std::error::Error>> {
-        let harness = TestHarness::new().await;
+        let harness = TestHarness::new();
 
         let test_key = "test_key";
         let test_value = "test_value".as_bytes();
 
-        harness.db.put(test_key, test_value.to_vec(), false).await?;
+        harness.db.put(test_key, test_value.to_vec(), false)?;
 
         Ok(harness)
     }
@@ -310,12 +367,12 @@ mod tests {
     #[tokio::test]
     /// Basic CRUD can be accomplished.
     async fn crud() {
-        let harness = setup().await.unwrap();
+        let harness = setup().unwrap();
 
         let test_key = "test_key";
         let test_value = Value("test_value".as_bytes().to_vec());
 
-        let returned_value = harness.get(test_key).await.unwrap();
+        let returned_value = harness.get(test_key).unwrap();
         assert_eq!(test_value, returned_value);
 
         let test_value_2 = Value("test_value_2".as_bytes().to_vec());
@@ -323,15 +380,14 @@ mod tests {
         harness
             .db
             .put(test_key, test_value_2.clone().0, true)
-            .await
             .unwrap();
 
-        let returned_value = harness.get(test_key).await.unwrap();
+        let returned_value = harness.get(test_key).unwrap();
         assert_eq!(test_value_2, returned_value);
 
-        harness.delete(test_key).await.unwrap();
+        harness.delete(test_key).unwrap();
 
-        let returned_err = harness.get(test_key).await.unwrap_err();
+        let returned_err = harness.get(test_key).unwrap_err();
         assert_eq!(super::ObjectStoreError::NotFound, returned_err);
     }
 }

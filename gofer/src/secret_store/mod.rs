@@ -1,16 +1,13 @@
 pub mod sqlite;
 
-use async_trait::async_trait;
-use futures::TryFutureExt;
 use serde::Deserialize;
-use sqlx::FromRow;
 use std::fmt::Debug;
 use strum::{Display, EnumString};
 
-#[derive(Debug, Clone, PartialEq, Eq, FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Value(pub Vec<u8>);
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, FromRow)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Secret {
     pub key: String,
     pub value: Vec<u8>,
@@ -34,14 +31,22 @@ pub enum SecretStoreError {
     /// Failed to start due to misconfigured settings, usually from a misconfigured settings file.
     #[error("could not init secret store; {0}")]
     FailedPrecondition(String),
+
+    #[error(
+        "unexpected storage error occurred; code: {code:?}; message: {message}; query: {query}"
+    )]
+    GenericDBError {
+        code: Option<String>,
+        message: String,
+        query: String,
+    },
 }
 
-#[async_trait]
 pub trait SecretStore: Debug + Send + Sync + 'static {
-    async fn get(&self, key: &str) -> Result<Value, SecretStoreError>;
-    async fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), SecretStoreError>;
-    async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, SecretStoreError>;
-    async fn delete(&self, key: &str) -> Result<(), SecretStoreError>;
+    fn get(&self, key: &str) -> Result<Value, SecretStoreError>;
+    fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), SecretStoreError>;
+    fn list_keys(&self, prefix: &str) -> Result<Vec<String>, SecretStoreError>;
+    fn delete(&self, key: &str) -> Result<(), SecretStoreError>;
 }
 
 #[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq, Display, EnumString)]
@@ -51,7 +56,7 @@ pub enum Engine {
     Sqlite,
 }
 
-pub async fn new(
+pub fn new(
     config: &crate::conf::api::SecretStore,
 ) -> Result<Box<dyn SecretStore>, SecretStoreError> {
     #[allow(clippy::match_single_binding)]
@@ -64,8 +69,7 @@ pub async fn new(
             }
 
             let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap())
-                .map_err(|err| SecretStoreError::FailedPrecondition(err.to_string()))
-                .await?;
+                .map_err(|err| SecretStoreError::FailedPrecondition(err.to_string()))?;
             Ok(Box::new(engine))
         }
     }

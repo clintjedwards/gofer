@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -37,7 +37,7 @@ pub struct UpdatableFields {
     pub permissions: Option<String>,
 }
 
-pub fn insert(conn: &dyn Executable, role: &Role) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, role: &Role) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(RoleTable::Table)
         .columns([
@@ -60,7 +60,7 @@ pub fn insert(conn: &dyn Executable, role: &Role) -> Result<(), StorageError> {
     Ok(())
 }
 
-pub fn list(conn: &dyn Executable) -> Result<Vec<Role>, StorageError> {
+pub fn list(conn: &Connection) -> Result<Vec<Role>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             RoleTable::Id,
@@ -88,7 +88,7 @@ pub fn list(conn: &dyn Executable) -> Result<Vec<Role>, StorageError> {
     Ok(roles)
 }
 
-pub fn get(conn: &dyn Executable, id: &str) -> Result<Role, StorageError> {
+pub fn get(conn: &Connection, id: &str) -> Result<Role, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             RoleTable::Id,
@@ -116,11 +116,7 @@ pub fn get(conn: &dyn Executable, id: &str) -> Result<Role, StorageError> {
     Err(StorageError::NotFound)
 }
 
-pub fn update(
-    conn: &dyn Executable,
-    id: &str,
-    fields: UpdatableFields,
-) -> Result<(), StorageError> {
+pub fn update(conn: &Connection, id: &str, fields: UpdatableFields) -> Result<(), StorageError> {
     let mut query = Query::update();
     query
         .table(RoleTable::Table)
@@ -147,7 +143,7 @@ pub fn update(
     Ok(())
 }
 
-pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &Connection, id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(RoleTable::Table)
         .and_where(Expr::col(RoleTable::Id).eq(id))
@@ -162,9 +158,9 @@ pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 
