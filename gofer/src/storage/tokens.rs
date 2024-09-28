@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -48,7 +48,7 @@ pub struct UpdatableFields {
     pub disabled: Option<bool>,
 }
 
-pub fn insert(conn: &dyn Executable, token: &Token) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, token: &Token) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(TokenTable::Table)
         .columns([
@@ -79,7 +79,7 @@ pub fn insert(conn: &dyn Executable, token: &Token) -> Result<(), StorageError> 
     Ok(())
 }
 
-pub fn list(conn: &dyn Executable) -> Result<Vec<Token>, StorageError> {
+pub fn list(conn: &Connection) -> Result<Vec<Token>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             TokenTable::Id,
@@ -111,7 +111,7 @@ pub fn list(conn: &dyn Executable) -> Result<Vec<Token>, StorageError> {
     Ok(objects)
 }
 
-pub fn get_by_id(conn: &dyn Executable, id: &str) -> Result<Token, StorageError> {
+pub fn get_by_id(conn: &Connection, id: &str) -> Result<Token, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             TokenTable::Id,
@@ -143,7 +143,7 @@ pub fn get_by_id(conn: &dyn Executable, id: &str) -> Result<Token, StorageError>
     Err(StorageError::NotFound)
 }
 
-pub fn get_by_hash(conn: &dyn Executable, hash: &str) -> Result<Token, StorageError> {
+pub fn get_by_hash(conn: &Connection, hash: &str) -> Result<Token, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             TokenTable::Id,
@@ -175,11 +175,7 @@ pub fn get_by_hash(conn: &dyn Executable, hash: &str) -> Result<Token, StorageEr
     Err(StorageError::NotFound)
 }
 
-pub fn update(
-    conn: &dyn Executable,
-    id: &str,
-    fields: UpdatableFields,
-) -> Result<(), StorageError> {
+pub fn update(conn: &Connection, id: &str, fields: UpdatableFields) -> Result<(), StorageError> {
     let mut query = Query::update();
     query.table(TokenTable::Table);
 
@@ -200,7 +196,7 @@ pub fn update(
     Ok(())
 }
 
-pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &Connection, id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(TokenTable::Table)
         .and_where(Expr::col(TokenTable::Id).eq(id))
@@ -215,9 +211,9 @@ pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::{tests::TestHarness, Connection};
 
-    async fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 
@@ -237,8 +233,7 @@ mod tests {
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_list_tokens() {
+    fn test_list_tokens() {
         let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let tokens = list(&mut conn).expect("Failed to list tokens");
@@ -257,8 +252,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_update_tokens() {
+    fn test_update_tokens() {
         let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
@@ -273,8 +267,7 @@ mod tests {
         assert!(updated_token.disabled);
     }
 
-    #[tokio::test]
-    async fn test_insert_and_get() {
+    fn test_insert_and_get() {
         let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         let fetched_token = get_by_id(&mut conn, "some_id").expect("Failed to get Token");
@@ -282,8 +275,7 @@ mod tests {
         assert_eq!(fetched_token.roles, "{some_role_scheme}",);
     }
 
-    #[tokio::test]
-    async fn test_delete() {
+    fn test_delete() {
         let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         delete(&mut conn, "some_id").expect("Failed to delete Token");

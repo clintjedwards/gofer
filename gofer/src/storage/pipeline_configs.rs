@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -52,7 +52,7 @@ pub struct UpdatableFields {
     pub state: Option<String>,
 }
 
-pub fn insert(conn: &dyn Executable, pipeline_config: &PipelineConfig) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, pipeline_config: &PipelineConfig) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(PipelineConfigTable::Table)
         .columns([
@@ -86,7 +86,7 @@ pub fn insert(conn: &dyn Executable, pipeline_config: &PipelineConfig) -> Result
 }
 
 pub fn list(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<PipelineConfig>, StorageError> {
@@ -126,7 +126,7 @@ pub fn list(
 }
 
 pub fn get(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     version: i64,
@@ -166,7 +166,7 @@ pub fn get(
 }
 
 pub fn get_latest(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<PipelineConfig, StorageError> {
@@ -205,7 +205,7 @@ pub fn get_latest(
 }
 
 pub fn get_latest_w_state(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     state: &str,
@@ -246,7 +246,7 @@ pub fn get_latest_w_state(
 }
 
 pub fn update(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     version: i64,
@@ -281,7 +281,7 @@ pub fn update(
 }
 
 pub fn delete(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     version: i64,
@@ -306,10 +306,9 @@ mod tests {
         pipeline_configs::PipelineConfig,
         pipeline_metadata::{self, PipelineMetadata},
         tests::TestHarness,
-        Executable,
     };
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

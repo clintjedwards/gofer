@@ -5,35 +5,9 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{Connection, Transaction};
 use sea_query::SqliteQueryBuilder;
 use sea_query::{ColumnDef, Expr, Iden, Query, Table};
+use sea_query_rusqlite::RusqliteBinder;
 use serde::Deserialize;
 use std::{fs::File, io, path::Path};
-
-/// In order to make downstream storage functions support taking the possibility of a [`rusqlite::Transaction`]
-/// or a [`rusqlite::Connection`] object we must create an interface over the common functions.
-pub trait Executable {
-    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize>;
-    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>>;
-}
-
-impl Executable for Connection {
-    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
-        self.execute(query, params)
-    }
-
-    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
-        self.prepare(query)
-    }
-}
-
-impl Executable for Transaction<'_> {
-    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
-        self.execute(query, params)
-    }
-
-    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
-        self.prepare(query)
-    }
-}
 
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Config {
@@ -59,25 +33,14 @@ pub struct Engine {
 fn map_rusqlite_error(e: rusqlite::Error, query: &str) -> ObjectStoreError {
     match e {
         rusqlite::Error::QueryReturnedNoRows => ObjectStoreError::NotFound,
-        rusqlite::Error::SqliteFailure(error, err_str) => {
-            if let Some(err_code) = error.code() {
-                match err_code.deref() {
-                    "1555" => ObjectStoreError::Exists,
-                    "787" => ObjectStoreError::ForeignKeyViolation(err_str.to_string()),
-                    _ => ObjectStoreError::GenericDBError {
-                        code: Some(err_code.to_string()),
-                        message: format!("Unmapped error occurred; {}", err_str),
-                        query: query.into(),
-                    },
-                }
-            } else {
-                ObjectStoreError::GenericDBError {
-                    code: None,
-                    message: err_str.to_string(),
-                    query: query.into(),
-                }
-            }
-        }
+        rusqlite::Error::SqliteFailure(error, err_str) => match error.code {
+            rusqlite::ErrorCode::ConstraintViolation => ObjectStoreError::Exists,
+            _ => ObjectStoreError::GenericDBError {
+                code: Some(error.to_string()),
+                message: format!("Unmapped error occurred; {}", err_str.unwrap_or_default()),
+                query: query.into(),
+            },
+        },
         _ => ObjectStoreError::GenericDBError {
             code: None,
             message: e.to_string(),
@@ -171,18 +134,24 @@ impl Engine {
     /// Grab a read connection from the pool. Read connections have high concurrency and don't
     /// block other reads or writes from happening.
     pub fn read_conn(&self) -> Result<Connection, ObjectStoreError> {
-        self.read_pool
+        let conn = self
+            .read_pool
             .get()
-            .map_err(|e| ObjectStoreError::Connection(format!("{:?}", e)))
+            .map_err(|e| ObjectStoreError::Connection(format!("{:?}", e)))?;
+
+        Ok(*conn)
     }
 
     /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
     /// writer. Attempting to execute a write will hold a global lock and prevent both reads and writes
     /// from happening during that time.
     pub fn write_conn(&self) -> Result<Connection, ObjectStoreError> {
-        self.write_pool
+        let conn = self
+            .write_pool
             .get()
-            .map_err(|e| ObjectStoreError::Connection(format!("{:?}", e)))
+            .map_err(|e| ObjectStoreError::Connection(format!("{:?}", e)))?;
+
+        Ok(*conn)
     }
 
     /// We always open transactions with the Immediate type. This causes sqlite to immediately hold a lock for that
@@ -225,7 +194,8 @@ impl ObjectStore for Engine {
             .map_err(|e| map_rusqlite_error(e, &sql))?;
 
         if let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
-            Ok(row.get_unwrap("value"))
+            let value: Vec<u8> = row.get_unwrap("value");
+            Ok(Value(value))
         } else {
             Err(ObjectStoreError::NotFound)
         }
@@ -243,21 +213,17 @@ impl ObjectStore for Engine {
         let insert_result = conn.execute(sql.as_str(), &*values.as_params());
 
         if let Err(e) = insert_result {
-            if let rusqlite::Error::SqliteFailure(ref err, _) = e {
-                if let Some(err_code) = err.extended_code {
-                    if err_code == 1555 {
-                        if force {
-                            let (update_sql, update_values) = Query::update()
-                                .table(ObjectTable::Table)
-                                .value(ObjectTable::Value, content.into())
-                                .and_where(Expr::col(ObjectTable::Key).eq(key))
-                                .build_rusqlite(SqliteQueryBuilder);
+            if let rusqlite::Error::SqliteFailure(err, err_str) = e {
+                if err.code == rusqlite::ErrorCode::ConstraintViolation {
+                    if force {
+                        let (update_sql, update_values) = Query::update()
+                            .table(ObjectTable::Table)
+                            .value(ObjectTable::Value, content)
+                            .and_where(Expr::col(ObjectTable::Key).eq(key))
+                            .build_rusqlite(SqliteQueryBuilder);
 
-                            conn.execute(update_sql.as_str(), &*update_values.as_params())
-                                .map_err(|err| map_rusqlite_error(err, &update_sql))?;
-                        } else {
-                            return Err(map_rusqlite_error(e, &sql));
-                        }
+                        conn.execute(update_sql.as_str(), &*update_values.as_params())
+                            .map_err(|err| map_rusqlite_error(err, &update_sql))?;
                     } else {
                         return Err(map_rusqlite_error(e, &sql));
                     }
@@ -307,7 +273,7 @@ impl ObjectStore for Engine {
             .build_rusqlite(SqliteQueryBuilder);
 
         conn.execute(sql.as_str(), &*values.as_params())
-            .map_ok(|_| ())
+            .map(|_| ())
             .map_err(|e| map_rusqlite_error(e, &sql))
     }
 }
@@ -353,7 +319,7 @@ mod tests {
         }
     }
 
-    async fn setup() -> Result<TestHarness, Box<dyn std::error::Error>> {
+    fn setup() -> Result<TestHarness, Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
 
         let test_key = "test_key";
@@ -364,9 +330,8 @@ mod tests {
         Ok(harness)
     }
 
-    #[tokio::test]
     /// Basic CRUD can be accomplished.
-    async fn crud() {
+    fn crud() {
         let harness = setup().unwrap();
 
         let test_key = "test_key";

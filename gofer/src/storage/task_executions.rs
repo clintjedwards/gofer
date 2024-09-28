@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -77,7 +77,7 @@ pub struct UpdatableFields {
     pub variables: Option<String>,
 }
 
-pub fn insert(conn: &dyn Executable, task_execution: &TaskExecution) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, task_execution: &TaskExecution) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(TaskExecutionTable::Table)
         .columns([
@@ -123,7 +123,7 @@ pub fn insert(conn: &dyn Executable, task_execution: &TaskExecution) -> Result<(
 }
 
 pub fn list(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
@@ -170,7 +170,7 @@ pub fn list(
 }
 
 pub fn get(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
@@ -218,7 +218,7 @@ pub fn get(
 }
 
 pub fn update(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
@@ -286,7 +286,7 @@ pub fn update(
 // we might allow it through an admin route.
 #[allow(dead_code)]
 pub fn delete(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: i64,
@@ -309,9 +309,9 @@ pub fn delete(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

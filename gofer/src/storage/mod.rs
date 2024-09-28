@@ -81,25 +81,14 @@ pub enum StorageError {
 fn map_rusqlite_error(e: rusqlite::Error, query: &str) -> StorageError {
     match e {
         rusqlite::Error::QueryReturnedNoRows => StorageError::NotFound,
-        rusqlite::Error::SqliteFailure(error, err_str) => {
-            if let Some(err_code) = error.code() {
-                match err_code.deref() {
-                    "1555" => StorageError::Exists,
-                    "787" => StorageError::ForeignKeyViolation(err_str.to_string()),
-                    _ => StorageError::GenericDBError {
-                        code: Some(err_code.to_string()),
-                        message: format!("Unmapped error occurred; {}", err_str),
-                        query: query.into(),
-                    },
-                }
-            } else {
-                StorageError::GenericDBError {
-                    code: None,
-                    message: err_str.to_string(),
-                    query: query.into(),
-                }
-            }
-        }
+        rusqlite::Error::SqliteFailure(error, err_str) => match error.code {
+            rusqlite::ErrorCode::ConstraintViolation => StorageError::Exists,
+            _ => StorageError::GenericDBError {
+                code: Some(error.to_string()),
+                message: format!("Unmapped error occurred; {}", err_str.unwrap_or_default()),
+                query: query.into(),
+            },
+        },
         _ => StorageError::GenericDBError {
             code: None,
             message: e.to_string(),
@@ -182,18 +171,24 @@ impl Db {
     /// Grab a read connection from the pool. Read connections have high concurrency and don't
     /// block other reads or writes from happening.
     pub fn read_conn(&self) -> Result<Connection, StorageError> {
-        self.read_pool
+        let conn = self
+            .read_pool
             .get()
-            .map_err(|e| StorageError::Connection(format!("{:?}", e)))
+            .map_err(|e| StorageError::Connection(format!("{:?}", e)))?;
+
+        Ok(*conn)
     }
 
     /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
     /// writer. Attempting to execute a write will hold a global lock and prevent both reads and writes
     /// from happening during that time.
     pub fn write_conn(&self) -> Result<Connection, StorageError> {
-        self.write_pool
+        let conn = self
+            .write_pool
             .get()
-            .map_err(|e| StorageError::Connection(format!("{:?}", e)))
+            .map_err(|e| StorageError::Connection(format!("{:?}", e)))?;
+
+        Ok(*conn)
     }
 
     /// We always open transactions with the Immediate type. This causes sqlite to immediately hold a lock for that
@@ -215,7 +210,8 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let tx = conn.transaction()?;
 
     for migration in EmbeddedMigrations::iter() {
-        let sql_content = std::fs::read_to_string(migration).expect("Failed to read the .sql file");
+        let sql_content =
+            std::fs::read_to_string(migration.to_string()).expect("Failed to read the .sql file");
         tx.execute_batch(&sql_content)?;
     }
 

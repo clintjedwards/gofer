@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -47,10 +47,7 @@ pub struct UpdatableFields {
     pub status_reason: Option<String>,
 }
 
-pub fn insert(
-    conn: &dyn Executable,
-    subscription: &ExtensionSubscription,
-) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, subscription: &ExtensionSubscription) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(ExtensionSubscriptionTable::Table)
         .columns([
@@ -80,7 +77,7 @@ pub fn insert(
 }
 
 pub fn list_by_pipeline(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<ExtensionSubscription>, StorageError> {
@@ -117,7 +114,7 @@ pub fn list_by_pipeline(
 }
 
 pub fn list_by_extension(
-    conn: &dyn Executable,
+    conn: &Connection,
     extension_id: &str,
 ) -> Result<Vec<ExtensionSubscription>, StorageError> {
     let (sql, values) = Query::select()
@@ -152,7 +149,7 @@ pub fn list_by_extension(
 }
 
 pub fn get(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     extension_id: &str,
@@ -195,7 +192,7 @@ pub fn get(
 }
 
 pub fn update(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     extension_id: &str,
@@ -239,7 +236,7 @@ pub fn update(
 }
 
 pub fn delete(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     extension_id: &str,
@@ -265,9 +262,9 @@ pub fn delete(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

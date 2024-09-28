@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -31,7 +31,7 @@ enum EventTable {
     Emitted,
 }
 
-pub fn insert(conn: &dyn Executable, event: &Event) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, event: &Event) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(EventTable::Table)
         .columns([
@@ -55,7 +55,7 @@ pub fn insert(conn: &dyn Executable, event: &Event) -> Result<(), StorageError> 
 }
 
 pub fn list(
-    conn: &dyn Executable,
+    conn: &Connection,
     offset: i64,
     limit: i64,
     reverse: bool,
@@ -92,7 +92,7 @@ pub fn list(
     Ok(objects)
 }
 
-pub fn get(conn: &dyn Executable, id: &str) -> Result<Event, StorageError> {
+pub fn get(conn: &Connection, id: &str) -> Result<Event, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             EventTable::Id,
@@ -120,7 +120,7 @@ pub fn get(conn: &dyn Executable, id: &str) -> Result<Event, StorageError> {
     Err(StorageError::NotFound)
 }
 
-pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &Connection, id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(EventTable::Table)
         .and_where(Expr::col(EventTable::Id).eq(id))
@@ -135,9 +135,9 @@ pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

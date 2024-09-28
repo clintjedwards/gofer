@@ -3,45 +3,19 @@ use aes_gcm::{
     aead::{generic_array::GenericArray, Aead},
     Aes256Gcm, KeyInit,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rand::{rngs::OsRng, RngCore};
 use rusqlite::{Connection, Transaction};
 use sea_query::SqliteQueryBuilder;
 use sea_query::{ColumnDef, Expr, Iden, Query, Table};
+use sea_query_rusqlite::RusqliteBinder;
 use serde::Deserialize;
-use std::{fs::File, io, ops::Deref, path::Path};
+use std::{fs::File, io, path::Path};
 use tracing::{error, instrument};
 
 const NONCE_SIZE: usize = 12; // Standard nonce size for AES-GCM
-
-/// In order to make downstream storage functions support taking the possibility of a [`rusqlite::Transaction`]
-/// or a [`rusqlite::Connection`] object we must create an interface over the common functions.
-pub trait Executable {
-    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize>;
-    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>>;
-}
-
-impl Executable for Connection {
-    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
-        self.execute(query, params)
-    }
-
-    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
-        self.prepare(query)
-    }
-}
-
-impl Executable for Transaction<'_> {
-    fn exec(&self, query: &str, params: &dyn rusqlite::Params) -> rusqlite::Result<usize> {
-        self.execute(query, params)
-    }
-
-    fn prepare(&self, query: &str) -> rusqlite::Result<rusqlite::Statement<'_>> {
-        self.prepare(query)
-    }
-}
 
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Config {
@@ -52,7 +26,7 @@ pub struct Config {
 }
 
 #[derive(Iden)]
-enum ObjectTable {
+enum SecretTable {
     Table,
     Key,
     Value,
@@ -71,25 +45,14 @@ pub struct Engine {
 fn map_rusqlite_error(e: rusqlite::Error, query: &str) -> SecretStoreError {
     match e {
         rusqlite::Error::QueryReturnedNoRows => SecretStoreError::NotFound,
-        rusqlite::Error::SqliteFailure(error, err_str) => {
-            if let Some(err_code) = error.code() {
-                match err_code.deref() {
-                    "1555" => SecretStoreError::Exists,
-                    "787" => SecretStoreError::ForeignKeyViolation(err_str.to_string()),
-                    _ => SecretStoreError::GenericDBError {
-                        code: Some(err_code.to_string()),
-                        message: format!("Unmapped error occurred; {}", err_str),
-                        query: query.into(),
-                    },
-                }
-            } else {
-                SecretStoreError::GenericDBError {
-                    code: None,
-                    message: err_str.to_string(),
-                    query: query.into(),
-                }
-            }
-        }
+        rusqlite::Error::SqliteFailure(error, err_str) => match error.code {
+            rusqlite::ErrorCode::ConstraintViolation => SecretStoreError::Exists,
+            _ => SecretStoreError::GenericDBError {
+                code: Some(error.to_string()),
+                message: format!("Unmapped error occurred; {}", err_str.unwrap_or_default()),
+                query: query.into(),
+            },
+        },
         _ => SecretStoreError::GenericDBError {
             code: None,
             message: e.to_string(),
@@ -108,7 +71,7 @@ fn touch_file(path: &Path) -> io::Result<()> {
 }
 
 impl Engine {
-    pub async fn new(config: &Config) -> Self {
+    pub fn new(config: &Config) -> Self {
         let config = config.clone();
 
         touch_file(Path::new(&config.path)).unwrap();
@@ -161,15 +124,15 @@ impl Engine {
 
         // Create initial table.
         let create_table_statement = Table::create()
-            .table(ObjectTable::Table)
+            .table(SecretTable::Table)
             .if_not_exists()
             .col(
-                ColumnDef::new(ObjectTable::Key)
+                ColumnDef::new(SecretTable::Key)
                     .text()
                     .not_null()
                     .primary_key(),
             )
-            .col(ColumnDef::new(ObjectTable::Value).blob().not_null())
+            .col(ColumnDef::new(SecretTable::Value).blob().not_null())
             .to_string(SqliteQueryBuilder);
 
         conn.execute(&create_table_statement, []).unwrap();
@@ -184,18 +147,24 @@ impl Engine {
     /// Grab a read connection from the pool. Read connections have high concurrency and don't
     /// block other reads or writes from happening.
     pub fn read_conn(&self) -> Result<Connection, SecretStoreError> {
-        self.read_pool
+        let conn = self
+            .read_pool
             .get()
-            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))
+            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))?;
+
+        Ok(*conn)
     }
 
     /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
     /// writer. Attempting to execute a write will hold a global lock and prevent both reads and writes
     /// from happening during that time.
     pub fn write_conn(&self) -> Result<Connection, SecretStoreError> {
-        self.write_pool
+        let conn = self
+            .write_pool
             .get()
-            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))
+            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))?;
+
+        Ok(*conn)
     }
 
     /// We always open transactions with the Immediate type. This causes sqlite to immediately hold a lock for that
@@ -275,9 +244,12 @@ impl SecretStore for Engine {
 
         if let Some(row) = rows.next().map_err(|e| map_rusqlite_error(e, &sql))? {
             let encrypted_value: Vec<u8> = row.get_unwrap("value");
-            let decrypted_value = decrypt(self.encryption_key, &encrypted_value).map_err(|_| {
-                SecretStoreError::Internal("Could not decrypt value while getting secret".into())
-            })?;
+            let decrypted_value = decrypt(self.encryption_key.as_bytes(), &encrypted_value)
+                .map_err(|_| {
+                    SecretStoreError::Internal(
+                        "Could not decrypt value while getting secret".into(),
+                    )
+                })?;
             Ok(Value(decrypted_value))
         } else {
             Err(SecretStoreError::NotFound)
@@ -302,20 +274,16 @@ impl SecretStore for Engine {
 
         if let Err(e) = insert_result {
             if let rusqlite::Error::SqliteFailure(ref err, _) = e {
-                if let Some(err_code) = err.extended_code {
-                    if err_code == 1555 {
-                        if force {
-                            let (update_sql, update_values) = Query::update()
-                                .table(SecretTable::Table)
-                                .value(SecretTable::Value, encrypted_value.into())
-                                .and_where(Expr::col(SecretTable::Key).eq(key))
-                                .build_rusqlite(SqliteQueryBuilder);
+                if err.code == rusqlite::ErrorCode::ConstraintViolation {
+                    if force {
+                        let (update_sql, update_values) = Query::update()
+                            .table(SecretTable::Table)
+                            .value(SecretTable::Value, encrypted_value)
+                            .and_where(Expr::col(SecretTable::Key).eq(key))
+                            .build_rusqlite(SqliteQueryBuilder);
 
-                            conn.execute(update_sql.as_str(), &*update_values.as_params())
-                                .map_err(|err| map_rusqlite_error(err, &update_sql))?;
-                        } else {
-                            return Err(map_rusqlite_error(e, &sql));
-                        }
+                        conn.execute(update_sql.as_str(), &*update_values.as_params())
+                            .map_err(|err| map_rusqlite_error(err, &update_sql))?;
                     } else {
                         return Err(map_rusqlite_error(e, &sql));
                     }
@@ -331,6 +299,8 @@ impl SecretStore for Engine {
     }
 
     fn list_keys(&self, prefix: &str) -> Result<Vec<String>, SecretStoreError> {
+        let mut conn = self.read_conn()?;
+
         let (sql, values) = Query::select()
             .column(SecretTable::Key)
             .from(SecretTable::Table)
@@ -355,13 +325,15 @@ impl SecretStore for Engine {
     }
 
     fn delete(&self, key: &str) -> Result<(), SecretStoreError> {
+        let mut conn = self.write_conn()?;
+
         let (sql, values) = Query::delete()
             .from_table(SecretTable::Table)
             .and_where(Expr::col(SecretTable::Key).eq(key))
             .build_rusqlite(SqliteQueryBuilder);
 
         conn.execute(sql.as_str(), &*values.as_params())
-            .map_ok(|_| ())
+            .map(|_| ())
             .map_err(|e| map_rusqlite_error(e, &sql))
     }
 }
@@ -386,8 +358,7 @@ mod tests {
             let db = Engine::new(&Config {
                 path: storage_path.clone(),
                 encryption_key: "mysuperduperdupersupersecretkey_".into(),
-            })
-            .unwrap();
+            });
 
             Self { db, storage_path }
         }
@@ -409,7 +380,7 @@ mod tests {
         }
     }
 
-    async fn setup() -> Result<TestHarness, Box<dyn std::error::Error>> {
+    fn setup() -> Result<TestHarness, Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
 
         let test_key = "test_key";
@@ -420,9 +391,8 @@ mod tests {
         Ok(harness)
     }
 
-    #[tokio::test]
     /// Basic CRUD can be accomplished.
-    async fn crud() {
+    fn crud() {
         let harness = setup().unwrap();
 
         let test_key = "test_key";

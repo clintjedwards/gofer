@@ -1,5 +1,5 @@
-use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{epoch_milli, map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -71,10 +71,7 @@ impl Default for UpdatableFields {
     }
 }
 
-pub fn insert(
-    conn: &dyn Executable,
-    registration: &ExtensionRegistration,
-) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, registration: &ExtensionRegistration) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(ExtensionRegistrationTable::Table)
         .columns([
@@ -107,7 +104,7 @@ pub fn insert(
     Ok(())
 }
 
-pub fn list(conn: &dyn Executable) -> Result<Vec<ExtensionRegistration>, StorageError> {
+pub fn list(conn: &Connection) -> Result<Vec<ExtensionRegistration>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             ExtensionRegistrationTable::ExtensionId,
@@ -140,10 +137,7 @@ pub fn list(conn: &dyn Executable) -> Result<Vec<ExtensionRegistration>, Storage
     Ok(objects)
 }
 
-pub fn get(
-    conn: &dyn Executable,
-    extension_id: &str,
-) -> Result<ExtensionRegistration, StorageError> {
+pub fn get(conn: &Connection, extension_id: &str) -> Result<ExtensionRegistration, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             ExtensionRegistrationTable::ExtensionId,
@@ -177,7 +171,7 @@ pub fn get(
 }
 
 pub fn update(
-    conn: &dyn Executable,
+    conn: &Connection,
     extension_id: &str,
     fields: UpdatableFields,
 ) -> Result<(), StorageError> {
@@ -224,7 +218,7 @@ pub fn update(
     Ok(())
 }
 
-pub fn delete(conn: &dyn Executable, extension_id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &Connection, extension_id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(ExtensionRegistrationTable::Table)
         .and_where(Expr::col(ExtensionRegistrationTable::ExtensionId).eq(extension_id))
@@ -239,9 +233,9 @@ pub fn delete(conn: &dyn Executable, extension_id: &str) -> Result<(), StorageEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

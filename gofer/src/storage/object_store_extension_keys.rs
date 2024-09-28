@@ -1,5 +1,5 @@
-use crate::storage::{map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Order, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -29,7 +29,7 @@ enum ObjectStoreExtensionKeyTable {
 }
 
 pub fn insert(
-    conn: &dyn Executable,
+    conn: &Connection,
     object_store_extension_key: &ObjectStoreExtensionKey,
 ) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
@@ -53,7 +53,7 @@ pub fn insert(
 }
 
 pub fn list(
-    conn: &dyn Executable,
+    conn: &Connection,
     extension_id: &str,
 ) -> Result<Vec<ObjectStoreExtensionKey>, StorageError> {
     let (sql, values) = Query::select()
@@ -84,7 +84,7 @@ pub fn list(
     Ok(objects)
 }
 
-pub fn delete(conn: &dyn Executable, extension_id: &str, key: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &Connection, extension_id: &str, key: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(ObjectStoreExtensionKeyTable::Table)
         .and_where(Expr::col(ObjectStoreExtensionKeyTable::ExtensionId).eq(extension_id))
@@ -100,9 +100,9 @@ pub fn delete(conn: &dyn Executable, extension_id: &str, key: &str) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

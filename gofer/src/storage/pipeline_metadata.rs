@@ -1,5 +1,5 @@
-use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{epoch_milli, map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -49,10 +49,7 @@ impl Default for UpdatableFields {
     }
 }
 
-pub fn insert(
-    conn: &dyn Executable,
-    pipeline_metadata: &PipelineMetadata,
-) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, pipeline_metadata: &PipelineMetadata) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(PipelineMetadataTable::Table)
         .columns([
@@ -77,10 +74,7 @@ pub fn insert(
     Ok(())
 }
 
-pub fn list(
-    conn: &dyn Executable,
-    namespace_id: &str,
-) -> Result<Vec<PipelineMetadata>, StorageError> {
+pub fn list(conn: &Connection, namespace_id: &str) -> Result<Vec<PipelineMetadata>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             PipelineMetadataTable::NamespaceId,
@@ -111,7 +105,7 @@ pub fn list(
 }
 
 pub fn get(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<PipelineMetadata, StorageError> {
@@ -145,7 +139,7 @@ pub fn get(
 }
 
 pub fn update(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
     fields: UpdatableFields,
@@ -176,7 +170,7 @@ pub fn update(
 }
 
 pub fn delete(
-    conn: &dyn Executable,
+    conn: &Connection,
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<(), StorageError> {
@@ -195,9 +189,9 @@ pub fn delete(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 

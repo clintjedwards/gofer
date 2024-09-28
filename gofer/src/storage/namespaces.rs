@@ -1,5 +1,5 @@
-use crate::storage::{epoch_milli, map_rusqlite_error, Executable, StorageError};
-use rusqlite::Row;
+use crate::storage::{epoch_milli, map_rusqlite_error, StorageError};
+use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
 
@@ -51,7 +51,7 @@ impl Default for UpdatableFields {
     }
 }
 
-pub fn insert(conn: &dyn Executable, namespace: &Namespace) -> Result<(), StorageError> {
+pub fn insert(conn: &Connection, namespace: &Namespace) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(NamespaceTable::Table)
         .columns([
@@ -76,7 +76,7 @@ pub fn insert(conn: &dyn Executable, namespace: &Namespace) -> Result<(), Storag
     Ok(())
 }
 
-pub fn list(conn: &dyn Executable) -> Result<Vec<Namespace>, StorageError> {
+pub fn list(conn: &Connection) -> Result<Vec<Namespace>, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             NamespaceTable::Id,
@@ -105,7 +105,7 @@ pub fn list(conn: &dyn Executable) -> Result<Vec<Namespace>, StorageError> {
     Ok(objects)
 }
 
-pub fn get(conn: &dyn Executable, id: &str) -> Result<Namespace, StorageError> {
+pub fn get(conn: &Connection, id: &str) -> Result<Namespace, StorageError> {
     let (sql, values) = Query::select()
         .columns([
             NamespaceTable::Id,
@@ -134,11 +134,7 @@ pub fn get(conn: &dyn Executable, id: &str) -> Result<Namespace, StorageError> {
     Err(StorageError::NotFound)
 }
 
-pub fn update(
-    conn: &dyn Executable,
-    id: &str,
-    fields: UpdatableFields,
-) -> Result<(), StorageError> {
+pub fn update(conn: &Connection, id: &str, fields: UpdatableFields) -> Result<(), StorageError> {
     let mut query = Query::update();
     query
         .table(NamespaceTable::Table)
@@ -161,7 +157,7 @@ pub fn update(
     Ok(())
 }
 
-pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
+pub fn delete(conn: &Connection, id: &str) -> Result<(), StorageError> {
     let (sql, values) = Query::delete()
         .from_table(NamespaceTable::Table)
         .and_where(Expr::col(NamespaceTable::Id).eq(id))
@@ -176,9 +172,9 @@ pub fn delete(conn: &dyn Executable, id: &str) -> Result<(), StorageError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::{tests::TestHarness, Executable};
+    use crate::storage::tests::TestHarness;
 
-    async fn setup() -> Result<(TestHarness, impl Executable), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 
