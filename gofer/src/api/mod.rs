@@ -271,15 +271,16 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
     // First we initialize all the main subsystems.
     let storage =
         storage::Db::new(&conf.server.storage_path).context("Could not initialize storage")?;
+
     let scheduler = scheduler::new(&conf.scheduler)
         .await
         .context("Could not initialize scheduler")?;
-    let object_store = object_store::new(&conf.object_store)
-        .await
-        .context("Could not initialize object store")?;
-    let secret_store = secret_store::new(&conf.secret_store)
-        .await
-        .context("Could not initialize secret store")?;
+
+    let object_store =
+        object_store::new(&conf.object_store).context("Could not initialize object store")?;
+    let secret_store =
+        secret_store::new(&conf.secret_store).context("Could not initialize secret store")?;
+
     let event_bus = event_utils::EventBus::new(
         storage.clone(),
         conf.api.event_log_retention,
@@ -951,9 +952,7 @@ pub async fn interpolate_vars(
                         namespace_id,
                         pipeline_id,
                         &value,
-                    ))
-                    .await
-                {
+                    )) {
                     Ok(val) => String::from_utf8_lossy(&val.0).to_string(),
                     Err(e) => match e {
                         secret_store::SecretStoreError::NotFound => {
@@ -1005,7 +1004,6 @@ pub async fn interpolate_vars(
                 let retrieved_value = match api_state
                     .secret_store
                     .get(&secrets::global_secret_store_key(&key_metadata.key))
-                    .await
                 {
                     Ok(val) => val,
                     Err(e) => {
@@ -1024,24 +1022,23 @@ pub async fn interpolate_vars(
                 });
             }
             InterpolationKind::PipelineObject => {
-                let retrieved_value = match api_state
-                    .object_store
-                    .get(&objects::pipeline_object_store_key(
-                        namespace_id,
-                        pipeline_id,
-                        &variable.key.clone(),
-                    ))
-                    .await
-                {
-                    Ok(val) => val,
-                    Err(e) => {
-                        if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find pipeline object {}", &variable.key.clone(),)
-                        };
+                let retrieved_value =
+                    match api_state
+                        .object_store
+                        .get(&objects::pipeline_object_store_key(
+                            namespace_id,
+                            pipeline_id,
+                            &variable.key.clone(),
+                        )) {
+                        Ok(val) => val,
+                        Err(e) => {
+                            if e == object_store::ObjectStoreError::NotFound {
+                                bail!("Could not find pipeline object {}", &variable.key.clone(),)
+                            };
 
-                        bail!("Could not retrieve pipeline object: {:#?}", e)
-                    }
-                };
+                            bail!("Could not retrieve pipeline object: {:#?}", e)
+                        }
+                    };
                 // We base64 encode the bytes so the user can handle them when they are injected into the environment.
                 let base64_string = BASE64_STANDARD.encode(retrieved_value.0);
 
@@ -1056,25 +1053,22 @@ pub async fn interpolate_vars(
                     continue;
                 }
 
-                let retrieved_value = match api_state
-                    .object_store
-                    .get(&objects::run_object_store_key(
+                let retrieved_value =
+                    match api_state.object_store.get(&objects::run_object_store_key(
                         namespace_id,
                         pipeline_id,
                         run_id.unwrap(),
                         &variable.key.clone(),
-                    ))
-                    .await
-                {
-                    Ok(val) => val,
-                    Err(e) => {
-                        if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find run object {}", &variable.key.clone(),)
-                        };
+                    )) {
+                        Ok(val) => val,
+                        Err(e) => {
+                            if e == object_store::ObjectStoreError::NotFound {
+                                bail!("Could not find run object {}", &variable.key.clone(),)
+                            };
 
-                        bail!("Could not retrieve run object: {:#?}", e)
-                    }
-                };
+                            bail!("Could not retrieve run object: {:#?}", e)
+                        }
+                    };
                 // We base64 encode the bytes so the user can handle them when they are injected into the environment.
                 let base64_string = BASE64_STANDARD.encode(retrieved_value.0);
 

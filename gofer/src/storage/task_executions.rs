@@ -229,42 +229,42 @@ pub fn update(
     query.table(TaskExecutionTable::Table);
 
     if let Some(value) = fields.started {
-        query.value(TaskExecutionTable::Started, value.into());
+        query.value(TaskExecutionTable::Started, value);
     }
 
     if let Some(value) = fields.ended {
-        query.value(TaskExecutionTable::Ended, value.into());
+        query.value(TaskExecutionTable::Ended, value);
     }
 
     if let Some(value) = fields.exit_code {
-        query.value(TaskExecutionTable::ExitCode, value.into());
+        query.value(TaskExecutionTable::ExitCode, value);
     }
 
     if let Some(value) = fields.state {
-        query.value(TaskExecutionTable::State, value.into());
+        query.value(TaskExecutionTable::State, value);
     }
 
     if let Some(value) = fields.status {
-        query.value(TaskExecutionTable::Status, value.into());
+        query.value(TaskExecutionTable::Status, value);
     }
 
     if let Some(value) = fields.status_reason {
-        query.value(TaskExecutionTable::StatusReason, value.into());
+        query.value(TaskExecutionTable::StatusReason, value);
     }
 
     if let Some(value) = fields.logs_expired {
-        query.value(TaskExecutionTable::LogsExpired, value.into());
+        query.value(TaskExecutionTable::LogsExpired, value);
     }
 
     if let Some(value) = fields.logs_removed {
-        query.value(TaskExecutionTable::LogsRemoved, value.into());
+        query.value(TaskExecutionTable::LogsRemoved, value);
     }
 
     if let Some(value) = fields.variables {
-        query.value(TaskExecutionTable::Variables, value.into());
+        query.value(TaskExecutionTable::Variables, value);
     }
 
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 

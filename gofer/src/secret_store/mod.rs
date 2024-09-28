@@ -68,8 +68,7 @@ pub fn new(
                 ));
             }
 
-            let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap())
-                .map_err(|err| SecretStoreError::FailedPrecondition(err.to_string()))?;
+            let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap());
             Ok(Box::new(engine))
         }
     }

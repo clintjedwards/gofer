@@ -179,34 +179,34 @@ pub fn update(
     query.table(ExtensionRegistrationTable::Table);
 
     if let Some(value) = fields.image {
-        query.value(ExtensionRegistrationTable::Image, value.into());
+        query.value(ExtensionRegistrationTable::Image, value);
     }
 
     if let Some(value) = fields.registry_auth {
-        query.value(ExtensionRegistrationTable::RegistryAuth, value.into());
+        query.value(ExtensionRegistrationTable::RegistryAuth, value);
     }
 
     if let Some(value) = fields.settings {
-        query.value(ExtensionRegistrationTable::Settings, value.into());
+        query.value(ExtensionRegistrationTable::Settings, value);
     }
 
     if let Some(value) = fields.status {
-        query.value(ExtensionRegistrationTable::Status, value.into());
+        query.value(ExtensionRegistrationTable::Status, value);
     }
 
     if let Some(value) = fields.key_id {
-        query.value(ExtensionRegistrationTable::KeyId, value.into());
+        query.value(ExtensionRegistrationTable::KeyId, value);
     }
 
     if let Some(value) = fields.additional_roles {
-        query.value(ExtensionRegistrationTable::AdditionalRoles, value.into());
+        query.value(ExtensionRegistrationTable::AdditionalRoles, value);
     }
 
-    query.value(ExtensionRegistrationTable::Modified, fields.modified.into());
-
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
+
+    query.value(ExtensionRegistrationTable::Modified, fields.modified);
 
     query.and_where(Expr::col(ExtensionRegistrationTable::ExtensionId).eq(extension_id));
 

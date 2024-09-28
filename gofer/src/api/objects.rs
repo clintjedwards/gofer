@@ -8,7 +8,6 @@ use dropshot::{
     endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path,
     RequestContext, TypedBody,
 };
-use futures::TryFutureExt;
 use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -367,8 +366,7 @@ pub async fn get_run_object(
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
-        })
-        .await?;
+        })?;
 
     let resp = GetRunObjectResponse {
         object: object_value.0,
@@ -476,20 +474,16 @@ pub async fn put_run_object(
         }
     };
 
-    if let Err(e) = api_state
-        .object_store
-        .put(
-            &run_object_store_key(
-                &path.namespace_id,
-                &path.pipeline_id,
-                path.run_id,
-                &body.key,
-            ),
-            body.content,
-            body.force,
-        )
-        .await
-    {
+    if let Err(e) = api_state.object_store.put(
+        &run_object_store_key(
+            &path.namespace_id,
+            &path.pipeline_id,
+            path.run_id,
+            &body.key,
+        ),
+        body.content,
+        body.force,
+    ) {
         return Err(http_error!(
             "Could not insert object into store",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -579,16 +573,12 @@ pub async fn delete_run_object(
         }
     };
 
-    if let Err(e) = api_state
-        .object_store
-        .delete(&run_object_store_key(
-            &path.namespace_id,
-            &path.pipeline_id,
-            path.run_id,
-            &path.key,
-        ))
-        .await
-    {
+    if let Err(e) = api_state.object_store.delete(&run_object_store_key(
+        &path.namespace_id,
+        &path.pipeline_id,
+        path.run_id,
+        &path.key,
+    )) {
         return Err(http_error!(
             "Could not delete object from store",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -733,8 +723,7 @@ pub async fn get_pipeline_object(
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
-        })
-        .await?;
+        })?;
 
     let resp = GetPipelineObjectResponse {
         object: object_value.0,
@@ -838,15 +827,11 @@ pub async fn put_pipeline_object(
         }
     };
 
-    if let Err(e) = api_state
-        .object_store
-        .put(
-            &pipeline_object_store_key(&path.namespace_id, &path.pipeline_id, &body.key),
-            body.content,
-            body.force,
-        )
-        .await
-    {
+    if let Err(e) = api_state.object_store.put(
+        &pipeline_object_store_key(&path.namespace_id, &path.pipeline_id, &body.key),
+        body.content,
+        body.force,
+    ) {
         return Err(http_error!(
             "Could not insert object into store",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -924,15 +909,11 @@ pub async fn delete_pipeline_object(
         }
     };
 
-    if let Err(e) = api_state
-        .object_store
-        .delete(&pipeline_object_store_key(
-            &path.namespace_id,
-            &path.pipeline_id,
-            &path.key,
-        ))
-        .await
-    {
+    if let Err(e) = api_state.object_store.delete(&pipeline_object_store_key(
+        &path.namespace_id,
+        &path.pipeline_id,
+        &path.key,
+    )) {
         return Err(http_error!(
             "Could not delete object from store",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -1068,8 +1049,7 @@ pub async fn get_extension_object(
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
-        })
-        .await?;
+        })?;
 
     let resp = GetExtensionObjectResponse {
         object: object_value.0,
@@ -1171,15 +1151,11 @@ pub async fn put_extension_object(
         }
     };
 
-    if let Err(e) = api_state
-        .object_store
-        .put(
-            &extension_object_store_key(&path.extension_id, &body.key),
-            body.content,
-            body.force,
-        )
-        .await
-    {
+    if let Err(e) = api_state.object_store.put(
+        &extension_object_store_key(&path.extension_id, &body.key),
+        body.content,
+        body.force,
+    ) {
         return Err(http_error!(
             "Could not insert object into store",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -1256,7 +1232,6 @@ pub async fn delete_extension_object(
     if let Err(e) = api_state
         .object_store
         .delete(&extension_object_store_key(&path.extension_id, &path.key))
-        .await
     {
         return Err(http_error!(
             "Could not delete object from store",

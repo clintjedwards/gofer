@@ -203,18 +203,18 @@ pub fn update(
     query.table(ExtensionSubscriptionTable::Table);
 
     if let Some(value) = fields.settings {
-        query.value(ExtensionSubscriptionTable::Settings, value.into());
+        query.value(ExtensionSubscriptionTable::Settings, value);
     }
 
     if let Some(value) = fields.status {
-        query.value(ExtensionSubscriptionTable::Status, value.into());
+        query.value(ExtensionSubscriptionTable::Status, value);
     }
 
     if let Some(value) = fields.status_reason {
-        query.value(ExtensionSubscriptionTable::StatusReason, value.into());
+        query.value(ExtensionSubscriptionTable::StatusReason, value);
     }
 
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 

@@ -318,7 +318,7 @@ impl EventBus {
         tokio::spawn(async move {
             let new_event = Event::new(kind.clone());
 
-            let mut conn = match self.storage.conn().await {
+            let mut conn = match self.storage.write_conn() {
                 Ok(conn) => conn,
                 Err(err) => {
                     error!(error = %err, kind = %new_event.kind,  "Could not publish event; Database error;");
@@ -334,7 +334,7 @@ impl EventBus {
                 }
             };
 
-            match storage::events::insert(&mut conn, &new_event_storage).await {
+            match storage::events::insert(&mut conn, &new_event_storage) {
                 Ok(_) => {}
                 Err(err) => {
                     error!(error = %err, kind = %new_event.kind,  "Could not publish event; Database insert error");

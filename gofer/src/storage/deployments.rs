@@ -275,26 +275,26 @@ pub fn update(
     query.table(DeploymentTable::Table);
 
     if let Some(value) = fields.ended {
-        query.value(DeploymentTable::Ended, value.into());
+        query.value(DeploymentTable::Ended, value);
     }
 
     if let Some(value) = fields.state {
-        query.value(DeploymentTable::State, value.into());
+        query.value(DeploymentTable::State, value);
     }
 
     if let Some(value) = fields.status {
-        query.value(DeploymentTable::Status, value.into());
+        query.value(DeploymentTable::Status, value);
     }
 
     if let Some(value) = fields.status_reason {
-        query.value(DeploymentTable::StatusReason, value.into());
+        query.value(DeploymentTable::StatusReason, value);
     }
 
     if let Some(value) = fields.logs {
-        query.value(DeploymentTable::Logs, value.into());
+        query.value(DeploymentTable::Logs, value);
     }
 
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 

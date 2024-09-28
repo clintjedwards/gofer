@@ -123,11 +123,11 @@ pub fn update(conn: &Connection, id: &str, fields: UpdatableFields) -> Result<()
         .and_where(Expr::col(RoleTable::Id).eq(id));
 
     if let Some(value) = fields.permissions {
-        query.value(RoleTable::Permissions, value.into());
+        query.value(RoleTable::Permissions, value);
     }
 
     if let Some(value) = fields.description {
-        query.value(RoleTable::Description, value.into());
+        query.value(RoleTable::Description, value);
     }
 
     // If no fields were updated, return an error

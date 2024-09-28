@@ -256,14 +256,14 @@ pub fn update(
     query.table(PipelineConfigTable::Table);
 
     if let Some(value) = fields.deprecated {
-        query.value(PipelineConfigTable::Deprecated, value.into());
+        query.value(PipelineConfigTable::Deprecated, value);
     }
 
     if let Some(value) = fields.state {
-        query.value(PipelineConfigTable::State, value.into());
+        query.value(PipelineConfigTable::State, value);
     }
 
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 

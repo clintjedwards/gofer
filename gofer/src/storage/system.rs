@@ -21,6 +21,7 @@ impl From<&Row<'_>> for System {
 #[derive(Iden)]
 enum SystemTable {
     Table,
+    Id,
     BootstrapTokenCreated,
     IgnorePipelineRunEvents,
 }
@@ -59,14 +60,14 @@ pub fn update_system_parameters(
     query.table(SystemTable::Table);
 
     if let Some(value) = bootstrap_token_created {
-        query.value(SystemTable::BootstrapTokenCreated, value.into());
+        query.value(SystemTable::BootstrapTokenCreated, value);
     }
 
     if let Some(value) = ignore_pipeline_run_events {
-        query.value(SystemTable::IgnorePipelineRunEvents, value.into());
+        query.value(SystemTable::IgnorePipelineRunEvents, value);
     }
 
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 
@@ -84,24 +85,21 @@ mod tests {
     use super::*;
     use crate::storage::tests::TestHarness;
 
-    async fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
+    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
         let harness = TestHarness::new();
         let conn = harness.write_conn().unwrap();
 
         Ok((harness, conn))
     }
 
-    #[tokio::test]
-    async fn test_update_and_get_system() {
-        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+    fn test_update_and_get_system() {
+        let (_harness, mut conn) = setup().expect("Failed to set up DB");
 
         update_system_parameters(&mut conn, Some(true), Some(true))
-            .await
             .expect("Failed to update token");
 
-        let system_parameters = get_system_parameters(&mut conn)
-            .await
-            .expect("Failed to retrieve updated token");
+        let system_parameters =
+            get_system_parameters(&mut conn).expect("Failed to retrieve updated token");
 
         assert!(system_parameters.ignore_pipeline_run_events);
         assert!(system_parameters.bootstrap_token_created);

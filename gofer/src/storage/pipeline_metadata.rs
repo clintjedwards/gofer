@@ -148,14 +148,14 @@ pub fn update(
     query.table(PipelineMetadataTable::Table);
 
     if let Some(value) = fields.state {
-        query.value(PipelineMetadataTable::State, value.into());
+        query.value(PipelineMetadataTable::State, value);
     }
 
-    query.value(PipelineMetadataTable::Modified, fields.modified.into());
-
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
+
+    query.value(PipelineMetadataTable::Modified, fields.modified);
 
     query
         .and_where(Expr::col(PipelineMetadataTable::NamespaceId).eq(namespace_id))

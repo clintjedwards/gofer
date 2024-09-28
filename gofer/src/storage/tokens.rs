@@ -180,10 +180,10 @@ pub fn update(conn: &Connection, id: &str, fields: UpdatableFields) -> Result<()
     query.table(TokenTable::Table);
 
     if let Some(value) = fields.disabled {
-        query.value(TokenTable::Disabled, value.into());
+        query.value(TokenTable::Disabled, value);
     }
 
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 

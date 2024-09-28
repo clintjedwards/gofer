@@ -8,7 +8,6 @@ use dropshot::{
     endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path, Query,
     RequestContext, TypedBody,
 };
-use futures::TryFutureExt;
 use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -353,8 +352,7 @@ pub async fn get_global_secret(
                     rqctx.request_id.clone(),
                     Some(err.into())
                 )
-            })
-            .await?;
+            })?;
 
         resp.secret = Some(String::from_utf8_lossy(&secret_value.0).to_string())
     }
@@ -460,15 +458,11 @@ pub async fn put_global_secret(
         }
     };
 
-    if let Err(e) = api_state
-        .secret_store
-        .put(
-            &global_secret_store_key(&body.key),
-            body.content.as_bytes().to_vec(),
-            body.force,
-        )
-        .await
-    {
+    if let Err(e) = api_state.secret_store.put(
+        &global_secret_store_key(&body.key),
+        body.content.as_bytes().to_vec(),
+        body.force,
+    ) {
         return Err(http_error!(
             "Could not insert secret into store",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -542,7 +536,6 @@ pub async fn delete_global_secret(
     if let Err(e) = api_state
         .secret_store
         .delete(&global_secret_store_key(&path.key))
-        .await
     {
         return Err(http_error!(
             "Could not delete object from database",
@@ -748,8 +741,7 @@ pub async fn get_pipeline_secret(
                     rqctx.request_id.clone(),
                     Some(err.into())
                 )
-            })
-            .await?;
+            })?;
 
         resp.secret = Some(String::from_utf8_lossy(&secret_value.0).to_string())
     }
@@ -857,15 +849,11 @@ pub async fn put_pipeline_secret(
         }
     };
 
-    if let Err(e) = api_state
-        .secret_store
-        .put(
-            &pipeline_secret_store_key(&path.namespace_id, &path.pipeline_id, &body.key),
-            body.content.as_bytes().to_vec(),
-            body.force,
-        )
-        .await
-    {
+    if let Err(e) = api_state.secret_store.put(
+        &pipeline_secret_store_key(&path.namespace_id, &path.pipeline_id, &body.key),
+        body.content.as_bytes().to_vec(),
+        body.force,
+    ) {
         return Err(http_error!(
             "Could not insert objects from database",
             http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -943,15 +931,11 @@ pub async fn delete_pipeline_secret(
         }
     };
 
-    if let Err(e) = api_state
-        .secret_store
-        .delete(&pipeline_secret_store_key(
-            &path.namespace_id,
-            &path.pipeline_id,
-            &path.key,
-        ))
-        .await
-    {
+    if let Err(e) = api_state.secret_store.delete(&pipeline_secret_store_key(
+        &path.namespace_id,
+        &path.pipeline_id,
+        &path.key,
+    )) {
         return Err(http_error!(
             "Could not delete object from store",
             http::StatusCode::INTERNAL_SERVER_ERROR,

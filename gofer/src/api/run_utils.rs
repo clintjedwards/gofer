@@ -1384,7 +1384,6 @@ impl Shepherd {
                     expired_run.run_id,
                     &object.key,
                 ))
-                .await
             {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
                     pipeline_id = &self.pipeline.metadata.pipeline_id,

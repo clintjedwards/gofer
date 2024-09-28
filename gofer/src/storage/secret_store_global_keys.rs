@@ -119,10 +119,10 @@ pub fn update(conn: &Connection, key: &str, fields: UpdatableFields) -> Result<(
     query.table(SecretStoreGlobalKeyTable::Table);
 
     if let Some(value) = fields.namespaces {
-        query.value(SecretStoreGlobalKeyTable::Namespaces, value.into());
+        query.value(SecretStoreGlobalKeyTable::Namespaces, value);
     }
 
-    if query.is_empty_values() {
+    if query.get_values().is_empty() {
         return Err(StorageError::NoFieldsUpdated);
     }
 

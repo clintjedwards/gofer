@@ -142,8 +142,8 @@ pub fn list(
         .and_where(Expr::col(RunTable::NamespaceId).eq(namespace_id))
         .and_where(Expr::col(RunTable::PipelineId).eq(pipeline_id))
         .order_by(RunTable::RunId, order)
-        .limit(limit)
-        .offset(offset)
+        .limit(limit as u64)
+        .offset(offset as u64)
         .build_rusqlite(SqliteQueryBuilder);
 
     let mut statement = conn
@@ -265,27 +265,27 @@ pub fn update(
         .and_where(Expr::col(RunTable::RunId).eq(run_id));
 
     if let Some(value) = fields.ended {
-        query.value(RunTable::Ended, value.into());
+        query.value(RunTable::Ended, value);
     }
 
     if let Some(value) = fields.state {
-        query.value(RunTable::State, value.into());
+        query.value(RunTable::State, value);
     }
 
     if let Some(value) = fields.status {
-        query.value(RunTable::Status, value.into());
+        query.value(RunTable::Status, value);
     }
 
     if let Some(value) = fields.status_reason {
-        query.value(RunTable::StatusReason, value.into());
+        query.value(RunTable::StatusReason, value);
     }
 
     if let Some(value) = fields.variables {
-        query.value(RunTable::Variables, value.into());
+        query.value(RunTable::Variables, value);
     }
 
     if let Some(value) = fields.store_objects_expired {
-        query.value(RunTable::StoreObjectsExpired, value.into());
+        query.value(RunTable::StoreObjectsExpired, value);
     }
 
     // If no fields were updated, return an error
