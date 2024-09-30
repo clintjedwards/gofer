@@ -1,7 +1,7 @@
 use crate::storage::{map_rusqlite_error, StorageError};
-use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
+use tokio_rusqlite::{Connection, Row};
 
 #[derive(Clone, Debug, Default)]
 pub struct SecretStoreGlobalKey {
@@ -33,7 +33,7 @@ pub struct UpdatableFields {
     pub namespaces: Option<String>,
 }
 
-pub fn insert(
+pub async fn insert(
     conn: &Connection,
     secret_store_global_key: &SecretStoreGlobalKey,
 ) -> Result<(), StorageError> {
@@ -51,8 +51,9 @@ pub fn insert(
         ])
         .build_rusqlite(SqliteQueryBuilder);
 
-    conn.execute(sql.as_str(), &*values.as_params())
-        .map_err(|e| map_rusqlite_error(e, &sql))?;
+    conn.call(|conn| conn.execute(sql.as_str(), &*values.as_params()))
+        .map_err(|e| map_rusqlite_error(e, &sql))
+        .await?;
 
     Ok(())
 }

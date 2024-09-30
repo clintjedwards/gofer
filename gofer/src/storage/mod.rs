@@ -39,10 +39,10 @@ pub mod tokens;
 use anyhow::Result;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{Connection, Transaction};
 use rust_embed::RustEmbed;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs::File, io, path::Path};
+use tokio_rusqlite::{Connection, Error, ErrorCode, Transaction, TransactionBehavior};
 
 #[derive(RustEmbed)]
 #[folder = "src/storage/migrations"]
@@ -78,11 +78,11 @@ pub enum StorageError {
 /// Rusqlite Errors are determined by database error code. We map these to the specific code so that
 /// when we come back with a database error we can detect which one happened.
 /// See the codes here: https://www.sqlite.org/rescode.html
-fn map_rusqlite_error(e: rusqlite::Error, query: &str) -> StorageError {
+fn map_rusqlite_error(e: Error, query: &str) -> StorageError {
     match e {
-        rusqlite::Error::QueryReturnedNoRows => StorageError::NotFound,
-        rusqlite::Error::SqliteFailure(error, err_str) => match error.code {
-            rusqlite::ErrorCode::ConstraintViolation => StorageError::Exists,
+        Error::QueryReturnedNoRows => StorageError::NotFound,
+        Error::SqliteFailure(error, err_str) => match error.code {
+            ErrorCode::ConstraintViolation => StorageError::Exists,
             _ => StorageError::GenericDBError {
                 code: Some(error.to_string()),
                 message: format!("Unmapped error occurred; {}", err_str.unwrap_or_default()),
@@ -176,7 +176,7 @@ impl Db {
             .get()
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))?;
 
-        Ok(*conn)
+        Ok(conn)
     }
 
     /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
@@ -188,7 +188,7 @@ impl Db {
             .get()
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))?;
 
-        Ok(*conn)
+        Ok(conn)
     }
 
     /// We always open transactions with the Immediate type. This causes sqlite to immediately hold a lock for that
@@ -197,9 +197,9 @@ impl Db {
     /// where we'll open a transaction, make a bunch of read calls and then finally a write call only to realize that
     /// the underlying data has changed because the transaction was deferred and another writer had it's way with
     /// the database.
-    pub fn open_tx<'a>(&self, conn: &'a mut Connection) -> Result<Transaction<'a>, StorageError> {
+    pub fn open_tx<'a>(&self, conn: Connection) -> Result<Transaction<'a>, StorageError> {
         let tx = conn
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|e| StorageError::Connection(format!("Could not open transaction: {:?}", e)));
 
         tx

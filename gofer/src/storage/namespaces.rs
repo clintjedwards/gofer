@@ -1,7 +1,7 @@
 use crate::storage::{epoch_milli, map_rusqlite_error, StorageError};
-use rusqlite::{Connection, Row};
 use sea_query::{Expr, Iden, Query, SqliteQueryBuilder};
 use sea_query_rusqlite::RusqliteBinder;
+use tokio_rusqlite::{Connection, Row};
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace {
@@ -51,7 +51,10 @@ impl Default for UpdatableFields {
     }
 }
 
-pub fn insert(conn: &Connection, namespace: &Namespace) -> Result<(), StorageError> {
+pub fn insert(
+    conn: &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>,
+    namespace: &Namespace,
+) -> Result<(), StorageError> {
     let (sql, values) = Query::insert()
         .into_table(NamespaceTable::Table)
         .columns([
@@ -174,7 +177,13 @@ mod tests {
     use super::*;
     use crate::storage::tests::TestHarness;
 
-    fn setup() -> Result<(TestHarness, Connection), Box<dyn std::error::Error>> {
+    fn setup() -> Result<
+        (
+            TestHarness,
+            r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>,
+        ),
+        Box<dyn std::error::Error>,
+    > {
         let harness = TestHarness::new();
         let mut conn = harness.write_conn().unwrap();
 
@@ -186,7 +195,7 @@ mod tests {
             modified: "some_time_mod".into(),
         };
 
-        insert(&mut conn, &namespace)?;
+        insert(&conn, &namespace)?;
 
         Ok((harness, conn))
     }
@@ -219,7 +228,7 @@ mod tests {
             modified: "some_other_time".into(),
         };
 
-        insert(&mut conn, &new_namespace).expect("Failed to insert namespace");
+        insert(&conn, &new_namespace).expect("Failed to insert namespace");
 
         let retrieved_namespace = get(&mut conn, "new_id").expect("Failed to retrieve namespace");
 

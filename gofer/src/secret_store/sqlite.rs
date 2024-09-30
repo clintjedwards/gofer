@@ -7,12 +7,12 @@ use anyhow::{anyhow, bail, Result};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rand::{rngs::OsRng, RngCore};
-use rusqlite::{Connection, Transaction};
 use sea_query::SqliteQueryBuilder;
 use sea_query::{ColumnDef, Expr, Iden, Query, Table};
 use sea_query_rusqlite::RusqliteBinder;
 use serde::Deserialize;
 use std::{fs::File, io, path::Path};
+use tokio_rusqlite::{Connection, Error, ErrorCode, Transaction, TransactionBehavior};
 use tracing::{error, instrument};
 
 const NONCE_SIZE: usize = 12; // Standard nonce size for AES-GCM
@@ -42,11 +42,11 @@ pub struct Engine {
 /// Rusqlite Errors are determined by database error code. We map these to the specific code so that
 /// when we come back with a database error we can detect which one happened.
 /// See the codes here: https://www.sqlite.org/rescode.html
-fn map_rusqlite_error(e: rusqlite::Error, query: &str) -> SecretStoreError {
+fn map_rusqlite_error(e: Error, query: &str) -> SecretStoreError {
     match e {
-        rusqlite::Error::QueryReturnedNoRows => SecretStoreError::NotFound,
-        rusqlite::Error::SqliteFailure(error, err_str) => match error.code {
-            rusqlite::ErrorCode::ConstraintViolation => SecretStoreError::Exists,
+        Error::QueryReturnedNoRows => SecretStoreError::NotFound,
+        Error::SqliteFailure(error, err_str) => match error.code {
+            ErrorCode::ConstraintViolation => SecretStoreError::Exists,
             _ => SecretStoreError::GenericDBError {
                 code: Some(error.to_string()),
                 message: format!("Unmapped error occurred; {}", err_str.unwrap_or_default()),
@@ -152,7 +152,7 @@ impl Engine {
             .get()
             .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))?;
 
-        Ok(*conn)
+        Ok(conn)
     }
 
     /// Grab a write connection. Only one write connection is shared as sqlite only supports a single
@@ -164,7 +164,7 @@ impl Engine {
             .get()
             .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))?;
 
-        Ok(*conn)
+        Ok(conn)
     }
 
     /// We always open transactions with the Immediate type. This causes sqlite to immediately hold a lock for that
@@ -178,7 +178,7 @@ impl Engine {
         conn: &'a mut Connection,
     ) -> Result<Transaction<'a>, SecretStoreError> {
         let tx = conn
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|e| {
                 SecretStoreError::Connection(format!("Could not open transaction: {:?}", e))
             });
@@ -273,8 +273,8 @@ impl SecretStore for Engine {
         let insert_result = conn.execute(sql.as_str(), &*values.as_params());
 
         if let Err(e) = insert_result {
-            if let rusqlite::Error::SqliteFailure(ref err, _) = e {
-                if err.code == rusqlite::ErrorCode::ConstraintViolation {
+            if let Error::SqliteFailure(ref err, _) = e {
+                if err.code == ErrorCode::ConstraintViolation {
                     if force {
                         let (update_sql, update_values) = Query::update()
                             .table(SecretTable::Table)
