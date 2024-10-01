@@ -180,7 +180,7 @@ impl Cli {
                 Cell::new(duration(run.started as i64, run.ended as i64)),
                 Cell::new(run.state).fg(colorize_status_text_comfy(run.state)),
                 Cell::new(run.status).fg(colorize_status_text_comfy(run.status)),
-                Cell::new(run.initiator.id),
+                Cell::new(run.initiator.user),
             ]);
         }
 

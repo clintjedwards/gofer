@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/clintjedwards/avail/v2 v2.0.1
-	github.com/clintjedwards/gofer/sdk/go v0.0.0-20240727090259-c90bf5070f4d
+	github.com/clintjedwards/gofer/sdk/go v0.0.0-20241001160123-c1aed51a9fff
 	github.com/rs/zerolog v1.33.0
 )
 
@@ -16,6 +16,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 )

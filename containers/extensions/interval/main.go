@@ -100,6 +100,11 @@ type extension struct {
 }
 
 func newExtension() *extension {
+	config, err := extsdk.GetExtensionSystemConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not parse system configuration")
+	}
+
 	// When the extension starts Gofer injects the config settings into the environment under the prefix
 	// `GOFER_EXTENSION_CONFIG_`. First we retrieve those config values so that we can store them for later use.
 	minDurationStr := extsdk.GetConfigFromEnv(ConfigMinInterval)
@@ -115,17 +120,32 @@ func newExtension() *extension {
 	// Since this extension spins up go-routines we define a way that it can quickly shut them all down.
 	parentContext, quitAllSubscriptions := context.WithCancel(context.Background())
 
-	config, err := extsdk.GetExtensionSystemConfig()
-	if err != nil {
-		log.Fatal().Err(err).Msg("could not parse system configuration")
-	}
-
 	extension := &extension{
 		minInterval:          minDuration,
 		parentContext:        parentContext,
 		quitAllSubscriptions: quitAllSubscriptions,
 		subscriptions:        map[subscriptionID]*subscription{},
 		systemConfig:         config,
+	}
+
+	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Could not query subscriptions from Gofer host")
+	}
+	// TODO: Eventually we should make this more intelligent to prevent thundering herd problems. But for right now
+	// this should suffice.
+	for _, subscription := range subscriptions {
+		// We just call the internal subscribe function here since it does all the validation we'd have to redo either
+		// way.
+		err := extension.Subscribe(context.Background(), extsdk.SubscriptionRequest{
+			NamespaceId:                subscription.NamespaceId,
+			PipelineId:                 subscription.PipelineId,
+			PipelineSubscriptionId:     subscription.SubscriptionId,
+			PipelineSubscriptionParams: subscription.Settings,
+		})
+		if err != nil {
+			log.Fatal().Str("err", err.Message).Msg("Could not restore subscription")
+		}
 	}
 
 	return extension
@@ -139,13 +159,7 @@ func (e *extension) startInterval(ctx context.Context,
 	log := log.With().Str("namespace_id", namespace).Str("pipeline_id", pipeline).
 		Str("pipeline_subscription_id", pipelineExtensionLabel).Logger()
 
-	scheme := "http://"
-
-	if e.systemConfig.UseTLS {
-		scheme = "https://"
-	}
-
-	client, err := sdk.NewClientWithHeaders(scheme+e.systemConfig.GoferHost, e.systemConfig.Secret, sdk.GoferAPIVersion0)
+	client, err := sdk.NewClientWithHeaders(e.systemConfig.GoferHost, e.systemConfig.Secret, e.systemConfig.UseTLS, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Error().Err(err).Msg("Could not establish Gofer client")
 	}
@@ -164,14 +178,15 @@ func (e *extension) startInterval(ctx context.Context,
 			}
 			defer resp.Body.Close()
 
-			if resp.StatusCode < 200 || resp.StatusCode > 299 {
-				log.Error().Int("status_code", resp.StatusCode).Msg("could not start new run; received non 2xx status code")
-				continue
-			}
-
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				log.Error().Err(err).Msg("could not read response body while attempting to start run")
+				continue
+			}
+
+			if resp.StatusCode < 200 || resp.StatusCode > 299 {
+				log.Error().Bytes("message", body).Int("status_code", resp.StatusCode).
+					Msg("could not start new run; received non 2xx status code")
 				continue
 			}
 

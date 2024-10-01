@@ -4,7 +4,7 @@ mod object;
 
 use crate::cli::{
     colorize_status_text, colorize_status_text_comfy, dependencies, duration,
-    humanize_relative_duration, Cli,
+    humanize_relative_duration, Cli, TitleCase,
 };
 use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand};
@@ -287,7 +287,7 @@ impl Cli {
                 Cell::new(format!(
                     "{} by {}",
                     humanize_relative_duration(run.started).unwrap_or("Never".into()),
-                    run.initiator.id
+                    run.initiator.user.title()
                 )),
                 Cell::new(format!(
                     "{} {}",
@@ -354,8 +354,8 @@ impl Cli {
     {%- endif -%}
     {%- endfor -%}
   {%- endif %}
-
   {%- if has_subscriptions %}
+
     🗘 Extension Subscriptions:
       {{ subscriptions }}
   {%- endif %}

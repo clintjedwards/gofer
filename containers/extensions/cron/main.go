@@ -41,6 +41,30 @@ func newExtension() extension {
 		subscriptions: map[subscriptionID]*subscription{},
 	}
 
+	config, err := extsdk.GetExtensionSystemConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not parse system configuration")
+	}
+	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Could not query subscriptions from Gofer host")
+	}
+	// TODO: Eventually we should make this more intelligent to prevent thundering herd problems. But for right now
+	// this should suffice.
+	for _, subscription := range subscriptions {
+		// We just call the internal subscribe function here since it does all the validation we'd have to redo either
+		// way.
+		err := extension.Subscribe(context.Background(), extsdk.SubscriptionRequest{
+			NamespaceId:                subscription.NamespaceId,
+			PipelineId:                 subscription.PipelineId,
+			PipelineSubscriptionId:     subscription.SubscriptionId,
+			PipelineSubscriptionParams: subscription.Settings,
+		})
+		if err != nil {
+			log.Fatal().Str("err", err.Message).Msg("Could not restore subscription")
+		}
+	}
+
 	go func() {
 		for {
 			time.Sleep(checkInterval)
@@ -169,13 +193,7 @@ func (e *extension) ExternalEvent(_ context.Context, _ extsdk.ExternalEventReque
 func (e *extension) checkTimeFrames() {
 	config, _ := extsdk.GetExtensionSystemConfig()
 
-	scheme := "http://"
-
-	if config.UseTLS {
-		scheme = "https://"
-	}
-
-	client, err := sdk.NewClientWithHeaders(scheme+config.GoferHost, config.Secret, sdk.GoferAPIVersion0)
+	client, err := sdk.NewClientWithHeaders(config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not initialize client while attempting to check time frames")
 	}
@@ -194,14 +212,15 @@ func (e *extension) checkTimeFrames() {
 			}
 			defer resp.Body.Close()
 
-			if resp.StatusCode < 200 || resp.StatusCode > 299 {
-				log.Error().Int("status_code", resp.StatusCode).Msg("could not start new run; received non 2xx status code")
-				continue
-			}
-
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				log.Error().Err(err).Msg("could not read response body while attempting to start run")
+				continue
+			}
+
+			if resp.StatusCode < 200 || resp.StatusCode > 299 {
+				log.Error().Bytes("message", body).Int("status_code", resp.StatusCode).
+					Msg("could not start new run; received non 2xx status code")
 				continue
 			}
 

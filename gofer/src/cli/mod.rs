@@ -417,3 +417,26 @@ fn validate_identifier(value: &str) -> Result<()> {
 
     Ok(())
 }
+
+trait TitleCase {
+    fn title(&self) -> String;
+}
+
+impl TitleCase for str {
+    /// Convert string to title case.
+    fn title(&self) -> String {
+        self.split_whitespace()
+            .map(|word| {
+                let mut chars = word.chars();
+                match chars.next() {
+                    None => String::new(),
+                    Some(first_char) => {
+                        first_char.to_uppercase().collect::<String>()
+                            + &chars.as_str().to_lowercase()
+                    }
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}

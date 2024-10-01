@@ -75,11 +75,11 @@ run-hurl-tests:
 > @cd gofer
 > @export GOFER_WEB_API__LOG_LEVEL=debug
 > @export GOFER_WEB_DEVELOPMENT__BYPASS_AUTH=false
-> @cargo run --bin gofer -- service start > /dev/null 2>&1 &
+> @cargo run --bin gofer -- service start &
 
 > echo -n "Waiting for server to start responding..."
-> @while ! curl -o /dev/null -s -H "gofer-api-version: v0" --fail --connect-timeout 5 http://localhost:8080/api/system/metadata; do
-> 	@sleep 1;
+> while ! curl -o /dev/null -s -H "gofer-api-version: v0" --fail --connect-timeout 5 http://localhost:8080/api/system/metadata; do
+> 	sleep 1;
 > done;
 
 > @cd tests
