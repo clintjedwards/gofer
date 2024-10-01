@@ -83,7 +83,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
+            .write_conn()
             .await
             .context("Could not open connection to database")?;
 
@@ -307,7 +307,7 @@ impl Shepherd {
             task.clone(),
         );
 
-        let mut conn = match self.api_state.storage.conn().await {
+        let mut conn = match self.api_state.storage.write_conn().await {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -735,7 +735,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
+            .write_conn()
             .await
             .context("Could not open connection to database")?;
 
@@ -798,7 +798,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
+            .write_conn()
             .await
             .context("Could not open connection to database")?;
 
@@ -847,7 +847,7 @@ impl Shepherd {
         let mut conn = self
             .api_state
             .storage
-            .conn()
+            .write_conn()
             .await
             .context("Could not open connection to database")?;
 
@@ -1253,7 +1253,7 @@ impl Shepherd {
     async fn handle_run_object_expiry(self) {
         let limit = self.api_state.config.object_store.run_object_expiry;
 
-        let mut conn = match self.api_state.storage.conn().await {
+        let mut conn = match self.api_state.storage.write_conn().await {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1452,7 +1452,7 @@ impl Shepherd {
     async fn handle_run_log_expiry(self) {
         let limit = self.api_state.config.api.task_execution_log_retention;
 
-        let mut conn = match self.api_state.storage.conn().await {
+        let mut conn = match self.api_state.storage.write_conn().await {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,

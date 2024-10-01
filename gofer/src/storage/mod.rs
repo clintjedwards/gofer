@@ -5,17 +5,14 @@
 //!
 //! ## Transactions
 //!
-//! Transactions are handled by calling `begin` on [`Db::conn`] like so:
+//! Transactions are handled by calling `open_tx` like so:
 //!
 //! ```ignore
-//! let mut tx = match conn.begin().await.unwrap();
+//! let mut tx = storage.open_tx().await;
 //! let some_db_call(&mut tx).await;
 //! let some_other_db_call(&mut tx).await;
 //! tx.commit() // Make sure you call commit or changes made inside the transaction wont be changed.
 //! ```
-//! The tx object consumes the conn object preventing any further calls outside the transaction for the scope of
-//! tx.
-//!
 pub mod deployments;
 pub mod events;
 pub mod extension_registrations;
@@ -36,7 +33,11 @@ pub mod tasks;
 pub mod tokens;
 
 use anyhow::Result;
-use sqlx::{migrate, pool::PoolConnection, Pool, Sqlite, SqlitePool};
+use sqlx::{
+    migrate, pool::PoolConnection, sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, Pool,
+    Sqlite, Transaction,
+};
+use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs::File, io, ops::Deref, path::Path};
 
@@ -102,7 +103,8 @@ fn map_sqlx_error(e: sqlx::Error, query: &str) -> StorageError {
 
 #[derive(Debug, Clone)]
 pub struct Db {
-    pool: Pool<Sqlite>,
+    write_pool: Pool<Sqlite>,
+    read_pool: Pool<Sqlite>,
 }
 
 // Create file if not exists.
@@ -118,42 +120,87 @@ impl Db {
     pub async fn new(path: &str) -> Result<Self> {
         touch_file(Path::new(path)).unwrap();
 
-        let connection_pool = SqlitePool::connect(&format!("file:{}", path))
-            .await
-            .unwrap();
+        // We create two different pools of connections. The read pool has many connections and is high concurrency.
+        // The write pool is essentially a single connection in which only one write can be made at a time.
+        // Not using this paradigm may result in sqlite "database is locked(error: 5)" errors because of the
+        // manner in which sqlite handles transactions.
+        let connect_options = SqliteConnectOptions::from_str(&format!("sqlite://{}", path))
+            .unwrap()
+            // * journal_mode: Turns on WAL mode which increases concurrency and reliability.
+            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            // * synchronous: Tells sqlite to not sync to disk as often and specifically only focus on syncing at critcal
+            //   junctures. This makes sqlite speedier and also has no downside because we have WAL mode.
+            .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+            // * foreign_keys: Turns on relational style foreign keys. A must have.
+            .foreign_keys(true)
+            // * busy_timeout: How long should a sqlite query try before it returns an error. Very helpful to avoid
+            .busy_timeout(std::time::Duration::from_secs(5));
 
-        // Setting PRAGMAs
-        sqlx::query("PRAGMA journal_mode = WAL;")
-            .execute(&connection_pool)
+        let read_pool = SqlitePoolOptions::new()
+            .max_connections(10)
+            .connect_with(connect_options.clone())
             .await?;
-
-        sqlx::query("PRAGMA busy_timeout = 5000;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA foreign_keys = ON;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA strict = ON;")
-            .execute(&connection_pool)
+        let write_pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(connect_options)
             .await?;
 
         migrate!("src/storage/migrations")
-            .run(&connection_pool)
+            .run(&write_pool)
             .await
             .unwrap();
 
         Ok(Db {
-            pool: connection_pool,
+            write_pool,
+            read_pool,
         })
     }
 
-    pub async fn conn(&self) -> Result<PoolConnection<Sqlite>, StorageError> {
-        self.pool
+    pub async fn write_conn(&self) -> Result<PoolConnection<Sqlite>, StorageError> {
+        self.write_pool
             .acquire()
             .await
             .map_err(|e| StorageError::Connection(format!("{:?}", e)))
+    }
+
+    pub async fn read_conn(&self) -> Result<PoolConnection<Sqlite>, StorageError> {
+        self.read_pool
+            .acquire()
+            .await
+            .map_err(|e| StorageError::Connection(format!("{:?}", e)))
+    }
+
+    pub async fn open_tx(&self) -> Result<Transaction<'_, Sqlite>, StorageError> {
+        let mut tx = self
+            .write_pool
+            .begin()
+            .await
+            .map_err(|e| StorageError::Connection(format!("{:?}", e)))?;
+
+        // This is a hack to support IMMEDIATE transaction locks within sqlite.
+        //
+        // Sqlite by default opens all transactions as deferred, this means that the transaction is registered, but
+        // no locks are held until a write operation comes in. The downside to this is that if during the connection
+        // there is a write to the database the entire transaction is void (and the error returned is "Sqlite DB busy").
+        // To overcome this usually you can set the transaction to instead be IMMEDIATE, which would establish a lock
+        // that would then prevent write access to the database until the transaction was finished.
+        //
+        // The further issue is that the sqlx library does not yet support opening transactions in IMMEDIATE mode.
+        // To subvert that, we instead force a write operation to a dummy table to force the transaction to grab a lock
+        // before it can be preempted by some other write.
+        //
+        // Relevant ticket here: https://github.com/launchbadge/sqlx/issues/481
+        sqlx::query("INSERT INTO transaction_mutex (id, lock) VALUES (1, 1);")
+            .execute(tx.as_mut())
+            .await
+            .map_err(|e| {
+                StorageError::Connection(format!(
+                "Error while attempting to start transaction using transaction_mutex table; {:?}",
+                e
+            ))
+            })?;
+
+        Ok(tx)
     }
 }
 

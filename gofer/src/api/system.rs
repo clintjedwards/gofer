@@ -82,7 +82,7 @@ pub async fn get_system_preferences(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -150,7 +150,7 @@ pub async fn update_system_preferences(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(

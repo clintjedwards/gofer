@@ -109,7 +109,7 @@ mod tests {
 
     async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
         let harness = TestHarness::new().await;
-        let mut conn = harness.conn().await.unwrap();
+        let mut conn = harness.write_conn().await.unwrap();
 
         let namespace = Namespace {
             id: "default".into(),

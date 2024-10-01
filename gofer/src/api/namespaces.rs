@@ -11,7 +11,6 @@ use dropshot::{
 use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::sync::Arc;
 use tracing::error;
 
@@ -121,7 +120,7 @@ pub async fn list_namespaces(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -194,7 +193,7 @@ pub async fn get_namespace(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -291,7 +290,7 @@ pub async fn create_namespace(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -394,7 +393,7 @@ pub async fn update_namespace(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -407,18 +406,6 @@ pub async fn update_namespace(
     };
 
     let updatable_fields = storage::namespaces::UpdatableFields::from(body.clone());
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open transaction to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
 
     if let Err(e) = storage::namespaces::update(&mut tx, &path.namespace_id, updatable_fields).await
     {
@@ -508,7 +495,7 @@ pub async fn delete_namespace(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -557,7 +544,7 @@ pub async fn create_default_namespace(api_state: Arc<ApiState>) -> Result<()> {
         "The original namespace created automatically by the Gofer system.",
     );
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);

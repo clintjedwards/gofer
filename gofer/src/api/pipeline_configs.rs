@@ -16,7 +16,6 @@ use gofer_sdk::config;
 use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::sync::Arc;
 use std::{collections::HashMap, str::FromStr};
 use strum::{Display, EnumString};
@@ -242,25 +241,13 @@ pub async fn list_configs(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
@@ -365,23 +352,11 @@ pub async fn get_config(
 
     let mut version = path.version;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
@@ -538,25 +513,13 @@ pub async fn register_config(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
@@ -575,7 +538,7 @@ pub async fn register_config(
                 return Err(http_error!(
                     "Could not insert object into database",
                     http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id,
+                    rqctx.request_id.clone(),
                     Some(e.into())
                 ));
             }
@@ -593,7 +556,7 @@ pub async fn register_config(
                     return Err(http_error!(
                         "Could not get latest config object from database",
                         http::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id,
+                        rqctx.request_id.clone(),
                         Some(e.into())
                     ));
                 }
@@ -653,7 +616,7 @@ pub async fn register_config(
                 return Err(http_error!(
                     "Could not insert object into database",
                     http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id,
+                    rqctx.request_id.clone(),
                     Some(e.into())
                 ));
             }
@@ -674,7 +637,7 @@ pub async fn register_config(
                     return Err(http_error!(
                         "Could not insert task object into database",
                         http::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id,
+                        rqctx.request_id.clone(),
                         Some(e.into())
                     ));
                 }
@@ -743,23 +706,11 @@ pub async fn deploy_config(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
@@ -914,7 +865,7 @@ pub async fn deploy_config(
     // TODO(clintjedwards): Eventually this will become a more intricate function which will allow for more
     // complex deployment types.
 
-    let mut tx = match conn.begin().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
@@ -971,6 +922,18 @@ pub async fn deploy_config(
     }
 
     if let Err(e) = tx.commit().await {
+        let mut conn = match api_state.storage.write_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                return Err(http_error!(
+                    "Could not open connection to database",
+                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        };
+
         let status_reason_json = serde_json::to_string(&deployments::StatusReason {
             reason: deployments::StatusReasonType::Unknown,
             description: format!("Deployment has failed due to an internal error; {:#?}", e),
@@ -1000,6 +963,18 @@ pub async fn deploy_config(
             rqctx.request_id.clone(),
             Some(e.into())
         ));
+    };
+
+    let mut conn = match api_state.storage.write_conn().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return Err(http_error!(
+                "Could not open connection to database",
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
     };
 
     // Complete deployment
@@ -1071,25 +1046,13 @@ pub async fn delete_config(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }

@@ -278,7 +278,7 @@ impl EventBus {
     pub async fn try_publish(&self, kind: Kind) -> Result<Event> {
         let new_event = Event::new(kind.clone());
 
-        let mut conn = self.storage.conn().await.with_context(|| {
+        let mut conn = self.storage.write_conn().await.with_context(|| {
             format!(
                 "could not publish event for kind '{}'; Database error;",
                 new_event.kind,
@@ -320,7 +320,7 @@ impl EventBus {
         tokio::spawn(async move {
             let new_event = Event::new(kind.clone());
 
-            let mut conn = match self.storage.conn().await {
+            let mut conn = match self.storage.write_conn().await {
                 Ok(conn) => conn,
                 Err(err) => {
                     error!(error = %err, kind = %new_event.kind,  "Could not publish event; Database error;");
@@ -362,7 +362,7 @@ async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), stora
     let mut offset = 0;
     let mut total_pruned = 0;
 
-    let mut conn = match storage.conn().await {
+    let mut conn = match storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             error!("could not prune events; connection error");

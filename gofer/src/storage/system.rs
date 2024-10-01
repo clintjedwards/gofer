@@ -73,7 +73,7 @@ mod tests {
 
     async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
         let harness = TestHarness::new().await;
-        let conn = harness.conn().await.unwrap();
+        let conn = harness.write_conn().await.unwrap();
 
         Ok((harness, conn))
     }

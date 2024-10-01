@@ -13,7 +13,6 @@ use rand::{distributions::Alphanumeric, Rng};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sqlx::Acquire;
 use std::{collections::HashMap, ops::Add, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -209,7 +208,7 @@ pub async fn list_tokens(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -282,7 +281,7 @@ pub async fn get_token_by_id(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -352,7 +351,7 @@ pub async fn whoami(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -448,7 +447,7 @@ pub async fn create_token(
 
     let body = body.into_inner();
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -552,7 +551,7 @@ pub async fn delete_token(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -611,23 +610,11 @@ pub async fn create_bootstrap_token(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
@@ -763,7 +750,7 @@ pub async fn update_token(
         ));
     }
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(

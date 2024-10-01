@@ -13,7 +13,6 @@ use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sqlx::Acquire;
 use std::sync::Arc;
 use strum::{Display, EnumString};
 use tracing::error;
@@ -381,7 +380,7 @@ impl ApiState {
             ));
         }
 
-        let mut conn = match self.storage.conn().await {
+        let mut conn = match self.storage.read_conn().await {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(crate::http_error!(
@@ -603,7 +602,7 @@ impl ApiState {
         hasher.update(token.as_bytes());
         let hash = format!("{:x}", hasher.finalize());
 
-        let mut conn = match self.storage.conn().await {
+        let mut conn = match self.storage.read_conn().await {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(crate::http_error!(
@@ -715,7 +714,7 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
 
     let roles = vec![bootstrap_role, admin_role, user_role];
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -772,7 +771,7 @@ pub async fn list_roles(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -861,7 +860,7 @@ pub async fn get_role(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -967,7 +966,7 @@ pub async fn create_role(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1121,7 +1120,7 @@ pub async fn update_role(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1138,18 +1137,6 @@ pub async fn update_role(
         Err(e) => {
             return Err(http_error!(
                 "Could not serialize role for database insertion",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open transaction to database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
@@ -1282,23 +1269,11 @@ pub async fn delete_role(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open transaction to database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())

@@ -1,3 +1,10 @@
+-- This table exists to act as a replacement for not being able to make a Transaction BEGIN IMMEDIATE.
+-- Read storage/mod.rs for more.
+CREATE TABLE IF NOT EXISTS transaction_mutex (
+    id          TEXT    NOT NULL,
+    lock        INTEGER NOT NULL CHECK (lock IN (0, 1))
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS namespaces (
     id          TEXT    NOT NULL,
     name        TEXT    NOT NULL,

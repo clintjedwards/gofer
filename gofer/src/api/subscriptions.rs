@@ -13,7 +13,6 @@ use dropshot::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::sync::Arc;
 use std::{collections::HashMap, str::FromStr};
 use strum::{Display, EnumString};
@@ -232,7 +231,7 @@ pub async fn list_subscriptions(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -315,7 +314,7 @@ pub async fn get_subscription(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -409,7 +408,7 @@ pub async fn update_subscription(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -523,7 +522,7 @@ pub async fn create_subscription(
         ));
     };
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -550,18 +549,6 @@ pub async fn create_subscription(
                     Some(err.into())
                 )
             })?;
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
 
     if let Err(e) =
         storage::pipeline_metadata::get(&mut tx, &path.namespace_id, &path.pipeline_id).await
@@ -689,23 +676,11 @@ pub async fn delete_subscription(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open database transaction",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())

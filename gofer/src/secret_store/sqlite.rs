@@ -3,12 +3,16 @@ use aes_gcm::{
     aead::{generic_array::GenericArray, Aead},
     Aes256Gcm, KeyInit,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use futures::TryFutureExt;
 use rand::{rngs::OsRng, RngCore};
 use serde::Deserialize;
-use sqlx::{pool::PoolConnection, Execute, Pool, Sqlite, SqlitePool};
+use sqlx::{
+    pool::PoolConnection, sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, Execute, Pool,
+    Sqlite, Transaction,
+};
+use std::str::FromStr;
 use std::{fs::File, io, ops::Deref, path::Path};
 use tracing::{error, instrument};
 
@@ -24,7 +28,8 @@ pub struct Config {
 
 #[derive(Debug, Clone)]
 pub struct Engine {
-    pub pool: Pool<Sqlite>,
+    pub write_pool: Pool<Sqlite>,
+    pub read_pool: Pool<Sqlite>,
     pub encryption_key: String,
 }
 
@@ -72,51 +77,104 @@ impl Engine {
 
         touch_file(Path::new(&config.path)).unwrap();
 
-        let connection_pool = SqlitePool::connect(&format!("file:{}", &config.path))
+        // We create two different pools of connections. The read pool has many connections and is high concurrency.
+        // The write pool is essentially a single connection in which only one write can be made at a time.
+        // Not using this paradigm may result in sqlite "database is locked(error: 5)" errors because of the
+        // manner in which sqlite handles transactions.
+        let connect_options = SqliteConnectOptions::from_str(&format!("sqlite://{}", config.path))
+            .unwrap()
+            // * journal_mode: Turns on WAL mode which increases concurrency and reliability.
+            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            // * synchronous: Tells sqlite to not sync to disk as often and specifically only focus on syncing at critcal
+            //   junctures. This makes sqlite speedier and also has no downside because we have WAL mode.
+            .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+            // * foreign_keys: Turns on relational style foreign keys. A must have.
+            .foreign_keys(true)
+            // * busy_timeout: How long should a sqlite query try before it returns an error. Very helpful to avoid
+            .busy_timeout(std::time::Duration::from_secs(5));
+
+        let read_pool = SqlitePoolOptions::new()
+            .max_connections(10)
+            .connect_with(connect_options.clone())
             .await
-            .context("Could not open Sqlite database")?;
+            .unwrap();
 
-        // Setting PRAGMAs
-        sqlx::query("PRAGMA journal_mode = WAL;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA busy_timeout = 5000;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA foreign_keys = ON;")
-            .execute(&connection_pool)
-            .await?;
-
-        sqlx::query("PRAGMA strict = ON;")
-            .execute(&connection_pool)
-            .await?;
+        let write_pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(connect_options)
+            .await
+            .unwrap();
 
         sqlx::query(
-            r#"CREATE TABLE IF NOT EXISTS secrets (
-            key   TEXT NOT NULL,
-            value BLOB NOT NULL,
-            PRIMARY KEY (key)
-        ) STRICT;"#,
+            r#"
+            CREATE TABLE IF NOT EXISTS transaction_mutex (
+                id          TEXT    NOT NULL,
+                lock        INTEGER NOT NULL CHECK (lock IN (0, 1))
+            ) STRICT;
+
+            CREATE TABLE IF NOT EXISTS secrets (
+                key   TEXT NOT NULL,
+                value BLOB NOT NULL,
+                PRIMARY KEY (key)
+            ) STRICT;"#,
         )
-        .execute(&connection_pool)
+        .execute(&write_pool)
         .await
-        .context("Could not create schema")?;
+        .unwrap();
 
         Ok(Engine {
-            pool: connection_pool,
+            write_pool,
+            read_pool,
             encryption_key: config.encryption_key,
         })
     }
 
-    pub async fn conn(&self) -> Result<PoolConnection<Sqlite>, SecretStoreError> {
-        self.pool.acquire().await.map_err(|e| {
-            SecretStoreError::Connection(format!(
-                "Could not establish connection to secret store {:?}",
+    pub async fn write_conn(&self) -> Result<PoolConnection<Sqlite>, SecretStoreError> {
+        self.write_pool
+            .acquire()
+            .await
+            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))
+    }
+
+    pub async fn read_conn(&self) -> Result<PoolConnection<Sqlite>, SecretStoreError> {
+        self.read_pool
+            .acquire()
+            .await
+            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))
+    }
+
+    #[allow(dead_code)]
+    pub async fn open_tx(&self) -> Result<Transaction<'_, Sqlite>, SecretStoreError> {
+        let mut tx = self
+            .write_pool
+            .begin()
+            .await
+            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))?;
+
+        // This is a hack to support IMMEDIATE transaction locks within sqlite.
+        //
+        // Sqlite by default opens all transactions as deferred, this means that the transaction is registered, but
+        // no locks are held until a write operation comes in. The downside to this is that if during the connection
+        // there is a write to the database the entire transaction is void (and the error returned is "Sqlite DB busy").
+        // To overcome this usually you can set the transaction to instead be IMMEDIATE, which would establish a lock
+        // that would then prevent write access to the database until the transaction was finished.
+        //
+        // The further issue is that the sqlx library does not yet support opening transactions in IMMEDIATE mode.
+        // To subvert that, we instead force a write operation to a dummy table to force the transaction to grab a lock
+        // before it can be preempted by some other write.
+        //
+        // Relevant ticket here: https://github.com/launchbadge/sqlx/issues/481
+        sqlx::query("INSERT INTO transaction_mutex (id, lock) VALUES (1, 1);")
+            .execute(tx.as_mut())
+            .await
+            .map_err(|e| {
+                SecretStoreError::Connection(format!(
+                "Error while attempting to start transaction using transaction_mutex table; {:?}",
                 e
             ))
-        })
+            })?;
+
+        Ok(tx)
     }
 }
 
@@ -159,7 +217,7 @@ pub fn decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
 #[async_trait]
 impl SecretStore for Engine {
     async fn get(&self, key: &str) -> Result<Value, SecretStoreError> {
-        let mut conn = self.conn().await?;
+        let mut conn = self.read_conn().await?;
 
         let query = sqlx::query_as("SELECT value FROM secrets WHERE key = ?;").bind(key);
 
@@ -184,7 +242,7 @@ impl SecretStore for Engine {
                 SecretStoreError::Internal("Could not encrypt value while inserting secret".into())
             })?;
 
-        let mut conn = self.conn().await?;
+        let mut conn = self.write_conn().await?;
 
         let query = sqlx::query("INSERT INTO secrets (key, value) VALUES (?, ?);")
             .bind(key)
@@ -230,7 +288,7 @@ impl SecretStore for Engine {
     }
 
     async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, SecretStoreError> {
-        let mut conn = self.conn().await?;
+        let mut conn = self.read_conn().await?;
 
         let query = sqlx::query_as::<_, (String,)>("SELECT key FROM secrets WHERE key LIKE ?%;")
             .bind(prefix);
@@ -248,7 +306,7 @@ impl SecretStore for Engine {
     }
 
     async fn delete(&self, key: &str) -> Result<(), SecretStoreError> {
-        let mut conn = self.conn().await?;
+        let mut conn = self.write_conn().await?;
 
         let query = sqlx::query("DELETE FROM secrets WHERE key = ?;").bind(key);
 

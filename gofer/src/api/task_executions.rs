@@ -444,7 +444,7 @@ pub async fn list_task_executions(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -536,7 +536,7 @@ pub async fn get_task_execution(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -630,7 +630,7 @@ pub async fn cancel_task_execution(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -716,7 +716,7 @@ pub async fn get_logs(
         tokio_tungstenite::WebSocketStream::from_raw_socket(conn.into_inner(), Role::Server, None)
             .await;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(websocket_error(
@@ -982,7 +982,7 @@ pub async fn delete_logs(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1152,7 +1152,7 @@ pub async fn attach_task_execution(
         &path.task_id,
     );
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(websocket_error(

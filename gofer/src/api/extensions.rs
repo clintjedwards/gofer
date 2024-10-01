@@ -19,7 +19,6 @@ use futures::{SinkExt, StreamExt};
 use reqwest::{header, Client};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Acquire;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
 use tracing::{debug, error, info};
@@ -316,19 +315,11 @@ async fn start_extension(
         token_roles,
     );
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
             bail!("Could not open connection to database")
-        }
-    };
-
-    let mut tx = match conn.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            error!(message = "Could not open transaction to database", error = %e);
-            bail!("Could not open transaction to database")
         }
     };
 
@@ -589,7 +580,7 @@ async fn start_extension(
 /// the initial extension information so it can check for connectivity and store the network location.
 /// This information will eventually be used in other parts of the API to communicate with said extensions.
 pub async fn start_extensions(api_state: Arc<ApiState>) -> Result<()> {
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -651,7 +642,7 @@ pub async fn stop_extensions(api_state: Arc<ApiState>) {
 /// This function doesn't start those extensions it just makes sure they are registered
 /// so the more broad [`start_extensions`] function can start them.
 pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             error!(message = "Could not open connection to database", error = %e);
@@ -914,7 +905,7 @@ pub async fn install_extension(
         )
     })?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1106,7 +1097,7 @@ pub async fn update_extension(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1204,7 +1195,7 @@ pub async fn uninstall_extension(
 
     let _ = api_state.extensions.remove(&path.extension_id);
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
@@ -1461,7 +1452,7 @@ pub async fn list_extension_subscriptions(
         )
         .await?;
 
-    let mut conn = match api_state.storage.conn().await {
+    let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(

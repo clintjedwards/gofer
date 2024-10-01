@@ -288,7 +288,7 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
     );
 
     // Load our current value for ignore_pipeline_run_events into memory.
-    let mut conn = match storage.conn().await {
+    let mut conn = match storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             bail!(
@@ -973,7 +973,7 @@ pub async fn interpolate_vars(
                 });
             }
             InterpolationKind::GlobalSecret => {
-                let mut conn = match api_state.storage.conn().await {
+                let mut conn = match api_state.storage.read_conn().await {
                     Ok(conn) => conn,
                     Err(e) => {
                         bail!("Could not establish a connection to the database during interpolation; {:#?}", e);
