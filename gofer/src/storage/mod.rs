@@ -13,6 +13,8 @@
 //! let some_other_db_call(&mut tx).await;
 //! tx.commit() // Make sure you call commit or changes made inside the transaction wont be changed.
 //! ```
+//! Sqlite optimizations started from: https://kerkour.com/sqlite-for-servers
+//!
 pub mod deployments;
 pub mod events;
 pub mod extension_registrations;

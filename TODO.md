@@ -80,6 +80,7 @@ dev state.
 
 # Small things I'll probably never get around to.
 
+* Change the sqlite write_pool to be guarded by a mutex. This would avoid very obvious errors.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
 code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers
 in one very large file or split them up). https://github.com/oxidecomputer/dropshot/issues/1069 should fix this.

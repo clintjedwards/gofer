@@ -428,6 +428,9 @@ impl Shepherd {
             return;
         };
 
+        // We drop the write connection here to not hold onto it while we wait for events.
+        drop(conn);
+
         // <task_execution_id> => <status>
         let mut completed_tasks = HashMap::new();
 
@@ -486,6 +489,18 @@ impl Shepherd {
                             continue;
                         }
 
+                        let mut conn = match self.api_state.storage.write_conn().await {
+                            Ok(conn) => conn,
+                            Err(e) => {
+                                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                                    run_id = self.run.run_id,
+                                    task_id = task.id,
+                                    error = %e, "Could not establish connection to database");
+                                return;
+                            }
+                        };
+
                         if let Err(e) = self
                             .set_task_execution_complete(
                                 &mut conn,
@@ -503,6 +518,9 @@ impl Shepherd {
                                    task_execution_id = task.id.clone(),
                                    "Could not recieve event from event stream during run monitoring.");
                         }
+
+                        // Close the connection here to not hold it during publish.
+                        drop(conn);
 
                         self.api_state.event_bus.clone().publish(
                             event_utils::Kind::CompletedTaskExecution {
@@ -531,6 +549,18 @@ impl Shepherd {
             }
         }
 
+        let mut conn = match self.api_state.storage.write_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                       pipeline_id = &self.pipeline.metadata.pipeline_id,
+                       run_id = self.run.run_id,
+                       task_id = task.id,
+                       error = %e, "Could not establish connection to database");
+                return;
+            }
+        };
+
         if let Err(e) = self
             .set_task_execution_state(
                 &mut conn,
@@ -547,11 +577,25 @@ impl Shepherd {
             return;
         };
 
+        drop(conn);
+
         // Then check to make sure that the parents all finished in the required states. If not
         // we'll mark this task as skipped since it's requirements for running weren't met.
         if let Err(e) =
             self.task_dependencies_satisfied(completed_tasks, &new_task_execution.task.depends_on)
         {
+            let mut conn = match self.api_state.storage.write_conn().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                            pipeline_id = &self.pipeline.metadata.pipeline_id,
+                            run_id = self.run.run_id,
+                            task_id = task.id,
+                            error = %e, "Could not establish connection to database");
+                    return;
+                }
+            };
+
             if let Err(e) = self
                 .set_task_execution_complete(
                     &mut conn,
@@ -600,6 +644,18 @@ impl Shepherd {
         {
             Ok(env_vars) => env_vars,
             Err(e) => {
+                let mut conn = match self.api_state.storage.write_conn().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                            pipeline_id = &self.pipeline.metadata.pipeline_id,
+                            run_id = self.run.run_id,
+                            task_id = task.id,
+                            error = %e, "Could not establish connection to database");
+                        return;
+                    }
+                };
+
                 if let Err(e) = self
                     .set_task_execution_complete(
                         &mut conn,
@@ -662,6 +718,18 @@ impl Shepherd {
             })
             .await
         {
+            let mut conn = match self.api_state.storage.write_conn().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                            pipeline_id = &self.pipeline.metadata.pipeline_id,
+                            run_id = self.run.run_id,
+                            task_id = task.id,
+                            error = %e, "Could not establish connection to database");
+                    return;
+                }
+            };
+
             if let Err(e) = self
                 .set_task_execution_complete(
                     &mut conn,
@@ -695,6 +763,18 @@ impl Shepherd {
             "Started task execution"
         );
 
+        let mut conn = match self.api_state.storage.write_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                            pipeline_id = &self.pipeline.metadata.pipeline_id,
+                            run_id = self.run.run_id,
+                            task_id = task.id,
+                            error = %e, "Could not establish connection to database");
+                return;
+            }
+        };
+
         if let Err(e) = storage::task_executions::update(
             &mut conn,
             &self.pipeline.metadata.namespace_id,
@@ -716,6 +796,9 @@ impl Shepherd {
                 error = %e, "Could not update task execution while attempting to launch task");
             return;
         }
+
+        // Drop the database connection so we don't hold it while long running processes below are happening.
+        drop(conn);
 
         let mut new_task_execution = new_task_execution;
         new_task_execution.state = task_executions::State::Running;
@@ -979,8 +1062,6 @@ impl Shepherd {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
         let task_id = task_execution.task_id.clone();
 
-        let mut conn = self.api_state.storage.write_conn().await?;
-
         loop {
             tokio::select! {
                 _ = interval.tick() => {
@@ -997,6 +1078,9 @@ impl Shepherd {
                     {
                         Ok(resp) => resp,
                         Err(err) => {
+                            let mut conn = self.api_state.storage.write_conn().await?;
+
+
                             if let Err(e) = self
                                 .set_task_execution_complete(
                                     &mut conn,
@@ -1020,6 +1104,8 @@ impl Shepherd {
 
                     match response.state {
                         scheduler::ContainerState::Unknown => {
+                            let mut conn = self.api_state.storage.write_conn().await?;
+
                             if let Err(e) = self
                                 .set_task_execution_complete(
                                     &mut conn,
@@ -1049,6 +1135,8 @@ impl Shepherd {
                             if let Some(code) = response.exit_code {
                                 exit_code = code
                             }
+
+                            let mut conn = self.api_state.storage.write_conn().await?;
 
                             if exit_code == 0 {
                                 if let Err(e) = self
@@ -1140,6 +1228,8 @@ impl Shepherd {
 
                         // If we try to cancel the task and it doesn't actually cancel we still need to mark
                         // it as cancelled.
+
+                        let mut conn = self.api_state.storage.write_conn().await?;
 
                         if let Err(e) = self
                             .set_task_execution_complete(
@@ -1271,7 +1361,7 @@ impl Shepherd {
     async fn handle_run_object_expiry(self) {
         let limit = self.api_state.config.object_store.run_object_expiry;
 
-        let mut conn = match self.api_state.storage.write_conn().await {
+        let mut conn = match self.api_state.storage.read_conn().await {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1301,6 +1391,8 @@ impl Shepherd {
                 return;
             }
         };
+
+        drop(conn);
 
         // if there aren't enough runs to reach the limit there is nothing to remove
         if limit > runs.len() as u64 {
@@ -1338,6 +1430,17 @@ impl Shepherd {
                         pipeline_id = &self.pipeline.metadata.pipeline_id,
                         run_id = self.run.run_id,
                         error = %e, "Could not serialize run id while attempting to process run expiry");
+                    return;
+                }
+            };
+
+            let mut conn = match self.api_state.storage.read_conn().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not establish connection to database while attempting to wait for run finish");
                     return;
                 }
             };
@@ -1388,6 +1491,17 @@ impl Shepherd {
                     pipeline_id = &self.pipeline.metadata.pipeline_id,
                     run_id = self.run.run_id,
                     error = %e, "Could not serialize run id while attempting to process run expiry");
+                return;
+            }
+        };
+
+        let mut conn = match self.api_state.storage.write_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not establish connection to database while attempting to wait for run finish");
                 return;
             }
         };
@@ -1470,7 +1584,7 @@ impl Shepherd {
     async fn handle_run_log_expiry(self) {
         let limit = self.api_state.config.api.task_execution_log_retention;
 
-        let mut conn = match self.api_state.storage.write_conn().await {
+        let mut conn = match self.api_state.storage.read_conn().await {
             Ok(conn) => conn,
             Err(e) => {
                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -1500,6 +1614,9 @@ impl Shepherd {
                 return;
             }
         };
+
+        // Don't hold connection over loop point.
+        drop(conn);
 
         // if there aren't enough runs to reach the limit there is nothing to remove
         if limit > runs.len() as u64 {
@@ -1537,6 +1654,17 @@ impl Shepherd {
                         pipeline_id = &self.pipeline.metadata.pipeline_id,
                         run_id = self.run.run_id,
                         error = %e, "Could not serialize run id while attempting to process run log expiry");
+                    return;
+                }
+            };
+
+            let mut conn = match self.api_state.storage.read_conn().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not establish connection to database while attempting to wait for run finish");
                     return;
                 }
             };
@@ -1589,6 +1717,17 @@ impl Shepherd {
         let mut chopping_block_ids = HashMap::new();
 
         loop {
+            let mut conn = match self.api_state.storage.read_conn().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not establish connection to database while attempting to wait for run finish");
+                    return;
+                }
+            };
+
             let task_executions_raw = match storage::task_executions::list(
                 &mut conn,
                 &self.pipeline.metadata.namespace_id,
@@ -1606,6 +1745,9 @@ impl Shepherd {
                     return;
                 }
             };
+
+            // Don't hold database connection across loop.
+            drop(conn);
 
             for execution in task_executions_raw.iter() {
                 let execution_state = match task_executions::State::from_str(&execution.state) {
@@ -1658,6 +1800,17 @@ impl Shepherd {
             }
 
             removed_files.push(log_path.to_string_lossy().to_string());
+
+            let mut conn = match self.api_state.storage.write_conn().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not establish connection to database while attempting to wait for run finish");
+                    return;
+                }
+            };
 
             if let Err(e) = storage::task_executions::update(
                 &mut conn,
