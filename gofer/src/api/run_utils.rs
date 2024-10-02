@@ -8,6 +8,7 @@ use crate::{
 use anyhow::{bail, Context, Result};
 use futures::StreamExt;
 use gofer_sdk::config::pipeline_secret;
+use sqlx::SqliteConnection;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{atomic, Arc, Barrier};
@@ -237,9 +238,21 @@ impl Shepherd {
             }
         }
 
+        let mut conn = match self.api_state.storage.write_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not establish connection to database while attempting to complete complete run");
+                return;
+            }
+        };
+
         if is_cancelled {
             let result = self
                 .set_run_complete(
+                    &mut conn,
                     runs::Status::Cancelled,
                     Some(runs::StatusReason {
                         reason: runs::StatusReasonType::AbnormalExit,
@@ -262,6 +275,7 @@ impl Shepherd {
         if is_failed {
             let result = self
                 .set_run_complete(
+                    &mut conn,
                     runs::Status::Failed,
                     Some(runs::StatusReason {
                         reason: runs::StatusReasonType::AbnormalExit,
@@ -280,7 +294,10 @@ impl Shepherd {
             return;
         }
 
-        if let Err(e) = self.set_run_complete(runs::Status::Successful, None).await {
+        if let Err(e) = self
+            .set_run_complete(&mut conn, runs::Status::Successful, None)
+            .await
+        {
             error!(
                 namespace_id = &self.pipeline.metadata.namespace_id,
                 pipeline_id = &self.pipeline.metadata.pipeline_id,
@@ -396,7 +413,11 @@ impl Shepherd {
         };
 
         if let Err(e) = self
-            .set_task_execution_state(&new_task_execution, task_executions::State::Waiting)
+            .set_task_execution_state(
+                &mut conn,
+                &new_task_execution,
+                task_executions::State::Waiting,
+            )
             .await
         {
             error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -467,6 +488,7 @@ impl Shepherd {
 
                         if let Err(e) = self
                             .set_task_execution_complete(
+                                &mut conn,
                                 &task.id,
                                 1,
                                 task_executions::Status::Cancelled,
@@ -510,7 +532,11 @@ impl Shepherd {
         }
 
         if let Err(e) = self
-            .set_task_execution_state(&new_task_execution, task_executions::State::Processing)
+            .set_task_execution_state(
+                &mut conn,
+                &new_task_execution,
+                task_executions::State::Processing,
+            )
             .await
         {
             error!(namespace_id = &self.pipeline.metadata.namespace_id,
@@ -528,6 +554,7 @@ impl Shepherd {
         {
             if let Err(e) = self
                 .set_task_execution_complete(
+                    &mut conn,
                     &new_task_execution.task_id,
                     1,
                     task_executions::Status::Skipped,
@@ -575,6 +602,7 @@ impl Shepherd {
             Err(e) => {
                 if let Err(e) = self
                     .set_task_execution_complete(
+                        &mut conn,
                         &new_task_execution.task_id,
                         1,
                         task_executions::Status::Failed,
@@ -636,6 +664,7 @@ impl Shepherd {
         {
             if let Err(e) = self
                 .set_task_execution_complete(
+                    &mut conn,
                     &new_task_execution.task_id,
                     1,
                     task_executions::Status::Failed,
@@ -727,18 +756,12 @@ impl Shepherd {
 
     async fn set_task_execution_complete(
         &self,
+        conn: &mut SqliteConnection,
         id: &str,
         exit_code: u8,
         status: task_executions::Status,
         reason: Option<task_executions::StatusReason>,
     ) -> Result<()> {
-        let mut conn = self
-            .api_state
-            .storage
-            .write_conn()
-            .await
-            .context("Could not open connection to database")?;
-
         let status_reason = reason.map(|value| {
             serde_json::to_string(&value)
                 .context("Could not parse field 'reason' into storage value")
@@ -755,7 +778,7 @@ impl Shepherd {
         };
 
         storage::task_executions::update(
-            &mut conn,
+            conn,
             &self.pipeline.metadata.namespace_id,
             &self.pipeline.metadata.pipeline_id,
             self.run.run_id.try_into()?,
@@ -781,6 +804,7 @@ impl Shepherd {
 
     async fn set_run_complete(
         &self,
+        conn: &mut SqliteConnection,
         status: runs::Status,
         reason: Option<runs::StatusReason>,
     ) -> Result<()> {
@@ -794,13 +818,6 @@ impl Shepherd {
                 value
             },
         );
-
-        let mut conn = self
-            .api_state
-            .storage
-            .write_conn()
-            .await
-            .context("Could not open connection to database")?;
 
         let status_reason = reason.map(|value| {
             serde_json::to_string(&value)
@@ -817,7 +834,7 @@ impl Shepherd {
         };
 
         storage::runs::update(
-            &mut conn,
+            conn,
             &self.pipeline.metadata.namespace_id,
             &self.pipeline.metadata.pipeline_id,
             self.run.run_id.try_into()?,
@@ -841,23 +858,17 @@ impl Shepherd {
 
     async fn set_task_execution_state(
         &self,
+        conn: &mut SqliteConnection,
         task_execution: &task_executions::TaskExecution,
         state: task_executions::State,
     ) -> Result<()> {
-        let mut conn = self
-            .api_state
-            .storage
-            .write_conn()
-            .await
-            .context("Could not open connection to database")?;
-
         let fields = storage::task_executions::UpdatableFields {
             state: Some(state.to_string()),
             ..Default::default()
         };
 
         storage::task_executions::update(
-            &mut conn,
+            conn,
             &self.pipeline.metadata.namespace_id,
             &self.pipeline.metadata.pipeline_id,
             self.run.run_id.try_into()?,
@@ -968,6 +979,8 @@ impl Shepherd {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
         let task_id = task_execution.task_id.clone();
 
+        let mut conn = self.api_state.storage.write_conn().await?;
+
         loop {
             tokio::select! {
                 _ = interval.tick() => {
@@ -986,6 +999,7 @@ impl Shepherd {
                         Err(err) => {
                             if let Err(e) = self
                                 .set_task_execution_complete(
+                                    &mut conn,
                                     &task_id,
                                     1,
                                     task_executions::Status::Unknown,
@@ -1008,6 +1022,7 @@ impl Shepherd {
                         scheduler::ContainerState::Unknown => {
                             if let Err(e) = self
                                 .set_task_execution_complete(
+                                    &mut conn,
                                     &task_id,
                                     1,
                                     task_executions::Status::Unknown,
@@ -1038,6 +1053,7 @@ impl Shepherd {
                             if exit_code == 0 {
                                 if let Err(e) = self
                                     .set_task_execution_complete(
+                                        &mut conn,
                                         &task_id,
                                         exit_code,
                                         task_executions::Status::Successful,
@@ -1049,6 +1065,7 @@ impl Shepherd {
                                 };
                             } else if let Err(e) = self
                                 .set_task_execution_complete(
+                                    &mut conn,
                                     &task_id,
                                     exit_code,
                                     task_executions::Status::Failed,
@@ -1126,6 +1143,7 @@ impl Shepherd {
 
                         if let Err(e) = self
                             .set_task_execution_complete(
+                                &mut conn,
                                 &task_id,
                                 1,
                                 task_executions::Status::Cancelled,
