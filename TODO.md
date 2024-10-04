@@ -1,25 +1,5 @@
 # Large Projects on the dockett
 
-## Extensions should have object store access.
-
-Extensions might need object store access due to the fact that they don't keep any state. Right now what we do is
-we keep the state that we need to track subscriptions inside Gofer and on startup we have Gofer repopulate the
-extension with those subscriptions. But this is short-sighted as Gofer tries to restore subscriptions as fast as possible
-and has no idea what may be good or bad for the extension itself.
-
-Instead we should give the extension access to the object store such that it can save it's record of subscriptions
-and then on startup it can decide how it should handle things.
-
-The original example for why this is needed is the interval example. If all subscriptions were restored at the same time
-then the interval would start for each pipeline at the same time. Causing possible horrible thundering herd issues. Instead
-it would be better for the interval extension to reach out and restore it's own subscriptions at a pace that it can
-determine and in what order it wants to. This allows the interval to introduce jitter and other algorithms to better
-spread the load.
-
-- Extensions aren't particularly durable. If a container orchestrator moves them (to potentially make room
-  for other things) they lose all state. Maybe we can allow extensions to use Gofer's object store such that they can persist state.
-  It's possible that on Extension startup we can have it grab objects and then just return an error on the health endpoint until it's ready.
-
 ## Github Extension followthrough
 
 A great feature to bake into the Github extension would be the ability for it to act as a communicator with the
@@ -44,7 +24,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-* Fix database write errors. We need to account for the fact that there is only one writer at any given time.
 * Implement CLI for extension debug feature.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.

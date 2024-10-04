@@ -654,6 +654,9 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
         .await
         .context("Could not list extensions while trying to register std extensions")?;
 
+    // Return connection to the pool.
+    drop(conn);
+
     let mut cron_installed = false;
     let mut interval_installed = false;
 
@@ -681,14 +684,12 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
             .try_into()
             .context("Could not serialize registration for extension 'cron'")?;
 
-        let storage_registration: storage::extension_registrations::ExtensionRegistration =
-            registration.try_into().context(
-                "Could not serialize registration into storage object for extension 'cron'",
-            )?;
-
-        storage::extension_registrations::insert(&mut conn, &storage_registration)
-            .await
-            .context("Could not insert registration into storage for extension 'cron'")?;
+        if let Err(e) = install_new_extension(api_state.clone(), &registration).await {
+            let err_str = e.to_string();
+            if !err_str.contains("already exists") {
+                return Err(e);
+            }
+        };
 
         info!(
             name = "cron",
@@ -711,14 +712,12 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
             .try_into()
             .context("Could not serialize registration for extension 'interval'")?;
 
-        let storage_registration: storage::extension_registrations::ExtensionRegistration =
-            registration.try_into().context(
-                "Could not serialize registration into storage object for extension 'interval'",
-            )?;
-
-        storage::extension_registrations::insert(&mut conn, &storage_registration)
-            .await
-            .context("Could not insert registration into storage for extension 'interval'")?;
+        if let Err(e) = install_new_extension(api_state.clone(), &registration).await {
+            let err_str = e.to_string();
+            if !err_str.contains("already exists") {
+                return Err(e);
+            }
+        };
 
         info!(
             name = "interval",
@@ -905,151 +904,24 @@ pub async fn install_extension(
         )
     })?;
 
-    let mut conn = match api_state.storage.write_conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
+    if let Err(e) = install_new_extension(api_state.clone(), &registration).await {
+        let err_str = e.to_string();
+        if !err_str.contains("already exists") {
             return Err(http_error!(
-                "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    // Check to make sure extension doesn't exist already.
-    match storage::extension_registrations::get(&mut conn, &registration.extension_id).await {
-        Ok(_) => {
-            return Err(HttpError::for_bad_request(
-                None,
-                format!(
-                    "extension with id '{}' already exists",
-                    registration.extension_id.clone()
-                ),
-            ));
-        }
-        Err(e) => match e {
-            storage::StorageError::NotFound => {}
-            _ => {
-                return Err(http_error!(
-                    "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(e.into())
-                ));
-            }
-        },
-    };
-
-    // We need to create a new role for the extension so that it has appropriate permissions to perform actions
-    // to aid the user.
-    let new_role = InternalRole {
-        id: extension_role_id(&registration.extension_id),
-        description:
-            "Auto-created role for registered extension; Allows extension to access needful \
-            resources"
-                .to_string(),
-        permissions: vec![
-            // The only write access extensions need is to their own object store so they can use that as a database.
-            InternalPermission {
-                resources: vec![Resource::Extensions(format!(
-                    "^{}$", // Match only exactly extension targets with this name.
-                    registration.extension_id
-                ))],
-                actions: vec![Action::Read, Action::Write, Action::Delete],
-            },
-            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
-            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
-            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
-            // intellectual propety.
-            InternalPermission {
-                resources: vec![
-                    Resource::Configs,
-                    Resource::Deployments,
-                    Resource::Events,
-                    Resource::Namespaces(".*".to_string()),
-                    Resource::Pipelines(".*".to_string()),
-                    Resource::Subscriptions,
-                    Resource::System,
-                    Resource::TaskExecutions,
-                ],
-                actions: vec![Action::Read],
-            },
-        ],
-        system_role: true,
-    };
-
-    let new_role_storage = match new_role.clone().try_into() {
-        Ok(role) => role,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not parse token into storage type while creating role",
+                "Could not install extension",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
-                Some(anyhow::anyhow!("{}", e).into())
+                Some(e.into()),
+                id = registration.extension_id
             ));
         }
     };
-
-    if let Err(e) = storage::roles::insert(&mut conn, &new_role_storage).await {
-        match e {
-            storage::StorageError::Exists => {
-                return Err(HttpError::for_client_error(
-                    None,
-                    http::StatusCode::CONFLICT,
-                    "role entry already exists".into(),
-                ));
-            }
-            _ => {
-                return Err(http_error!(
-                    "Could not insert objects into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(e.into())
-                ));
-            }
-        }
-    };
-
-    api_state
-        .event_bus
-        .clone()
-        .publish(event_utils::Kind::CreatedRole {
-            role_id: new_role.id.clone(),
-        });
 
     let new_extension = start_extension(api_state.clone(), registration.clone())
         .await
         .map_err(|err| {
             http_error!(
                 "Could not start extension",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into()),
-                id = registration.extension_id
-            )
-        })?;
-
-    let new_extension_storage =
-        new_extension
-            .registration
-            .clone()
-            .try_into()
-            .map_err(|err: anyhow::Error| {
-                http_error!(
-                    "Could not serialize objects for database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(err.into()),
-                    id = registration.extension_id
-                )
-            })?;
-
-    storage::extension_registrations::insert(&mut conn, &new_extension_storage)
-        .await
-        .map_err(|err| {
-            http_error!(
-                "Could not insert object into database",
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into()),
@@ -1519,4 +1391,110 @@ pub fn new_extension_client(
     Ok(gofer_sdk::extension::api::Client::new_with_client(
         url, client,
     ))
+}
+
+async fn install_new_extension(
+    api_state: Arc<ApiState>,
+    registration: &Registration,
+) -> Result<()> {
+    let mut conn = api_state.storage.write_conn().await?;
+
+    // Check to make sure extension doesn't exist already.
+    match storage::extension_registrations::get(&mut conn, &registration.extension_id).await {
+        Ok(_) => {
+            bail!(
+                "Extension with id '{}' already exists.",
+                registration.extension_id.clone()
+            );
+        }
+        Err(e) => match e {
+            storage::StorageError::NotFound => {}
+            _ => {
+                bail!("Could not get objects from database; {:#?}", e);
+            }
+        },
+    };
+
+    // We need to create a new role for the extension so that it has appropriate permissions to perform actions
+    // to aid the user.
+    let new_role = InternalRole {
+        id: extension_role_id(&registration.extension_id),
+        description:
+            "Auto-created role for registered extension; Allows extension to access needful \
+            resources"
+                .to_string(),
+        permissions: vec![
+            // The only write access extensions need is to their own object store so they can use that as a database.
+            InternalPermission {
+                resources: vec![Resource::Extensions(format!(
+                    "^{}$", // Match only exactly extension targets with this name.
+                    registration.extension_id
+                ))],
+                actions: vec![Action::Read, Action::Write, Action::Delete],
+            },
+            // Allow extensions to start runs.
+            InternalPermission {
+                resources: vec![
+                    Resource::Namespaces(".*".to_string()),
+                    Resource::Pipelines(".*".to_string()),
+                    Resource::Runs,
+                ],
+                actions: vec![Action::Read, Action::Write],
+            },
+            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
+            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
+            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
+            // intellectual propety.
+            InternalPermission {
+                resources: vec![
+                    Resource::Configs,
+                    Resource::Deployments,
+                    Resource::Events,
+                    Resource::Namespaces(".*".to_string()),
+                    Resource::Pipelines(".*".to_string()),
+                    Resource::Subscriptions,
+                    Resource::System,
+                    Resource::TaskExecutions,
+                ],
+                actions: vec![Action::Read],
+            },
+        ],
+        system_role: true,
+    };
+
+    let new_role_storage = match new_role.clone().try_into() {
+        Ok(role) => role,
+        Err(e) => {
+            bail!("Could not create new role for new extension; {:#?}", e);
+        }
+    };
+
+    if let Err(e) = storage::roles::insert(&mut conn, &new_role_storage).await {
+        match e {
+            storage::StorageError::Exists => {
+                bail!("Could not create new role for new extension; role already exists");
+            }
+            _ => {
+                bail!("Could not insert objects into database; {:#?}", e);
+            }
+        }
+    };
+
+    api_state
+        .event_bus
+        .clone()
+        .publish(event_utils::Kind::CreatedRole {
+            role_id: new_role.id.clone(),
+        });
+
+    let new_extension_storage = registration
+        .clone()
+        .try_into()
+        .map_err(|err: anyhow::Error| {
+            anyhow::anyhow!("Could not serialize objects for database; {:#?}", err)
+        })?;
+
+    storage::extension_registrations::insert(&mut conn, &new_extension_storage).await?;
+
+    Ok(())
 }
