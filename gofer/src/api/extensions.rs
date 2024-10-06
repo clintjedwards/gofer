@@ -1372,8 +1372,8 @@ pub async fn list_extension_subscriptions(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct DebugExtensionResponse {
-    pub debug_info: String,
+pub struct DebugResponse {
+    pub info: String,
 }
 
 /// Dump extension debug information.
@@ -1385,7 +1385,7 @@ pub struct DebugExtensionResponse {
 pub async fn get_extension_debug_info(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<ExtensionPathArgs>,
-) -> Result<HttpResponseOk<DebugExtensionResponse>, HttpError> {
+) -> Result<HttpResponseOk<DebugResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
@@ -1437,8 +1437,8 @@ pub async fn get_extension_debug_info(
         })?
         .into_inner();
 
-    let resp = DebugExtensionResponse {
-        debug_info: debug_response.info,
+    let resp = DebugResponse {
+        info: debug_response.info,
     };
     Ok(HttpResponseOk(resp))
 }

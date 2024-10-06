@@ -108,7 +108,7 @@ func (e *extensionWrapper) debugHandler(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	resp := e.extension.Debug(ctx)
 
-	handleResponse(w, r, resp.Info, http.StatusOK)
+	handleResponse(w, r, resp, http.StatusOK)
 }
 
 func (e *extensionWrapper) infoHandler(w http.ResponseWriter, r *http.Request) {

@@ -459,9 +459,9 @@ type CreateTokenResponse struct {
 	TokenDetails Token `json:"token_details"`
 }
 
-// DebugExtensionResponse defines model for DebugExtensionResponse.
-type DebugExtensionResponse struct {
-	DebugInfo string `json:"debug_info"`
+// DebugResponse defines model for DebugResponse.
+type DebugResponse struct {
+	Info string `json:"info"`
 }
 
 // DeployPipelineConfigResponse defines model for DeployPipelineConfigResponse.
@@ -9405,7 +9405,7 @@ func (r UpdateExtensionResp) StatusCode() int {
 type GetExtensionDebugInfoResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DebugExtensionResponse
+	JSON200      *DebugResponse
 	JSON4XX      *Error
 	JSON5XX      *Error
 }
@@ -12167,7 +12167,7 @@ func ParseGetExtensionDebugInfoResp(rsp *http.Response) (*GetExtensionDebugInfoR
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DebugExtensionResponse
+		var dest DebugResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
