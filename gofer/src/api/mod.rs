@@ -621,6 +621,9 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
     /* /api/extensions/{extension_id}/logs */
     api.register(extensions::get_extension_logs).unwrap();
 
+    /* /api/extensions/{extension_id}/debug */
+    api.register(extensions::get_extension_debug_info).unwrap();
+
     /* /api/extensions/{extension_id}/objects */
     api.register(objects::list_extension_objects).unwrap();
     api.register(objects::put_extension_object).unwrap();

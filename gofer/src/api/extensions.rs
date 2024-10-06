@@ -311,7 +311,7 @@ async fn start_extension(
         &hash.to_string(),
         HashMap::from([("extension_id".into(), registration.extension_id.clone())]),
         0, // Do not expire token.
-        registration.extension_id.clone(),
+        format!("{} (extension)", registration.extension_id.clone()),
         token_roles,
     );
 
@@ -1368,6 +1368,78 @@ pub async fn list_extension_subscriptions(
     }
 
     let resp = ListExtensionSubscriptionsResponse { subscriptions };
+    Ok(HttpResponseOk(resp))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct DebugExtensionResponse {
+    pub debug_info: String,
+}
+
+/// Dump extension debug information.
+#[endpoint(
+    method = GET,
+    path = "/api/extensions/{extension_id}/debug",
+    tags = ["Extensions"],
+)]
+pub async fn get_extension_debug_info(
+    rqctx: RequestContext<Arc<ApiState>>,
+    path_params: Path<ExtensionPathArgs>,
+) -> Result<HttpResponseOk<DebugExtensionResponse>, HttpError> {
+    let api_state = rqctx.context();
+    let path = path_params.into_inner();
+    let _req_metadata = api_state
+        .preflight_check(
+            &rqctx.request,
+            PreflightOptions {
+                bypass_auth: false,
+                admin_only: true,
+                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                action: Action::Read,
+            },
+        )
+        .await?;
+
+    let extension = match api_state.extensions.get(&path.extension_id) {
+        Some(extension) => extension.value().clone(),
+        None => {
+            return Err(HttpError::for_bad_request(
+                None,
+                format!("extension_id '{}' not found", &path.extension_id,),
+            ));
+        }
+    };
+
+    let extension_client = new_extension_client(
+        &extension.url,
+        &extension.secret,
+        api_state.config.extensions.verify_certs,
+    )
+    .map_err(|e| {
+        http_error!(
+            "Could not establish extension client",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    let debug_response = extension_client
+        .debug()
+        .await
+        .map_err(|e| {
+            http_error!(
+                "Could not query extension's debug endpoint",
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id,
+                Some(e.into())
+            )
+        })?
+        .into_inner();
+
+    let resp = DebugExtensionResponse {
+        debug_info: debug_response.info,
+    };
     Ok(HttpResponseOk(resp))
 }
 

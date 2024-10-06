@@ -31,6 +31,9 @@ try to register the same thing twice.
   * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
   and started. This way we can have more accurate running times instead of just leaving it as whenever the server
   restarted.
+  * We can simply look back in the history and grab all task executions and runs that are still open before we
+  start actually processing any new runs.
+  * We can also give the admin a way to manually repair if something goes wrong.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
@@ -51,11 +54,7 @@ execution but mistype the pipeline, you might get an error instead of a "hey tha
 version. I wonder if there is a way we can offer this feature for free for the purposes of extensions. Since extensions with
 the same major version should work, but extensions might all have different minor versions, it would be useful to be able
 to tell Gofer to use a major version of the extension but we always want the latest minor version.
-* Turn off the incoming request in the dropshot logging. Probably check all logging to make sure we need it.
 * Deployments needs a type parameter so when we add extra deployments.
-* Integration tests should use a different database location so we can start fresh all the time and not clobber existing
-dev state.
-
 
 # Small things I'll probably never get around to.
 
@@ -102,7 +101,6 @@ sometimes.
 ### ObjectStore
 
 - We could probably make the default object store pretty good for trival to medium size deployments by implementing a CAS.
-- Maybe there is a library we can use to do this for us? Does BoltDB do some form of deduplicaton?
 
 ### Extensions
 

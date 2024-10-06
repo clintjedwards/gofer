@@ -78,6 +78,15 @@ pub enum ExtensionCommands {
         /// Extension Identifier.
         id: String,
     },
+
+    /// Print debug information for the target extension.
+    ///
+    /// Every extension has a debug endpoint that returns some information that the extension is keeping. It can be
+    /// helpful when debugging an extension to dump this information.
+    Debug {
+        /// Extension Identifier.
+        id: String,
+    },
 }
 
 impl Cli {
@@ -100,6 +109,7 @@ impl Cli {
             ExtensionCommands::Enable { id } => self.extension_enable(&id).await,
             ExtensionCommands::Disable { id } => self.extension_disable(&id).await,
             ExtensionCommands::Logs { id } => self.extension_logs(&id).await,
+            ExtensionCommands::Debug { id } => self.extension_debug(&id).await,
         }
     }
 }
@@ -357,6 +367,19 @@ impl Cli {
             }
         }
 
+        Ok(())
+    }
+
+    pub async fn extension_debug(&self, id: &str) -> Result<()> {
+        let info = self
+            .client
+            .get_extension_debug_info(id)
+            .await
+            .context("Could not successfully retrieve extension debug info from Gofer api")?
+            .into_inner()
+            .debug_info;
+
+        println!("{}", info);
         Ok(())
     }
 }

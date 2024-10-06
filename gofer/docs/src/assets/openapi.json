@@ -284,6 +284,44 @@
         }
       }
     },
+    "/api/extensions/{extension_id}/debug": {
+      "get": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Dump extension debug information.",
+        "operationId": "get_extension_debug_info",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DebugExtensionResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/extensions/{extension_id}/logs": {
       "get": {
         "tags": [
@@ -3743,6 +3781,17 @@
         "required": [
           "secret",
           "token_details"
+        ]
+      },
+      "DebugExtensionResponse": {
+        "type": "object",
+        "properties": {
+          "debug_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "debug_info"
         ]
       },
       "DeployPipelineConfigResponse": {

@@ -3,7 +3,7 @@ module github.com/clintjedwards/gofer/containers/extensions/interval
 go 1.22.3
 
 require (
-	github.com/clintjedwards/gofer/sdk/go v0.0.0-20241001160123-c1aed51a9fff
+	github.com/clintjedwards/gofer/sdk/go v0.0.0-20241004075419-1f9bccdcc63d
 	github.com/rs/zerolog v1.33.0
 )
 
@@ -17,5 +17,5 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
-	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
 )
