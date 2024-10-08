@@ -377,9 +377,12 @@ impl Cli {
             .await
             .context("Could not successfully retrieve extension debug info from Gofer api")?
             .into_inner()
-            .debug_info;
+            .info;
 
-        println!("{}", info);
+        let json_value: serde_json::Value = serde_json::from_str(&info)?;
+        let pretty_json = serde_json::to_string_pretty(&json_value)?;
+
+        println!("{}", pretty_json);
         Ok(())
     }
 }

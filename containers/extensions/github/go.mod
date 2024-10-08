@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0
-	github.com/clintjedwards/gofer/sdk/go v0.0.0-20241001160123-c1aed51a9fff
+	github.com/clintjedwards/gofer/sdk/go v0.0.0-20241008060522-a372fcfdeae7
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v58 v58.0.0
 	github.com/rs/zerolog v1.33.0

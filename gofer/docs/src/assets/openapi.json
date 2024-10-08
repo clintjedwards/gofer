@@ -308,7 +308,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DebugExtensionResponse"
+                  "$ref": "#/components/schemas/DebugResponse"
                 }
               }
             }
@@ -3783,15 +3783,15 @@
           "token_details"
         ]
       },
-      "DebugExtensionResponse": {
+      "DebugResponse": {
         "type": "object",
         "properties": {
-          "debug_info": {
+          "info": {
             "type": "string"
           }
         },
         "required": [
-          "debug_info"
+          "info"
         ]
       },
       "DeployPipelineConfigResponse": {
