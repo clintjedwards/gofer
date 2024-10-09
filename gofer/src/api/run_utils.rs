@@ -81,27 +81,30 @@ impl Shepherd {
             ..Default::default()
         };
 
-        let mut conn = self
-            .api_state
-            .storage
-            .write_conn()
-            .await
-            .context("Could not open connection to database")?;
-
-        if let Err(e) = storage::runs::update(
-            &mut conn,
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            self.run.run_id.try_into().unwrap_or_default(),
-            fields,
-        )
-        .await
+        // Create inner scoper here to drop the conn once we're done with it.
         {
-            bail!(
-                "Could not update run while attempting to start run; {:#?}",
-                e
+            let mut conn = self
+                .api_state
+                .storage
+                .write_conn()
+                .await
+                .context("Could not open connection to database")?;
+
+            if let Err(e) = storage::runs::update(
+                &mut conn,
+                &self.pipeline.metadata.namespace_id,
+                &self.pipeline.metadata.pipeline_id,
+                self.run.run_id.try_into().unwrap_or_default(),
+                fields,
             )
-        };
+            .await
+            {
+                bail!(
+                    "Could not update run while attempting to start run; {:#?}",
+                    e
+                )
+            };
+        }
 
         // Lastly start the run monitor and the launch the task executions. We use a barrier here to make sure
         // that all threads are able to grab event bus listeners at roughly the same point so that they don't
@@ -115,6 +118,9 @@ impl Shepherd {
         let barrier = Arc::new(std::sync::Barrier::new(barrier_threshold));
 
         for task in self.pipeline.config.tasks.values() {
+            // TODO(): Make sure in the DB there is no entry for this already so we account for
+            // if this is a restarted job. If it is we just skip trying to launch it.
+
             let thread_barrier = barrier.clone();
             tokio::spawn(
                 self.clone()

@@ -76,6 +76,11 @@ pub enum Kind {
     },
 
     // Run events
+    QueuedRun {
+        namespace_id: String,
+        pipeline_id: String,
+        run_id: u64,
+    },
     StartedRun {
         namespace_id: String,
         pipeline_id: String,
@@ -231,6 +236,30 @@ impl Event {
     }
 }
 
+/// A wrapper over the tokio broadcast receiver type so we can provide an overlay layer that allows functions the
+/// ability to drain from the historical database events first and then start draining from the event stream.
+///
+/// It works like this:
+///   * Starts by subscribing to the running event stream.
+///   * Allows the caller to seed where they want the event stream to start from by event id. The caller will only
+///     get back events AFTER this ID. We can do this because we use UUIDv7 to provide UUIDs which are orderable.
+///   * It will then query the database in small, memory efficent increments and fill a queue which will supply the
+///     next() calls for the iterator calls.
+///   * When the database has no further entries it will store the id it left off at and then filter through the
+///     event stream only returning ids that are greater than the id it left off at.
+///   * If there user just wants the latest event_stream, then they can simply omit the start_from param and we'll
+///     simply pass along the underlying Receiver events.
+pub struct Receiver {
+    /// The last ID that was given to the user. We keep this so that we can understand where to filter or query from.
+    last_id_read: Option<String>,
+
+    /// The event stream receiver end. This will be used only if the historical events have been exhaused.
+    event_stream: broadcast::Receiver<Event>,
+
+    /// Just a marker to tell when we've switched to the event stream vs querying historical events from the database.
+    database_exhausted: bool,
+}
+
 /// The event bus is a central handler for all things related to events with the application.
 /// It allows a subscriber to listen to events and a sender to emit events.
 /// This is useful as it provides an internal interface for functions to listen for events.
@@ -268,8 +297,16 @@ impl EventBus {
 
     /// Returns a channel receiver end which can be used to listen to events.
     /// The receiver will drop automatically when out of scope.
-    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
-        self.broadcast_channel.subscribe()
+    ///
+    /// You can provide an event ID to start from and the receiver returned will return events starting from that id.
+    pub fn subscribe(&self, start_from: Option<String>) -> Receiver {
+        let event_stream = self.broadcast_channel.subscribe();
+
+        Receiver {
+            last_id_read: start_from,
+            event_stream,
+            database_exhausted: !start_from.is_some(),
+        }
     }
 
     /// Allows caller to emit a new event to the eventbus. Returns the resulting
