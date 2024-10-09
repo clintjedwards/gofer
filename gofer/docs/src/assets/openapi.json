@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Gofer",
-    "version": "0.7.3"
+    "version": "0.8.1"
   },
   "paths": {
     "/api/events": {
@@ -4612,6 +4612,36 @@
           {
             "type": "object",
             "properties": {
+              "queued_run": {
+                "type": "object",
+                "properties": {
+                  "namespace_id": {
+                    "type": "string"
+                  },
+                  "pipeline_id": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "namespace_id",
+                  "pipeline_id",
+                  "run_id"
+                ]
+              }
+            },
+            "required": [
+              "queued_run"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
               "started_run": {
                 "type": "object",
                 "properties": {
@@ -5900,6 +5930,11 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0
+          },
+          "event_id": {
+            "nullable": true,
+            "description": "The UUID of the QueuedRun event for this run. Essentially pointing to the start of the run in the event stream.\n\nThis is used internally to help with run recovery.",
+            "type": "string"
           },
           "initiator": {
             "description": "Information about what started the run.",

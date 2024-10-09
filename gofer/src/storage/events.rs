@@ -50,6 +50,25 @@ pub async fn list(
         .await
 }
 
+pub async fn list_by_id(
+    conn: &mut SqliteConnection,
+    id: &str,
+    limit: i64,
+) -> Result<Vec<Event>, StorageError> {
+    let query = sqlx::query_as::<_, Event>(
+        "SELECT id, kind, details, emitted FROM events WHERE id >= ? ORDER BY id LIMIT ?;",
+    )
+    .bind(id)
+    .bind(limit);
+
+    let sql = query.sql();
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Event, StorageError> {
     let query =
         sqlx::query_as::<_, Event>("SELECT id, kind, details, emitted FROM events WHERE id = ?;")

@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS runs (
     variables               TEXT    NOT NULL,
     token_id                TEXT,
     store_objects_expired   INTEGER NOT NULL CHECK (store_objects_expired IN (0, 1)),
+    event_id                TEXT,
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace_id, pipeline_id) REFERENCES pipeline_metadata(namespace_id, pipeline_id) ON DELETE CASCADE,
     FOREIGN KEY (namespace_id, pipeline_id, pipeline_config_version) REFERENCES pipeline_configs(namespace_id, pipeline_id, version),

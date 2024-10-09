@@ -24,16 +24,8 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-* Implement CLI for extension debug feature.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
-* We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.
-  * Purely for recovering lost containers, we can usually query the engine to ask it what time this container stopped
-  and started. This way we can have more accurate running times instead of just leaving it as whenever the server
-  restarted.
-  * We can simply look back in the history and grab all task executions and runs that are still open before we
-  start actually processing any new runs.
-  * We can also give the admin a way to manually repair if something goes wrong.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Minify CSS when we release for frontend.
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
@@ -55,9 +47,14 @@ version. I wonder if there is a way we can offer this feature for free for the p
 the same major version should work, but extensions might all have different minor versions, it would be useful to be able
 to tell Gofer to use a major version of the extension but we always want the latest minor version.
 * Deployments needs a type parameter so when we add extra deployments.
+* The final piece of the run shepard needs to implement a run queue to fully transition over to event driven. 
+  It should use task leasing to avoid any stuck processors.
 
 # Small things I'll probably never get around to.
 
+* The recover_run function needs to account for the fact that sometimes the event_id that are mentioned within runs
+  might not exist anymore. This function should also not return any errors but instead just log them and move on. It
+  should try its best despite any failures.
 * Change the sqlite write_pool to be guarded by a mutex. This would avoid very obvious errors.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
 code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers

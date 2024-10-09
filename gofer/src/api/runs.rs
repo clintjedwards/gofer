@@ -183,6 +183,11 @@ pub struct Run {
 
     /// Whether run level objects are deleted.
     pub store_objects_expired: bool,
+
+    /// The UUID of the QueuedRun event for this run. Essentially pointing to the start of the run in the event stream.
+    ///
+    /// This is used internally to help with run recovery.
+    pub event_id: Option<String>,
 }
 
 impl Run {
@@ -209,6 +214,7 @@ impl Run {
             variables,
             token_id,
             store_objects_expired: false,
+            event_id: None,
         }
     }
 }
@@ -280,6 +286,7 @@ impl TryFrom<storage::runs::Run> for Run {
             variables,
             token_id: value.token_id,
             store_objects_expired: value.store_objects_expired,
+            event_id: value.event_id,
         })
     }
 }
@@ -323,6 +330,7 @@ impl TryFrom<Run> for storage::runs::Run {
             variables,
             token_id: value.token_id,
             store_objects_expired: value.store_objects_expired,
+            event_id: value.event_id,
         })
     }
 }
@@ -724,6 +732,40 @@ pub async fn start_run(
                 ));
             }
         }
+    };
+
+    // We emit the QueuedRun event so that the event stream is aware of the impending run. Then we insert that event_id
+    // into the database for the associated run. This helps us with detecting which runs are incomplete due to
+    // a crash within Gofer and helps us restore those runs.
+    let queued_run_event = api_state
+        .event_bus
+        .clone()
+        .publish(event_utils::Kind::QueuedRun {
+            namespace_id: path.namespace_id.clone(),
+            pipeline_id: path.pipeline_id.clone(),
+            run_id: new_run.run_id,
+        });
+
+    let fields = storage::runs::UpdatableFields {
+        event_id: Some(queued_run_event.id),
+        ..Default::default()
+    };
+
+    if let Err(e) = storage::runs::update(
+        &mut tx,
+        &path.namespace_id,
+        &path.pipeline_id,
+        new_run.run_id as i64,
+        fields,
+    )
+    .await
+    {
+        return Err(http_error!(
+            "Could not insert event_id for new run",
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
     };
 
     if let Err(e) = tx.commit().await {

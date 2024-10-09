@@ -317,6 +317,7 @@ mod tests {
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
             store_objects_expired: false,
+            event_id: None,
         };
 
         crate::storage::runs::insert(&mut conn, &run).await?;

@@ -17,6 +17,7 @@ pub struct Run {
     pub variables: String,
     pub token_id: Option<String>,
     pub store_objects_expired: bool,
+    pub event_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -27,13 +28,14 @@ pub struct UpdatableFields {
     pub status_reason: Option<String>,
     pub variables: Option<String>,
     pub store_objects_expired: Option<bool>,
+    pub event_id: Option<String>,
 }
 
 pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), StorageError> {
     let query = sqlx::query(
         "INSERT INTO runs (namespace_id, pipeline_id, pipeline_config_version, run_id, \
-        started, ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired)\
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        started, ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id)\
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     )
     .bind(&run.namespace_id)
     .bind(&run.pipeline_id)
@@ -47,7 +49,8 @@ pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), Storag
     .bind(&run.initiator)
     .bind(&run.variables)
     .bind(&run.token_id)
-    .bind(run.store_objects_expired);
+    .bind(run.store_objects_expired)
+    .bind(&run.event_id);
 
     let sql = query.sql();
 
@@ -72,7 +75,7 @@ pub async fn list(
 
     let query_str = format!(
         "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
-    state, status, status_reason, initiator, variables, token_id, store_objects_expired FROM \
+    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
     runs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY run_id {} LIMIT ? OFFSET ?;",
         order_by
     );
@@ -91,6 +94,28 @@ pub async fn list(
         .await
 }
 
+pub async fn list_unfinished(
+    conn: &mut SqliteConnection,
+    offset: i64,
+    limit: i64,
+) -> Result<Vec<Run>, StorageError> {
+    let query_str = 
+        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
+    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
+    runs WHERE state != 'complete' LIMIT ? OFFSET ?;";
+    
+    let query = sqlx::query_as::<_, Run>(query_str)
+        .bind(limit)
+        .bind(offset);
+
+    let sql = query.sql();
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 pub async fn get(
     conn: &mut SqliteConnection,
     namespace_id: &str,
@@ -98,7 +123,7 @@ pub async fn get(
     run_id: i64,
 ) -> Result<Run, StorageError> {
     let query = sqlx::query_as::<_, Run>("SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
-    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired FROM runs WHERE \
+    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
     namespace_id = ? AND pipeline_id = ? AND run_id = ?;",)
         .bind(namespace_id)
         .bind(pipeline_id)
@@ -118,7 +143,7 @@ pub async fn get_latest(
     pipeline_id: &str,
 ) -> Result<Run, StorageError> {
     let query = sqlx::query_as::<_, Run>("SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
-    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired FROM runs WHERE \
+    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
     namespace_id = ? AND pipeline_id = ? Order By run_id DESC;",)
         .bind(namespace_id)
         .bind(pipeline_id);
@@ -191,6 +216,15 @@ pub async fn update(
             update_query.push(", ");
         }
         update_query.push("store_objects_expired = ");
+        update_query.push_bind(value);
+        updated_fields_total += 1;
+    }
+
+    if let Some(value) = &fields.event_id {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("event_id = ");
         update_query.push_bind(value);
         updated_fields_total += 1;
     }
@@ -303,6 +337,7 @@ mod tests {
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
             store_objects_expired: false,
+            event_id: Some("some_event_id".into()),
         };
 
         let run2 = Run {
@@ -319,6 +354,7 @@ mod tests {
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
             store_objects_expired: false,
+            event_id: Some("some_event_id".into()),
         };
 
         let run3 = Run {
@@ -328,13 +364,14 @@ mod tests {
             run_id: 3,
             started: "2021-01-01T00:00:00Z".to_string(),
             ended: "2021-01-01T01:00:00Z".to_string(),
-            state: "Running".to_string(),
+            state: "complete".to_string(),
             status: "Active".to_string(),
             status_reason: "No issues".to_string(),
             initiator: "UserA".to_string(),
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
             store_objects_expired: false,
+            event_id: Some("some_event_id".into()),
         };
 
         insert(&mut conn, &run1).await?;
@@ -381,6 +418,19 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_list_unfinished_runs() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        let runs_asc = list_unfinished(&mut conn, 0, 10)
+            .await
+            .expect("Failed to list runs in ascending order");
+
+        assert_eq!(runs_asc.len(), 2, "Should return two runs");
+        assert_eq!(runs_asc[0].run_id, 1, "First run should have run_id 1");
+        assert_eq!(runs_asc[1].run_id, 2, "Second run should have run_id 2");
+    }
+
+    #[tokio::test]
     async fn test_get_latest_run() {
         let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
 
@@ -415,6 +465,7 @@ mod tests {
             status_reason: Some("Encountered an error".to_string()),
             variables: Some("key1=value1,key2=value2".to_string()),
             store_objects_expired: Some(true),
+            event_id: None,
         };
 
         update(

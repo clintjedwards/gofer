@@ -1,8 +1,8 @@
 use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        event_utils::Event, format_duration, listen_for_terminate_signal, websocket_error,
-        ApiState, PreflightOptions,
+        event_utils::{Event, EventListener},
+        format_duration, listen_for_terminate_signal, websocket_error, ApiState, PreflightOptions,
     },
     http_error, storage,
 };
@@ -124,7 +124,7 @@ pub async fn stream_events(
     let client_writer = Arc::new(Mutex::new(client_write));
     let client_writer_handle = client_writer.clone();
 
-    let mut event_stream = api_state.event_bus.subscribe();
+    let mut event_stream = api_state.event_bus.subscribe_live();
 
     // Listen for a terminal signal from the main process.
     set.spawn(async move {
@@ -185,7 +185,7 @@ pub async fn stream_events(
         // It's impossible to stream current events in reverse.
         if !reverse {
             loop {
-                match event_stream.recv().await {
+                match event_stream.next().await {
                     Ok(event) => {
                         let event_str = match serde_json::to_string(&event) {
                             Ok(event_str) => event_str,
@@ -199,16 +199,8 @@ pub async fn stream_events(
 
                         let _ = locked_writer.send(Message::Text(event_str)).await;
                     }
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        // Handle the case where `n` messages were dropped
-                        let mut locked_writer = client_writer_handle.lock().await;
-
-                        let _ = locked_writer
-                            .send(Message::Text(format!("Dropped {} messages", n)))
-                            .await;
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                        return Err("Server closed connection".into());
+                    Err(e) => {
+                        return Err(format!("Server closed connectionx; {:#?}", e));
                     }
                 }
             }

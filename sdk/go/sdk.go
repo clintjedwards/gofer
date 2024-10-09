@@ -781,6 +781,15 @@ type Kind8 struct {
 
 // Kind9 defines model for .
 type Kind9 struct {
+	QueuedRun struct {
+		NamespaceId string `json:"namespace_id"`
+		PipelineId  string `json:"pipeline_id"`
+		RunId       uint64 `json:"run_id"`
+	} `json:"queued_run"`
+}
+
+// Kind10 defines model for .
+type Kind10 struct {
 	StartedRun struct {
 		NamespaceId string `json:"namespace_id"`
 		PipelineId  string `json:"pipeline_id"`
@@ -788,8 +797,8 @@ type Kind9 struct {
 	} `json:"started_run"`
 }
 
-// Kind10 defines model for .
-type Kind10 struct {
+// Kind11 defines model for .
+type Kind11 struct {
 	CompletedRun struct {
 		NamespaceId string `json:"namespace_id"`
 		PipelineId  string `json:"pipeline_id"`
@@ -800,8 +809,8 @@ type Kind10 struct {
 	} `json:"completed_run"`
 }
 
-// Kind11 defines model for .
-type Kind11 struct {
+// Kind12 defines model for .
+type Kind12 struct {
 	StartedRunCancellation struct {
 		NamespaceId string `json:"namespace_id"`
 		PipelineId  string `json:"pipeline_id"`
@@ -809,8 +818,8 @@ type Kind11 struct {
 	} `json:"started_run_cancellation"`
 }
 
-// Kind12 defines model for .
-type Kind12 struct {
+// Kind13 defines model for .
+type Kind13 struct {
 	CreatedTaskExecution struct {
 		NamespaceId     string `json:"namespace_id"`
 		PipelineId      string `json:"pipeline_id"`
@@ -819,8 +828,8 @@ type Kind12 struct {
 	} `json:"created_task_execution"`
 }
 
-// Kind13 defines model for .
-type Kind13 struct {
+// Kind14 defines model for .
+type Kind14 struct {
 	StartedTaskExecution struct {
 		NamespaceId     string `json:"namespace_id"`
 		PipelineId      string `json:"pipeline_id"`
@@ -829,8 +838,8 @@ type Kind13 struct {
 	} `json:"started_task_execution"`
 }
 
-// Kind14 defines model for .
-type Kind14 struct {
+// Kind15 defines model for .
+type Kind15 struct {
 	CompletedTaskExecution struct {
 		NamespaceId     string              `json:"namespace_id"`
 		PipelineId      string              `json:"pipeline_id"`
@@ -840,8 +849,8 @@ type Kind14 struct {
 	} `json:"completed_task_execution"`
 }
 
-// Kind15 defines model for .
-type Kind15 struct {
+// Kind16 defines model for .
+type Kind16 struct {
 	StartedTaskExecutionCancellation struct {
 		NamespaceId     string `json:"namespace_id"`
 		PipelineId      string `json:"pipeline_id"`
@@ -851,40 +860,40 @@ type Kind15 struct {
 	} `json:"started_task_execution_cancellation"`
 }
 
-// Kind16 defines model for .
-type Kind16 struct {
+// Kind17 defines model for .
+type Kind17 struct {
 	InstalledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"installed_extension"`
 }
 
-// Kind17 defines model for .
-type Kind17 struct {
+// Kind18 defines model for .
+type Kind18 struct {
 	UninstalledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"uninstalled_extension"`
 }
 
-// Kind18 defines model for .
-type Kind18 struct {
+// Kind19 defines model for .
+type Kind19 struct {
 	EnabledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"enabled_extension"`
 }
 
-// Kind19 defines model for .
-type Kind19 struct {
+// Kind20 defines model for .
+type Kind20 struct {
 	DisabledExtension struct {
 		Id    string `json:"id"`
 		Image string `json:"image"`
 	} `json:"disabled_extension"`
 }
 
-// Kind20 defines model for .
-type Kind20 struct {
+// Kind21 defines model for .
+type Kind21 struct {
 	PipelineExtensionSubscriptionRegistered struct {
 		ExtensionId    string `json:"extension_id"`
 		NamespaceId    string `json:"namespace_id"`
@@ -893,8 +902,8 @@ type Kind20 struct {
 	} `json:"pipeline_extension_subscription_registered"`
 }
 
-// Kind21 defines model for .
-type Kind21 struct {
+// Kind22 defines model for .
+type Kind22 struct {
 	PipelineExtensionSubscriptionUnregistered struct {
 		ExtensionId    string `json:"extension_id"`
 		NamespaceId    string `json:"namespace_id"`
@@ -903,15 +912,15 @@ type Kind21 struct {
 	} `json:"pipeline_extension_subscription_unregistered"`
 }
 
-// Kind22 defines model for .
-type Kind22 struct {
+// Kind23 defines model for .
+type Kind23 struct {
 	CreatedRole struct {
 		RoleId string `json:"role_id"`
 	} `json:"created_role"`
 }
 
-// Kind23 defines model for .
-type Kind23 struct {
+// Kind24 defines model for .
+type Kind24 struct {
 	DeletedRole struct {
 		RoleId string `json:"role_id"`
 	} `json:"deleted_role"`
@@ -1288,6 +1297,11 @@ type Role struct {
 type Run struct {
 	// Ended Time of run end in epoch milliseconds.
 	Ended uint64 `json:"ended"`
+
+	// EventId The UUID of the QueuedRun event for this run. Essentially pointing to the start of the run in the event stream.
+	//
+	// This is used internally to help with run recovery.
+	EventId *string `json:"event_id"`
 
 	// Initiator Information about what started the run.
 	Initiator Initiator `json:"initiator"`
@@ -2635,6 +2649,32 @@ func (t *Kind) FromKind23(v Kind23) error {
 
 // MergeKind23 performs a merge with any union data inside the Kind, using the provided Kind23
 func (t *Kind) MergeKind23(v Kind23) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsKind24 returns the union data inside the Kind as a Kind24
+func (t Kind) AsKind24() (Kind24, error) {
+	var body Kind24
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromKind24 overwrites any union data inside the Kind as the provided Kind24
+func (t *Kind) FromKind24(v Kind24) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeKind24 performs a merge with any union data inside the Kind, using the provided Kind24
+func (t *Kind) MergeKind24(v Kind24) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err

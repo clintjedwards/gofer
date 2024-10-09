@@ -1,8 +1,10 @@
 use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        epoch_milli, event_utils, format_duration, listen_for_terminate_signal, tasks,
-        websocket_error, ApiState, PreflightOptions, Variable, GOFER_EOF,
+        epoch_milli,
+        event_utils::{self, EventListener},
+        format_duration, listen_for_terminate_signal, tasks, websocket_error, ApiState,
+        PreflightOptions, Variable, GOFER_EOF,
     },
     http_error, scheduler, storage,
 };
@@ -1339,11 +1341,11 @@ pub async fn attach_task_execution(
     });
 
     // Launch thread to wait for the container to finish and clean up both the container write and container read threads.
-    let mut event_receiver = api_state.event_bus.subscribe();
+    let mut event_receiver = api_state.event_bus.subscribe_live();
 
     set.spawn(async move {
         loop {
-            if let Ok(event) = event_receiver.recv().await {
+            if let Ok(event) = event_receiver.next().await {
                 match &event.kind {
                     event_utils::Kind::CompletedTaskExecution {
                         namespace_id,

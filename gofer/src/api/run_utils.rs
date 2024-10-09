@@ -1,7 +1,9 @@
 use crate::{
     api::{
-        epoch_milli, event_utils, in_progress_runs_key, interpolate_vars, objects, pipelines, runs,
-        task_executions, tasks, ApiState, Variable, VariableSource, GOFER_EOF,
+        epoch_milli,
+        event_utils::{self, EventListener},
+        in_progress_runs_key, interpolate_vars, objects, pipelines, runs, task_executions, tasks,
+        ApiState, Variable, VariableSource, GOFER_EOF,
     },
     scheduler, storage,
 };
@@ -81,27 +83,30 @@ impl Shepherd {
             ..Default::default()
         };
 
-        let mut conn = self
-            .api_state
-            .storage
-            .write_conn()
-            .await
-            .context("Could not open connection to database")?;
-
-        if let Err(e) = storage::runs::update(
-            &mut conn,
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            self.run.run_id.try_into().unwrap_or_default(),
-            fields,
-        )
-        .await
+        // Create inner scoper here to drop the conn once we're done with it.
         {
-            bail!(
-                "Could not update run while attempting to start run; {:#?}",
-                e
+            let mut conn = self
+                .api_state
+                .storage
+                .write_conn()
+                .await
+                .context("Could not open connection to database")?;
+
+            if let Err(e) = storage::runs::update(
+                &mut conn,
+                &self.pipeline.metadata.namespace_id,
+                &self.pipeline.metadata.pipeline_id,
+                self.run.run_id.try_into().unwrap_or_default(),
+                fields,
             )
-        };
+            .await
+            {
+                bail!(
+                    "Could not update run while attempting to start run; {:#?}",
+                    e
+                )
+            };
+        }
 
         // Lastly start the run monitor and the launch the task executions. We use a barrier here to make sure
         // that all threads are able to grab event bus listeners at roughly the same point so that they don't
@@ -115,24 +120,196 @@ impl Shepherd {
         let barrier = Arc::new(std::sync::Barrier::new(barrier_threshold));
 
         for task in self.pipeline.config.tasks.values() {
+            let event_stream = self.api_state.event_bus.subscribe_live();
+
             let thread_barrier = barrier.clone();
-            tokio::spawn(
-                self.clone()
-                    .launch_task_execution(thread_barrier, task.clone()),
-            );
+            tokio::spawn(self.clone().launch_task_execution(
+                thread_barrier,
+                Box::new(event_stream),
+                task.clone(),
+            ));
         }
 
         let thread_barrier = barrier.clone();
         let self_clone = self.clone();
-        tokio::spawn(async move { self_clone.monitor_run(thread_barrier).await });
+        let event_stream = self.api_state.event_bus.subscribe_live();
+        tokio::spawn(async move {
+            self_clone
+                .monitor_run(thread_barrier, Box::new(event_stream))
+                .await
+        });
+
+        Ok(())
+    }
+
+    /// Performs all actions that [`start_run`] does, but with the added context of attempting to recover the run
+    /// rather than starting a brand new one. This means that only a subset of the tasks will be executed and the event
+    /// stream starts from a historical point rather than the most up to date.
+    ///
+    /// run_event_id is the UUID of the "Started_Run" event for the run being recovered.
+    pub async fn start_run_recovery(self, run_event_id: String) -> Result<()> {
+        trace!(
+            namespace_id = self.pipeline.metadata.namespace_id.clone(),
+            pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+            run_id = self.run.run_id,
+            run_event_id = run_event_id,
+            "Recovering run"
+        );
+
+        // First launch per-run clean up jobs.
+        // These jobs help keep resources from filling up.
+        tokio::spawn(self.clone().handle_run_object_expiry());
+        tokio::spawn(self.clone().handle_run_log_expiry());
+
+        // Then make sure people who need to know that this run is starting are informed.
+        self.api_state
+            .in_progress_runs
+            .entry(in_progress_runs_key(
+                &self.pipeline.metadata.namespace_id,
+                &self.pipeline.metadata.pipeline_id,
+            ))
+            .and_modify(|value| {
+                value.fetch_add(1, atomic::Ordering::SeqCst);
+            })
+            .or_insert(atomic::AtomicU64::from(1));
+
+        self.api_state
+            .event_bus
+            .clone()
+            .publish(event_utils::Kind::StartedRun {
+                namespace_id: self.pipeline.metadata.namespace_id.clone(),
+                pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
+                run_id: self.run.run_id,
+            });
+
+        let fields = storage::runs::UpdatableFields {
+            state: Some(runs::State::Running.to_string()),
+            ..Default::default()
+        };
+
+        // Create inner scoper here to drop the conn once we're done with it.
+        {
+            let mut conn = self
+                .api_state
+                .storage
+                .write_conn()
+                .await
+                .context("Could not open connection to database")?;
+
+            if let Err(e) = storage::runs::update(
+                &mut conn,
+                &self.pipeline.metadata.namespace_id,
+                &self.pipeline.metadata.pipeline_id,
+                self.run.run_id.try_into().unwrap_or_default(),
+                fields,
+            )
+            .await
+            {
+                bail!(
+                    "Could not update run while attempting to recover run; {:#?}",
+                    e
+                )
+            };
+        }
+
+        // Lastly start the run monitor and the launch the task executions. We use a barrier here to make sure
+        // that all threads are able to grab event bus listeners at roughly the same point so that they don't
+        // end up missing any messages from threads that might be faster.
+
+        // The barrier knows when to tell all tasks to continue by waiting until all tasks check in.
+        // We calculate this value by taking the number of all the tasks we are about to start and then adding
+        // one more for the run monitor itself.
+        let mut unfinished_task_list = vec![];
+
+        {
+            let mut conn = self
+                .api_state
+                .storage
+                .read_conn()
+                .await
+                .context("Could not open connection to database")?;
+
+            let task_executions = storage::task_executions::list(
+                &mut conn,
+                &self.pipeline.metadata.namespace_id,
+                &self.pipeline.metadata.pipeline_id,
+                self.run.run_id.try_into().unwrap_or_default(),
+            )
+            .await
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Could not get task execution list while attempting to recover run; {:#?}",
+                    e
+                )
+            })?;
+
+            for task in task_executions {
+                let task: task_executions::TaskExecution = task.try_into().map_err(|e| {
+                    anyhow::anyhow!(
+                        "Could not serialize task execution while attempting to query for unfinished tasks; {:#?}", e
+                    )
+                })?;
+
+                if task.state == task_executions::State::Complete {
+                    continue;
+                }
+
+                unfinished_task_list.push(task);
+            }
+        }
+
+        let barrier_threshold = unfinished_task_list.len() + 1;
+
+        let barrier = Arc::new(std::sync::Barrier::new(barrier_threshold));
+
+        for task in unfinished_task_list {
+            let thread_barrier = barrier.clone();
+            let event_stream = self
+                .api_state
+                .event_bus
+                .subscribe_historical(Some(run_event_id.to_string()))
+                .await
+                .map_err(|e| {
+                    anyhow::anyhow!(
+                        "Could not establish event stream while attempting to recover unfinished run; {:#?}", e
+                    )
+                })?;
+
+            tokio::spawn(self.clone().launch_task_execution(
+                thread_barrier,
+                Box::new(event_stream),
+                task.task.clone(),
+            ));
+        }
+
+        let thread_barrier = barrier.clone();
+        let self_clone = self.clone();
+        let event_stream = self
+                .api_state
+                .event_bus
+                .subscribe_historical(Some(run_event_id.to_string()))
+                .await
+                .map_err(|e| {
+                    anyhow::anyhow!(
+                        "Could not establish event stream while attempting to recover unfinished run; {:#?}", e
+                    )
+                })?;
+
+        tokio::spawn(async move {
+            self_clone
+                .monitor_run(thread_barrier, Box::new(event_stream))
+                .await
+        });
 
         Ok(())
     }
 
     /// Listens to messages from the event bus and updates the status of the run in-progress.
-    async fn monitor_run(&self, barrier: Arc<std::sync::Barrier>) {
-        let mut event_stream = self.api_state.event_bus.subscribe();
-
+    async fn monitor_run(
+        &self,
+        barrier: Arc<std::sync::Barrier>,
+        mut event_stream: Box<dyn EventListener>,
+    ) {
         // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
         barrier.wait();
 
@@ -142,7 +319,7 @@ impl Shepherd {
 
         // Wait for events and then process what should happen after we recieve them.
         loop {
-            let event = match event_stream.recv().await {
+            let event = match event_stream.next().await {
                 Ok(event) => event,
                 Err(err) => {
                     error!(error = %err,
@@ -207,7 +384,7 @@ impl Shepherd {
                     // When they are all completed we then mark the run as cancelled.
 
                     for task in self.pipeline.config.tasks.values() {
-                        self.api_state.event_bus.clone().publish(
+                        _ = self.api_state.event_bus.clone().publish(
                             event_utils::Kind::StartedTaskExecutionCancellation {
                                 namespace_id: self.pipeline.metadata.namespace_id.clone(),
                                 pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
@@ -215,7 +392,7 @@ impl Shepherd {
                                 task_execution_id: task.id.clone(),
                                 timeout: self.api_state.config.api.task_execution_stop_timeout,
                             },
-                        )
+                        );
                     }
 
                     is_cancelled = true;
@@ -310,9 +487,12 @@ impl Shepherd {
     /// Launches a brand new task execution as part of a larger run for a specific task.
     /// It blocks until the task execution has completed, reading and posting to the event bus to facilitate further
     /// run actions.
-    async fn launch_task_execution(self, barrier: Arc<Barrier>, task: tasks::Task) {
-        let mut event_stream = self.api_state.event_bus.subscribe();
-
+    async fn launch_task_execution(
+        self,
+        barrier: Arc<Barrier>,
+        mut event_stream: Box<dyn EventListener>,
+        task: tasks::Task,
+    ) {
         // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
         barrier.wait();
 
@@ -440,7 +620,7 @@ impl Shepherd {
         // if we should start it.
         if !new_task_execution.task.depends_on.is_empty() {
             'main_loop: loop {
-                let event = match event_stream.recv().await {
+                let event = match event_stream.next().await {
                     Ok(event) => event,
                     Err(err) => {
                         error!(error = %err,
@@ -1047,7 +1227,7 @@ impl Shepherd {
     /// Update the status of the task accordingly.
     async fn monitor_task_execution(
         &self,
-        mut event_stream: tokio::sync::broadcast::Receiver<event_utils::Event>,
+        mut event_stream: Box<dyn EventListener>,
         container_id: String,
         task_execution: task_executions::TaskExecution,
     ) -> Result<()> {
@@ -1172,7 +1352,7 @@ impl Shepherd {
                         }
                     }
                 },
-                result = event_stream.recv() => {
+                result = event_stream.next() => {
                     let event = match result {
                         Ok(event) => event,
                         Err(err) => {

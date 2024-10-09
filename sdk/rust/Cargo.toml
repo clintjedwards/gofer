@@ -1,6 +1,6 @@
 [package]
 name = "gofer_sdk"
-version = "0.7.3"
+version = "0.8.1"
 edition = "2021"
 description = "The SDK for Gofer: https://github.com/clintjedwards/gofer. Helps with creating extensions and pipelines."
 documentation = "https://clintjedwards.com/gofer"

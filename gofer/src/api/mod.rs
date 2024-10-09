@@ -330,6 +330,9 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
         .await
         .context("Could not create system roles")?;
 
+    // We attempt to recover any lost runs from a crash before we start the API.
+    recover_runs(api_state.clone()).await?;
+
     Ok(api_state)
 }
 
@@ -1290,4 +1293,127 @@ async fn websocket_error(
         .await;
 
     message.to_string()
+}
+
+/// Attempt to recover runs which may have been unfinished.
+async fn recover_runs(api_state: Arc<ApiState>) -> Result<()> {
+    let mut conn = match api_state.storage.read_conn().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            bail!(
+                "Could not establish a connection to the database during run recovery; {:#?}",
+                e
+            );
+        }
+    };
+
+    let unfinished_runs = match storage::runs::list_unfinished(&mut conn, 0, 100).await {
+        Ok(val) => val,
+        Err(e) => {
+            bail!("Encountered error while attempting to retrieve unfinished runs during run recovery: {:#?}", e)
+        }
+    };
+
+    for stored_run in unfinished_runs {
+        info!(
+            namespace_id = stored_run.namespace_id.clone(),
+            pipeline_id = stored_run.pipeline_id.clone(),
+            run_id = stored_run.run_id,
+            "Recovering unfinished run"
+        );
+
+        let run: runs::Run = stored_run.try_into().map_err(|err: anyhow::Error| {
+            anyhow::anyhow!(
+                "COuld not parse run from database while attempting to recover runs; {:#?}",
+                err
+            )
+        })?;
+
+        let run_event_id = run.event_id.clone().unwrap_or_default();
+
+        let storage_pipeline_metadata = match storage::pipeline_metadata::get(
+            &mut conn,
+            &run.namespace_id,
+            &run.pipeline_id,
+        )
+        .await
+        {
+            Ok(pipeline) => pipeline,
+            Err(e) => {
+                match e {
+                    storage::StorageError::NotFound => {
+                        bail!("Could not find pipeline metadata while attempting to recover run");
+                    }
+                    _ => {
+                        bail!("Could not get pipeline metadata while attempting to recover run; {:#?}", e);
+                    }
+                }
+            }
+        };
+
+        let pipeline_metadata =
+            pipelines::Metadata::try_from(storage_pipeline_metadata).map_err(|err| {
+                anyhow::anyhow!(
+                    "Could not parse pipeline metadata while attempting to recover run; {:#?}",
+                    err
+                )
+            })?;
+
+        let pipeline_config_storage = match storage::pipeline_configs::get(
+            &mut conn,
+            &run.namespace_id,
+            &run.pipeline_id,
+            run.pipeline_config_version as i64,
+        )
+        .await
+        {
+            Ok(config) => config,
+            Err(e) => {
+                bail!(
+                    "Could not get pipeline config while attempting to recover run; {:#?}",
+                    e
+                );
+            }
+        };
+
+        let pipeline_tasks = match storage::tasks::list(
+            &mut conn,
+            &run.namespace_id,
+            &run.pipeline_id,
+            run.pipeline_config_version as i64,
+        )
+        .await
+        {
+            Ok(tasks) => tasks,
+            Err(e) => {
+                bail!(
+                    "Could not get tasks from database while attempting to recover run; {:#?}",
+                    e
+                );
+            }
+        };
+
+        let pipeline_config =
+            pipeline_configs::Config::from_storage(pipeline_config_storage.clone(), pipeline_tasks)
+                .map_err(|err| {
+                    anyhow::anyhow!(
+                        "Could not parse pipeline config from database \
+                        while attempting to recover run; {:#?}",
+                        err
+                    )
+                })?;
+
+        let new_run_shepard = run_utils::Shepherd::new(
+            api_state.clone(),
+            pipelines::Pipeline {
+                metadata: pipeline_metadata,
+                config: pipeline_config,
+            },
+            run,
+        );
+
+        tokio::spawn(new_run_shepard.start_run_recovery(run_event_id));
+    }
+
+    Ok(())
 }

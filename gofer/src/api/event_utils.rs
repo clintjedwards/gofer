@@ -2,7 +2,8 @@ use crate::{
     api::{epoch_milli, runs, task_executions},
     storage,
 };
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -76,6 +77,11 @@ pub enum Kind {
     },
 
     // Run events
+    QueuedRun {
+        namespace_id: String,
+        pipeline_id: String,
+        run_id: u64,
+    },
     StartedRun {
         namespace_id: String,
         pipeline_id: String,
@@ -231,6 +237,92 @@ impl Event {
     }
 }
 
+#[async_trait]
+pub trait EventListener: Send {
+    async fn next(&mut self) -> Result<Event>;
+}
+
+pub struct HistoricalEventListener {
+    /// Handle to the database pool so that we can populate events from the database.
+    storage: storage::Db,
+
+    /// The last ID that was given to the user. We keep this so that we can understand where to filter or query from.
+    last_id_read: Option<String>,
+
+    /// The event stream populated by the database.
+    stream: std::collections::VecDeque<Event>,
+}
+
+impl HistoricalEventListener {
+    async fn repopulate_queue(&mut self) -> Result<()> {
+        if self.last_id_read.is_none() {
+            bail!("When attempting to repopulate queue the last_id_read was empty; this should not happen.");
+        }
+
+        let mut conn = match self.storage.read_conn().await {
+            Ok(conn) => conn,
+            Err(err) => {
+                bail!(
+                    "Could not establish connection to database in order to read events: {:#?}",
+                    err
+                );
+            }
+        };
+
+        let events = storage::events::list_by_id(
+            &mut conn,
+            self.last_id_read.as_ref().unwrap(),
+            50,
+        )
+        .await
+        .context(
+            "Could not list historical events while attempting to populate events from database.",
+        )?;
+
+        for storage_event in events {
+            let event: Event = storage_event.try_into()?;
+            self.stream.push_back(event);
+        }
+
+        Ok(())
+    }
+
+    pub async fn next(&mut self) -> Option<Event> {
+        if let Some(event) = self.stream.pop_front() {
+            return Some(event);
+        }
+
+        if let Err(err) = self.repopulate_queue().await {
+            error!(
+                error = %err,
+                "Failed to repopulate queue",
+            );
+
+            return None;
+        }
+
+        self.stream.pop_front()
+    }
+}
+
+#[async_trait]
+impl EventListener for HistoricalEventListener {
+    async fn next(&mut self) -> Result<Event> {
+        self.next()
+            .await
+            .ok_or(anyhow::anyhow!("Could not receive event"))
+    }
+}
+
+#[async_trait]
+impl EventListener for broadcast::Receiver<Event> {
+    async fn next(&mut self) -> Result<Event> {
+        self.recv()
+            .await
+            .map_err(|e| anyhow::anyhow!("Could not receive event; {:#?}", e))
+    }
+}
+
 /// The event bus is a central handler for all things related to events with the application.
 /// It allows a subscriber to listen to events and a sender to emit events.
 /// This is useful as it provides an internal interface for functions to listen for events.
@@ -266,10 +358,76 @@ impl EventBus {
         event_bus
     }
 
-    /// Returns a channel receiver end which can be used to listen to events.
-    /// The receiver will drop automatically when out of scope.
-    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
+    /// Returns a channel receiver end which can be used to list to live events as they are emitted.
+    /// Since this is done purely in memory it is faster and less DB heavy than [`subscribe_historical`].
+    pub fn subscribe_live(&self) -> impl EventListener {
         self.broadcast_channel.subscribe()
+    }
+
+    /// Returns a channel receiver end which can be used to listen to events as they are commited to the database.
+    /// You can provide an event ID to start from and the receiver returned will return events starting from that id.
+    ///
+    /// Omitting the ID starts the subscription from the oldest event.
+    pub async fn subscribe_historical(
+        &self,
+        start_from: Option<String>,
+    ) -> Result<impl EventListener> {
+        let mut stream = std::collections::VecDeque::new();
+        let mut last_id_read = None;
+
+        if let Some(id) = start_from {
+            last_id_read = Some(id.clone());
+
+            let mut conn = match self.storage.read_conn().await {
+                Ok(conn) => conn,
+                Err(err) => {
+                    bail!(
+                        "Could not establish connection to database in order to read events; {:#?}",
+                        err
+                    );
+                }
+            };
+
+            let events = storage::events::list_by_id(&mut conn, &id, 50)
+                .await
+                .context(
+                    "Could not list historical events\
+                 while attempting to populate events from database.",
+                )?;
+
+            for storage_event in events {
+                let event: Event = storage_event.try_into()?;
+                stream.push_back(event);
+            }
+        } else {
+            let mut conn = match self.storage.read_conn().await {
+                Ok(conn) => conn,
+                Err(err) => {
+                    bail!(
+                        "Could not establish connection to database in order to read events; {:#?}",
+                        err
+                    );
+                }
+            };
+
+            let events = storage::events::list(&mut conn, 0, 0, false)
+                .await
+                .context(
+                    "Could not list historical events\
+                 while attempting to populate events from database.",
+                )?;
+
+            for storage_event in events {
+                let event: Event = storage_event.try_into()?;
+                stream.push_back(event);
+            }
+        }
+
+        Ok(HistoricalEventListener {
+            storage: self.storage.clone(),
+            last_id_read,
+            stream,
+        })
     }
 
     /// Allows caller to emit a new event to the eventbus. Returns the resulting
@@ -316,10 +474,10 @@ impl EventBus {
     }
 
     /// Allows caller to emit a new event to the eventbus.
-    pub fn publish(self, kind: Kind) {
+    pub fn publish(self, kind: Kind) -> Event {
+        let new_event = Event::new(kind.clone());
+        let new_event_clone = new_event.clone();
         tokio::spawn(async move {
-            let new_event = Event::new(kind.clone());
-
             let mut conn = match self.storage.write_conn().await {
                 Ok(conn) => conn,
                 Err(err) => {
@@ -355,6 +513,8 @@ impl EventBus {
                 }
             };
         });
+
+        new_event_clone
     }
 }
 
