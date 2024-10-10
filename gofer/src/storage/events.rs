@@ -52,7 +52,7 @@ pub async fn list(
 
 pub async fn list_by_id(
     conn: &mut SqliteConnection,
-    id: String,
+    id: &str,
     limit: i64,
 ) -> Result<Vec<Event>, StorageError> {
     let query = sqlx::query_as::<_, Event>(

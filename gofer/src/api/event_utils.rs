@@ -3,8 +3,12 @@ use crate::{
     storage,
 };
 use anyhow::{bail, Context, Result};
+use async_trait::async_trait;
+use futures::stream::Stream;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::pin::Pin;
+use std::task::Poll;
 use std::time::Duration;
 use strum::{Display, EnumDiscriminants, EnumIter, EnumString};
 use tokio::sync::broadcast;
@@ -236,19 +240,6 @@ impl Event {
     }
 }
 
-/// A wrapper over the tokio broadcast receiver type so we can provide an overlay layer that allows functions the
-/// ability to drain from the historical database events first and then start draining from the event stream.
-///
-/// It works like this:
-///   * Starts by subscribing to the running event stream.
-///   * Allows the caller to seed where they want the event stream to start from by event id. The caller will only
-///     get back events AFTER this ID. We can do this because we use UUIDv7 to provide UUIDs which are orderable.
-///   * It will then query the database in small, memory efficent increments and fill a queue which will supply the
-///     next() calls for the iterator calls.
-///   * When the database has no further entries it will store the id it left off at and then filter through the
-///     event stream only returning ids that are greater than the id it left off at.
-///   * If there user just wants the latest event_stream, then they can simply omit the start_from param and we'll
-///     simply pass along the underlying Receiver events.
 pub struct Receiver {
     /// Handle to the database pool so that we can populate events from the database.
     storage: storage::Db,
@@ -256,21 +247,71 @@ pub struct Receiver {
     /// The last ID that was given to the user. We keep this so that we can understand where to filter or query from.
     last_id_read: Option<String>,
 
-    /// The event stream receiver end. This will be used only if the historical events have been exhaused.
-    event_stream: broadcast::Receiver<Event>,
-
     /// The event stream populated by the database.
-    historical_stream: std::collections::VecDeque<Event>,
-
-    /// Just a marker to tell when we've switched to the event stream vs querying historical events from the database.
-    database_exhausted: bool,
+    stream: std::collections::VecDeque<Event>,
 }
 
-impl Iterator for Receiver {
+impl Receiver {
+    async fn repopulate_queue(&mut self) -> Result<()> {
+        if self.last_id_read.is_none() {
+            bail!("When attempting to repopulate queue the last_id_read was empty; this should not happen.");
+        }
+
+        let mut conn = match self.storage.read_conn().await {
+            Ok(conn) => conn,
+            Err(err) => {
+                bail!(
+                    "Could not establish connection to database in order to read events: {:#?}",
+                    err
+                );
+            }
+        };
+
+        let events = storage::events::list_by_id(
+            &mut conn,
+            self.last_id_read.as_ref().unwrap(),
+            50,
+        )
+        .await
+        .context(
+            "Could not list historical events while attempting to populate events from database.",
+        )?;
+
+        for storage_event in events {
+            let event: Event = storage_event.try_into()?;
+            self.stream.push_back(event);
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Stream for Receiver {
     type Item = Event;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        todo!();
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        if let Some(event) = this.stream.pop_front() {
+            return Poll::Ready(Some(event));
+        }
+
+        let waker = cx.waker().clone();
+        tokio::spawn(async move {
+            if let Err(err) = this.repopulate_queue().await {
+                error!(
+                    error = %err,
+                    "Failed to repopulate queue",
+                );
+            }
+            waker.wake();
+        });
+
+        Poll::Pending
     }
 }
 
@@ -309,15 +350,18 @@ impl EventBus {
         event_bus
     }
 
-    /// Returns a channel receiver end which can be used to listen to events.
-    /// The receiver will drop automatically when out of scope.
-    ///
+    /// Returns a channel receiver end which can be used to list to live events as they are emitted.
+    pub fn subscribe_live(&self) -> broadcast::Receiver<Event> {
+        self.broadcast_channel.subscribe()
+    }
+
+    /// Returns a channel receiver end which can be used to listen to events as they are commited to the database.
     /// You can provide an event ID to start from and the receiver returned will return events starting from that id.
-    pub async fn subscribe(&self, start_from: Option<String>) -> Result<Receiver> {
-        let event_stream = self.broadcast_channel.subscribe();
-        let mut historical_stream = std::collections::VecDeque::new();
+    ///
+    /// Omitting the ID starts the subscription from the oldest event.
+    pub async fn subscribe_historical(&self, start_from: Option<String>) -> Result<Receiver> {
+        let mut stream = std::collections::VecDeque::new();
         let mut last_id_read = None;
-        let database_exhausted = !start_from.is_some();
 
         if let Some(id) = start_from {
             last_id_read = Some(id.clone());
@@ -332,7 +376,7 @@ impl EventBus {
                 }
             };
 
-            let events = storage::events::list_by_id(&mut conn, id.clone(), 50)
+            let events = storage::events::list_by_id(&mut conn, &id, 50)
                 .await
                 .context(
                     "Could not list historical events\
@@ -341,16 +385,36 @@ impl EventBus {
 
             for storage_event in events {
                 let event: Event = storage_event.try_into()?;
-                historical_stream.push_back(event);
+                stream.push_back(event);
             }
-        };
+        } else {
+            let mut conn = match self.storage.read_conn().await {
+                Ok(conn) => conn,
+                Err(err) => {
+                    bail!(
+                        "Could not establish connection to database in order to read events; {:#?}",
+                        err
+                    );
+                }
+            };
+
+            let events = storage::events::list(&mut conn, 0, 0, false)
+                .await
+                .context(
+                    "Could not list historical events\
+                 while attempting to populate events from database.",
+                )?;
+
+            for storage_event in events {
+                let event: Event = storage_event.try_into()?;
+                stream.push_back(event);
+            }
+        }
 
         Ok(Receiver {
             storage: self.storage.clone(),
             last_id_read,
-            event_stream,
-            historical_stream,
-            database_exhausted,
+            stream,
         })
     }
 
