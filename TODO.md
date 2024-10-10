@@ -24,6 +24,7 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* Make sure queued runs event gets implemented somewhere.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
 * We need to make sure that if Gofer crashes it understands how to restore the jobs that were running previously.

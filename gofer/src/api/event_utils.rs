@@ -2,7 +2,7 @@ use crate::{
     api::{epoch_milli, runs, task_executions},
     storage,
 };
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -250,14 +250,28 @@ impl Event {
 ///   * If there user just wants the latest event_stream, then they can simply omit the start_from param and we'll
 ///     simply pass along the underlying Receiver events.
 pub struct Receiver {
+    /// Handle to the database pool so that we can populate events from the database.
+    storage: storage::Db,
+
     /// The last ID that was given to the user. We keep this so that we can understand where to filter or query from.
     last_id_read: Option<String>,
 
     /// The event stream receiver end. This will be used only if the historical events have been exhaused.
     event_stream: broadcast::Receiver<Event>,
 
+    /// The event stream populated by the database.
+    historical_stream: std::collections::VecDeque<Event>,
+
     /// Just a marker to tell when we've switched to the event stream vs querying historical events from the database.
     database_exhausted: bool,
+}
+
+impl Iterator for Receiver {
+    type Item = Event;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!();
+    }
 }
 
 /// The event bus is a central handler for all things related to events with the application.
@@ -299,14 +313,45 @@ impl EventBus {
     /// The receiver will drop automatically when out of scope.
     ///
     /// You can provide an event ID to start from and the receiver returned will return events starting from that id.
-    pub fn subscribe(&self, start_from: Option<String>) -> Receiver {
+    pub async fn subscribe(&self, start_from: Option<String>) -> Result<Receiver> {
         let event_stream = self.broadcast_channel.subscribe();
+        let mut historical_stream = std::collections::VecDeque::new();
+        let mut last_id_read = None;
+        let database_exhausted = !start_from.is_some();
 
-        Receiver {
-            last_id_read: start_from,
+        if let Some(id) = start_from {
+            last_id_read = Some(id.clone());
+
+            let mut conn = match self.storage.read_conn().await {
+                Ok(conn) => conn,
+                Err(err) => {
+                    bail!(
+                        "Could not establish connection to database in order to read events; {:#?}",
+                        err
+                    );
+                }
+            };
+
+            let events = storage::events::list_by_id(&mut conn, id.clone(), 50)
+                .await
+                .context(
+                    "Could not list historical events\
+                 while attempting to populate events from database.",
+                )?;
+
+            for storage_event in events {
+                let event: Event = storage_event.try_into()?;
+                historical_stream.push_back(event);
+            }
+        };
+
+        Ok(Receiver {
+            storage: self.storage.clone(),
+            last_id_read,
             event_stream,
-            database_exhausted: !start_from.is_some(),
-        }
+            historical_stream,
+            database_exhausted,
+        })
     }
 
     /// Allows caller to emit a new event to the eventbus. Returns the resulting
