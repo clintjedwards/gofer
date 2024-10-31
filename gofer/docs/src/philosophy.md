@@ -15,4 +15,4 @@ Gofer's core values are:
 
 ## Long version
 
-If you'd like to read more about why Gofer exists and the journey in creating it, you can do so [here](./rfd.md)
+If you'd like to read more about why Gofer exists and the journey in creating it, you can do so [here](./rfd.pdf)
