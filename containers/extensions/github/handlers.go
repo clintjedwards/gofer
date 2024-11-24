@@ -9,9 +9,10 @@ import (
 type eventHandler func(payload interface{}) (repo, action string, metadata map[string]string, err error)
 
 var handlers = map[string]eventHandler{
-	"pull_request": handlePullRequestEvent,
-	"push":         handlePushEvent,
-	"release":      handleReleaseEvent,
+	"pull_request":            handlePullRequestEvent,
+	"pull_request_with_check": handlePullRequestEvent,
+	"push":                    handlePushEvent,
+	"release":                 handleReleaseEvent,
 }
 
 func safeDeref(ptr *string) string {

@@ -37,23 +37,36 @@ pipeline.
 
 ## Pipeline Configuration
 
-- `repository` \[string\]: The Github repository you would like to listen for events from. The format is in the form
-  `<organization>/<repository>`: Ex. `clintjedwards/gofer`.
-- `event_filter` \[string\]: The event/action combination the pipeline will be triggered upon. It's presented in
-  the form: `<event>/<action>,<action2>...`. For events that do not have actions or if you simply want to trigger on any
-  action, just putting the \<event\> will suffice.
+| Key                | Default  | Description                                                                                                                                                             |
+| -------------------| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| repository         | Required | The Github repository you would like to listen for events from. The format is in the form.                                                                              |
+| event_filter       | Required | The event/action combination the pipeline will be triggered upon. It is presented in the form: `<event>/<action1>,<action2>...`. For events that do not have actions or if you simply want to trigger on any action, just putting the \<event\> will suffice. |
 
-  To be clear if you don't include actions on an event that has multiple, Gofer will be triggered on any action. You can
+<div class="box note">
+  <div class="text">
+  <strong>Note:</strong>
+
+  <p>If you don't include actions on an event that has multiple, Gofer will be triggered on any action. You can
   find a list of events and their actions here(Actions listed as 'activity type' in Github nomenclature.):
-  https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+  https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows</p>
 
+  </div>
+</div>
+
+### Example
+
+```bash
+gofer pipeline subscribe simple github run_tests \
+    -s "repository=clintjedwards/experimental" \
+    -s "event_filter=pull_request_with_check/opened,synchronize,reopened"
+```
 ## Extension Configuration
 
 Extension configurations are set upon startup and cannot be changed afterwards.
 
 The Github extension requires the setup and use of a [new Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps). You can [view setup instructions below](#additional-setup) which will walk you through how to retrieve the required env var variables.
 
-| EnvVar             | Default  | Description                                                                                                                                                             |
+| Key                | Default  | Description                                                                                                                                                             |
 | -------------------| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | APP_ID             | Required | The Github app ID                                                                                                                                                       |
 | APP_INSTALLATION   | Required | The Github installation ID. This can be found by viewing the webhook payload delivery. See a more details walkthrough on where to find this below.                      |
@@ -110,6 +123,8 @@ Once the Github application has been created, [install it.](https://docs.github.
 This will give you an opportunity to configure the permissions and scope of the Github application.
 It is recommended that you give read-only permissions to any permissions that might include webhooks and read-write for `code-suite` and `code-runs`.
 
+You might also utilize this Github App to perform other actions within Github with either other extensions or your own pipeline jobs. Remember to allow the correct permissions for all use cases.
+
 The installation ID is unfortunately hidden in an event that gets sent once the Github app has been created and installed. You can find it by navigating to the settings page for the Github application and
 then viewing it in the "Recent Deliveries" page.
 
@@ -128,11 +143,21 @@ You can find more information about the format the variables will be in by [refe
 
 Events below are the only events that are supported.
 
-| Event         | Metadata                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pull_request  | "GOFER_EXTENSION_GITHUB_EVENT" <br/>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_SHA"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_USERNAME"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_NAME"<br/>                                                                       |                                                                                                                                                                                                                                                                        |
-| push          | "GOFER_EXTENSION_GITHUB_EVENT":<br/>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_NAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_NAME"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_EMAIL"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_USERNAME"<br />|
-| release       | "GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TAG_NAME"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TARGET_COMMITISH"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_AUTHOR_LOGIN"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_CREATED_AT"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_PUBLISHED_AT"                                                                                                                                |
+| Event                    | Metadata                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pull_request             | "GOFER_EXTENSION_GITHUB_EVENT" <br/>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_SHA"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_USERNAME"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_NAME"<br/>                                                                       |
+| pull_request_with_check  | "GOFER_EXTENSION_GITHUB_EVENT" <br/>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_SHA"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_USERNAME"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_NAME"<br/>                                                                       |                                                                                                                                                                                                                                                                        |
+| push                     | "GOFER_EXTENSION_GITHUB_EVENT":<br/>"GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REF"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_NAME"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_EMAIL"<br/>"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_AUTHOR_USERNAME"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_NAME"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_EMAIL"<br />"GOFER_EXTENSION_GITHUB_HEAD_COMMIT_COMMITTER_USERNAME"<br />|
+| release                  | "GOFER_EXTENSION_GITHUB_ACTION"<br/>"GOFER_EXTENSION_GITHUB_REPOSITORY"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TAG_NAME"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_TARGET_COMMITISH"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_AUTHOR_LOGIN"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_CREATED_AT"<br/>"GOFER_EXTENSION_GITHUB_RELEASE_PUBLISHED_AT"                                                                                                                                |
+
+<div class="box note">
+  <div class="text">
+  <strong>Note:</strong>
+
+  <p>The event <code>pull_request_with_check</code> is a special event not found within the Github API. It's primarily
+  to be used when the subscriber wants to report the job status back to the pull request based on the result of the job started</p>
+  </div>
+</div>
 
 
 

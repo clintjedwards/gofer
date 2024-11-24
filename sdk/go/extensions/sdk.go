@@ -29,8 +29,11 @@ type Error struct {
 
 // ExternalEventRequest defines model for ExternalEventRequest.
 type ExternalEventRequest struct {
-	// Payload The bytes of the response body for the external request.
-	Payload []uint8 `json:"payload"`
+	// Body The bytes of the response body for the external request.
+	Body []uint8 `json:"body"`
+
+	// Headers The headers for the incoming external request.
+	Headers map[string]string `json:"headers"`
 }
 
 // InfoResponse defines model for InfoResponse.

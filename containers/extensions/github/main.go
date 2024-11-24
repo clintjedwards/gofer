@@ -1,7 +1,10 @@
+// Github Extension for Gofer
+// This Extension takes in webhook requests of actions that have happened in Github and performs certain actions
+// based on those requests(like start a particular job).
+// The extension also reports back it's status to Github for certain actions with the checks API.
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -11,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	sdk "github.com/clintjedwards/gofer/sdk/go"
@@ -31,41 +35,44 @@ const (
 
 // Pipeline configuration parameters.
 const (
-	// parameterEventFilter is the event/action combination the pipeline will be triggered upon. It's presented in the form: <event>/<action>,<action2>...
+	// ParameterEventFilter is the event/action combination the pipeline will be triggered upon. It's presented in the form: <event>/<action>,<action2>...
 	// For events that do not have actions or if you simply want to trigger on any action, just putting the <event> will suffice.
 	// To be clear if you don't include actions on an event that has multiple, Gofer will be triggered on any action.
 	// You can find a list of events and their actions here(Actions listed as 'activity type'): https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows.
-	parameterEventFilter = "event_filter"
+	ParameterEventFilter = "event_filter"
 
-	// parameterRepository is the repository the pipeline will be alerted for.
+	// ParameterRepository is the repository the pipeline will be alerted for.
 	// The format is <organization>/<repository>
 	// 	Ex: clintjedwards/gofer
-	parameterRepository = "repository"
+	ParameterRepository = "repository"
 )
 
 var eventSet = map[string]struct{}{
-	"branch_protection_rule":      {},
-	"check_run":                   {},
-	"check_suite":                 {},
-	"create":                      {},
-	"delete":                      {},
-	"deployment":                  {},
-	"deployment_status":           {},
-	"discussion":                  {},
-	"discussion_comment":          {},
-	"fork":                        {},
-	"gollum":                      {},
-	"issue_comment":               {},
-	"issues":                      {},
-	"label":                       {},
-	"merge_group":                 {},
-	"milestone":                   {},
-	"page_build":                  {},
-	"project":                     {},
-	"project_card":                {},
-	"project_column":              {},
-	"public":                      {},
-	"pull_request":                {},
+	"branch_protection_rule": {},
+	"check_run":              {},
+	"check_suite":            {},
+	"create":                 {},
+	"delete":                 {},
+	"deployment":             {},
+	"deployment_status":      {},
+	"discussion":             {},
+	"discussion_comment":     {},
+	"fork":                   {},
+	"gollum":                 {},
+	"issue_comment":          {},
+	"issues":                 {},
+	"label":                  {},
+	"merge_group":            {},
+	"milestone":              {},
+	"page_build":             {},
+	"project":                {},
+	"project_card":           {},
+	"project_column":         {},
+	"public":                 {},
+	"pull_request":           {},
+	// with_check is a special event that is not within Github it tells Gofer to report back via the checks API the result
+	// of the pull request. This event will trigger on 'pull_request' events from Github.
+	"pull_request_with_check":     {},
 	"pull_request_comment":        {},
 	"pull_request_review":         {},
 	"pull_request_review_comment": {},
@@ -211,79 +218,227 @@ func newGithubClient(app, installation int64, key []byte) (*github.Client, error
 	return client, nil
 }
 
-func (e *extension) processNewEvent(req *http.Request) error {
-	log.Debug().Msg("processing new webhook event")
-	rawPayload, err := github.ValidatePayload(req, []byte(e.webhookSecret))
+func (e *extension) reportRunToGithubAPI(sub pipelineSubscription, event *github.PullRequestEvent, runInfo sdk.StartRunResponse) {
+	log := log.With().Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
+		Str("pipeline_subscription_id", sub.extensionLabel).Logger()
+
+	owner := event.GetRepo().GetOwner().GetLogin()
+	repo := event.GetRepo().GetName()
+	headSHA := event.GetPullRequest().GetHead().GetSHA()
+
+	summary := github.String(fmt.Sprintf(
+		"Gofer has automatically run a pipeline in response to an event within this pull request:\n\n"+
+			"### Run Details\n"+
+			"- **Namespace**: `%s`\n"+
+			"- **Pipeline**: `%s`\n"+
+			"- **Subscription ID**: `%s`\n"+
+			"- **Run ID**: `#%d`\n"+
+			"### Helpful Resources\n"+
+			"- [GitHub Project](https://github.com/clintjedwards/gofer)\n"+
+			"- [Documentation](https://gofer.clintjedwards.com/docs/ref/extensions/provided/github.html)\n\n\n"+
+			"This pipeline is triggered automatically by events in the pull request. For further details, you can:\n"+
+			"- Check the logs and run history by running `gofer run get %s %d`.\n"+
+			"- Review the associated pipeline configuration by running `gofer pipeline get %s`.\n\n",
+		sub.namespace, sub.pipeline, sub.extensionLabel, runInfo.Run.RunId, sub.pipeline, runInfo.Run.RunId, sub.pipeline))
+
+	checkRun, _, err := e.client.Checks.CreateCheckRun(context.Background(), owner, repo, github.CreateCheckRunOptions{
+		Name:    fmt.Sprintf("%s", sub.extensionLabel),
+		HeadSHA: headSHA,
+		Output: &github.CheckRunOutput{
+			Title:   github.String(fmt.Sprintf("Run #%d | Namespace: %s | Pipeline: %s", runInfo.Run.RunId, sub.namespace, sub.pipeline)),
+			Summary: summary,
+		},
+		Status:    github.String("in_progress"),
+		StartedAt: &github.Timestamp{Time: time.Now()},
+	})
 	if err != nil {
-		return err
+		log.Error().Err(err).Msg("could create check run")
+		return
 	}
 
-	parsedPayload, err := github.ParseWebHook(github.WebHookType(req), rawPayload)
+	goferClient, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, e.config.UseTLS, sdk.GoferAPIVersion0)
 	if err != nil {
-		return err
+		log.Error().Err(err).Msg("Could not establish Gofer client")
+		return
 	}
 
-	handler, exists := handlers[github.WebHookType(req)]
-	if !exists {
-		// We don't return this as an error, because it is not an error on the Github side.
-		// Instead we just log that we've received it and we move along.
-		log.Debug().Str("event", github.WebHookType(req)).Msg("event type not supported")
-		return nil
-	}
-
-	repo, action, metadata, err := handler(parsedPayload)
-	if err != nil {
-		return err
-	}
-
-	for _, sub := range e.matchSubscriptions(github.WebHookType(req), repo, action) {
-		log := log.With().Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
-			Str("pipeline_subscription_id", sub.extensionLabel).Logger()
-
-		client, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, e.config.UseTLS, sdk.GoferAPIVersion0)
+	for {
+		resp, err := goferClient.GetRun(context.Background(), sub.namespace, sub.pipeline, runInfo.Run.RunId)
 		if err != nil {
-			log.Error().Err(err).Msg("Could not establish Gofer client")
+			log.Error().Err(err).Msg("could not get run")
+			time.Sleep(1 * time.Minute)
 			continue
 		}
-
-		resp, err := client.StartRun(context.Background(), sub.namespace, sub.pipeline, sdk.StartRunRequest{
-			Variables: metadata,
-		})
-		if err != nil {
-			log.Error().Err(err).Msg("could not start new run")
-			continue
-		}
-		defer resp.Body.Close()
 
 		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			log.Error().Int("status_code", resp.StatusCode).Msg("could not start new run; received non 2xx status code")
+			log.Error().Int("status_code", resp.StatusCode).Msg("could not get run due to non-200 response")
+			time.Sleep(1 * time.Minute)
 			continue
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Error().Err(err).Msg("could not read response body while attempting to start run")
+			log.Error().Err(err).Msg("could not get run; could not read getRun response body")
+			time.Sleep(1 * time.Minute)
 			continue
 		}
 
-		startRunResponse := sdk.StartRunResponse{}
-		if err := json.Unmarshal(body, &startRunResponse); err != nil {
-			log.Error().Err(err).Msg("could not parse response body while attempting to read start run response")
+		getRunResponse := sdk.GetRunResponse{}
+		if err := json.Unmarshal(body, &getRunResponse); err != nil {
+			log.Error().Err(err).Msg("could not parse response body while attempting to read get run response")
+			time.Sleep(1 * time.Minute)
 			continue
 		}
 
-		log.Debug().Int64("run_id", int64(startRunResponse.Run.RunId)).Msg("started new run for github webhook")
+		resp.Body.Close()
+
+		state, err := getRunResponse.Run.State.AsRunState3()
+		if err != nil {
+			log.Error().Err(err).Msg("could not parse run state")
+			time.Sleep(1 * time.Minute)
+			continue
+		}
+
+		if state != sdk.RunState3Complete {
+			time.Sleep(1 * time.Minute)
+			continue
+		}
+
+		status, err := getRunResponse.Run.Status.AsRunStatus0()
+		if err != nil {
+			log.Error().Err(err).Msg("could not parse run status")
+			time.Sleep(1 * time.Minute)
+			continue
+		}
+
+		log.Debug().Msgf("%v", status)
+
+		conclusion := "neutral"
+		switch fmt.Sprint(status) {
+		case fmt.Sprint(sdk.RunStatus0Unknown):
+			conclusion = "neutral"
+		case fmt.Sprint(sdk.RunStatus1Failed):
+			conclusion = "failure"
+		case fmt.Sprint(sdk.RunStatus2Successful):
+			conclusion = "success"
+		case fmt.Sprint(sdk.RunStatus3Cancelled):
+			conclusion = "cancelled"
+		}
+
+		scheme := "http://"
+
+		if e.config.UseTLS {
+			scheme = "https://"
+		}
+
+		detailsURL := fmt.Sprintf("%s/api/namespaces/%s/pipelines/%s/runs/%d", scheme+e.config.GoferHost, sub.namespace, sub.pipeline, runInfo.Run.RunId)
+
+		duration := formatDuration(int64(getRunResponse.Run.Started), int64(getRunResponse.Run.Ended))
+
+		summary := github.String(fmt.Sprintf(
+			"Gofer has automatically run a pipeline in response to an event within this pull request:\n\n"+
+				"### Run Details\n"+
+				"- **Namespace**: `%s`\n"+
+				"- **Pipeline**: `%s`\n"+
+				"- **Subscription ID**: `%s`\n"+
+				"- **Run ID**: `#%d`\n"+
+				"- **Total Time**: `%s`\n"+
+				"- **Status**: `%s`\n"+
+				"- **State**: `%s`\n\n"+
+				"### Helpful Resources\n"+
+				"- [GitHub Project](https://github.com/clintjedwards/gofer)\n"+
+				"- [Documentation](https://gofer.clintjedwards.com/docs/ref/extensions/provided/github.html)\n\n\n"+
+				"This pipeline is triggered automatically by events in the pull request. For further details, you can:\n"+
+				"- Check the logs and run history by running `gofer run get %s %d`.\n"+
+				"- Review the associated pipeline configuration by running `gofer pipeline get %s`.\n\n",
+			sub.namespace, sub.pipeline, sub.extensionLabel, runInfo.Run.RunId, duration, status, state, sub.pipeline, runInfo.Run.RunId, sub.pipeline))
+
+		_, _, err = e.client.Checks.UpdateCheckRun(context.Background(), owner, repo, checkRun.GetID(), github.UpdateCheckRunOptions{
+			Name:        fmt.Sprintf("%s", sub.extensionLabel),
+			DetailsURL:  &detailsURL,
+			Status:      github.String("completed"),
+			CompletedAt: &github.Timestamp{Time: time.Now()},
+			Conclusion:  github.String(conclusion),
+			Output: &github.CheckRunOutput{
+				Title:   github.String(fmt.Sprintf("Run #%d | Namespace: %s | Pipeline: %s", runInfo.Run.RunId, sub.namespace, sub.pipeline)),
+				Summary: summary,
+			},
+		})
+		if err != nil {
+			log.Error().Err(err).Msg("could not update check run")
+			time.Sleep(1 * time.Minute)
+			return
+		}
+
+		return
+	}
+}
+
+// formatDuration takes a duration in milliseconds and converts it to a human-readable format
+func formatDuration(startMillis, endMillis int64) string {
+	duration := endMillis - startMillis
+	if duration < 0 {
+		return "Invalid time range"
 	}
 
-	return nil
+	// Convert duration to time.Duration
+	d := time.Duration(duration * int64(time.Millisecond))
+
+	milliseconds := duration % 1000
+	seconds := int64(d.Seconds())
+	switch {
+	case seconds == 0:
+		return fmt.Sprintf("%d millisecond%s", milliseconds, pluralize(milliseconds))
+	case seconds < 60:
+		if milliseconds > 0 {
+			return fmt.Sprintf("%d second%s %d millisecond%s", seconds, pluralize(seconds), milliseconds, pluralize(milliseconds))
+		}
+		return fmt.Sprintf("%d second%s", seconds, pluralize(seconds))
+	case seconds < 3600:
+		minutes := seconds / 60
+		return fmt.Sprintf("%d minute%s", minutes, pluralize(minutes))
+	case seconds < 86400:
+		hours := seconds / 3600
+		return fmt.Sprintf("%d hour%s", hours, pluralize(hours))
+	default:
+		days := seconds / 86400
+		return fmt.Sprintf("%d day%s", days, pluralize(days))
+	}
+}
+
+// Helper function to pluralize time units
+func pluralize(n int64) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
 
 // matchSubscriptions returns all subscriptions with the proper event/repo/action combination.
 // Action could be an empty string; if so just the event will be matched.
 func (e *extension) matchSubscriptions(event, repo, action string) []pipelineSubscription {
-	repoMap, exists := e.subscriptions[event]
-	if !exists {
-		return []pipelineSubscription{}
+	repoMap := map[string][]pipelineSubscription{}
+
+	// 'pull_request' is a special case since the event type is a specially created one by Gofer.
+	// Since 'pull_request_with_check' also operates on
+	if event == "pull_request" {
+		pullRequestWithCheckRepos := e.subscriptions["pull_request_with_check"]
+		pullRequestRepos := e.subscriptions["pull_request"]
+
+		for key, value := range pullRequestWithCheckRepos {
+			repoMap[key] = value
+		}
+
+		for key, value := range pullRequestRepos {
+			repoMap[key] = value
+		}
+	} else {
+		repoMapTemp, exists := e.subscriptions[event]
+		if !exists {
+			return []pipelineSubscription{}
+		}
+
+		repoMap = repoMapTemp
 	}
 
 	subscriptions, exists := repoMap[repo]
@@ -317,11 +472,11 @@ func (e *extension) matchSubscriptions(event, repo, action string) []pipelineSub
 }
 
 func (e *extension) Subscribe(_ context.Context, request extsdk.SubscriptionRequest) *extsdk.HttpError {
-	eventStr, exists := request.PipelineSubscriptionParams[strings.ToUpper(parameterEventFilter)]
+	eventStr, exists := request.PipelineSubscriptionParams[ParameterEventFilter]
 	if !exists {
 		return &extsdk.HttpError{
 			Message: fmt.Sprintf("could not find required pipeline subscription parameter %q; received params: %+v",
-				parameterEventFilter, request.PipelineSubscriptionParams),
+				ParameterEventFilter, request.PipelineSubscriptionParams),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -331,15 +486,15 @@ func (e *extension) Subscribe(_ context.Context, request extsdk.SubscriptionRequ
 	_, exists = eventSet[event]
 	if !exists {
 		return &extsdk.HttpError{
-			Message:    fmt.Sprintf("event %q unknown; event names can be gleaned from github documentation:  https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows", parameterEventFilter),
+			Message:    fmt.Sprintf("event %q unknown; event names can be gleaned from github documentation:  https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows", ParameterEventFilter),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	repo, exists := request.PipelineSubscriptionParams[strings.ToUpper(parameterRepository)]
+	repo, exists := request.PipelineSubscriptionParams[ParameterRepository]
 	if !exists {
 		return &extsdk.HttpError{
-			Message:    fmt.Sprintf("could not find required configuration parameter %q", parameterRepository),
+			Message:    fmt.Sprintf("could not find required configuration parameter %q", ParameterRepository),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -405,7 +560,7 @@ func (e *extension) Info(_ context.Context) (*extsdk.InfoResponse, *extsdk.HttpE
 			Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/github.html",
 			PipelineSubscriptionParams: []extsdk.Parameter{
 				{
-					Key: parameterEventFilter,
+					Key: ParameterEventFilter,
 					Documentation: "The event/action combination the pipeline will be triggered upon. It's presented in" +
 						" the form: <event>/<action>,<action2>... For events that do not have actions or if you simply want to trigger on any" +
 						" action, just putting the <event> wil suffice. To be clear if you don't include actions on an event that has multiple," +
@@ -414,7 +569,7 @@ func (e *extension) Info(_ context.Context) (*extsdk.InfoResponse, *extsdk.HttpE
 					Required: true,
 				},
 				{
-					Key: parameterRepository,
+					Key: ParameterRepository,
 					Documentation: "The repository the pipeline will be alerted for. The format is <organization>/<repository>" +
 						" Ex: clintjedwards/gofer",
 					Required: true,
@@ -484,23 +639,100 @@ func (e *extension) Debug(_ context.Context) extsdk.DebugResponse {
 func (e *extension) Shutdown(_ context.Context) {}
 
 func (e *extension) ExternalEvent(_ context.Context, request extsdk.ExternalEventRequest) *extsdk.HttpError {
-	payload := bytes.NewBuffer(request.Payload)
-	payloadReader := bufio.NewReader(payload)
-	req, err := http.ReadRequest(payloadReader)
+	log.Debug().Msg("processing new webhook event")
+
+	// Reconstruct the http.Request object
+	req, err := http.NewRequest("POST", "https://github.com", bytes.NewReader(request.Body))
 	if err != nil {
 		return &extsdk.HttpError{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Could not parse external request body: %v", err),
+			Message:    fmt.Sprintf("Could not serialize external request: %v", err),
 		}
 	}
 
-	err = e.processNewEvent(req)
+	for key, value := range request.Headers {
+		req.Header.Set(key, value)
+	}
+
+	rawPayload, err := github.ValidatePayload(req, []byte(e.webhookSecret))
+	if err != nil {
+		return &extsdk.HttpError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Could not validate external request payload; this may be an auth error: %v", err),
+		}
+	}
+
+	parsedPayload, err := github.ParseWebHook(github.WebHookType(req), rawPayload)
+	if err != nil {
+		return &extsdk.HttpError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Could not parse external request payload: %v", err),
+		}
+	}
+
+	handler, exists := handlers[github.WebHookType(req)]
+	if !exists {
+		// We don't return this as an error, because it is not an error on the Github side.
+		// Instead we just log that we've received it and we move along.
+		log.Debug().Str("event", github.WebHookType(req)).Msg("event type not supported")
+		return nil
+	}
+
+	repo, action, metadata, err := handler(parsedPayload)
 	if err != nil {
 		return &extsdk.HttpError{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("Could not process external request: %v", err),
 		}
 	}
+
+	for _, sub := range e.matchSubscriptions(github.WebHookType(req), repo, action) {
+		log := log.With().Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
+			Str("pipeline_subscription_id", sub.extensionLabel).Logger()
+
+		client, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, e.config.UseTLS, sdk.GoferAPIVersion0)
+		if err != nil {
+			log.Error().Err(err).Msg("Could not establish Gofer client")
+			continue
+		}
+
+		resp, err := client.StartRun(context.Background(), sub.namespace, sub.pipeline, sdk.StartRunRequest{
+			Variables: metadata,
+		})
+		if err != nil {
+			log.Error().Err(err).Msg("could not start new run")
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			log.Error().Int("status_code", resp.StatusCode).Msg("could not start new run; received non 2xx status code")
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error().Err(err).Msg("could not read response body while attempting to start run")
+			continue
+		}
+
+		startRunResponse := sdk.StartRunResponse{}
+		if err := json.Unmarshal(body, &startRunResponse); err != nil {
+			log.Error().Err(err).Msg("could not parse response body while attempting to read start run response")
+			continue
+		}
+
+		log.Debug().Int64("run_id", int64(startRunResponse.Run.RunId)).Msg("started new run for github webhook")
+
+		// Special case for pipeline subscriptions that are 'pull_request_with_check' since they need special reporting.
+		if sub.event == "pull_request_with_check" {
+			// We don't check for ok here because it is already checked by the handlers func.
+			event := parsedPayload.(*github.PullRequestEvent)
+
+			go e.reportRunToGithubAPI(sub, event, startRunResponse)
+		}
+	}
+
 	return nil
 }
 

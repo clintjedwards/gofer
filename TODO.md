@@ -1,6 +1,6 @@
-# Large Projects on the dockett
+# Large Projects on the docket
 
-## Github Extension followthrough
+## Github Extension follow through
 
 A great feature to bake into the Github extension would be the ability for it to act as a communicator with the
 Github PR in question, if possible. This mirrors how other thingdoer tooling handles github.
@@ -8,6 +8,9 @@ Github PR in question, if possible. This mirrors how other thingdoer tooling han
 It might also be possible to bake in repo management. The extension would use its extension object store permissions
 (also a project that needs to be completed) and utilize that to give user's access to a repo, allowing it to have
 a local cache that could possible be faster.
+
+  * Create the Check run for the appropriate PR
+  * Afterwards use the Check API to update what the final status of the run was.
 
 ## Better debugging tooling.
 
@@ -27,7 +30,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
-* Minify CSS when we release for frontend.
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
 yet.
   * Make sure to set the permissions for the user automagically.
@@ -55,7 +57,8 @@ to tell Gofer to use a major version of the extension but we always want the lat
 * The recover_run function needs to account for the fact that sometimes the event_id that are mentioned within runs
   might not exist anymore. This function should also not return any errors but instead just log them and move on. It
   should try its best despite any failures.
-* Change the sqlite write_pool to be guarded by a mutex. This would avoid very obvious errors.
+* Change the sqlite write_pool to be guarded by a mutex. This would avoid very obvious errors in code that might lead
+  to deadlocks during runtime.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
 code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers
 in one very large file or split them up). https://github.com/oxidecomputer/dropshot/issues/1069 should fix this.

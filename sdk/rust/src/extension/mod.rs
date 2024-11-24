@@ -97,8 +97,11 @@ pub struct UnsubscriptionRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ExternalEventRequest {
+    /// The headers for the incoming external request.
+    pub headers: HashMap<String, String>,
+
     /// The bytes of the response body for the external request.
-    pub payload: Vec<u8>,
+    pub body: Vec<u8>,
 }
 
 /// The Extension trait serves as a contact point for developers writing extensions. It clearly defines the endpoints

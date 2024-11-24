@@ -232,7 +232,7 @@
       "ExternalEventRequest": {
         "type": "object",
         "properties": {
-          "payload": {
+          "body": {
             "description": "The bytes of the response body for the external request.",
             "type": "array",
             "items": {
@@ -240,10 +240,18 @@
               "format": "uint8",
               "minimum": 0
             }
+          },
+          "headers": {
+            "description": "The headers for the incoming external request.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "payload"
+          "body",
+          "headers"
         ]
       },
       "InfoResponse": {

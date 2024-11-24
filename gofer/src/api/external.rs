@@ -1,12 +1,9 @@
-use super::permissioning::Action;
-use crate::api::{
-    extensions, load_tls, wait_for_shutdown_signal, ApiState, Middleware, PreflightOptions,
-};
+use crate::api::{extensions, load_tls, wait_for_shutdown_signal, ApiState, Middleware};
 use crate::conf;
 use anyhow::{anyhow, Context, Result};
 use dropshot::{
-    endpoint, ApiDescription, ConfigDropshot, ConfigTls, HttpError, HttpResponseUpdatedNoContent,
-    HttpServerStarter, Path, RequestContext, UntypedBody,
+    endpoint, ApiDescription, ConfigDropshot, ConfigTls, HandlerTaskMode, HttpError,
+    HttpResponseUpdatedNoContent, HttpServerStarter, Path, RequestContext, UntypedBody,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -25,7 +22,11 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
 
     let dropshot_conf = ConfigDropshot {
         bind_address,
-        ..Default::default()
+        request_body_max_bytes: 524288000, // 500MB to allow for extra large objects.
+
+        // If a client disconnects run the handler to completion still. Eventually we'll want to save resources
+        // by allowing the handler to early cancel, but until this is more developed lets just run it to completion.
+        default_handler_task_mode: HandlerTaskMode::Detached,
     };
 
     let mut api = ApiDescription::new();
@@ -98,17 +99,6 @@ pub async fn external_event_handler(
 ) -> Result<HttpResponseUpdatedNoContent, HttpError> {
     let api_state = rqctx.context();
     let path = path.into_inner();
-    let _req_metadata = api_state
-        .preflight_check(
-            &rqctx.request,
-            PreflightOptions {
-                bypass_auth: true,
-                admin_only: false,
-                resources: vec![],
-                action: Action::Write,
-            },
-        )
-        .await?;
 
     let extension = match api_state.extensions.get(&path.extension_id) {
         Some(extension) => extension.value().clone(),
@@ -127,9 +117,25 @@ pub async fn external_event_handler(
         HttpError::for_internal_error("Could not send external event to extension".into())
     })?;
 
+    let headers = rqctx.request.headers();
+
+    let mut headers_map = std::collections::HashMap::new();
+
+    for (key, value) in headers.iter() {
+        let header_key = key.as_str().to_string();
+
+        let header_value = match value.to_str() {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
+
+        headers_map.insert(header_key, header_value.to_string());
+    }
+
     if let Err(err) = client
         .external_event(&gofer_sdk::extension::api::types::ExternalEventRequest {
-            payload: body.as_bytes().to_vec(),
+            headers: headers_map,
+            body: body.as_bytes().to_vec(),
         })
         .await
     {
