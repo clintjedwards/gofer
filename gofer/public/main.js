@@ -225,7 +225,7 @@ function generateNewRunElement(run) {
   runElement.innerHTML = `
       <div class="px-4 py-5 sm:px-6">
           <div class="flex justify-between">
-              <p class="text-lg">[#${run.run_id}] ${run.namespace_id} │ ${run.pipeline_id} <span class="text-slate-500">v${run.pipeline_config_version}</span></p>
+              <p class="text-lg">[#${run.run_id}] ${run.namespace_id}│ ${run.pipeline_id} <span class="text-slate-500" style="font-size: 0.75em; vertical-align: super;">v${run.pipeline_config_version}</span></p>
               <div class="flex space-x-4">
                   <span class="${generateStatusColor(run.state)}  text-white text-center px-2 py-1 w-24">${run.state}</span>
                   <span class="${generateStatusColor(run.status)} text-white text-center px-2 py-1 w-24">${run.status}</span>
@@ -282,6 +282,10 @@ async function loadDefaultPipelineRuns() {
     document.getElementById("token-prompt-label").classList.remove("hidden");
     document.getElementById("token-prompt").classList.remove("hidden");
     document.getElementById("token-saved").classList.add("hidden");
+    
+    let runs = await getRunList("");
+    generateNewRunElements(runs);
+    
     return;
   }
 

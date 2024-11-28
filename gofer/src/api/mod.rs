@@ -105,6 +105,9 @@ pub struct PreflightOptions {
     bypass_auth: bool,
     admin_only: bool,
 
+    /// Allows unauthenticated users to access particular things under the default namespace.
+    allow_anonymous: bool,
+
     /// The resources the user should have permission for in order to access this route.
     ///
     /// Certain resources also are able to take 'targets' which allows token creators to restrict specific objects

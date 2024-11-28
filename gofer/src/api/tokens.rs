@@ -202,6 +202,7 @@ pub async fn list_tokens(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Tokens],
                 action: Action::Read,
             },
@@ -275,6 +276,7 @@ pub async fn get_token_by_id(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Tokens],
                 action: Action::Read,
             },
@@ -345,6 +347,7 @@ pub async fn whoami(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Tokens],
                 action: Action::Read,
             },
@@ -439,6 +442,7 @@ pub async fn create_token(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Tokens],
                 action: Action::Write,
             },
@@ -545,6 +549,7 @@ pub async fn delete_token(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Tokens],
                 action: Action::Delete,
             },
@@ -604,6 +609,7 @@ pub async fn create_bootstrap_token(
             PreflightOptions {
                 bypass_auth: true,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Tokens],
                 action: Action::Write,
             },
@@ -735,6 +741,7 @@ pub async fn update_token(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Tokens],
                 action: Action::Write,
             },

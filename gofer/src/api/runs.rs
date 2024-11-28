@@ -370,6 +370,7 @@ pub async fn list_runs(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -455,6 +456,7 @@ pub async fn get_run(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: true,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -548,6 +550,7 @@ pub async fn start_run(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -818,6 +821,7 @@ pub async fn cancel_run(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),

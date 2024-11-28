@@ -310,6 +310,7 @@ pub async fn list_deployments(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -388,6 +389,7 @@ pub async fn get_deployment(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),

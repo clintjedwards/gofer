@@ -1,16 +1,10 @@
 # Large Projects on the docket
 
-## Github Extension follow through
+## Create a demo mode for the default namespace.
 
-A great feature to bake into the Github extension would be the ability for it to act as a communicator with the
-Github PR in question, if possible. This mirrors how other thingdoer tooling handles github.
-
-It might also be possible to bake in repo management. The extension would use its extension object store permissions
-(also a project that needs to be completed) and utilize that to give user's access to a repo, allowing it to have
-a local cache that could possible be faster.
-
-  * Create the Check run for the appropriate PR
-  * Afterwards use the Check API to update what the final status of the run was.
+I think it would be cool when you open up the Gofer main page you were met by a place that looks lived in.
+To this end, it would be nice to create a way for anonymous requests to be made to all the API calls that need
+to be made such that the frontpage can be filled in as if the user had a token to some namespace.
 
 ## Better debugging tooling.
 

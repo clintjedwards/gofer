@@ -162,6 +162,7 @@ pub async fn list_pipelines(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: true,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines("".into()),
@@ -238,6 +239,7 @@ pub async fn get_pipeline(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: true,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -318,6 +320,7 @@ pub async fn update_pipeline(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -393,6 +396,7 @@ pub async fn delete_pipeline(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),

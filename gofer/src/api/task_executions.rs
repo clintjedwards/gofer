@@ -427,6 +427,7 @@ pub async fn list_task_executions(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -519,6 +520,7 @@ pub async fn get_task_execution(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -613,6 +615,7 @@ pub async fn cancel_task_execution(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -700,6 +703,7 @@ pub async fn get_logs(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -965,6 +969,7 @@ pub async fn delete_logs(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -1112,6 +1117,7 @@ pub async fn attach_task_execution(
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
+                allow_anonymous: false,
                 bypass_auth: false,
                 admin_only: false,
                 resources: vec![

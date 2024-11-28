@@ -64,6 +64,7 @@ pub async fn stream_events(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Events],
                 action: Action::Read,
             },
@@ -291,6 +292,7 @@ pub async fn get_event(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Events],
                 action: Action::Read,
             },
@@ -359,6 +361,7 @@ pub async fn delete_event(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Events],
                 action: Action::Delete,
             },

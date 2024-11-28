@@ -231,6 +231,7 @@ pub async fn list_configs(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -339,6 +340,7 @@ pub async fn get_config(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -485,6 +487,7 @@ pub async fn register_config(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -695,6 +698,7 @@ pub async fn deploy_config(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: true,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -1035,6 +1039,7 @@ pub async fn delete_config(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),

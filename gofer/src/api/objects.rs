@@ -244,6 +244,7 @@ pub async fn list_run_objects(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -339,6 +340,7 @@ pub async fn get_run_object(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -417,6 +419,7 @@ pub async fn put_run_object(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -522,6 +525,7 @@ pub async fn delete_run_object(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -627,6 +631,7 @@ pub async fn list_pipeline_objects(
             &rqctx.request,
             PreflightOptions {
                 bypass_auth: false,
+                allow_anonymous: false,
                 admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
@@ -709,6 +714,7 @@ pub async fn get_pipeline_object(
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
+                allow_anonymous: false,
                 bypass_auth: false,
                 admin_only: false,
                 resources: vec![
@@ -787,6 +793,7 @@ pub async fn put_pipeline_object(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -886,6 +893,7 @@ pub async fn delete_pipeline_object(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
@@ -978,6 +986,7 @@ pub async fn list_extension_objects(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Extensions(path.extension_id.clone()),
                     Resource::Objects,
@@ -1055,6 +1064,7 @@ pub async fn get_extension_object(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Extensions(path.extension_id.clone()),
                     Resource::Objects,
@@ -1126,6 +1136,7 @@ pub async fn put_extension_object(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Extensions(path.extension_id.clone()),
                     Resource::Objects,
@@ -1223,6 +1234,7 @@ pub async fn delete_extension_object(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![
                     Resource::Extensions(path.extension_id.clone()),
                     Resource::Objects,

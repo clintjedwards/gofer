@@ -114,6 +114,7 @@ pub async fn list_namespaces(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Namespaces("".into())],
                 action: Action::Read,
             },
@@ -187,6 +188,7 @@ pub async fn get_namespace(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Namespaces(path.namespace_id.clone())],
                 action: Action::Read,
             },
@@ -273,6 +275,7 @@ pub async fn create_namespace(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Namespaces("".into())],
                 action: Action::Write,
             },
@@ -387,6 +390,7 @@ pub async fn update_namespace(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Namespaces(path.namespace_id.clone())],
                 action: Action::Write,
             },
@@ -489,6 +493,7 @@ pub async fn delete_namespace(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Namespaces(path.namespace_id.clone())],
                 action: Action::Delete,
             },

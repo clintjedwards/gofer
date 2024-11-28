@@ -751,6 +751,7 @@ pub async fn list_extensions(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions("".into())],
                 action: Action::Read,
             },
@@ -792,6 +793,7 @@ pub async fn get_extension(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions(path.extension_id.clone())],
                 action: Action::Read,
             },
@@ -890,6 +892,7 @@ pub async fn install_extension(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions("".into())],
                 action: Action::Write,
             },
@@ -963,6 +966,7 @@ pub async fn update_extension(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions(path.extension_id.clone())],
                 action: Action::Write,
             },
@@ -1041,6 +1045,7 @@ pub async fn uninstall_extension(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions(path.extension_id.clone())],
                 action: Action::Delete,
             },
@@ -1123,6 +1128,7 @@ pub async fn get_extension_logs(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions(path.extension_id.clone())],
                 action: Action::Read,
             },
@@ -1318,6 +1324,7 @@ pub async fn list_extension_subscriptions(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions(path.extension_id.clone())],
                 action: Action::Read,
             },
@@ -1394,6 +1401,7 @@ pub async fn get_extension_debug_info(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::Extensions(path.extension_id.clone())],
                 action: Action::Read,
             },

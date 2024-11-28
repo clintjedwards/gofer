@@ -221,6 +221,9 @@ pub enum SystemRoles {
 
     /// A regular user of the system.
     User,
+
+    /// A role given to users who have not signed in. Only has access to pipelines and run information for the default namespace.
+    Anonymous,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -358,6 +361,19 @@ impl ApiState {
                 token_user: "Anonymous".into(),
                 // Allow access to all routes.
                 roles: vec![SystemRoles::Admin.to_string()],
+            }
+            // Allow anonymous allows read-only access to the default namespace for a subset of routes.
+            // It's only used to easily display the frontend for non-logged in users.
+        } else if options.allow_anonymous {
+            match self.get_auth_context(request).await {
+                // If the user is actually logged in we still want to enable a login. If they are actually not logged
+                // in then we want to use the anon user.
+                Ok(auth) => auth,
+                Err(_) => AuthContext {
+                    token_id: "0".into(),
+                    token_user: "Anonymous".into(),
+                    roles: vec![SystemRoles::Anonymous.to_string()],
+                },
             }
         } else {
             self.get_auth_context(request).await?
@@ -695,24 +711,39 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
 
     let user_role = InternalRole::new(
         &SystemRoles::User.to_string(),
-        "A common user role that has access to the default namespace, but read-only for most other things.",
-        vec![
-            InternalPermission {
-                resources: vec![Resource::All],
-                actions: vec![Action::Read],
-            },
-            InternalPermission {
-                resources: vec![Resource::Namespaces("^default$".into()),
-                    Resource::Pipelines(".*".into()),
-                    Resource::Configs, Resource::Deployments,
-                    Resource::Subscriptions, Resource::Objects, Resource::Secrets],
-                actions: vec![Action::Read, Action::Write,  Action::Delete],
-            }
-        ],
+        "A common user role that has read/write/delete access to the default namespace.",
+        vec![InternalPermission {
+            resources: vec![
+                Resource::Namespaces("^default$".into()),
+                Resource::Pipelines(".*".into()),
+                Resource::Configs,
+                Resource::Deployments,
+                Resource::Events,
+                Resource::Objects,
+                Resource::Runs,
+                Resource::Secrets,
+                Resource::Subscriptions,
+            ],
+            actions: vec![Action::Read, Action::Write, Action::Delete],
+        }],
         true,
     );
 
-    let roles = vec![bootstrap_role, admin_role, user_role];
+    let anon_role = InternalRole::new(
+        &SystemRoles::Anonymous.to_string(),
+        "The role given when a user has not signed in at all.",
+        vec![InternalPermission {
+            resources: vec![
+                Resource::Namespaces("^default$".into()),
+                Resource::Pipelines(".*".into()),
+                Resource::Runs,
+            ],
+            actions: vec![Action::Read],
+        }],
+        true,
+    );
+
+    let roles = vec![bootstrap_role, admin_role, user_role, anon_role];
 
     let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
@@ -767,6 +798,7 @@ pub async fn list_roles(
                 admin_only: false,
                 resources: vec![Resource::Permissions],
                 action: Action::Read,
+                allow_anonymous: false,
             },
         )
         .await?;
@@ -856,6 +888,7 @@ pub async fn get_role(
                 admin_only: false,
                 resources: vec![Resource::Permissions],
                 action: Action::Read,
+                allow_anonymous: false,
             },
         )
         .await?;
@@ -951,6 +984,7 @@ pub async fn create_role(
                 admin_only: true,
                 resources: vec![Resource::Permissions],
                 action: Action::Write,
+                allow_anonymous: false,
             },
         )
         .await?;
@@ -1116,6 +1150,7 @@ pub async fn update_role(
                 admin_only: true,
                 resources: vec![Resource::Permissions],
                 action: Action::Write,
+                allow_anonymous: false,
             },
         )
         .await?;
@@ -1265,6 +1300,7 @@ pub async fn delete_role(
                 admin_only: true,
                 resources: vec![Resource::Permissions],
                 action: Action::Delete,
+                allow_anonymous: false,
             },
         )
         .await?;

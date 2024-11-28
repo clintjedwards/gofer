@@ -34,6 +34,7 @@ pub async fn get_metadata(
             PreflightOptions {
                 bypass_auth: true, // Anyone can query for the version/commit of the system.
                 admin_only: false,
+                allow_anonymous: false,
                 resources: vec![Resource::System],
                 action: Action::Read,
             },
@@ -76,6 +77,7 @@ pub async fn get_system_preferences(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::System],
                 action: Action::Read,
             },
@@ -144,6 +146,7 @@ pub async fn update_system_preferences(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
+                allow_anonymous: false,
                 resources: vec![Resource::System],
                 action: Action::Write,
             },
