@@ -45,6 +45,8 @@ to tell Gofer to use a major version of the extension but we always want the lat
 * Deployments needs a type parameter so when we add extra deployments.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven. 
   It should use task leasing to avoid any stuck processors.
+* When writing in the rust SDK command takes a vec of String, which causes users to have to figure out how to change
+the very natural vec of &str to String. Take a look if it's possible to enable the user to just pass in &str instead.
 
 # Small things I'll probably never get around to.
 

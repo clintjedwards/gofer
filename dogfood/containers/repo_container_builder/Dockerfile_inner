@@ -1,0 +1,6 @@
+FROM rust:latest
+COPY . /repo/gofer
+WORKDIR /repo/gofer
+
+# Load dependencies
+RUN cargo check

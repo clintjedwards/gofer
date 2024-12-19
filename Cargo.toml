@@ -5,7 +5,7 @@ members = [
     "examplePipelines/rust/simple",
     "examplePipelines/rust/secrets",
     "examplePipelines/rust/objects",
-    "examplePipelines/rust/dag",
+    "examplePipelines/rust/dag", "dogfood",
 ]
 resolver = "2"
 

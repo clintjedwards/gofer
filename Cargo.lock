@@ -739,7 +739,7 @@ dependencies = [
 name = "dag"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk",
+ "gofer_sdk 0.8.2",
 ]
 
 [[package]]
@@ -897,6 +897,13 @@ dependencies = [
  "option-ext",
  "redox_users",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "dogfood"
+version = "0.1.0"
+dependencies = [
+ "gofer_sdk 0.8.1",
 ]
 
 [[package]]
@@ -1356,7 +1363,7 @@ dependencies = [
  "dropshot_endpoint 0.11.1-dev",
  "figment",
  "futures",
- "gofer_sdk",
+ "gofer_sdk 0.8.2",
  "http 0.2.12",
  "human-panic",
  "hyper 0.14.30",
@@ -1389,6 +1396,34 @@ dependencies = [
  "tracing-subscriber",
  "tungstenite",
  "uuid",
+]
+
+[[package]]
+name = "gofer_sdk"
+version = "0.8.1"
+source = "git+https://github.com/clintjedwards/gofer?tag=v0.8.2#fda843f6238a1de42ecd73efa382b7f7286097d9"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "dropshot 0.11.0-dev",
+ "dropshot_endpoint 0.11.0-dev",
+ "futures",
+ "http 0.2.12",
+ "hyper 0.14.30",
+ "lazy-regex",
+ "progenitor",
+ "rand",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "slog",
+ "slog-async",
+ "strum 0.26.3",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2228,7 +2263,7 @@ dependencies = [
 name = "objects"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk",
+ "gofer_sdk 0.8.2",
 ]
 
 [[package]]
@@ -3168,7 +3203,7 @@ dependencies = [
 name = "secrets"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk",
+ "gofer_sdk 0.8.2",
 ]
 
 [[package]]
@@ -3389,7 +3424,7 @@ dependencies = [
 name = "simple"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk",
+ "gofer_sdk 0.8.2",
 ]
 
 [[package]]
