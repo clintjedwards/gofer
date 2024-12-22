@@ -13,6 +13,17 @@ It specializes in executing your custom scripts in a containerized environment, 
 
 Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
 
+## Why?:
+
+- This is my idea of fun.
+- Modern solutions... 
+  - are too complicated to setup and/or manage.
+  - lack tight feedback loops while developing pipelines.
+  - require you to marry your business logic code to pipeline logic code.
+  - use configuration languages (or sometimes worse...their own DSL) as the DSL you interact with.
+  - stunted extensibility.
+- I consider all the above to be bad software design and wanted to see if I could make something that went in another direction.
+
 ## Features:
 
 - **Simple Deployment**: Install Gofer effortlessly with a single static binary and manage it through its intuitive command-line interface.

@@ -1,11 +1,5 @@
 # Large Projects on the docket
 
-## Create a demo mode for the default namespace.
-
-I think it would be cool when you open up the Gofer main page you were met by a place that looks lived in.
-To this end, it would be nice to create a way for anonymous requests to be made to all the API calls that need
-to be made such that the frontpage can be filled in as if the user had a token to some namespace.
-
 ## Better debugging tooling.
 
 A huge problem with thingdoers is it's hard to debug because you can't really run the code locally in most situations.
@@ -21,6 +15,8 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
+  directory. Think more about how the UX should be handled here.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
