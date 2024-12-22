@@ -15,6 +15,9 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* Think about a `context` command that allows users to examine the current settings for their CLI. This is helpful
+  when double checking what environment you're working within.
+* When you insert a new pipeline it should show you a diff on what you're changing.
 * We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
   directory. Think more about how the UX should be handled here.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
@@ -42,7 +45,8 @@ to tell Gofer to use a major version of the extension but we always want the lat
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven. 
   It should use task leasing to avoid any stuck processors.
 * When writing in the rust SDK command takes a vec of String, which causes users to have to figure out how to change
-the very natural vec of &str to String. Take a look if it's possible to enable the user to just pass in &str instead.
+  the very natural vec of &str to String. Take a look if it's possible to enable the user to just pass in &str instead.
+  This is true for many functions, we should check them all.
 
 # Small things I'll probably never get around to.
 

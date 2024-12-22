@@ -6,7 +6,7 @@ fn main() {
         "together containers that depend on other container's end states. This is obviously very useful if you ",
         "want to perform certain trees of actions depending on what happens in earlier containers.")).
         tasks(vec![
-                Task::new("first_task", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
+                Task::new("first-task", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
                     description("This task has no dependencies so it will run immediately").
                     variable("WAIT_DURATION", "20s"),
     ]).finish().unwrap();

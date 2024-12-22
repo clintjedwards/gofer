@@ -39,7 +39,9 @@ giving it a machine referable ID and a human referable name.
 err := sdk.NewPipeline("simple", "My Simple Pipeline")
 ```
 
-It's important to note here that while your human readable name ("My Simple Pipeline" in this case) can contain a large array of characters the ID can only container alphanumeric letters, numbers, and underscores. Any other characters will result in an error when attempting to register the pipeline.
+It's important to note here that while your human readable name ("My Simple Pipeline" in this case) can contain a large 
+array of characters the ID can only container alphanumeric letters, numbers, and hyphens. Any other characters will 
+result in an error when attempting to register the pipeline, due to each id needing to be URL safe.
 
 ### Add a Description
 
@@ -61,7 +63,7 @@ run on container start to just say "Hello from Gofer!".
 ```go
 err := sdk.NewPipeline("simple", "My Simple Pipeline").
         Description("This pipeline is purely for testing purposes.").
-        Tasks(sdk.NewTask("simple_task", "ubuntu:latest").
+        Tasks(sdk.NewTask("simple-task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!"),
     )
@@ -78,9 +80,9 @@ You can see we:
 To tie a bow on it, we add the `.Finish()` function to specify that our pipeline is in it's final form.
 
 ```go
-err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
+err := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
-    Tasks(sdk.NewTask("simple_task", "ubuntu:latest").
+    Tasks(sdk.NewTask("simple-task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!"),
     ).Finish()
@@ -106,10 +108,10 @@ You can tell Gofer to do this by using the `InjectAPIToken` function for a parti
 The token will be cleaned up the same time the logs for a particular run is cleaned up.
 
 ```go
-err := sdk.NewPipeline("my_pipeline", "My Simple Pipeline").
+err := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
     Tasks(
-		sdk.NewTask("simple_task", "ubuntu:latest").
+		sdk.NewTask("simple-task", "ubuntu:latest").
 			Description("This task simply prints our hello-world message and exists!").
 			Command("echo", "Hello from Gofer!").InjectAPIToken(true),
     ).Finish()

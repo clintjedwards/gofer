@@ -838,7 +838,7 @@ pub fn is_valid_identifier(id: &str) -> Result<()> {
     }
 
     if !alphanumeric_w_hyphen.is_match(id) {
-        bail!("can only be made up of alphanumeric and underscore characters");
+        bail!("can only be made up of alphanumeric and hyphen characters");
     }
 
     Ok(())

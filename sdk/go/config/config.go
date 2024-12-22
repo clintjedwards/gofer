@@ -68,9 +68,9 @@ type UserPipelineConfig struct {
 }
 
 // Create a new pipeline.
-//   - The ID must be between 3 and 32 characters long and only alphanumeric, underscores are the only allowed
+//   - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed
 //     alphanumeric character.
-//     Ex. `simple_pipeline`
+//     Ex. `simple-pipeline`
 //   - The name is a human friendly name to represent the pipeline.
 //     Ex. `Simple Pipeline`
 func NewPipeline(id, name string) *PipelineWrapper {
@@ -178,14 +178,16 @@ func RunObject(key string) string {
 	return fmt.Sprintf("run_object{{%s}}", key)
 }
 
-var alphanumericWithUnderscores = regexp.MustCompile("^[a-zA-Z0-9_]*$")
-
 // Identifiers are used as the primary key in most of gofer's resources.
 // They're defined by the user and therefore should have some sane bounds.
 // For all ids we'll want the following:
-//   - 32 > characters < 3
-//   - Only alphanumeric characters or underscores
+// * 32 > characters < 3
+// * Only alphanumeric characters or hyphens
+//
+// We don't allow underscores to conform with common practices for url safe strings.
 func validateIdentifier(arg, value string) error {
+	alphanumericWithHyphens := regexp.MustCompile("^[a-zA-Z0-9-]*$")
+
 	if len(value) > 32 {
 		return fmt.Errorf("length of arg %q cannot be greater than 32", arg)
 	}
@@ -194,8 +196,8 @@ func validateIdentifier(arg, value string) error {
 		return fmt.Errorf("length of arg %q cannot be less than 3", arg)
 	}
 
-	if !alphanumericWithUnderscores.MatchString(value) {
-		return fmt.Errorf("config %q can only be made up of alphanumeric and underscore characters; found %q", arg, value)
+	if !alphanumericWithHyphens.MatchString(value) {
+		return fmt.Errorf("config %q can only be made up of alphanumeric and hyphen characters; found %q", arg, value)
 	}
 	return nil
 }

@@ -10,9 +10,11 @@ use lazy_regex::regex;
 /// They're defined by the user and therefore should have some sane bounds.
 /// For all ids we'll want the following:
 /// * 32 > characters < 3
-/// * Only alphanumeric characters or underscores
+/// * Only alphanumeric characters or hyphens
+///
+/// We don't allow underscores to conform with common practices for url safe strings.
 fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
-    let alphanumeric_w_underscores = regex!("^[a-zA-Z0-9_]*$");
+    let alphanumeric_w_hyphen = regex!("^[a-zA-Z0-9-]*$");
 
     if value.len() > 32 {
         return Err(ConfigError::InvalidArgument {
@@ -30,12 +32,11 @@ fn validate_identifier(arg: &str, value: &str) -> Result<(), ConfigError> {
         });
     }
 
-    if !alphanumeric_w_underscores.is_match(value) {
+    if !alphanumeric_w_hyphen.is_match(value) {
         return Err(ConfigError::InvalidArgument {
             argument: arg.to_string(),
             value: value.to_string(),
-            description: "can only be made up of alphanumeric and underscore characters"
-                .to_string(),
+            description: "can only be made up of alphanumeric and hyphen characters".to_string(),
         });
     }
 

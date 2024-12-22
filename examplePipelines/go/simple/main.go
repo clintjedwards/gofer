@@ -23,7 +23,7 @@ func main() {
 			"particular workflow. Allowing you to keep the logic code closer to the actual object that uses it " +
 			"and keeping the Gofer pipeline configurations from becoming a mess.\n").
 		Tasks(
-			sdk.NewTask("simple_task", "ubuntu:latest").
+			sdk.NewTask("simple-task", "ubuntu:latest").
 				Description("This task simply prints our hello-world message and exits!").
 				Command("echo", "Hello from Gofer!").Variable("test", "sample"),
 		).Finish()

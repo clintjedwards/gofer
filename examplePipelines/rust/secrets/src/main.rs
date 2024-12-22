@@ -8,7 +8,7 @@ fn main() {
             "results to other containers."
         ))
         .tasks(vec![Task::new(
-            "simple_task",
+            "simple-task",
             "ghcr.io/clintjedwards/gofer/debug/log:latest",
         )
         .description("This task has no dependencies so it will run immediately")

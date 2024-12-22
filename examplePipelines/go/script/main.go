@@ -28,10 +28,10 @@ func main() {
 				"Alternatively, if you only have a handful of commands you want to run, you can always just "+
 				"enter them directly into the command field. Both examples are shown.").
 		Tasks(
-			sdk.NewTask("direct_input", "ubuntu:latest").
+			sdk.NewTask("direct-input", "ubuntu:latest").
 				Description("This task simply prints our hello-world message and exits!").
 				Command("echo", "Hello from Gofer!"),
-			sdk.NewTask("from_prepared_string", "ubuntu:latest").
+			sdk.NewTask("from-prepared-string", "ubuntu:latest").
 				Description("This task executes a bash script passed in from somewhere else").
 				Command("/bin/bash", "-c", exampleScript),
 		).Finish()

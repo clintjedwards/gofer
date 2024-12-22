@@ -19,7 +19,7 @@ pipeline configurations from becoming a mess.
 
     ")
         .tasks(vec![
-                Task::new("simple_task", "ubuntu:latest").
+                Task::new("simple-task", "ubuntu:latest").
                     description("This task simply prints our hello-world message and exits!").
                     command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
         ])

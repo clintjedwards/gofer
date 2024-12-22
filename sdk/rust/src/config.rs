@@ -326,11 +326,11 @@ mod tests {
 
     #[test]
     fn test_invalid_pipeline_cyclical() {
-        let task_a = Task::new("task_a", "").depends_on("task_b", RequiredParentStatus::Any);
-        let task_b = Task::new("task_b", "").depends_on("task_c", RequiredParentStatus::Any);
-        let task_c = Task::new("task_c", "").depends_on("task_a", RequiredParentStatus::Any);
+        let task_a = Task::new("task-a", "").depends_on("task-b", RequiredParentStatus::Any);
+        let task_b = Task::new("task-b", "").depends_on("task-c", RequiredParentStatus::Any);
+        let task_c = Task::new("task-c", "").depends_on("task-a", RequiredParentStatus::Any);
 
-        let result = Pipeline::new("invalid_pipeline", "")
+        let result = Pipeline::new("invalid-pipeline", "")
             .tasks(vec![task_a, task_b, task_c])
             .finish();
 
