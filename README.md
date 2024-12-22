@@ -21,7 +21,7 @@ Its primary function is to execute short-term jobs like code linting, build auto
   - lack tight feedback loops while developing pipelines.
   - require you to marry your business logic code to pipeline logic code.
   - use configuration languages (or sometimes worse...their own DSL) as the DSL you interact with.
-  - stunted extensibility.
+  - don't pay attention to extensibility.
 - I consider all the above to be bad software design and wanted to see if I could make something that went in another direction.
 
 ## Features:
