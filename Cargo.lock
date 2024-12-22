@@ -739,7 +739,7 @@ dependencies = [
 name = "dag"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk 0.8.2",
+ "gofer_sdk 0.8.3",
 ]
 
 [[package]]
@@ -1342,7 +1342,7 @@ dependencies = [
 
 [[package]]
 name = "gofer"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1363,7 +1363,7 @@ dependencies = [
  "dropshot_endpoint 0.11.1-dev",
  "figment",
  "futures",
- "gofer_sdk 0.8.2",
+ "gofer_sdk 0.8.3",
  "http 0.2.12",
  "human-panic",
  "hyper 0.14.30",
@@ -1428,7 +1428,7 @@ dependencies = [
 
 [[package]]
 name = "gofer_sdk"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2263,7 +2263,7 @@ dependencies = [
 name = "objects"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk 0.8.2",
+ "gofer_sdk 0.8.3",
 ]
 
 [[package]]
@@ -3203,7 +3203,7 @@ dependencies = [
 name = "secrets"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk 0.8.2",
+ "gofer_sdk 0.8.3",
 ]
 
 [[package]]
@@ -3424,7 +3424,7 @@ dependencies = [
 name = "simple"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk 0.8.2",
+ "gofer_sdk 0.8.3",
 ]
 
 [[package]]
