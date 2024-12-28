@@ -270,6 +270,11 @@ impl Cli {
   Initiated by {{ initiator_name }} {{ started }} and ran for {{ duration }}
   {%- if task_executions is defined and task_executions | length > 0 %}
 
+  {%- if status_reason %}
+  
+  {{status_message}}: {{ status_reason.reason }}: {{ status_reason.description }}
+  {%- endif %}
+
   🗒 Task Executions
     {%- for task in task_executions %}
     {{ task.line }}
@@ -297,6 +302,8 @@ impl Cli {
         context.insert("duration", &duration(run.started as i64, run.ended as i64));
         context.insert("objects_expired", &run.store_objects_expired);
         context.insert("task_executions", &task_data);
+        context.insert("status_reason", &run.status_reason);
+        context.insert("status_message", &"Failure".red().to_string());
 
         let content = tera.render("main", &context)?;
         println!(

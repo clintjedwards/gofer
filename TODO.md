@@ -15,8 +15,21 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* When the user asks for a log and there is no log, we should say so.
+* There is a bug for only run-tests for some reason.
+  2024-12-28T10:41:53.458112Z TRACE new event id="01940cdb-b731-7d60-a3e6-c23922f1d76d" kind=started_run emitted=1735382513457
+2024-12-28T10:41:53.562772Z TRACE new event id="01940cdb-b79a-7662-85b3-f0eec44a19cb" kind=completed_task_execution emitted=1735382513562
+* When creating the container name, we used to lean on the fact that the names for things used underscore, now
+  we use hypens, we should up the container name generation to match.
+* When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
+  then tell the user how to go about finding more information.
+* For the up command it should grab the current size of the terminal and then truncate the output, instead of having a hard
+  truncate like it does now.
+* The UX for writing the pipelines needs more work. It should feel natural to write in commands like they're written in a bash script.
+  * We should also just pretty-print the json by default so people can take a look at it.
 * Think about a `context` command that allows users to examine the current settings for their CLI. This is helpful
-  when double checking what environment you're working within.
+  when double checking what environment you're working within. The context command could also dump the server's systeminfo.
+  Maybe make that under a --full?
 * When you insert a new pipeline it should show you a diff on what you're changing.
 * We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
   directory. Think more about how the UX should be handled here.

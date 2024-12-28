@@ -397,7 +397,7 @@ impl Cli {
             colorize_status_text(pipeline_metadata.state)
         );
         print!("\n");
-        print!("{}", &pipeline_config.description);
+        print!("{}\n", &pipeline_config.description);
         print!("{}", content);
         Ok(())
     }

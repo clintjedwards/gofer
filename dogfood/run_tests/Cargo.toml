@@ -6,4 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gofer_sdk = { git = "https://github.com/clintjedwards/gofer", tag = "v0.8.2" }
+gofer_sdk = { git = "https://github.com/clintjedwards/gofer", tag = "v0.8.3" }

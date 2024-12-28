@@ -165,7 +165,8 @@ impl super::Scheduler for Scheduler {
             )
             .await
         {
-            trace!(container_name = &request.id, err = ?e, "could not remove previous container");
+            trace!(container_name = &request.id, err = ?e, "could not remove previous container; \
+                This is not an actual error unless there was a failure because of container names");
         }
 
         let mut container_config = bollard::container::Config {

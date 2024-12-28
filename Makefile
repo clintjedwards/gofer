@@ -49,7 +49,7 @@ run:
 
 run-backend:
 > cd gofer
-> export GOFER_WEB_API__LOG_LEVEL=debug
+> export GOFER_WEB_API__LOG_LEVEL=trace
 > cargo run --bin gofer -- service start
 
 ## build-release: build Gofer for release.
@@ -91,7 +91,6 @@ run-hurl-tests:
 > echo "Hurl Results"
 > echo "--------------------------------"
 > hurl --color --test *.hurl --variable secret=$$SECRET --error-format long
-
 
 ## cleanup-integration-tests: Clean up the background gofer process.
 cleanup-integration-tests:

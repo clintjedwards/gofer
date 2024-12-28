@@ -903,7 +903,7 @@ dependencies = [
 name = "dogfood"
 version = "0.1.0"
 dependencies = [
- "gofer_sdk 0.8.1",
+ "gofer_sdk 0.8.3 (git+https://github.com/clintjedwards/gofer?tag=v0.8.3)",
 ]
 
 [[package]]
@@ -1400,8 +1400,7 @@ dependencies = [
 
 [[package]]
 name = "gofer_sdk"
-version = "0.8.1"
-source = "git+https://github.com/clintjedwards/gofer?tag=v0.8.2#fda843f6238a1de42ecd73efa382b7f7286097d9"
+version = "0.8.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1429,6 +1428,7 @@ dependencies = [
 [[package]]
 name = "gofer_sdk"
 version = "0.8.3"
+source = "git+https://github.com/clintjedwards/gofer?tag=v0.8.3#e2a723ee8a62b83cd22454e638e27348644fbe56"
 dependencies = [
  "anyhow",
  "async-trait",
