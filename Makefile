@@ -49,7 +49,8 @@ run:
 
 run-backend:
 > cd gofer
-> export GOFER_WEB_API__LOG_LEVEL=trace
+# This will only set the debug log level is there isn't one set by the environment. Helps with local debugging.
+> export GOFER_WEB_API__LOG_LEVEL=$${GOFER_WEB_API__LOG_LEVEL:-debug}
 > cargo run --bin gofer -- service start
 
 ## build-release: build Gofer for release.

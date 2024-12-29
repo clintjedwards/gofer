@@ -16,11 +16,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
 # Small things I want to keep track of that I definitely need to do.
 
 * When the user asks for a log and there is no log, we should say so.
-* There is a bug for only run-tests for some reason.
-  2024-12-28T10:41:53.458112Z TRACE new event id="01940cdb-b731-7d60-a3e6-c23922f1d76d" kind=started_run emitted=1735382513457
-2024-12-28T10:41:53.562772Z TRACE new event id="01940cdb-b79a-7662-85b3-f0eec44a19cb" kind=completed_task_execution emitted=1735382513562
-* When creating the container name, we used to lean on the fact that the names for things used underscore, now
-  we use hypens, we should up the container name generation to match.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
 * For the up command it should grab the current size of the terminal and then truncate the output, instead of having a hard

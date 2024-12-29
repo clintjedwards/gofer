@@ -53,6 +53,11 @@ pub struct TaskExecutionPathArgs {
     pub task_id: String,
 }
 
+/// Correctly formats the task execution container_id. This is passed to the container orchestrator to uniquely identify
+/// the referenced container. Because namespaces, pipelines, and task_executions ids support hypen only, the result of
+/// this will be a mix between underscores (which designate a different part of the name and) and hypens (which are
+/// just parts of the ID). This distinct naming scheme should actually be helpful since it gives any parsers a good
+/// way to seperate different parts of the name.
 pub fn task_execution_container_id(
     namespace_id: &str,
     pipeline_id: &str,
