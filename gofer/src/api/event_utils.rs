@@ -508,8 +508,9 @@ impl EventBus {
                 Err(err) => {
                     trace!(
                         error = %err,
-                        "No receivers available to receive published message; This is not an actual error unless events\
-                        are being missed by known subscribed listeners.",
+                        kind = %kind,
+                        "No receivers available to receive published message; This is not an actual error unless events \
+                         are being missed by known subscribed listeners.",
                     );
                 }
             };

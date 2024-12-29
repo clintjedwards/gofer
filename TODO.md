@@ -63,6 +63,8 @@ to tell Gofer to use a major version of the extension but we always want the lat
 
 # Small things I'll probably never get around to.
 
+* Change the poll interval for pruneing events to be based on the number of events processed rather than just a standard
+  static prune time. Maybe we can just make it a big LRU.
 * The recover_run function needs to account for the fact that sometimes the event_id that are mentioned within runs
   might not exist anymore. This function should also not return any errors but instead just log them and move on. It
   should try its best despite any failures.

@@ -13,8 +13,11 @@ use gofer_sdk::config::pipeline_secret;
 use sqlx::SqliteConnection;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::{atomic, Arc, Barrier};
-use tokio::{io::AsyncWriteExt, sync::Mutex};
+use std::sync::{atomic, Arc};
+use tokio::{
+    io::AsyncWriteExt,
+    sync::{Barrier, Mutex},
+};
 use tracing::{debug, error, trace};
 
 fn run_specific_api_key_id(run_id: u64) -> String {
@@ -117,7 +120,7 @@ impl Shepherd {
         // one more for the run monitor itself.
         let barrier_threshold = self.pipeline.config.tasks.len() + 1;
 
-        let barrier = Arc::new(std::sync::Barrier::new(barrier_threshold));
+        let barrier = Arc::new(tokio::sync::Barrier::new(barrier_threshold));
 
         for task in self.pipeline.config.tasks.values() {
             let event_stream = self.api_state.event_bus.subscribe_live();
@@ -260,7 +263,7 @@ impl Shepherd {
 
         let barrier_threshold = unfinished_task_list.len() + 1;
 
-        let barrier = Arc::new(std::sync::Barrier::new(barrier_threshold));
+        let barrier = Arc::new(tokio::sync::Barrier::new(barrier_threshold));
 
         for task in unfinished_task_list {
             let thread_barrier = barrier.clone();
@@ -307,11 +310,11 @@ impl Shepherd {
     /// Listens to messages from the event bus and updates the status of the run in-progress.
     async fn monitor_run(
         &self,
-        barrier: Arc<std::sync::Barrier>,
+        barrier: Arc<tokio::sync::Barrier>,
         mut event_stream: Box<dyn EventListener>,
     ) {
         // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
-        barrier.wait();
+        barrier.wait().await;
 
         let mut completed_tasks = std::collections::HashMap::new();
         let mut is_cancelled = false;
@@ -494,7 +497,7 @@ impl Shepherd {
         task: tasks::Task,
     ) {
         // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
-        barrier.wait();
+        barrier.wait().await;
 
         // Start by creating a new task execution and saving it to the state machine and disk.
         let new_task_execution = task_executions::TaskExecution::new(
