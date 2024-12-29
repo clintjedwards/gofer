@@ -321,9 +321,11 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
 
     // Then we perform additional housekeeping.
 
-    extensions::install_std_extensions(api_state.clone())
-        .await
-        .context("Could not register standard extensions")?;
+    if conf.extensions.install_std_extensions {
+        extensions::install_std_extensions(api_state.clone())
+            .await
+            .context("Could not register standard extensions")?;
+    }
 
     namespaces::create_default_namespace(api_state.clone())
         .await
@@ -350,7 +352,9 @@ pub async fn start_web_services() -> Result<()> {
         .await
         .context("Could not initialize API")?;
 
-    tokio::spawn(external::start_web_service(conf.clone(), api_state.clone()));
+    if conf.external_events.enable {
+        tokio::spawn(external::start_web_service(conf.clone(), api_state.clone()));
+    }
 
     start_web_service(conf, api_state.clone()).await?;
 
@@ -1206,19 +1210,16 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
 
         let response = next(server.clone(), request, request_id.clone(), remote_addr).await;
 
-        match &response {
-            Ok(response) => {
-                info!(
-                    remote_addr = remote_ip,
-                    req_id = request_id,
-                    method = method,
-                    uri = uri,
-                    response_code = response.status().as_str(),
-                    latency = format_duration(start_time.elapsed()),
-                    "request completed"
-                );
-            }
-            Err(_) => {}
+        if let Ok(response) = &response {
+            info!(
+                remote_addr = remote_ip,
+                req_id = request_id,
+                method = method,
+                uri = uri,
+                response_code = response.status().as_str(),
+                latency = format_duration(start_time.elapsed()),
+                "request completed"
+            );
         }
 
         response

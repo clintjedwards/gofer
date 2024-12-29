@@ -4,7 +4,6 @@ mod pipeline;
 use crate::cli::Cli;
 use anyhow::Result;
 use clap::{Args, Subcommand};
-use serde::Serialize;
 
 #[derive(Debug, Args, Clone)]
 pub struct SecretSubcommands {
@@ -24,13 +23,6 @@ pub enum SecretCommands {
     ///
     /// Gofer allows you to store pipeline secrets. These secrets are then used to populate wherever variables are used.
     Pipeline(pipeline::PipelineSecretSubcommands),
-}
-
-#[derive(Serialize)]
-struct TaskData {
-    name: String,
-    depends_on: Vec<String>,
-    num_items: usize,
 }
 
 impl Cli {

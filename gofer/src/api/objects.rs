@@ -870,6 +870,9 @@ pub async fn put_pipeline_object(
         ));
     };
 
+    // TODO(): Implement pipeline object limits
+    let _ = api_state.config.object_store.pipeline_object_limit;
+
     let resp = PutPipelineObjectResponse { object: new_object };
 
     Ok(HttpResponseCreated(resp))

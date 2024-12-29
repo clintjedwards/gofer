@@ -31,6 +31,7 @@ thought into this feature that it can become a game changer for Gofer as a whole
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
+* Implement pipeline object limits
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
 yet.
   * Make sure to set the permissions for the user automagically.

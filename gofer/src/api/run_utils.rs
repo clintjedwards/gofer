@@ -2039,8 +2039,8 @@ impl Shepherd {
 /// 1) We first pass in the Gofer system specific envvars as these are the most replaceable on the totem pole.
 /// 2) We pass in the task specific envvars defined by the user in the pipeline config.
 /// 3) Lastly we pass in the run specific defined envvars. These are usually provided by either a trigger
-/// or the user when they attempt to start a new run manually. Since these are the most likely to be
-/// edited adhoc they are treated as the most important.
+///    or the user when they attempt to start a new run manually. Since these are the most likely to be
+///    edited adhoc they are treated as the most important.
 pub fn combine_variables(run: &runs::Run, task: &tasks::Task) -> Vec<Variable> {
     let system_injected_vars = system_injected_vars(run, task, task.inject_api_token);
 

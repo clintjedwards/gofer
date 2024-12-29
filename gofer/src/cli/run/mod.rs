@@ -71,13 +71,6 @@ pub enum RunCommands {
     Object(object::ObjectSubcommands),
 }
 
-#[derive(Serialize)]
-struct TaskData {
-    name: String,
-    depends_on: Vec<String>,
-    num_items: usize,
-}
-
 impl Cli {
     pub async fn handle_run_subcommands(&self, command: RunSubcommands) -> Result<()> {
         let cmds = command.command;

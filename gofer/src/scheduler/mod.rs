@@ -94,6 +94,8 @@ pub struct StartContainerResponse {
     /// will not be able to use the client provided container name as a unique identifier and will
     /// return it's own identifier. In these cases the client will have to store the scheduler's id
     /// for further use.
+    /// This is not yet used and mostly just a placeholder for later scheduler implementations.
+    #[allow(dead_code)]
     pub scheduler_id: Option<String>,
 
     /// An endpoint that only is returned for containers with networking set to on.
@@ -147,6 +149,7 @@ pub enum Log {
     Unknown,
     Stdout(Vec<u8>),
     Stderr(Vec<u8>),
+    #[allow(dead_code)]
     Stdin(Vec<u8>),
     Console(Vec<u8>),
 }

@@ -40,6 +40,7 @@ pub enum SecretStoreError {
 pub trait SecretStore: Debug + Send + Sync + 'static {
     async fn get(&self, key: &str) -> Result<Value, SecretStoreError>;
     async fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), SecretStoreError>;
+    #[allow(dead_code)]
     async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, SecretStoreError>;
     async fn delete(&self, key: &str) -> Result<(), SecretStoreError>;
 }

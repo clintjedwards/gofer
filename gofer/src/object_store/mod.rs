@@ -39,6 +39,7 @@ pub enum ObjectStoreError {
 pub trait ObjectStore: Debug + Send + Sync + 'static {
     async fn get(&self, key: &str) -> Result<Value, ObjectStoreError>;
     async fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), ObjectStoreError>;
+    #[allow(dead_code)]
     async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, ObjectStoreError>;
     async fn delete(&self, key: &str) -> Result<(), ObjectStoreError>;
 }

@@ -144,7 +144,7 @@ impl Cli {
             table.add_row(vec![
                 Cell::new(&extension.registration.extension_id).fg(Color::Green),
                 Cell::new(&extension.url),
-                Cell::new(&extension.state.to_string())
+                Cell::new(extension.state.to_string())
                     .fg(colorize_status_text_comfy(extension.state)),
             ]);
         }

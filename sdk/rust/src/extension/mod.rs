@@ -560,19 +560,16 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
 
         let response = next(server.clone(), request, request_id.clone(), remote_addr).await;
 
-        match &response {
-            Ok(response) => {
-                info!(
-                    remote_addr = %remote_addr,
-                    req_id = request_id,
-                    method = method,
-                    uri = uri,
-                    response_code = response.status().as_str(),
-                    latency = format_duration(start_time.elapsed()),
-                    "request completed"
-                );
-            }
-            Err(_) => {}
+        if let Ok(response) = &response {
+            info!(
+                remote_addr = %remote_addr,
+                req_id = request_id,
+                method = method,
+                uri = uri,
+                response_code = response.status().as_str(),
+                latency = format_duration(start_time.elapsed()),
+                "request completed"
+            );
         }
 
         response

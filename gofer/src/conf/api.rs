@@ -22,10 +22,6 @@ pub struct Api {
     /// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
     pub run_parallelism_limit: u64,
 
-    /// How many total versions of an individual pipeline to keep. The oldest version of a pipeline over this limit
-    /// gets deleted. 0 means don't delete versions.
-    pub pipeline_version_retention: u64,
-
     /// Controls how long Gofer will hold onto events before discarding them (in seconds).
     /// This is important factor in disk space and memory footprint.
     ///
@@ -99,9 +95,6 @@ pub struct Scheduler {
 
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Server {
-    /// The URL that users use to interact with Gofer. Should be the full uri to the root. Ex. http://example.org
-    pub url: String,
-
     /// The bind address the server will listen on. Ex: 0.0.0.0:8080
     pub bind_address: String,
 
@@ -114,9 +107,6 @@ pub struct Server {
 
     /// Path to Gofer's database.
     pub storage_path: String,
-
-    /// The total amount of results the database will attempt to pass back when a limit is not explicitly given.
-    pub storage_results_limit: u64,
 
     /// These are the paths to the certificate pieces the server needs to use for TLS.
     pub use_tls: bool,
