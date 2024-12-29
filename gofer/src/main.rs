@@ -37,6 +37,7 @@ async fn main() {
 // 2) comment out our `tracing-subscibe::fmt::init` in api/mod.rs
 // 3) run `export RUSTFLAGS="--cfg tokio_unstable"` before running `make run`
 // 4) wait till Gofer starts before running `tokio-console`
+// docs: https://github.com/tokio-rs/console
 
 // fn main() {
 //     console_subscriber::init();

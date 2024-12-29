@@ -370,7 +370,7 @@ pub async fn list_runs(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
-                allow_anonymous: false,
+                allow_anonymous: true,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),
