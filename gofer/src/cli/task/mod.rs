@@ -1,6 +1,4 @@
-use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, duration, humanize_relative_duration, Cli,
-};
+use crate::cli::{colorize_status_text, colorize_status_text_comfy, duration, Cli};
 use anyhow::{anyhow, bail, Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -209,10 +207,12 @@ impl Cli {
             table.add_row(vec![
                 Cell::new(task.task_id).fg(Color::Green),
                 Cell::new(
-                    humanize_relative_duration(task.started).unwrap_or("Unknown".to_string()),
+                    self.format_time(task.started)
+                        .unwrap_or("Unknown".to_string()),
                 ),
                 Cell::new(
-                    humanize_relative_duration(task.ended).unwrap_or("Still running".to_string()),
+                    self.format_time(task.ended)
+                        .unwrap_or("Still running".to_string()),
                 ),
                 Cell::new(duration(task.started as i64, task.ended as i64)),
                 Cell::new(task.state).fg(colorize_status_text_comfy(task.state)),
@@ -295,7 +295,9 @@ impl Cli {
         context.insert("task_prefix", &"├──".magenta().to_string());
         context.insert(
             "started",
-            &humanize_relative_duration(task.started).unwrap_or_else(|| "Not yet".to_string()),
+            &self
+                .format_time(task.started)
+                .unwrap_or_else(|| "Not yet".to_string()),
         );
         context.insert(
             "duration",

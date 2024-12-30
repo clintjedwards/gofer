@@ -1,6 +1,4 @@
-use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, duration, humanize_relative_duration, Cli,
-};
+use crate::cli::{colorize_status_text, colorize_status_text_comfy, duration, Cli};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -105,9 +103,10 @@ impl Cli {
                     deployment.start_version, deployment.end_version
                 )),
                 Cell::new(
-                    humanize_relative_duration(deployment.started).unwrap_or("Not Yet".to_string()),
+                    self.format_time(deployment.started)
+                        .unwrap_or("Not Yet".to_string()),
                 ),
-                Cell::new(humanize_relative_duration(deployment.ended).unwrap_or("Never".into())),
+                Cell::new(self.format_time(deployment.ended).unwrap_or("Never".into())),
                 Cell::new(deployment.state).fg(colorize_status_text_comfy(deployment.state)),
                 Cell::new(deployment.status).fg(colorize_status_text_comfy(deployment.status)),
             ]);
@@ -173,12 +172,14 @@ impl Cli {
         );
         context.insert(
             "started",
-            &humanize_relative_duration(deployment.deployment.started)
+            &self
+                .format_time(deployment.deployment.started)
                 .unwrap_or("Unknown".to_string()),
         );
         context.insert(
             "ended",
-            &humanize_relative_duration(deployment.deployment.ended)
+            &self
+                .format_time(deployment.deployment.ended)
                 .unwrap_or("Unknown".to_string()),
         );
         context.insert("state", &colorize_status_text(deployment.deployment.state));

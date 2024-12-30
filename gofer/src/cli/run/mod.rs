@@ -1,9 +1,6 @@
 mod object;
 
-use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, dependencies, duration,
-    humanize_relative_duration, Cli,
-};
+use crate::cli::{colorize_status_text, colorize_status_text_comfy, dependencies, duration, Cli};
 use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -168,8 +165,11 @@ impl Cli {
         for run in runs {
             table.add_row(vec![
                 Cell::new(run.run_id).fg(Color::Green),
-                Cell::new(humanize_relative_duration(run.started).unwrap_or("Unknown".to_string())),
-                Cell::new(humanize_relative_duration(run.ended).unwrap_or("Unknown".to_string())),
+                Cell::new(
+                    self.format_time(run.started)
+                        .unwrap_or("Unknown".to_string()),
+                ),
+                Cell::new(self.format_time(run.ended).unwrap_or("Unknown".to_string())),
                 Cell::new(duration(run.started as i64, run.ended as i64)),
                 Cell::new(run.state).fg(colorize_status_text_comfy(run.state)),
                 Cell::new(run.status).fg(colorize_status_text_comfy(run.status)),
@@ -228,7 +228,8 @@ impl Cli {
                 Cell::new(format!("• {}", task.task_id.clone())).fg(Color::Blue),
                 Cell::new(format!(
                     "Started {}",
-                    humanize_relative_duration(task.started).unwrap_or("Not yet".to_string())
+                    self.format_time(task.started)
+                        .unwrap_or("Not yet".to_string())
                 )),
                 Cell::new(format!(
                     "{} {}",
@@ -290,7 +291,9 @@ impl Cli {
         context.insert("initiator_name", &run.initiator.user.cyan().to_string());
         context.insert(
             "started",
-            &humanize_relative_duration(run.started).unwrap_or_else(|| "Not yet".to_string()),
+            &self
+                .format_time(run.started)
+                .unwrap_or_else(|| "Not yet".to_string()),
         );
         context.insert("duration", &duration(run.started as i64, run.ended as i64));
         context.insert("objects_expired", &run.store_objects_expired);

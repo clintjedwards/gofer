@@ -211,6 +211,25 @@ impl Cli {
             Commands::Token(token) => self.handle_token_subcommands(token).await,
         }
     }
+
+    /// Uses the 'detail' flag for the CLI to either print a friendly duration if detail = false
+    /// or the exact timestamp if detail = true.
+    /// Expects to be given unix milliseconds.
+    pub fn format_time(&self, time: u64) -> Option<String> {
+        if time == 0 {
+            return None;
+        };
+
+        if self.conf.detail {
+            Some(
+                chrono::DateTime::from_timestamp_millis(time as i64)
+                    .unwrap()
+                    .to_rfc2822(),
+            )
+        } else {
+            format_duration(time)
+        }
+    }
 }
 
 /// Return the current epoch time in milliseconds.
@@ -224,29 +243,26 @@ pub fn epoch_milli() -> u64 {
 /// Transforms the given time into a humanized duration string from the current time.
 ///  or if time is not valid returns None.
 /// (i.e. 'about an hour ago' )
-fn humanize_relative_duration(time: u64) -> Option<String> {
+/// (i.e. 'in about an hour')
+fn format_duration(time: u64) -> Option<String> {
     if time == 0 {
         return None;
     }
 
-    let time_diff = epoch_milli() - time;
-    let time_diff_duration = chrono::Duration::milliseconds(-(time_diff as i64));
-    Some(HumanTime::from(time_diff_duration).to_string())
-}
+    let time_diff = epoch_milli() as i64 - time as i64;
+    let time_diff_duration = chrono::Duration::milliseconds(time_diff);
 
-/// Transforms the given time into a humanized duration string from the current time.
-///  or if time is not valid returns None.
-/// (i.e. 'in an hour ago' )
-fn humanize_future_time(time: u64) -> Option<String> {
-    let now = chrono::Utc::now().timestamp_millis() as u64;
-    let duration_until_expires = time.saturating_sub(now);
-    let chrono_duration = chrono::Duration::milliseconds(duration_until_expires as i64);
-    let duration_string = HumanTime::from(chrono_duration).to_text_en(
-        chrono_humanize::Accuracy::Rough,
-        chrono_humanize::Tense::Future,
-    );
-
-    Some(duration_string)
+    if time_diff.is_positive() {
+        Some(HumanTime::from(time_diff_duration).to_text_en(
+            chrono_humanize::Accuracy::Rough,
+            chrono_humanize::Tense::Past,
+        ))
+    } else {
+        Some(HumanTime::from(time_diff_duration).to_text_en(
+            chrono_humanize::Accuracy::Rough,
+            chrono_humanize::Tense::Future,
+        ))
+    }
 }
 
 /// Creates a new HTTP client that is set up to talk to Gofer.

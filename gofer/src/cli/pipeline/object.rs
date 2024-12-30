@@ -1,4 +1,4 @@
-use crate::cli::{humanize_relative_duration, Cli};
+use crate::cli::Cli;
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
@@ -126,7 +126,8 @@ impl Cli {
             table.add_row(vec![
                 Cell::new(object.key).fg(Color::Green),
                 Cell::new(
-                    humanize_relative_duration(object.created).unwrap_or("Unknown".to_string()),
+                    self.format_time(object.created)
+                        .unwrap_or("Unknown".to_string()),
                 ),
             ]);
         }

@@ -68,6 +68,9 @@ Gofer is setup such that the base run mode is the development mode. So simply ru
 without any additional flags allows easy auth-less development. You can read more about how to deploy Gofer in a
 production environment [here](https://clintjedwards.com/gofer/ref/server_configuration/index.html)
 
+This is really helpful for users and developers alike since it allows easy access to a runnable server to test pipelines
+against.
+
 ### You'll need to install the following first:
 
 To run Gofer dev mode:
@@ -85,6 +88,14 @@ cd gofer
 export GOFER_WEB_API__LOG_LEVEL=debug
 cargo run --bin gofer -- service start
 ```
+
+### Env aware configuration
+
+To avoid issues when developing Gofer, the development build of Gofer(`any binary that was not built with --release`) 
+looks for the CLI config file at `.gofer_dev.toml` instead of `.gofer.toml`.
+
+This avoids the headache of having to swap configuration files while actively developing Gofer. But is noted here since
+it can be confusing if not known.
 
 ### Editing OpenAPI spec files
 

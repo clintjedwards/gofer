@@ -1,4 +1,4 @@
-use crate::cli::{humanize_relative_duration, validate_identifier, Cli};
+use crate::cli::{validate_identifier, Cli};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
@@ -113,7 +113,8 @@ impl Cli {
                 Cell::new(secret.key).fg(Color::Green),
                 Cell::new(format!("{:?}", secret.namespaces)),
                 Cell::new(
-                    humanize_relative_duration(secret.created).unwrap_or("Unknown".to_string()),
+                    self.format_time(secret.created)
+                        .unwrap_or("Unknown".to_string()),
                 ),
             ]);
         }
@@ -152,7 +153,9 @@ impl Cli {
         context.insert("namespaces", &secret.metadata.namespaces);
         context.insert(
             "created",
-            &humanize_relative_duration(secret.metadata.created).unwrap_or("Unknown".to_string()),
+            &self
+                .format_time(secret.metadata.created)
+                .unwrap_or("Unknown".to_string()),
         );
 
         let content = tera.render("main", &context)?;

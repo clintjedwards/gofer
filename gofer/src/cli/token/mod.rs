@@ -1,7 +1,4 @@
-use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, humanize_future_time,
-    humanize_relative_duration, Cli,
-};
+use crate::cli::{colorize_status_text, colorize_status_text_comfy, Cli};
 use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand};
 use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
@@ -130,11 +127,12 @@ impl Cli {
                 Cell::new(token.id).fg(Color::Green),
                 Cell::new(format!("{:?}", token.roles)),
                 Cell::new(
-                    humanize_relative_duration(token.created)
+                    self.format_time(token.created)
                         .unwrap_or_else(|| "Unknown".to_string()),
                 ),
                 Cell::new(
-                    humanize_future_time(token.expires).unwrap_or_else(|| "Unknown".to_string()),
+                    self.format_time(token.expires)
+                        .unwrap_or_else(|| "Never".to_string()),
                 ),
                 Cell::new(active).fg(colorize_status_text_comfy(active)),
             ]);
@@ -179,11 +177,15 @@ impl Cli {
         context.insert("metadata", &token.metadata);
         context.insert(
             "created",
-            &humanize_relative_duration(token.created).unwrap_or_else(|| "Unknown".to_string()),
+            &self
+                .format_time(token.created)
+                .unwrap_or_else(|| "Unknown".to_string()),
         );
         context.insert(
             "expires",
-            &humanize_future_time(token.expires).unwrap_or_else(|| "Unknown".to_string()),
+            &self
+                .format_time(token.expires)
+                .unwrap_or_else(|| "Unknown".to_string()),
         );
 
         let active = !token.disabled;
@@ -321,11 +323,15 @@ impl Cli {
         context.insert("metadata", &token.metadata);
         context.insert(
             "created",
-            &humanize_relative_duration(token.created).unwrap_or_else(|| "Unknown".to_string()),
+            &self
+                .format_time(token.created)
+                .unwrap_or_else(|| "Unknown".to_string()),
         );
         context.insert(
             "expires",
-            &humanize_future_time(token.expires).unwrap_or_else(|| "Unknown".to_string()),
+            &self
+                .format_time(token.expires)
+                .unwrap_or_else(|| "Unknown".to_string()),
         );
         context.insert("disabled", &token.disabled);
 

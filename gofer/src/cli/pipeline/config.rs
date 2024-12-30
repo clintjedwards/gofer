@@ -1,6 +1,4 @@
-use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, humanize_relative_duration, Cli,
-};
+use crate::cli::{colorize_status_text, colorize_status_text_comfy, Cli};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -105,9 +103,13 @@ impl Cli {
                 Cell::new(config.version).fg(Color::Green),
                 Cell::new(config.state).fg(colorize_status_text_comfy(config.state)),
                 Cell::new(
-                    humanize_relative_duration(config.registered).unwrap_or("Unknown".to_string()),
+                    self.format_time(config.registered)
+                        .unwrap_or("Unknown".to_string()),
                 ),
-                Cell::new(humanize_relative_duration(config.deprecated).unwrap_or("Never".into())),
+                Cell::new(
+                    self.format_time(config.deprecated)
+                        .unwrap_or("Never".into()),
+                ),
             ]);
         }
 
@@ -159,11 +161,15 @@ impl Cli {
         context.insert("tasks", &config.config.tasks);
         context.insert(
             "registered",
-            &humanize_relative_duration(config.config.registered).unwrap_or("Unknown".to_string()),
+            &self
+                .format_time(config.config.registered)
+                .unwrap_or("Unknown".to_string()),
         );
         context.insert(
             "deprecated",
-            &humanize_relative_duration(config.config.deprecated).unwrap_or("Never".to_string()),
+            &self
+                .format_time(config.config.deprecated)
+                .unwrap_or("Never".to_string()),
         );
 
         let content = tera.render("main", &context)?;

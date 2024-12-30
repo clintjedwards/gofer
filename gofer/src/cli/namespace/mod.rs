@@ -1,4 +1,4 @@
-use crate::cli::{humanize_relative_duration, Cli};
+use crate::cli::Cli;
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
@@ -113,7 +113,7 @@ impl Cli {
                 Cell::new(namespace.name),
                 Cell::new(namespace.description),
                 Cell::new(
-                    humanize_relative_duration(namespace.created)
+                    self.format_time(namespace.created)
                         .unwrap_or_else(|| "Unknown".to_string()),
                 ),
             ]);
@@ -148,7 +148,9 @@ Created {{created}}
         context.insert("description", &namespace.description);
         context.insert(
             "created",
-            &humanize_relative_duration(namespace.created).unwrap_or_else(|| "Unknown".to_string()),
+            &self
+                .format_time(namespace.created)
+                .unwrap_or_else(|| "Unknown".to_string()),
         );
 
         let content = tera.render("main", &context)?;

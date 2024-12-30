@@ -3,8 +3,7 @@ mod deployment;
 mod object;
 
 use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, dependencies, duration,
-    humanize_relative_duration, Cli, TitleCase,
+    colorize_status_text, colorize_status_text_comfy, dependencies, duration, Cli, TitleCase,
 };
 use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand};
@@ -215,9 +214,13 @@ impl Cli {
                 Cell::new(pipeline.pipeline_id).fg(Color::Green),
                 Cell::new(pipeline.state).fg(colorize_status_text_comfy(pipeline.state)),
                 Cell::new(
-                    humanize_relative_duration(pipeline.created).unwrap_or("Unknown".to_string()),
+                    self.format_time(pipeline.created)
+                        .unwrap_or("Unknown".to_string()),
                 ),
-                Cell::new(humanize_relative_duration(last_run_time).unwrap_or("Never".to_string())),
+                Cell::new(
+                    self.format_time(last_run_time)
+                        .unwrap_or("Never".to_string()),
+                ),
             ]);
         }
 
@@ -286,7 +289,7 @@ impl Cli {
                 Cell::new(format!("{}:", run.run_id)).fg(Color::Blue),
                 Cell::new(format!(
                     "{} by {}",
-                    humanize_relative_duration(run.started).unwrap_or("Never".into()),
+                    self.format_time(run.started).unwrap_or("Never".into()),
                     run.initiator.user.title()
                 )),
                 Cell::new(format!(
@@ -381,12 +384,13 @@ impl Cli {
         context.insert("subscriptions", &subscription_table.to_string());
         context.insert(
             "created",
-            &humanize_relative_duration(pipeline_metadata.created)
+            &self
+                .format_time(pipeline_metadata.created)
                 .unwrap_or_else(|| "Unknown".to_string()),
         );
         context.insert(
             "last_run",
-            &humanize_relative_duration(last_run_time).unwrap_or("Never".into()),
+            &self.format_time(last_run_time).unwrap_or("Never".into()),
         );
 
         let content = tera.render("main", &context)?;

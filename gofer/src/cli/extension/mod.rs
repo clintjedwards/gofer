@@ -1,6 +1,4 @@
-use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, humanize_relative_duration, Cli,
-};
+use crate::cli::{colorize_status_text, colorize_status_text_comfy, Cli};
 use anyhow::{anyhow, bail, Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -198,7 +196,9 @@ impl Cli {
         let mut context = tera::Context::new();
         context.insert(
             "started",
-            &humanize_relative_duration(extension.started).unwrap_or_else(|| "Not yet".to_string()),
+            &self
+                .format_time(extension.started)
+                .unwrap_or_else(|| "Not yet".to_string()),
         );
         context.insert("url", &extension.url);
         context.insert("config_params", &extension.documentation.config_params);

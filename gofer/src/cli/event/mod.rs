@@ -1,4 +1,4 @@
-use crate::cli::{humanize_relative_duration, Cli};
+use crate::cli::Cli;
 use anyhow::{anyhow, bail, Context, Result};
 use chrono::TimeZone;
 use clap::{Args, Subcommand};
@@ -135,7 +135,9 @@ impl Cli {
         let mut context = tera::Context::new();
         context.insert(
             "emitted",
-            &humanize_relative_duration(event.emitted).unwrap_or_else(|| "Unknown".to_string()),
+            &self
+                .format_time(event.emitted)
+                .unwrap_or_else(|| "Unknown".to_string()),
         );
         context.insert("id", &event.id);
         context.insert("kind", &format!("{:#?}", event.kind));
