@@ -24,7 +24,7 @@ pub struct GetSystemMetadataResponse {
     path = "/api/system/metadata",
     tags = ["System"],
 )]
-pub async fn get_metadata(
+pub async fn get_system_metadata(
     rqctx: RequestContext<Arc<ApiState>>,
 ) -> Result<HttpResponseOk<GetSystemMetadataResponse>, HttpError> {
     let api_state = rqctx.context();

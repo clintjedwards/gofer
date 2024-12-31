@@ -22,9 +22,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
   truncate like it does now.
 * The UX for writing the pipelines needs more work. It should feel natural to write in commands like they're written in a bash script.
   * We should also just pretty-print the json by default so people can take a look at it.
-* Think about a `context` command that allows users to examine the current settings for their CLI. This is helpful
-  when double checking what environment you're working within. The context command could also dump the server's systeminfo.
-  Maybe make that under a --full?
 * When you insert a new pipeline it should show you a diff on what you're changing.
 * We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
   directory. Think more about how the UX should be handled here.

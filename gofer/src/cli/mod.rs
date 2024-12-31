@@ -17,6 +17,7 @@ use chrono_humanize::HumanTime;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use lazy_regex::regex;
+use polyfmt::println;
 use reqwest::{header, Client};
 use std::collections::HashMap;
 use std::{
@@ -100,6 +101,12 @@ enum Commands {
         #[arg(short, long, default_value = "true")]
         deploy: bool,
     },
+
+    /// Prints information about the current context of the Gofer CLI.
+    ///
+    /// Helpful for things like figuring out which environment you're currently communicating with, the server status,
+    /// CLI configuration options and more.
+    Context,
 
     /// Manage the Gofer api service.
     Service(service::ServiceSubcommands),
@@ -199,6 +206,7 @@ impl Cli {
                 path,
                 deploy,
             } => self.pipeline_create(namespace, path, deploy).await,
+            Commands::Context => self.get_context().await,
             Commands::Service(service) => self.handle_service_subcommands(service).await,
             Commands::Namespace(namespace) => self.handle_namespace_subcommands(namespace).await,
             Commands::Pipeline(pipeline) => self.handle_pipeline_subcommands(pipeline).await,
@@ -229,6 +237,30 @@ impl Cli {
         } else {
             format_duration(time)
         }
+    }
+
+    pub async fn get_context(&self) -> Result<()> {
+        let preferences = self
+            .client
+            .get_system_preferences()
+            .await
+            .unwrap()
+            .into_inner();
+
+        let current_token = self.client.whoami().await.unwrap().into_inner().token;
+
+        println!("Whoami?");
+        println!("  id: {}", current_token.id);
+        println!("  user: {}", current_token.user);
+        println!("  roles: {:#?}", current_token.roles);
+
+        println!("CLI configuration:");
+        println!("  {:#?}", self.conf);
+
+        println!("Server status (version: {}):", self.client.api_version());
+        println!("  {:#?}", preferences);
+
+        Ok(())
     }
 }
 

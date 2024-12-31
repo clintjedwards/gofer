@@ -674,7 +674,7 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
     api.register(system::update_system_preferences).unwrap();
 
     /* /api/system/metadata */
-    api.register(system::get_metadata).unwrap();
+    api.register(system::get_system_metadata).unwrap();
 
     /* /api/roles */
     api.register(permissioning::list_roles).unwrap();
