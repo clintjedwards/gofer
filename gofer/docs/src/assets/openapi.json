@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Gofer",
-    "version": "0.8.3"
+    "version": "0.8.4"
   },
   "paths": {
     "/api/events": {
@@ -3248,7 +3248,7 @@
         ],
         "summary": "Describe current system meta-information.",
         "description": "Return a number of internal metadata about the Gofer service itself.",
-        "operationId": "get_metadata",
+        "operationId": "get_system_metadata",
         "responses": {
           "200": {
             "description": "successful operation",

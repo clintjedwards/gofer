@@ -4341,8 +4341,8 @@ type ClientInterface interface {
 
 	UpdateSystemPreferences(ctx context.Context, body UpdateSystemPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetMetadata request
-	GetMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetSystemMetadata request
+	GetSystemMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTokens request
 	ListTokens(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5402,8 +5402,8 @@ func (c *Client) UpdateSystemPreferences(ctx context.Context, body UpdateSystemP
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetMetadataRequest(c.Server)
+func (c *Client) GetSystemMetadata(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSystemMetadataRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -8680,8 +8680,8 @@ func NewUpdateSystemPreferencesRequestWithBody(server string, contentType string
 	return req, nil
 }
 
-// NewGetMetadataRequest generates requests for GetMetadata
-func NewGetMetadataRequest(server string) (*http.Request, error) {
+// NewGetSystemMetadataRequest generates requests for GetSystemMetadata
+func NewGetSystemMetadataRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -9227,8 +9227,8 @@ type ClientWithResponsesInterface interface {
 
 	UpdateSystemPreferencesWithResponse(ctx context.Context, body UpdateSystemPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSystemPreferencesResp, error)
 
-	// GetMetadataWithResponse request
-	GetMetadataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMetadataResp, error)
+	// GetSystemMetadataWithResponse request
+	GetSystemMetadataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSystemMetadataResp, error)
 
 	// ListTokensWithResponse request
 	ListTokensWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTokensResp, error)
@@ -10882,7 +10882,7 @@ func (r UpdateSystemPreferencesResp) StatusCode() int {
 	return 0
 }
 
-type GetMetadataResp struct {
+type GetSystemMetadataResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *GetSystemMetadataResponse
@@ -10891,7 +10891,7 @@ type GetMetadataResp struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetMetadataResp) Status() string {
+func (r GetSystemMetadataResp) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -10899,7 +10899,7 @@ func (r GetMetadataResp) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetMetadataResp) StatusCode() int {
+func (r GetSystemMetadataResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11829,13 +11829,13 @@ func (c *ClientWithResponses) UpdateSystemPreferencesWithResponse(ctx context.Co
 	return ParseUpdateSystemPreferencesResp(rsp)
 }
 
-// GetMetadataWithResponse request returning *GetMetadataResp
-func (c *ClientWithResponses) GetMetadataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMetadataResp, error) {
-	rsp, err := c.GetMetadata(ctx, reqEditors...)
+// GetSystemMetadataWithResponse request returning *GetSystemMetadataResp
+func (c *ClientWithResponses) GetSystemMetadataWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSystemMetadataResp, error) {
+	rsp, err := c.GetSystemMetadata(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetMetadataResp(rsp)
+	return ParseGetSystemMetadataResp(rsp)
 }
 
 // ListTokensWithResponse request returning *ListTokensResp
@@ -14455,15 +14455,15 @@ func ParseUpdateSystemPreferencesResp(rsp *http.Response) (*UpdateSystemPreferen
 	return response, nil
 }
 
-// ParseGetMetadataResp parses an HTTP response from a GetMetadataWithResponse call
-func ParseGetMetadataResp(rsp *http.Response) (*GetMetadataResp, error) {
+// ParseGetSystemMetadataResp parses an HTTP response from a GetSystemMetadataWithResponse call
+func ParseGetSystemMetadataResp(rsp *http.Response) (*GetSystemMetadataResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetMetadataResp{
+	response := &GetSystemMetadataResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
