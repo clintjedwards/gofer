@@ -8,6 +8,6 @@ fn main() {
         tasks(vec![
                 Task::new("first-task", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
                     description("This task has no dependencies so it will run immediately").
-                    variable("WAIT_DURATION", "20s"),
+                    variable("WAIT_DURATION", "20s").always_pull_newest_image(true),
     ]).finish().unwrap();
 }

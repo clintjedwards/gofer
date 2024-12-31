@@ -894,7 +894,7 @@ impl Shepherd {
                     .registry_auth
                     .clone()
                     .map(|auth| auth.into()),
-                always_pull: false,
+                always_pull: new_task_execution.task.always_pull_newest_image,
                 networking: None,
                 entrypoint: new_task_execution.task.entrypoint.clone(),
                 command: new_task_execution.task.command.clone(),

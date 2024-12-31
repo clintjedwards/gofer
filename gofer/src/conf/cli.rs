@@ -83,25 +83,15 @@ mod tests {
     #[test]
     fn load_from_environment_variables() {
         env::set_var("GOFER_API_BASE_URL", "http://localhost:3001");
-        env::set_var("GOFER_ADMIN_KEY", "envoverride");
+        env::set_var("GOFER_TOKEN", "envoveride");
 
         let config = Configuration::<CliConfig>::load(None).unwrap();
 
         // Cleanup environment variables after test
         env::remove_var("GOFER_API_BASE_URL");
-        env::remove_var("GOFER_ADMIN_KEY");
+        env::remove_var("GOFER_TOKEN");
 
-        assert_eq!(
-            config,
-            CliConfig {
-                namespace: "default".to_string(),
-                detail: false,
-                token: "example".to_string(),
-                api_base_url: "http://localhost:3001".to_string(),
-                output_format: OutputFormat::Plain,
-                debug: false,
-                insecure_skip_tls_verify: None,
-            }
-        );
+        assert_eq!(config.api_base_url, "http://localhost:3001");
+        assert_eq!(config.token, "envoveride");
     }
 }

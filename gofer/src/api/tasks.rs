@@ -66,6 +66,9 @@ pub struct Task {
 
     /// Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container.
     pub inject_api_token: bool,
+
+    /// Always check for most recent version of the current image before running.
+    pub always_pull_newest_image: bool,
 }
 
 impl From<gofer_sdk::config::Task> for Task {
@@ -92,6 +95,7 @@ impl From<gofer_sdk::config::Task> for Task {
             entrypoint: value.entrypoint,
             command: value.command,
             inject_api_token: value.inject_api_token,
+            always_pull_newest_image: value.always_pull_newest_image,
         }
     }
 }
@@ -116,6 +120,7 @@ impl Task {
             entrypoint: serde_json::to_string(&self.entrypoint)?,
             command: serde_json::to_string(&self.command)?,
             inject_api_token: self.inject_api_token,
+            always_pull_newest_image: self.always_pull_newest_image,
         };
 
         Ok(task)
@@ -132,6 +137,7 @@ impl Task {
             entrypoint: serde_json::from_str(&storage_task.entrypoint)?,
             command: serde_json::from_str(&storage_task.command)?,
             inject_api_token: storage_task.inject_api_token,
+            always_pull_newest_image: storage_task.always_pull_newest_image,
         };
 
         Ok(task)
@@ -158,6 +164,7 @@ mod tests {
             entrypoint: Some(vec!["/entrypoint.sh".to_string()]),
             command: Some(vec!["run".to_string(), "--option".to_string()]),
             inject_api_token: true,
+            always_pull_newest_image: true,
         };
 
         let namespace_id = "ns1".to_string();

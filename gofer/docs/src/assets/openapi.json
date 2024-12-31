@@ -6140,6 +6140,10 @@
         "description": "A task represents a particular workload within a pipeline. Tasks are composable within a larger pipeline, meaning they can be run before, after, or alongside other tasks. Tasks represent the lowest level of the Gofer hierarchy and is what Gofer references to see how a user might want their workload handled.",
         "type": "object",
         "properties": {
+          "always_pull_newest_image": {
+            "description": "Always check for most recent version of the current image before running.",
+            "type": "boolean"
+          },
           "command": {
             "nullable": true,
             "description": "Command to run on init of container; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd",
@@ -6197,6 +6201,7 @@
           }
         },
         "required": [
+          "always_pull_newest_image",
           "depends_on",
           "description",
           "id",
@@ -6209,6 +6214,10 @@
         "description": "Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container. Each task defines the operations to be performed and the container environment in which these operations will run.\n\n# Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: \"example_task\".to_string(), description: Some(\"This task executes a simple print command in an Ubuntu container.\".to_string()), image: \"ubuntu:latest\".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([(\"KEY\", \"value\".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec![\"echo\".to_string(), \"Hello World!\".to_string()]), inject_api_token: false, }; ```",
         "type": "object",
         "properties": {
+          "always_pull_newest_image": {
+            "description": "Always attempt to pull the newest container image.",
+            "type": "boolean"
+          },
           "command": {
             "nullable": true,
             "type": "array",
@@ -6258,6 +6267,7 @@
           }
         },
         "required": [
+          "always_pull_newest_image",
           "depends_on",
           "id",
           "image",

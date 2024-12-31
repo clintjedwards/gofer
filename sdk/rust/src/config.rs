@@ -236,6 +236,9 @@ pub struct Task {
     pub entrypoint: Option<Vec<String>>,
     pub command: Option<Vec<String>>,
     pub inject_api_token: bool,
+
+    /// Always attempt to pull the newest container image.
+    pub always_pull_newest_image: bool,
 }
 
 impl Task {
@@ -250,6 +253,7 @@ impl Task {
             entrypoint: None,
             command: None,
             inject_api_token: false,
+            always_pull_newest_image: true,
         }
     }
 
@@ -316,6 +320,12 @@ impl Task {
     /// objects get cleaned up.
     pub fn inject_api_token(mut self, inject_token: bool) -> Self {
         self.inject_api_token = inject_token;
+        self
+    }
+
+    /// Always attempt to pull the newest container image for a given tag.
+    pub fn always_pull_newest_image(mut self, pull: bool) -> Self {
+        self.always_pull_newest_image = pull;
         self
     }
 }

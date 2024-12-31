@@ -16,13 +16,14 @@ pub struct Task {
     pub entrypoint: String,
     pub command: String,
     pub inject_api_token: bool,
+    pub always_pull_newest_image: bool,
 }
 
 pub async fn insert(conn: &mut SqliteConnection, task: &Task) -> Result<(), StorageError> {
     let query = sqlx::query(
         "INSERT INTO tasks (namespace_id, pipeline_id, pipeline_config_version, task_id, \
         description, image, registry_auth, depends_on, variables, entrypoint, command, \
-        inject_api_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        inject_api_token, always_pull_newest_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     )
     .bind(&task.namespace_id)
     .bind(&task.pipeline_id)
@@ -35,7 +36,8 @@ pub async fn insert(conn: &mut SqliteConnection, task: &Task) -> Result<(), Stor
     .bind(&task.variables)
     .bind(&task.entrypoint)
     .bind(&task.command)
-    .bind(task.inject_api_token);
+    .bind(task.inject_api_token)
+    .bind(task.always_pull_newest_image);
 
     let sql = query.sql();
 
@@ -55,7 +57,7 @@ pub async fn list(
 ) -> Result<Vec<Task>, StorageError> {
     let query = sqlx::query_as::<_, Task>(
         "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
-        registry_auth, depends_on, variables, entrypoint, command, inject_api_token FROM \
+        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image FROM \
         tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ?;",
     )
     .bind(namespace_id)
@@ -81,7 +83,7 @@ pub async fn get(
     task_id: &str,
 ) -> Result<Task, StorageError> {
     let query = sqlx::query_as::<_, Task>("SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
-        registry_auth, depends_on, variables, entrypoint, command, inject_api_token FROM \
+        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image FROM \
         tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ? AND task_id = ?;")
         .bind(namespace_id)
         .bind(pipeline_id)
@@ -162,6 +164,7 @@ mod tests {
             entrypoint: "/bin/sh".into(),
             command: "cargo test".into(),
             inject_api_token: false,
+            always_pull_newest_image: false,
         };
 
         insert(&mut conn, &task).await?;

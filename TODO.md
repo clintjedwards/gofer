@@ -11,10 +11,13 @@ Because of this we should give the user as many tools as we can to make sure the
 * Find other ways we can debug and make the user's life easier in this regard. It's possible that if we put a lot of
 thought into this feature that it can become a game changer for Gofer as a whole.
 * Maybe create a timeline on when each task execution happened for a particular run?
-* It should be possible to create a timegraph of what ran and for how long and display that to the user.
+* Each pipeline run should have a comprehensive log of what happened in the entire run from start to finish. Each task
+  that was started and when, everytime a task changes state, so on and so forth. This should enable the user to read
+  through a run from the perspective of the scheduler.
 
 # Small things I want to keep track of that I definitely need to do.
 
+* Investigate if pipelines have the ability to say "force this container to be downloaded"
 * When the user asks for a log and there is no log, we should say so.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.

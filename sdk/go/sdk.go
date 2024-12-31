@@ -1391,6 +1391,9 @@ type Subscription struct {
 
 // Task A task represents a particular workload within a pipeline. Tasks are composable within a larger pipeline, meaning they can be run before, after, or alongside other tasks. Tasks represent the lowest level of the Gofer hierarchy and is what Gofer references to see how a user might want their workload handled.
 type Task struct {
+	// AlwaysPullNewestImage Always check for most recent version of the current image before running.
+	AlwaysPullNewestImage bool `json:"always_pull_newest_image"`
+
 	// Command Command to run on init of container; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd
 	Command *[]string `json:"command"`
 
@@ -1425,15 +1428,17 @@ type Task struct {
 //
 // # Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: "example_task".to_string(), description: Some("This task executes a simple print command in an Ubuntu container.".to_string()), image: "ubuntu:latest".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([("KEY", "value".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec!["echo".to_string(), "Hello World!".to_string()]), inject_api_token: false, }; ```
 type Task2 struct {
-	Command        *[]string                        `json:"command"`
-	DependsOn      map[string]RequiredParentStatus2 `json:"depends_on"`
-	Description    *string                          `json:"description"`
-	Entrypoint     *[]string                        `json:"entrypoint"`
-	Id             string                           `json:"id"`
-	Image          string                           `json:"image"`
-	InjectApiToken bool                             `json:"inject_api_token"`
-	RegistryAuth   *RegistryAuth2                   `json:"registry_auth"`
-	Variables      map[string]string                `json:"variables"`
+	// AlwaysPullNewestImage Always attempt to pull the newest container image.
+	AlwaysPullNewestImage bool                             `json:"always_pull_newest_image"`
+	Command               *[]string                        `json:"command"`
+	DependsOn             map[string]RequiredParentStatus2 `json:"depends_on"`
+	Description           *string                          `json:"description"`
+	Entrypoint            *[]string                        `json:"entrypoint"`
+	Id                    string                           `json:"id"`
+	Image                 string                           `json:"image"`
+	InjectApiToken        bool                             `json:"inject_api_token"`
+	RegistryAuth          *RegistryAuth2                   `json:"registry_auth"`
+	Variables             map[string]string                `json:"variables"`
 }
 
 // TaskExecution a task execution is a specific execution of a task/container. It represents a 4th level unit in the hierarchy. namespace -> pipeline -> run -> task execution. It is the last and most specific object in Gofer's execution model.
