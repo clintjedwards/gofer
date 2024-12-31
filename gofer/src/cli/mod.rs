@@ -274,7 +274,7 @@ pub fn new_api_client(url: &str, token: &str) -> Result<gofer_sdk::api::Client> 
     );
     headers.insert(
         gofer_sdk::api::API_VERSION_HEADER,
-        gofer_sdk::api::ApiVersion::V0.to_header_value()?,
+        header::HeaderValue::from_str(&gofer_sdk::api::ApiVersion::V0.to_string())?,
     );
 
     let client = Client::builder().default_headers(headers).build()?;

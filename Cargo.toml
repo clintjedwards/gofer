@@ -5,8 +5,15 @@ members = [
     "examplePipelines/rust/simple",
     "examplePipelines/rust/secrets",
     "examplePipelines/rust/objects",
-    "examplePipelines/rust/dag", "dogfood/run_tests",
+    "examplePipelines/rust/dag",
 ]
+exclude = [
+  # Because dogfood depends on the rest of Gofer, it may sometimes cause issues when attempting to `cargo update` or
+  # maneuver packages within Gofer. Often conflicts will arise because the main Gofer might have moved on to using a
+  # completely different or breaking package than dogfood. Excluding it here allows us to separate it as it should.
+  "dogfood/run_tests",
+]
+
 resolver = "2"
 
 [profile.dev]
