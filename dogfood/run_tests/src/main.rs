@@ -8,6 +8,7 @@ fn main() {
             "ghcr.io/clintjedwards/gofer-repo:latest",
         )
         .description("Run cargo test command for workspace")
+        .always_pull_newest_image(true)
         .command(vec!["cargo".into(), "test".into()])])
         .finish()
         .unwrap();

@@ -14,6 +14,8 @@ thought into this feature that it can become a game changer for Gofer as a whole
 * Each pipeline run should have a comprehensive log of what happened in the entire run from start to finish. Each task
   that was started and when, everytime a task changes state, so on and so forth. This should enable the user to read
   through a run from the perspective of the scheduler.
+* For debuggign which EXACT container ran especially for tags that stay the same we should make the scheduler return to
+  use the RepoDigest of the image.`docker image inspect ...`
 
 # Small things I want to keep track of that I definitely need to do.
 
