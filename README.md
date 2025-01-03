@@ -9,7 +9,9 @@
 
 Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.
 
-It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. Once set up, Gofer takes care of scheduling and running your automation tasks—be it on Nomad, Kubernetes, or even Local Docker.
+Gofer focuses on the "what" and "when" of your workloads, leaving the "how" and "where" to pluggable, more sophisticated container orchestrators (such as K8s or Nomad or even local Docker). 
+
+It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. 
 
 Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
 
@@ -20,9 +22,9 @@ Its primary function is to execute short-term jobs like code linting, build auto
   - are too complicated to setup and/or manage.
   - lack tight feedback loops while developing pipelines.
   - require you to marry your business logic code to pipeline logic code.
-  - use configuration languages (or sometimes worse...their own DSL) as the DSL you interact with.
-  - don't pay attention to extensibility.
-- I consider all the above to be bad software design and wanted to see if I could make something that went in another direction.
+  - use configuration languages (or sometimes worse...their own DSL) as the interface to express what you want.
+  - lack extensibility
+- It is an experiment to see if theses are all solveable problems in the effort to create a simpler, faster solution.
 
 ## Features:
 

@@ -16,6 +16,9 @@ thought into this feature that it can become a game changer for Gofer as a whole
   through a run from the perspective of the scheduler.
 * For debuggign which EXACT container ran especially for tags that stay the same we should make the scheduler return to
   use the RepoDigest of the image.`docker image inspect ...`
+* We have the ability to attach to containers... an interesting debugging tool would be to have the ability to grab
+  a failed task, maybe copy the filesystem somehow? and then give the user a shell into that task. This would help
+  immensely when attempting to figure out what exactly went wrong.
 
 # Small things I want to keep track of that I definitely need to do.
 
