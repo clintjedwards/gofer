@@ -53,7 +53,7 @@ func ListExtensionSubscriptions(extension_id, goferHost, secret string, useTLS b
 
 	resp, err := client.ListExtensionSubscriptions(context.Background(), extension_id)
 	if err != nil {
-		return nil, fmt.Errorf("could not query Gofer for extension subscriptions")
+		return nil, fmt.Errorf("could not query Gofer for extension subscriptions: %w", err)
 	}
 
 	defer resp.Body.Close()
@@ -64,12 +64,12 @@ func ListExtensionSubscriptions(extension_id, goferHost, secret string, useTLS b
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("could not read response body while attempting to query for extension subscriptions")
+		return nil, fmt.Errorf("could not read response body while attempting to query for extension subscriptions: %w", err)
 	}
 
 	listExtensionSubscriptionsResponse := ListExtensionSubscriptionsResponse{}
 	if err := json.Unmarshal(body, &listExtensionSubscriptionsResponse); err != nil {
-		return nil, fmt.Errorf("could not parse response body while attempting to query for extension subscriptions")
+		return nil, fmt.Errorf("could not parse response body while attempting to query for extension subscriptions: %w", err)
 	}
 
 	return listExtensionSubscriptionsResponse.Subscriptions, nil
