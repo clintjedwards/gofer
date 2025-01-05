@@ -453,7 +453,7 @@ async fn start_extension(
                 user: auth.user,
                 pass: auth.pass,
             }),
-        always_pull: false,
+        always_pull: true, // It's most likely that the user always wants the latest version of the tag.
         networking: Some(8082), //TODO(Replace this with port listed in the conf package)
         entrypoint: None,
         command: None,

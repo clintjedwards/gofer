@@ -1,35 +1,65 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link href="css/main.css" rel="stylesheet" />
-
-        <link rel="icon" type="image/png" href="images/favicon.ico" />
-        <script src="main.js" defer></script>
-        <title>Gofer</title>
-    </head>
-
-    <body>
-        <div class="pt-12 pl-12">
-            <h1 class="pb-2 text-6xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 from-10% to-30% to-black">Gofer │ Run short lived jobs easily.</h1>
-
-            <div class="flex justify-between w-4/5 text-sm text-slate-800 pt-3 pl-6">
-                <ul class="flex space-x-4">
-                    <li id="version">v0.0.0</li>
-                    <li>│</li>
-                    <li><a href="/docs">Documentation</a></li>
-                    <li><a href="/docs/api_reference.html">API Reference</a></li>
-                    <li><a href="https://github.com/clintjedwards/gofer">Github</a></li>
-                </ul>
-                <div class="flex items-center space-x-4">
-                    <label id="token-prompt-label" for="token" class="text-gray-700">Token</label>
-                    <input id="token-prompt" type="text" name="token" id="token" class="block w-full border-0 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-400 sm:text-sm sm:leading-6" placeholder="  press enter when done" />
-                    <p id="token-saved" class="hidden">Token Saved!</p>
-                </div>
-            </div>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="css/main.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.ico">
+    <script src="main.js" defer></script>
+    <title>Gofer</title>
+  </head>
+  <body>
+    <div class="pt-12 pl-12">
+      <h1 class="pb-2 text-6xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 from-10% to-30% to-black">Gofer │ Run short lived jobs easily.</h1>
+      <div class="flex justify-between w-4/5 text-sm text-slate-800 pt-3 pl-6">
+        <ul class="flex space-x-4">
+          <li id="version">v0.0.0</li>
+          <li>│</li>
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="/docs/api_reference.html">API Reference</a></li>
+          <li><a href="https://github.com/clintjedwards/gofer">Github</a></li>
+        </ul>
+        <div class="flex items-center space-x-4">
+          <label id="token-prompt-label" for="token" class="text-gray-700">Token</label>
+          <input id="token-prompt" type="text" name="token" class="block w-full border-0 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-400 sm:text-sm sm:leading-6" placeholder="  press enter when done">
+          <p id="token-saved" class="hidden">Token Saved!</p>
         </div>
-
-        <div id="run-list-container" class="pt-36 flex flex-col items-center text-slate-800"></div>
-    </body>
+      </div>
+    </div>
+    <div id="run-list-continer" class="pt-36 flex flex-col items-center text-slate-800">
+      <div class="px-4 sm:px-6 lg:px-8 w-3/5">
+        <div class="sm:flex sm:items-center">
+          <div class="sm:flex-auto">
+            <h1 class="text-base font-semibold text-gray-900">Runs</h1>
+            <p class="mt-2 text-sm text-gray-700">A history of recently run jobs including namespace, pipeline, and status.</p>
+          </div>
+        </div>
+        <div class="mt-8 flow-root">
+          <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+              <table class="min-w-full divide-y divide-gray-300">
+                <thead>
+                  <tr>
+                    <th scope="col" class="text-center whitespace-nowrap py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Namespace</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Pipeline</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Run</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Initiator</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Started</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Ended</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">State</th>
+                    <th scope="col" class="relative whitespace-nowrap py-3.5 pl-3 pr-4 sm:pr-0">
+                      <span class="sr-only">Details</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="run-list-body" class="divide-y divide-gray-200 bg-white">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
 </html>

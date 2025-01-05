@@ -142,7 +142,7 @@ function handleEnterPress(event) {
 }
 
 function generateNewRunElements(runs) {
-  const container = document.getElementById("run-list-container");
+  const container = document.getElementById("run-list-body");
   const divs = Array.from(container.children);
 
   for (const [index, run] of runs.entries()) {
@@ -193,24 +193,25 @@ function humanizeDuration(startTimestamp, endTimestamp) {
 }
 
 function generateStatusColor(status) {
-  switch (status.toLowerCase()) {
+    switch (status.toLowerCase()) {
     case "unknown":
-      return "bg-purple-400/70";
+      return "ring-purple-600/20 bg-purple-50 text-purple-700";
     case "pending":
     case "running":
-      return "bg-yellow-500/60";
+      return "ring-yellow-600/20 bg-yellow-50 text-yellow-700";
     case "complete":
     case "successful":
-      return "bg-emerald-500/70";
+      return "ring-emerald-600/20 bg-emerald-50 text-emerald-700";
     case "failed":
-      return "bg-red-500/70";
+      return "ring-red-600/20 bg-red-50 text-red-700";
     case "cancelled":
-      return "bg-slate-400/70";
+      return "ring-slate-600/20 bg-slate-50 text-slate-700";
   }
 }
 
+
 function generateNewRunElement(run) {
-  const runElement = document.createElement("div");
+  const runElement = document.createElement("tr");
   runElement.className = "overflow-hidden w-[1200px]";
 
   let duration = 0;
@@ -222,27 +223,21 @@ function generateNewRunElement(run) {
     duration = humanizeDuration(run.started, run.ended);
   }
 
+  const statusReasonTitle = run.status_reason ? `reason: [${run.status_reason.reason}]: ${run.status_reason.description}`: '';
+  
   runElement.innerHTML = `
-      <div class="px-4 py-5 sm:px-6">
-          <div class="flex justify-between">
-              <p class="text-lg">[#${run.run_id}] ${run.namespace_id}│ ${run.pipeline_id} <span class="text-slate-500" style="font-size: 0.75em; vertical-align: super;">v${run.pipeline_config_version}</span></p>
-              <div class="flex space-x-4">
-                  <span class="${generateStatusColor(run.state)}  text-white text-center px-2 py-1 w-24">${run.state}</span>
-                  <span class="${generateStatusColor(run.status)} text-white text-center px-2 py-1 w-24">${run.status}</span>
-              </div>
-          </div>
-          <div class="pl-4">
-              <div class="border-l-2 border-emerald-400">
-                  <div class="flex space-x-2 pl-4 pt-4">
-                      <p title="${run.initiator.id}">Initiated by ${run.initiator.user}</p>
-                  </div>
-                  <p class="pl-4 pt-8 text-sm">Started: ${formatTimestampToUTC(run.started)} │ Ended: ${formatTimestampToUTC(run.ended)} │ Duration: ${duration}</p>
-              </div>
-          </div>
-      </div>
-      <hr class="pt-4 pb-2 border-t-1 border-gray-600 border-dashed w-full" />
-  `;
-
+        <td class="text-center whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-700 sm:pl-0">${run.namespace_id}</td>
+        <td class="text-center whitespace-nowrap px-2 py-2 text-sm font-medium text-gray-900">${run.pipeline_id}</td>
+        <td class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-900">${run.run_id}</td>
+        <td title="Token ID: ${run.initiator.id}" class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-700">${run.initiator.user}</td>
+        <td title="duration: ${duration}" class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-700">${formatTimestampToUTC(run.started)}</td>
+        <td title="duration: ${duration}" class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-700">${formatTimestampToUTC(run.ended)}</td>
+        <td ${statusReasonTitle ? `title="${statusReasonTitle}"` : ''} class="text-center whitespace-nowrap"><span class="${generateStatusColor(run.status)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.status}</span></td>
+        <td class="text-center whitespace-nowrap"><span class="${generateStatusColor(run.state)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.state}</span></td>
+        <td class="relative whitespace-nowrap py-2 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
+          <a href="#">Details<span class="sr-only">, ${run.pipeline_id}, ${run.run_id}</span></a>
+        </td>
+    `;
   return runElement;
 }
 
