@@ -281,22 +281,14 @@ impl Task {
     }
 
     pub fn variable(mut self, key: &str, value: &str) -> Self {
-        self.variables.insert(
-            format!("GOFER_EXTENSION_PARAM_{}", key.to_uppercase()),
-            value.to_string(),
-        );
+        self.variables.insert(key.to_uppercase(), value.to_string());
         self
     }
 
     pub fn variables(mut self, variables: HashMap<String, String>) -> Self {
         let variables: HashMap<String, String> = variables
             .iter()
-            .map(|(key, value)| {
-                (
-                    format!("GOFER_EXTENSION_PARAM_{}", key.to_uppercase()),
-                    value.clone(),
-                )
-            })
+            .map(|(key, value)| (key.to_uppercase(), value.clone()))
             .collect();
 
         self.variables.extend(variables);
