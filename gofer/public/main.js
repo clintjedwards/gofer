@@ -46,6 +46,13 @@ async function listAllPipelines(token) {
   }
 }
 
+async function updateCurrentTime() {
+  const now = new Date();
+  const utcTime = now.toUTCString();
+
+  document.getElementById("current-time").innerText = utcTime;
+}
+
 async function getRunList(token) {
   let runs = [];
 
@@ -296,10 +303,12 @@ async function loadDefaultPipelineRuns() {
 
 document.addEventListener("DOMContentLoaded", async function () {
   updateSemver();
-
+  updateCurrentTime();
+  
   await loadDefaultPipelineRuns();
 
   setInterval(loadDefaultPipelineRuns, 5000); // every 5 seconds
+  setInterval(updateCurrentTime, 5000);
 });
 
 document.getElementById("token-prompt").addEventListener("keydown", handleEnterPress);
