@@ -6,12 +6,64 @@
     <link href="css/main.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.ico">
     <script src="main.js" defer></script>
+    <script type="text/javascript">
+      function setThemeLight() {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+          localStorage.setItem('theme', 'light');
+          document.getElementById('theme-toggle-1').classList.replace("bg-gray-400", "bg-emerald-300");
+          document.getElementById('theme-toggle-2').classList.replace("translate-x-0", "translate-x-5");
+          
+      }
+
+      function setThemeDark() {
+          document.documentElement.classList.remove('light');
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('theme', 'dark');
+          document.getElementById('theme-toggle-1').classList.replace("bg-emerald-300", "bg-gray-400");
+          document.getElementById('theme-toggle-2').classList.replace("translate-x-5", "translate-x-0");
+      }
+    
+      function toggleTheme() {
+            const userTheme = localStorage.getItem('theme');
+
+            if (userTheme === 'dark') {
+                setThemeLight();
+                return
+            }
+
+            setThemeDark();
+            return
+        }
+
+
+        document.addEventListener("DOMContentLoaded", function (event) {
+            document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
+
+            const userTheme = localStorage.getItem('theme');
+
+            if (userTheme === 'dark') {
+                setThemeDark();
+                return
+            }
+
+            setThemeLight();
+        });
+    </script>
     <title>Gofer</title>
   </head>
-  <body>
+  <body class="dark:bg-neutral-800">
+    <button id="theme-toggle" type="button" class="group relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full" role="switch" aria-checked="false">
+      <span class="sr-only">Use setting</span>
+      <span aria-hidden="true" class="pointer-events-none absolute size-full rounded-md dark:bg-neutral-800 bg-white"></span>
+      <span id="theme-toggle-1" aria-hidden="true" class="pointer-events-none absolute mx-auto h-4 w-9 rounded-full bg-emerald-300 transition-colors duration-200 ease-in-out"></span>
+      <span id="theme-toggle-2" aria-hidden="true" class="pointer-events-none absolute left-0 inline-block size-5
+          translate-x-5 transform rounded-full border border-gray-400 bg-white shadow
+          transition-transform duration-200 ease-in-out"></span>
+    </button>
     <div class="pt-12 pl-12">
-      <h1 class="pb-2 text-6xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 from-10% to-30% to-black">Gofer │ Run short lived jobs easily.</h1>
-      <div class="flex justify-between w-4/5 text-sm text-slate-800 pt-3 pl-6">
+      <h1 class="pb-2 text-6xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 from-10% to-30% to-black dark:to-white">Gofer │ Run short lived jobs easily.</h1>
+      <div class="flex justify-between w-4/5 text-sm dark:text-slate-200 text-slate-800 pt-3 pl-6">
         <ul class="flex space-x-4">
           <li id="version">v0.0.0</li>
           <li>│</li>
@@ -22,7 +74,7 @@
           <li id="current-time">Jan 1st, 1970 00:00:00 UTC</li>
         </ul>
         <div class="flex items-center space-x-4">
-          <label id="token-prompt-label" for="token" class="text-gray-700">Token</label>
+          <label id="token-prompt-label" for="token" class="dark:text-gray-300 text-gray-700">Token</label>
           <input id="token-prompt" type="text" name="token" class="block w-full border-0 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-400 sm:text-sm sm:leading-6" placeholder="  press enter when done">
           <p id="token-saved" class="hidden">Token Saved!</p>
         </div>
@@ -32,24 +84,24 @@
       <div class="px-4 sm:px-6 lg:px-8">
         <div class="sm:flex sm:items-center">
           <div class="sm:flex-auto">
-            <h1 class="text-base font-semibold text-gray-900">Runs</h1>
-            <p class="mt-2 text-sm text-gray-700">A history of recently run jobs including namespace, pipeline, and status.</p>
+            <h1 class="text-base font-semibold dark:text-gray-300 text-gray-900">Runs</h1>
+            <p class="mt-2 text-sm dark:text-gray-200 text-gray-700">A history of recently run jobs including namespace, pipeline, and status.</p>
           </div>
         </div>
         <div class="mt-8 flow-root">
           <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-              <table class="table-auto divide-y divide-gray-300">
+              <table class="table-auto divide-y dark:divide-slate-100 divide-gray-300">
                 <thead>
                   <tr>
-                    <th scope="col" class="text-center whitespace-nowrap py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Namespace</th>
-                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Pipeline</th>
-                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Run</th>
-                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Initiator</th>
-                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Started</th>
-                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Ended</th>
-                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">State</th>
+                    <th scope="col" class="text-center whitespace-nowrap py-3.5 pl-4 pr-3 text-left text-sm font-semibold dark:text-gray-200 text-gray-900 sm:pl-0">Namespace</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold dark:text-gray-200 text-gray-900">Pipeline</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold dark:text-gray-200 text-gray-900">Run</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold dark:text-gray-200 text-gray-900">Initiator</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold dark:text-gray-200 text-gray-900">Started</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold dark:text-gray-200 text-gray-900">Ended</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold dark:text-gray-200 text-gray-900">Status</th>
+                    <th scope="col" class="text-center whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold dark:text-gray-200 text-gray-900">State</th>
                     <th scope="col" class="relative whitespace-nowrap py-3.5 pl-3 pr-4 sm:pr-0">
                       <span class="sr-only">Details</span>
                     </th>

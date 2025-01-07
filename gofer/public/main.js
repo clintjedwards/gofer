@@ -202,17 +202,17 @@ function humanizeDuration(startTimestamp, endTimestamp) {
 function generateStatusColor(status) {
     switch (status.toLowerCase()) {
     case "unknown":
-      return "ring-purple-600/20 bg-purple-50 text-purple-700";
+      return "dark:ring-purple-60/10 ring-purple-600/20 dark:bg-purple-800 bg-purple-50 dark:text-purple-50 text-purple-700";
     case "pending":
     case "running":
-      return "ring-yellow-600/20 bg-yellow-50 text-yellow-700";
+      return "dark:ring-yellow-50/10 ring-yellow-600/20 dark:bg-yellow-800 bg-yellow-50 dark:text-yellow-50 text-yellow-700";
     case "complete":
     case "successful":
-      return "ring-emerald-600/20 bg-emerald-50 text-emerald-700";
+      return "dark:ring-emerald-50/10 ring-emerald-600/20 dark:bg-emerald-800 bg-emerald-50 dark:text-emerald-50 text-emerald-700";
     case "failed":
-      return "ring-red-600/20 bg-red-50 text-red-700";
+      return "dark:ring-red-50/10 ring-red-600/20 dark:bg-red-800 bg-red-50 dark:text-red-50 text-red-700";
     case "cancelled":
-      return "ring-slate-600/20 bg-slate-50 text-slate-700";
+      return "dark:ring-slate-50/10 ring-slate-600/20 dark:bg-slate-800 bg-slate-50 dark:text-slate-50 text-slate-700";
   }
 }
 
@@ -233,15 +233,15 @@ function generateNewRunElement(run) {
   const statusReasonTitle = run.status_reason ? `reason: [${run.status_reason.reason}]: ${run.status_reason.description}`: '';
   
   runElement.innerHTML = `
-        <td class="text-center whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-700 sm:pl-0">${run.namespace_id}</td>
-        <td class="text-center whitespace-nowrap px-2 py-2 text-sm font-medium text-gray-900">${run.pipeline_id}</td>
-        <td class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-900">${run.run_id}</td>
-        <td title="Token ID: ${run.initiator.id}" class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-700">${run.initiator.user}</td>
-        <td title="duration: ${duration}" class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-700">${formatTimestampToUTC(run.started)}</td>
-        <td title="duration: ${duration}" class="text-center whitespace-nowrap px-2 py-2 text-sm text-gray-700">${formatTimestampToUTC(run.ended)}</td>
-        <td ${statusReasonTitle ? `title="${statusReasonTitle}"` : ''} class="text-center whitespace-nowrap"><span class="${generateStatusColor(run.status)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.status}</span></td>
-        <td class="text-center whitespace-nowrap"><span class="${generateStatusColor(run.state)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.state}</span></td>
-        <td class="relative whitespace-nowrap py-2 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
+        <td class="text-center dark:bg-neutral-800 whitespace-nowrap py-2 pl-4 pr-3 text-sm dark:text-gray-200 text-gray-700 sm:pl-0">${run.namespace_id}</td>
+        <td class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm font-medium dark:text-gray-300 text-gray-900">${run.pipeline_id}</td>
+        <td class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-900">${run.run_id}</td>
+        <td title="Token ID: ${run.initiator.id}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${run.initiator.user}</td>
+        <td title="duration: ${duration}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${formatTimestampToUTC(run.started)}</td>
+        <td title="duration: ${duration}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${formatTimestampToUTC(run.ended)}</td>
+        <td ${statusReasonTitle ? `title="${statusReasonTitle}"` : ''} class="text-center dark:bg-neutral-800 whitespace-nowrap"><span class="${generateStatusColor(run.status)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.status}</span></td>
+        <td class="text-center dark:bg-neutral-800 whitespace-nowrap"><span class="${generateStatusColor(run.state)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.state}</span></td>
+        <td class="relative dark:bg-neutral-800 whitespace-nowrap py-2 pl-3 pr-4 text-right text-sm dark:text-gray-200 font-medium sm:pr-0">
           <a href="#">Details<span class="sr-only">, ${run.pipeline_id}, ${run.run_id}</span></a>
         </td>
     `;
