@@ -22,7 +22,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-* Give the frontend the trivial dark mode switcher I use for other websites.
 * When the user asks for a log and there is no log, we should say so.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
