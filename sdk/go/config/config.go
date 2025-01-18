@@ -67,12 +67,40 @@ type UserPipelineConfig struct {
 	Tasks       []*UserPipelineTaskConfig `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                    // The task set of the pipeline. AKA which containers should be run.
 }
 
-// Create a new pipeline.
+// `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
+// This structure allows you to organize and define the workflow for the tasks you want to execute.
 //   - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed
 //     alphanumeric character.
 //     Ex. `simple-pipeline`
 //   - The name is a human friendly name to represent the pipeline.
 //     Ex. `Simple Pipeline`
+//
+// # Example
+//
+// The following example demonstrates how to create a simple pipeline in Gofer, which is familiar to those experienced with CI/CD tooling.
+// It outlines how to define a simple task within a pipeline, use a standard Ubuntu container, and execute a basic command.
+//
+// This simple example serves as a foundation, illustrating the pattern of defining tasks as building blocks of a pipeline.
+// In practice, you would create custom containers designed specifically for the tasks in your Gofer workflows,
+// keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.
+//
+// ```ignore
+//
+//	// Create a new pipeline with a name and a descriptive label.
+//	Pipeline::new("simple", "Simple Pipeline")
+//	    .description("This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \
+//	                  This pattern will be familiar to those experienced with CI/CD tools. \
+//	                  Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.")
+//	    // Adding a single task to the pipeline.
+//	    .tasks(vec![
+//	        Task::new("simple_task", "ubuntu:latest")
+//	            .description("This task uses the Ubuntu container to print a 'Hello World' message.")
+//	            .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
+//	    ])
+//	    .finish() // Finalize and validate the pipeline setup.
+//	    .unwrap(); // Handle potential errors during pipeline creation.
+//
+// ```
 func NewPipeline(id, name string) *PipelineWrapper {
 	return &PipelineWrapper{
 		Pipeline{

@@ -45,6 +45,11 @@ pub enum ConfigError {
 
 /// `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
 /// This structure allows you to organize and define the workflow for the tasks you want to execute.
+///   - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed
+///     alphanumeric character.
+///     Ex. `simple-pipeline`
+///   - The name is a human friendly name to represent the pipeline.
+///     Ex. `Simple Pipeline`
 ///
 /// # Example
 ///
@@ -210,6 +215,12 @@ pub fn run_object(key: &str) -> String {
 /// Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container.
 /// Each task defines the operations to be performed and the container environment in which these operations will run.
 ///
+///   - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed
+///     alphanumeric character.
+///     Ex. `simple-pipeline`
+///   - The name is a human friendly name to represent the pipeline.
+///     Ex. `Simple Pipeline`
+///
 /// # Example Usage
 /// ```ignore
 /// // Define a new task within a pipeline.
@@ -280,33 +291,130 @@ impl Task {
         self
     }
 
-    pub fn variable(mut self, key: &str, value: &str) -> Self {
-        self.variables.insert(key.to_uppercase(), value.to_string());
-        self
-    }
-
-    pub fn variables(mut self, variables: HashMap<String, String>) -> Self {
-        let variables: HashMap<String, String> = variables
-            .iter()
-            .map(|(key, value)| (key.to_uppercase(), value.clone()))
+    /// Sets environment variables to be injected into the task container at runtime.
+    ///
+    /// The provided variables will be added to the task's environment, with their keys automatically
+    /// converted to uppercase. This ensures that the environment variables follow common conventions.
+    ///
+    /// You can use helper functions such as [`pipeline_secret`], [`global_secret`], [`pipeline_object`],
+    /// and [`run_object`] to insert dynamically generated secrets or object strings into the values
+    /// of these variables. These helper functions ensure that your secrets and objects are correctly
+    /// formatted for retrieval within the task.
+    ///
+    /// # Examples
+    ///
+    /// ## Using a `Vec` of Tuples
+    ///
+    /// ```
+    /// # use gofer_sdk::config::Task;
+    /// # use std::collections::HashMap;
+    /// let task = Task::new("example-task", "ghcr.io/example/image:latest")
+    ///     .variables(vec![
+    ///         ("WAIT_DURATION", "20s"),
+    ///         ("RETRY_COUNT", "3"),
+    ///     ])
+    /// ```
+    ///
+    /// ## Using a `HashMap`
+    ///
+    /// ```
+    /// # use gofer_sdk::config::Task;
+    /// # use std::collections::HashMap;
+    /// let mut env_vars = HashMap::new();
+    /// env_vars.insert("API_KEY", "12345");
+    /// env_vars.insert("TIMEOUT", "30s");
+    ///
+    /// let task = Task::new("example-task", "ghcr.io/example/image:latest")
+    ///     .variables(env_vars);
+    ///
+    /// let task = Task::new("example-task", "ghcr.io/example/image:latest")
+    ///        variables(HashMap::from([
+    ///             ("SOME_VARIABLE", "something here"),
+    ///             ("LOGS_HEADER", &pipeline_object("logs_header")),
+    ///             ("ALTERNATE_LOGS_HEADER", "pipeline_object{{alternate_logs_header}}")
+    ///            ])
+    ///        );
+    /// ```
+    ///
+    /// ## Getting secrets and objects dynamically
+    ///
+    /// ```
+    /// # use gofer_sdk::config::{Task, pipeline_secret, pipeline_object};
+    /// # use std::collections::HashMap;
+    /// let mut env_vars = HashMap::new();
+    /// env_vars.insert("API_KEY", pipeline_secret("some_secret_key"));
+    /// env_vars.insert("TIMEOUT", pipeline_object("some_object_key"));
+    ///
+    /// let task = Task::new("example-task", "ghcr.io/example/image:latest")
+    ///     .variables(env_vars);
+    /// ```
+    ///
+    pub fn variables<K, V, I>(mut self, variables: I) -> Self
+    where
+        K: Into<String>,
+        V: Into<String>,
+        I: IntoIterator<Item = (K, V)>,
+    {
+        let vars: HashMap<String, String> = variables
+            .into_iter()
+            .map(|(key, value)| (key.into().to_uppercase(), value.into()))
             .collect();
 
-        self.variables.extend(variables);
+        self.variables.extend(vars);
         self
     }
 
+    /// Set/Replace the Entrypoint of the task container.
+    /// https://docs.docker.com/engine/reference/builder/#understand-how-cmd-and-entrypoint-interact
     pub fn entrypoint(mut self, entrypoint: Vec<String>) -> Self {
         self.entrypoint = Some(entrypoint);
         self
     }
 
+    /// Set/Replace the command(CMD) of the task container.
+    /// https://docs.docker.com/engine/reference/builder/#understand-how-cmd-and-entrypoint-interact
     pub fn command(mut self, command: Vec<String>) -> Self {
         self.command = Some(command);
         self
     }
 
-    /// Gofer will auto-generate and inject a Gofer API token as `GOFER_API_TOKEN`. This allows you to easily have tasks
-    /// communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
+    /// Provide a multi-line shell script to be run in the container as `sh -c "<script>"`.
+    ///
+    /// The script will be trimmed of leading and trailing whitespace. Under the hood, it
+    /// becomes the equivalent of:
+    ///
+    /// ```bash
+    /// sh -c "<your multiline script here>"
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use gofer_sdk::config::Task;
+    /// let task = Task::new("run-cargo-test", "ghcr.io/clintjedwards/gofer/tools:rust")
+    ///     .description("Run cargo test command for workspace")
+    ///     .always_pull_newest_image(true)
+    ///     .commands(r#"
+    ///         cargo test
+    ///         wget https://example.com/somefile
+    ///         curl https://google.com
+    ///     "#);
+    /// ```
+    ///
+    /// In this example, all three commands (cargo test, wget, and curl) will run
+    /// sequentially inside a single container session.
+    ///
+    /// Should not be used with ['command'].
+    pub fn script(mut self, script: impl AsRef<str>) -> Self {
+        let trimmed_script = script.as_ref().trim();
+
+        self.command = Some(vec!["sh".into(), "-c".into(), trimmed_script.into()]);
+        self
+    }
+
+    /// Gofer will auto-generate and inject a short-lived Gofer API token as `GOFER_API_TOKEN`. This allows you to
+    /// easily have tasks communicate with Gofer by either embedding Gofer's CLI or just simply using the token to
+    /// authenticate to the REST API.
     ///
     /// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
     /// objects get cleaned up.

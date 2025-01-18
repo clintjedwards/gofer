@@ -1,0 +1,20 @@
+FROM ubuntu:latest
+
+# We remove apt/lists to save time
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    ca-certificates \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_gnu
+RUN cp gofer_amd64_linux_gnu /usr/bin/gofer
+RUN chmod +x /usr/bin/gofer
+
+# By default, just show the Rust version
+CMD ["rustc", "--version"]

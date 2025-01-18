@@ -13,11 +13,11 @@ fn main() {
         )
         .description("This task has no dependencies so it will run immediately")
         .variables(HashMap::from([
-            ("SOME_VARIABLE".to_string(), "something here".to_string()),
-            ("LOGS_HEADER".to_string(), pipeline_secret("logs_header")),
+            ("SOME_VARIABLE", "something here"),
+            ("LOGS_HEADER", &pipeline_secret("logs_header")),
             (
-                "ALTERNATE_LOGS_HEADER".to_string(),
-                "pipeline_secret{{alternate_logs_header}}".to_string(),
+                "ALTERNATE_LOGS_HEADER",
+                "pipeline_secret{{alternate_logs_header}}",
             ),
         ]))])
         .finish()

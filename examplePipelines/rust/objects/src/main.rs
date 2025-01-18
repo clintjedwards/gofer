@@ -8,9 +8,9 @@ fn main() {
                 Task::new("simple-task", "ghcr.io/clintjedwards/gofer/debug/log:latest").
                     description("This task has no dependencies so it will run immediately").
                     variables(HashMap::from([
-                        ("SOME_VARIABLE".to_string(), "something here".to_string()),
-                        ("LOGS_HEADER".to_string(), pipeline_object("logs_header")),
-                        ("ALTERNATE_LOGS_HEADER".to_string(), "pipeline_object{{alternate_logs_header}}".to_string())
+                        ("SOME_VARIABLE", "something here"),
+                        ("LOGS_HEADER", &pipeline_object("logs_header")),
+                        ("ALTERNATE_LOGS_HEADER", "pipeline_object{{alternate_logs_header}}")
                         ])
                     )
         ]).finish().unwrap();

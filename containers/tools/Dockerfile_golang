@@ -1,0 +1,23 @@
+FROM ubuntu:latest
+
+# We remove apt/lists here to cut down on image size
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV GOLANG_VERSION=1.23.0
+
+RUN curl -OL https://go.dev/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz \
+    && tar -C /usr/local -xzf go${GOLANG_VERSION}.linux-amd64.tar.gz \
+    && rm go${GOLANG_VERSION}.linux-amd64.tar.gz
+
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+RUN wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_gnu
+RUN cp gofer_amd64_linux_gnu /usr/bin/gofer
+RUN chmod +x /usr/bin/gofer
+
+# By default, just display the Go version
+CMD ["go", "version"]

@@ -144,6 +144,12 @@ build-containers: check-semver-included
 > docker build -f debug/wait/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER} ghcr.io/clintjedwards/gofer/debug/wait:latest
 
+> echo -e "$(COLOR_BLUE)Building Tooling Container Golang$(COLOR_END)"
+> docker build -f tools/Dockerfile_golang -t ghcr.io/clintjedwards/gofer/tools:golang .
+
+> echo -e "$(COLOR_BLUE)Building Tooling Container Rust$(COLOR_END)"
+> docker build -f tools/Dockerfile_rust -t ghcr.io/clintjedwards/gofer/tools:rust .
+
 ## push-containers: push containers to github
 push-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Push Cron Extension Container$(COLOR_END)"
@@ -172,6 +178,13 @@ push-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Push Debug Wait Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/wait:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/debug/wait:latest
+
+> echo -e "$(COLOR_BLUE)Push Tooling Golang Container$(COLOR_END)"
+> docker push ghcr.io/clintjedwards/gofer/tools:golang
+
+> echo -e "$(COLOR_BLUE)Push Tooling Rust Container$(COLOR_END)"
+> docker push ghcr.io/clintjedwards/gofer/tools:rust
+
 
 ## help: prints this help message
 help:

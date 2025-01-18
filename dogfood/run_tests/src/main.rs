@@ -5,7 +5,7 @@ fn main() {
         .description("Runs all cargo tests for the overall Gofer workspace.")
         .tasks(vec![Task::new(
             "run-cargo-test",
-            "ghcr.io/clintjedwards/gofer-repo:latest",
+            "ghcr.io/clintjedwards/gofer/tools:rust",
         )
         .description("Run cargo test command for workspace")
         .always_pull_newest_image(true)
