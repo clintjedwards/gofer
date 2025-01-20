@@ -68,6 +68,8 @@ impl Cli {
             )
         })?;
 
+        let max_line_length = termion::terminal_size().unwrap_or((80, 80)).0;
+
         // Print out the stderr as status markers
         let stderr = cmd.stderr.take().unwrap();
         let stderr_reader = BufReader::new(stderr).lines();
@@ -79,7 +81,7 @@ impl Cli {
             let read_line = read_line.trim();
             spinner.set_message({
                 let mut status_line = format!("Building pipeline config: {}", read_line);
-                status_line.truncate(80);
+                status_line.truncate(max_line_length.into());
                 status_line
             });
         }

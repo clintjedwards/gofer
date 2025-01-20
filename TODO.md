@@ -22,14 +22,9 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-* Improve the sdk ergonomics so that we can execute the new plan on how we handle repositories.
-* When the user asks for a log and there is no log, we should say so.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
-* For the up command it should grab the current size of the terminal and then truncate the output, instead of having a hard
-  truncate like it does now.
-* The UX for writing the pipelines needs more work. It should feel natural to write in commands like they're written in a bash script.
-  * We should also just pretty-print the json by default so people can take a look at it.
+* When the user runs the pipeline config on it's own we should pretty print the json so that it's debuggable easily.
 * When you insert a new pipeline it should show you a diff on what you're changing.
 * We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
   directory. Think more about how the UX should be handled here.
