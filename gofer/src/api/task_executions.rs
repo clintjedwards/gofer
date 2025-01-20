@@ -769,7 +769,15 @@ pub async fn get_logs(
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(Box::new(HttpError::for_not_found(None, String::new())));
+                return Err(websocket_error(
+                    "Could not get task execution from database; Not found",
+                    CloseCode::Away,
+                    rqctx.request_id.clone(),
+                    ws,
+                    Some(e.to_string()),
+                )
+                .await
+                .into());
             }
             _ => {
                 return Err(websocket_error(
