@@ -312,13 +312,13 @@ impl Task {
     ///     .variables(vec![
     ///         ("WAIT_DURATION", "20s"),
     ///         ("RETRY_COUNT", "3"),
-    ///     ])
+    ///     ]);
     /// ```
     ///
     /// ## Using a `HashMap`
     ///
     /// ```
-    /// # use gofer_sdk::config::Task;
+    /// # use gofer_sdk::config::{Task, pipeline_object};
     /// # use std::collections::HashMap;
     /// let mut env_vars = HashMap::new();
     /// env_vars.insert("API_KEY", "12345");
@@ -328,7 +328,7 @@ impl Task {
     ///     .variables(env_vars);
     ///
     /// let task = Task::new("example-task", "ghcr.io/example/image:latest")
-    ///        variables(HashMap::from([
+    ///        .variables(HashMap::from([
     ///             ("SOME_VARIABLE", "something here"),
     ///             ("LOGS_HEADER", &pipeline_object("logs_header")),
     ///             ("ALTERNATE_LOGS_HEADER", "pipeline_object{{alternate_logs_header}}")
@@ -394,7 +394,7 @@ impl Task {
     /// let task = Task::new("run-cargo-test", "ghcr.io/clintjedwards/gofer/tools:rust")
     ///     .description("Run cargo test command for workspace")
     ///     .always_pull_newest_image(true)
-    ///     .commands(r#"
+    ///     .script(r#"
     ///         cargo test
     ///         wget https://example.com/somefile
     ///         curl https://google.com
