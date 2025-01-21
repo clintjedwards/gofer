@@ -378,7 +378,7 @@ impl Task {
         self
     }
 
-    /// Provide a multi-line shell script to be run in the container as `sh -c "<script>"`.
+    /// Provide an inline multi-line shell script to be run in the container as `bash -c "<script>"`.
     ///
     /// The script will be trimmed of leading and trailing whitespace. Under the hood, it
     /// becomes the equivalent of:
