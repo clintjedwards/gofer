@@ -408,7 +408,7 @@ impl Task {
     pub fn script(mut self, script: impl AsRef<str>) -> Self {
         let trimmed_script = script.as_ref().trim();
 
-        self.command = Some(vec!["sh".into(), "-c".into(), trimmed_script.into()]);
+        self.command = Some(vec!["bash".into(), "-c".into(), trimmed_script.into()]);
         self
     }
 

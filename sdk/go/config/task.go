@@ -181,7 +181,7 @@ func (t *TaskWrapper) Command(command ...string) *TaskWrapper {
 func (t *TaskWrapper) Script(script string) *TaskWrapper {
 	trimmedScript := strings.TrimSpace(script)
 
-	t.Task.Command = &[]string{"sh", "-c", trimmedScript}
+	t.Task.Command = &[]string{"bash", "-c", trimmedScript}
 	return t
 }
 
