@@ -197,11 +197,15 @@ func GlobalSecret(key string) string {
 }
 
 // Convenience function to insert pipeline object values.
+// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
+// If you need the raw bytes for an object use the Gofer cli.
 func PipelineObject(key string) string {
 	return fmt.Sprintf("pipeline_object{{%s}}", key)
 }
 
 // Convenience function to insert run object values.
+// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
+// If you need the raw bytes for an object use the Gofer cli.
 func RunObject(key string) string {
 	return fmt.Sprintf("run_object{{%s}}", key)
 }

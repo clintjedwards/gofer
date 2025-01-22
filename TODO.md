@@ -22,6 +22,7 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* Revisit making it so that object and secret stores can icrementally upload
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
 * When the user runs the pipeline config on it's own we should pretty print the json so that it's debuggable easily.
@@ -56,6 +57,7 @@ to tell Gofer to use a major version of the extension but we always want the lat
 * When writing in the rust SDK command takes a vec of String, which causes users to have to figure out how to change
   the very natural vec of &str to String. Take a look if it's possible to enable the user to just pass in &str instead.
   This is true for many functions, we should check them all.
+* Pipeline object input needs to finish the implementation for a ring buffer.
 
 # Small things I'll probably never get around to.
 

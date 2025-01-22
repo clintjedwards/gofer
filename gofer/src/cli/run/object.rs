@@ -1,9 +1,11 @@
 use crate::cli::Cli;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use bytes::{Buf, BufMut};
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
+use futures::StreamExt;
 use polyfmt::{println, success, Spinner};
-use std::io::{Read, Write};
+use std::io::Write;
 
 #[derive(Debug, Args, Clone)]
 pub struct ObjectSubcommands {
@@ -182,20 +184,36 @@ impl Cli {
             None => self.conf.namespace.clone(),
         };
 
-        let object = &self
+        let object = self
             .client
             .get_run_object(&namespace, pipeline_id, run_id, key)
             .await
-            .context("Could not successfully retrieve object from Gofer api")?
-            .object;
+            .context("Could not successfully retrieve object from Gofer api")?;
+        let mut object = object.into_inner_stream();
 
         if stringify {
-            std::println!("{}", String::from_utf8_lossy(object))
-        } else {
-            let stdout = std::io::stdout();
-            let mut handle = stdout.lock();
-            handle.write_all(object)?;
-            handle.flush()?;
+            let mut buffer = bytes::BytesMut::with_capacity(1024); // 1kb
+
+            while let Some(chunk) = object.next().await {
+                let chunk = chunk?;
+
+                if buffer.remaining() > chunk.len() {
+                    buffer.put(chunk);
+                } else {
+                    bail!("Could not stringify object; object larger than 1KB");
+                }
+            }
+
+            std::println!("{}", String::from_utf8_lossy(&buffer));
+            return Ok(());
+        }
+
+        let mut stdout = std::io::stdout();
+
+        while let Some(chunk) = object.next().await {
+            let chunk = chunk?;
+
+            stdout.write_all(&chunk)?;
         }
 
         Ok(())
@@ -215,35 +233,38 @@ impl Cli {
             None => self.conf.namespace.clone(),
         };
 
-        let mut data: Vec<u8> = Vec::new();
-
-        let spinner = Spinner::create("Reading object");
+        let spinner = Spinner::create("Uploading object");
 
         if path == "@" {
-            std::io::stdin()
-                .read_to_end(&mut data)
-                .context("Could not read object from stdin")?;
-        } else {
-            let path = std::path::PathBuf::from(path);
-            let mut file = std::fs::File::open(path).context("Could not open object file")?;
-            file.read_to_end(&mut data)
-                .context("Could not read object file")?;
-        };
+            let stdin = tokio::io::stdin();
+            let stdin_stream = tokio_util::io::ReaderStream::new(stdin);
+            let body_stream = reqwest::Body::wrap_stream(stdin_stream);
 
-        spinner.set_message("Uploading object".into());
+            let object = &self
+                .client
+                .put_run_object(&namespace, pipeline_id, run_id, key, force, body_stream)
+                .await
+                .context("Could not successfully push object to Gofer api")?
+                .object;
+
+            drop(spinner);
+
+            success!("Successfully uploaded object '{}'", object.key);
+
+            return Ok(());
+        }
+
+        let path = std::path::PathBuf::from(path);
+        let file = tokio::fs::File::open(path)
+            .await
+            .context("Could not open file")?;
+
+        let file_stream = tokio_util::io::ReaderStream::new(file);
+        let body_stream = reqwest::Body::wrap_stream(file_stream);
 
         let object = &self
             .client
-            .put_run_object(
-                &namespace,
-                pipeline_id,
-                run_id,
-                &gofer_sdk::api::types::PutRunObjectRequest {
-                    content: data,
-                    force,
-                    key: key.into(),
-                },
-            )
+            .put_run_object(&namespace, pipeline_id, run_id, key, force, body_stream)
             .await
             .context("Could not successfully push object to Gofer api")?
             .object;

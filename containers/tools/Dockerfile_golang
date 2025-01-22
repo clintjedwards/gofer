@@ -2,9 +2,13 @@ FROM ubuntu:latest
 
 # We remove apt/lists here to cut down on image size
 RUN apt-get update && apt-get install -y \
-    git \
     curl \
+    build-essential \
+    ca-certificates \
     wget \
+    git  \
+    pkg-config \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 ENV GOLANG_VERSION=1.23.0

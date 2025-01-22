@@ -12,6 +12,7 @@ anyhow = "1.0.72"
 async-trait = "0.1.80"
 base64 = "0.22.1"
 bollard = "0.16.1"
+bytes = "1.9.0"
 chrono = "0.4.31"
 chrono-humanize = "0.2.3"
 clap = { version = "4.4.8", features = ["derive", "wrap_help"] }
@@ -62,6 +63,10 @@ uuid = { version = "1.8.0", features = ["v7"] }
 console-subscriber = "0.1"
 semver = "1.0.25"
 libc = "0.2.169"
+object_store = "0.11.2"
+tokio-stream = "0.1.17"
+http-body-util = "0.1.2"
+tokio-util = "0.7.13"
 
 [dev-dependencies]
 lazy_static = "1.4.0"

@@ -26,12 +26,12 @@ func ExampleNewPipeline_simple() {
 func ExampleNewPipeline_dag() {
 	taskOne := NewTask("task_one", "ghcr.io/clintjedwards/gofer/debug/wait:latest").
 		Description("This task has no dependencies so it will run immediately").
-		Variable("WAIT_DURATION", "20s")
+		Variables(map[string]string{"WAIT_DURATION": "20s"})
 
 	dependsOnOne := NewTask("depends_on_one", "ghcr.io/clintjedwards/gofer/debug/log:latest").
 		Description("This task depends on the first task to finish  a successfull result."+
 			"This means that if the first task fails this task will not run.").
-		Variable("LOGS_HEADER", "This string can be anything you want it to be").
+		Variables(map[string]string{"LOGS_HEADER": "This string can be anything you want it to be"}).
 		DependsOn(taskOne.ID, RequiredParentStatusSuccess)
 
 	dependsOnTwo := NewTask("depends_on_two", "docker.io/library/hello-world").

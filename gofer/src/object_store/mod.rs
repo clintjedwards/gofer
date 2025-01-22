@@ -1,23 +1,22 @@
-pub mod sqlite;
+pub mod filesystem;
 
 use async_trait::async_trait;
+use bytes::Bytes;
 use serde::Deserialize;
-use sqlx::FromRow;
-use std::fmt::Debug;
+use std::{fmt::Debug, pin::Pin};
 use strum::{Display, EnumString};
+use tokio_stream::Stream;
 
-#[derive(Debug, Clone, PartialEq, Eq, FromRow)]
-pub struct Value(pub Vec<u8>);
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, FromRow)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Object {
     pub key: String,
-    pub value: Vec<u8>,
+    pub content: Bytes,
 }
 
 /// Represents different object store failure possibilities.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum ObjectStoreError {
+    #[allow(dead_code)]
     #[error("could not establish connection to object store; {0}")]
     Connection(String),
 
@@ -37,10 +36,22 @@ pub enum ObjectStoreError {
 
 #[async_trait]
 pub trait ObjectStore: Debug + Send + Sync + 'static {
-    async fn get(&self, key: &str) -> Result<Value, ObjectStoreError>;
-    async fn put(&self, key: &str, content: Vec<u8>, force: bool) -> Result<(), ObjectStoreError>;
+    async fn exists(&self, key: &str) -> Result<bool, ObjectStoreError>;
+    async fn get(&self, key: &str) -> Result<Bytes, ObjectStoreError>;
+    async fn get_stream(
+        &self,
+        key: &str,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, ObjectStoreError>> + Send>>, ObjectStoreError>;
+
     #[allow(dead_code)]
-    async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, ObjectStoreError>;
+    async fn put(&self, key: &str, content: Bytes, force: bool) -> Result<(), ObjectStoreError>;
+    async fn put_stream(
+        &self,
+        key: &str,
+        mut content: Pin<Box<dyn Stream<Item = Bytes> + Send>>,
+    ) -> Result<(), ObjectStoreError>;
+
+    #[allow(dead_code)]
     async fn delete(&self, key: &str) -> Result<(), ObjectStoreError>;
 }
 
@@ -48,7 +59,7 @@ pub trait ObjectStore: Debug + Send + Sync + 'static {
 #[serde(rename_all = "snake_case")] // This handles case insensitivity during deserialization
 pub enum Engine {
     #[default]
-    Sqlite,
+    Filesystem,
 }
 
 pub async fn new(
@@ -56,14 +67,14 @@ pub async fn new(
 ) -> Result<Box<dyn ObjectStore>, ObjectStoreError> {
     #[allow(clippy::match_single_binding)]
     match config.engine {
-        Engine::Sqlite => {
-            if config.sqlite.is_none() {
+        Engine::Filesystem => {
+            if config.filesystem.is_none() {
                 return Err(ObjectStoreError::FailedPrecondition(
-                    "Sqlite engine settings not found in config".into(),
+                    "Filesystem engine settings not found in config".into(),
                 ));
             }
 
-            let engine = sqlite::Engine::new(&config.clone().sqlite.unwrap()).await;
+            let engine = filesystem::Engine::new(&config.clone().filesystem.unwrap()).await;
             Ok(Box::new(engine))
         }
     }

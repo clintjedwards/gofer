@@ -4,14 +4,17 @@ use crate::{
     http_error, object_store, storage,
 };
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use dropshot::{
-    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
-    HttpResponseOk, Path, RequestContext, TypedBody,
+    endpoint, Body, ClientErrorStatusCode, FreeformBody, HttpError, HttpResponseCreated,
+    HttpResponseDeleted, HttpResponseOk, Path, Query, RequestContext, StreamingBody,
 };
-use futures::TryFutureExt;
+use futures::{Stream, StreamExt, TryFutureExt};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
+
+const LARGE_REQUEST_BODY_MAX_BYTES: usize = 50 * 1_000_000_000; // 50GB
 
 pub fn pipeline_object_store_key(namespace_id: &str, pipeline_id: &str, key: &str) -> String {
     format!("{namespace_id}_{pipeline_id}_{key}")
@@ -315,12 +318,6 @@ pub async fn list_run_objects(
     Ok(HttpResponseOk(resp))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct GetRunObjectResponse {
-    /// The requested object data.
-    pub object: Vec<u8>,
-}
-
 /// Get run object by key.
 #[endpoint(
     method = GET,
@@ -330,7 +327,7 @@ pub struct GetRunObjectResponse {
 pub async fn get_run_object(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<RunObjectPathArgs>,
-) -> Result<HttpResponseOk<GetRunObjectResponse>, HttpError> {
+) -> Result<HttpResponseOk<FreeformBody>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
@@ -351,9 +348,9 @@ pub async fn get_run_object(
         )
         .await?;
 
-    let object_value = api_state
+    let mut object_stream = api_state
         .object_store
-        .get(&run_object_store_key(
+        .get_stream(&run_object_store_key(
             &path.namespace_id,
             &path.pipeline_id,
             path.run_id,
@@ -373,23 +370,50 @@ pub async fn get_run_object(
         })
         .await?;
 
-    let resp = GetRunObjectResponse {
-        object: object_value.0,
-    };
+    // I'm not quite sure how to solve the problem that the stream itself is send only but the dropshot body
+    // requires that it be sync + send.
+    // To mitigate this I'm going to instead use an intermediate channel to use as the output end for our
+    // stream.
+    let (tx, rx) = tokio::sync::mpsc::channel(3);
 
-    Ok(HttpResponseOk(resp))
-}
+    // The errors here are http_error but they never actually get back to the main thread, so maybe it's better
+    // we remove that. For now we'll keep it since http_error allows us to log internally.
+    tokio::spawn(async move {
+        while let Some(chunk) = object_stream.next().await {
+            let chunk = match chunk {
+                Ok(chunk) => chunk,
+                Err(e) => {
+                    return Err(http_error!(
+                        "Error reading object chunk",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+                }
+            };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct PutRunObjectRequest {
-    /// The name for the object you would like to store.
-    pub key: String,
+            if let Err(e) = tx.send(chunk).await {
+                return Err(http_error!(
+                    "Internal error sending chunks",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            };
+        }
 
-    /// The bytes for the object.
-    pub content: Vec<u8>,
+        Ok(())
+    });
 
-    /// Overwrite a value of a object if it already exists.
-    pub force: bool,
+    // This incantation is also very confusing but all we're doing is massaging the stream type into a type that can
+    // actually be used by dropshot. This requires meeting the requirements of `http_body::Body`.
+    let stream_body_test = tokio_stream::wrappers::ReceiverStream::new(rx).map(|chunk| {
+        Ok::<hyper::body::Frame<Bytes>, std::convert::Infallible>(hyper::body::Frame::data(chunk))
+    });
+
+    let stream_body = http_body_util::StreamBody::new(stream_body_test);
+
+    Ok(HttpResponseOk(FreeformBody(Body::wrap(stream_body))))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -398,20 +422,30 @@ pub struct PutRunObjectResponse {
     pub object: Object,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PutRunObjectParams {
+    /// Overwrite a value of a object if it already exists.
+    pub force: bool,
+}
+
 /// Insert a new object into the run object store.
+///
+/// Overwrites can be performed by passing the `force` query param.
 #[endpoint(
     method = POST,
-    path = "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects",
+    path = "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects/{key}",
     tags = ["Objects"],
+    request_body_max_bytes = LARGE_REQUEST_BODY_MAX_BYTES,
 )]
 pub async fn put_run_object(
     rqctx: RequestContext<Arc<ApiState>>,
-    path_params: Path<RunObjectPathArgsRoot>,
-    body: TypedBody<PutRunObjectRequest>,
+    path_params: Path<RunObjectPathArgs>,
+    query_params: Query<PutRunObjectParams>,
+    body: StreamingBody,
 ) -> Result<HttpResponseCreated<PutRunObjectResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let body = body.into_inner();
+    let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
             &rqctx.request,
@@ -430,19 +464,110 @@ pub async fn put_run_object(
         )
         .await?;
 
+    let key = path.key;
+    let force = query.force;
+    let object_store_key =
+        run_object_store_key(&path.namespace_id, &path.pipeline_id, path.run_id, &key);
+
+    let object_exists = api_state
+        .object_store
+        .exists(&object_store_key)
+        .await
+        .map_err(|e| {
+            http_error!(
+                "Could not query object store for object",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+    if object_exists && !force {
+        return Err(http_error!(
+            "Object found but 'force' query param not set",
+            hyper::StatusCode::BAD_REQUEST,
+            rqctx.request_id.clone(),
+            None
+        ));
+    }
+
+    // We create a channel here to use as a stream buffer.
+    // We'll hold the tx side of this and then give the rx side to the put_stream function so that it can create
+    // the file incrementally.
+    let (tx, rx) = tokio::sync::mpsc::channel(3);
+
+    let stream: Pin<Box<dyn Stream<Item = Bytes> + Send>> =
+        Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx));
+
+    // Next we need to upload the file using the put_stream function for our object store. To do that in parallel
+    // we spawn a new tokio task, which we hold the handle for to collect the error code afterwards.
+    let api_state_clone = api_state.clone();
+    let upload_handle = tokio::spawn(async move {
+        api_state_clone
+            .object_store
+            .put_stream(&object_store_key, stream)
+            .await
+    });
+
+    let body_stream = body.into_stream();
+    tokio::pin!(body_stream);
+
+    while let Some(chunk) = body_stream.next().await {
+        let chunk = chunk.map_err(|e| {
+            http_error!(
+                "Internal error creating new object; Could not successfully send chunks to object store",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+        if let Err(e) = tx.send(chunk).await {
+            return Err(http_error!(
+                "Internal error creating new object; Could not successfully send chunks to object store",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
+    }
+
+    // Manually drop the tx side to signal to the rx side that we're done sending and it can return.
+    drop(tx);
+
+    // Now that we've closed the tx end we can wait for the put_stream func to finish.
+    let upload_result = upload_handle.await.map_err(|e| {
+        http_error!(
+            "Could not create upload thread for object store",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    if let Err(e) = upload_result {
+        return Err(http_error!(
+            "Could not successfully upload object; Object store reported errors",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    }
+
+    // If all of this executed successfully then we can write to the main datastore that this was successful.
     let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
     };
 
-    let new_object = Object::new(&body.key);
+    let new_object = Object::new(&key);
 
     let new_object_storage = match new_object.to_run_object_storage(
         &path.namespace_id,
@@ -478,28 +603,6 @@ pub async fn put_run_object(
                 ));
             }
         }
-    };
-
-    if let Err(e) = api_state
-        .object_store
-        .put(
-            &run_object_store_key(
-                &path.namespace_id,
-                &path.pipeline_id,
-                path.run_id,
-                &body.key,
-            ),
-            body.content,
-            body.force,
-        )
-        .await
-    {
-        return Err(http_error!(
-            "Could not insert object into store",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(e.into())
-        ));
     };
 
     let resp = PutRunObjectResponse { object: new_object };
@@ -691,12 +794,6 @@ pub async fn list_pipeline_objects(
     Ok(HttpResponseOk(resp))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct GetPipelineObjectResponse {
-    /// The requested object data.
-    pub object: Vec<u8>,
-}
-
 /// Get pipeline object by key.
 #[endpoint(
     method = GET,
@@ -706,7 +803,7 @@ pub struct GetPipelineObjectResponse {
 pub async fn get_pipeline_object(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<PipelineObjectPathArgs>,
-) -> Result<HttpResponseOk<GetPipelineObjectResponse>, HttpError> {
+) -> Result<HttpResponseOk<FreeformBody>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
@@ -726,9 +823,9 @@ pub async fn get_pipeline_object(
         )
         .await?;
 
-    let object_value = api_state
+    let mut object_stream = api_state
         .object_store
-        .get(&pipeline_object_store_key(
+        .get_stream(&pipeline_object_store_key(
             &path.namespace_id,
             &path.pipeline_id,
             &path.key,
@@ -747,23 +844,50 @@ pub async fn get_pipeline_object(
         })
         .await?;
 
-    let resp = GetPipelineObjectResponse {
-        object: object_value.0,
-    };
+    // I'm not quite sure how to solve the problem that the stream itself is send only but the dropshot body
+    // requires that it be sync + send.
+    // To mitigate this I'm going to instead use an intermediate channel to use as the output end for our
+    // stream.
+    let (tx, rx) = tokio::sync::mpsc::channel(3);
 
-    Ok(HttpResponseOk(resp))
-}
+    // The errors here are http_error but they never actually get back to the main thread, so maybe it's better
+    // we remove that. For now we'll keep it since http_error allows us to log internally.
+    tokio::spawn(async move {
+        while let Some(chunk) = object_stream.next().await {
+            let chunk = match chunk {
+                Ok(chunk) => chunk,
+                Err(e) => {
+                    return Err(http_error!(
+                        "Error reading object chunk",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+                }
+            };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct PutPipelineObjectRequest {
-    /// The name for the object you would like to store.
-    pub key: String,
+            if let Err(e) = tx.send(chunk).await {
+                return Err(http_error!(
+                    "Internal error sending chunks",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            };
+        }
 
-    /// The bytes for the object.
-    pub content: Vec<u8>,
+        Ok(())
+    });
 
-    /// Overwrite a value of a object if it already exists.
-    pub force: bool,
+    // This incantation is also very confusing but all we're doing is massaging the stream type into a type that can
+    // actually be used by dropshot. This requires meeting the requirements of `http_body::Body`.
+    let stream_body_test = tokio_stream::wrappers::ReceiverStream::new(rx).map(|chunk| {
+        Ok::<hyper::body::Frame<Bytes>, std::convert::Infallible>(hyper::body::Frame::data(chunk))
+    });
+
+    let stream_body = http_body_util::StreamBody::new(stream_body_test);
+
+    Ok(HttpResponseOk(FreeformBody(Body::wrap(stream_body))))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -772,20 +896,28 @@ pub struct PutPipelineObjectResponse {
     pub object: Object,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PutPipelineObjectParams {
+    /// Overwrite a value of a object if it already exists.
+    pub force: bool,
+}
+
 /// Insert a new object into the pipeline object store.
 #[endpoint(
     method = POST,
-    path = "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/objects",
+    path = "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/objects/{key}",
     tags = ["Objects"],
+    request_body_max_bytes = LARGE_REQUEST_BODY_MAX_BYTES,
 )]
 pub async fn put_pipeline_object(
     rqctx: RequestContext<Arc<ApiState>>,
-    path_params: Path<PipelineObjectPathArgsRoot>,
-    body: TypedBody<PutPipelineObjectRequest>,
+    path_params: Path<PipelineObjectPathArgs>,
+    query_params: Query<PutPipelineObjectParams>,
+    body: StreamingBody,
 ) -> Result<HttpResponseCreated<PutPipelineObjectResponse>, HttpError> {
     let api_state = rqctx.context();
-    let body = body.into_inner();
     let path = path_params.into_inner();
+    let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
             &rqctx.request,
@@ -803,26 +935,116 @@ pub async fn put_pipeline_object(
         )
         .await?;
 
+    let key = path.key;
+    let force = query.force;
+    let object_store_key = pipeline_object_store_key(&path.namespace_id, &path.pipeline_id, &key);
+
+    let object_exists = api_state
+        .object_store
+        .exists(&object_store_key)
+        .await
+        .map_err(|e| {
+            http_error!(
+                "Could not query object store for object",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+    if object_exists && !force {
+        return Err(http_error!(
+            "Object found but 'force' query param not set",
+            hyper::StatusCode::BAD_REQUEST,
+            rqctx.request_id.clone(),
+            None
+        ));
+    }
+
+    // We create a channel here to use as a stream buffer.
+    // We'll hold the tx side of this and then give the rx side to the put_stream function so that it can create
+    // the file incrementally.
+    let (tx, rx) = tokio::sync::mpsc::channel(3);
+
+    let stream: Pin<Box<dyn Stream<Item = Bytes> + Send>> =
+        Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx));
+
+    // Next we need to upload the file using the put_stream function for our object store. To do that in parallel
+    // we spawn a new tokio task, which we hold the handle for to collect the error code afterwards.
+    let api_state_clone = api_state.clone();
+    let upload_handle = tokio::spawn(async move {
+        api_state_clone
+            .object_store
+            .put_stream(&object_store_key, stream)
+            .await
+    });
+
+    let body_stream = body.into_stream();
+    tokio::pin!(body_stream);
+
+    while let Some(chunk) = body_stream.next().await {
+        let chunk = chunk.map_err(|e| {
+            http_error!(
+                "Internal error creating new object; Could not successfully send chunks to object store",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+        if let Err(e) = tx.send(chunk).await {
+            return Err(http_error!(
+                "Internal error creating new object; Could not successfully send chunks to object store",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
+    }
+
+    // Manually drop the tx side to signal to the rx side that we're done sending and it can return.
+    drop(tx);
+
+    // Now that we've closed the tx end we can wait for the put_stream func to finish.
+    let upload_result = upload_handle.await.map_err(|e| {
+        http_error!(
+            "Could not create upload thread for object store",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    if let Err(e) = upload_result {
+        return Err(http_error!(
+            "Could not successfully upload object; Object store reported errors",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    }
+
+    // If all of this executed successfully then we can write to the main datastore that this was successful.
     let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
     };
 
-    let new_object = Object::new(&body.key);
+    let new_object = Object::new(&key);
 
     let new_object_storage =
         match new_object.to_pipeline_object_storage(&path.namespace_id, &path.pipeline_id) {
             Ok(object) => object,
             Err(e) => {
                 return Err(http_error!(
-                    "Could not parse objects for database",
+                    "Could not serialize object for database",
                     hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
@@ -852,29 +1074,12 @@ pub async fn put_pipeline_object(
         }
     };
 
-    if let Err(e) = api_state
-        .object_store
-        .put(
-            &pipeline_object_store_key(&path.namespace_id, &path.pipeline_id, &body.key),
-            body.content,
-            body.force,
-        )
-        .await
-    {
-        return Err(http_error!(
-            "Could not insert object into store",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(e.into())
-        ));
-    };
-
-    // TODO(): Implement pipeline object limits
-    let _ = api_state.config.object_store.pipeline_object_limit;
-
     let resp = PutPipelineObjectResponse { object: new_object };
 
     Ok(HttpResponseCreated(resp))
+
+    // // TODO(): Implement pipeline object limits
+    // let _ = api_state.config.object_store.pipeline_object_limit;
 }
 
 /// Delete pipeline object by key.
@@ -1042,12 +1247,6 @@ pub async fn list_extension_objects(
     Ok(HttpResponseOk(resp))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct GetExtensionObjectResponse {
-    /// The requested object data.
-    pub object: Vec<u8>,
-}
-
 /// Get extension object by key.
 #[endpoint(
     method = GET,
@@ -1057,7 +1256,7 @@ pub struct GetExtensionObjectResponse {
 pub async fn get_extension_object(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<ExtensionObjectPathArgs>,
-) -> Result<HttpResponseOk<GetExtensionObjectResponse>, HttpError> {
+) -> Result<HttpResponseOk<FreeformBody>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let _req_metadata = api_state
@@ -1076,9 +1275,9 @@ pub async fn get_extension_object(
         )
         .await?;
 
-    let object_value = api_state
+    let mut object_stream = api_state
         .object_store
-        .get(&extension_object_store_key(&path.extension_id, &path.key))
+        .get_stream(&extension_object_store_key(&path.extension_id, &path.key))
         .map_err(|err| {
             if err == object_store::ObjectStoreError::NotFound {
                 return HttpError::for_bad_request(None, "Object not found".into());
@@ -1093,23 +1292,50 @@ pub async fn get_extension_object(
         })
         .await?;
 
-    let resp = GetExtensionObjectResponse {
-        object: object_value.0,
-    };
+    // I'm not quite sure how to solve the problem that the stream itself is send only but the dropshot body
+    // requires that it be sync + send.
+    // To mitigate this I'm going to instead use an intermediate channel to use as the output end for our
+    // stream.
+    let (tx, rx) = tokio::sync::mpsc::channel(3);
 
-    Ok(HttpResponseOk(resp))
-}
+    // The errors here are http_error but they never actually get back to the main thread, so maybe it's better
+    // we remove that. For now we'll keep it since http_error allows us to log internally.
+    tokio::spawn(async move {
+        while let Some(chunk) = object_stream.next().await {
+            let chunk = match chunk {
+                Ok(chunk) => chunk,
+                Err(e) => {
+                    return Err(http_error!(
+                        "Error reading object chunk",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+                }
+            };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct PutExtensionObjectRequest {
-    /// The name for the object you would like to store.
-    pub key: String,
+            if let Err(e) = tx.send(chunk).await {
+                return Err(http_error!(
+                    "Internal error sending chunks",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            };
+        }
 
-    /// The bytes for the object.
-    pub content: Vec<u8>,
+        Ok(())
+    });
 
-    /// Overwrite a value of a object if it already exists.
-    pub force: bool,
+    // This incantation is also very confusing but all we're doing is massaging the stream type into a type that can
+    // actually be used by dropshot. This requires meeting the requirements of `http_body::Body`.
+    let stream_body_test = tokio_stream::wrappers::ReceiverStream::new(rx).map(|chunk| {
+        Ok::<hyper::body::Frame<Bytes>, std::convert::Infallible>(hyper::body::Frame::data(chunk))
+    });
+
+    let stream_body = http_body_util::StreamBody::new(stream_body_test);
+
+    Ok(HttpResponseOk(FreeformBody(Body::wrap(stream_body))))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1118,20 +1344,28 @@ pub struct PutExtensionObjectResponse {
     pub object: Object,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PutExtensionObjectParams {
+    /// Overwrite a value of a object if it already exists.
+    pub force: bool,
+}
+
 /// Insert a new object into the extension object store.
 #[endpoint(
     method = POST,
-    path = "/api/extensions/{extension_id}/objects",
+    path = "/api/extensions/{extension_id}/objects/{key}",
     tags = ["Objects"],
+    request_body_max_bytes = LARGE_REQUEST_BODY_MAX_BYTES,
 )]
 pub async fn put_extension_object(
     rqctx: RequestContext<Arc<ApiState>>,
-    path_params: Path<ExtensionObjectPathArgsRoot>,
-    body: TypedBody<PutExtensionObjectRequest>,
+    path_params: Path<ExtensionObjectPathArgs>,
+    query_params: Query<PutExtensionObjectParams>,
+    body: StreamingBody,
 ) -> Result<HttpResponseCreated<PutExtensionObjectResponse>, HttpError> {
     let api_state = rqctx.context();
-    let body = body.into_inner();
     let path = path_params.into_inner();
+    let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
             &rqctx.request,
@@ -1148,19 +1382,109 @@ pub async fn put_extension_object(
         )
         .await?;
 
+    let key = path.key;
+    let force = query.force;
+    let object_store_key = extension_object_store_key(&path.extension_id, &key);
+
+    let object_exists = api_state
+        .object_store
+        .exists(&object_store_key)
+        .await
+        .map_err(|e| {
+            http_error!(
+                "Could not query object store for object",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+    if object_exists && !force {
+        return Err(http_error!(
+            "Object found but 'force' query param not set",
+            hyper::StatusCode::BAD_REQUEST,
+            rqctx.request_id.clone(),
+            None
+        ));
+    }
+
+    // We create a channel here to use as a stream buffer.
+    // We'll hold the tx side of this and then give the rx side to the put_stream function so that it can create
+    // the file incrementally.
+    let (tx, rx) = tokio::sync::mpsc::channel(3);
+
+    let stream: Pin<Box<dyn Stream<Item = Bytes> + Send>> =
+        Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx));
+
+    // Next we need to upload the file using the put_stream function for our object store. To do that in parallel
+    // we spawn a new tokio task, which we hold the handle for to collect the error code afterwards.
+    let api_state_clone = api_state.clone();
+    let upload_handle = tokio::spawn(async move {
+        api_state_clone
+            .object_store
+            .put_stream(&object_store_key, stream)
+            .await
+    });
+
+    let body_stream = body.into_stream();
+    tokio::pin!(body_stream);
+
+    while let Some(chunk) = body_stream.next().await {
+        let chunk = chunk.map_err(|e| {
+            http_error!(
+                "Internal error creating new object; Could not successfully send chunks to object store",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+        if let Err(e) = tx.send(chunk).await {
+            return Err(http_error!(
+                "Internal error creating new object; Could not successfully send chunks to object store",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
+    }
+
+    // Manually drop the tx side to signal to the rx side that we're done sending and it can return.
+    drop(tx);
+
+    // Now that we've closed the tx end we can wait for the put_stream func to finish.
+    let upload_result = upload_handle.await.map_err(|e| {
+        http_error!(
+            "Could not create upload thread for object store",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    if let Err(e) = upload_result {
+        return Err(http_error!(
+            "Could not successfully upload object; Object store reported errors",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    }
+
+    // If all of this executed successfully then we can write to the main datastore that this was successful.
     let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
     };
 
-    let new_object = Object::new(&body.key);
+    let new_object = Object::new(&key);
 
     let new_object_storage = match new_object.to_extension_object_storage(&path.extension_id) {
         Ok(object) => object,
@@ -1194,23 +1518,6 @@ pub async fn put_extension_object(
                 ));
             }
         }
-    };
-
-    if let Err(e) = api_state
-        .object_store
-        .put(
-            &extension_object_store_key(&path.extension_id, &body.key),
-            body.content,
-            body.force,
-        )
-        .await
-    {
-        return Err(http_error!(
-            "Could not insert object into store",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(e.into())
-        ));
     };
 
     let resp = PutExtensionObjectResponse { object: new_object };

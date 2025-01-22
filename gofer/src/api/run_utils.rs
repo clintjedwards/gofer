@@ -2121,9 +2121,11 @@ fn system_injected_vars(
 
     if inject_api_token {
         vars.insert(
-            "GOFER_API_TOKEN".into(),
+            // The exact key 'GOFER_TOKEN' is what is expected by the Gofer CLI. This enables the user to not have
+            // to edit anything to be able to use an embedded gofer cli.
+            "GOFER_TOKEN".into(),
             Variable {
-                key: "GOFER_API_TOKEN".into(),
+                key: "GOFER_TOKEN".into(),
                 value: pipeline_secret(&run_specific_api_key_id(run.run_id)),
                 source: VariableSource::System,
             },

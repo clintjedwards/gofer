@@ -22,7 +22,6 @@ mod tokens;
 
 use crate::{conf, object_store, scheduler, secret_store, storage};
 use anyhow::{anyhow, bail, Context, Result};
-use base64::prelude::{Engine as _, BASE64_STANDARD};
 use dashmap::DashMap;
 use dropshot::{
     ApiDescription, Body, ConfigDropshot, ConfigTls, DropshotState, EndpointTagPolicy,
@@ -1059,12 +1058,13 @@ pub async fn interpolate_vars(
                         bail!("Could not retrieve pipeline object: {:#?}", e)
                     }
                 };
-                // We base64 encode the bytes so the user can handle them when they are injected into the environment.
-                let base64_string = BASE64_STANDARD.encode(retrieved_value.0);
+
+                // We attempt to stringify the object to insert it into the environment variables.
+                let stringified_object = String::from_utf8_lossy(&retrieved_value);
 
                 variable_list.push(Variable {
                     key: variable.key.clone(),
-                    value: base64_string,
+                    value: stringified_object.to_string(),
                     source: variable.source.clone(),
                 });
             }
@@ -1092,12 +1092,13 @@ pub async fn interpolate_vars(
                         bail!("Could not retrieve run object: {:#?}", e)
                     }
                 };
-                // We base64 encode the bytes so the user can handle them when they are injected into the environment.
-                let base64_string = BASE64_STANDARD.encode(retrieved_value.0);
+
+                // We attempt to stringify the object to insert it into the environment variables.
+                let stringified_object = String::from_utf8_lossy(&retrieved_value);
 
                 variable_list.push(Variable {
                     key: variable.key.clone(),
-                    value: base64_string,
+                    value: stringified_object.to_string(),
                     source: variable.source.clone(),
                 });
             }

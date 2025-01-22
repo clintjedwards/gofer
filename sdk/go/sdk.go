@@ -567,12 +567,6 @@ type GetEventResponse struct {
 	Event Event `json:"event"`
 }
 
-// GetExtensionObjectResponse defines model for GetExtensionObjectResponse.
-type GetExtensionObjectResponse struct {
-	// Object The requested object data.
-	Object []uint8 `json:"object"`
-}
-
 // GetExtensionResponse defines model for GetExtensionResponse.
 type GetExtensionResponse struct {
 	// Extension The extension requested.
@@ -600,12 +594,6 @@ type GetPipelineConfigResponse struct {
 	Config Config `json:"config"`
 }
 
-// GetPipelineObjectResponse defines model for GetPipelineObjectResponse.
-type GetPipelineObjectResponse struct {
-	// Object The requested object data.
-	Object []uint8 `json:"object"`
-}
-
 // GetPipelineResponse defines model for GetPipelineResponse.
 type GetPipelineResponse struct {
 	// Pipeline The metadata for the pipeline.
@@ -625,12 +613,6 @@ type GetPipelineSecretResponse struct {
 type GetRoleResponse struct {
 	// Role The target role.
 	Role Role `json:"role"`
-}
-
-// GetRunObjectResponse defines model for GetRunObjectResponse.
-type GetRunObjectResponse struct {
-	// Object The requested object data.
-	Object []uint8 `json:"object"`
 }
 
 // GetRunResponse defines model for GetRunResponse.
@@ -1091,7 +1073,7 @@ type Permission struct {
 	Resources []string `json:"resources"`
 }
 
-// Pipeline `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute.
+// Pipeline `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute. - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`
 //
 // # Example
 //
@@ -1129,18 +1111,6 @@ type Pipeline2 struct {
 // PipelineState defines model for PipelineState.
 type PipelineState string
 
-// PutExtensionObjectRequest defines model for PutExtensionObjectRequest.
-type PutExtensionObjectRequest struct {
-	// Content The bytes for the object.
-	Content []uint8 `json:"content"`
-
-	// Force Overwrite a value of a object if it already exists.
-	Force bool `json:"force"`
-
-	// Key The name for the object you would like to store.
-	Key string `json:"key"`
-}
-
 // PutExtensionObjectResponse defines model for PutExtensionObjectResponse.
 type PutExtensionObjectResponse struct {
 	// Object Information about the object created.
@@ -1168,18 +1138,6 @@ type PutGlobalSecretResponse struct {
 	Secret Secret `json:"secret"`
 }
 
-// PutPipelineObjectRequest defines model for PutPipelineObjectRequest.
-type PutPipelineObjectRequest struct {
-	// Content The bytes for the object.
-	Content []uint8 `json:"content"`
-
-	// Force Overwrite a value of a object if it already exists.
-	Force bool `json:"force"`
-
-	// Key The name for the object you would like to store.
-	Key string `json:"key"`
-}
-
 // PutPipelineObjectResponse defines model for PutPipelineObjectResponse.
 type PutPipelineObjectResponse struct {
 	// Object Information about the object created.
@@ -1202,18 +1160,6 @@ type PutPipelineSecretRequest struct {
 type PutPipelineSecretResponse struct {
 	// Secret Information about the secret created.
 	Secret Secret `json:"secret"`
-}
-
-// PutRunObjectRequest defines model for PutRunObjectRequest.
-type PutRunObjectRequest struct {
-	// Content The bytes for the object.
-	Content []uint8 `json:"content"`
-
-	// Force Overwrite a value of a object if it already exists.
-	Force bool `json:"force"`
-
-	// Key The name for the object you would like to store.
-	Key string `json:"key"`
 }
 
 // PutRunObjectResponse defines model for PutRunObjectResponse.
@@ -1425,6 +1371,8 @@ type Task struct {
 }
 
 // Task2 Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container. Each task defines the operations to be performed and the container environment in which these operations will run.
+//
+// - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`
 //
 // # Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: "example_task".to_string(), description: Some("This task executes a simple print command in an Ubuntu container.".to_string()), image: "ubuntu:latest".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([("KEY", "value".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec!["echo".to_string(), "Hello World!".to_string()]), inject_api_token: false, }; ```
 type Task2 struct {
@@ -1839,11 +1787,29 @@ type StreamEventsParams struct {
 	Reverse *bool `form:"reverse,omitempty" json:"reverse,omitempty"`
 }
 
+// PutExtensionObjectParams defines parameters for PutExtensionObject.
+type PutExtensionObjectParams struct {
+	// Force Overwrite a value of a object if it already exists.
+	Force bool `form:"force" json:"force"`
+}
+
+// PutPipelineObjectParams defines parameters for PutPipelineObject.
+type PutPipelineObjectParams struct {
+	// Force Overwrite a value of a object if it already exists.
+	Force bool `form:"force" json:"force"`
+}
+
 // ListRunsParams defines parameters for ListRuns.
 type ListRunsParams struct {
 	Limit   *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
 	Offset  *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
 	Reverse *bool   `form:"reverse,omitempty" json:"reverse,omitempty"`
+}
+
+// PutRunObjectParams defines parameters for PutRunObject.
+type PutRunObjectParams struct {
+	// Force Overwrite a value of a object if it already exists.
+	Force bool `form:"force" json:"force"`
 }
 
 // CancelTaskExecutionParams defines parameters for CancelTaskExecution.
@@ -1875,9 +1841,6 @@ type InstallExtensionJSONRequestBody = InstallExtensionRequest
 // UpdateExtensionJSONRequestBody defines body for UpdateExtension for application/json ContentType.
 type UpdateExtensionJSONRequestBody = UpdateExtensionRequest
 
-// PutExtensionObjectJSONRequestBody defines body for PutExtensionObject for application/json ContentType.
-type PutExtensionObjectJSONRequestBody = PutExtensionObjectRequest
-
 // CreateNamespaceJSONRequestBody defines body for CreateNamespace for application/json ContentType.
 type CreateNamespaceJSONRequestBody = CreateNamespaceRequest
 
@@ -1890,14 +1853,8 @@ type UpdatePipelineJSONRequestBody = UpdatePipelineRequest
 // RegisterConfigJSONRequestBody defines body for RegisterConfig for application/json ContentType.
 type RegisterConfigJSONRequestBody = RegisterPipelineConfigRequest
 
-// PutPipelineObjectJSONRequestBody defines body for PutPipelineObject for application/json ContentType.
-type PutPipelineObjectJSONRequestBody = PutPipelineObjectRequest
-
 // StartRunJSONRequestBody defines body for StartRun for application/json ContentType.
 type StartRunJSONRequestBody = StartRunRequest
-
-// PutRunObjectJSONRequestBody defines body for PutRunObject for application/json ContentType.
-type PutRunObjectJSONRequestBody = PutRunObjectRequest
 
 // PutPipelineSecretJSONRequestBody defines body for PutPipelineSecret for application/json ContentType.
 type PutPipelineSecretJSONRequestBody = PutPipelineSecretRequest
@@ -4142,16 +4099,14 @@ type ClientInterface interface {
 	// ListExtensionObjects request
 	ListExtensionObjects(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutExtensionObjectWithBody request with any body
-	PutExtensionObjectWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PutExtensionObject(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteExtensionObject request
 	DeleteExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetExtensionObject request
 	GetExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutExtensionObjectWithBody request with any body
+	PutExtensionObjectWithBody(ctx context.Context, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListExtensionSubscriptions request
 	ListExtensionSubscriptions(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4215,16 +4170,14 @@ type ClientInterface interface {
 	// ListPipelineObjects request
 	ListPipelineObjects(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutPipelineObjectWithBody request with any body
-	PutPipelineObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PutPipelineObject(ctx context.Context, namespaceId string, pipelineId string, body PutPipelineObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeletePipelineObject request
 	DeletePipelineObject(ctx context.Context, namespaceId string, pipelineId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPipelineObject request
 	GetPipelineObject(ctx context.Context, namespaceId string, pipelineId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutPipelineObjectWithBody request with any body
+	PutPipelineObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, key string, params *PutPipelineObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRuns request
 	ListRuns(ctx context.Context, namespaceId string, pipelineId string, params *ListRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4243,16 +4196,14 @@ type ClientInterface interface {
 	// ListRunObjects request
 	ListRunObjects(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutRunObjectWithBody request with any body
-	PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PutRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, body PutRunObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteRunObject request
 	DeleteRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRunObject request
 	GetRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutRunObjectWithBody request with any body
+	PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTaskExecutions request
 	ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4531,30 +4482,6 @@ func (c *Client) ListExtensionObjects(ctx context.Context, extensionId string, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutExtensionObjectWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutExtensionObjectRequestWithBody(c.Server, extensionId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutExtensionObject(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutExtensionObjectRequest(c.Server, extensionId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) DeleteExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteExtensionObjectRequest(c.Server, extensionId, key)
 	if err != nil {
@@ -4569,6 +4496,18 @@ func (c *Client) DeleteExtensionObject(ctx context.Context, extensionId string, 
 
 func (c *Client) GetExtensionObject(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetExtensionObjectRequest(c.Server, extensionId, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutExtensionObjectWithBody(ctx context.Context, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutExtensionObjectRequestWithBody(c.Server, extensionId, key, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4843,30 +4782,6 @@ func (c *Client) ListPipelineObjects(ctx context.Context, namespaceId string, pi
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutPipelineObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutPipelineObjectRequestWithBody(c.Server, namespaceId, pipelineId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutPipelineObject(ctx context.Context, namespaceId string, pipelineId string, body PutPipelineObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutPipelineObjectRequest(c.Server, namespaceId, pipelineId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) DeletePipelineObject(ctx context.Context, namespaceId string, pipelineId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeletePipelineObjectRequest(c.Server, namespaceId, pipelineId, key)
 	if err != nil {
@@ -4881,6 +4796,18 @@ func (c *Client) DeletePipelineObject(ctx context.Context, namespaceId string, p
 
 func (c *Client) GetPipelineObject(ctx context.Context, namespaceId string, pipelineId string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPipelineObjectRequest(c.Server, namespaceId, pipelineId, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutPipelineObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, key string, params *PutPipelineObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutPipelineObjectRequestWithBody(c.Server, namespaceId, pipelineId, key, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4963,30 +4890,6 @@ func (c *Client) ListRunObjects(ctx context.Context, namespaceId string, pipelin
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutRunObjectRequestWithBody(c.Server, namespaceId, pipelineId, runId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, body PutRunObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutRunObjectRequest(c.Server, namespaceId, pipelineId, runId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) DeleteRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteRunObjectRequest(c.Server, namespaceId, pipelineId, runId, key)
 	if err != nil {
@@ -5001,6 +4904,18 @@ func (c *Client) DeleteRunObject(ctx context.Context, namespaceId string, pipeli
 
 func (c *Client) GetRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRunObjectRequest(c.Server, namespaceId, pipelineId, runId, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutRunObjectRequestWithBody(c.Server, namespaceId, pipelineId, runId, key, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5944,53 +5859,6 @@ func NewListExtensionObjectsRequest(server string, extensionId string) (*http.Re
 	return req, nil
 }
 
-// NewPutExtensionObjectRequest calls the generic PutExtensionObject builder with application/json body
-func NewPutExtensionObjectRequest(server string, extensionId string, body PutExtensionObjectJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPutExtensionObjectRequestWithBody(server, extensionId, "application/json", bodyReader)
-}
-
-// NewPutExtensionObjectRequestWithBody generates requests for PutExtensionObject with any type of body
-func NewPutExtensionObjectRequestWithBody(server string, extensionId string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/extensions/%s/objects", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewDeleteExtensionObjectRequest generates requests for DeleteExtensionObject
 func NewDeleteExtensionObjectRequest(server string, extensionId string, key string) (*http.Request, error) {
 	var err error
@@ -6069,6 +5937,67 @@ func NewGetExtensionObjectRequest(server string, extensionId string, key string)
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPutExtensionObjectRequestWithBody generates requests for PutExtensionObject with any type of body
+func NewPutExtensionObjectRequestWithBody(server string, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/%s/objects/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, params.Force); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -6828,60 +6757,6 @@ func NewListPipelineObjectsRequest(server string, namespaceId string, pipelineId
 	return req, nil
 }
 
-// NewPutPipelineObjectRequest calls the generic PutPipelineObject builder with application/json body
-func NewPutPipelineObjectRequest(server string, namespaceId string, pipelineId string, body PutPipelineObjectJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPutPipelineObjectRequestWithBody(server, namespaceId, pipelineId, "application/json", bodyReader)
-}
-
-// NewPutPipelineObjectRequestWithBody generates requests for PutPipelineObject with any type of body
-func NewPutPipelineObjectRequestWithBody(server string, namespaceId string, pipelineId string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/objects", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewDeletePipelineObjectRequest generates requests for DeletePipelineObject
 func NewDeletePipelineObjectRequest(server string, namespaceId string, pipelineId string, key string) (*http.Request, error) {
 	var err error
@@ -6974,6 +6849,74 @@ func NewGetPipelineObjectRequest(server string, namespaceId string, pipelineId s
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPutPipelineObjectRequestWithBody generates requests for PutPipelineObject with any type of body
+func NewPutPipelineObjectRequestWithBody(server string, namespaceId string, pipelineId string, key string, params *PutPipelineObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/objects/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, params.Force); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -7271,67 +7214,6 @@ func NewListRunObjectsRequest(server string, namespaceId string, pipelineId stri
 	return req, nil
 }
 
-// NewPutRunObjectRequest calls the generic PutRunObject builder with application/json body
-func NewPutRunObjectRequest(server string, namespaceId string, pipelineId string, runId uint64, body PutRunObjectJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPutRunObjectRequestWithBody(server, namespaceId, pipelineId, runId, "application/json", bodyReader)
-}
-
-// NewPutRunObjectRequestWithBody generates requests for PutRunObject with any type of body
-func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineId string, runId uint64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "run_id", runtime.ParamLocationPath, runId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/runs/%s/objects", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewDeleteRunObjectRequest generates requests for DeleteRunObject
 func NewDeleteRunObjectRequest(server string, namespaceId string, pipelineId string, runId uint64, key string) (*http.Request, error) {
 	var err error
@@ -7438,6 +7320,81 @@ func NewGetRunObjectRequest(server string, namespaceId string, pipelineId string
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPutRunObjectRequestWithBody generates requests for PutRunObject with any type of body
+func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "run_id", runtime.ParamLocationPath, runId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/runs/%s/objects/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, params.Force); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -9028,16 +8985,14 @@ type ClientWithResponsesInterface interface {
 	// ListExtensionObjectsWithResponse request
 	ListExtensionObjectsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionObjectsResp, error)
 
-	// PutExtensionObjectWithBodyWithResponse request with any body
-	PutExtensionObjectWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error)
-
-	PutExtensionObjectWithResponse(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error)
-
 	// DeleteExtensionObjectWithResponse request
 	DeleteExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*DeleteExtensionObjectResp, error)
 
 	// GetExtensionObjectWithResponse request
 	GetExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*GetExtensionObjectResp, error)
+
+	// PutExtensionObjectWithBodyWithResponse request with any body
+	PutExtensionObjectWithBodyWithResponse(ctx context.Context, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error)
 
 	// ListExtensionSubscriptionsWithResponse request
 	ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error)
@@ -9101,16 +9056,14 @@ type ClientWithResponsesInterface interface {
 	// ListPipelineObjectsWithResponse request
 	ListPipelineObjectsWithResponse(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*ListPipelineObjectsResp, error)
 
-	// PutPipelineObjectWithBodyWithResponse request with any body
-	PutPipelineObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutPipelineObjectResp, error)
-
-	PutPipelineObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, body PutPipelineObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutPipelineObjectResp, error)
-
 	// DeletePipelineObjectWithResponse request
 	DeletePipelineObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, key string, reqEditors ...RequestEditorFn) (*DeletePipelineObjectResp, error)
 
 	// GetPipelineObjectWithResponse request
 	GetPipelineObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, key string, reqEditors ...RequestEditorFn) (*GetPipelineObjectResp, error)
+
+	// PutPipelineObjectWithBodyWithResponse request with any body
+	PutPipelineObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, key string, params *PutPipelineObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutPipelineObjectResp, error)
 
 	// ListRunsWithResponse request
 	ListRunsWithResponse(ctx context.Context, namespaceId string, pipelineId string, params *ListRunsParams, reqEditors ...RequestEditorFn) (*ListRunsResp, error)
@@ -9129,16 +9082,14 @@ type ClientWithResponsesInterface interface {
 	// ListRunObjectsWithResponse request
 	ListRunObjectsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListRunObjectsResp, error)
 
-	// PutRunObjectWithBodyWithResponse request with any body
-	PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error)
-
-	PutRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, body PutRunObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error)
-
 	// DeleteRunObjectWithResponse request
 	DeleteRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*DeleteRunObjectResp, error)
 
 	// GetRunObjectWithResponse request
 	GetRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*GetRunObjectResp, error)
+
+	// PutRunObjectWithBodyWithResponse request with any body
+	PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error)
 
 	// ListTaskExecutionsWithResponse request
 	ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error)
@@ -9516,30 +9467,6 @@ func (r ListExtensionObjectsResp) StatusCode() int {
 	return 0
 }
 
-type PutExtensionObjectResp struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *PutExtensionObjectResponse
-	JSON4XX      *Error
-	JSON5XX      *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r PutExtensionObjectResp) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PutExtensionObjectResp) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type DeleteExtensionObjectResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -9566,7 +9493,6 @@ func (r DeleteExtensionObjectResp) StatusCode() int {
 type GetExtensionObjectResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GetExtensionObjectResponse
 	JSON4XX      *Error
 	JSON5XX      *Error
 }
@@ -9581,6 +9507,30 @@ func (r GetExtensionObjectResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetExtensionObjectResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutExtensionObjectResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *PutExtensionObjectResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PutExtensionObjectResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutExtensionObjectResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10015,30 +9965,6 @@ func (r ListPipelineObjectsResp) StatusCode() int {
 	return 0
 }
 
-type PutPipelineObjectResp struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *PutPipelineObjectResponse
-	JSON4XX      *Error
-	JSON5XX      *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r PutPipelineObjectResp) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PutPipelineObjectResp) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type DeletePipelineObjectResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10065,7 +9991,6 @@ func (r DeletePipelineObjectResp) StatusCode() int {
 type GetPipelineObjectResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GetPipelineObjectResponse
 	JSON4XX      *Error
 	JSON5XX      *Error
 }
@@ -10080,6 +10005,30 @@ func (r GetPipelineObjectResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetPipelineObjectResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutPipelineObjectResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *PutPipelineObjectResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PutPipelineObjectResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutPipelineObjectResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -10205,30 +10154,6 @@ func (r ListRunObjectsResp) StatusCode() int {
 	return 0
 }
 
-type PutRunObjectResp struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *PutRunObjectResponse
-	JSON4XX      *Error
-	JSON5XX      *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r PutRunObjectResp) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PutRunObjectResp) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type DeleteRunObjectResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10255,7 +10180,6 @@ func (r DeleteRunObjectResp) StatusCode() int {
 type GetRunObjectResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GetRunObjectResponse
 	JSON4XX      *Error
 	JSON5XX      *Error
 }
@@ -10270,6 +10194,30 @@ func (r GetRunObjectResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetRunObjectResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutRunObjectResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *PutRunObjectResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PutRunObjectResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutRunObjectResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11192,23 +11140,6 @@ func (c *ClientWithResponses) ListExtensionObjectsWithResponse(ctx context.Conte
 	return ParseListExtensionObjectsResp(rsp)
 }
 
-// PutExtensionObjectWithBodyWithResponse request with arbitrary body returning *PutExtensionObjectResp
-func (c *ClientWithResponses) PutExtensionObjectWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error) {
-	rsp, err := c.PutExtensionObjectWithBody(ctx, extensionId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutExtensionObjectResp(rsp)
-}
-
-func (c *ClientWithResponses) PutExtensionObjectWithResponse(ctx context.Context, extensionId string, body PutExtensionObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error) {
-	rsp, err := c.PutExtensionObject(ctx, extensionId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutExtensionObjectResp(rsp)
-}
-
 // DeleteExtensionObjectWithResponse request returning *DeleteExtensionObjectResp
 func (c *ClientWithResponses) DeleteExtensionObjectWithResponse(ctx context.Context, extensionId string, key string, reqEditors ...RequestEditorFn) (*DeleteExtensionObjectResp, error) {
 	rsp, err := c.DeleteExtensionObject(ctx, extensionId, key, reqEditors...)
@@ -11225,6 +11156,15 @@ func (c *ClientWithResponses) GetExtensionObjectWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetExtensionObjectResp(rsp)
+}
+
+// PutExtensionObjectWithBodyWithResponse request with arbitrary body returning *PutExtensionObjectResp
+func (c *ClientWithResponses) PutExtensionObjectWithBodyWithResponse(ctx context.Context, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error) {
+	rsp, err := c.PutExtensionObjectWithBody(ctx, extensionId, key, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutExtensionObjectResp(rsp)
 }
 
 // ListExtensionSubscriptionsWithResponse request returning *ListExtensionSubscriptionsResp
@@ -11421,23 +11361,6 @@ func (c *ClientWithResponses) ListPipelineObjectsWithResponse(ctx context.Contex
 	return ParseListPipelineObjectsResp(rsp)
 }
 
-// PutPipelineObjectWithBodyWithResponse request with arbitrary body returning *PutPipelineObjectResp
-func (c *ClientWithResponses) PutPipelineObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutPipelineObjectResp, error) {
-	rsp, err := c.PutPipelineObjectWithBody(ctx, namespaceId, pipelineId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutPipelineObjectResp(rsp)
-}
-
-func (c *ClientWithResponses) PutPipelineObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, body PutPipelineObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutPipelineObjectResp, error) {
-	rsp, err := c.PutPipelineObject(ctx, namespaceId, pipelineId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutPipelineObjectResp(rsp)
-}
-
 // DeletePipelineObjectWithResponse request returning *DeletePipelineObjectResp
 func (c *ClientWithResponses) DeletePipelineObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, key string, reqEditors ...RequestEditorFn) (*DeletePipelineObjectResp, error) {
 	rsp, err := c.DeletePipelineObject(ctx, namespaceId, pipelineId, key, reqEditors...)
@@ -11454,6 +11377,15 @@ func (c *ClientWithResponses) GetPipelineObjectWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetPipelineObjectResp(rsp)
+}
+
+// PutPipelineObjectWithBodyWithResponse request with arbitrary body returning *PutPipelineObjectResp
+func (c *ClientWithResponses) PutPipelineObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, key string, params *PutPipelineObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutPipelineObjectResp, error) {
+	rsp, err := c.PutPipelineObjectWithBody(ctx, namespaceId, pipelineId, key, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutPipelineObjectResp(rsp)
 }
 
 // ListRunsWithResponse request returning *ListRunsResp
@@ -11509,23 +11441,6 @@ func (c *ClientWithResponses) ListRunObjectsWithResponse(ctx context.Context, na
 	return ParseListRunObjectsResp(rsp)
 }
 
-// PutRunObjectWithBodyWithResponse request with arbitrary body returning *PutRunObjectResp
-func (c *ClientWithResponses) PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error) {
-	rsp, err := c.PutRunObjectWithBody(ctx, namespaceId, pipelineId, runId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutRunObjectResp(rsp)
-}
-
-func (c *ClientWithResponses) PutRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, body PutRunObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error) {
-	rsp, err := c.PutRunObject(ctx, namespaceId, pipelineId, runId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutRunObjectResp(rsp)
-}
-
 // DeleteRunObjectWithResponse request returning *DeleteRunObjectResp
 func (c *ClientWithResponses) DeleteRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*DeleteRunObjectResp, error) {
 	rsp, err := c.DeleteRunObject(ctx, namespaceId, pipelineId, runId, key, reqEditors...)
@@ -11542,6 +11457,15 @@ func (c *ClientWithResponses) GetRunObjectWithResponse(ctx context.Context, name
 		return nil, err
 	}
 	return ParseGetRunObjectResp(rsp)
+}
+
+// PutRunObjectWithBodyWithResponse request with arbitrary body returning *PutRunObjectResp
+func (c *ClientWithResponses) PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error) {
+	rsp, err := c.PutRunObjectWithBody(ctx, namespaceId, pipelineId, runId, key, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutRunObjectResp(rsp)
 }
 
 // ListTaskExecutionsWithResponse request returning *ListTaskExecutionsResp
@@ -12293,46 +12217,6 @@ func ParseListExtensionObjectsResp(rsp *http.Response) (*ListExtensionObjectsRes
 	return response, nil
 }
 
-// ParsePutExtensionObjectResp parses an HTTP response from a PutExtensionObjectWithResponse call
-func ParsePutExtensionObjectResp(rsp *http.Response) (*PutExtensionObjectResp, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PutExtensionObjectResp{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest PutExtensionObjectResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON4XX = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON5XX = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseDeleteExtensionObjectResp parses an HTTP response from a DeleteExtensionObjectWithResponse call
 func ParseDeleteExtensionObjectResp(rsp *http.Response) (*DeleteExtensionObjectResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -12380,12 +12264,45 @@ func ParseGetExtensionObjectResp(rsp *http.Response) (*GetExtensionObjectResp, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetExtensionObjectResponse
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutExtensionObjectResp parses an HTTP response from a PutExtensionObjectWithResponse call
+func ParsePutExtensionObjectResp(rsp *http.Response) (*PutExtensionObjectResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutExtensionObjectResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PutExtensionObjectResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error
@@ -13098,46 +13015,6 @@ func ParseListPipelineObjectsResp(rsp *http.Response) (*ListPipelineObjectsResp,
 	return response, nil
 }
 
-// ParsePutPipelineObjectResp parses an HTTP response from a PutPipelineObjectWithResponse call
-func ParsePutPipelineObjectResp(rsp *http.Response) (*PutPipelineObjectResp, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PutPipelineObjectResp{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest PutPipelineObjectResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON4XX = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON5XX = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseDeletePipelineObjectResp parses an HTTP response from a DeletePipelineObjectWithResponse call
 func ParseDeletePipelineObjectResp(rsp *http.Response) (*DeletePipelineObjectResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13185,12 +13062,45 @@ func ParseGetPipelineObjectResp(rsp *http.Response) (*GetPipelineObjectResp, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetPipelineObjectResponse
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutPipelineObjectResp parses an HTTP response from a PutPipelineObjectWithResponse call
+func ParsePutPipelineObjectResp(rsp *http.Response) (*PutPipelineObjectResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutPipelineObjectResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PutPipelineObjectResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error
@@ -13404,46 +13314,6 @@ func ParseListRunObjectsResp(rsp *http.Response) (*ListRunObjectsResp, error) {
 	return response, nil
 }
 
-// ParsePutRunObjectResp parses an HTTP response from a PutRunObjectWithResponse call
-func ParsePutRunObjectResp(rsp *http.Response) (*PutRunObjectResp, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PutRunObjectResp{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest PutRunObjectResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON4XX = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON5XX = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseDeleteRunObjectResp parses an HTTP response from a DeleteRunObjectWithResponse call
 func ParseDeleteRunObjectResp(rsp *http.Response) (*DeleteRunObjectResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -13491,12 +13361,45 @@ func ParseGetRunObjectResp(rsp *http.Response) (*GetRunObjectResp, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetRunObjectResponse
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutRunObjectResp parses an HTTP response from a PutRunObjectWithResponse call
+func ParsePutRunObjectResp(rsp *http.Response) (*PutRunObjectResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutRunObjectResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PutRunObjectResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error

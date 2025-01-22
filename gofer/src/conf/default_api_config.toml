@@ -44,12 +44,12 @@ prune_interval = 604800
 timeout = 300           # Should be the same or more than the task_execution_stop_timeout
 
 [object_store]
-engine = "sqlite"
+engine = "filesystem"
 pipeline_object_limit = 50
 run_object_expiry = 50
 
-[object_store.sqlite]
-path = "/tmp/gofer_objects.db"
+[object_store.filesystem]
+path = "/tmp/gofer_objects"
 
 [secret_store]
 engine = "sqlite"

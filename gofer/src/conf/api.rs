@@ -129,7 +129,7 @@ pub struct ObjectStore {
     /// deleted on run #7 regardless of run health.
     pub run_object_expiry: u64,
 
-    pub sqlite: Option<object_store::sqlite::Config>,
+    pub filesystem: Option<object_store::filesystem::Config>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone)]

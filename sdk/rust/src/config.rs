@@ -198,7 +198,8 @@ pub fn global_secret(key: &str) -> String {
 /// Pipeline objects are part of a ring buffer that pushes out the oldest pipeline object once it becomes full. This
 /// means that pipeline objects are kept forever until they are too many of them.
 ///
-/// Objects can only be retrieved as part of a task's variables and once retrieved the object will be base64 encoded.
+/// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
+/// If you need the raw bytes for an object use the Gofer cli.
 pub fn pipeline_object(key: &str) -> String {
     format!("pipeline_object{{{key}}}")
 }
@@ -207,7 +208,8 @@ pub fn pipeline_object(key: &str) -> String {
 ///
 /// Run objects are scoped to a specific run. It is meant as a way for a task within a run to pass data to other tasks.
 ///
-/// Objects can only be retrieved as part of a task's variables and once retrieved the object will be base64 encoded.
+/// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
+/// If you need the raw bytes for an object use the Gofer cli.
 pub fn run_object(key: &str) -> String {
     format!("run_object{{{key}}}")
 }

@@ -20,7 +20,7 @@ dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag
 futures = "0.3"
 http = "0.2.12"
 lazy-regex = "3.1.0"
-progenitor = { git = "https://github.com/oxidecomputer/progenitor", tag = "v0.8.0" }
+progenitor = { git = "https://github.com/oxidecomputer/progenitor", tag = "v0.9.1" }
 rand = "0.8.5"
 reqwest = { version = "0.12.11", features = ["json", "stream"] }
 schemars = "0.8.21"

@@ -389,52 +389,6 @@
             "$ref": "#/components/responses/Error"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "Objects"
-        ],
-        "summary": "Insert a new object into the extension object store.",
-        "operationId": "put_extension_object",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "extension_id",
-            "description": "The unique identifier for the target extension.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutExtensionObjectRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "successful creation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PutExtensionObjectResponse"
-                }
-              }
-            }
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
       }
     },
     "/api/extensions/{extension_id}/objects/{key}": {
@@ -466,11 +420,74 @@
         ],
         "responses": {
           "200": {
-            "description": "successful operation",
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Insert a new object into the extension object store.",
+        "operationId": "put_extension_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "description": "Overwrite a value of a object if it already exists.",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetExtensionObjectResponse"
+                  "$ref": "#/components/schemas/PutExtensionObjectResponse"
                 }
               }
             }
@@ -1326,61 +1343,6 @@
             "$ref": "#/components/responses/Error"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "Objects"
-        ],
-        "summary": "Insert a new object into the pipeline object store.",
-        "operationId": "put_pipeline_object",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "namespace_id",
-            "description": "The unique identifier for the target namespace.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "pipeline_id",
-            "description": "The unique identifier for the target pipeline.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutPipelineObjectRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "successful creation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PutPipelineObjectResponse"
-                }
-              }
-            }
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
       }
     },
     "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/objects/{key}": {
@@ -1421,11 +1383,83 @@
         ],
         "responses": {
           "200": {
-            "description": "successful operation",
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Insert a new object into the pipeline object store.",
+        "operationId": "put_pipeline_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "description": "Overwrite a value of a object if it already exists.",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetPipelineObjectResponse"
+                  "$ref": "#/components/schemas/PutPipelineObjectResponse"
                 }
               }
             }
@@ -1780,72 +1814,6 @@
             "$ref": "#/components/responses/Error"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "Objects"
-        ],
-        "summary": "Insert a new object into the run object store.",
-        "operationId": "put_run_object",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "namespace_id",
-            "description": "The unique identifier for the target namespace.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "pipeline_id",
-            "description": "The unique identifier for the target pipeline.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "run_id",
-            "description": "The unique identifier for the target run.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutRunObjectRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "successful creation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PutRunObjectResponse"
-                }
-              }
-            }
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
       }
     },
     "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects/{key}": {
@@ -1897,11 +1865,95 @@
         ],
         "responses": {
           "200": {
-            "description": "successful operation",
+            "description": "",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Insert a new object into the run object store.",
+        "description": "Overwrites can be performed by passing the `force` query param.",
+        "operationId": "put_run_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "description": "The unique identifier for the target object.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "description": "The unique identifier for the target run.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "description": "Overwrite a value of a object if it already exists.",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "successful creation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetRunObjectResponse"
+                  "$ref": "#/components/schemas/PutRunObjectResponse"
                 }
               }
             }
@@ -2174,7 +2226,7 @@
           "Tasks"
         ],
         "summary": "Run command on a running task execution container.",
-        "description": "This allows you to run a command on a task execution container and connect to the stdin and stdout/err for said container.\nUseful for debugging.",
+        "description": "This allows you to run a command on a task execution container and connect to the stdin and stdout/err for said container.\n\nUseful for debugging.",
         "operationId": "attach_task_execution",
         "parameters": [
           {
@@ -4053,23 +4105,6 @@
           "event"
         ]
       },
-      "GetExtensionObjectResponse": {
-        "type": "object",
-        "properties": {
-          "object": {
-            "description": "The requested object data.",
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0
-            }
-          }
-        },
-        "required": [
-          "object"
-        ]
-      },
       "GetExtensionResponse": {
         "type": "object",
         "properties": {
@@ -4139,23 +4174,6 @@
           "config"
         ]
       },
-      "GetPipelineObjectResponse": {
-        "type": "object",
-        "properties": {
-          "object": {
-            "description": "The requested object data.",
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0
-            }
-          }
-        },
-        "required": [
-          "object"
-        ]
-      },
       "GetPipelineResponse": {
         "type": "object",
         "properties": {
@@ -4207,23 +4225,6 @@
         },
         "required": [
           "role"
-        ]
-      },
-      "GetRunObjectResponse": {
-        "type": "object",
-        "properties": {
-          "object": {
-            "description": "The requested object data.",
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0
-            }
-          }
-        },
-        "required": [
-          "object"
         ]
       },
       "GetRunResponse": {
@@ -5462,7 +5463,7 @@
         ]
       },
       "Pipeline": {
-        "description": "`Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute.\n\n# Example\n\nThe following example demonstrates how to create a simple pipeline in Gofer, which is familiar to those experienced with CI/CD tooling. It outlines how to define a simple task within a pipeline, use a standard Ubuntu container, and execute a basic command.\n\nThis simple example serves as a foundation, illustrating the pattern of defining tasks as building blocks of a pipeline. In practice, you would create custom containers designed specifically for the tasks in your Gofer workflows, keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.\n\n```ignore // Create a new pipeline with a name and a descriptive label. Pipeline::new(\"simple\", \"Simple Pipeline\") .description(\"This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \\ This pattern will be familiar to those experienced with CI/CD tools. \\ Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.\") // Adding a single task to the pipeline. .tasks(vec![ Task::new(\"simple_task\", \"ubuntu:latest\") .description(\"This task uses the Ubuntu container to print a 'Hello World' message.\") .command(vec![\"echo\".to_string(), \"Hello from Gofer!\".to_string()]) ]) .finish() // Finalize and validate the pipeline setup. .unwrap(); // Handle potential errors during pipeline creation. ```",
+        "description": "`Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute. - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`\n\n# Example\n\nThe following example demonstrates how to create a simple pipeline in Gofer, which is familiar to those experienced with CI/CD tooling. It outlines how to define a simple task within a pipeline, use a standard Ubuntu container, and execute a basic command.\n\nThis simple example serves as a foundation, illustrating the pattern of defining tasks as building blocks of a pipeline. In practice, you would create custom containers designed specifically for the tasks in your Gofer workflows, keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.\n\n```ignore // Create a new pipeline with a name and a descriptive label. Pipeline::new(\"simple\", \"Simple Pipeline\") .description(\"This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \\ This pattern will be familiar to those experienced with CI/CD tools. \\ Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.\") // Adding a single task to the pipeline. .tasks(vec![ Task::new(\"simple_task\", \"ubuntu:latest\") .description(\"This task uses the Ubuntu container to print a 'Hello World' message.\") .command(vec![\"echo\".to_string(), \"Hello from Gofer!\".to_string()]) ]) .finish() // Finalize and validate the pipeline setup. .unwrap(); // Handle potential errors during pipeline creation. ```",
         "type": "object",
         "properties": {
           "description": {
@@ -5532,33 +5533,6 @@
           "disabled"
         ]
       },
-      "PutExtensionObjectRequest": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "description": "The bytes for the object.",
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0
-            }
-          },
-          "force": {
-            "description": "Overwrite a value of a object if it already exists.",
-            "type": "boolean"
-          },
-          "key": {
-            "description": "The name for the object you would like to store.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "content",
-          "force",
-          "key"
-        ]
-      },
       "PutExtensionObjectResponse": {
         "type": "object",
         "properties": {
@@ -5621,33 +5595,6 @@
           "secret"
         ]
       },
-      "PutPipelineObjectRequest": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "description": "The bytes for the object.",
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0
-            }
-          },
-          "force": {
-            "description": "Overwrite a value of a object if it already exists.",
-            "type": "boolean"
-          },
-          "key": {
-            "description": "The name for the object you would like to store.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "content",
-          "force",
-          "key"
-        ]
-      },
       "PutPipelineObjectResponse": {
         "type": "object",
         "properties": {
@@ -5700,33 +5647,6 @@
         },
         "required": [
           "secret"
-        ]
-      },
-      "PutRunObjectRequest": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "description": "The bytes for the object.",
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0
-            }
-          },
-          "force": {
-            "description": "Overwrite a value of a object if it already exists.",
-            "type": "boolean"
-          },
-          "key": {
-            "description": "The name for the object you would like to store.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "content",
-          "force",
-          "key"
         ]
       },
       "PutRunObjectResponse": {
@@ -6211,7 +6131,7 @@
         ]
       },
       "Task2": {
-        "description": "Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container. Each task defines the operations to be performed and the container environment in which these operations will run.\n\n# Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: \"example_task\".to_string(), description: Some(\"This task executes a simple print command in an Ubuntu container.\".to_string()), image: \"ubuntu:latest\".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([(\"KEY\", \"value\".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec![\"echo\".to_string(), \"Hello World!\".to_string()]), inject_api_token: false, }; ```",
+        "description": "Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container. Each task defines the operations to be performed and the container environment in which these operations will run.\n\n- The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`\n\n# Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: \"example_task\".to_string(), description: Some(\"This task executes a simple print command in an Ubuntu container.\".to_string()), image: \"ubuntu:latest\".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([(\"KEY\", \"value\".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec![\"echo\".to_string(), \"Hello World!\".to_string()]), inject_api_token: false, }; ```",
         "type": "object",
         "properties": {
           "always_pull_newest_image": {
