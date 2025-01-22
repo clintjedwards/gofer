@@ -34,6 +34,7 @@ func handlePullRequestEvent(payload interface{}) (repo, action string, metadata 
 		"GOFER_EXTENSION_GITHUB_EVENT":                       "pull_request",
 		"GOFER_EXTENSION_GITHUB_ACTION":                      action,
 		"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_REF":        safeDeref(event.PullRequest.Head.Ref),
+		"GOFER_EXTENSION_GITHUB_PULLREQUEST_BRANCH":          safeDeref(event.PullRequest.Head.Ref),
 		"GOFER_EXTENSION_GITHUB_REPOSITORY":                  safeDeref(event.Repo.FullName),
 		"GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_SHA":        safeDeref(event.PullRequest.Head.SHA),
 		"GOFER_EXTENSION_GITHUB_PULLREQUEST_AUTHOR_USERNAME": safeDeref(event.PullRequest.User.Login),
