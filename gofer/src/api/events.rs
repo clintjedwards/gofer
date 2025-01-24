@@ -304,7 +304,7 @@ pub async fn get_event(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -320,7 +320,7 @@ pub async fn get_event(
             _ => {
                 return Err(http_error!(
                     "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -331,7 +331,7 @@ pub async fn get_event(
     let event = Event::try_from(storage_event).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -373,7 +373,7 @@ pub async fn delete_event(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -391,7 +391,7 @@ pub async fn delete_event(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));

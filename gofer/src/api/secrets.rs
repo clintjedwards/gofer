@@ -5,11 +5,10 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use dropshot::{
-    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path, Query,
-    RequestContext, TypedBody,
+    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
+    HttpResponseOk, Path, Query, RequestContext, TypedBody,
 };
 use futures::TryFutureExt;
-use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -216,7 +215,7 @@ pub async fn list_global_secrets(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -228,7 +227,7 @@ pub async fn list_global_secrets(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -241,7 +240,7 @@ pub async fn list_global_secrets(
         let secret = Secret::try_from(storage_secret).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -303,7 +302,7 @@ pub async fn get_global_secret(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -329,7 +328,7 @@ pub async fn get_global_secret(
     let metadata = Secret::try_from(storage_secret).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -351,7 +350,7 @@ pub async fn get_global_secret(
 
                 http_error!(
                     "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(err.into())
                 )
@@ -417,7 +416,7 @@ pub async fn put_global_secret(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -431,7 +430,7 @@ pub async fn put_global_secret(
         Err(e) => {
             return Err(http_error!(
                 "Could not serialize secret into database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(anyhow::anyhow!("{}", e).into())
             ));
@@ -445,7 +444,7 @@ pub async fn put_global_secret(
                 if !body.force {
                     return Err(HttpError::for_client_error(
                         None,
-                        StatusCode::CONFLICT,
+                        ClientErrorStatusCode::CONFLICT,
                         "secret entry already exists".into(),
                     ));
                 } else {
@@ -456,7 +455,7 @@ pub async fn put_global_secret(
             _ => {
                 return Err(http_error!(
                     "Could not insert secret into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -475,7 +474,7 @@ pub async fn put_global_secret(
     {
         return Err(http_error!(
             "Could not insert secret into store",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -518,7 +517,7 @@ pub async fn delete_global_secret(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -536,7 +535,7 @@ pub async fn delete_global_secret(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -551,7 +550,7 @@ pub async fn delete_global_secret(
     {
         return Err(http_error!(
             "Could not delete object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -600,7 +599,7 @@ pub async fn list_pipeline_secrets(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -618,7 +617,7 @@ pub async fn list_pipeline_secrets(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -631,7 +630,7 @@ pub async fn list_pipeline_secrets(
         let secret = Secret::try_from(storage_secret).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -695,7 +694,7 @@ pub async fn get_pipeline_secret(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -718,7 +717,7 @@ pub async fn get_pipeline_secret(
             _ => {
                 return Err(http_error!(
                     "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -729,7 +728,7 @@ pub async fn get_pipeline_secret(
     let metadata = Secret::try_from(storage_secret).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -755,7 +754,7 @@ pub async fn get_pipeline_secret(
 
                 http_error!(
                     "Could not get object from store",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(err.into())
                 )
@@ -822,7 +821,7 @@ pub async fn put_pipeline_secret(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -837,7 +836,7 @@ pub async fn put_pipeline_secret(
             Err(e) => {
                 return Err(http_error!(
                     "Could not serialize secret object to database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -852,7 +851,7 @@ pub async fn put_pipeline_secret(
                 if !body.force {
                     return Err(HttpError::for_client_error(
                         None,
-                        StatusCode::CONFLICT,
+                        ClientErrorStatusCode::CONFLICT,
                         "secret entry already exists".into(),
                     ));
                 } else {
@@ -863,7 +862,7 @@ pub async fn put_pipeline_secret(
             _ => {
                 return Err(http_error!(
                     "Could not insert object into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -882,7 +881,7 @@ pub async fn put_pipeline_secret(
     {
         return Err(http_error!(
             "Could not insert objects from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -927,7 +926,7 @@ pub async fn delete_pipeline_secret(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -952,7 +951,7 @@ pub async fn delete_pipeline_secret(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -971,7 +970,7 @@ pub async fn delete_pipeline_secret(
     {
         return Err(http_error!(
             "Could not delete object from store",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));

@@ -21,14 +21,14 @@ crossbeam = "0.8.4"
 dashmap = "5.5.3"
 derive_builder = "0.20.0"
 dirs = "5.0.1"
-dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.1-dev" }
-dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.1-dev" }
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.15.1" }
+dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.15.1" }
 figment = { version = "0.10.16", features = ["env", "toml"] }
 futures = "0.3.30"
 gofer_sdk = { path = "../sdk/rust" }
 http = "0.2.12"
 human-panic = "2.0.1"
-hyper = { version = "0.14", features = ["server", "full"] }
+hyper = { version = "1.5.2", features = ["server", "full"] }
 lazy-regex = "3.1.0"
 mime_guess = "2.0.4"
 polyfmt = { git = "https://github.com/clintjedwards/polyfmt-rs.git", tag = "v0.0.13" }
@@ -61,6 +61,7 @@ tungstenite = "0.21.0"
 uuid = { version = "1.8.0", features = ["v7"] }
 console-subscriber = "0.1"
 termion = "4.0.3"
+semver = "1.0.25"
 
 [dev-dependencies]
 lazy_static = "1.4.0"

@@ -177,7 +177,7 @@ pub async fn list_pipelines(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -190,7 +190,7 @@ pub async fn list_pipelines(
             Err(e) => {
                 return Err(http_error!(
                     "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -203,7 +203,7 @@ pub async fn list_pipelines(
         let pipeline = Metadata::try_from(storage_pipeline).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -255,7 +255,7 @@ pub async fn get_pipeline(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -274,7 +274,7 @@ pub async fn get_pipeline(
                 _ => {
                     return Err(http_error!(
                         "Could not get objects from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -285,7 +285,7 @@ pub async fn get_pipeline(
     let metadata = Metadata::try_from(storage_pipeline_metadata).map_err(|err| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -335,7 +335,7 @@ pub async fn update_pipeline(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -365,7 +365,7 @@ pub async fn update_pipeline(
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -412,7 +412,7 @@ pub async fn delete_pipeline(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -432,7 +432,7 @@ pub async fn delete_pipeline(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));

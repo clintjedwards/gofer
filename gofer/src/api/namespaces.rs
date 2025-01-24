@@ -5,10 +5,9 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use dropshot::{
-    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path,
-    RequestContext, TypedBody,
+    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
+    HttpResponseOk, Path, RequestContext, TypedBody,
 };
-use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -126,7 +125,7 @@ pub async fn list_namespaces(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -138,7 +137,7 @@ pub async fn list_namespaces(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -151,7 +150,7 @@ pub async fn list_namespaces(
         let namespace = Namespace::try_from(storage_namespace).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -200,7 +199,7 @@ pub async fn get_namespace(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -216,7 +215,7 @@ pub async fn get_namespace(
             _ => {
                 return Err(http_error!(
                     "Could not get object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -227,7 +226,7 @@ pub async fn get_namespace(
     let namespace = Namespace::try_from(storage_namespace).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -298,7 +297,7 @@ pub async fn create_namespace(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -314,14 +313,14 @@ pub async fn create_namespace(
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
                     None,
-                    StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     "namespace entry already exists".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not insert objects into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -402,7 +401,7 @@ pub async fn update_namespace(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -423,7 +422,7 @@ pub async fn update_namespace(
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -443,7 +442,7 @@ pub async fn update_namespace(
             _ => {
                 return Err(http_error!(
                     "Could not get object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -462,7 +461,7 @@ pub async fn update_namespace(
     let namespace = Namespace::try_from(storage_namespace).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -505,7 +504,7 @@ pub async fn delete_namespace(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -523,7 +522,7 @@ pub async fn delete_namespace(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));

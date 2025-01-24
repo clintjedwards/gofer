@@ -326,7 +326,7 @@ pub async fn list_deployments(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -339,7 +339,7 @@ pub async fn list_deployments(
             Err(e) => {
                 return Err(http_error!(
                     "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -352,7 +352,7 @@ pub async fn list_deployments(
         let deployment = Deployment::try_from(storage_deployment).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -405,7 +405,7 @@ pub async fn get_deployment(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -439,7 +439,7 @@ pub async fn get_deployment(
             _ => {
                 return Err(http_error!(
                     "Could not get object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id,
                     Some(e.into())
                 ));
@@ -450,7 +450,7 @@ pub async fn get_deployment(
     let deployment = Deployment::try_from(storage_deployment).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )

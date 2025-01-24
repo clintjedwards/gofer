@@ -2,13 +2,11 @@ pub mod api;
 
 use async_trait::async_trait;
 use dropshot::{
-    endpoint, ApiDescription, ConfigDropshot, ConfigTls, DropshotState, HttpError, HttpResponseOk,
-    HttpResponseUpdatedNoContent, HttpServer, HttpServerStarter, RequestContext, RequestInfo,
-    ServerContext, TypedBody,
+    endpoint, ApiDescription, Body, ClientErrorStatusCode, ConfigDropshot, ConfigTls,
+    DropshotState, HandlerError, HttpError, HttpResponseOk, HttpResponseUpdatedNoContent,
+    HttpServer, RequestContext, RequestInfo, ServerBuilder, ServerContext, TypedBody,
 };
 use futures::Future;
-use http::Request;
-use hyper::Body;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, error::Error, pin::Pin};
@@ -174,7 +172,7 @@ impl ExtensionWrapper {
         if token != self.auth_key {
             return Err(HttpError::for_client_error(
                 None,
-                http::StatusCode::UNAUTHORIZED,
+                ClientErrorStatusCode::UNAUTHORIZED,
                 "Unauthorized".into(),
             ));
         }
@@ -411,7 +409,8 @@ fn init_api() -> ApiDescription<Arc<ExtensionWrapper>> {
 pub fn write_openapi_spec(path: std::path::PathBuf) -> Result<(), Box<dyn Error>> {
     let api = init_api();
     let mut file = std::fs::File::create(path)?;
-    api.openapi("Gofer Extension", "0.0.0").write(&mut file)?;
+    api.openapi("Gofer Extension", semver::Version::new(0, 0, 0))
+        .write(&mut file)?;
 
     Ok(())
 }
@@ -444,35 +443,22 @@ pub async fn run(ext: Box<dyn Extension>) -> Result<(), Box<dyn Error>> {
 
     let api = init_api();
 
-    let server = if !config.use_tls {
-        HttpServerStarter::new(
-            &dropshot_conf,
-            api,
-            Some(Arc::new(Middleware)),
-            Arc::new(extension),
-        )
-        .map_err(|error| {
-            ExtensionError::ServerError(format!("Could not start HTTP server; {:#?}", error))
-        })?
-        .start()
-    } else {
-        let tls_config = Some(ConfigTls::AsBytes {
+    let tls_config = match config.use_tls {
+        true => Some(ConfigTls::AsBytes {
             certs: config.tls_cert.into_bytes(),
             key: config.tls_key.into_bytes(),
-        });
-
-        HttpServerStarter::new_with_tls(
-            &dropshot_conf,
-            api,
-            Some(Arc::new(Middleware)),
-            Arc::new(extension),
-            tls_config,
-        )
-        .map_err(|error| {
-            ExtensionError::ServerError(format!("Could not start HTTPS server; {:#?}", error))
-        })?
-        .start()
+        }),
+        false => None,
     };
+
+    let server = ServerBuilder::new(api, Arc::new(extension), Some(Arc::new(Middleware)))
+        .config(dropshot_conf)
+        .tls(tls_config)
+        .start()
+        .map_err(|error| {
+            ExtensionError::ServerError(format!("Could not start HTTP(S) server; {:#?}", error))
+        })?;
+
     let shutdown_handle = server.wait_for_shutdown();
 
     tokio::spawn(wait_for_shutdown_signal(server));
@@ -542,17 +528,18 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
     async fn handle(
         &self,
         server: Arc<DropshotState<C>>,
-        request: Request<Body>,
+        request: hyper::Request<hyper::body::Incoming>,
         request_id: String,
         remote_addr: SocketAddr,
         next: fn(
             Arc<DropshotState<C>>,
-            Request<Body>,
+            hyper::Request<hyper::body::Incoming>,
             String,
             SocketAddr,
-        )
-            -> Pin<Box<dyn Future<Output = Result<hyper::Response<Body>, HttpError>> + Send>>,
-    ) -> Result<http::Response<Body>, HttpError> {
+        ) -> Pin<
+            Box<dyn Future<Output = Result<hyper::Response<Body>, HandlerError>> + Send>,
+        >,
+    ) -> Result<hyper::Response<Body>, HandlerError> {
         let start_time = std::time::Instant::now();
 
         let method = request.method().as_str().to_string();

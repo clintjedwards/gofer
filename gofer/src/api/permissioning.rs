@@ -5,10 +5,9 @@ use super::{
 use crate::http_error;
 use anyhow::{bail, Context, Result};
 use dropshot::{
-    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path,
-    RequestContext, TypedBody,
+    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
+    HttpResponseOk, Path, RequestContext, TypedBody,
 };
-use http::StatusCode;
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -391,7 +390,7 @@ impl ApiState {
         } else if options.admin_only {
             return Err(HttpError::for_client_error(
                 None,
-                StatusCode::UNAUTHORIZED,
+                ClientErrorStatusCode::UNAUTHORIZED,
                 "Route requires admin level token".into(),
             ));
         }
@@ -401,7 +400,7 @@ impl ApiState {
             Err(e) => {
                 return Err(crate::http_error!(
                     "Could not open connection to database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     "None".into(),
                     Some(e.into())
                 ));
@@ -420,7 +419,7 @@ impl ApiState {
                     _ => {
                         return Err(http_error!(
                             "Could not query database for roles during authentication permission checking",
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
+                            hyper::StatusCode::INTERNAL_SERVER_ERROR,
                             "0".into(),
                             Some(e.into())
                         ));
@@ -432,7 +431,7 @@ impl ApiState {
                 error!(message = "Could not serialize role from storage", error = %err);
                 http_error!(
                     "Could not parse role object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     "0".into(),
                     Some(err.into())
                 )
@@ -579,7 +578,7 @@ impl ApiState {
 
         Err(HttpError::for_client_error(
             None,
-            StatusCode::UNAUTHORIZED,
+            ClientErrorStatusCode::UNAUTHORIZED,
             format!(
                 "Token does not contain role required for access to this route. \
                 Route requires: resource '{:?}' and action '{}' permissions",
@@ -623,7 +622,7 @@ impl ApiState {
             Err(e) => {
                 return Err(crate::http_error!(
                     "Could not open connection to database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     "None".into(),
                     Some(e.into())
                 ));
@@ -636,14 +635,14 @@ impl ApiState {
                 storage::StorageError::NotFound => {
                     return Err(HttpError::for_client_error(
                         None,
-                        StatusCode::UNAUTHORIZED,
+                        ClientErrorStatusCode::UNAUTHORIZED,
                         "Unauthorized".into(),
                     ));
                 }
                 _ => {
                     return Err(crate::http_error!(
                         "Could not query database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         "None".into(),
                         Some(e.into())
                     ));
@@ -654,7 +653,7 @@ impl ApiState {
         let token = tokens::Token::try_from(storage_token).map_err(|e| {
             crate::http_error!(
                 "Could not parse token object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 "None".into(),
                 Some(e.into())
             )
@@ -663,7 +662,7 @@ impl ApiState {
         if token.disabled {
             return Err(HttpError::for_client_error(
                 None,
-                http::StatusCode::UNAUTHORIZED,
+                ClientErrorStatusCode::UNAUTHORIZED,
                 "Token disabled".into(),
             ));
         }
@@ -672,7 +671,7 @@ impl ApiState {
         if token.expires != 0 && epoch_milli() > token.expires {
             return Err(HttpError::for_client_error(
                 None,
-                http::StatusCode::UNAUTHORIZED,
+                ClientErrorStatusCode::UNAUTHORIZED,
                 "Token expired".into(),
             ));
         }
@@ -808,7 +807,7 @@ pub async fn list_roles(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -820,7 +819,7 @@ pub async fn list_roles(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -833,7 +832,7 @@ pub async fn list_roles(
         let role = InternalRole::try_from(storage_role).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -846,7 +845,7 @@ pub async fn list_roles(
     let roles = roles.map_err(|e| {
         http_error!(
             "Could not parse object role from database into api contract",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -898,7 +897,7 @@ pub async fn get_role(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -914,7 +913,7 @@ pub async fn get_role(
             _ => {
                 return Err(http_error!(
                     "Could not get object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -925,7 +924,7 @@ pub async fn get_role(
     let internal_role = InternalRole::try_from(storage_role).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -934,7 +933,7 @@ pub async fn get_role(
     let role: Role = internal_role.try_into().map_err(|e: anyhow::Error| {
         http_error!(
             "Could not parse object into api contract object",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -1005,7 +1004,7 @@ pub async fn create_role(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -1020,7 +1019,7 @@ pub async fn create_role(
     let permissions = permissions.map_err(|e| {
         http_error!(
             "Could not parse permissions from api contract",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -1038,7 +1037,7 @@ pub async fn create_role(
         Err(e) => {
             return Err(http_error!(
                 "Could not parse token into storage type while creating role",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(anyhow::anyhow!("{}", e).into())
             ));
@@ -1050,14 +1049,14 @@ pub async fn create_role(
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
                     None,
-                    StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     "role entry already exists".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not insert objects into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1075,7 +1074,7 @@ pub async fn create_role(
     let role = new_role.try_into().map_err(|e: anyhow::Error| {
         http_error!(
             "Could not parse role into api contract object",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -1160,7 +1159,7 @@ pub async fn update_role(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -1172,7 +1171,7 @@ pub async fn update_role(
         Err(e) => {
             return Err(http_error!(
                 "Could not serialize role for database insertion",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -1191,7 +1190,7 @@ pub async fn update_role(
             _ => {
                 return Err(http_error!(
                     "Could not get object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1203,7 +1202,7 @@ pub async fn update_role(
     if storage_role.system_role {
         return Err(HttpError::for_client_error(
             None,
-            StatusCode::FORBIDDEN,
+            ClientErrorStatusCode::FORBIDDEN,
             "Cannot edit system roles.".into(),
         ));
     }
@@ -1219,7 +1218,7 @@ pub async fn update_role(
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1239,7 +1238,7 @@ pub async fn update_role(
             _ => {
                 return Err(http_error!(
                     "Could not get object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1258,7 +1257,7 @@ pub async fn update_role(
     let internal_role = InternalRole::try_from(storage_role).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -1267,7 +1266,7 @@ pub async fn update_role(
     let role = internal_role.try_into().map_err(|e: anyhow::Error| {
         http_error!(
             "Could not parse role into api contract object",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -1310,7 +1309,7 @@ pub async fn delete_role(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -1329,7 +1328,7 @@ pub async fn delete_role(
             _ => {
                 return Err(http_error!(
                     "Could not get object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1341,7 +1340,7 @@ pub async fn delete_role(
     if storage_role.system_role {
         return Err(HttpError::for_client_error(
             None,
-            StatusCode::FORBIDDEN,
+            ClientErrorStatusCode::FORBIDDEN,
             "Cannot remove system roles.".into(),
         ));
     }
@@ -1357,7 +1356,7 @@ pub async fn delete_role(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));

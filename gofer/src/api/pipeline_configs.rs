@@ -9,11 +9,10 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use dropshot::{
-    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path,
-    RequestContext, TypedBody,
+    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
+    HttpResponseOk, Path, RequestContext, TypedBody,
 };
 use gofer_sdk::config;
-use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -247,7 +246,7 @@ pub async fn list_configs(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -261,7 +260,7 @@ pub async fn list_configs(
             Err(e) => {
                 return Err(http_error!(
                     "Could not get config objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -283,7 +282,7 @@ pub async fn list_configs(
             Err(e) => {
                 return Err(http_error!(
                     "Could not get task objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -293,7 +292,7 @@ pub async fn list_configs(
         let config = Config::from_storage(storage_config, tasks).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -305,7 +304,7 @@ pub async fn list_configs(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -359,7 +358,7 @@ pub async fn get_config(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -382,7 +381,7 @@ pub async fn get_config(
                 _ => {
                     return Err(http_error!(
                         "Could not get latest object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -409,7 +408,7 @@ pub async fn get_config(
             _ => {
                 return Err(http_error!(
                     "Could not get config objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -423,7 +422,7 @@ pub async fn get_config(
             Err(e) => {
                 return Err(http_error!(
                     "Could not get task objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -433,7 +432,7 @@ pub async fn get_config(
     let config = Config::from_storage(storage_pipeline_config, storage_tasks).map_err(|err| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -442,7 +441,7 @@ pub async fn get_config(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -521,7 +520,7 @@ pub async fn register_config(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -540,7 +539,7 @@ pub async fn register_config(
             _ => {
                 return Err(http_error!(
                     "Could not insert object into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -558,7 +557,7 @@ pub async fn register_config(
                 _ => {
                     return Err(http_error!(
                         "Could not get latest config object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -575,7 +574,7 @@ pub async fn register_config(
         .map_err(|err: std::num::TryFromIntError| {
             http_error!(
                 "Could not serialize last_version while attempting to determine next version",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -590,7 +589,7 @@ pub async fn register_config(
     .map_err(|err| {
         http_error!(
             "Could not create new pipeline config object",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -600,7 +599,7 @@ pub async fn register_config(
         new_pipeline_config.to_storage().map_err(|err| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -611,14 +610,14 @@ pub async fn register_config(
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
                     None,
-                    StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     "pipeline config entry already exists".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not insert object into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -632,14 +631,14 @@ pub async fn register_config(
                 storage::StorageError::Exists => {
                     return Err(HttpError::for_client_error(
                         None,
-                        StatusCode::CONFLICT,
+                        ClientErrorStatusCode::CONFLICT,
                         "pipeline task entry already exists".into(),
                     ));
                 }
                 _ => {
                     return Err(http_error!(
                         "Could not insert task object into database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -651,7 +650,7 @@ pub async fn register_config(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id,
             Some(e.into())
         ));
@@ -715,7 +714,7 @@ pub async fn deploy_config(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -732,7 +731,7 @@ pub async fn deploy_config(
             if !running.is_empty() {
                 return Err(HttpError::for_client_error(
                     None,
-                    http::StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     format!(
                         "Deployment '{}' is already in progress",
                         running.first().unwrap().deployment_id
@@ -743,7 +742,7 @@ pub async fn deploy_config(
         Err(err) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             ));
@@ -766,7 +765,7 @@ pub async fn deploy_config(
             } else {
                 return Err(http_error!(
                     "Could not get latest live config object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(err.into())
                 ));
@@ -798,7 +797,7 @@ pub async fn deploy_config(
             } else {
                 return Err(http_error!(
                     "Could not retrieve latest config while attempting to deploy new config",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(err.into())
                 ));
@@ -827,7 +826,7 @@ pub async fn deploy_config(
         .map_err(|err: anyhow::Error| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -838,7 +837,7 @@ pub async fn deploy_config(
         .map_err(|err| {
             http_error!(
                 "Could not insert object into database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -847,7 +846,7 @@ pub async fn deploy_config(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -874,7 +873,7 @@ pub async fn deploy_config(
         Err(e) => {
             return Err(http_error!(
                 "Could not open database transaction",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -896,7 +895,7 @@ pub async fn deploy_config(
     .map_err(|err| {
         http_error!(
             "Could not update end_version pipeline config",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -918,7 +917,7 @@ pub async fn deploy_config(
         .map_err(|err| {
             http_error!(
                 "Could not update start_version pipeline config",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -931,7 +930,7 @@ pub async fn deploy_config(
             Err(e) => {
                 return Err(http_error!(
                     "Could not open connection to database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -963,7 +962,7 @@ pub async fn deploy_config(
 
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -974,7 +973,7 @@ pub async fn deploy_config(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -998,7 +997,7 @@ pub async fn deploy_config(
     .map_err(|err| {
         http_error!(
             "Could not update object to database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -1056,7 +1055,7 @@ pub async fn delete_config(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -1075,7 +1074,7 @@ pub async fn delete_config(
                 _ => {
                     return Err(http_error!(
                         "Could not get object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -1104,7 +1103,7 @@ pub async fn delete_config(
             _ => {
                 return Err(http_error!(
                     "Could not get object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1115,7 +1114,7 @@ pub async fn delete_config(
     let config_state = ConfigState::from_str(&config.state).map_err(|err| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -1144,7 +1143,7 @@ pub async fn delete_config(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1155,7 +1154,7 @@ pub async fn delete_config(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));

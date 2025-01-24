@@ -457,7 +457,7 @@ pub async fn list_task_executions(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -476,7 +476,7 @@ pub async fn list_task_executions(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -489,7 +489,7 @@ pub async fn list_task_executions(
         let task_execution = TaskExecution::try_from(storage_task_execution).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -550,7 +550,7 @@ pub async fn get_task_execution(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -574,7 +574,7 @@ pub async fn get_task_execution(
             _ => {
                 return Err(http_error!(
                     "Could not get object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -585,7 +585,7 @@ pub async fn get_task_execution(
     let task_execution = TaskExecution::try_from(storage_task_execution).map_err(|err| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -645,7 +645,7 @@ pub async fn cancel_task_execution(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -668,7 +668,7 @@ pub async fn cancel_task_execution(
             _ => {
                 return Err(http_error!(
                     "Could not get task execution from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1007,7 +1007,7 @@ pub async fn delete_logs(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));

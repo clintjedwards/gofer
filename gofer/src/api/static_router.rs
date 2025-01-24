@@ -1,7 +1,6 @@
 use crate::api::ApiState;
-use dropshot::{endpoint, HttpError, Path, RequestContext};
-use http::{header, Response, StatusCode};
-use hyper::Body;
+use dropshot::{endpoint, Body, HttpError, Path, RequestContext};
+use hyper::{header, Response, StatusCode};
 use rust_embed::RustEmbed;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -39,7 +38,7 @@ struct AllPath {
 pub async fn static_documentation_handler(
     _rqctx: RequestContext<Arc<ApiState>>,
     path: Path<AllPath>,
-) -> Result<Response<Body>, HttpError> {
+) -> Result<hyper::Response<Body>, HttpError> {
     let path = path.into_inner().path;
 
     // Turns the path into one that we can actually route.
@@ -68,7 +67,7 @@ pub async fn static_documentation_handler(
 
             Ok(Response::builder()
                 .header(header::CONTENT_TYPE, mime_type.as_ref())
-                .body(Body::from(content.data.clone()))
+                .body(Body::from(content.data.into_owned()))
                 .unwrap())
         }
         None => Ok(Response::builder()
@@ -124,7 +123,7 @@ pub async fn static_handler(
 
             Ok(Response::builder()
                 .header(header::CONTENT_TYPE, mime_type.as_ref())
-                .body(Body::from(content.data.clone()))
+                .body(Body::from(content.data.into_owned()))
                 .unwrap())
         }
         None => Ok(Response::builder()
@@ -134,24 +133,3 @@ pub async fn static_handler(
             .unwrap()),
     }
 }
-
-// /// Redirect anything on the root path to our actual root path. Please see [`static_handler`] for why this is needed.
-// #[endpoint {
-//     method = GET,
-//     path = "/",
-//     unpublished = true,
-// }]
-// pub async fn redirect_root(
-//     rqctx: RequestContext<Arc<ApiState>>,
-// ) -> Result<Response<Body>, HttpError> {
-//     let api_state = rqctx.context();
-//     let location = format!("{}{}", api_state.config.server.url, "/-/");
-
-//     let response = Response::builder()
-//         .status(StatusCode::TEMPORARY_REDIRECT)
-//         .header("Location", location)
-//         .body(Body::empty())
-//         .unwrap();
-
-//     Ok(response)
-// }

@@ -3,7 +3,7 @@ use crate::conf;
 use anyhow::{anyhow, Context, Result};
 use dropshot::{
     endpoint, ApiDescription, ConfigDropshot, ConfigTls, HandlerTaskMode, HttpError,
-    HttpResponseUpdatedNoContent, HttpServerStarter, Path, RequestContext, UntypedBody,
+    HttpResponseUpdatedNoContent, Path, RequestContext, ServerBuilder, UntypedBody,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
 
     let dropshot_conf = ConfigDropshot {
         bind_address,
-        request_body_max_bytes: 524288000, // 500MB to allow for extra large objects.
+        default_request_body_max_bytes: 524288000, // 500MB to allow for extra large objects.
 
         // If a client disconnects run the handler to completion still. Eventually we'll want to save resources
         // by allowing the handler to early cancel, but until this is more developed lets just run it to completion.
@@ -34,32 +34,28 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     /* /api/external/{extension_id} */
     api.register(external_event_handler).unwrap();
 
-    let server = if !conf.server.use_tls {
-        HttpServerStarter::new(&dropshot_conf, api, Some(Arc::new(Middleware)), api_state)
-            .map_err(|error| anyhow!("failed to create server: {}", error))?
-            .start()
-    } else {
-        let (tls_cert, tls_key) = load_tls(
-            conf.external_events.use_tls,
-            conf.external_events.tls_cert_path,
-            conf.external_events.tls_key_path,
-        )?;
+    let tls_config = match conf.server.use_tls {
+        true => {
+            let (tls_cert, tls_key) = load_tls(
+                conf.external_events.use_tls,
+                conf.external_events.tls_cert_path,
+                conf.external_events.tls_key_path,
+            )?;
 
-        let tls_config = Some(ConfigTls::AsBytes {
-            certs: tls_cert,
-            key: tls_key,
-        });
-
-        HttpServerStarter::new_with_tls(
-            &dropshot_conf,
-            api,
-            Some(Arc::new(Middleware)),
-            api_state,
-            tls_config,
-        )
-        .map_err(|error| anyhow!("failed to create server: {}", error))?
-        .start()
+            Some(ConfigTls::AsBytes {
+                certs: tls_cert,
+                key: tls_key,
+            })
+        }
+        false => None,
     };
+
+    let server = ServerBuilder::new(api, api_state, Some(Arc::new(Middleware)))
+        .config(dropshot_conf)
+        .tls(tls_config)
+        .start()
+        .map_err(|error| anyhow!("failed to create server: {}", error))?;
+
     let shutdown = server.wait_for_shutdown();
 
     tokio::spawn(wait_for_shutdown_signal(server));

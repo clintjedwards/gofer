@@ -8,10 +8,9 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use dropshot::{
-    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path, Query,
-    RequestContext, TypedBody,
+    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
+    HttpResponseOk, Path, Query, RequestContext, TypedBody,
 };
-use http::StatusCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -386,7 +385,7 @@ pub async fn list_runs(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -407,7 +406,7 @@ pub async fn list_runs(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -420,7 +419,7 @@ pub async fn list_runs(
         let run = Run::try_from(storage_run).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -480,7 +479,7 @@ pub async fn get_run(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -497,7 +496,7 @@ pub async fn get_run(
                 _ => {
                     return Err(http_error!(
                         "Could not get object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -509,7 +508,7 @@ pub async fn get_run(
         error!(message = "Could not serialize run from storage", error = %err);
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -565,8 +564,12 @@ pub async fn start_run(
         debug!(
             "Ignoring pipeline run due to api setting 'ignore_pipeline_run_events' in state 'true'"
         );
-        return Err(HttpError::for_client_error(None, http::StatusCode::SERVICE_UNAVAILABLE,
-            "Pipeline run request ignored due to api setting 'ignore_pipeline_run_events' in state 'true'".into()));
+        return Err(http_error!(
+            "Pipeline run request ignored due to api setting 'ignore_pipeline_run_events' in state 'true'",
+            hyper::StatusCode::SERVICE_UNAVAILABLE,
+            rqctx.request_id.clone(),
+            None
+        ));
     }
 
     let mut tx = match api_state.storage.open_tx().await {
@@ -574,7 +577,7 @@ pub async fn start_run(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -592,7 +595,7 @@ pub async fn start_run(
                 _ => {
                     return Err(http_error!(
                         "Could not get objects from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -604,7 +607,7 @@ pub async fn start_run(
         pipelines::Metadata::try_from(storage_pipeline_metadata).map_err(|err| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -628,7 +631,7 @@ pub async fn start_run(
             Err(e) => {
                 return Err(http_error!(
                     "Could not get latest pipeline config from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -647,7 +650,7 @@ pub async fn start_run(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -661,7 +664,7 @@ pub async fn start_run(
     .map_err(|err| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -675,7 +678,7 @@ pub async fn start_run(
                 _ => {
                     return Err(http_error!(
                         "Could not get last run object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(err.into())
                     ));
@@ -711,7 +714,7 @@ pub async fn start_run(
     let new_run_storage = new_run.clone().try_into().map_err(|err: anyhow::Error| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -722,14 +725,14 @@ pub async fn start_run(
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
                     None,
-                    StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     "run entry already exists".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not insert object into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -765,7 +768,7 @@ pub async fn start_run(
     {
         return Err(http_error!(
             "Could not insert event_id for new run",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -774,7 +777,7 @@ pub async fn start_run(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -837,7 +840,7 @@ pub async fn cancel_run(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -859,7 +862,7 @@ pub async fn cancel_run(
             _ => {
                 return Err(http_error!(
                     "Could not get task execution from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));

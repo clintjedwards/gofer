@@ -25,13 +25,11 @@ use anyhow::{anyhow, bail, Context, Result};
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use dashmap::DashMap;
 use dropshot::{
-    ApiDescription, ConfigDropshot, ConfigTls, DropshotState, EndpointTagPolicy, HandlerTaskMode,
-    HttpError, HttpServer, HttpServerStarter, RequestInfo, ServerContext, TagConfig, TagDetails,
+    ApiDescription, Body, ConfigDropshot, ConfigTls, DropshotState, EndpointTagPolicy,
+    ErrorStatusCode, HandlerError, HandlerTaskMode, HttpError, HttpServer, RequestInfo,
+    ServerBuilder, ServerContext, TagConfig, TagDetails, WebsocketConnectionRaw,
 };
 use futures::Future;
-use http::Request;
-use hyper::upgrade::Upgraded;
-use hyper::Body;
 use lazy_regex::regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -385,7 +383,10 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
 
     let dropshot_conf = ConfigDropshot {
         bind_address,
-        request_body_max_bytes: 524288000, // 500MB to allow for extra large objects.
+
+        // 500MB to allow for extra large objects, this is overwritten in the per handler endpoint struct for routes
+        // that require more than this.
+        default_request_body_max_bytes: 524288000,
 
         // If a client disconnects run the handler to completion still. Eventually we'll want to save resources
         // by allowing the handler to early cancel, but until this is more developed lets just run it to completion.
@@ -394,37 +395,28 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
 
     let api = init_api_description()?;
 
-    let server = if !conf.server.use_tls {
-        HttpServerStarter::new(
-            &dropshot_conf,
-            api,
-            Some(Arc::new(Middleware)),
-            api_state.clone(),
-        )
-        .map_err(|error| anyhow!("failed to create server: {}", error))?
-        .start()
-    } else {
-        let (tls_cert, tls_key) = load_tls(
-            conf.server.use_tls,
-            conf.server.tls_cert_path,
-            conf.server.tls_key_path,
-        )?;
+    let tls_config = match conf.server.use_tls {
+        true => {
+            let (tls_cert, tls_key) = load_tls(
+                conf.server.use_tls,
+                conf.server.tls_cert_path,
+                conf.server.tls_key_path,
+            )?;
 
-        let tls_config = Some(ConfigTls::AsBytes {
-            certs: tls_cert,
-            key: tls_key,
-        });
-
-        HttpServerStarter::new_with_tls(
-            &dropshot_conf,
-            api,
-            Some(Arc::new(Middleware)),
-            api_state.clone(),
-            tls_config,
-        )
-        .map_err(|error| anyhow!("failed to create server: {}", error))?
-        .start()
+            Some(ConfigTls::AsBytes {
+                certs: tls_cert,
+                key: tls_key,
+            })
+        }
+        false => None,
     };
+
+    let server = ServerBuilder::new(api, api_state.clone(), Some(Arc::new(Middleware)))
+        .config(dropshot_conf)
+        .tls(tls_config)
+        .start()
+        .map_err(|error| anyhow!("failed to create server: {}", error))?;
+
     let shutdown = server.wait_for_shutdown();
 
     tokio::spawn(wait_for_shutdown_signal(server));
@@ -453,7 +445,8 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
 pub fn write_openapi_spec(path: PathBuf) -> Result<()> {
     let api = init_api_description()?;
     let mut file = std::fs::File::create(path)?;
-    api.openapi("Gofer", BUILD_SEMVER).write(&mut file)?;
+    api.openapi("Gofer", semver::Version::from_str(BUILD_SEMVER).unwrap())
+        .write(&mut file)?;
 
     Ok(())
 }
@@ -697,8 +690,8 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
 fn set_tagging_policy(api: ApiDescription<Arc<ApiState>>) -> ApiDescription<Arc<ApiState>> {
     api.tag_config(TagConfig {
         allow_other_tags: false,
-        endpoint_tag_policy: EndpointTagPolicy::ExactlyOne,
-        tag_definitions: vec![
+        policy: EndpointTagPolicy::ExactlyOne,
+        tags: vec![
             (
                 "Configs".to_string(),
                 TagDetails {
@@ -1127,10 +1120,7 @@ pub async fn interpolate_vars(
 pub fn parse_interpolation_syntax(raw_input: &str) -> Option<(InterpolationKind, String)> {
     let mut raw_input = raw_input.trim();
 
-    let bracket_index = match raw_input.find("{{") {
-        Some(index) => index,
-        None => return None, // The input did not have the correct syntax so it must not be a string for interpolation.
-    };
+    let bracket_index = raw_input.find("{{")?;
 
     let interpolation_name_str = &raw_input[..bracket_index];
     let interpolation_kind = match InterpolationKind::from_str(interpolation_name_str) {
@@ -1182,17 +1172,18 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
     async fn handle(
         &self,
         server: Arc<DropshotState<C>>,
-        request: Request<Body>,
+        request: hyper::Request<hyper::body::Incoming>,
         request_id: String,
         remote_addr: SocketAddr,
         next: fn(
             Arc<DropshotState<C>>,
-            Request<Body>,
+            hyper::Request<hyper::body::Incoming>,
             String,
             SocketAddr,
-        )
-            -> Pin<Box<dyn Future<Output = Result<hyper::Response<Body>, HttpError>> + Send>>,
-    ) -> Result<http::Response<Body>, HttpError> {
+        ) -> Pin<
+            Box<dyn Future<Output = Result<hyper::Response<Body>, HandlerError>> + Send>,
+        >,
+    ) -> Result<hyper::Response<Body>, HandlerError> {
         let start_time = std::time::Instant::now();
 
         let method = request.method().as_str().to_string();
@@ -1233,11 +1224,12 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
 /// * Error and Context are passed to the logger for more information internally.
 fn _http_error(
     message: String,
-    code: http::StatusCode,
+    code: hyper::StatusCode,
     request_id: String,
     context: HashMap<String, String>,
     err: Option<Box<dyn std::error::Error>>,
 ) -> HttpError {
+    // We log the error first.
     if let Some(ref e) = err {
         error!(message = message, request_id, error = %e, context = ?context);
     } else {
@@ -1245,10 +1237,11 @@ fn _http_error(
     }
 
     HttpError {
-        status_code: code,
+        status_code: ErrorStatusCode::from_status(code).unwrap(),
         error_code: None,
         external_message: format!("{}: {}", code.canonical_reason().unwrap(), message),
         internal_message: message,
+        headers: None,
     }
 }
 
@@ -1282,7 +1275,7 @@ async fn websocket_error(
     message: &str,
     code: CloseCode,
     request_id: String,
-    mut conn: WebSocketStream<Upgraded>,
+    mut conn: WebSocketStream<WebsocketConnectionRaw>,
     err: Option<String>,
 ) -> String {
     if let Some(ref e) = err {

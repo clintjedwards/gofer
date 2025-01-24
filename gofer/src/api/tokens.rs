@@ -5,10 +5,9 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use dropshot::{
-    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
-    HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
+    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
+    HttpResponseOk, HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
 };
-use http::StatusCode;
 use rand::{distributions::Alphanumeric, Rng};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -214,7 +213,7 @@ pub async fn list_tokens(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -226,7 +225,7 @@ pub async fn list_tokens(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -239,7 +238,7 @@ pub async fn list_tokens(
         let token = Token::try_from(storage_token).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -288,7 +287,7 @@ pub async fn get_token_by_id(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -304,7 +303,7 @@ pub async fn get_token_by_id(
             _ => {
                 return Err(http_error!(
                     "Could not get object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -315,7 +314,7 @@ pub async fn get_token_by_id(
     let token = Token::try_from(storage_token).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -359,7 +358,7 @@ pub async fn whoami(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -376,7 +375,7 @@ pub async fn whoami(
                 _ => {
                     return Err(http_error!(
                         "Could not get object from database",
-                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
                         rqctx.request_id.clone(),
                         Some(e.into())
                     ));
@@ -387,7 +386,7 @@ pub async fn whoami(
     let token = Token::try_from(storage_token).map_err(|e| {
         http_error!(
             "Could not parse object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -456,7 +455,7 @@ pub async fn create_token(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -468,7 +467,7 @@ pub async fn create_token(
         if role.to_lowercase() == "bootstrap" {
             return Err(HttpError::for_client_error(
                 None,
-                StatusCode::UNAUTHORIZED,
+                ClientErrorStatusCode::UNAUTHORIZED,
                 "cannot assign the bootstrap role to any other token".into(),
             ));
         };
@@ -489,7 +488,7 @@ pub async fn create_token(
         Err(e) => {
             return Err(http_error!(
                 "Could not parse token into storage type while creating token",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(anyhow::anyhow!("{}", e).into())
             ));
@@ -501,14 +500,14 @@ pub async fn create_token(
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
                     None,
-                    StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     "token entry already exists".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not insert token into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -561,7 +560,7 @@ pub async fn delete_token(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -579,7 +578,7 @@ pub async fn delete_token(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id,
                     Some(e.into())
                 ));
@@ -621,7 +620,7 @@ pub async fn create_bootstrap_token(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -633,7 +632,7 @@ pub async fn create_bootstrap_token(
         Err(e) => {
             return Err(http_error!(
                 "Could not query database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -643,7 +642,7 @@ pub async fn create_bootstrap_token(
     if system_parameters.bootstrap_token_created {
         return Err(HttpError::for_client_error(
             None,
-            StatusCode::CONFLICT,
+            ClientErrorStatusCode::CONFLICT,
             "Bootstrap token already exists".into(),
         ));
     }
@@ -663,7 +662,7 @@ pub async fn create_bootstrap_token(
         Err(e) => {
             return Err(http_error!(
                 "Could not parse token into storage type while creating token",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(anyhow::anyhow!("{}", e).into())
             ));
@@ -675,14 +674,14 @@ pub async fn create_bootstrap_token(
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
                     None,
-                    StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     "token entry already exists".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not insert token into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -693,7 +692,7 @@ pub async fn create_bootstrap_token(
     if let Err(e) = storage::system::update_system_parameters(&mut tx, Some(true), None).await {
         return Err(http_error!(
             "Could not update system_parameters into database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -702,7 +701,7 @@ pub async fn create_bootstrap_token(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -752,7 +751,7 @@ pub async fn update_token(
     if path.id == _req_metadata.auth.token_id {
         return Err(HttpError::for_client_error(
             None,
-            StatusCode::CONFLICT,
+            ClientErrorStatusCode::CONFLICT,
             "Cannot make state changes to your own token".into(),
         ));
     }
@@ -762,7 +761,7 @@ pub async fn update_token(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -784,7 +783,7 @@ pub async fn update_token(
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));

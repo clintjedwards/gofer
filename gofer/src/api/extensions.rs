@@ -912,7 +912,7 @@ pub async fn install_extension(
         if !err_str.contains("already exists") {
             return Err(http_error!(
                 "Could not install extension",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into()),
                 id = registration.extension_id
@@ -925,7 +925,7 @@ pub async fn install_extension(
         .map_err(|err| {
             http_error!(
                 "Could not start extension",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into()),
                 id = registration.extension_id
@@ -978,7 +978,7 @@ pub async fn update_extension(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -1014,7 +1014,7 @@ pub async fn update_extension(
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1077,7 +1077,7 @@ pub async fn uninstall_extension(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -1089,7 +1089,7 @@ pub async fn uninstall_extension(
         .map_err(|err| {
             http_error!(
                 "Could not delete object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -1100,7 +1100,7 @@ pub async fn uninstall_extension(
         .map_err(|err| {
             http_error!(
                 "Could not delete object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
@@ -1336,7 +1336,7 @@ pub async fn list_extension_subscriptions(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -1351,7 +1351,7 @@ pub async fn list_extension_subscriptions(
             Err(e) => {
                 return Err(http_error!(
                     "Could not get objects from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -1365,7 +1365,7 @@ pub async fn list_extension_subscriptions(
             subscriptions::Subscription::try_from(storage_subscription).map_err(|e| {
                 http_error!(
                     "Could not parse object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 )
@@ -1426,7 +1426,7 @@ pub async fn get_extension_debug_info(
     .map_err(|e| {
         http_error!(
             "Could not establish extension client",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         )
@@ -1438,7 +1438,7 @@ pub async fn get_extension_debug_info(
         .map_err(|e| {
             http_error!(
                 "Could not query extension's debug endpoint",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             )

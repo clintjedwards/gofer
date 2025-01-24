@@ -8,8 +8,8 @@ use crate::{
 };
 use anyhow::{anyhow, Context, Result};
 use dropshot::{
-    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
-    HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
+    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
+    HttpResponseOk, HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -237,7 +237,7 @@ pub async fn list_subscriptions(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -255,7 +255,7 @@ pub async fn list_subscriptions(
         Err(e) => {
             return Err(http_error!(
                 "Could not get objects from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -268,7 +268,7 @@ pub async fn list_subscriptions(
         let subscription = Subscription::try_from(storage_subscription).map_err(|e| {
             http_error!(
                 "Could not parse object from database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             )
@@ -321,7 +321,7 @@ pub async fn get_subscription(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -345,7 +345,7 @@ pub async fn get_subscription(
             _ => {
                 return Err(http_error!(
                     "Could not get metadata object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -356,7 +356,7 @@ pub async fn get_subscription(
     let subscription = Subscription::try_from(storage_subscription_metadata).map_err(|err| {
         http_error!(
             "Could not serialize object from database",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(err.into())
         )
@@ -416,7 +416,7 @@ pub async fn update_subscription(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id,
                 Some(e.into())
             ));
@@ -460,7 +460,7 @@ pub async fn update_subscription(
             _ => {
                 return Err(http_error!(
                     "Could insert object into database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id,
                     Some(e.into())
                 ));
@@ -531,7 +531,7 @@ pub async fn create_subscription(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -548,7 +548,7 @@ pub async fn create_subscription(
             .map_err(|err: anyhow::Error| {
                 http_error!(
                     "Could not serialize new object",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(err.into())
                 )
@@ -561,14 +561,14 @@ pub async fn create_subscription(
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_client_error(
                     None,
-                    http::StatusCode::NOT_FOUND,
+                    ClientErrorStatusCode::NOT_FOUND,
                     "could not find pipeline".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not get object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -581,14 +581,14 @@ pub async fn create_subscription(
             storage::StorageError::NotFound => {
                 return Err(HttpError::for_client_error(
                     None,
-                    http::StatusCode::NOT_FOUND,
+                    ClientErrorStatusCode::NOT_FOUND,
                     "could not find extension".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not get registration object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -599,7 +599,7 @@ pub async fn create_subscription(
     if let Err(e) = subscribe_extension(api_state, &new_subscription).await {
         return Err(http_error!(
             "Could not subscribe to extension",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -612,14 +612,14 @@ pub async fn create_subscription(
             storage::StorageError::Exists => {
                 return Err(HttpError::for_client_error(
                     None,
-                    http::StatusCode::CONFLICT,
+                    ClientErrorStatusCode::CONFLICT,
                     "subscription entry already exists".into(),
                 ));
             }
             _ => {
                 return Err(http_error!(
                     "Could not insert subscription to database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -630,7 +630,7 @@ pub async fn create_subscription(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database connection",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -686,7 +686,7 @@ pub async fn delete_subscription(
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(e.into())
             ));
@@ -712,7 +712,7 @@ pub async fn delete_subscription(
             _ => {
                 return Err(http_error!(
                     "Could not delete object from database",
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())
                 ));
@@ -731,7 +731,7 @@ pub async fn delete_subscription(
     {
         return Err(http_error!(
             "Could not unsubscribe from pipeline",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));
@@ -740,7 +740,7 @@ pub async fn delete_subscription(
     if let Err(e) = tx.commit().await {
         return Err(http_error!(
             "Could not close database transaction",
-            http::StatusCode::INTERNAL_SERVER_ERROR,
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
         ));

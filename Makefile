@@ -99,7 +99,7 @@ cleanup-integration-tests:
 
 ## run-tailwind: Run the tailwind compiler
 run-tailwind:
-> npx tailwindcss -i ./gofer/src/main.css -o ./gofer/public/css/main.css --watch >/dev/null 2>&1
+> npx tailwindcss@3.4.17 -i ./gofer/src/main.css -o ./gofer/public/css/main.css --watch >/dev/null 2>&1
 
 ## clippy-pedantic: Let clippy nitpick your code.
 clippy-pedantic:
