@@ -68,7 +68,7 @@ impl Cli {
             )
         })?;
 
-        let max_line_length = termion::terminal_size().unwrap_or((80, 80)).0;
+        let max_line_length = terminal_width().unwrap_or(80);
 
         // Print out the stderr as status markers
         let stderr = cmd.stderr.take().unwrap();
@@ -171,6 +171,23 @@ impl Cli {
         );
 
         Ok(())
+    }
+}
+
+fn terminal_width() -> Option<u16> {
+    let mut ws = libc::winsize {
+        ws_row: 0,
+        ws_col: 0,
+        ws_xpixel: 0,
+        ws_ypixel: 0,
+    };
+
+    unsafe {
+        if libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut ws) == 0 {
+            Some(ws.ws_col)
+        } else {
+            None
+        }
     }
 }
 

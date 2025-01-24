@@ -60,8 +60,8 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 tungstenite = "0.21.0"
 uuid = { version = "1.8.0", features = ["v7"] }
 console-subscriber = "0.1"
-termion = "4.0.3"
 semver = "1.0.25"
+libc = "0.2.169"
 
 [dev-dependencies]
 lazy_static = "1.4.0"

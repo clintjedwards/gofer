@@ -1451,6 +1451,7 @@ dependencies = [
  "hyper 1.5.2",
  "lazy-regex",
  "lazy_static",
+ "libc",
  "mime_guess",
  "polyfmt",
  "pretty_assertions",
@@ -1471,7 +1472,6 @@ dependencies = [
  "tabwriter",
  "tempfile",
  "tera",
- "termion 4.0.3",
  "thiserror 1.0.69",
  "tokio",
  "tokio-rustls 0.26.1",
@@ -2256,7 +2256,6 @@ checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
  "bitflags 2.8.0",
  "libc",
- "redox_syscall 0.5.8",
 ]
 
 [[package]]
@@ -2489,12 +2488,6 @@ name = "numtoa"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8f8bdf33df195859076e54ab11ee78a1b208382d3a26ec40d142ffc1ecc49ef"
-
-[[package]]
-name = "numtoa"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aa2c4e539b869820a2b82e1aef6ff40aa85e65decdd5185e83fb4b1249cd00f"
 
 [[package]]
 name = "object"
@@ -2842,7 +2835,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum 0.25.0",
- "termion 3.0.0",
+ "termion",
 ]
 
 [[package]]
@@ -4222,19 +4215,7 @@ checksum = "417813675a504dfbbf21bfde32c03e5bf9f2413999962b479023c02848c1c7a5"
 dependencies = [
  "libc",
  "libredox 0.0.2",
- "numtoa 0.1.0",
- "redox_termios",
-]
-
-[[package]]
-name = "termion"
-version = "4.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7eaa98560e51a2cf4f0bb884d8b2098a9ea11ecf3b7078e9c68242c74cc923a7"
-dependencies = [
- "libc",
- "libredox 0.1.3",
- "numtoa 0.2.4",
+ "numtoa",
  "redox_termios",
 ]
 
