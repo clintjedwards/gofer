@@ -588,11 +588,13 @@ pub async fn put_run_object(
     if let Err(e) = storage::object_store_run_keys::insert(&mut conn, &new_object_storage).await {
         match e {
             storage::StorageError::Exists => {
-                return Err(HttpError::for_client_error(
-                    None,
-                    ClientErrorStatusCode::CONFLICT,
-                    "object entry already exists".into(),
-                ));
+                if !force {
+                    return Err(HttpError::for_client_error(
+                        None,
+                        ClientErrorStatusCode::CONFLICT,
+                        "object entry already exists".into(),
+                    ));
+                }
             }
             _ => {
                 return Err(http_error!(
@@ -1057,11 +1059,13 @@ pub async fn put_pipeline_object(
     {
         match e {
             storage::StorageError::Exists => {
-                return Err(HttpError::for_client_error(
-                    None,
-                    ClientErrorStatusCode::CONFLICT,
-                    "object entry already exists".into(),
-                ));
+                if !force {
+                    return Err(HttpError::for_client_error(
+                        None,
+                        ClientErrorStatusCode::CONFLICT,
+                        "object entry already exists".into(),
+                    ));
+                }
             }
             _ => {
                 return Err(http_error!(
@@ -1503,11 +1507,13 @@ pub async fn put_extension_object(
     {
         match e {
             storage::StorageError::Exists => {
-                return Err(HttpError::for_client_error(
-                    None,
-                    ClientErrorStatusCode::CONFLICT,
-                    "object entry already exists".into(),
-                ));
+                if !force {
+                    return Err(HttpError::for_client_error(
+                        None,
+                        ClientErrorStatusCode::CONFLICT,
+                        "object entry already exists".into(),
+                    ));
+                }
             }
             _ => {
                 return Err(http_error!(
