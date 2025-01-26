@@ -22,7 +22,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-* Revisit making it so that object and secret stores can icrementally upload
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
 * When the user runs the pipeline config on it's own we should pretty print the json so that it's debuggable easily.

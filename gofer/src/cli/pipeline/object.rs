@@ -1,6 +1,6 @@
 use crate::cli::Cli;
 use anyhow::{bail, Context, Result};
-use bytes::{Buf, BufMut};
+use bytes::BufMut;
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
@@ -26,6 +26,10 @@ pub enum ObjectCommands {
     },
 
     /// Read an object from the pipeline store
+    #[command(after_help = r#"Examples:
+  gofer pipeline object get simple test > /tmp/gofer_test
+  gofer pipeline object get simple test --stringify
+"#)]
     Get {
         /// Pipeline Identifier.
         id: String,
@@ -44,6 +48,10 @@ pub enum ObjectCommands {
     /// on configuration). Once this limit is reached the _oldest_ object will be removed to make space for the new object.
     ///
     /// You can store both regular text values or read in entire files using the '@' symbol and piping.
+    #[command(after_help = r#"Examples:
+  gofer pipeline object put simple test ~/.bin/gofer
+  echo "hello" > gofer pipeline object put simple test @
+"#)]
     Put {
         /// Pipeline Identifier.
         id: String,
@@ -163,7 +171,9 @@ impl Cli {
             while let Some(chunk) = object.next().await {
                 let chunk = chunk?;
 
-                if buffer.remaining() > chunk.len() {
+                let remaining_space = buffer.capacity() - buffer.len();
+
+                if remaining_space > chunk.len() {
                     buffer.put(chunk);
                 } else {
                     bail!("Could not stringify object; object larger than 1KB");

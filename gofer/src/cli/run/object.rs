@@ -1,6 +1,6 @@
 use crate::cli::Cli;
 use anyhow::{bail, Context, Result};
-use bytes::{Buf, BufMut};
+use bytes::BufMut;
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
@@ -29,6 +29,10 @@ pub enum ObjectCommands {
     },
 
     /// Read an object from the run store
+    #[command(after_help = r#"Examples:
+  gofer run object get simple 1 test > /tmp/gofer_test
+  gofer run object get simple 1 test --stringify
+"#)]
     Get {
         /// Pipeline Identifier.
         pipeline_id: String,
@@ -53,6 +57,10 @@ pub enum ObjectCommands {
     /// Run objects are kept individual to each run and removed after a certain run limit. This means that after a certain
     /// amount of runs for a particular pipeline a run's objects will be discarded. The limit of amount of objects you can
     /// store per run is of a much higher limit.
+    #[command(after_help = r#"Examples:
+  gofer run object put simple 1 test ~/.bin/gofer
+  echo "hello" > gofer run object put simple 1 test @
+"#)]
     Put {
         /// Pipeline Identifier.
         pipeline_id: String,
@@ -197,7 +205,9 @@ impl Cli {
             while let Some(chunk) = object.next().await {
                 let chunk = chunk?;
 
-                if buffer.remaining() > chunk.len() {
+                let remaining_space = buffer.capacity() - buffer.len();
+
+                if remaining_space > chunk.len() {
                     buffer.put(chunk);
                 } else {
                     bail!("Could not stringify object; object larger than 1KB");
