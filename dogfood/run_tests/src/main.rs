@@ -22,11 +22,15 @@ fn main() {
 
             cd gofer
 
+            gofer pipeline object get run-tests cache > /tmp/rust_cache.tar.gz
+            tar -xzf /tmp/rust_cache.tar.gz
+            mv .cargo ~/.cargo
+
             cargo test
 
-            tar -czf /tmp/rust_cache.tar.gz target -C ~ .cargo
+            tar -czf /tmp/rust_cache.tar.gz target ~/.cargo
 
-            gofer pipeline object put run-tests cache /tmp/rust_cache.tar.gz
+            gofer pipeline object put run-tests --force cache /tmp/rust_cache.tar.gz
 
             "#,
         )])
