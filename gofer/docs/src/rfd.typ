@@ -1,4 +1,4 @@
-#import "@preview/fletcher:0.5.1" as fletcher: diagram, node, edge
+#import "@preview/fletcher:0.5.2" as fletcher: diagram, node, edge
 #set page(
   paper: "us-letter",
   header: align(right)[
@@ -7,16 +7,22 @@
   numbering: "1",
 )
 
-#align(center, text(17pt)[
- *RFD: Gofer and the Barrel of Cod (2024)*
-])
+#align(
+  center,
+  text(17pt)[
+    *RFD: Gofer and the Barrel of Cod (2024)*
+  ],
+)
 
-#align(center, text(11pt)[
-  Clint J. Edwards \
-  #link("mailto:clint.j.edwards@gmail.com")
+#align(
+  center,
+  text(11pt)[
+    Clint J. Edwards \
+    #link("mailto:clint.j.edwards@gmail.com")
 
-  June 22nd, 2024
-])
+    June 22nd, 2024
+  ],
+)
 
 #set par(justify: true)
 #set text(
@@ -28,24 +34,16 @@
 #show link: underline
 
 #pagebreak()
-#outline(
-  indent: auto,
-)
+#outline(indent: auto)
 #pagebreak()
 
 = Preface
 
-Back around 2020, I was hired into a role adjacent to my normal role as Platform or Infrastructure.
-It was a position strangely both familiar and unfamiliar, focused on building tooling and improving our
-Infrastructure Security story. I’ve never worked directly on a purely security focused team, but I’ve always been
-security oriented, as all platform/infrastructure engineers are.
-
-After exploring the internal tooling available to me I noticed something strange that caught me off-guard.
-There wasn't a single solution for a problem I call “distributed cron”
-(I’ll explain a bit later what exactly I mean by distributed cron in this context) and since security teams are all about
-running small bits of code to protect other pieces of code, I soon became increasingly frustrated by this realization.
-Before I knew it I fell into my old habits again; I couldn’t help myself from peering into the void of
-infrastructure work once more.
+In my last position for a company on the cusp of IPO, I noticed something strange that caught me off-guard.
+There wasn't a single solution for a problem I called “distributed cron”. At that time I was part of the Infrastructure
+Security team and most of that work was creating small bits of code to protect other pieces of code. I soon became
+increasingly frustrated by this realization. Before I knew it I fell into my old habits again; I couldn’t help myself
+from peering into the void of infrastructure work once more.
 
 As a company we were struggling to figure out a solution, and rightfully so, the problem of distributed cron is hard.
 It is a problem of secure remote code execution, coupled with the problem of providing that as a service and also one
@@ -58,15 +56,6 @@ internal development platform at https://astra.orreri.dev; yes I am shameless) a
 anything to solve this problem that worked properly. Instead, each team implemented what they needed to do in their own
 way and like a movie we’ve all seen too often, ended up with many poor solutions to the same problems.
 
-A bit of an aside but, while maybe somewhat pessimistic, this pattern seems to be along the lines of
-#link("https://en.wikipedia.org/wiki/Enshittification")[enshittification], something that occurs when a singular goal of
-“make as much money as possible” becomes the guiding light for a particular company and the strategy to do that is to
-play from a deck of arguably morally dubious cards. I see it quite often now; I keep telling myself that it’s
-just a function of me getting old, but I can’t shake the thought that it’s real and it’s happening with just about
-everything that I used to enjoy. Companies I used to look up to, no longer able to execute the most basic of
-search queries fruitfully; video game franchises I used to dump tons of hours into, reduced to releasing games
-that require me to sit on them for a year or more while they work out enough bugs to make it actually playable.
-
 Upon leaving that role the thought came to me that there is a hole in our industry; I became deeply confused on how a
 sector of tech that had so many players all somehow fell short on what I think a workable solution to the distributed
 cron problem should feel like. So like most software engineers, devoid of any humility on how hard it might be to build
@@ -74,13 +63,12 @@ such a system, I started coding. Mostly for myself, partly to have something I c
 company interviews #footnote[ Spoiler: Very few companies I ever interview with give a shit about anything I've actually
 coded on my Github. I have an entire rant about how poor our current industry interview practices are. But what's
 somewhat more maddening is that very few companies even care despite such over whelming disdain for these practices.
-Our industry has a very _"well I got mine so good luck getting yours"_ way of operating. We're slowly losing some
-of what made this industry so exciting. It was never about if you could spit back out efficient leetcode algorithms,
-but all about what you could produce. If you thought different, were creative, and maybe a little bit of a rebel you
-were hired, because there was value in the way you attacked problems. We seem to be maturing past that as an industry
-and creating our own version of hazing to prove you belong here. 
+We're slowly losing some of what made this industry so exciting. It was never about if you could spit back out
+efficient leetcode algorithms, but all about what you could produce. If you thought different, were creative, and
+maybe a little bit of a rebel, you were hired, because there was value in the way you attacked problems. We seem to
+be maturing past that as an industry and creating our own version of hazing to prove you belong here.
 
-I think it's important to remember that some problems cannot be solved with computer based solutions.].
+I think it's important to remember that some problems cannot be solved with purely computer based solutions.].
 
 This is the story of that thing.
 
@@ -104,7 +92,7 @@ A very popular operating model for a lot of software development systems is #lin
 topics/gitops/")[Gitops]. It basically just means that operating a particular system involves making changes to the system via
 configuration stored in a Git repository. Changes to those configurations or actions performed upon that repository(like
 pushing to it) causes some state to change or action to happen somewhere else. It’s very popular and comes with a number
-of benefits, namely just allowing developers to use tools they are already familiar with and have.] 
+of benefits, namely just allowing developers to use tools they are already familiar with and have.]
 to their operating model and are optimized for automating common software dev processes like code linting.
 
 *Camp 2: Thing doers* - Concourse and Jenkins are notable for this group. These are truly the swiss army knives, the
@@ -138,9 +126,9 @@ Absolutely nothing!
 Most of these tools do exactly what they’re meant to do for the domain they were created.
 
 The problem lies in the proliferation of this tooling among too many specific use-cases and the user/development
-experience nightmare that is birthed from the failure of focus. Taking the concept of remote code execution 
+experience nightmare that is birthed from the failure of focus. Taking the concept of remote code execution
 and splitting it among many, different, bespoke tools that at their core do the same thing in vastly different ways,
-means big issues for the human brain that has to keep some internal index for these infrequently used tools. 
+means big issues for the human brain that has to keep some internal index for these infrequently used tools.
 
 Developers must first identify where something belongs among the gamut of tools
 that all kinda sound similar, but then they must perform the necessary incantation to make their code work within
@@ -247,7 +235,7 @@ into the ergonomics of the language, proving that we understand that usability i
 As some extra color, ignoring the maintainability of your application both externally and internally is akin to a city
 building roads they have a tough time replacing. While the initial road might be exactly what city-dwellers want, within
 a few short years the same roads are seldomly used due to their current state of dilapidation as the hard to replace
-roads leads to quicker decay. 
+roads leads to quicker decay.
 
 But the rabbit hole goes deeper than that!
 
@@ -255,8 +243,8 @@ Packaging software has room for improvement, but what about updating our distrib
 
 What about the developers who only care about their little snippet of code that runs every Tuesday night to backup
 some important database? In most cases this story is equally as broken as the previous one. Most distributed cron
-systems lean on Gitops for their answer to “how do I deploy this script I want to run”. This is not a claim that 
-Gitops is bad, because that claim would be wholly untrue, instead, Gitops has a few shortcomings we need to talk about 
+systems lean on Gitops for their answer to “how do I deploy this script I want to run”. This is not a claim that
+Gitops is bad, because that claim would be wholly untrue, instead, Gitops has a few shortcomings we need to talk about
 before we can make a prescription on what should be fixed about using it to release and manage jobs.
 
 To flesh out an example of this let’s dive deeper into a job deployment model that exists currently. CircleCI, a fairly
@@ -278,10 +266,10 @@ over the documentation, the deployment model for CircleCI looks something like t
     actions you put in the configuration.],
 
   [When a trigger condition is successfully met, CircleCI starts processing your job. It checks out the targeted branch,
-and then reads your config file once more to understand what it should execute.],
+    and then reads your config file once more to understand what it should execute.],
 
   [We’ve already run into the problem so I won't explain too much more, only to say that it attempts to spin up
-your container onto one of its ‘runners’ and executes that container providing you the output.],
+    your container onto one of its ‘runners’ and executes that container providing you the output.],
 )
 
 This dance is a mirror of what most Gitops processes look like. You check your changes in, those changes cause
@@ -319,7 +307,7 @@ What if instead of relying on Gitops as this core tenant of deployment and manag
 of the short term job executor that you’re using. There would be no need to build a bespoke canary system on top of
 a system that is already several times bastardized into working the way we need it to. Instead the system
 underneath understands what a canary release is and you can track new releases of your pipelines and making sure
-they’re not breaking developer workflows. This means you gain the peace of mind to release your software safely 
+they’re not breaking developer workflows. This means you gain the peace of mind to release your software safely
 and easily, because while it isn’t a long term running job, it still needs as close to 100% uptime as we can get.
 
 == Marrying code to the system
@@ -341,7 +329,7 @@ joy. Mostly because it breaks the code’s ability to be highly modular. When de
 trying to solve a business case. Wrapping the business logic up with the execution logic seems like a bit of a boundary
 violation. The code isn’t just the code anymore, now it’s the code *plus* Temporal specific code on top of it. If AWS
 comes up with some other distributed cron system that better fits my business needs, it's no longer as simple as taking
-your docker  container and switching. Now you must translate large parts of your code due to the fact that they were
+your docker container and switching. Now you must translate large parts of your code due to the fact that they were
 built with the implementation details of running on Temporal. Now you might be saying “well I really don’t plan to
 change my distributed cron system ever so this is not a problem for me” and, well, my response to that is “keep that
 same energy”#footnote[ Somewhat of a slang term; When someone says “keep that same energy” usually what they’re saying
@@ -358,7 +346,7 @@ that you’d have to do a lot more work to achieve the same effect, and I would 
 For example, Temporal’s first early _wow_ feature was the ability to sleep for an infinite amount of time right in the
 middle of your code. This is useful for waiting for some other event to happen. A powerful feature no doubt, but waiting
 for some time in the future is what workflow executors do for fun. This is simply, explicitly, and durably replicated by
-any workflow executor worth it's salt(Hello event-driven systems) and without the underlying mystery of  how Temporal is
+any workflow executor worth it's salt(Hello event-driven systems) and without the underlying mystery of how Temporal is
 internally managing this workflow on your behalf.
 
 == Configuration languages as a DSL
@@ -367,30 +355,30 @@ For this hardship, I’m going to blame Hashicorp. I have no evidence that they 
 time I became excited for declarative configuration was when #link("https://www.vagrantup.com/")[Vagrant] was released.
 It replaced error prone manual setup of VMs with a short configuration file, written in HCL, that instructed the program
 how to build my VM the right way every time. In one command it would produce the perfect development machine every time.
-I'm still chasing the high of my first `vagrant up`. Back then I had never experienced software with declarative 
+I'm still chasing the high of my first `vagrant up`. Back then I had never experienced software with declarative
 configurations. I, like many others, were used to digging into my bash history for esoteric settings that produced my
 desired output and in light of that, searching the internet for how to glue together the settings I needed in my tools.
 So writing a configuration file, to reproduce my VMs consistently was nothing short of revolutionary in my eyes.
 
 The ability to declare configuration isn’t the bad part though, it's the structure in which we do so that is the
-sticking point. Most configuration languages  should strictly be kept for simple configuration. Anything that might even
-have a hint of being somewhat complex  should probably be done by an actual programming language.
+sticking point. Most configuration languages should strictly be kept for simple configuration. Anything that might even
+have a hint of being somewhat complex should probably be done by an actual programming language.
 
-It's understandable what designers were going for when HCL or GCL were first introduced, but what usually happens is 
-that for any relatively complex product, a configuration language eventually needs a templating language and then a 
-templating language eventually devolves into inheritance nonsense that nobody actually understands the full state of. 
-Which makes it awful for development and learning, two of the supposed goals for using a configuration language in 
-the first place. The problem is that any reasonably complex declaration of the user’s intentions will require 
+It's understandable what designers were going for when HCL or GCL were first introduced, but what usually happens is
+that for any relatively complex product, a configuration language eventually needs a templating language and then a
+templating language eventually devolves into inheritance nonsense that nobody actually understands the full state of.
+Which makes it awful for development and learning, two of the supposed goals for using a configuration language in
+the first place. The problem is that any reasonably complex declaration of the user’s intentions will require
 tooling and expressions that programming languages already excel at.
 
-The introduction of configuration languages only brought more confusion to declarative configuration. Reading this 
-configuration in a language I can already read pretty well has turned into me looking up bespoke built-in functions 
-for a language I only really ever use if I’m touching this specific tooling. Imagine if every problem set within 
+The introduction of configuration languages only brought more confusion to declarative configuration. Reading this
+configuration in a language I can already read pretty well has turned into me looking up bespoke built-in functions
+for a language I only really ever use if I’m touching this specific tooling. Imagine if every problem set within
 computer science came with its own specific programming language, its own tooling, its own idiosyncrasies, etc.
 
-This is a departure from current wisdom that the engineers who build the systems should also be the engineers who 
-run the system. Configuration languages were touted as a way to simplify configuration, making it easier for those 
-who didn’t know how to code or couldn’t code as well (_Maybe you ended up on the management track but still wanted 
+This is a departure from current wisdom that the engineers who build the systems should also be the engineers who
+run the system. Configuration languages were touted as a way to simplify configuration, making it easier for those
+who didn’t know how to code or couldn’t code as well (_Maybe you ended up on the management track but still wanted
 to be somewhat hands on_) to make changes easily. A noble goal, but also somewhat naive.
 
 The largest boon configuration languages have for them is that they prevent arbitrary code from running in places where
@@ -407,9 +395,9 @@ The one thing you were trying to avoid.
 
 == Poor local development loops
 
-This one is somewhat understandable due to the nature of these systems. It’s hard for distributed systems to be tested 
+This one is somewhat understandable due to the nature of these systems. It’s hard for distributed systems to be tested
 locally. Mostly because they usually require inputs and data from mechanisms that simply don’t exist locally and are
-hard to mock. That may be secrets or external api calls or something else, but most of the distributed cron tooling 
+hard to mock. That may be secrets or external api calls or something else, but most of the distributed cron tooling
 is lacking in this regard.
 
 Let’s take for example the feedback loop of running something on Github actions #footnote[
@@ -422,8 +410,8 @@ major context switch and frankly an unwelcome one that feels unintuitive.
 ]. Typically, when one wants to make a
 change, they open the workflow config files and attempt to update them. This is already anxiety inducing because what I
 have to interact with is a DSL made from YAML and the only way to understand how that DSL works is to read over multiple
-pages of bespoke documentation(_e.g. No IDE help for you_). Sometimes to understand if something takes a certain value 
-and how that value’s syntax should be structured I’ll have to look over three separate pieces of documentation. Not 
+pages of bespoke documentation(_e.g. No IDE help for you_). Sometimes to understand if something takes a certain value
+and how that value’s syntax should be structured I’ll have to look over three separate pieces of documentation. Not
 fun when all I want to do is something trivial like add a different linter to my project. #footnote[
 I’m aware that Github Actions has ways of running workloads locally. I’ve never used them and I’m unsure how good they
 are, mostly because I don’t want to download yet another 3rd party tool to test code that should be runnable locally
@@ -523,8 +511,8 @@ platform.
 
 This flexibility means two things have to be delivered that both revolve around modularity:
 
- - Providing an interface such that triggering the code or piece of the pipeline is easy.
- - Provide the code with the mechanisms it needs that aren’t necessarily the focus of the remote code execution
+- Providing an interface such that triggering the code or piece of the pipeline is easy.
+- Provide the code with the mechanisms it needs that aren’t necessarily the focus of the remote code execution
 platform (Secret management, caching, notifications, etc)
 
 == DAG support
@@ -635,13 +623,13 @@ welcoming to this exact type of tooling.
 
 #diagram(
   node-stroke: 0.5pt,
-  node((0,0.5), `Container Orchestrator`, shape: rect, width: 8em),
+  node((0, 0.5), `Container Orchestrator`, shape: rect, width: 8em),
   edge((1, 0.5), "<|-"),
-  node((1,0.5), `Gofer Control Plane`, width: 6em),
-  edge((2,1),"-|>"),
-  edge((2,0),"-|>"),
-  node((2,0), `Secret Store`, shape: rect, width: 4em),
-  node((2,1), `Object Store`, shape: rect, width: 4em),
+  node((1, 0.5), `Gofer Control Plane`, width: 6em),
+  edge((2, 1), "-|>"),
+  edge((2, 0), "-|>"),
+  node((2, 0), `Secret Store`, shape: rect, width: 4em),
+  node((2, 1), `Object Store`, shape: rect, width: 4em),
 )
 
 _Fig. 1: Gofer’s architecture and modular connections_
@@ -664,28 +652,28 @@ The basics of Gofer are simple:
   easily.
 
 
-The next diagram here shows how Gofer manages what are called “pipeline extensions”. 
+The next diagram here shows how Gofer manages what are called “pipeline extensions”.
 
 #diagram(
   node-stroke: 0.5pt,
-  node((1,1.5), `Gofer Control Plane`, width: 6em),
-  edge((2,0),"<|-"),
-  edge((2.5,1),"<|-"),
-  edge((2.5,2),"<|-"),
-  edge((2,3),"<|-"),
-  node((2,0), `Interval Extension`, shape: rect, width: 6em),
-  node((2.5,1), `Cron Extension`, shape: rect, width: 6em),
-  node((2.5,2), `Github Extension`, shape: rect, width: 6em),
-  node((2,3), `Various Others`, shape: rect, width: 6em),
+  node((1, 1.5), `Gofer Control Plane`, width: 6em),
+  edge((2, 0), "<|-"),
+  edge((2.5, 1), "<|-"),
+  edge((2.5, 2), "<|-"),
+  edge((2, 3), "<|-"),
+  node((2, 0), `Interval Extension`, shape: rect, width: 6em),
+  node((2.5, 1), `Cron Extension`, shape: rect, width: 6em),
+  node((2.5, 2), `Github Extension`, shape: rect, width: 6em),
+  node((2, 3), `Various Others`, shape: rect, width: 6em),
 )
 
 _Fig. 2: Extensions_
 
-- Gofer needs a way to provide utility services to a user’s pipeline. The most common example is providing ways for 
-  the user to automatically start their pipeline or once their pipeline is finished post the results somewhere meaningful. 
+- Gofer needs a way to provide utility services to a user’s pipeline. The most common example is providing ways for
+  the user to automatically start their pipeline or once their pipeline is finished post the results somewhere meaningful.
   Gofer solves this through spinning up long running containers using your preferred container orchestrator.
 - This works in the same paradigm as other containers, you tell Gofer where it is and what version to go get and it
-  launches it. Once Gofer has spun up all the "installed" extensions. Gofer can communicate with this extension over 
+  launches it. Once Gofer has spun up all the "installed" extensions. Gofer can communicate with this extension over
   an interface established beforehand and implemented by REST.
 - The user explicitly tells Gofer to “subscribe” their pipeline to specific extensions and those extensions can take
   further actions based on different input.
@@ -718,8 +706,8 @@ The initial version of Gofer touted this plugin system for a few key areas:
 
 - An object store so that it was easy for users to store various assets.
 - A secret store so that users could easily inject secrets into their pipelines.
-- And a system I called “triggers” which were various event based plugins that would enable users to run their pipeline 
-  based on some external event like the passage of time. 
+- And a system I called “triggers” which were various event based plugins that would enable users to run their pipeline
+  based on some external event like the passage of time.
 - And lastly, the scheduler, which was the container orchestrator Gofer interfaced with to actually run the container.
 
 From the onset the plugin system had a bit of a learning curve. How Hashicorp’s go-plugin system worked was that it
@@ -760,9 +748,9 @@ perform various actions.
 === Bonus: The joys of the plugin system
 
 The not so openly stated goal of the plugin system was simply to not be as bad as Jenkins. To this end it was important
-to evaluate what parts of the system needed to be extendable, how easily they needed to be extendible, and what that 
-interface would look like. It also needed to be somewhat secure. If you were going to run chunks of code from places 
-you’re operating on faith haven’t included a trojan somewhere, it at least better have a modicum of protections 
+to evaluate what parts of the system needed to be extendable, how easily they needed to be extendible, and what that
+interface would look like. It also needed to be somewhat secure. If you were going to run chunks of code from places
+you’re operating on faith haven’t included a trojan somewhere, it at least better have a modicum of protections
 around it. This was the advantage of the container model.
 
 Based on your risk profile you could in theory make your container orchestrator something that uses a more strict
@@ -804,13 +792,13 @@ even fork it and then maintain it yourself.
 
 Without going too deeply into rehashing the advantages of containers and a standardized API, the container model is
 also nice due to how easy it is to create more plugins. You write code against a defined REST API in whatever language
-you want -> you wrap it in a docker container -> you tell Gofer about that docker container -> That’s it! 
+you want -> you wrap it in a docker container -> you tell Gofer about that docker container -> That’s it!
 
-Gofer provides an SDK that helps with this process and makes it so you only have to care about the business logic of 
-your extension. Furthermore, the extension system means that once your pipeline is subscribed to an extension, 
-that extension could presumably do a great many things to make your life easier. Extensions can query the Gofer API 
-for information, so that means that it’s possible to make an extension that does something based on the overall 
-state of your pipeline over many runs. Anything is possible. And “_the sky's the limit (with guardrails)_” is what any 
+Gofer provides an SDK that helps with this process and makes it so you only have to care about the business logic of
+your extension. Furthermore, the extension system means that once your pipeline is subscribed to an extension,
+that extension could presumably do a great many things to make your life easier. Extensions can query the Gofer API
+for information, so that means that it’s possible to make an extension that does something based on the overall
+state of your pipeline over many runs. Anything is possible. And “_the sky's the limit (with guardrails)_” is what any
 successful distributed cron system needs.
 
 == Declarative Triggers
@@ -832,8 +820,8 @@ Initially I came up with the “Trigger” system. Here is how it worked:
 + When the trigger had a relevant event it simply sent a request back to the Gofer master to say “hey you should run this
   pipeline for this reason”.
 
-The initial idea to define the trigger within the manifest was due to wanting to get as many benefits out  of the 
-paradigm of Gitops. Anything your pipeline wanted to do differently was always defined within that file, which was 
+The initial idea to define the trigger within the manifest was due to wanting to get as many benefits out of the
+paradigm of Gitops. Anything your pipeline wanted to do differently was always defined within that file, which was
 very beneficial for the standard Gitops reasons.
 
 The idea quickly broke down when faced with the challenge of how I was going to meld this declarative system (whose
@@ -892,7 +880,7 @@ may benefit from a bit of statefulness. The issue is the mere mention of statefu
 ideas for how container orchestrators should work. The killer feature of throwing containers around is that, well, you
 can throw containers around. Which is made much more difficult if those containers have some state you constantly have
 to account for. Once containers start having state then they transition away from their intended goal of cattle and become
-pets again. 
+pets again.
 
 Not good.
 
@@ -913,11 +901,11 @@ difficult to give a worry free, natural mechanism for caching.
 === The first solution attempted to use FUSE
 
 At first I thought about using the solution closest to what most other providers offer. Docker/
-#link("https://opencontainers.org/", "OCI") supports the ability to attach volumes and most CI/CD systems will 
-have a certain amount of workers that your container runs on. If you control the worker layer like this then you 
-can simply mount a consistent volume the container declares before the container starts. If your worker pool doesn’t 
-shift around often you might even keep the mounts alive when the container has run on a worker at least once. 
-It’s also possible for this model that you might implement a copy-on-write mechanism due to your ability to control 
+#link("https://opencontainers.org/", "OCI") supports the ability to attach volumes and most CI/CD systems will
+have a certain amount of workers that your container runs on. If you control the worker layer like this then you
+can simply mount a consistent volume the container declares before the container starts. If your worker pool doesn’t
+shift around often you might even keep the mounts alive when the container has run on a worker at least once.
+It’s also possible for this model that you might implement a copy-on-write mechanism due to your ability to control
 the layer between storage writes from the container to the actual device.
 
 I’ve thought about this a lot, since it gives the best user experience. Through the glory of FUSE you declare a mount
@@ -932,14 +920,14 @@ implementation within it and that would allow containers to auto-mount things. T
 can serve as the storage layer to be mounted automagically. The problem with this is it’s a bit too restrictive. Part
 of product design is not surprising your users with weird implementations of ideas that are consistent everywhere else.
 The prospect of maintaining a special container that is the only way to receive this functionality didn’t seem like
-good design.
+good design. Additionally, it turns out that network storage solutions are #link("https://www.tritondatacenter.com/blog/network-storage-in-the-cloud-delicious-but-deadly", "just really hard").
 
 === Then I decided none of that will work
 
 Like the solution to modularity I decided to put a little more work on the user side to avoid headache on the ops
 side of things. The final solution was leaving the container layer alone and instead implementing a caching mechanism
-a little higher up the stack. On every run of a pipeline Gofer injects an environment variable called 
-`GOFER_API_KEY` into each run(An opt-in feature for each pipeline). This key gives a 'pipeline run' access to the 
+a little higher up the stack. On every run of a pipeline the user can elect to have Gofer inject an environment variable called
+`GOFER_API_KEY` into each run(An opt-in feature for each pipeline). This key gives a 'pipeline run' access to the
 Gofer API.
 
 This enables users to handle caching on their own using the Gofer CLI and Gofer’s object store. The user is meant to use
@@ -953,12 +941,12 @@ on one worker and keep the mount point intact. The hope is that it makes up for 
 flexibility. The modularity of Gofer means that your object store (if it doesn’t already) can have a cache in front of
 it and implement the same bandwidth/time saving mechanisms as any other platform.
 
-It’s a work in progress feature. Right now it seems to be working, but I could see any significantly evolved company
-realizing that this model won't work for them. The sheer amount of bandwidth that would be used in transferring the same
-files to a container over and over again would be a deal breaker. It also breaks Gofer’s goal of allowing you to test
-locally easily. Under this model users would have to account for this by making sure their test container has specific
-mount points emulating the Gofer object store calls. It’s something I’m not fully happy with and I’m keeping my eye out
-for other solutions.
+Suffice to say, it’s a work in progress feature. Right now, on current workloads, it seems to be working, but I could
+see any significantly evolved company realizing that this model won't work for them. The sheer amount of bandwidth
+that would be used in transferring the same files to a container over and over again would be a deal breaker. It also
+breaks Gofer’s goal of allowing you to test locally easily. Under this model users would have to account for this by
+making sure their test container has specific mount points emulating the Gofer object store calls. It’s something I’m
+not fully happy with and I’m keeping my eye out for other solutions.
 
 == Language Agnosticism
 
@@ -1022,27 +1010,30 @@ As the story goes:
 #block(
   inset: 1em,
   fill: luma(230),
-  text( style: "italic",[
-    Long ago, fishermen used barrels to ship freshly caught cod to consumers.
-    
-    But when recipients would crack open the barrels, the fish were often mushy and tasteless.
-    
-    Confused, a few smart fishermen came to the realization that packing the cod into the barrel caused them to slow their 
-    movement on the long journey to their destination. Being in this state of dormancy for long periods of time caused the 
-    fish to lose muscle definition and in turn their flavor and firmness.
+  text(
+    style: "italic",
+    [
+      Long ago, fishermen used barrels to ship freshly caught cod to consumers.
 
-    But what to do? 
-    
-    The fishermen still wanted to supply far away places with their fish, but nobody would pay for the
-    quality of cod they received by the end of the barrel's journey.
-    
-    In a stroke of genius, these clever fishermen came up with a novel solution.
+      But when recipients would crack open the barrels, the fish were often mushy and tasteless.
 
-    They would throw a few catfish into the barrel along with the cod! 
-    
-    The catfish would never be able to eat the entire barrel of cod, but the fish, now preoccupied with survival, would
-    maintain their firmness and tastiness over the long voyage. 
-    ]),
+      Confused, a few smart fishermen came to the realization that packing the cod into the barrel caused them to slow their
+      movement on the long journey to their destination. Being in this state of dormancy for long periods of time caused the
+      fish to lose muscle definition and in turn their flavor and firmness.
+
+      But what to do?
+
+      The fishermen still wanted to supply far away places with their fish, but nobody would pay for the
+      quality of cod they received by the end of the barrel's journey.
+
+      In a stroke of genius, these clever fishermen came up with a novel solution.
+
+      They would throw a few catfish into the barrel along with the cod!
+
+      The catfish would never be able to eat the entire barrel of cod, but the fish, now preoccupied with survival, would
+      maintain their firmness and tastiness over the long voyage.
+    ],
+  ),
 )
 
 This story is often told to remind us that sometimes we need someone to be a catfish to us, making sure we're continuously
@@ -1054,7 +1045,7 @@ are bearable enough that we can keep striding towards our real destination. Dist
 anyone's true destination, but they are a very important part of the vehicle you use to get to that destination. And
 because of that fact they deserve to be attended to with more rigor than we have in the past.
 
-The future of Gofer is firmly planted in making sure the mettle of these familiarities are tested often and 
+The future of Gofer is firmly planted in making sure the mettle of these familiarities are tested often and
 complacency doesn't creep into the tooling we depend on. Hopefully, providing the chase our short term job executors
 need to get to their destination full of flavor.
 
