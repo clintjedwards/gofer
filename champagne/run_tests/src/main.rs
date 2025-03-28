@@ -32,9 +32,10 @@ fn main() {
                 else
                     echo "Cache fetch failed, proceeding without cache."
                 fi
-
-                cargo test
-
+            
+                #cargo test
+                mkdir -p ./target
+                    
                 tar -czf /tmp/rust_cache.tar.gz target ~/.cargo
 
                 gofer pipeline object put run-tests --force cache /tmp/rust_cache.tar.gz

@@ -45,7 +45,7 @@ impl Shepherd {
     }
 
     /// Start run launches the run and its tasks and then listens to the event bus for related run events and task events.
-    /// Upon recieving one of these events it then appropriately updates the run entry in the database with the
+    /// Upon receiving one of these events it then appropriately updates the run entry in the database with the
     /// correct data.
     pub async fn start_run(self) -> Result<()> {
         trace!(

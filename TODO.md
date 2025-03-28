@@ -22,9 +22,16 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* Create a small alias to combine the list and get functions for pipeline, run, and task. These are called very often
+and they always have the same structure. So it would be better ux to instead allow the user to slowly add on to the
+end of this command and then appropriately perform a list or get based on what the specificity of the arguments are.
+* The CLI should list the user for a token.
+* Check documentation for broken links, there are many. Linkcheck seems not to be working properly.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
 * When the user runs the pipeline config on it's own we should pretty print the json so that it's debuggable easily.
+* We should allow the ops side to somehow set the GOFER_API_BASE_URL for the containers. This can change based on
+where the container is running.
 * When you insert a new pipeline it should show you a diff on what you're changing.
 * We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
   directory. Think more about how the UX should be handled here.
@@ -35,6 +42,7 @@ try to register the same thing twice.
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
 yet.
   * Make sure to set the permissions for the user automagically.
+* Logs don't have color. Add color to them!
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us.

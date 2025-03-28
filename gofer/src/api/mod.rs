@@ -428,8 +428,8 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     );
 
     // This might cause a race conditions if the containers somehow start up before the API, but this could be trivially
-    // solved on either side by either delaying this call a bit or probably less brittly writing some retry logic
-    // on the container side.
+    // solved on either side by either delaying this call a bit or probably in a less brittle fashion by writing some
+    // retry logic on the container side.
     extensions::start_extensions(api_state.clone())
         .await
         .context("Could not start extensions")?;
