@@ -1123,7 +1123,7 @@ pub async fn interpolate_vars(
 ///   - `pipeline_object{{ example }}` for inserting from the pipeline object store.
 ///   - `run_object{{ example }}` for inserting from the run object store.
 pub fn parse_interpolation_syntax(raw_input: &str) -> Option<(InterpolationKind, String)> {
-    let mut raw_input = raw_input.trim();
+    let raw_input = raw_input.trim();
 
     let bracket_index = raw_input.find("{{")?;
 

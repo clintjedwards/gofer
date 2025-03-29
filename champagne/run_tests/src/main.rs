@@ -23,23 +23,24 @@ fn main() {
 
                 cd gofer
 
+                # === Restore Cache ===
                 if gofer pipeline object get run-tests cache > /tmp/rust_cache.tar.gz; then
-                    if tar -xzf /tmp/rust_cache.tar.gz; then
-                        mv .cargo ~/.cargo
+                    if tar -xzf /tmp/rust_cache.tar.gz -C /; then
+                        echo "✅ Cache restored"
                     else
-                        echo "Cache extraction failed, proceeding without cache."
+                        echo "⚠️ Cache extraction failed, proceeding without cache."
                     fi
                 else
-                    echo "Cache fetch failed, proceeding without cache."
+                    echo "⚠️ Cache fetch failed, proceeding without cache."
                 fi
-            
-                #cargo test
-                mkdir -p ./target
-                    
-                tar -czf /tmp/rust_cache.tar.gz target ~/.cargo
+
+                # === Run Tests ===
+                cargo test
+
+                # === Save Cache ===
+                tar -czf /tmp/rust_cache.tar.gz -C /root .cargo -C /gofer target
 
                 gofer pipeline object put run-tests --force cache /tmp/rust_cache.tar.gz
-
                 "#,
             )])
         .finish()
