@@ -25,7 +25,9 @@ fn main() {
 
                 # === Restore Cache ===
                 if gofer pipeline object get run-tests cache > /tmp/rust_cache.tar.gz; then
-                    if tar -xzf /tmp/rust_cache.tar.gz -C /; then
+                    if tar -xzf /tmp/rust_cache.tar.gz -C /gofer; then
+                        rm -rf /root/.cargo
+                        mv .cargo /root
                         echo "✅ Cache restored"
                     else
                         echo "⚠️ Cache extraction failed, proceeding without cache."
@@ -38,7 +40,7 @@ fn main() {
                 cargo test
 
                 # === Save Cache ===
-                tar -czf /tmp/rust_cache.tar.gz -C /root .cargo -C /gofer target
+                tar -czf /tmp/rust_cache.tar.gz -C /gofer target -C /root .cargo
 
                 gofer pipeline object put run-tests --force cache /tmp/rust_cache.tar.gz
                 "#,
