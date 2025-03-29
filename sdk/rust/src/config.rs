@@ -186,11 +186,11 @@ impl Pipeline {
 }
 
 pub fn pipeline_secret(key: &str) -> String {
-    format!("pipeline_secret{{{key}}}")
+    format!("pipeline_secret{{{{{key}}}}}")
 }
 
 pub fn global_secret(key: &str) -> String {
-    format!("global_secret{{{key}}}")
+    format!("global_secret{{{{{key}}}}}")
 }
 
 /// A convenience function for retrieving objects from the pipeline object store.
@@ -201,7 +201,7 @@ pub fn global_secret(key: &str) -> String {
 /// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
 /// If you need the raw bytes for an object use the Gofer cli.
 pub fn pipeline_object(key: &str) -> String {
-    format!("pipeline_object{{{key}}}")
+    format!("pipeline_object{{{{{key}}}}}")
 }
 
 /// A convenience function for retrieving objects from the run object store.
@@ -211,7 +211,7 @@ pub fn pipeline_object(key: &str) -> String {
 /// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
 /// If you need the raw bytes for an object use the Gofer cli.
 pub fn run_object(key: &str) -> String {
-    format!("run_object{{{key}}}")
+    format!("run_object{{{{{key}}}}}")
 }
 
 /// Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container.
