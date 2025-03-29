@@ -65,6 +65,7 @@ to tell Gofer to use a major version of the extension but we always want the lat
   the very natural vec of &str to String. Take a look if it's possible to enable the user to just pass in &str instead.
   This is true for many functions, we should check them all.
 * Pipeline object input needs to finish the implementation for a ring buffer.
+* The CLI for run get should show which token id is associated with that run.
 
 # Small things I'll probably never get around to.
 

@@ -1,8 +1,8 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, InternalPermission, InternalRole, Resource};
 use crate::{
     api::{
-        deployments, epoch_milli, event_utils, is_valid_identifier, pipelines, tasks, ApiState,
-        PreflightOptions,
+        deployments, epoch_milli, event_utils, generate_inject_api_token_role_id,
+        is_valid_identifier, pipelines, tasks, ApiState, PreflightOptions,
     },
     http_error,
     storage::{self, StorageError},
@@ -539,6 +539,86 @@ pub async fn register_config(
             _ => {
                 return Err(http_error!(
                     "Could not insert object into database",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        }
+    };
+
+    // We generate a system created role for each pipeline to aid in the `inject_api_token` feature.
+    // This enables us to be able to reference a single permission set for each token that is provided
+    // via that feature.
+    //
+    // Some may be wondering why do we generate a token per run but give tokens permission to act on all
+    // runs. This is subject to change in the future, but to sum it up:
+    //
+    // * Generating tokens per run is nice because we can revoke tokens at the run boundary. This gives us
+    //   slightly better security than generating a single token for all pipeline runs.
+    // * Generating per token roles (which is what is required to make sure each token only has access to it's
+    //   specific run context) is cumbersome right now and not well supported. We need to think further about how
+    //   to make it easier to separate system generated roles so that we don't have a million roles to scroll through
+    //   to figure out what does what.(maybe a special type for just inject_api_token?)
+    let new_role = InternalRole {
+        id: generate_inject_api_token_role_id(&path.pipeline_id),
+        description: "Automatically created role to aid in 'inject_api_token' feature. All tokens generated from this \
+        feature will use this role/permissions.".to_string(),
+                permissions: vec![
+            // Allow tokens to perform write actions on things only belonging to the namespace/pipeline.
+            InternalPermission {
+                resources: vec![
+                    Resource::Configs,
+                    Resource::Namespaces(path.namespace_id.clone()),
+                    Resource::Objects,
+                    Resource::Pipelines(path.pipeline_id.clone()),
+                    Resource::Runs,
+                    Resource::TaskExecutions,
+                ],
+                actions: vec![Action::Read, Action::Write],
+            },
+            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
+            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
+            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
+            // intellectual property.
+            InternalPermission {
+                resources: vec![
+                    Resource::Configs,
+                    Resource::Deployments,
+                    Resource::Events,
+                    Resource::Namespaces(format!("default|{}$", &path.namespace_id.clone())),
+                    Resource::Pipelines(".*".to_string()),
+                    Resource::Subscriptions,
+                    Resource::System,
+                    Resource::TaskExecutions,
+                    Resource::Objects,
+                ],
+                actions: vec![Action::Read],
+            },
+                ],
+        system_role: true,
+    };
+
+    let new_role_storage = match new_role.clone().try_into() {
+        Ok(role) => role,
+        Err(e) => {
+            return Err(http_error!(
+                "Could not parse role into storage type while creating role",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(anyhow::anyhow!("{}", e).into())
+            ));
+        }
+    };
+
+    if let Err(e) = storage::roles::insert(&mut tx, &new_role_storage).await {
+        match e {
+            storage::StorageError::Exists => {
+                // If the role already exists that just means we shouldn't create a new one from scratch.
+            }
+            _ => {
+                return Err(http_error!(
+                    "Could not insert role into database",
                     hyper::StatusCode::INTERNAL_SERVER_ERROR,
                     rqctx.request_id.clone(),
                     Some(e.into())

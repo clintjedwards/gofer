@@ -70,7 +70,7 @@ impl Secret {
         }
     }
 
-    fn to_pipeline_secret_storage(
+    pub fn to_pipeline_secret_storage(
         &self,
         namespace_id: &str,
         pipeline_id: &str,

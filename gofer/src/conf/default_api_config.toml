@@ -46,7 +46,7 @@ timeout = 300           # Should be the same or more than the task_execution_sto
 [object_store]
 engine = "filesystem"
 pipeline_object_limit = 50
-run_object_expiry = 50
+run_object_expiry = 2
 
 [object_store.filesystem]
 path = "/tmp/gofer_objects"

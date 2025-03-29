@@ -2,8 +2,8 @@ use crate::{
     api::{
         epoch_milli,
         event_utils::{self, EventListener},
-        in_progress_runs_key, interpolate_vars, objects, pipelines, runs, task_executions, tasks,
-        ApiState, Variable, VariableSource, GOFER_EOF,
+        in_progress_runs_key, interpolate_vars, objects, pipelines, runs, secrets, task_executions,
+        tasks, ApiState, Variable, VariableSource, GOFER_EOF,
     },
     scheduler, storage,
 };
@@ -20,7 +20,7 @@ use tokio::{
 };
 use tracing::{debug, error, trace};
 
-fn run_specific_api_key_id(run_id: u64) -> String {
+pub fn run_specific_api_key_id(run_id: u64) -> String {
     format!("gofer_api_token_run_id_{run_id}")
 }
 
@@ -86,7 +86,7 @@ impl Shepherd {
             ..Default::default()
         };
 
-        // Create inner scoper here to drop the conn once we're done with it.
+        // Create inner scope here to drop the conn once we're done with it.
         {
             let mut conn = self
                 .api_state
@@ -190,7 +190,7 @@ impl Shepherd {
             ..Default::default()
         };
 
-        // Create inner scoper here to drop the conn once we're done with it.
+        // Create inner scope here to drop the conn once we're done with it.
         {
             let mut conn = self
                 .api_state
@@ -1540,7 +1540,7 @@ impl Shepherd {
         }
     }
 
-    /// Removes run level objects from the object store once a run is past it's expiry threshold.
+    /// Removes run level objects(including tokens) from the object store once a run is past it's expiry threshold.
     async fn handle_run_object_expiry(self) {
         let limit = self.api_state.config.object_store.run_object_expiry;
 
@@ -1663,6 +1663,93 @@ impl Shepherd {
         // Remove the mut from expired run since we don't need it anymore.
         let expired_run = expired_run;
 
+        let mut conn = match self.api_state.storage.write_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not establish connection to database while attempting to wait for run finish");
+                return;
+            }
+        };
+
+        // We also need to delete automatically generated (inject_api_token) pipeline secret keys.
+
+        if let Some(token_id) = expired_run.token_id {
+            // The first step here is to delete the pipeline secret reference.
+            if let Err(e) = storage::secret_store_pipeline_keys::delete(
+                &mut conn,
+                &expired_run.namespace_id,
+                &expired_run.pipeline_id,
+                &run_specific_api_key_id(expired_run.run_id),
+            )
+            .await
+            {
+                match e {
+                    storage::StorageError::NotFound => {
+                        // If the key doesn't even exist, print an error but don't stop the process.
+                        error!(namespace_id = &expired_run.namespace_id,
+                            pipeline_id = &expired_run.pipeline_id,
+                            run_id = expired_run.run_id,
+                            key_id = run_specific_api_key_id(expired_run.run_id),
+                            "Could not find pipeline secret key while attempting to remove inject_api_token");
+                    }
+                    _ => {
+                        error!(namespace_id = &expired_run.namespace_id,
+                        pipeline_id = &expired_run.pipeline_id,
+                        run_id = expired_run.run_id,
+                        key_id = run_specific_api_key_id(expired_run.run_id),
+                        error = %e, "Could not remove inject_api_token pipeline secret key");
+                        return;
+                    }
+                }
+            };
+
+            // The second step is to delete the key itself.
+            if let Err(e) = storage::tokens::delete(&mut conn, &token_id).await {
+                match e {
+                    storage::StorageError::NotFound => {
+                        // If the key doesn't even exist, print an error but don't stop the process.
+                        error!(
+                            namespace_id = &expired_run.namespace_id,
+                            pipeline_id = &expired_run.pipeline_id,
+                            run_id = expired_run.run_id,
+                            token_id = token_id,
+                            "Could not find token while attempting to remove inject_api_token"
+                        );
+                    }
+                    _ => {
+                        error!(namespace_id = &expired_run.namespace_id,
+                        pipeline_id = &expired_run.pipeline_id,
+                        run_id = expired_run.run_id,
+                        token_id = token_id,
+                        error = %e, "Could not remove inject_api_token");
+                        return;
+                    }
+                }
+            };
+
+            // The last step is to delete the token object.
+            if let Err(e) = self
+                .api_state
+                .secret_store
+                .delete(&secrets::pipeline_secret_store_key(
+                    &expired_run.namespace_id,
+                    &expired_run.pipeline_id,
+                    &run_specific_api_key_id(expired_run.run_id),
+                ))
+                .await
+            {
+                error!(namespace_id = &expired_run.namespace_id,
+                        pipeline_id = &expired_run.pipeline_id,
+                        run_id = expired_run.run_id,
+                        token_id = token_id,
+                        error = %e, "Could not remove insert_api_token object from secret_store");
+                return;
+            };
+        }
+
         if expired_run.store_objects_expired {
             return;
         }
@@ -1674,17 +1761,6 @@ impl Shepherd {
                     pipeline_id = &self.pipeline.metadata.pipeline_id,
                     run_id = self.run.run_id,
                     error = %e, "Could not serialize run id while attempting to process run expiry");
-                return;
-            }
-        };
-
-        let mut conn = match self.api_state.storage.write_conn().await {
-            Ok(conn) => conn,
-            Err(e) => {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                    pipeline_id = &self.pipeline.metadata.pipeline_id,
-                    run_id = self.run.run_id,
-                    error = %e, "Could not establish connection to database while attempting to wait for run finish");
                 return;
             }
         };

@@ -76,13 +76,13 @@ impl Token {
     pub fn new(
         hash: &str,
         metadata: HashMap<String, String>,
-        expiry: u64, // Seconds from creation that token should expire. 0 means that token does not expire.
+        valid_for_secs: u64, // Seconds from creation that token should expire. 0 means that token does not expire.
         user: String,
         roles: Vec<String>,
     ) -> Self {
         let now = epoch_milli();
-        let expires = if expiry > 0 {
-            now.add(expiry * 1000)
+        let expires = if valid_for_secs > 0 {
+            now.add(valid_for_secs * 1000)
         } else {
             0
         };

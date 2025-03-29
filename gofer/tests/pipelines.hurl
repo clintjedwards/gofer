@@ -11,6 +11,7 @@ Authorization: Bearer {{secret}}
     "parallelism": 0,
     "tasks": [
         {
+            "always_pull_newest_image": true,
             "depends_on": {},
             "command": ["echo", "Hello from Gofer!"],
             "id": "task_one",

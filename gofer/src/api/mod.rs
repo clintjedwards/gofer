@@ -85,6 +85,10 @@ impl FromStr for ApiVersion {
     }
 }
 
+fn generate_inject_api_token_role_id(pipeline_id: &str) -> String {
+    format!("inject_api_token_{}", pipeline_id)
+}
+
 /// Holds objects that are created and used over the lifetime of a single request.
 ///
 /// This is different from [`dropshot::RequestContext`] since that is automatically created for us but we need some

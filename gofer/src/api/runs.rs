@@ -1,8 +1,8 @@
 use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        epoch_milli, event_utils, pipeline_configs, pipelines, run_utils, ApiState,
-        PreflightOptions, Variable, VariableSource,
+        epoch_milli, event_utils, generate_inject_api_token_role_id, pipeline_configs, pipelines,
+        run_utils, secrets, tokens, ApiState, PreflightOptions, Variable, VariableSource,
     },
     http_error, storage,
 };
@@ -657,6 +657,8 @@ pub async fn start_run(
         }
     };
 
+    let token_required = pipeline_tasks.iter().any(|task| task.inject_api_token);
+
     let pipeline_config = pipeline_configs::Config::from_storage(
         latest_pipeline_config_storage.clone(),
         pipeline_tasks,
@@ -693,7 +695,120 @@ pub async fn start_run(
         user: req_metadata.auth.token_user,
     };
 
-    //TODO(): Implement run_api_token
+    // If the pipeline has just one task that requires an API token, we generate that API token for the entire run
+    // and associate it with the run. Downstream, the function that policies if the task needs the api token will
+    // decide whether to inject it in the env vars or not.
+
+    let mut token_id: Option<String> = None;
+
+    if token_required {
+        let (token, hash) = tokens::create_new_api_token();
+
+        let new_token = tokens::Token::new(
+            &hash,
+            HashMap::from([("system_generated_run_token".into(), "true".into())]),
+            1_814_400, // 3 weeks in seconds.
+            "system_generated_run_token".into(),
+            vec![generate_inject_api_token_role_id(&path.pipeline_id)],
+        );
+
+        let new_token_storage = match new_token.clone().try_into() {
+            Ok(token) => token,
+            Err(e) => {
+                return Err(http_error!(
+                    "Could not parse token into storage type while creating token",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(anyhow::anyhow!("{}", e).into())
+                ));
+            }
+        };
+
+        if let Err(e) = storage::tokens::insert(&mut tx, &new_token_storage).await {
+            match e {
+                storage::StorageError::Exists => {
+                    return Err(HttpError::for_client_error(
+                        None,
+                        ClientErrorStatusCode::CONFLICT,
+                        "token entry already exists".into(),
+                    ));
+                }
+                _ => {
+                    return Err(http_error!(
+                        "Could not insert token into database",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+                }
+            }
+        };
+
+        let new_secret = secrets::Secret::new(
+            &run_utils::run_specific_api_key_id(new_run_id as u64),
+            vec![],
+        );
+
+        let new_secret_storage = match new_secret
+            .to_pipeline_secret_storage(&path.namespace_id, &path.pipeline_id)
+        {
+            Ok(secret) => secret,
+            Err(e) => {
+                return Err(http_error!(
+                        "Could not serialize secret object to database while trying to insert insert_api_token token",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+            }
+        };
+
+        if let Err(e) =
+            storage::secret_store_pipeline_keys::insert(&mut tx, &new_secret_storage).await
+        {
+            match e {
+                storage::StorageError::Exists => {
+                    return Err(HttpError::for_client_error(
+                        None,
+                        ClientErrorStatusCode::CONFLICT,
+                        "secret entry already exists".into(),
+                    ));
+                }
+                _ => {
+                    return Err(http_error!(
+                        "Could not insert object into database",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+                }
+            }
+        };
+
+        if let Err(e) = api_state
+            .secret_store
+            .put(
+                &secrets::pipeline_secret_store_key(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    &run_utils::run_specific_api_key_id(new_run_id as u64),
+                ),
+                token.as_bytes().to_vec(),
+                false,
+            )
+            .await
+        {
+            return Err(http_error!(
+                "Could not insert secret into secret store",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        };
+
+        token_id = Some(new_token.id);
+    }
+
     let new_run = Run::new(
         &path.namespace_id,
         &path.pipeline_id,
@@ -708,7 +823,7 @@ pub async fn start_run(
                 source: VariableSource::RunOptions,
             })
             .collect(),
-        None,
+        token_id,
     );
 
     let new_run_storage = new_run.clone().try_into().map_err(|err: anyhow::Error| {
