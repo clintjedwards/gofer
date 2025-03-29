@@ -910,7 +910,7 @@ pub fn epoch_milli() -> u64 {
 /// Gofer allows users to enter special interpolation strings such that
 /// special functionality is substituted when Gofer reads these strings
 /// in a user's pipeline configuration.
-#[derive(Debug, Display, EnumString, Deserialize, Serialize)]
+#[derive(Debug, Display, EnumString, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 #[strum(ascii_case_insensitive)]
@@ -1133,12 +1133,17 @@ pub fn parse_interpolation_syntax(raw_input: &str) -> Option<(InterpolationKind,
         Err(_) => return None,
     };
 
-    let interpolation_prefix = format!("{}{{", interpolation_kind.to_string().to_lowercase());
+    let kind_str = interpolation_kind.to_string().to_lowercase();
+    let interpolation_prefix = format!("{}{{{{", kind_str); // emits e.g. "pipeline_secret{{"
     let interpolation_suffix = "}}";
-    if raw_input.starts_with(&interpolation_prefix) && raw_input.ends_with(interpolation_suffix) {
-        raw_input = raw_input.strip_prefix(&interpolation_prefix).unwrap();
-        raw_input = raw_input.strip_suffix(interpolation_suffix).unwrap();
-        return Some((interpolation_kind, raw_input.trim().to_string()));
+
+    // Check prefix in a case-insensitive way
+    if raw_input.len() > interpolation_prefix.len() + 2
+        && raw_input[..interpolation_prefix.len()].to_lowercase() == interpolation_prefix
+        && raw_input.ends_with(interpolation_suffix)
+    {
+        let content = &raw_input[interpolation_prefix.len()..raw_input.len() - 2];
+        return Some((interpolation_kind, content.trim().to_string()));
     }
 
     None
@@ -1418,4 +1423,77 @@ async fn recover_runs(api_state: Arc<ApiState>) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_pipeline_secret() {
+        let input = "pipeline_secret{{ example_key }}";
+        let expected = Some((InterpolationKind::PipelineSecret, "example_key".to_string()));
+        assert_eq!(parse_interpolation_syntax(input), expected);
+    }
+
+    #[test]
+    fn test_valid_global_secret_with_whitespace() {
+        let input = " global_secret{{ another_value }} ";
+        let expected = Some((InterpolationKind::GlobalSecret, "another_value".to_string()));
+        assert_eq!(parse_interpolation_syntax(input), expected);
+    }
+
+    #[test]
+    fn test_valid_pipeline_object_nested_whitespace() {
+        let input = "pipeline_object{{  nested   }}";
+        let expected = Some((InterpolationKind::PipelineObject, "nested".to_string()));
+        assert_eq!(parse_interpolation_syntax(input), expected);
+    }
+
+    #[test]
+    fn test_valid_run_object() {
+        let input = "run_object{{run123}}";
+        let expected = Some((InterpolationKind::RunObject, "run123".to_string()));
+        assert_eq!(parse_interpolation_syntax(input), expected);
+    }
+
+    #[test]
+    fn test_invalid_missing_braces() {
+        let input = "pipeline_secret example";
+        assert_eq!(parse_interpolation_syntax(input), None);
+    }
+
+    #[test]
+    fn test_invalid_unknown_prefix() {
+        let input = "foobar{{ some_value }}";
+        assert_eq!(parse_interpolation_syntax(input), None);
+    }
+
+    #[test]
+    fn test_invalid_unclosed_braces() {
+        let input = "pipeline_secret{{ value }";
+        assert_eq!(parse_interpolation_syntax(input), None);
+    }
+
+    #[test]
+    fn test_invalid_malformed_string() {
+        let input = "pipeline_secret value }}";
+        assert_eq!(parse_interpolation_syntax(input), None);
+    }
+
+    #[test]
+    fn test_plain_string() {
+        let input = "just_a_normal_string";
+        assert_eq!(parse_interpolation_syntax(input), None);
+    }
+
+    #[test]
+    fn test_case_insensitive_prefix() {
+        let input = "PIPELINE_SECRET{{ uppercase_key }}";
+        let expected = Some((
+            InterpolationKind::PipelineSecret,
+            "uppercase_key".to_string(),
+        ));
+        assert_eq!(parse_interpolation_syntax(input), expected);
+    }
 }
