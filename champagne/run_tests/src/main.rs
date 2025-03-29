@@ -37,7 +37,7 @@ fn main() {
                 fi
 
                 # === Run Tests ===
-                cargo test
+                cargo test --color=always
 
                 # === Save Cache ===
                 tar -czf /tmp/rust_cache.tar.gz -C /gofer target -C /root .cargo
