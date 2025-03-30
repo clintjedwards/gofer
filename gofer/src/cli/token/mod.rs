@@ -106,6 +106,9 @@ impl Cli {
                 Cell::new("id")
                     .set_alignment(CellAlignment::Center)
                     .fg(Color::Blue),
+                Cell::new("user")
+                    .set_alignment(CellAlignment::Center)
+                    .fg(Color::Blue),
                 Cell::new("roles")
                     .set_alignment(CellAlignment::Center)
                     .fg(Color::Blue),
@@ -125,6 +128,7 @@ impl Cli {
 
             table.add_row(vec![
                 Cell::new(token.id).fg(Color::Green),
+                Cell::new(token.user),
                 Cell::new(format!("{:?}", token.roles)),
                 Cell::new(
                     self.format_time(token.created)

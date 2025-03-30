@@ -22,12 +22,9 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-* In the cli the run-get command should sum up the run time humanized a bit better, right now it says things like "158s"
-  for time ran.
 * Create a small alias to combine the list and get functions for pipeline, run, and task. These are called very often
 and they always have the same structure. So it would be better ux to instead allow the user to slowly add on to the
 end of this command and then appropriately perform a list or get based on what the specificity of the arguments are.
-* The CLI should list the user for a token.
 * Check documentation for broken links, there are many. Linkcheck seems not to be working properly.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
@@ -44,7 +41,6 @@ try to register the same thing twice.
 * Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
 yet.
   * Make sure to set the permissions for the user automagically.
-* Logs don't have color. Add color to them!
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us.
