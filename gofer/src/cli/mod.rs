@@ -357,32 +357,68 @@ fn colorize_status_text<T: ToString>(input: T) -> String {
     }
 }
 
-/// Duration returns a humanized duration time for two epoch milli second times.
+/// Formats a duration between two epoch millis into a readable string
+/// like "1 hour, 25 mins, 12 secs" or "12 secs, 4 ms"
 fn duration(start: i64, end: i64) -> String {
     if start == 0 {
-        return "0s".to_string();
+        return "0 secs".to_string();
     }
 
     let start_time = match Utc.timestamp_millis_opt(start) {
-        LocalResult::Single(time) => time,
-        _ => Utc::now(), // fallback to current time if no valid time
+        LocalResult::Single(t) => t,
+        _ => Utc::now(), // fallback to current time if no valid time.
     };
-    let mut end_time = Utc::now();
 
-    if end != 0 {
-        end_time = match Utc.timestamp_millis_opt(end) {
-            LocalResult::Single(time) => time,
-            _ => Utc::now(), // fallback to current time if no valid time
-        };
-    }
+    let end_time = if end != 0 {
+        match Utc.timestamp_millis_opt(end) {
+            LocalResult::Single(t) => t,
+            _ => Utc::now(),
+        }
+    } else {
+        Utc::now()
+    };
 
     let duration = end_time.signed_duration_since(start_time);
+    let total_millis = duration.num_milliseconds();
 
-    if duration > Duration::seconds(1) {
-        return format!("~{}s", duration.num_seconds());
+    if total_millis <= 0 {
+        return "0 secs".to_string();
     }
 
-    format!("~{}ms", duration.num_milliseconds())
+    let hours = duration.num_hours();
+    let minutes = (duration.num_minutes() % 60).abs();
+    let seconds = (duration.num_seconds() % 60).abs();
+    let millis = (duration.num_milliseconds() % 1000).abs();
+
+    let mut parts = vec![];
+
+    if hours > 0 {
+        parts.push(format!(
+            "{} hour{}",
+            hours,
+            if hours == 1 { "" } else { "s" }
+        ));
+    }
+    if minutes > 0 {
+        parts.push(format!(
+            "{} min{}",
+            minutes,
+            if minutes == 1 { "" } else { "s" }
+        ));
+    }
+    if seconds > 0 || parts.is_empty() {
+        parts.push(format!(
+            "{} sec{}",
+            seconds,
+            if seconds == 1 { "" } else { "s" }
+        ));
+    }
+
+    if hours == 0 && minutes == 0 && millis > 0 {
+        parts.push(format!("{} ms", millis));
+    }
+
+    parts.join(", ")
 }
 
 fn dependencies(
