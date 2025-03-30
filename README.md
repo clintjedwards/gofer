@@ -1,7 +1,7 @@
-# [Gofer](https://clintjedwards.com/gofer/assets/urban_dictionary_gofer.png): Run short-lived jobs easily.
+# [Gofer](https://gofer.clintjedwards.com/docs/assets/urban_dictionary_gofer.png): Run short-lived jobs easily.
 
 <p align="center">
-    <img src="https://clintjedwards.com/gofer/assets/logo-name-hq.png" alt="gofer" width="200"/>
+    <img src="https://gofer.clintjedwards.com/docs/assets/logo-name-hq.png" alt="gofer" width="200"/>
 </p>
 
 [![website-badge](https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square)](https://gofer.clintjedwards.com/docs)
@@ -38,7 +38,7 @@ Its primary function is to execute short-term jobs like code linting, build auto
 
 ## Demo:
 
-<img src="https://clintjedwards.com/gofer/assets/demo.gif" />
+<img src="https://gofer.clintjedwards.com/docs/assets/demo.gif" />
 
 ## Documentation & Getting Started
 
@@ -46,7 +46,7 @@ If you want to fully dive into Gofer, check out the [documentation site][website
 
 ## Install
 
-Extended installation information is available through the [documentation site](https://clintjedwards.com/gofer/guide/installing_gofer.html).
+Extended installation information is available through the [documentation site](https://gofer.clintjedwards.com/docs/guide/installing_gofer.html).
 
 ### Download a specific release:
 
@@ -68,7 +68,7 @@ The Gofer binary comes with a CLI to manage the server as well as act as a clien
 
 Gofer is setup such that the base run mode is the development mode. So simply running the binary
 without any additional flags allows easy auth-less development. You can read more about how to deploy Gofer in a
-production environment [here](https://clintjedwards.com/gofer/ref/server_configuration/index.html)
+production environment [here](https://gofer.clintjedwards.com/docs/ref/server_configuration/index.html)
 
 This is really helpful for users and developers alike since it allows easy access to a runnable server to test pipelines
 against.
