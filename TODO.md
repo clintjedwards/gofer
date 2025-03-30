@@ -22,13 +22,9 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
-* Create a small alias to combine the list and get functions for pipeline, run, and task. These are called very often
-and they always have the same structure. So it would be better ux to instead allow the user to slowly add on to the
-end of this command and then appropriately perform a list or get based on what the specificity of the arguments are.
 * Check documentation for broken links, there are many. Linkcheck seems not to be working properly.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
-* When the user runs the pipeline config on it's own we should pretty print the json so that it's debuggable easily.
 * We should allow the ops side to somehow set the GOFER_API_BASE_URL for the containers. This can change based on
 where the container is running.
 * When you insert a new pipeline it should show you a diff on what you're changing.

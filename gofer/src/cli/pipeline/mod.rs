@@ -2,9 +2,7 @@ mod config;
 mod deployment;
 mod object;
 
-use crate::cli::{
-    colorize_status_text, colorize_status_text_comfy, dependencies, duration, Cli, TitleCase,
-};
+use crate::cli::{colorize_status_text, colorize_status_text_comfy, dependencies, duration, Cli};
 use anyhow::{bail, Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -290,7 +288,7 @@ impl Cli {
                 Cell::new(format!(
                     "{} by {}",
                     self.format_time(run.started).unwrap_or("Never".into()),
-                    run.initiator.user.title()
+                    run.initiator.user
                 )),
                 Cell::new(format!(
                     "{} {}",

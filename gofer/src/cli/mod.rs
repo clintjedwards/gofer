@@ -1,5 +1,6 @@
 mod event;
 mod extension;
+mod fetch;
 mod namespace;
 mod pipeline;
 mod role;
@@ -12,7 +13,7 @@ mod up;
 
 use crate::conf::{cli::CliConfig, Configuration};
 use anyhow::{bail, Context, Result};
-use chrono::{Duration, LocalResult, TimeZone, Utc};
+use chrono::{LocalResult, TimeZone, Utc};
 use chrono_humanize::HumanTime;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
@@ -31,7 +32,7 @@ use std::{
 /// mechanism to run short-lived workloads. The benefits of this is simplicity. No foreign agents, no cluster setup,
 /// just run containers.
 ///
-/// For longer, more complete documentation visit: https://clintjedwards.com/gofer
+/// For longer, more complete documentation visit: https://gofer.clintjedwards.com/docs
 ///
 /// ## Configuration
 /// This program retrieves it's settings from multiple sources in a specific sequence. First it loads default settings,
@@ -88,7 +89,7 @@ enum Commands {
     ///
     /// Requires a pipeline configuration file. You can find documentation on how to
     /// create/manage your pipeline configuration file
-    /// [here](https://clintjedwards.com/gofer/ref/pipeline_configuration/index.html).
+    /// [here](https://gofer.clintjedwards.com/docs/ref/pipeline_configuration/index.html).
     Up {
         path: std::path::PathBuf,
 
@@ -100,6 +101,41 @@ enum Commands {
         /// will be registered but not deployed.
         #[arg(short, long, default_value = "true")]
         deploy: bool,
+    },
+
+    /// Lookup pipeline specific information.
+    ///
+    /// Shortcut for commands like `pipeline get` or `run list`. Use `+` to
+    /// differentiate between getting a specific item and listing the next tier of items.
+    ///
+    /// Ex. `gofer fetch my-pipeline`: Will return details for "my-pipeline"i
+    ///
+    /// Ex. `gofer fetch my-pipeline +`: Will return a list of all runs for "my-pipeline"
+    Fetch {
+        /// Namespace Identifier.
+        #[arg(long)]
+        namespace: Option<String>,
+
+        /// Pipeline Identifier.
+        pipeline_id: Option<String>,
+
+        /// Run Identifier.
+        run_id: Option<String>,
+
+        /// Task Identifier.
+        task_id: Option<String>,
+
+        /// Limit the amount of results returned
+        #[arg(short, long, default_value = "10")]
+        limit: u64,
+
+        /// How many runs to skip, useful for paging through results.
+        #[arg(short, long, default_value = "0")]
+        offset: u64,
+
+        /// Reverse the return order back to ascending order. By default lists runs in descending order.
+        #[arg(short, long, default_value = "false")]
+        no_reverse: bool,
     },
 
     /// Prints information about the current context of the Gofer CLI.
@@ -206,6 +242,26 @@ impl Cli {
                 path,
                 deploy,
             } => self.pipeline_create(namespace, path, deploy).await,
+            Commands::Fetch {
+                namespace,
+                pipeline_id,
+                run_id,
+                task_id,
+                limit,
+                offset,
+                no_reverse,
+            } => {
+                self.fetch(
+                    namespace,
+                    pipeline_id,
+                    run_id,
+                    task_id,
+                    limit,
+                    offset,
+                    no_reverse,
+                )
+                .await
+            }
             Commands::Context => self.get_context().await,
             Commands::Service(service) => self.handle_service_subcommands(service).await,
             Commands::Namespace(namespace) => self.handle_namespace_subcommands(namespace).await,
