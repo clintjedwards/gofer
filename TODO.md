@@ -34,14 +34,8 @@ where the container is running.
 try to register the same thing twice.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Implement pipeline object limits
-* Make sure to finish the implementation of Gofer run tokens. We started it but haven't quite checked all the boxes
-yet.
-  * Make sure to set the permissions for the user automagically.
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
-* We want to restrict the max size of the request body, but some endpoints need large bodies to upload things to us.
-  We should get rid of the global restriction and instead check for what the request size should be in the preflight.
-* Make the object store uploads multipart.
 * Canaried deployments feature.
 * There should probably be a global timeout for all runs.
 * Create a setting to allow operators to turn off the ability to attach to a container.
@@ -55,11 +49,7 @@ to tell Gofer to use a major version of the extension but we always want the lat
 * Deployments needs a type parameter so when we add extra deployments.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven. 
   It should use task leasing to avoid any stuck processors.
-* When writing in the rust SDK command takes a vec of String, which causes users to have to figure out how to change
-  the very natural vec of &str to String. Take a look if it's possible to enable the user to just pass in &str instead.
-  This is true for many functions, we should check them all.
 * Pipeline object input needs to finish the implementation for a ring buffer.
-* The CLI for run get should show which token id is associated with that run.
 
 # Small things I'll probably never get around to.
 

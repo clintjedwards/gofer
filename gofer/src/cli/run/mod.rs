@@ -260,6 +260,25 @@ impl Cli {
             })
         }
 
+        let mut attr_table = comfy_table::Table::new();
+        attr_table
+            .load_preset(comfy_table::presets::NOTHING)
+            .set_content_arrangement(ContentArrangement::Dynamic);
+
+        attr_table.add_row(vec![
+            "Objects Expired:",
+            &format!("{}", run.store_objects_expired),
+        ]);
+
+        if let Some(token_id) = run.token_id {
+            attr_table.add_row(vec!["Injected Token ID:", &token_id]);
+        };
+
+        let attr_table_lines = attr_table
+            .lines()
+            .map(|line| line.to_string())
+            .collect::<Vec<String>>();
+
         const TEMPLATE: &str = r#"
   Initiated by {{ initiator_name }} {{ started }} and ran for {{ duration }}
   {%- if task_executions is defined and task_executions | length > 0 %}
@@ -279,8 +298,9 @@ impl Cli {
     {%- endif -%}
     {%- endfor %}
   {%- endif %}
-
-  Objects Expired: {{ objects_expired }}
+  {% for attr in attr_table %}
+  {{ attr }}
+  {%- endfor %}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -300,6 +320,7 @@ impl Cli {
         context.insert("task_executions", &task_data);
         context.insert("status_reason", &run.status_reason);
         context.insert("status_message", &"Failure".red().to_string());
+        context.insert("attr_table", &attr_table_lines);
 
         let content = tera.render("main", &context)?;
         println!(
