@@ -706,7 +706,12 @@ pub async fn start_run(
 
         let new_token = tokens::Token::new(
             &hash,
-            HashMap::from([("system_generated_run_token".into(), "true".into())]),
+            HashMap::from([
+                ("system_generated_run_token".into(), "true".into()),
+                ("namespace".into(), path.namespace_id.clone()),
+                ("pipeline".into(), path.pipeline_id.clone()),
+                ("run".into(), format!("{}", new_run_id)),
+            ]),
             1_814_400, // 3 weeks in seconds.
             "system_generated_run_token".into(),
             vec![generate_inject_api_token_role_id(&path.pipeline_id)],
