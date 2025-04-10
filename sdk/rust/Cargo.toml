@@ -30,7 +30,7 @@ slog = "2.7.0"
 slog-async = "2.8.0"
 strum = { version = "0.26", features = ["derive"] }
 thiserror = "1.0.60"
-tokio = "1.37.0"
+tokio = "1.44.2"
 tracing = "0.1.40"
 hyper = { version = "1.5.2", features = ["server", "full"] }
 semver = "1.0.25"
