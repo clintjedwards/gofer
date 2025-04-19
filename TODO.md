@@ -14,7 +14,7 @@ thought into this feature that it can become a game changer for Gofer as a whole
 * Each pipeline run should have a comprehensive log of what happened in the entire run from start to finish. Each task
   that was started and when, everytime a task changes state, so on and so forth. This should enable the user to read
   through a run from the perspective of the scheduler.
-* For debuggign which EXACT container ran especially for tags that stay the same we should make the scheduler return to
+* For debugging which EXACT container ran especially for tags that stay the same we should make the scheduler return to
   use the RepoDigest of the image.`docker image inspect ...`
 * We have the ability to attach to containers... an interesting debugging tool would be to have the ability to grab
   a failed task, maybe copy the filesystem somehow? and then give the user a shell into that task. This would help
@@ -22,6 +22,9 @@ thought into this feature that it can become a game changer for Gofer as a whole
 
 # Small things I want to keep track of that I definitely need to do.
 
+* Allow a parallelism mode where when parallelism is at it's max the oldest run, if still running gets, cancelled.
+  * Also make it so that the github extension can do this as well, if a new run for a branch gets kicked off, if there
+    is already a run for that branch, cancel the ongoing one and trigger a new one.
 * Check documentation for broken links, there are many. Linkcheck seems not to be working properly.
 * When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
   then tell the user how to go about finding more information.
@@ -47,7 +50,7 @@ version. I wonder if there is a way we can offer this feature for free for the p
 the same major version should work, but extensions might all have different minor versions, it would be useful to be able
 to tell Gofer to use a major version of the extension but we always want the latest minor version.
 * Deployments needs a type parameter so when we add extra deployments.
-* The final piece of the run shepard needs to implement a run queue to fully transition over to event driven. 
+* The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
   It should use task leasing to avoid any stuck processors.
 * Pipeline object input needs to finish the implementation for a ring buffer.
 
