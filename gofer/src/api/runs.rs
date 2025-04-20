@@ -1,25 +1,22 @@
 use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        epoch_milli, event_utils, generate_inject_api_token_role_id, pipeline_configs, pipelines,
-        run_utils, secrets, tokens, ApiState, PreflightOptions, Variable, VariableSource,
+        epoch_milli, event_utils, orchestrator::OrchestratorError, ApiState, PreflightOptions,
+        Variable,
     },
     http_error, storage,
 };
+
 use anyhow::{Context, Result};
 use dropshot::{
-    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
-    HttpResponseOk, Path, Query, RequestContext, TypedBody,
+    endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path, Query,
+    RequestContext, TypedBody,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    str::FromStr,
-    sync::{atomic::Ordering, Arc},
-};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
-use tracing::{debug, error};
+use tracing::error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RunPathArgsRoot {
@@ -560,366 +557,88 @@ pub async fn start_run(
         )
         .await?;
 
-    if api_state.ignore_pipeline_run_events.load(Ordering::SeqCst) {
-        debug!(
-            "Ignoring pipeline run due to api setting 'ignore_pipeline_run_events' in state 'true'"
-        );
-        return Err(http_error!(
-            "Pipeline run request ignored due to api setting 'ignore_pipeline_run_events' in state 'true'",
-            hyper::StatusCode::SERVICE_UNAVAILABLE,
-            rqctx.request_id.clone(),
-            None
-        ));
-    }
-
-    let mut tx = match api_state.storage.open_tx().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open connection to database",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
-
-    let storage_pipeline_metadata =
-        match storage::pipeline_metadata::get(&mut tx, &path.namespace_id, &path.pipeline_id).await
-        {
-            Ok(pipeline) => pipeline,
-            Err(e) => match e {
-                storage::StorageError::NotFound => {
-                    return Err(HttpError::for_not_found(None, String::new()));
-                }
-                _ => {
-                    return Err(http_error!(
-                        "Could not get objects from database",
-                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id.clone(),
-                        Some(e.into())
-                    ));
-                }
+    let new_run = match api_state
+        .orchestrator
+        .launch_new_run(
+            api_state.clone(),
+            &path.namespace_id,
+            &path.pipeline_id,
+            Initiator {
+                id: req_metadata.auth.token_id,
+                user: req_metadata.auth.token_user,
             },
-        };
-
-    let pipeline_metadata =
-        pipelines::Metadata::try_from(storage_pipeline_metadata).map_err(|err| {
-            http_error!(
-                "Could not parse object from database",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into())
-            )
-        })?;
-
-    if pipeline_metadata.state != pipelines::PipelineState::Active {
-        return Err(HttpError::for_bad_request(
-            None,
-            format!(
-                "Pipeline is not in state '{}'; cannot start run",
-                pipelines::PipelineState::Active
-            ),
-        ));
-    };
-
-    let latest_pipeline_config_storage =
-        match storage::pipeline_configs::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id)
-            .await
-        {
-            Ok(config) => config,
-            Err(e) => {
-                return Err(http_error!(
-                    "Could not get latest pipeline config from database",
-                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(e.into())
-                ));
-            }
-        };
-
-    let pipeline_tasks = match storage::tasks::list(
-        &mut tx,
-        &path.namespace_id,
-        &path.pipeline_id,
-        latest_pipeline_config_storage.version,
-    )
-    .await
-    {
-        Ok(tasks) => tasks,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not get objects from database",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
-
-    let token_required = pipeline_tasks.iter().any(|task| task.inject_api_token);
-
-    let pipeline_config = pipeline_configs::Config::from_storage(
-        latest_pipeline_config_storage.clone(),
-        pipeline_tasks,
-    )
-    .map_err(|err| {
-        http_error!(
-            "Could not parse object from database",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(err.into())
+            body.variables,
         )
-    })?;
-
-    let latest_run_id =
-        match storage::runs::get_latest(&mut tx, &path.namespace_id, &path.pipeline_id).await {
-            Ok(latest_run) => latest_run.run_id,
-            Err(err) => match err {
-                storage::StorageError::NotFound => 0,
-                _ => {
-                    return Err(http_error!(
-                        "Could not get last run object from database",
-                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id.clone(),
-                        Some(err.into())
-                    ));
-                }
-            },
-        };
-
-    let new_run_id = latest_run_id + 1;
-
-    let initiator = Initiator {
-        id: req_metadata.auth.token_id,
-        user: req_metadata.auth.token_user,
-    };
-
-    // If the pipeline has just one task that requires an API token, we generate that API token for the entire run
-    // and associate it with the run. Downstream, the function that policies if the task needs the api token will
-    // decide whether to inject it in the env vars or not.
-
-    let mut token_id: Option<String> = None;
-
-    if token_required {
-        let (token, hash) = tokens::create_new_api_token();
-
-        let new_token = tokens::Token::new(
-            &hash,
-            HashMap::from([
-                ("system_generated_run_token".into(), "true".into()),
-                ("namespace".into(), path.namespace_id.clone()),
-                ("pipeline".into(), path.pipeline_id.clone()),
-                ("run".into(), format!("{}", new_run_id)),
-            ]),
-            1_814_400, // 3 weeks in seconds.
-            "system_generated_run_token".into(),
-            vec![generate_inject_api_token_role_id(&path.pipeline_id)],
-        );
-
-        let new_token_storage = match new_token.clone().try_into() {
-            Ok(token) => token,
-            Err(e) => {
-                return Err(http_error!(
-                    "Could not parse token into storage type while creating token",
-                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(anyhow::anyhow!("{}", e).into())
-                ));
-            }
-        };
-
-        if let Err(e) = storage::tokens::insert(&mut tx, &new_token_storage).await {
-            match e {
-                storage::StorageError::Exists => {
-                    return Err(HttpError::for_client_error(
-                        None,
-                        ClientErrorStatusCode::CONFLICT,
-                        "token entry already exists".into(),
-                    ));
-                }
-                _ => {
-                    return Err(http_error!(
-                        "Could not insert token into database",
-                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id.clone(),
-                        Some(e.into())
-                    ));
-                }
-            }
-        };
-
-        let new_secret = secrets::Secret::new(
-            &run_utils::run_specific_api_key_id(new_run_id as u64),
-            vec![],
-        );
-
-        let new_secret_storage = match new_secret
-            .to_pipeline_secret_storage(&path.namespace_id, &path.pipeline_id)
-        {
-            Ok(secret) => secret,
-            Err(e) => {
-                return Err(http_error!(
-                        "Could not serialize secret object to database while trying to insert insert_api_token token",
-                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id.clone(),
-                        Some(e.into())
-                    ));
-            }
-        };
-
-        if let Err(e) =
-            storage::secret_store_pipeline_keys::insert(&mut tx, &new_secret_storage).await
-        {
-            match e {
-                storage::StorageError::Exists => {
-                    return Err(HttpError::for_client_error(
-                        None,
-                        ClientErrorStatusCode::CONFLICT,
-                        "secret entry already exists".into(),
-                    ));
-                }
-                _ => {
-                    return Err(http_error!(
-                        "Could not insert object into database",
-                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                        rqctx.request_id.clone(),
-                        Some(e.into())
-                    ));
-                }
-            }
-        };
-
-        if let Err(e) = api_state
-            .secret_store
-            .put(
-                &secrets::pipeline_secret_store_key(
-                    &path.namespace_id,
-                    &path.pipeline_id,
-                    &run_utils::run_specific_api_key_id(new_run_id as u64),
-                ),
-                token.as_bytes().to_vec(),
-                false,
-            )
-            .await
-        {
-            return Err(http_error!(
-                "Could not insert secret into secret store",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        };
-
-        token_id = Some(new_token.id);
-    }
-
-    let new_run = Run::new(
-        &path.namespace_id,
-        &path.pipeline_id,
-        latest_pipeline_config_storage.version.try_into().unwrap(),
-        new_run_id.try_into().unwrap(),
-        initiator,
-        body.variables
-            .into_iter()
-            .map(|(key, value)| Variable {
-                key,
-                value,
-                source: VariableSource::RunOptions,
-            })
-            .collect(),
-        token_id,
-    );
-
-    let new_run_storage = new_run.clone().try_into().map_err(|err: anyhow::Error| {
-        http_error!(
-            "Could not parse object from database",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(err.into())
-        )
-    })?;
-
-    if let Err(e) = storage::runs::insert(&mut tx, &new_run_storage).await {
-        match e {
-            storage::StorageError::Exists => {
-                return Err(HttpError::for_client_error(
-                    None,
-                    ClientErrorStatusCode::CONFLICT,
-                    "run entry already exists".into(),
-                ));
-            }
-            _ => {
-                return Err(http_error!(
-                    "Could not insert object into database",
-                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(e.into())
-                ));
-            }
-        }
-    };
-
-    // We emit the QueuedRun event so that the event stream is aware of the impending run. Then we insert that event_id
-    // into the database for the associated run. This helps us with detecting which runs are incomplete due to
-    // a crash within Gofer and helps us restore those runs.
-    let queued_run_event = api_state
-        .event_bus
-        .clone()
-        .publish(event_utils::Kind::QueuedRun {
-            namespace_id: path.namespace_id.clone(),
-            pipeline_id: path.pipeline_id.clone(),
-            run_id: new_run.run_id,
-        });
-
-    let fields = storage::runs::UpdatableFields {
-        event_id: Some(queued_run_event.id),
-        ..Default::default()
-    };
-
-    if let Err(e) = storage::runs::update(
-        &mut tx,
-        &path.namespace_id,
-        &path.pipeline_id,
-        new_run.run_id as i64,
-        fields,
-    )
-    .await
+        .await
     {
-        return Err(http_error!(
-            "Could not insert event_id for new run",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(e.into())
-        ));
-    };
-
-    if let Err(e) = tx.commit().await {
-        return Err(http_error!(
-            "Could not close database transaction",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(e.into())
-        ));
-    };
-
-    // Now that the run has been inserted into the database we start it's tracking and execution.
-    let new_run_shepard = run_utils::Shepherd::new(
-        api_state.clone(),
-        pipelines::Pipeline {
-            metadata: pipeline_metadata,
-            config: pipeline_config,
+        Ok(run) => run,
+        Err(err) => match err {
+            OrchestratorError::PipelineRunIgnored => {
+                return Err(http_error!(
+                    "Runs for this pipeline are currently paused",
+                    hyper::StatusCode::SERVICE_UNAVAILABLE,
+                    rqctx.request_id,
+                    Some(err.into())
+                ));
+            }
+            OrchestratorError::DatabaseGeneralError(storage_error) => {
+                return Err(http_error!(
+                    "Could not communicate with database",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id,
+                    Some(storage_error.into())
+                ));
+            }
+            OrchestratorError::DatabaseSerializationError(error) => {
+                return Err(http_error!(
+                    "Could not successfully serialize response",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id,
+                    Some(error.into())
+                ));
+            }
+            OrchestratorError::PipelineMetadataNotFound => {
+                return Err(http_error!(
+                    "Could not find pipeline metadata",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id,
+                    Some(err.into())
+                ));
+            }
+            OrchestratorError::PipelineInactive => {
+                return Err(http_error!(
+                    "Pipeline is currently inactive",
+                    hyper::StatusCode::SERVICE_UNAVAILABLE,
+                    rqctx.request_id,
+                    Some(err.into())
+                ));
+            }
+            OrchestratorError::UnrecoverableError(err) => {
+                return Err(http_error!(
+                    "Could not process run due to unforeseen circumstances",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id,
+                    Some(err.into())
+                ));
+            }
+            OrchestratorError::ObjectStoreGeneralError(error) => {
+                return Err(http_error!(
+                    "Could not process run due to error in communication with object store",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id,
+                    Some(error.into())
+                ));
+            }
+            OrchestratorError::SecretStoreGeneralError(secret_store_error) => {
+                return Err(http_error!(
+                    "Could not process run due to error in communication with secret store",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id,
+                    Some(secret_store_error.into())
+                ));
+            }
         },
-        new_run.clone(),
-    );
-
-    // Make sure the pipeline is read for a new run.
-    while new_run_shepard.parallelism_limit_exceeded().await {
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    }
-
-    // Finally, launch the thread that will launch all the task executions for the run.
-    tokio::spawn(new_run_shepard.start_run());
+    };
 
     let resp = StartRunResponse { run: new_run };
 

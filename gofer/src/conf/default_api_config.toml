@@ -1,6 +1,7 @@
 [api]
 ignore_pipeline_run_events = false
-run_parallelism_limit = 200
+pipeline_run_concurrency_limit = 200
+global_run_concurrency_limit = 2000
 pipeline_version_retention = 10
 event_log_retention = 15768000     # 6 months
 event_prune_interval = 604800      # 1 week

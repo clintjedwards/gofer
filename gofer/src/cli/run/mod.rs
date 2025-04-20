@@ -284,7 +284,7 @@ impl Cli {
   {%- if task_executions is defined and task_executions | length > 0 %}
 
   {%- if status_reason %}
-  
+
   {{status_message}}: {{ status_reason.reason }}: {{ status_reason.description }}
   {%- endif %}
 
@@ -384,7 +384,7 @@ impl Cli {
             format!(
                 "\n  View details of your new run: {}",
                 format!(
-                    "gofer run get {} {}",
+                    "gofer fetch {} {}",
                     response.run.pipeline_id, response.run.run_id
                 )
                 .yellow()
@@ -395,7 +395,7 @@ impl Cli {
             format!(
                 "  List all task executions: {}",
                 format!(
-                    "gofer task list {} {}",
+                    "gofer fetch {} {} +",
                     response.run.pipeline_id, response.run.run_id
                 )
                 .yellow()

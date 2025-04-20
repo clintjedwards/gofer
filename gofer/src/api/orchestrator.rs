@@ -2,11 +2,13 @@ use crate::{
     api::{
         epoch_milli,
         event_utils::{self, EventListener},
-        in_progress_runs_key, interpolate_vars, objects, pipelines, runs, secrets, task_executions,
-        tasks, ApiState, Variable, VariableSource, GOFER_EOF,
+        generate_inject_api_token_role_id, in_progress_runs_key, interpolate_vars, objects,
+        pipeline_configs, pipelines, runs, secrets, task_executions, tasks, tokens, ApiState,
+        Variable, VariableSource, GOFER_EOF,
     },
-    scheduler, storage,
+    scheduler, secret_store, storage,
 };
+
 use anyhow::{bail, Context, Result};
 use futures::StreamExt;
 use gofer_sdk::config::pipeline_secret;
@@ -14,28 +16,460 @@ use sqlx::SqliteConnection;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{atomic, Arc};
+use thiserror::Error;
 use tokio::{
     io::AsyncWriteExt,
-    sync::{Barrier, Mutex},
+    sync::{Barrier, Mutex, OwnedSemaphorePermit, Semaphore},
 };
-use tracing::{debug, error, trace};
+use tracing::{debug, error, info, trace};
 
 pub fn run_specific_api_key_id(run_id: u64) -> String {
     format!("gofer_api_token_run_id_{run_id}")
 }
 
-/// Shepherd is a run specific object that guides Gofer runs and tasks through their execution.
-/// It's a core construct within the Gofer execution model and contains most of the logic of how a run operates.
-///
-/// TODO(): Explain more about how the shepard arch works.
-#[derive(Debug, Clone)]
-pub struct Shepherd {
-    pub api_state: Arc<ApiState>,
-    pub pipeline: pipelines::Pipeline,
-    pub run: runs::Run,
+#[derive(Debug, Error)]
+pub enum OrchestratorError {
+    #[error("Pipeline run request ignored due to 'ignore_pipeline_run_events' being true")]
+    PipelineRunIgnored,
+
+    #[error("Database error occurred")]
+    DatabaseGeneralError(#[source] storage::StorageError),
+
+    #[error("Could not serialize object from database")]
+    DatabaseSerializationError(#[source] anyhow::Error),
+
+    #[error("Could not find pipeline metadata")]
+    PipelineMetadataNotFound,
+
+    #[error("Cannot start run due to pipeline being in inactive state")]
+    PipelineInactive,
+
+    #[error("An error occurred that should generally never happen and cannot be recovered from")]
+    UnrecoverableError(String),
+
+    #[error("Object store error occurred")]
+    ObjectStoreGeneralError(#[source] object_store::Error),
+
+    #[error("Secret store error occurred")]
+    SecretStoreGeneralError(#[source] secret_store::SecretStoreError),
 }
 
-impl Shepherd {
+#[derive(Debug)]
+pub struct Orchestrator {
+    pub global_run_concurrency_limiter: Arc<Semaphore>,
+}
+
+impl Orchestrator {
+    pub fn new(max_concurrent_global_runs: u64) -> Self {
+        Self {
+            global_run_concurrency_limiter: Arc::new(Semaphore::new(
+                max_concurrent_global_runs as usize,
+            )),
+        }
+    }
+
+    pub async fn launch_new_run(
+        &self,
+        api_state: Arc<ApiState>,
+        namespace_id: &str,
+        pipeline_id: &str,
+        initiator: runs::Initiator,
+        variables: HashMap<String, String>,
+    ) -> std::result::Result<runs::Run, OrchestratorError> {
+        if api_state
+            .ignore_pipeline_run_events
+            .load(atomic::Ordering::SeqCst)
+        {
+            debug!("Ignoring pipeline run due to api setting 'ignore_pipeline_run_events' in state 'true'");
+            return Err(OrchestratorError::PipelineRunIgnored);
+        }
+
+        let permit = match self
+            .global_run_concurrency_limiter
+            .clone()
+            .acquire_owned()
+            .await
+        {
+            Ok(semaphore) => semaphore,
+            Err(e) => return Err(OrchestratorError::UnrecoverableError(e.to_string())),
+        };
+
+        let mut tx = match api_state.storage.open_tx().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                return Err(OrchestratorError::DatabaseGeneralError(e));
+            }
+        };
+
+        // First we need to confirm that the pipeline exists and is not in an inactive state.
+
+        let storage_pipeline_metadata =
+            match storage::pipeline_metadata::get(&mut tx, namespace_id, pipeline_id).await {
+                Ok(pipeline) => pipeline,
+                Err(e) => match e {
+                    storage::StorageError::NotFound => {
+                        return Err(OrchestratorError::PipelineMetadataNotFound);
+                    }
+                    _ => {
+                        return Err(OrchestratorError::DatabaseGeneralError(e));
+                    }
+                },
+            };
+
+        let pipeline_metadata = pipelines::Metadata::try_from(storage_pipeline_metadata)
+            .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+
+        if pipeline_metadata.state != pipelines::PipelineState::Active {
+            return Err(OrchestratorError::PipelineInactive);
+        };
+
+        // We need the latest pipeline config to know what tasks and settings to run the pipeline with.
+        let latest_pipeline_config_storage =
+            match storage::pipeline_configs::get_latest(&mut tx, namespace_id, pipeline_id).await {
+                Ok(config) => config,
+                Err(e) => {
+                    return Err(OrchestratorError::DatabaseGeneralError(e));
+                }
+            };
+
+        let pipeline_tasks = match storage::tasks::list(
+            &mut tx,
+            namespace_id,
+            pipeline_id,
+            latest_pipeline_config_storage.version,
+        )
+        .await
+        {
+            Ok(tasks) => tasks,
+            Err(e) => {
+                return Err(OrchestratorError::DatabaseGeneralError(e));
+            }
+        };
+
+        // This is only here to avoid cloning since pipeline_tasks gets consumed by pipeline_config.
+        let token_required = pipeline_tasks.iter().any(|task| task.inject_api_token);
+
+        let pipeline_config = pipeline_configs::Config::from_storage(
+            latest_pipeline_config_storage.clone(),
+            pipeline_tasks,
+        )
+        .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+
+        let latest_run_id =
+            match storage::runs::get_latest(&mut tx, namespace_id, pipeline_id).await {
+                Ok(latest_run) => latest_run.run_id,
+                Err(err) => match err {
+                    storage::StorageError::NotFound => 0,
+                    _ => {
+                        return Err(OrchestratorError::DatabaseGeneralError(err));
+                    }
+                },
+            };
+
+        let new_run_id = latest_run_id + 1;
+
+        // Next we need to determine if we need to generate a new api key for this run for the purposes of the
+        // inject_api_token feature, that allows users to easily use the Gofer cli from inside their run.
+        //
+        // If the pipeline has just one task that requires an API token, we generate that API token for the entire run
+        // and associate it with the run. Downstream, the function that policies if the task needs the api token will
+        // decide whether to inject it in the env vars or not.
+
+        let mut token_id: Option<String> = None;
+
+        if token_required {
+            let (token, hash) = tokens::create_new_api_token();
+
+            let new_token = tokens::Token::new(
+                &hash,
+                HashMap::from([
+                    ("system_generated_run_token".into(), "true".into()),
+                    ("namespace".into(), namespace_id.to_string()),
+                    ("pipeline".into(), pipeline_id.to_string()),
+                    ("run".into(), format!("{}", new_run_id)),
+                ]),
+                1_814_400, // 3 weeks in seconds.
+                "system_generated_run_token".into(),
+                vec![generate_inject_api_token_role_id(pipeline_id)],
+            );
+
+            let new_token_storage = match new_token.clone().try_into() {
+                Ok(token) => token,
+                Err(e) => {
+                    return Err(OrchestratorError::DatabaseSerializationError(e));
+                }
+            };
+
+            if let Err(e) = storage::tokens::insert(&mut tx, &new_token_storage).await {
+                match e {
+                    storage::StorageError::Exists => {
+                        return Err(OrchestratorError::UnrecoverableError(
+                            "token entry already exists while attempting \
+                            to create new 'inject_api_token' for run"
+                                .to_string(),
+                        ));
+                    }
+                    _ => return Err(OrchestratorError::DatabaseGeneralError(e)),
+                }
+            };
+
+            let new_secret =
+                secrets::Secret::new(&run_specific_api_key_id(new_run_id as u64), vec![]);
+
+            let new_secret_storage =
+                match new_secret.to_pipeline_secret_storage(namespace_id, pipeline_id) {
+                    Ok(secret) => secret,
+                    Err(e) => {
+                        return Err(OrchestratorError::DatabaseSerializationError(e));
+                    }
+                };
+
+            if let Err(e) =
+                storage::secret_store_pipeline_keys::insert(&mut tx, &new_secret_storage).await
+            {
+                match e {
+                    storage::StorageError::Exists => {
+                        return Err(OrchestratorError::UnrecoverableError(
+                            "secret entry already exists while attempting \
+                            to create new 'inject_api_token' for run"
+                                .to_string(),
+                        ));
+                    }
+                    _ => {
+                        return Err(OrchestratorError::DatabaseGeneralError(e));
+                    }
+                }
+            };
+
+            if let Err(e) = api_state
+                .secret_store
+                .put(
+                    &secrets::pipeline_secret_store_key(
+                        namespace_id,
+                        pipeline_id,
+                        &run_specific_api_key_id(new_run_id as u64),
+                    ),
+                    token.as_bytes().to_vec(),
+                    false,
+                )
+                .await
+            {
+                return Err(OrchestratorError::SecretStoreGeneralError(e));
+            };
+
+            token_id = Some(new_token.id);
+        }
+
+        let new_run = runs::Run::new(
+            namespace_id,
+            pipeline_id,
+            latest_pipeline_config_storage.version.try_into().unwrap(),
+            new_run_id.try_into().unwrap(),
+            initiator,
+            variables
+                .into_iter()
+                .map(|(key, value)| Variable {
+                    key,
+                    value,
+                    source: VariableSource::RunOptions,
+                })
+                .collect(),
+            token_id,
+        );
+
+        let new_run_storage = new_run
+            .clone()
+            .try_into()
+            .map_err(|err: anyhow::Error| OrchestratorError::DatabaseSerializationError(err))?;
+
+        if let Err(e) = storage::runs::insert(&mut tx, &new_run_storage).await {
+            match e {
+                storage::StorageError::Exists => {
+                    return Err(OrchestratorError::UnrecoverableError(
+                        "run entry already exists".to_string(),
+                    ));
+                }
+                _ => {
+                    return Err(OrchestratorError::DatabaseGeneralError(e));
+                }
+            }
+        };
+
+        // We emit the QueuedRun event so that the event stream is aware of the impending run. Then we insert that event_id
+        // into the database for the associated run. This helps us with detecting which runs are incomplete due to
+        // a crash within Gofer and helps us restore those runs.
+        let queued_run_event = api_state
+            .event_bus
+            .clone()
+            .publish(event_utils::Kind::QueuedRun {
+                namespace_id: namespace_id.to_string().clone(),
+                pipeline_id: pipeline_id.to_string().clone(),
+                run_id: new_run.run_id,
+            });
+
+        let fields = storage::runs::UpdatableFields {
+            event_id: Some(queued_run_event.id),
+            ..Default::default()
+        };
+
+        if let Err(e) = storage::runs::update(
+            &mut tx,
+            namespace_id,
+            pipeline_id,
+            new_run.run_id as i64,
+            fields,
+        )
+        .await
+        {
+            return Err(OrchestratorError::DatabaseGeneralError(e));
+        };
+
+        if let Err(e) = tx.commit().await {
+            return Err(OrchestratorError::DatabaseGeneralError(
+                storage::StorageError::Connection(e.to_string()),
+            ));
+        };
+
+        // Now that the run has been inserted into the database we start it's tracking and execution.
+        let new_run_shepard = Run::new(
+            api_state.clone(),
+            pipelines::Pipeline {
+                metadata: pipeline_metadata,
+                config: pipeline_config,
+            },
+            new_run.clone(),
+        );
+
+        // Make sure the pipeline is ready for a new run.
+        while new_run_shepard.parallelism_limit_exceeded().await {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+
+        // Finally, launch the thread that will launch all the task executions for the run.
+        tokio::spawn(new_run_shepard.start_run(permit));
+
+        Ok(new_run)
+    }
+
+    pub async fn recover_runs(
+        &self,
+        api_state: Arc<ApiState>,
+    ) -> std::result::Result<(), OrchestratorError> {
+        let mut conn = match api_state.storage.read_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                return Err(OrchestratorError::DatabaseGeneralError(e));
+            }
+        };
+
+        let unfinished_runs = match storage::runs::list_unfinished(&mut conn, 0, 100).await {
+            Ok(val) => val,
+            Err(e) => {
+                return Err(OrchestratorError::DatabaseGeneralError(e));
+            }
+        };
+
+        for stored_run in unfinished_runs {
+            info!(
+                namespace_id = stored_run.namespace_id.clone(),
+                pipeline_id = stored_run.pipeline_id.clone(),
+                run_id = stored_run.run_id,
+                "Recovering unfinished run"
+            );
+
+            let permit = match self
+                .global_run_concurrency_limiter
+                .clone()
+                .acquire_owned()
+                .await
+            {
+                Ok(semaphore) => semaphore,
+                Err(e) => return Err(OrchestratorError::UnrecoverableError(e.to_string())),
+            };
+
+            let run: runs::Run = stored_run
+                .try_into()
+                .map_err(|err: anyhow::Error| OrchestratorError::DatabaseSerializationError(err))?;
+
+            let run_event_id = run.event_id.clone().unwrap_or_default();
+
+            let storage_pipeline_metadata = match storage::pipeline_metadata::get(
+                &mut conn,
+                &run.namespace_id,
+                &run.pipeline_id,
+            )
+            .await
+            {
+                Ok(pipeline) => pipeline,
+                Err(e) => match e {
+                    storage::StorageError::NotFound => {
+                        return Err(OrchestratorError::PipelineMetadataNotFound);
+                    }
+                    _ => {
+                        return Err(OrchestratorError::DatabaseGeneralError(e));
+                    }
+                },
+            };
+
+            let pipeline_metadata = pipelines::Metadata::try_from(storage_pipeline_metadata)
+                .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+
+            let pipeline_config_storage = match storage::pipeline_configs::get(
+                &mut conn,
+                &run.namespace_id,
+                &run.pipeline_id,
+                run.pipeline_config_version as i64,
+            )
+            .await
+            {
+                Ok(config) => config,
+                Err(e) => return Err(OrchestratorError::DatabaseGeneralError(e)),
+            };
+
+            let pipeline_tasks = match storage::tasks::list(
+                &mut conn,
+                &run.namespace_id,
+                &run.pipeline_id,
+                run.pipeline_config_version as i64,
+            )
+            .await
+            {
+                Ok(tasks) => tasks,
+                Err(e) => return Err(OrchestratorError::DatabaseGeneralError(e)),
+            };
+
+            let pipeline_config = pipeline_configs::Config::from_storage(
+                pipeline_config_storage.clone(),
+                pipeline_tasks,
+            )
+            .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+
+            let new_run_shepard = Run::new(
+                api_state.clone(),
+                pipelines::Pipeline {
+                    metadata: pipeline_metadata,
+                    config: pipeline_config,
+                },
+                run,
+            );
+
+            tokio::spawn(new_run_shepard.start_run_recovery(run_event_id, permit));
+        }
+
+        Ok(())
+    }
+}
+
+/// A run specific object that guides Gofer runs and tasks through their execution.
+/// It's a core construct within the Gofer execution model and contains most of the logic of how a run operates.
+#[derive(Debug, Clone)]
+struct Run {
+    api_state: Arc<ApiState>,
+    pipeline: pipelines::Pipeline,
+    run: runs::Run,
+}
+
+impl Run {
     pub fn new(api_state: Arc<ApiState>, pipeline: pipelines::Pipeline, run: runs::Run) -> Self {
         Self {
             api_state,
@@ -47,7 +481,7 @@ impl Shepherd {
     /// Start run launches the run and its tasks and then listens to the event bus for related run events and task events.
     /// Upon receiving one of these events it then appropriately updates the run entry in the database with the
     /// correct data.
-    pub async fn start_run(self) -> Result<()> {
+    pub async fn start_run(self, permit: OwnedSemaphorePermit) -> Result<()> {
         trace!(
             namespace_id = self.pipeline.metadata.namespace_id.clone(),
             pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
@@ -138,7 +572,7 @@ impl Shepherd {
         let event_stream = self.api_state.event_bus.subscribe_live();
         tokio::spawn(async move {
             self_clone
-                .monitor_run(thread_barrier, Box::new(event_stream))
+                .monitor_run(thread_barrier, Box::new(event_stream), permit)
                 .await
         });
 
@@ -150,7 +584,11 @@ impl Shepherd {
     /// stream starts from a historical point rather than the most up to date.
     ///
     /// run_event_id is the UUID of the "Started_Run" event for the run being recovered.
-    pub async fn start_run_recovery(self, run_event_id: String) -> Result<()> {
+    pub async fn start_run_recovery(
+        self,
+        run_event_id: String,
+        permit: OwnedSemaphorePermit,
+    ) -> Result<()> {
         trace!(
             namespace_id = self.pipeline.metadata.namespace_id.clone(),
             pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
@@ -300,7 +738,7 @@ impl Shepherd {
 
         tokio::spawn(async move {
             self_clone
-                .monitor_run(thread_barrier, Box::new(event_stream))
+                .monitor_run(thread_barrier, Box::new(event_stream), permit)
                 .await
         });
 
@@ -312,6 +750,7 @@ impl Shepherd {
         &self,
         barrier: Arc<tokio::sync::Barrier>,
         mut event_stream: Box<dyn EventListener>,
+        permit: OwnedSemaphorePermit,
     ) {
         // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
         barrier.wait().await;
@@ -329,7 +768,7 @@ impl Shepherd {
                            namespace_id = self.pipeline.metadata.namespace_id.clone(),
                            pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
                            run_id = self.run.run_id,
-                           "Could not recieve event from event stream during run monitoring.");
+                           "Could not receive event from event stream during run monitoring.");
                     continue;
                 }
             };
@@ -485,6 +924,7 @@ impl Shepherd {
                 error = %e,
                 "Could not set run finished while attempting to wait for finish");
         }
+        drop(permit);
     }
 
     /// Launches a brand new task execution as part of a larger run for a specific task.

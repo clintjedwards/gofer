@@ -163,7 +163,7 @@ impl Cli {
 
         println!(
             "  View details of your pipeline: {}",
-            format!("gofer pipeline get {}", response.metadata.pipeline_id).cyan()
+            format!("gofer fetch {}", response.metadata.pipeline_id).cyan()
         );
         println!(
             "  Start a new run: {}",

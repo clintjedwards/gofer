@@ -20,7 +20,10 @@ pub struct ApiConfig {
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Api {
     /// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
-    pub run_parallelism_limit: u64,
+    pub pipeline_run_concurrency_limit: u64,
+
+    /// The limit of how many runs can be in progress at a single time.
+    pub global_run_concurrency_limit: u64,
 
     /// Controls how long Gofer will hold onto events before discarding them (in seconds).
     /// This is important factor in disk space and memory footprint.
