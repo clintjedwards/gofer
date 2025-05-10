@@ -520,7 +520,7 @@ impl Cli {
             shared_writer
                 .lock()
                 .await
-                .send(Message::Text(line))
+                .send(Message::Text(line.into()))
                 .await
                 .context("Error while attempting to copy user input to server")?;
         }

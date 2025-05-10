@@ -156,8 +156,8 @@ mod tests {
 
     impl TestHarness {
         pub async fn new() -> Self {
-            let mut rng = rand::thread_rng();
-            let append_num: u16 = rng.gen();
+            let mut rng = rand::rng();
+            let append_num: u16 = rng.random();
             let storage_path = format!("/tmp/gofer_tests_object_store_{}", append_num);
 
             let db = Engine::new(&Config {

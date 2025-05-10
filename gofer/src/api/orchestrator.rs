@@ -117,7 +117,7 @@ impl Orchestrator {
             };
 
         let pipeline_metadata = pipelines::Metadata::try_from(storage_pipeline_metadata)
-            .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+            .map_err(OrchestratorError::DatabaseSerializationError)?;
 
         if pipeline_metadata.state != pipelines::PipelineState::Active {
             return Err(OrchestratorError::PipelineInactive);
@@ -153,7 +153,7 @@ impl Orchestrator {
             latest_pipeline_config_storage.clone(),
             pipeline_tasks,
         )
-        .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+        .map_err(OrchestratorError::DatabaseSerializationError)?;
 
         let latest_run_id =
             match storage::runs::get_latest(&mut tx, namespace_id, pipeline_id).await {
@@ -412,7 +412,7 @@ impl Orchestrator {
             };
 
             let pipeline_metadata = pipelines::Metadata::try_from(storage_pipeline_metadata)
-                .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+                .map_err(OrchestratorError::DatabaseSerializationError)?;
 
             let pipeline_config_storage = match storage::pipeline_configs::get(
                 &mut conn,
@@ -442,7 +442,7 @@ impl Orchestrator {
                 pipeline_config_storage.clone(),
                 pipeline_tasks,
             )
-            .map_err(|err| OrchestratorError::DatabaseSerializationError(err))?;
+            .map_err(OrchestratorError::DatabaseSerializationError)?;
 
             let new_run_shepard = Run::new(
                 api_state.clone(),

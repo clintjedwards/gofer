@@ -1299,14 +1299,14 @@ pub async fn attach_task_execution(
                     match output {
                         Ok(message) => {
                             match message {
-                                tungstenite::protocol::Message::Text(mut text) => {
+                                tungstenite::protocol::Message::Text(text) => {
+                                    let mut text = text.to_string();
 
                                     // Carriage return is needed in the case that the user is communicating
                                     // with a terminal.
                                     text.push('\r');
 
                                     let result = container_input.write_all(text.as_bytes()).await;
-
 
                                     if let Err(e) = result {
                                         debug!(error = %e, "Error occurred while attempting to write message from client to container");
@@ -1341,7 +1341,7 @@ pub async fn attach_task_execution(
                             scheduler::Log::Stdout(text) | scheduler::Log::Stderr(text) | scheduler::Log::Console(text) => {
                                 let mut locked_write = client_writer_handle.lock().await;
 
-                                if let Err(e) = locked_write.send(tungstenite::Message::Binary(text)).await {
+                                if let Err(e) = locked_write.send(tungstenite::Message::Binary(text.into())).await {
                                     debug!(error = %e, "Error occurred while attempting to write message from container to client");
                                     continue;
                                 }

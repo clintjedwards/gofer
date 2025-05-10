@@ -6,7 +6,7 @@ use aes_gcm::{
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use futures::TryFutureExt;
-use rand::{rngs::OsRng, RngCore};
+use rand::{rngs::OsRng, TryRngCore};
 use serde::Deserialize;
 use sqlx::{
     pool::PoolConnection, sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, Execute, Pool,
@@ -183,7 +183,7 @@ pub fn encrypt(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
     let cipher = Aes256Gcm::new_from_slice(key)?;
 
     let mut n = vec![0u8; NONCE_SIZE];
-    OsRng.fill_bytes(&mut n);
+    OsRng.try_fill_bytes(&mut n)?;
     let nonce = GenericArray::from_slice(&n);
 
     let ciphertext = cipher.encrypt(nonce, plaintext.as_ref()).map_err(|e| {
@@ -333,8 +333,8 @@ mod tests {
 
     impl TestHarness {
         pub async fn new() -> Self {
-            let mut rng = rand::thread_rng();
-            let append_num: u16 = rng.gen();
+            let mut rng = rand::rng();
+            let append_num: u16 = rng.random();
             let storage_path = format!("/tmp/gofer_tests_secret_store{}.db", append_num);
 
             let db = Engine::new(&Config {

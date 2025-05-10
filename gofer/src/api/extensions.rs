@@ -1219,7 +1219,7 @@ pub async fn get_extension_logs(
                 scheduler::Log::Stdout(log_bytes) => {
                     let mut locked_writer = client_writer_handle.lock().await;
 
-                    if let Err(err) = locked_writer.send(Message::text(String::from_utf8_lossy(&log_bytes))).await {
+                    if let Err(err) = locked_writer.send(Message::text(String::from_utf8(log_bytes).unwrap())).await {
                         error!(error = %err,"Could not process log line");
                         return Err("Could not process log line".into());
                     }
@@ -1227,7 +1227,7 @@ pub async fn get_extension_logs(
                 scheduler::Log::Stderr(log_bytes) => {
                     let mut locked_writer = client_writer_handle.lock().await;
 
-                    if let Err(err) = locked_writer.send(Message::text(String::from_utf8_lossy(&log_bytes))).await {
+                    if let Err(err) = locked_writer.send(Message::text(String::from_utf8(log_bytes).unwrap())).await {
                         error!(error = %err,"Could not process log line");
                         return Err("Could not process log line".into());
                     }

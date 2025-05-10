@@ -198,10 +198,10 @@ pub async fn stream_events(
 
                         let mut locked_writer = client_writer_handle.lock().await;
 
-                        let _ = locked_writer.send(Message::Text(event_str)).await;
+                        let _ = locked_writer.send(Message::Text(event_str.into())).await;
                     }
                     Err(e) => {
-                        return Err(format!("Server closed connectionx; {:#?}", e));
+                        return Err(format!("Server closed connection; {:#?}", e));
                     }
                 }
             }

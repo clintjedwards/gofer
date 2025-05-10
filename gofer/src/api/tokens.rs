@@ -8,7 +8,7 @@ use dropshot::{
     endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
     HttpResponseOk, HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
 };
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distr::Alphanumeric, Rng};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -54,7 +54,7 @@ pub struct Token {
 }
 
 fn generate_rand_str(size: usize) -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(size)
         .map(char::from)
