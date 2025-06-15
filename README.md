@@ -1,24 +1,32 @@
 # [Gofer](https://gofer.clintjedwards.com/docs/assets/urban_dictionary_gofer.png): Run short-lived jobs easily.
 
+## Summary
+
 <p align="center">
     <img src="https://gofer.clintjedwards.com/docs/assets/logo-name-hq.png" alt="gofer" width="200"/>
 </p>
 
 [![website-badge](https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square)](https://gofer.clintjedwards.com/docs)
-[![project status](https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square)](https://github.com/clintjedwards/gofer/releases)
+[![project status](https://img.shields.io/badge/Project%20Status-Discontinued-orange?style=flat-square)](https://github.com/clintjedwards/gofer/releases)
 
 Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.
 
-Gofer focuses on the "what" and "when" of your workloads, leaving the "how" and "where" to pluggable, more sophisticated container orchestrators (such as K8s or Nomad or even local Docker). 
+Gofer focuses on the "what" and "when" of your workloads, leaving the "how" and "where" to pluggable, more sophisticated container orchestrators (such as K8s or Nomad or even local Docker).
 
-It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages. 
+It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages.
 
 Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
+
+## Discontinued
+
+Gofer has served its purpose and it is time to move on to other big projects. It still serves as a repository of
+open-source Rust code that I've written and it plays with many, alternate interesting CI/CD tooling ideas that I've
+wondered about for a long time.
 
 ## Why?:
 
 - This is my idea of fun.
-- Modern solutions... 
+- Modern solutions...
   - are too complicated to setup and/or manage.
   - lack tight feedback loops while developing pipelines.
   - require you to marry your business logic code to pipeline logic code.
@@ -93,7 +101,7 @@ cargo run --bin gofer -- service start
 
 ### Env aware configuration
 
-To avoid issues when developing Gofer, the development build of Gofer(`any binary that was not built with --release`) 
+To avoid issues when developing Gofer, the development build of Gofer(`any binary that was not built with --release`)
 looks for the CLI config file at `.gofer_dev.toml` instead of `.gofer.toml`.
 
 This avoids the headache of having to swap configuration files while actively developing Gofer. But is noted here since
