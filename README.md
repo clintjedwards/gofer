@@ -7,7 +7,7 @@
 </p>
 
 [![website-badge](https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square)](https://gofer.clintjedwards.com/docs)
-[![project status](https://img.shields.io/badge/Project%20Status-Discontinued-orange?style=flat-square)](https://github.com/clintjedwards/gofer/releases)
+[![project status](https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square)](https://github.com/clintjedwards/gofer/releases)
 
 Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.
 
@@ -17,11 +17,11 @@ It specializes in executing your custom scripts in a containerized environment, 
 
 Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
 
-## Discontinued
+## Low Priority
 
-Gofer has served its purpose and it is time to move on to other big projects. It still serves as a repository of
-open-source Rust code that I've written and it plays with many, alternate interesting CI/CD tooling ideas that I've
-wondered about for a long time.
+Previously I had discontinued Gofer, but I've been using it personally so much that I figured it would be good to keep
+it un-archived to push bug fixes and with LLMs being so good now maybe start rolling new features/refactors. But it's
+pretty low priority for me.
 
 ## Why?:
 
