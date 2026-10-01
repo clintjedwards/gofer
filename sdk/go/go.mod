@@ -3,7 +3,7 @@ module github.com/clintjedwards/gofer/sdk/go
 go 1.22.3
 
 require (
-	github.com/go-chi/chi/v5 v5.0.12
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/google/go-cmp v0.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
