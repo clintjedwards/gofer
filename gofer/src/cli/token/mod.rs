@@ -2,7 +2,7 @@ use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy};
 use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
-use polyfmt::{print, println, success};
+use polyfmt::{println, success};
 use std::collections::HashMap;
 
 #[derive(Debug, Args, Clone)]
@@ -198,7 +198,7 @@ impl Cli {
 
         let content = tera.render("main", &context)?;
         println!("[{}] :: User: {}", &token.id, &token.user);
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 
@@ -341,7 +341,7 @@ impl Cli {
 
         let content = tera.render("main", &context)?;
         println!("[{}] :: User {}", &token.id, &token.user);
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 

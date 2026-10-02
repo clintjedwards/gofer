@@ -7,7 +7,7 @@ use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
-use polyfmt::{print, println, success};
+use polyfmt::{println, success};
 use serde::Serialize;
 
 #[derive(Debug, Args, Clone)]
@@ -398,9 +398,9 @@ impl Cli {
             &pipeline_config.name,
             colorize_status_text(pipeline_metadata.state)
         );
-        print!("\n");
-        print!("{}\n", &pipeline_config.description);
-        print!("{}", content);
+        println!("");
+        println!("{}", &pipeline_config.description);
+        println!("{}", content.trim_end());
         Ok(())
     }
 

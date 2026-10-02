@@ -4,7 +4,7 @@ use bytes::BufMut;
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
-use polyfmt::{Format, Options, println, success};
+use polyfmt::{Format, pause, print, println, resume, success};
 use std::io::Write;
 
 #[derive(Debug, Args, Clone)]
@@ -180,19 +180,29 @@ impl Cli {
                 }
             }
 
-            std::println!("{}", String::from_utf8_lossy(&buffer));
+            println!("{}", String::from_utf8_lossy(&buffer));
             return Ok(());
         }
 
+        // Raw object bytes go straight to stdout so we pause the formatter while writing them.
+        pause!();
+
         let mut stdout = std::io::stdout();
 
-        while let Some(chunk) = object.next().await {
-            let chunk = chunk?;
+        let result = async {
+            while let Some(chunk) = object.next().await {
+                let chunk = chunk?;
 
-            stdout.write_all(&chunk)?;
+                stdout.write_all(&chunk)?;
+            }
+
+            Ok(())
         }
+        .await;
 
-        Ok(())
+        resume!();
+
+        result
     }
 
     pub async fn pipeline_object_put(
@@ -208,8 +218,7 @@ impl Cli {
             None => self.conf.namespace.clone(),
         };
 
-        let mut spinner = polyfmt::new(Format::Spinner, Options::default());
-        spinner.print(&"Uploading object");
+        print!("Uploading object"; vec![Format::Spinner]);
 
         if path == "@" {
             let stdin = tokio::io::stdin();
@@ -222,8 +231,6 @@ impl Cli {
                 .await
                 .context("Could not successfully push object to Gofer api")?
                 .object;
-
-            spinner.finish();
 
             success!("Successfully uploaded object '{}'", object.key);
 
@@ -244,8 +251,6 @@ impl Cli {
             .await
             .context("Could not successfully push object to Gofer api")?
             .object;
-
-        spinner.finish();
 
         success!("Successfully uploaded object '{}'", object.key);
 

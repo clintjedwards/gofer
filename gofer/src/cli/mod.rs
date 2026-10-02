@@ -11,7 +11,10 @@ mod task;
 mod token;
 mod up;
 
-use crate::conf::{Configuration, cli::CliConfig};
+use crate::conf::{
+    Configuration,
+    cli::{CliConfig, OutputFormat},
+};
 use anyhow::{Context, Result, bail};
 use chrono::{LocalResult, TimeZone, Utc};
 use chrono_humanize::HumanTime;
@@ -19,11 +22,12 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use gofer_sdk::api::ClientInfo;
 use lazy_regex::regex;
-use polyfmt::println;
+use polyfmt::{finish, println};
 use reqwest::{Client, header};
 use std::collections::HashMap;
 use std::{
     fmt::Debug,
+    io::IsTerminal,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -212,6 +216,24 @@ pub struct Cli {
     client: gofer_sdk::api::Client,
 }
 
+// So we never forget to call [`polyfmt::Formatter::finish`]
+impl Drop for Cli {
+    fn drop(&mut self) {
+        finish!();
+    }
+}
+
+impl From<OutputFormat> for polyfmt::Format {
+    fn from(value: OutputFormat) -> Self {
+        match value {
+            OutputFormat::Spinner => polyfmt::Format::Spinner,
+            OutputFormat::Plain => polyfmt::Format::Plain,
+            OutputFormat::Silent => polyfmt::Format::Silent,
+            OutputFormat::Json => polyfmt::Format::Json,
+        }
+    }
+}
+
 impl Cli {
     pub fn new() -> Result<Self> {
         let args = Args::parse();
@@ -222,18 +244,21 @@ impl Cli {
         let client = new_api_client(&conf.api_base_url, &conf.token)
             .context("Could not initiate gofer api client")?;
 
-        Ok(Cli { args, conf, client })
-    }
+        // Spinners only make sense on a terminal, when output is redirected we fall back to plain.
+        let output_format = match conf.output_format {
+            OutputFormat::Spinner if !std::io::stdout().is_terminal() => polyfmt::Format::Plain,
+            _ => polyfmt::Format::from(conf.output_format.clone()),
+        };
 
-    #[allow(dead_code)]
-    pub fn init_formatter(&self, format: polyfmt::Format) -> Box<dyn polyfmt::Formatter> {
         let fmtter_options = polyfmt::Options {
-            debug: self.conf.debug,
+            debug: conf.debug,
             padding: 1,
             ..Default::default()
         };
 
-        polyfmt::new(format, fmtter_options)
+        polyfmt::set_global_formatter(polyfmt::new(output_format, fmtter_options));
+
+        Ok(Cli { args, conf, client })
     }
 
     pub async fn run(&mut self) -> Result<()> {

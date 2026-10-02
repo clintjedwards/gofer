@@ -2,7 +2,7 @@ use crate::cli::{Cli, validate_identifier};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
-use polyfmt::{print, println, success};
+use polyfmt::{println, success};
 
 #[derive(Debug, Args, Clone)]
 pub struct PipelineSecretSubcommands {
@@ -171,7 +171,7 @@ impl Cli {
         );
 
         let content = tera.render("main", &context)?;
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 

@@ -5,5 +5,5 @@ api_base_url = "http://127.0.0.1:8080/"
 debug = false
 detail = false
 namespace = "default"
-output_format = "plain"
+output_format = "spinner"
 token = "example"

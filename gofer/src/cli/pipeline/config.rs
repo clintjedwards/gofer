@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
-use polyfmt::{print, println, success};
+use polyfmt::{println, success};
 
 #[derive(Debug, Args, Clone)]
 pub struct ConfigSubcommands {
@@ -179,13 +179,13 @@ impl Cli {
             config.config.name,
             colorize_status_text(config.config.state)
         );
-        print!("\n");
+        println!("");
         println!("  Version: {}", &config.config.version);
         println!("  Parallelism: {}", &config.config.parallelism);
-        print!("\n");
+        println!("");
         println!("  {}", &config.config.description);
 
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 

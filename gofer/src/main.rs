@@ -25,6 +25,8 @@ async fn main() {
         Ok(_) => {}
         Err(e) => {
             error!("{:?}", e);
+            // process::exit skips destructors, so we drop the cli manually to finish the formatter.
+            drop(cli);
             std::process::exit(1)
         }
     }

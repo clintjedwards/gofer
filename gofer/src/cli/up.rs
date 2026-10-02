@@ -2,7 +2,7 @@ use crate::cli::Cli;
 use anyhow::bail;
 use anyhow::{Context, Result};
 use colored::Colorize;
-use polyfmt::{Format, Options, error, println, success};
+use polyfmt::{Format, error, print, println, success};
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 
@@ -33,8 +33,7 @@ impl Cli {
             None => self.conf.namespace.clone(),
         };
 
-        let mut spinner = polyfmt::new(Format::Spinner, Options::default());
-        spinner.print(&"Creating pipeline");
+        print!("Creating pipeline"; vec![Format::Spinner]);
 
         // Figure out absolute path for any given path string.
         let full_path = path.canonicalize().with_context(|| {
@@ -82,7 +81,7 @@ impl Cli {
             let read_line = read_line.trim();
             let mut status_line = format!("Building pipeline config: {}", read_line);
             status_line.truncate(max_line_length.into());
-            spinner.print(&status_line);
+            print!("{}", status_line; vec![Format::Spinner]);
         }
 
         let exit_status = cmd
@@ -95,8 +94,6 @@ impl Cli {
             }
 
             let last_few_lines: Vec<String> = last_lines.into_iter().rev().take(15).collect();
-
-            spinner.finish();
 
             error!(
                 "Could not successfully build target pipeline; Examine partial error output below:\n..."
@@ -120,7 +117,7 @@ impl Cli {
             bail!("");
         }
 
-        spinner.print(&"Parsing pipeline config");
+        print!("Parsing pipeline config"; vec![Format::Spinner]);
 
         let mut output = "".to_string();
         cmd.stdout.unwrap().read_to_string(&mut output).unwrap();
@@ -128,7 +125,7 @@ impl Cli {
         let config: gofer_sdk::api::types::Pipeline =
             serde_json::from_str(&output).context("Could not parse pipeline config")?;
 
-        spinner.print(&"Creating pipeline config");
+        print!("Creating pipeline config"; vec![Format::Spinner]);
 
         let config_req = gofer_sdk::api::types::RegisterPipelineConfigRequest {
             config: config.clone(),
@@ -141,8 +138,6 @@ impl Cli {
             .context("Could not successfully create pipeline config")?
             .into_inner()
             .pipeline;
-
-        spinner.finish();
 
         success!(
             "Registered pipeline: [{}] '{}' {}",

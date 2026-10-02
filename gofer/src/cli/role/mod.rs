@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use gofer_sdk::api::types::{Action, Permission};
-use polyfmt::{error, print, println, question, success};
+use polyfmt::{error, pause, println, question, resume, success};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Args, Clone)]
@@ -196,7 +196,7 @@ impl Cli {
         context.insert("permissions", &permissions);
 
         let content = tera.render("main", &context)?;
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 
@@ -269,7 +269,12 @@ impl Cli {
                 .map(|value| (value, false))
                 .collect();
 
-            polyfmt::tui::choose_many(&mut action_choices, possible_actions.len())?;
+            // choose_many draws directly to the terminal so we pause the formatter while it runs.
+            pause!();
+            let choice_result =
+                polyfmt::tui::choose_many(&mut action_choices, possible_actions.len());
+            resume!();
+            choice_result?;
 
             let mut actions = vec![];
 

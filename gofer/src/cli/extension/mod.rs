@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use futures::StreamExt;
-use polyfmt::{error, print, println, question, success};
+use polyfmt::{error, println, question, success};
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::Message;
 
@@ -214,8 +214,8 @@ impl Cli {
             &extension.registration.extension_id.cyan(),
             colorize_status_text(extension.state)
         );
-        print!("{}", content);
-        print!("{}", "\n");
+        println!("{}", content.trim_end());
+        println!("");
         if extension.documentation.body.is_empty() {
             println!("{}", "No documentation found");
         } else {

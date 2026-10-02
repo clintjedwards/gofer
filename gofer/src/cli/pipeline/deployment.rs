@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
-use polyfmt::{print, println};
+use polyfmt::println;
 
 #[derive(Debug, Args, Clone)]
 pub struct DeploymentSubcommands {
@@ -191,7 +191,7 @@ impl Cli {
         context.insert("logs", &deployment.deployment.logs);
 
         let content = tera.render("main", &context)?;
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 }

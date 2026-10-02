@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::{SinkExt, StreamExt};
-use polyfmt::{error, print, println, success};
+use polyfmt::{error, finish, pause, println, resume, success};
 use std::{io::Write, sync::Arc};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
@@ -336,7 +336,7 @@ impl Cli {
             colorize_status_text(task.state),
             colorize_status_text(task.status)
         );
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 
@@ -463,12 +463,17 @@ impl Cli {
 
         let close_writer = shared_writer.clone();
 
+        // The session writes straight to the terminal so we pause the formatter and resume it once the session ends.
+        pause!();
+
         tokio::spawn(async move {
             signal::ctrl_c()
                 .await
                 .expect("Failed to listen for Ctrl+C signal");
 
             let _ = close_writer.lock().await.send(Message::Close(None)).await;
+            resume!();
+            finish!();
             std::process::exit(0);
         });
 
@@ -477,30 +482,30 @@ impl Cli {
             while let Some(message) = read.next().await {
                 match message {
                     Ok(Message::Text(text)) => {
-                        print!("{}", text);
+                        std::print!("{}", text);
                         std::io::stdout().flush().unwrap();
                     }
                     Ok(Message::Binary(text)) => {
-                        print!("{}", String::from_utf8_lossy(&text));
+                        std::print!("{}", String::from_utf8_lossy(&text));
                         std::io::stdout().flush().unwrap();
                     }
                     Ok(Message::Close(_)) => {
-                        error!("Connection closed by server");
+                        std::eprintln!("Connection closed by server");
                         break;
                     }
                     Err(tokio_tungstenite::tungstenite::Error::ConnectionClosed) => {
-                        error!("Connection closed");
+                        std::eprintln!("Connection closed");
                         break;
                     }
                     Err(tokio_tungstenite::tungstenite::Error::Protocol(e))
                         if e.to_string()
                             .contains("Connection reset without closing handshake") =>
                     {
-                        error!("Connection reset without closing handshake");
+                        std::eprintln!("Connection reset without closing handshake");
                         break;
                     }
                     Err(e) => {
-                        error!("Error receiving message: {}", e);
+                        std::eprintln!("Error receiving message: {}", e);
                     }
                     _ => {}
                 }
@@ -508,23 +513,30 @@ impl Cli {
         });
 
         // Write handler
-        let stdin = tokio::io::stdin();
-        let reader = BufReader::new(stdin);
-        let mut lines = reader.lines();
+        let result = async {
+            let stdin = tokio::io::stdin();
+            let reader = BufReader::new(stdin);
+            let mut lines = reader.lines();
 
-        while let Some(line) = lines
-            .next_line()
-            .await
-            .context("Error while attempting to process user input")?
-        {
-            shared_writer
-                .lock()
+            while let Some(line) = lines
+                .next_line()
                 .await
-                .send(Message::Text(line.into()))
-                .await
-                .context("Error while attempting to copy user input to server")?;
+                .context("Error while attempting to process user input")?
+            {
+                shared_writer
+                    .lock()
+                    .await
+                    .send(Message::Text(line.into()))
+                    .await
+                    .context("Error while attempting to copy user input to server")?;
+            }
+
+            Ok(())
         }
+        .await;
 
-        Ok(())
+        resume!();
+
+        result
     }
 }

@@ -25,7 +25,7 @@ func main() {
 		Tasks(
 			sdk.NewTask("simple-task", "ubuntu:latest").
 				Description("This task simply prints our hello-world message and exits!").
-				Command("echo", "Hello from Gofer!").Variable("test", "sample"),
+				Command("echo", "Hello from Gofer!").Variables(map[string]string{"test": "sample"}),
 		).Finish()
 	if err != nil {
 		log.Fatal(err)

@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
-use polyfmt::{print, println, success};
+use polyfmt::{println, success};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -333,7 +333,7 @@ impl Cli {
             colorize_status_text(run.state),
             colorize_status_text(run.status)
         );
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 

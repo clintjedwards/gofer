@@ -3,7 +3,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use chrono::TimeZone;
 use clap::{Args, Subcommand};
 use futures::StreamExt;
-use polyfmt::{error, print, println};
+use polyfmt::{error, println};
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::Message;
 
@@ -143,7 +143,7 @@ impl Cli {
         context.insert("kind", &format!("{:#?}", event.kind));
 
         let content = tera.render("main", &context)?;
-        print!("{}", content);
+        println!("{}", content.trim_end());
 
         Ok(())
     }

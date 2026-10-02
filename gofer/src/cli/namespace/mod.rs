@@ -2,7 +2,7 @@ use crate::cli::Cli;
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
-use polyfmt::{print, println, success};
+use polyfmt::{println, success};
 
 #[derive(Debug, Args, Clone)]
 pub struct NamespaceSubcommands {
@@ -154,7 +154,7 @@ Created {{created}}
         );
 
         let content = tera.render("main", &context)?;
-        print!("{}", content);
+        println!("{}", content.trim_end());
         Ok(())
     }
 

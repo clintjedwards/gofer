@@ -6,8 +6,11 @@ const DEFAULT_CLI_CONFIG: &str = include_str!("./default_cli_config.toml");
 
 #[derive(Debug, Clone, Display, Default, EnumString, Serialize, Deserialize, PartialEq, Eq)]
 pub enum OutputFormat {
-    #[serde(alias = "plain", alias = "PLAIN")]
+    #[serde(alias = "spinner", alias = "SPINNER")]
     #[default]
+    Spinner,
+
+    #[serde(alias = "plain", alias = "PLAIN")]
     Plain,
 
     #[serde(alias = "silent", alias = "SILENT")]

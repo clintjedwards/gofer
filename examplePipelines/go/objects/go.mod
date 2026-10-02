@@ -1,7 +1,7 @@
-module github.com/clintjedwards/gofer/examplePipelines/go/simple
+module github.com/clintjedwards/gofer/examplePipelines/go/objects
 
 replace github.com/clintjedwards/gofer/sdk/go => ../../../sdk/go
 
-go 1.22.3
+go 1.26.0
 
-require github.com/clintjedwards/gofer/sdk/go v0.0.0-00010101000000-000000000000
+require github.com/clintjedwards/gofer/sdk/go v0.0.0-20261002012124-2469189c185e
