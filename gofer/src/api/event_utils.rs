@@ -360,7 +360,7 @@ impl EventBus {
 
     /// Returns a channel receiver end which can be used to list to live events as they are emitted.
     /// Since this is done purely in memory it is faster and less DB heavy than [`subscribe_historical`].
-    pub fn subscribe_live(&self) -> impl EventListener {
+    pub fn subscribe_live(&self) -> impl EventListener + use<> {
         self.broadcast_channel.subscribe()
     }
 
@@ -371,7 +371,7 @@ impl EventBus {
     pub async fn subscribe_historical(
         &self,
         start_from: Option<String>,
-    ) -> Result<impl EventListener> {
+    ) -> Result<impl EventListener + use<>> {
         let mut stream = std::collections::VecDeque::new();
         let mut last_id_read = None;
 

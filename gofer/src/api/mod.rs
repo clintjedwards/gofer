@@ -1278,7 +1278,7 @@ fn _http_error(
 /// * Error and Context are passed to the logger for more information internally.
 #[macro_export]
 macro_rules! http_error {
-    ($message:expr, $code:expr, $req_id:expr, $error:expr $(, $key:ident = $value:expr)*) => {{
+    ($message:expr_2021, $code:expr_2021, $req_id:expr_2021, $error:expr_2021 $(, $key:ident = $value:expr_2021)*) => {{
         #[allow(unused_mut)]
         let mut context = std::collections::HashMap::new();
         $(

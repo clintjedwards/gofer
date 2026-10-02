@@ -608,11 +608,11 @@ pub async fn start_extensions(api_state: Arc<ApiState>) -> Result<()> {
 pub async fn stop_extensions(api_state: Arc<ApiState>) {
     for extension in api_state.extensions.iter() {
         let (id, extension) = extension.pair();
-        if let Ok(extension_client) = new_extension_client(
+        match new_extension_client(
             &extension.url,
             &extension.secret,
             api_state.config.extensions.verify_certs,
-        ) {
+        ) { Ok(extension_client) => {
             if let Err(e) = extension_client.shutdown().await {
                 error!(error = %e, extension_id = id, "Could not call shutdown on extension");
                 continue;
@@ -631,10 +631,10 @@ pub async fn stop_extensions(api_state: Arc<ApiState>) {
                 error!(error = %e, container_id = container_id, "Could not shutdown extension via scheduler");
                 continue;
             }
-        } else {
+        } _ => {
             error!("Could not create extension client while attempting to stop extensions");
             continue;
-        };
+        }};
     }
 }
 

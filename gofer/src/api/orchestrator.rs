@@ -1774,7 +1774,7 @@ impl Run {
                                 {
                                     bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
                                 };
-                            } else if let Err(e) = self
+                            } else { match self
                                 .set_task_execution_complete(
                                     &mut conn,
                                     &task_id,
@@ -1787,9 +1787,9 @@ impl Run {
                                     }),
                                 )
                                 .await
-                            {
+                            { Err(e) => {
                                 bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
-                            }
+                            } _ => {}}}
 
                             return Ok(());
                         }

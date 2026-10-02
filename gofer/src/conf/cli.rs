@@ -82,14 +82,14 @@ mod tests {
 
     #[test]
     fn load_from_environment_variables() {
-        env::set_var("GOFER_API_BASE_URL", "http://localhost:3001");
-        env::set_var("GOFER_TOKEN", "envoveride");
+        unsafe { env::set_var("GOFER_API_BASE_URL", "http://localhost:3001") };
+        unsafe { env::set_var("GOFER_TOKEN", "envoveride") };
 
         let config = Configuration::<CliConfig>::load(None).unwrap();
 
         // Cleanup environment variables after test
-        env::remove_var("GOFER_API_BASE_URL");
-        env::remove_var("GOFER_TOKEN");
+        unsafe { env::remove_var("GOFER_API_BASE_URL") };
+        unsafe { env::remove_var("GOFER_TOKEN") };
 
         assert_eq!(config.api_base_url, "http://localhost:3001");
         assert_eq!(config.token, "envoveride");
