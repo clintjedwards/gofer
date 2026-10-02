@@ -13,12 +13,14 @@ Gofer can store objects permanently for each pipeline. You can store objects at 
 gofer pipeline object store command:
 
 ```bash
-gofer pipeline object put my-pipeline my_key1=my_value5
+gofer pipeline object put my-pipeline my_key1 ./some_file
+echo "my_value" | gofer pipeline object put my-pipeline my_key2 @
 gofer pipeline object get my-pipeline my_key1
 ```
 
 The limitation to pipeline level objects is that they have a limit of the number of objects that can be stored
-per-pipeline. Once that limit is reached the oldest object in the store will be removed for the newest object.
+per-pipeline (`pipeline_object_limit`). Once that limit is reached the oldest object in the store will be removed for
+the newest object. Overwriting an existing object with `--force` counts it as the newest.
 
 ## Run-level objects
 
@@ -29,13 +31,13 @@ stored at the run level will expire and that object will be deleted.
 You can access the run-level store using the run level store CLI commands. Here is an example:
 
 ```bash
-gofer run object put simple_pipeline my_key=my_value
-gofer run object get simple_pipeline my_key
+gofer run object put simple_pipeline 1 my_key ./some_file
+gofer run object get simple_pipeline 1 my_key
 ```
 
 ## Supported Object Stores
 
-The only currently supported object store is the sqlite object store. Reference the [configuration reference](../server_configuration/configuration_reference.md) for a full list of configuration settings and options.
+The only currently supported object store is the [filesystem object store](./filesystem.md). Reference the [configuration reference](../server_configuration/configuration_reference.md) for a full list of configuration settings and options.
 
 ## How to add new Object Stores?
 

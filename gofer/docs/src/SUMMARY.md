@@ -31,7 +31,7 @@
 - [Scheduler](./ref/scheduler/README.md)
   - [Docker](./ref/scheduler/docker.md)
 - [Object Store](./ref/object_store/README.md)
-  - [Sqlite](./ref/object_store/sqlite.md)
+  - [Filesystem](./ref/object_store/filesystem.md)
 - [Secret Store](./ref/secret_store/README.md)
   - [Sqlite](./ref/secret_store/sqlite.md)
 - [Extensions](./ref/extensions/README.md)

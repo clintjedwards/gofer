@@ -64,7 +64,7 @@ detail = false
 | ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | namespace     | string | The namespace ID of the namespace you'd like to default to. This is used to target specific namespaces when there might be multiple. |
 | detail        | string | Show extra detail for some commands (ex. Exact time instead of humanized)                                                            |
-| output_format | string | Can be one of three values: `plain`, `silent`, `json`. Controls the output of CLI commands.                                          |
+| output_format | string | Can be one of `spinner` (default), `plain`, `silent`, `json`. Controls the output of CLI commands. `spinner` falls back to `plain` when output isn't a terminal. |
 | api_base_url  | string | The URL of the Gofer server; used to point the CLI and that correct host.                                                            |
 | token         | string | The authentication token passed Gofer for Ident and Auth purposes.                                                                   |
 | debug         | bool   | Print debug statements.                                                                                                              |
@@ -77,6 +77,6 @@ api_base_url  = "http://127.0.0.1:8080"
 debug         = false
 detail        = false
 namespace     = "default"
-output_format = "plain"
+output_format = "spinner"
 token         = "mysupersecrettoken"
 ```

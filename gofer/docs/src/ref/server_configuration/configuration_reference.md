@@ -97,27 +97,28 @@ You can find [more information on the object store block here.](../object_store/
 
 | name                  | type   | default | description                                                                                                                                                                                                                                                                                                          |
 | --------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| engine                | string | sqlite  | The engine Gofer will use to store state. The accepted values here are "sqlite".                                                                                                                                                                                                                                     |
-| pipeline_object_limit | int    | 50      | The limit to the amount of objects that can be stored at the pipeline level. Objects stored at the pipeline level are kept permanently, but once the object limit is reach the oldest object will be deleted.                                                                                                        |
-| run_object_expiry     | int    | 50      | Objects stored at the run level are unlimited in number, but only last for a certain number of runs. The number below controls how many runs until the run objects for the oldest run will be deleted. Ex. an object stored on run number #5 with an expiry of 2 will be deleted on run #7 regardless of run health. |
+| engine                | string | filesystem | The engine Gofer will use to store objects. The accepted values here are "filesystem".                                                                                                                                                                                                                         |
+| pipeline_object_limit | int    | 50      | The limit to the amount of objects that can be stored at the pipeline level. Objects stored at the pipeline level are kept permanently, but once the object limit is reached the oldest object will be deleted. Overwriting an object counts it as the newest. A limit of 0 means unlimited.                                                                                                        |
+| run_object_expiry     | int    | 2       | Objects stored at the run level are unlimited in number, but only last for a certain number of runs. The number below controls how many runs until the run objects for the oldest run will be deleted. Ex. an object stored on run number #5 with an expiry of 2 will be deleted on run #7 regardless of run health. |
 
-#### Sqlite (block)
+#### Filesystem (block)
 
-The sqlite store is a built-in, easy to use object store. It is meant for development and small deployments.
+The filesystem store is a built-in, easy to use object store that keeps objects as files in a local directory. It is
+meant for development and small deployments.
 
-| name   | type   | default              | description                                                                                  |
-| ------ | ------ | -------------------- | -------------------------------------------------------------------------------------------- |
-| path   | string | /tmp/gofer-object.db | The path of the file that sqlite will use. If this file does not exist Gofer will create it. |
-| sqlite | block  | N/A                  | The sqlite storage engine.                                                                   |
+| name       | type   | default            | description                                                        |
+| ---------- | ------ | ------------------ | ------------------------------------------------------------------ |
+| path       | string | /tmp/gofer_objects | The directory that object files are stored in.                     |
+| filesystem | block  | N/A                | The filesystem storage engine.                                     |
 
 ```toml
 [object_store]
-engine = "sqlite"
+engine = "filesystem"
 pipeline_object_limit = 50
-run_object_expiry = 50
+run_object_expiry = 2
 
-[object_store.sqlite]
-path = "/tmp/gofer_objects.db"
+[object_store.filesystem]
+path = "/tmp/gofer_objects"
 ```
 
 ### Secret Store (block)
