@@ -11,6 +11,13 @@
 # rust build dir
 target/
 
+# go example pipeline binaries (from `go build` in each example dir)
+examplePipelines/go/dag/dag
+examplePipelines/go/objects/objects
+examplePipelines/go/script/script
+examplePipelines/go/secrets/secrets
+examplePipelines/go/simple/simple
+
 # Remove auto-built documentation
 gofer/docs/book/html/*
 !gofer/docs/book/html/.gitkeep

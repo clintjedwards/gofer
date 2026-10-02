@@ -9215,6 +9215,8 @@ type ClientWithResponsesInterface interface {
 type StreamEventsResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -9425,6 +9427,8 @@ func (r GetExtensionDebugInfoResp) StatusCode() int {
 type GetExtensionLogsResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -10298,6 +10302,8 @@ func (r GetTaskExecutionResp) StatusCode() int {
 type AttachTaskExecutionResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -10342,6 +10348,8 @@ func (r DeleteLogsResp) StatusCode() int {
 type GetLogsResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -11859,6 +11867,23 @@ func ParseStreamEventsResp(rsp *http.Response) (*StreamEventsResp, error) {
 		HTTPResponse: rsp,
 	}
 
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
 	return response, nil
 }
 
@@ -12172,6 +12197,23 @@ func ParseGetExtensionLogsResp(rsp *http.Response) (*GetExtensionLogsResp, error
 	response := &GetExtensionLogsResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
 	}
 
 	return response, nil
@@ -13546,6 +13588,23 @@ func ParseAttachTaskExecutionResp(rsp *http.Response) (*AttachTaskExecutionResp,
 		HTTPResponse: rsp,
 	}
 
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
 	return response, nil
 }
 
@@ -13593,6 +13652,23 @@ func ParseGetLogsResp(rsp *http.Response) (*GetLogsResp, error) {
 	response := &GetLogsResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
 	}
 
 	return response, nil

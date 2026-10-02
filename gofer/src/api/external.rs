@@ -2,7 +2,7 @@ use crate::api::{ApiState, Middleware, extensions, load_tls, wait_for_shutdown_s
 use crate::conf;
 use anyhow::{Context, Result, anyhow};
 use dropshot::{
-    ApiDescription, ConfigDropshot, ConfigTls, HandlerTaskMode, HttpError,
+    ApiDescription, CompressionConfig, ConfigDropshot, ConfigTls, HandlerTaskMode, HttpError,
     HttpResponseUpdatedNoContent, Path, RequestContext, ServerBuilder, UntypedBody, endpoint,
 };
 use schemars::JsonSchema;
@@ -27,6 +27,9 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
         // If a client disconnects run the handler to completion still. Eventually we'll want to save resources
         // by allowing the handler to early cancel, but until this is more developed lets just run it to completion.
         default_handler_task_mode: HandlerTaskMode::Detached,
+
+        // Only applies to compressible content types and when the client asks for it via Accept-Encoding.
+        compression: CompressionConfig::Gzip,
     };
 
     let mut api = ApiDescription::new();

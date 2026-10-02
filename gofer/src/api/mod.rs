@@ -24,9 +24,9 @@ use crate::{conf, object_store, scheduler, secret_store, storage};
 use anyhow::{Context, Result, anyhow, bail};
 use dashmap::DashMap;
 use dropshot::{
-    ApiDescription, Body, ConfigDropshot, ConfigTls, DropshotState, EndpointTagPolicy,
-    ErrorStatusCode, HandlerError, HandlerTaskMode, HttpError, HttpServer, RequestInfo,
-    ServerBuilder, ServerContext, TagConfig, TagDetails, WebsocketConnectionRaw,
+    ApiDescription, Body, CompressionConfig, ConfigDropshot, ConfigTls, DropshotState,
+    EndpointTagPolicy, ErrorStatusCode, HandlerError, HandlerTaskMode, HttpError, HttpServer,
+    RequestInfo, ServerBuilder, ServerContext, TagConfig, TagDetails, WebsocketConnectionRaw,
 };
 use futures::Future;
 use lazy_regex::regex;
@@ -406,6 +406,9 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
         // If a client disconnects run the handler to completion still. Eventually we'll want to save resources
         // by allowing the handler to early cancel, but until this is more developed lets just run it to completion.
         default_handler_task_mode: HandlerTaskMode::Detached,
+
+        // Only applies to compressible content types and when the client asks for it via Accept-Encoding.
+        compression: CompressionConfig::Gzip,
     };
 
     let api = init_api_description()?;

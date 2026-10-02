@@ -15,8 +15,8 @@ categories = ["command-line-utilities", "development-tools"]
 async-trait = "0.1"
 anyhow = "1.0"
 base64 = "0.23"
-dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.15.1" }
-dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.11.0-dev" }
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1" }
+dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1" }
 futures = "0.3"
 http = "1.5"
 lazy-regex = "3.6"

@@ -33,13 +33,14 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": "",
-            "content": {
-              "*/*": {
-                "schema": {}
-              }
-            }
+          "101": {
+            "description": "Negotiating protocol upgrade from HTTP/1.1 to WebSocket"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "x-dropshot-websocket": {}
@@ -341,13 +342,14 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": "",
-            "content": {
-              "*/*": {
-                "schema": {}
-              }
-            }
+          "101": {
+            "description": "Negotiating protocol upgrade from HTTP/1.1 to WebSocket"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "x-dropshot-websocket": {}
@@ -420,7 +422,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "successful operation",
             "content": {
               "*/*": {
                 "schema": {}
@@ -1383,7 +1385,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "successful operation",
             "content": {
               "*/*": {
                 "schema": {}
@@ -1865,7 +1867,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "successful operation",
             "content": {
               "*/*": {
                 "schema": {}
@@ -2277,13 +2279,14 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": "",
-            "content": {
-              "*/*": {
-                "schema": {}
-              }
-            }
+          "101": {
+            "description": "Negotiating protocol upgrade from HTTP/1.1 to WebSocket"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "x-dropshot-websocket": {}
@@ -2337,13 +2340,14 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": "",
-            "content": {
-              "*/*": {
-                "schema": {}
-              }
-            }
+          "101": {
+            "description": "Negotiating protocol upgrade from HTTP/1.1 to WebSocket"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "x-dropshot-websocket": {}
