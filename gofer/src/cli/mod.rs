@@ -263,6 +263,8 @@ impl Cli {
         let fmtter_options = polyfmt::Options {
             debug: conf.debug,
             padding: 1,
+            // Tables and templates are already laid out for the terminal, so we don't want polyfmt re-wrapping them.
+            max_line_length: usize::MAX,
             ..Default::default()
         };
 
@@ -336,10 +338,16 @@ impl Cli {
             .client
             .get_system_preferences()
             .await
-            .unwrap()
+            .context("Could not retrieve system preferences from Gofer api")?
             .into_inner();
 
-        let current_token = self.client.whoami().await.unwrap().into_inner().token;
+        let current_token = self
+            .client
+            .whoami()
+            .await
+            .context("Could not retrieve current token from Gofer api")?
+            .into_inner()
+            .token;
 
         println!("Whoami?");
         println!("  id: {}", current_token.id);
@@ -378,6 +386,15 @@ fn format_duration(time: u64) -> Option<String> {
 
     let time_diff = epoch_milli() as i64 - time as i64;
     let time_diff_duration = chrono::Duration::milliseconds(time_diff);
+
+    // HumanTime calls very recent times "now" but still appends "ago"/"in" for the tense.
+    let present = HumanTime::from(time_diff_duration).to_text_en(
+        chrono_humanize::Accuracy::Rough,
+        chrono_humanize::Tense::Present,
+    );
+    if present == "now" {
+        return Some("just now".into());
+    }
 
     if time_diff.is_positive() {
         Some(HumanTime::from(time_diff_duration).to_text_en(

@@ -5,7 +5,7 @@ use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use gofer_sdk::api::types::{Action, Permission};
 use polyfmt::{error, pause, println, question, resume, success};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[derive(Debug, Args, Clone)]
 pub struct RoleSubcommands {
@@ -124,7 +124,8 @@ impl Cli {
 {%- endfor %}
 "#;
 
-        let mut permission_map: HashMap<String, HashSet<String>> = std::collections::HashMap::new();
+        let mut permission_map: std::collections::BTreeMap<String, HashSet<String>> =
+            std::collections::BTreeMap::new();
 
         for permission in &role.permissions {
             for resource in &permission.resources {
@@ -170,7 +171,7 @@ impl Cli {
             sorted_actions.sort_by_key(|action| {
                 custom_order
                     .iter()
-                    .position(|&a| a == action.as_str())
+                    .position(|&a| a.eq_ignore_ascii_case(action))
                     .unwrap_or(usize::MAX)
             });
             permission_table.add_row(vec![
@@ -179,12 +180,11 @@ impl Cli {
             ]);
         }
 
-        // Sort permissions so they always have the same ordering; allows user to quickly scan.
-        let mut permissions = permission_table
+        // Resources come from a BTreeMap so rows are already in a stable order; allows user to quickly scan.
+        let permissions = permission_table
             .lines()
             .map(|line| line.to_string())
             .collect::<Vec<String>>();
-        permissions.sort();
 
         let mut tera = tera::Tera::default();
         tera.add_raw_template("main", TEMPLATE)

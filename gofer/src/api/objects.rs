@@ -359,7 +359,7 @@ pub async fn get_run_object(
         ))
         .map_err(|err| {
             if err == object_store::ObjectStoreError::NotFound {
-                return HttpError::for_bad_request(None, "Object not found".into());
+                return HttpError::for_not_found(None, "Object not found".into());
             };
 
             http_error!(
@@ -835,7 +835,7 @@ pub async fn get_pipeline_object(
         ))
         .map_err(|err| {
             if err == object_store::ObjectStoreError::NotFound {
-                return HttpError::for_bad_request(None, "Object not found".into());
+                return HttpError::for_not_found(None, "Object not found".into());
             };
 
             http_error!(
@@ -1362,7 +1362,7 @@ pub async fn get_extension_object(
         .get_stream(&extension_object_store_key(&path.extension_id, &path.key))
         .map_err(|err| {
             if err == object_store::ObjectStoreError::NotFound {
-                return HttpError::for_bad_request(None, "Object not found".into());
+                return HttpError::for_not_found(None, "Object not found".into());
             };
 
             http_error!(

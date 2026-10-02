@@ -1321,6 +1321,10 @@ impl Run {
             &new_task_execution.task_id,
         );
 
+        // Captured before scheduling so the task's duration includes pulling its image and starting the container;
+        // short tasks can finish before start_container even returns.
+        let started = epoch_milli();
+
         if let Err(e) = self
             .api_state
             .scheduler
@@ -1408,7 +1412,7 @@ impl Run {
             &new_task_execution.task_id,
             storage::task_executions::UpdatableFields {
                 state: Some(task_executions::State::Running.to_string()),
-                started: Some(epoch_milli().to_string()),
+                started: Some(started.to_string()),
                 ..Default::default()
             },
         )
