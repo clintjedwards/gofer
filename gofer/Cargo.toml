@@ -10,16 +10,16 @@ aes = "0.8"
 aes-gcm = "0.10"
 anyhow = "1.0"
 async-trait = "0.1"
-base64 = "0.22"
+base64 = "0.23"
 bollard = "0.18"
 bytes = "1.12"
 chrono = "0.4"
 chrono-humanize = "0.2"
 clap = { version = "4.6", features = ["derive", "wrap_help"] }
 colored = "3.1"
-comfy-table = "7.2"
+comfy-table = "8.0"
 dashmap = "6.2"
-dirs = "6.0"
+dirs = "7.0"
 dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.15.1" }
 dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.15.1" }
 figment = { version = "0.10", features = ["env", "toml"] }
@@ -38,14 +38,14 @@ reqwest = { version = "0.12", features = [
     "rustls-tls",
     "stream"
 ], default-features = false }
-rstest = "0.25"
+rstest = "0.27"
 rust-embed = "8.12"
 schemars = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10"
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite"] }
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 tera = "1.20"
 thiserror = "2.0"
 tokio = { version = "1.53", features = ["full"] }

@@ -124,7 +124,7 @@ impl Cli {
 
         let mut table = comfy_table::Table::new();
         table
-            .load_preset(ASCII_MARKDOWN)
+            .load_style(ASCII_MARKDOWN)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec![
                 Cell::new("id")

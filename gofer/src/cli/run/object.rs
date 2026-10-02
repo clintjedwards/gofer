@@ -154,7 +154,7 @@ impl Cli {
 
         let mut table = comfy_table::Table::new();
         table
-            .load_preset(comfy_table::presets::ASCII_MARKDOWN)
+            .load_style(comfy_table::presets::ASCII_MARKDOWN)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec![
                 Cell::new("key")

@@ -177,7 +177,7 @@ impl Cli {
 
         let mut table = comfy_table::Table::new();
         table
-            .load_preset(comfy_table::presets::ASCII_MARKDOWN)
+            .load_style(comfy_table::presets::ASCII_MARKDOWN)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec![
                 Cell::new("id")
@@ -280,7 +280,7 @@ impl Cli {
             };
 
             run_table
-                .load_preset(comfy_table::presets::NOTHING)
+                .load_style(comfy_table::presets::NOTHING)
                 .set_content_arrangement(ContentArrangement::Dynamic);
 
             run_table.add_row(vec![
@@ -316,7 +316,7 @@ impl Cli {
 
         for subscription in subscription_table_data {
             subscription_table
-                .load_preset(comfy_table::presets::NOTHING)
+                .load_style(comfy_table::presets::NOTHING)
                 .set_content_arrangement(ContentArrangement::Dynamic);
 
             subscription_table.add_row(vec![

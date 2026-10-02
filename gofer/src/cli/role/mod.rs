@@ -78,7 +78,7 @@ impl Cli {
 
         let mut table = comfy_table::Table::new();
         table
-            .load_preset(ASCII_MARKDOWN)
+            .load_style(ASCII_MARKDOWN)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec![
                 Cell::new("id")
@@ -147,7 +147,7 @@ impl Cli {
 
         let mut permission_table = comfy_table::Table::new();
         permission_table
-            .load_preset(comfy_table::presets::NOTHING)
+            .load_style(comfy_table::presets::NOTHING)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec![
                 Cell::new("Resource")

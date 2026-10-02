@@ -136,7 +136,7 @@ impl Cli {
 
         let mut table = comfy_table::Table::new();
         table
-            .load_preset(comfy_table::presets::ASCII_MARKDOWN)
+            .load_style(comfy_table::presets::ASCII_MARKDOWN)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec![
                 Cell::new("id")
@@ -212,9 +212,11 @@ impl Cli {
 
         let mut task_table = comfy_table::Table::new();
         task_table
-            .load_preset(comfy_table::presets::NOTHING)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_style(comfy_table::TableComponent::VerticalLines, ':');
+            .load_style(
+                comfy_table::presets::NOTHING
+                    .content_lines(comfy_table::ContentLineStyle::none().junction(':')),
+            )
+            .set_content_arrangement(ContentArrangement::Dynamic);
 
         for task in task_executions.iter() {
             let state_prefix: &str = match task.state {
@@ -262,7 +264,7 @@ impl Cli {
 
         let mut attr_table = comfy_table::Table::new();
         attr_table
-            .load_preset(comfy_table::presets::NOTHING)
+            .load_style(comfy_table::presets::NOTHING)
             .set_content_arrangement(ContentArrangement::Dynamic);
 
         attr_table.add_row(vec![
