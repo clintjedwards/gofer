@@ -5,8 +5,8 @@ use super::{
 };
 use async_trait::async_trait;
 use bollard::exec::{CreateExecOptions, StartExecOptions};
-use futures::stream::TryStreamExt;
 use futures::Stream;
+use futures::stream::TryStreamExt;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -261,7 +261,7 @@ impl super::Scheduler for Scheduler {
                     return Err(SchedulerError::Unknown(format!(
                         "could not get network settings (ports binding); {:#?}",
                         ports
-                    )))
+                    )));
                 }
             };
             let ports = match ports {
@@ -270,7 +270,7 @@ impl super::Scheduler for Scheduler {
                     return Err(SchedulerError::Unknown(format!(
                         "could not get network settings (ports binding); {:#?}",
                         ports
-                    )))
+                    )));
                 }
             };
 
@@ -349,7 +349,7 @@ impl super::Scheduler for Scheduler {
                 return Ok(GetStateResponse {
                     exit_code: None,
                     state: ContainerState::Unknown,
-                })
+                });
             }
         }
     }

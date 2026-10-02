@@ -1,4 +1,4 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
 use sqlx::{Execute, FromRow, SqliteConnection};
 
@@ -84,7 +84,7 @@ pub async fn delete(
 mod tests {
     use super::*;
     use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use sqlx::{Sqlite, pool::PoolConnection};
 
     async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
         let harness = TestHarness::new().await;

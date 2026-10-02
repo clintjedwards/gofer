@@ -1,7 +1,7 @@
-use crate::cli::{colorize_status_text, colorize_status_text_comfy, Cli};
-use anyhow::{bail, Context, Result};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy};
+use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
-use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
+use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use polyfmt::{print, println, success};
 use std::collections::HashMap;
 

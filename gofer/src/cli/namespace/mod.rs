@@ -1,7 +1,7 @@
 use crate::cli::Cli;
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
-use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
+use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use polyfmt::{print, println, success};
 
 #[derive(Debug, Args, Clone)]

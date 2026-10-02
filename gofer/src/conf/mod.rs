@@ -3,8 +3,8 @@ pub mod cli;
 
 use anyhow::Result;
 use figment::{
-    providers::{Env, Format, Toml},
     Figment,
+    providers::{Env, Format, Toml},
 };
 use serde::Deserialize;
 #[allow(deprecated)]

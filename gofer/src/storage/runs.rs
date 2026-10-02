@@ -1,4 +1,4 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
 use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
@@ -99,14 +99,11 @@ pub async fn list_unfinished(
     offset: i64,
     limit: i64,
 ) -> Result<Vec<Run>, StorageError> {
-    let query_str = 
-        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
+    let query_str = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
     runs WHERE state != 'complete' LIMIT ? OFFSET ?;";
-    
-    let query = sqlx::query_as::<_, Run>(query_str)
-        .bind(limit)
-        .bind(offset);
+
+    let query = sqlx::query_as::<_, Run>(query_str).bind(limit).bind(offset);
 
     let sql = query.sql();
 
@@ -281,7 +278,7 @@ pub async fn delete(
 mod tests {
     use super::*;
     use crate::storage::tests::TestHarness;
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use sqlx::{Sqlite, pool::PoolConnection};
 
     async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
         let harness = TestHarness::new().await;

@@ -1,15 +1,15 @@
 use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        event_utils, extensions, interpolate_vars, is_valid_identifier, ApiState, PreflightOptions,
-        Variable, VariableSource,
+        ApiState, PreflightOptions, Variable, VariableSource, event_utils, extensions,
+        interpolate_vars, is_valid_identifier,
     },
     http_error, storage,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use dropshot::{
-    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
-    HttpResponseOk, HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody,
+    ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
+    HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody, endpoint,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

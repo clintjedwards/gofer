@@ -14,7 +14,7 @@ exclude = [
   "champagne/run_tests",
 ]
 
-resolver = "2"
+resolver = "3"
 
 [profile.dev]
 # Disabling debug info speeds up builds a bunch,

@@ -1,7 +1,7 @@
 mod object;
 
-use crate::cli::{colorize_status_text, colorize_status_text_comfy, dependencies, duration, Cli};
-use anyhow::{bail, Context, Result};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, dependencies, duration};
+use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};

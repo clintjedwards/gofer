@@ -1,6 +1,6 @@
 use crate::api::ApiState;
-use dropshot::{endpoint, Body, HttpError, Path, RequestContext};
-use hyper::{header, Response, StatusCode};
+use dropshot::{Body, HttpError, Path, RequestContext, endpoint};
+use hyper::{Response, StatusCode, header};
 use rust_embed::RustEmbed;
 use schemars::JsonSchema;
 use serde::Deserialize;

@@ -1,16 +1,16 @@
 use super::permissioning::{Action, InternalPermission, InternalRole, Resource};
 use crate::{
     api::{
-        deployments, epoch_milli, event_utils, generate_inject_api_token_role_id,
-        is_valid_identifier, pipelines, tasks, ApiState, PreflightOptions,
+        ApiState, PreflightOptions, deployments, epoch_milli, event_utils,
+        generate_inject_api_token_role_id, is_valid_identifier, pipelines, tasks,
     },
     http_error,
     storage::{self, StorageError},
 };
 use anyhow::{Context, Result};
 use dropshot::{
-    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
-    HttpResponseOk, Path, RequestContext, TypedBody,
+    ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
+    Path, RequestContext, TypedBody, endpoint,
 };
 use gofer_sdk::config;
 use schemars::JsonSchema;
@@ -945,7 +945,8 @@ pub async fn deploy_config(
 
     // Step 3: We mark the new pipeline config as Live and Active, signifying that it is ready to take traffic.
     // If this wasn't a same version upgrade. We mark the old pipeline config as Deprecated and Disabled.
-    // TODO(clintjedwards): Eventually this will become a more intricate function which will allow for more
+    //
+    //  Eventually this will become a more intricate function which will allow for more
     // complex deployment types.
 
     let mut tx = match api_state.storage.open_tx().await {

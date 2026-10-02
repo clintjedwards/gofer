@@ -36,8 +36,8 @@ pub mod tokens;
 
 use anyhow::Result;
 use sqlx::{
-    migrate, pool::PoolConnection, sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, Pool,
-    Sqlite, Transaction,
+    Pool, Sqlite, Transaction, migrate, pool::PoolConnection, sqlite::SqliteConnectOptions,
+    sqlite::SqlitePoolOptions,
 };
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};

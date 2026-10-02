@@ -1,21 +1,20 @@
 use crate::{
     api::{
-        epoch_milli,
+        ApiState, GOFER_EOF, Variable, VariableSource, epoch_milli,
         event_utils::{self, EventListener},
         generate_inject_api_token_role_id, in_progress_runs_key, interpolate_vars, objects,
-        pipeline_configs, pipelines, runs, secrets, task_executions, tasks, tokens, ApiState,
-        Variable, VariableSource, GOFER_EOF,
+        pipeline_configs, pipelines, runs, secrets, task_executions, tasks, tokens,
     },
     scheduler, secret_store, storage,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use futures::StreamExt;
 use gofer_sdk::config::pipeline_secret;
 use sqlx::SqliteConnection;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::{atomic, Arc};
+use std::sync::{Arc, atomic};
 use thiserror::Error;
 use tokio::{
     io::AsyncWriteExt,
@@ -80,7 +79,9 @@ impl Orchestrator {
             .ignore_pipeline_run_events
             .load(atomic::Ordering::SeqCst)
         {
-            debug!("Ignoring pipeline run due to api setting 'ignore_pipeline_run_events' in state 'true'");
+            debug!(
+                "Ignoring pipeline run due to api setting 'ignore_pipeline_run_events' in state 'true'"
+            );
             return Err(OrchestratorError::PipelineRunIgnored);
         }
 
@@ -1650,14 +1651,20 @@ impl Run {
                 }
                 tasks::RequiredParentStatus::Success => {
                     if parent_status != task_executions::Status::Successful {
-                        bail!("Parent '{}' has incorrect status '{}' for required 'successful' dependency",
-                        parent, parent_status);
+                        bail!(
+                            "Parent '{}' has incorrect status '{}' for required 'successful' dependency",
+                            parent,
+                            parent_status
+                        );
                     }
                 }
                 tasks::RequiredParentStatus::Failure => {
                     if parent_status != task_executions::Status::Failed {
-                        bail!("Parent '{}' has incorrect status '{}' for required 'failed' dependency",
-                        parent, parent_status);
+                        bail!(
+                            "Parent '{}' has incorrect status '{}' for required 'failed' dependency",
+                            parent,
+                            parent_status
+                        );
                     }
                 }
             }
@@ -2129,11 +2136,13 @@ impl Run {
                 match e {
                     storage::StorageError::NotFound => {
                         // If the key doesn't even exist, print an error but don't stop the process.
-                        error!(namespace_id = &expired_run.namespace_id,
+                        error!(
+                            namespace_id = &expired_run.namespace_id,
                             pipeline_id = &expired_run.pipeline_id,
                             run_id = expired_run.run_id,
                             key_id = run_specific_api_key_id(expired_run.run_id),
-                            "Could not find pipeline secret key while attempting to remove inject_api_token");
+                            "Could not find pipeline secret key while attempting to remove inject_api_token"
+                        );
                     }
                     _ => {
                         error!(namespace_id = &expired_run.namespace_id,

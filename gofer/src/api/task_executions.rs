@@ -1,17 +1,16 @@
 use super::permissioning::{Action, Resource};
 use crate::{
     api::{
-        epoch_milli,
+        ApiState, GOFER_EOF, PreflightOptions, Variable, epoch_milli,
         event_utils::{self, EventListener},
-        format_duration, listen_for_terminate_signal, tasks, websocket_error, ApiState,
-        PreflightOptions, Variable, GOFER_EOF,
+        format_duration, listen_for_terminate_signal, tasks, websocket_error,
     },
     http_error, scheduler, storage,
 };
 use anyhow::{Context, Result};
 use dropshot::{
-    channel, endpoint, HttpError, HttpResponseDeleted, HttpResponseOk, Path, Query, RequestContext,
-    WebsocketChannelResult, WebsocketConnection,
+    HttpError, HttpResponseDeleted, HttpResponseOk, Path, Query, RequestContext,
+    WebsocketChannelResult, WebsocketConnection, channel, endpoint,
 };
 use futures::{SinkExt, StreamExt};
 use schemars::JsonSchema;
@@ -22,7 +21,7 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt},
     sync::Mutex,
 };
-use tokio_tungstenite::tungstenite::{protocol::Role, Message};
+use tokio_tungstenite::tungstenite::{Message, protocol::Role};
 use tracing::{debug, error};
 use tungstenite::protocol::frame::coding::CloseCode;
 

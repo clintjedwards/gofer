@@ -1,8 +1,8 @@
-use crate::cli::{colorize_status_text, colorize_status_text_comfy, Cli};
-use anyhow::{anyhow, bail, Context, Result};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
-use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
+use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use futures::StreamExt;
 use polyfmt::{error, print, println, question, success};
 use tokio_tungstenite::WebSocketStream;
@@ -238,7 +238,9 @@ impl Cli {
             let (key, value) = match key_value_pair_str.split_once('=') {
                 Some((key, value)) => (key.to_string(), value.to_string()),
                 None => {
-                    bail!("Malformed config string '{key_value_pair_str}'; Must be in format: <KEY>=<VALUE>");
+                    bail!(
+                        "Malformed config string '{key_value_pair_str}'; Must be in format: <KEY>=<VALUE>"
+                    );
                 }
             };
 

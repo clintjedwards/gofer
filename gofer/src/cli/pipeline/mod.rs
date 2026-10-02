@@ -2,8 +2,8 @@ mod config;
 mod deployment;
 mod object;
 
-use crate::cli::{colorize_status_text, colorize_status_text_comfy, dependencies, duration, Cli};
-use anyhow::{bail, Context, Result};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, dependencies, duration};
+use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
@@ -474,7 +474,9 @@ impl Cli {
             let (key, value) = match key_value_pair_str.split_once('=') {
                 Some((key, value)) => (key.to_string(), value.to_string()),
                 None => {
-                    bail!("Malformed setting string '{key_value_pair_str}'; Must be in format: <KEY>=<VALUE>");
+                    bail!(
+                        "Malformed setting string '{key_value_pair_str}'; Must be in format: <KEY>=<VALUE>"
+                    );
                 }
             };
 

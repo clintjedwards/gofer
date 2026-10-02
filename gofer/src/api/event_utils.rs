@@ -2,7 +2,7 @@ use crate::{
     api::{epoch_milli, runs, task_executions},
     storage,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -256,7 +256,9 @@ pub struct HistoricalEventListener {
 impl HistoricalEventListener {
     async fn repopulate_queue(&mut self) -> Result<()> {
         if self.last_id_read.is_none() {
-            bail!("When attempting to repopulate queue the last_id_read was empty; this should not happen.");
+            bail!(
+                "When attempting to repopulate queue the last_id_read was empty; this should not happen."
+            );
         }
 
         let mut conn = match self.storage.read_conn().await {

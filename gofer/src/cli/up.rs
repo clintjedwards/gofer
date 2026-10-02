@@ -2,7 +2,7 @@ use crate::cli::Cli;
 use anyhow::bail;
 use anyhow::{Context, Result};
 use colored::Colorize;
-use polyfmt::{error, println, success, Spinner};
+use polyfmt::{Spinner, error, println, success};
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 

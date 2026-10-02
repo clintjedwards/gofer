@@ -123,13 +123,13 @@ impl Pipeline {
                 if let Err(e) = pipeline_dag.add_edge(id, &task.id) {
                     match e {
                         DAGError::EdgeCreatesCycle(node1, node2) => {
-                            return Err(ConfigError::TaskCycle(node1, node2))
+                            return Err(ConfigError::TaskCycle(node1, node2));
                         }
                         DAGError::EntityNotFound => {
                             return Err(ConfigError::DependencyNotFound(
                                 task.id.clone(),
                                 id.to_string(),
-                            ))
+                            ));
                         }
                         _ => return Err(ConfigError::Unknown(e.to_string())),
                     }

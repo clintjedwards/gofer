@@ -1,12 +1,12 @@
 use super::{
-    epoch_milli, event_utils, is_valid_identifier, storage, tokens, ApiState, PreflightOptions,
-    RequestInfo, RequestMetadata,
+    ApiState, PreflightOptions, RequestInfo, RequestMetadata, epoch_milli, event_utils,
+    is_valid_identifier, storage, tokens,
 };
 use crate::http_error;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use dropshot::{
-    endpoint, ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted,
-    HttpResponseOk, Path, RequestContext, TypedBody,
+    ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
+    Path, RequestContext, TypedBody, endpoint,
 };
 use regex::Regex;
 use schemars::JsonSchema;

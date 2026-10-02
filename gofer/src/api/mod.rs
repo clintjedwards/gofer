@@ -21,7 +21,7 @@ mod tasks;
 mod tokens;
 
 use crate::{conf, object_store, scheduler, secret_store, storage};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use dashmap::DashMap;
 use dropshot::{
     ApiDescription, Body, ConfigDropshot, ConfigTls, DropshotState, EndpointTagPolicy,
@@ -37,13 +37,13 @@ use std::{
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
-use std::{net::SocketAddr, pin::Pin, str::FromStr, sync::atomic, sync::Arc};
+use std::{net::SocketAddr, pin::Pin, str::FromStr, sync::Arc, sync::atomic};
 use strum::{Display, EnumString};
 use tokio::signal;
 use tokio_tungstenite::WebSocketStream;
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
-use tungstenite::protocol::{frame::coding::CloseCode, CloseFrame};
+use tungstenite::protocol::{CloseFrame, frame::coding::CloseCode};
 
 /// GOFER_EOF is a special string marker we include at the end of log files.
 /// It denotes that no further logs will be written. This is to provide the functionality for downstream
@@ -992,7 +992,10 @@ pub async fn interpolate_vars(
                             bail!("Could not find pipeline secret '{}'", &value);
                         }
                         _ => {
-                            bail!("Encountered error while attempting to retrieve pipeline during interpolation {:#?}", e);
+                            bail!(
+                                "Encountered error while attempting to retrieve pipeline during interpolation {:#?}",
+                                e
+                            );
                         }
                     },
                 };
@@ -1007,7 +1010,10 @@ pub async fn interpolate_vars(
                 let mut conn = match api_state.storage.read_conn().await {
                     Ok(conn) => conn,
                     Err(e) => {
-                        bail!("Could not establish a connection to the database during interpolation; {:#?}", e);
+                        bail!(
+                            "Could not establish a connection to the database during interpolation; {:#?}",
+                            e
+                        );
                     }
                 };
 
@@ -1018,7 +1024,10 @@ pub async fn interpolate_vars(
                 {
                     Ok(val) => val,
                     Err(e) => {
-                        bail!("Encountered error while attempting to retrieve global secret during interpolation: {:#?}", e)
+                        bail!(
+                            "Encountered error while attempting to retrieve global secret during interpolation: {:#?}",
+                            e
+                        )
                     }
                 };
 
@@ -1026,14 +1035,18 @@ pub async fn interpolate_vars(
                     Ok(secret) => secret,
                     Err(e) => {
                         bail!(
-                                "Could not serialize retrieved global secret during interpolation: {:#?}", e
-                            );
+                            "Could not serialize retrieved global secret during interpolation: {:#?}",
+                            e
+                        );
                     }
                 };
 
                 if !key_metadata.is_allowed_namespace(namespace_id) {
-                    bail!("Global secret {} cannot be used in this current namespace. Valid namespaces: {:#?}",
-                        key_metadata.key, key_metadata.namespaces)
+                    bail!(
+                        "Global secret {} cannot be used in this current namespace. Valid namespaces: {:#?}",
+                        key_metadata.key,
+                        key_metadata.namespaces
+                    )
                 }
 
                 let retrieved_value = match api_state

@@ -11,15 +11,15 @@ mod task;
 mod token;
 mod up;
 
-use crate::conf::{cli::CliConfig, Configuration};
-use anyhow::{bail, Context, Result};
+use crate::conf::{Configuration, cli::CliConfig};
+use anyhow::{Context, Result, bail};
 use chrono::{LocalResult, TimeZone, Utc};
 use chrono_humanize::HumanTime;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use lazy_regex::regex;
 use polyfmt::println;
-use reqwest::{header, Client};
+use reqwest::{Client, header};
 use std::collections::HashMap;
 use std::{
     fmt::Debug,

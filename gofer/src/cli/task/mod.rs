@@ -1,5 +1,5 @@
-use crate::cli::{colorize_status_text, colorize_status_text_comfy, duration, Cli};
-use anyhow::{anyhow, bail, Context, Result};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, duration};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};

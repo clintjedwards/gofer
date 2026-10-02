@@ -1,10 +1,10 @@
 use super::permissioning::{Action, Resource};
 use crate::{
-    api::{epoch_milli, event_utils, ApiState, PreflightOptions},
+    api::{ApiState, PreflightOptions, epoch_milli, event_utils},
     http_error, storage,
 };
 use anyhow::{Context, Result};
-use dropshot::{endpoint, HttpError, HttpResponseOk, Path, RequestContext};
+use dropshot::{HttpError, HttpResponseOk, Path, RequestContext, endpoint};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc};

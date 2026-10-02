@@ -2,9 +2,9 @@ pub mod api;
 
 use async_trait::async_trait;
 use dropshot::{
-    endpoint, ApiDescription, Body, ClientErrorStatusCode, ConfigDropshot, ConfigTls,
-    DropshotState, HandlerError, HttpError, HttpResponseOk, HttpResponseUpdatedNoContent,
-    HttpServer, RequestContext, RequestInfo, ServerBuilder, ServerContext, TypedBody,
+    ApiDescription, Body, ClientErrorStatusCode, ConfigDropshot, ConfigTls, DropshotState,
+    HandlerError, HttpError, HttpResponseOk, HttpResponseUpdatedNoContent, HttpServer,
+    RequestContext, RequestInfo, ServerBuilder, ServerContext, TypedBody, endpoint,
 };
 use futures::Future;
 use schemars::JsonSchema;

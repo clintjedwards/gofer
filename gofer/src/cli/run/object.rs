@@ -1,10 +1,10 @@
 use crate::cli::Cli;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bytes::BufMut;
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
-use polyfmt::{println, success, Spinner};
+use polyfmt::{Spinner, println, success};
 use std::io::Write;
 
 #[derive(Debug, Args, Clone)]

@@ -77,21 +77,22 @@ impl ConfigType for CliConfig {
 mod tests {
     use super::*;
     use crate::conf::Configuration;
+    use figment::Jail;
     use pretty_assertions::assert_eq;
-    use std::env;
 
     #[test]
     fn load_from_environment_variables() {
-        unsafe { env::set_var("GOFER_API_BASE_URL", "http://localhost:3001") };
-        unsafe { env::set_var("GOFER_TOKEN", "envoveride") };
+        Jail::expect_with(|jail| {
+            let home = jail.directory().to_path_buf();
+            jail.set_env("HOME", home.display());
+            jail.set_env("GOFER_API_BASE_URL", "http://localhost:3001");
+            jail.set_env("GOFER_TOKEN", "envoveride");
 
-        let config = Configuration::<CliConfig>::load(None).unwrap();
+            let config = Configuration::<CliConfig>::load(None).unwrap();
 
-        // Cleanup environment variables after test
-        unsafe { env::remove_var("GOFER_API_BASE_URL") };
-        unsafe { env::remove_var("GOFER_TOKEN") };
-
-        assert_eq!(config.api_base_url, "http://localhost:3001");
-        assert_eq!(config.token, "envoveride");
+            assert_eq!(config.api_base_url, "http://localhost:3001");
+            assert_eq!(config.token, "envoveride");
+            Ok(())
+        });
     }
 }

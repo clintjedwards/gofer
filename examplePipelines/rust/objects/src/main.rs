@@ -1,4 +1,4 @@
-use gofer_sdk::config::{pipeline_object, Pipeline, Task};
+use gofer_sdk::config::{Pipeline, Task, pipeline_object};
 use std::collections::HashMap;
 
 fn main() {

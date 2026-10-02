@@ -1,15 +1,16 @@
 use super::permissioning::{Action, Resource};
 use crate::{
     api::{
+        ApiState, PreflightOptions,
         event_utils::{Event, EventListener},
-        format_duration, listen_for_terminate_signal, websocket_error, ApiState, PreflightOptions,
+        format_duration, listen_for_terminate_signal, websocket_error,
     },
     http_error, storage,
 };
 use anyhow::Result;
 use dropshot::{
-    channel, endpoint, HttpError, HttpResponseDeleted, HttpResponseOk, Path, Query, RequestContext,
-    WebsocketChannelResult, WebsocketConnection,
+    HttpError, HttpResponseDeleted, HttpResponseOk, Path, Query, RequestContext,
+    WebsocketChannelResult, WebsocketConnection, channel, endpoint,
 };
 use futures::{SinkExt, StreamExt};
 use schemars::JsonSchema;
@@ -18,8 +19,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, error};
 use tungstenite::{
-    protocol::{frame::coding::CloseCode, CloseFrame, Role},
     Message,
+    protocol::{CloseFrame, Role, frame::coding::CloseCode},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

@@ -1,29 +1,29 @@
 use crate::{
     api::{
-        epoch_milli, event_utils, format_duration, listen_for_terminate_signal, load_tls,
+        ApiState, PreflightOptions, RegistryAuth, Variable, VariableSource, epoch_milli,
+        event_utils, format_duration, listen_for_terminate_signal, load_tls,
         permissioning::{Action, InternalPermission, InternalRole, Resource},
-        subscriptions, tokens, websocket_error, ApiState, PreflightOptions, RegistryAuth, Variable,
-        VariableSource,
+        subscriptions, tokens, websocket_error,
     },
     http_error,
     scheduler::{self, GetLogsRequest},
     storage,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use dropshot::{
-    channel, endpoint, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
+    HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
     HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody, WebsocketChannelResult,
-    WebsocketConnection,
+    WebsocketConnection, channel, endpoint,
 };
 use futures::{SinkExt, StreamExt};
-use reqwest::{header, Client};
+use reqwest::{Client, header};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
 use tracing::{debug, error, info};
-use tungstenite::protocol::{frame::coding::CloseCode, Role};
 use tungstenite::Message;
+use tungstenite::protocol::{Role, frame::coding::CloseCode};
 
 /// The address Gofer tells the extension it should bind to on startup.
 const EXTENSION_BIND_ADDRESS: &str = "0.0.0.0:8082";
@@ -612,29 +612,32 @@ pub async fn stop_extensions(api_state: Arc<ApiState>) {
             &extension.url,
             &extension.secret,
             api_state.config.extensions.verify_certs,
-        ) { Ok(extension_client) => {
-            if let Err(e) = extension_client.shutdown().await {
-                error!(error = %e, extension_id = id, "Could not call shutdown on extension");
+        ) {
+            Ok(extension_client) => {
+                if let Err(e) = extension_client.shutdown().await {
+                    error!(error = %e, extension_id = id, "Could not call shutdown on extension");
+                    continue;
+                }
+
+                let container_id = extension_container_id(id);
+
+                if let Err(e) = api_state
+                    .scheduler
+                    .stop_container(scheduler::StopContainerRequest {
+                        id: container_id.clone(),
+                        timeout: api_state.config.extensions.stop_timeout as i64,
+                    })
+                    .await
+                {
+                    error!(error = %e, container_id = container_id, "Could not shutdown extension via scheduler");
+                    continue;
+                }
+            }
+            _ => {
+                error!("Could not create extension client while attempting to stop extensions");
                 continue;
             }
-
-            let container_id = extension_container_id(id);
-
-            if let Err(e) = api_state
-                .scheduler
-                .stop_container(scheduler::StopContainerRequest {
-                    id: container_id.clone(),
-                    timeout: api_state.config.extensions.stop_timeout as i64,
-                })
-                .await
-            {
-                error!(error = %e, container_id = container_id, "Could not shutdown extension via scheduler");
-                continue;
-            }
-        } _ => {
-            error!("Could not create extension client while attempting to stop extensions");
-            continue;
-        }};
+        };
     }
 }
 

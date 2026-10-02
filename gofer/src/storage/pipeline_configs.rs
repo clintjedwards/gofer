@@ -1,4 +1,4 @@
-use crate::storage::{map_sqlx_error, StorageError};
+use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
 use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
@@ -216,7 +216,7 @@ mod tests {
         pipeline_metadata::{self, PipelineMetadata},
         tests::TestHarness,
     };
-    use sqlx::{pool::PoolConnection, Sqlite};
+    use sqlx::{Sqlite, pool::PoolConnection};
 
     async fn setup() -> Result<(TestHarness, PoolConnection<Sqlite>), Box<dyn std::error::Error>> {
         let harness = TestHarness::new().await;

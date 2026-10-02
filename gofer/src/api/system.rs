@@ -1,8 +1,8 @@
 use super::permissioning::{Action, Resource};
-use crate::api::{storage, ApiState, PreflightOptions, BUILD_COMMIT, BUILD_SEMVER};
+use crate::api::{ApiState, BUILD_COMMIT, BUILD_SEMVER, PreflightOptions, storage};
 use crate::http_error;
 use anyhow::Result;
-use dropshot::{endpoint, HttpError, HttpResponseOk, RequestContext, TypedBody};
+use dropshot::{HttpError, HttpResponseOk, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

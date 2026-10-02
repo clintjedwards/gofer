@@ -1,5 +1,5 @@
 use crate::cli::Cli;
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 impl Cli {
     /// Lookup pipeline specific information. This is a quicker way to access information that commands like
@@ -27,12 +27,12 @@ impl Cli {
                 "+" => {
                     return self
                         .task_list(namespace_id, &pipeline_id.unwrap(), run_id)
-                        .await
+                        .await;
                 }
                 _ => {
                     return self
                         .task_get(namespace_id, &pipeline_id.unwrap(), run_id, &task)
-                        .await
+                        .await;
                 }
             }
         }

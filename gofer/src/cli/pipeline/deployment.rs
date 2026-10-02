@@ -1,4 +1,4 @@
-use crate::cli::{colorize_status_text, colorize_status_text_comfy, duration, Cli};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, duration};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;

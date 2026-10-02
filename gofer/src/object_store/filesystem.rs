@@ -3,7 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::StreamExt;
-use object_store::{local::LocalFileSystem, ObjectStore as ObjStore, WriteMultipart};
+use object_store::{ObjectStore as ObjStore, WriteMultipart, local::LocalFileSystem};
 use serde::Deserialize;
 use std::pin::Pin;
 use tokio_stream::Stream;

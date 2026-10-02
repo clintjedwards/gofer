@@ -2,7 +2,7 @@ use crate::cli::Cli;
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
-use comfy_table::{presets::ASCII_MARKDOWN, Cell, CellAlignment, Color, ContentArrangement};
+use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use gofer_sdk::api::types::{Action, Permission};
 use polyfmt::{error, print, println, question, success};
 use std::collections::{HashMap, HashSet};
@@ -225,8 +225,10 @@ impl Cli {
         println!();
         println!("Possible resources: {:?}", resources);
         println!();
-        println!("For some resources you are allowed to enter a 'target'. You can enter that target after a colon \
-            after the resource name.");
+        println!(
+            "For some resources you are allowed to enter a 'target'. You can enter that target after a colon \
+            after the resource name."
+        );
         println!();
         println!("Example normal resource: {}", "deployments".cyan());
         println!(

@@ -1,16 +1,16 @@
 use super::{SecretStore, SecretStoreError, Value};
 use aes_gcm::{
-    aead::{generic_array::GenericArray, Aead},
     Aes256Gcm, KeyInit,
+    aead::{Aead, generic_array::GenericArray},
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use futures::TryFutureExt;
-use rand::{rngs::OsRng, TryRngCore};
+use rand::{TryRngCore, rngs::OsRng};
 use serde::Deserialize;
 use sqlx::{
-    pool::PoolConnection, sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, Execute, Pool,
-    Sqlite, Transaction,
+    Execute, Pool, Sqlite, Transaction, pool::PoolConnection, sqlite::SqliteConnectOptions,
+    sqlite::SqlitePoolOptions,
 };
 use std::str::FromStr;
 use std::{fs::File, io, ops::Deref, path::Path};
@@ -43,7 +43,9 @@ fn map_sqlx_error(e: sqlx::Error, query: &str) -> SecretStoreError {
             if let Some(err_code) = database_err.code() {
                 match err_code.deref() {
                     "1555" => SecretStoreError::Exists,
-                    _ => SecretStoreError::Internal(format!("Error occurred while running secret store query; [{err_code}] {database_err}; query: {query}")),
+                    _ => SecretStoreError::Internal(format!(
+                        "Error occurred while running secret store query; [{err_code}] {database_err}; query: {query}"
+                    )),
                 }
             } else {
                 SecretStoreError::Internal(format!(

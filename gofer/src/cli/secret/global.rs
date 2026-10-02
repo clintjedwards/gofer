@@ -1,4 +1,4 @@
-use crate::cli::{validate_identifier, Cli};
+use crate::cli::{Cli, validate_identifier};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};

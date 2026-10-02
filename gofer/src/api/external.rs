@@ -1,9 +1,9 @@
-use crate::api::{extensions, load_tls, wait_for_shutdown_signal, ApiState, Middleware};
+use crate::api::{ApiState, Middleware, extensions, load_tls, wait_for_shutdown_signal};
 use crate::conf;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use dropshot::{
-    endpoint, ApiDescription, ConfigDropshot, ConfigTls, HandlerTaskMode, HttpError,
-    HttpResponseUpdatedNoContent, Path, RequestContext, ServerBuilder, UntypedBody,
+    ApiDescription, ConfigDropshot, ConfigTls, HandlerTaskMode, HttpError,
+    HttpResponseUpdatedNoContent, Path, RequestContext, ServerBuilder, UntypedBody, endpoint,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
