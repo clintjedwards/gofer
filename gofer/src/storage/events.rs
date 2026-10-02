@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use sqlx::{FromRow, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct Event {
@@ -11,13 +11,13 @@ pub struct Event {
 }
 
 pub async fn insert(conn: &mut SqliteConnection, event: &Event) -> Result<(), StorageError> {
-    let query = sqlx::query("INSERT INTO events (id, kind, details, emitted) VALUES (?, ?, ?, ?);")
+    let sql = "INSERT INTO events (id, kind, details, emitted) VALUES (?, ?, ?, ?);";
+
+    let query = sqlx::query(sql)
         .bind(&event.id)
         .bind(&event.kind)
         .bind(&event.details)
         .bind(&event.emitted);
-
-    let sql = query.sql();
 
     query
         .execute(conn)
@@ -33,16 +33,13 @@ pub async fn list(
     limit: i64,
     reverse: bool,
 ) -> Result<Vec<Event>, StorageError> {
-    let order_direction = if reverse { "DESC" } else { "ASC" };
+    let sql = if reverse {
+        "SELECT id, kind, details, emitted FROM events ORDER BY id DESC LIMIT ? OFFSET ?;"
+    } else {
+        "SELECT id, kind, details, emitted FROM events ORDER BY id ASC LIMIT ? OFFSET ?;"
+    };
 
-    let query = format!(
-        "SELECT id, kind, details, emitted FROM events ORDER BY id {} LIMIT ? OFFSET ?;",
-        order_direction
-    );
-
-    let query = sqlx::query_as::<_, Event>(&query).bind(limit).bind(offset);
-
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Event>(sql).bind(limit).bind(offset);
 
     query
         .fetch_all(conn)
@@ -55,13 +52,9 @@ pub async fn list_by_id(
     id: &str,
     limit: i64,
 ) -> Result<Vec<Event>, StorageError> {
-    let query = sqlx::query_as::<_, Event>(
-        "SELECT id, kind, details, emitted FROM events WHERE id >= ? ORDER BY id LIMIT ?;",
-    )
-    .bind(id)
-    .bind(limit);
+    let sql = "SELECT id, kind, details, emitted FROM events WHERE id >= ? ORDER BY id LIMIT ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Event>(sql).bind(id).bind(limit);
 
     query
         .fetch_all(conn)
@@ -70,11 +63,9 @@ pub async fn list_by_id(
 }
 
 pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Event, StorageError> {
-    let query =
-        sqlx::query_as::<_, Event>("SELECT id, kind, details, emitted FROM events WHERE id = ?;")
-            .bind(id);
+    let sql = "SELECT id, kind, details, emitted FROM events WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Event>(sql).bind(id);
 
     query
         .fetch_one(conn)
@@ -83,9 +74,9 @@ pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Event, Storage
 }
 
 pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM events WHERE id = ?;").bind(id);
+    let sql = "DELETE FROM events WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(id);
 
     query
         .execute(conn)

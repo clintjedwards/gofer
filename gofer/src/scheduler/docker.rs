@@ -75,7 +75,7 @@ async fn prune_containers(client: bollard::Docker, interval: u64) {
         tokio::time::sleep(tokio::time::Duration::from_secs(interval)).await;
         debug!(interval = interval, "Started docker pruning");
 
-        let result = match client.prune_containers::<String>(None).await {
+        let result = match client.prune_containers(None).await {
             Ok(result) => result,
             Err(e) => {
                 error!(err = ?e, "could not successfully prune containers");
@@ -110,8 +110,8 @@ impl super::Scheduler for Scheduler {
         if request.always_pull {
             self.client
                 .create_image(
-                    Some(bollard::image::CreateImageOptions {
-                        from_image: request.image.clone(),
+                    Some(bollard::query_parameters::CreateImageOptions {
+                        from_image: Some(request.image.clone()),
                         ..Default::default()
                     }),
                     None,
@@ -126,9 +126,9 @@ impl super::Scheduler for Scheduler {
 
             let images = self
                 .client
-                .list_images(Some(bollard::image::ListImagesOptions {
+                .list_images(Some(bollard::query_parameters::ListImagesOptions {
                     all: true,
-                    filters,
+                    filters: Some(filters),
                     ..Default::default()
                 }))
                 .await
@@ -137,8 +137,8 @@ impl super::Scheduler for Scheduler {
             if images.is_empty() {
                 self.client
                     .create_image(
-                        Some(bollard::image::CreateImageOptions {
-                            from_image: request.image.clone(),
+                        Some(bollard::query_parameters::CreateImageOptions {
+                            from_image: Some(request.image.clone()),
                             ..Default::default()
                         }),
                         None,
@@ -157,7 +157,7 @@ impl super::Scheduler for Scheduler {
             .client
             .remove_container(
                 &request.id,
-                Some(bollard::container::RemoveContainerOptions {
+                Some(bollard::query_parameters::RemoveContainerOptions {
                     v: true,
                     force: true,
                     ..Default::default() //link: true,
@@ -169,7 +169,7 @@ impl super::Scheduler for Scheduler {
                 This is not an actual error unless there was a failure because of container names");
         }
 
-        let mut container_config = bollard::container::Config {
+        let mut container_config = bollard::models::ContainerCreateBody {
             image: Some(request.image.clone()),
             env: Some(
                 request
@@ -196,9 +196,7 @@ impl super::Scheduler for Scheduler {
         //      and then we omit the port so that the docker engine assigns us a random open port.
         //   3. Finally we create a binding in docker between the addresses in step 1 and 2.
         if let Some(port) = request.networking {
-            let mut exposed_ports = HashMap::new();
-            exposed_ports.insert(format!("{port}/tcp"), HashMap::new());
-            container_config.exposed_ports = Some(exposed_ports);
+            container_config.exposed_ports = Some(vec![format!("{port}/tcp")]);
 
             let host_port_binding = bollard::models::PortBinding {
                 host_ip: Some("127.0.0.1".to_string()),
@@ -218,9 +216,9 @@ impl super::Scheduler for Scheduler {
         let created_container = self
             .client
             .create_container(
-                Some(bollard::container::CreateContainerOptions {
-                    name: &request.id,
-                    platform: None,
+                Some(bollard::query_parameters::CreateContainerOptions {
+                    name: Some(request.id.clone()),
+                    ..Default::default()
                 }),
                 container_config,
             )
@@ -228,7 +226,7 @@ impl super::Scheduler for Scheduler {
             .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
 
         self.client
-            .start_container::<String>(&request.id, None)
+            .start_container(&request.id, None)
             .await
             .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
 
@@ -292,7 +290,10 @@ impl super::Scheduler for Scheduler {
         self.client
             .stop_container(
                 &req.id,
-                Some(bollard::container::StopContainerOptions { t: req.timeout }),
+                Some(bollard::query_parameters::StopContainerOptions {
+                    t: Some(i32::try_from(req.timeout).unwrap_or(i32::MAX)),
+                    ..Default::default()
+                }),
             )
             .await
             .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
@@ -304,7 +305,7 @@ impl super::Scheduler for Scheduler {
         &self,
         req: GetLogsRequest,
     ) -> Pin<Box<dyn Stream<Item = Result<Log, SchedulerError>> + Send>> {
-        let logs_options = bollard::container::LogsOptions::<String> {
+        let logs_options = bollard::query_parameters::LogsOptions {
             follow: true,
             stdout: true,
             stderr: true,

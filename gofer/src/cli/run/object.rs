@@ -4,7 +4,7 @@ use bytes::BufMut;
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
-use polyfmt::{Spinner, println, success};
+use polyfmt::{Format, Options, println, success};
 use std::io::Write;
 
 #[derive(Debug, Args, Clone)]
@@ -243,7 +243,8 @@ impl Cli {
             None => self.conf.namespace.clone(),
         };
 
-        let spinner = Spinner::create("Uploading object");
+        let mut spinner = polyfmt::new(Format::Spinner, Options::default());
+        spinner.print(&"Uploading object");
 
         if path == "@" {
             let stdin = tokio::io::stdin();
@@ -257,7 +258,7 @@ impl Cli {
                 .context("Could not successfully push object to Gofer api")?
                 .object;
 
-            drop(spinner);
+            spinner.finish();
 
             success!("Successfully uploaded object '{}'", object.key);
 
@@ -279,7 +280,7 @@ impl Cli {
             .context("Could not successfully push object to Gofer api")?
             .object;
 
-        drop(spinner);
+        spinner.finish();
 
         success!("Successfully uploaded object '{}'", object.key);
 

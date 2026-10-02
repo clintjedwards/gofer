@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct Token {
@@ -20,20 +20,18 @@ pub struct UpdatableFields {
 }
 
 pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO tokens (id, hash, created, metadata, expires, disabled, user, roles)\
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&token.id)
-    .bind(&token.hash)
-    .bind(&token.created)
-    .bind(&token.metadata)
-    .bind(&token.expires)
-    .bind(token.disabled)
-    .bind(&token.user)
-    .bind(&token.roles);
+    let sql = "INSERT INTO tokens (id, hash, created, metadata, expires, disabled, user, roles)\
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&token.id)
+        .bind(&token.hash)
+        .bind(&token.created)
+        .bind(&token.metadata)
+        .bind(&token.expires)
+        .bind(token.disabled)
+        .bind(&token.user)
+        .bind(&token.roles);
 
     query
         .execute(conn)
@@ -44,11 +42,9 @@ pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), St
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageError> {
-    let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens;",
-    );
+    let sql = "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Token>(sql);
 
     query
         .fetch_all(conn)
@@ -57,13 +53,10 @@ pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageErro
 }
 
 pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, StorageError> {
-    let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, metadata, expires, \
-        disabled, user, roles FROM tokens WHERE id = ?;",
-    )
-    .bind(id);
+    let sql = "SELECT id, hash, created, metadata, expires, \
+        disabled, user, roles FROM tokens WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Token>(sql).bind(id);
 
     query
         .fetch_one(conn)
@@ -72,12 +65,9 @@ pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, S
 }
 
 pub async fn get_by_hash(conn: &mut SqliteConnection, hash: &str) -> Result<Token, StorageError> {
-    let query = sqlx::query_as::<_, Token>(
-        "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens WHERE hash = ?;",
-    )
-    .bind(hash);
+    let sql = "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens WHERE hash = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Token>(sql).bind(hash);
 
     query
         .fetch_one(conn)
@@ -111,9 +101,8 @@ pub async fn update(
     update_query.push_bind(id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -123,9 +112,9 @@ pub async fn update(
 }
 
 pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM tokens WHERE id = ?;").bind(id);
+    let sql = "DELETE FROM tokens WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(id);
 
     query
         .execute(conn)

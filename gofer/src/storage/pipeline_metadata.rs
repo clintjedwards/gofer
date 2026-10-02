@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, epoch_milli, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct PipelineMetadata {
@@ -30,16 +30,14 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     pipeline_metadata: &PipelineMetadata,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO pipeline_metadata (namespace_id, pipeline_id, state, created, modified) VALUES (?, ?, ?, ?, ?);",
-    )
-    .bind(&pipeline_metadata.namespace_id)
-    .bind(&pipeline_metadata.pipeline_id)
-    .bind(&pipeline_metadata.state)
-    .bind(&pipeline_metadata.created)
-    .bind(&pipeline_metadata.modified);
+    let sql = "INSERT INTO pipeline_metadata (namespace_id, pipeline_id, state, created, modified) VALUES (?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&pipeline_metadata.namespace_id)
+        .bind(&pipeline_metadata.pipeline_id)
+        .bind(&pipeline_metadata.state)
+        .bind(&pipeline_metadata.created)
+        .bind(&pipeline_metadata.modified);
 
     query
         .execute(conn)
@@ -53,12 +51,9 @@ pub async fn list(
     conn: &mut SqliteConnection,
     namespace_id: &str,
 ) -> Result<Vec<PipelineMetadata>, StorageError> {
-    let query = sqlx::query_as::<_, PipelineMetadata>(
-        "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ?;",
-    )
-    .bind(namespace_id);
+    let sql = "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, PipelineMetadata>(sql).bind(namespace_id);
 
     query
         .fetch_all(conn)
@@ -71,13 +66,9 @@ pub async fn get(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<PipelineMetadata, StorageError> {
-    let query = sqlx::query_as(
-        "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ? AND pipeline_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let sql = "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ? AND pipeline_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as(sql).bind(namespace_id).bind(pipeline_id);
 
     query
         .fetch_one(conn)
@@ -119,9 +110,8 @@ pub async fn update(
     update_query.push_bind(pipeline_id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -135,12 +125,9 @@ pub async fn delete(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<(), StorageError> {
-    let query =
-        sqlx::query("DELETE FROM pipeline_metadata WHERE namespace_id = ? AND pipeline_id = ?;")
-            .bind(namespace_id)
-            .bind(pipeline_id);
+    let sql = "DELETE FROM pipeline_metadata WHERE namespace_id = ? AND pipeline_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(namespace_id).bind(pipeline_id);
 
     query
         .execute(conn)

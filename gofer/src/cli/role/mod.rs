@@ -269,7 +269,7 @@ impl Cli {
                 .map(|value| (value, false))
                 .collect();
 
-            polyfmt::choose_many(&mut action_choices)?;
+            polyfmt::tui::choose_many(&mut action_choices, possible_actions.len())?;
 
             let mut actions = vec![];
 

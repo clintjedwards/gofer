@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct SecretStoreGlobalKey {
@@ -18,14 +18,12 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     secret_store_global_key: &SecretStoreGlobalKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO secret_store_global_keys (key, namespaces, created) VALUES (?, ?, ?);",
-    )
-    .bind(&secret_store_global_key.key)
-    .bind(&secret_store_global_key.namespaces)
-    .bind(&secret_store_global_key.created);
+    let sql = "INSERT INTO secret_store_global_keys (key, namespaces, created) VALUES (?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&secret_store_global_key.key)
+        .bind(&secret_store_global_key.namespaces)
+        .bind(&secret_store_global_key.created);
 
     query
         .execute(conn)
@@ -36,11 +34,9 @@ pub async fn insert(
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<SecretStoreGlobalKey>, StorageError> {
-    let query = sqlx::query_as::<_, SecretStoreGlobalKey>(
-        "SELECT key, namespaces, created FROM secret_store_global_keys;",
-    );
+    let sql = "SELECT key, namespaces, created FROM secret_store_global_keys;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, SecretStoreGlobalKey>(sql);
 
     query
         .fetch_all(conn)
@@ -52,12 +48,9 @@ pub async fn get(
     conn: &mut SqliteConnection,
     key: &str,
 ) -> Result<SecretStoreGlobalKey, StorageError> {
-    let query = sqlx::query_as::<_, SecretStoreGlobalKey>(
-        "SELECT key, namespaces, created FROM secret_store_global_keys WHERE key = ?;",
-    )
-    .bind(key);
+    let sql = "SELECT key, namespaces, created FROM secret_store_global_keys WHERE key = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, SecretStoreGlobalKey>(sql).bind(key);
 
     query
         .fetch_one(conn)
@@ -95,9 +88,8 @@ pub async fn update(
     update_query.push_bind(key);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -107,9 +99,9 @@ pub async fn update(
 }
 
 pub async fn delete(conn: &mut SqliteConnection, key: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM secret_store_global_keys WHERE key = ?;").bind(key);
+    let sql = "DELETE FROM secret_store_global_keys WHERE key = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(key);
 
     query
         .execute(conn)

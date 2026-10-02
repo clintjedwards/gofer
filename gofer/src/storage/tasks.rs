@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use sqlx::{FromRow, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct Task {
@@ -20,26 +20,24 @@ pub struct Task {
 }
 
 pub async fn insert(conn: &mut SqliteConnection, task: &Task) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO tasks (namespace_id, pipeline_id, pipeline_config_version, task_id, \
+    let sql = "INSERT INTO tasks (namespace_id, pipeline_id, pipeline_config_version, task_id, \
         description, image, registry_auth, depends_on, variables, entrypoint, command, \
-        inject_api_token, always_pull_newest_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&task.namespace_id)
-    .bind(&task.pipeline_id)
-    .bind(task.pipeline_config_version)
-    .bind(&task.task_id)
-    .bind(&task.description)
-    .bind(&task.image)
-    .bind(&task.registry_auth)
-    .bind(&task.depends_on)
-    .bind(&task.variables)
-    .bind(&task.entrypoint)
-    .bind(&task.command)
-    .bind(task.inject_api_token)
-    .bind(task.always_pull_newest_image);
+        inject_api_token, always_pull_newest_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&task.namespace_id)
+        .bind(&task.pipeline_id)
+        .bind(task.pipeline_config_version)
+        .bind(&task.task_id)
+        .bind(&task.description)
+        .bind(&task.image)
+        .bind(&task.registry_auth)
+        .bind(&task.depends_on)
+        .bind(&task.variables)
+        .bind(&task.entrypoint)
+        .bind(&task.command)
+        .bind(task.inject_api_token)
+        .bind(task.always_pull_newest_image);
 
     query
         .execute(conn)
@@ -55,16 +53,14 @@ pub async fn list(
     pipeline_id: &str,
     version: i64,
 ) -> Result<Vec<Task>, StorageError> {
-    let query = sqlx::query_as::<_, Task>(
-        "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
         registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image FROM \
-        tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(version);
+        tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Task>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(version);
 
     query
         .fetch_all(conn)
@@ -82,15 +78,15 @@ pub async fn get(
     version: i64,
     task_id: &str,
 ) -> Result<Task, StorageError> {
-    let query = sqlx::query_as::<_, Task>("SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
         registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image FROM \
-        tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ? AND task_id = ?;")
+        tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ? AND task_id = ?;";
+
+    let query = sqlx::query_as::<_, Task>(sql)
         .bind(namespace_id)
         .bind(pipeline_id)
         .bind(version)
         .bind(task_id);
-
-    let sql = query.sql();
 
     query
         .fetch_one(conn)

@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, epoch_milli, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct ExtensionRegistration {
@@ -44,21 +44,19 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     registration: &ExtensionRegistration,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO extension_registrations (extension_id, image, registry_auth, settings, created, modified, \
-        status, key_id, additional_roles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
-    )
-    .bind(&registration.extension_id)
-    .bind(&registration.image)
-    .bind(&registration.registry_auth)
-    .bind(&registration.settings)
-    .bind(&registration.created)
-    .bind(&registration.modified)
-    .bind(&registration.status)
-    .bind(&registration.key_id)
-    .bind(&registration.additional_roles);
+    let sql = "INSERT INTO extension_registrations (extension_id, image, registry_auth, settings, created, modified, \
+        status, key_id, additional_roles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&registration.extension_id)
+        .bind(&registration.image)
+        .bind(&registration.registry_auth)
+        .bind(&registration.settings)
+        .bind(&registration.created)
+        .bind(&registration.modified)
+        .bind(&registration.status)
+        .bind(&registration.key_id)
+        .bind(&registration.additional_roles);
 
     query
         .execute(conn)
@@ -69,12 +67,10 @@ pub async fn insert(
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<ExtensionRegistration>, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionRegistration>(
-        "SELECT extension_id, image, registry_auth, settings, \
-        created, modified, status, key_id, additional_roles FROM extension_registrations;",
-    );
+    let sql = "SELECT extension_id, image, registry_auth, settings, \
+        created, modified, status, key_id, additional_roles FROM extension_registrations;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ExtensionRegistration>(sql);
 
     query
         .fetch_all(conn)
@@ -86,13 +82,10 @@ pub async fn get(
     conn: &mut SqliteConnection,
     extension_id: &str,
 ) -> Result<ExtensionRegistration, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionRegistration>(
-        "SELECT extension_id, image, registry_auth, settings, created, modified, status, key_id, additional_roles \
-        FROM extension_registrations WHERE extension_id = ?;",
-    )
-    .bind(extension_id);
+    let sql = "SELECT extension_id, image, registry_auth, settings, created, modified, status, key_id, additional_roles \
+        FROM extension_registrations WHERE extension_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ExtensionRegistration>(sql).bind(extension_id);
 
     query
         .fetch_one(conn)
@@ -176,9 +169,8 @@ pub async fn update(
     update_query.push_bind(extension_id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -188,10 +180,9 @@ pub async fn update(
 }
 
 pub async fn delete(conn: &mut SqliteConnection, extension_id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM extension_registrations WHERE extension_id = ?;")
-        .bind(extension_id);
+    let sql = "DELETE FROM extension_registrations WHERE extension_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(extension_id);
 
     query
         .execute(conn)

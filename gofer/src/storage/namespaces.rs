@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, epoch_milli, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct Namespace {
@@ -32,16 +32,15 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     namespace: &Namespace,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO namespaces (id, name, description, created, modified) VALUES (?, ?, ?, ?, ?);",
-    )
-    .bind(&namespace.id)
-    .bind(&namespace.name)
-    .bind(&namespace.description)
-    .bind(&namespace.created)
-    .bind(&namespace.modified);
+    let sql =
+        "INSERT INTO namespaces (id, name, description, created, modified) VALUES (?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&namespace.id)
+        .bind(&namespace.name)
+        .bind(&namespace.description)
+        .bind(&namespace.created)
+        .bind(&namespace.modified);
 
     query
         .execute(conn)
@@ -52,11 +51,9 @@ pub async fn insert(
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Namespace>, StorageError> {
-    let query = sqlx::query_as::<_, Namespace>(
-        "SELECT id, name, description, created, modified FROM namespaces;",
-    );
+    let sql = "SELECT id, name, description, created, modified FROM namespaces;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Namespace>(sql);
 
     query
         .fetch_all(conn)
@@ -65,12 +62,9 @@ pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Namespace>, Storage
 }
 
 pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Namespace, StorageError> {
-    let query = sqlx::query_as::<_, Namespace>(
-        "SELECT id, name, description, created, modified FROM namespaces WHERE id = ?;",
-    )
-    .bind(id);
+    let sql = "SELECT id, name, description, created, modified FROM namespaces WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Namespace>(sql).bind(id);
 
     query
         .fetch_one(conn)
@@ -117,9 +111,8 @@ pub async fn update(
     update_query.push_bind(id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -129,9 +122,9 @@ pub async fn update(
 }
 
 pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM namespaces WHERE id = ?;").bind(id);
+    let sql = "DELETE FROM namespaces WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(id);
 
     query
         .execute(conn)

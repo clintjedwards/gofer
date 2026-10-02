@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use sqlx::{FromRow, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct ObjectStorePipelineKey {
@@ -14,15 +14,13 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     object_store_pipeline_key: &ObjectStorePipelineKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO object_store_pipeline_keys (namespace_id, pipeline_id, key, created) VALUES (?, ?, ?, ?);",
-    )
-    .bind(&object_store_pipeline_key.namespace_id)
-    .bind(&object_store_pipeline_key.pipeline_id)
-    .bind(&object_store_pipeline_key.key)
-    .bind(&object_store_pipeline_key.created);
+    let sql = "INSERT INTO object_store_pipeline_keys (namespace_id, pipeline_id, key, created) VALUES (?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&object_store_pipeline_key.namespace_id)
+        .bind(&object_store_pipeline_key.pipeline_id)
+        .bind(&object_store_pipeline_key.key)
+        .bind(&object_store_pipeline_key.created);
 
     query
         .execute(conn)
@@ -37,14 +35,12 @@ pub async fn list(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<ObjectStorePipelineKey>, StorageError> {
-    let query = sqlx::query_as::<_, ObjectStorePipelineKey>(
-        "SELECT namespace_id, pipeline_id, key, created FROM object_store_pipeline_keys \
-        WHERE namespace_id = ? AND pipeline_id = ? ORDER BY created ASC;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let sql = "SELECT namespace_id, pipeline_id, key, created FROM object_store_pipeline_keys \
+        WHERE namespace_id = ? AND pipeline_id = ? ORDER BY created ASC;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ObjectStorePipelineKey>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_all(conn)
@@ -58,15 +54,13 @@ pub async fn delete(
     pipeline_id: &str,
     key: &str,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM object_store_pipeline_keys \
-    WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(key);
+    let sql = "DELETE FROM object_store_pipeline_keys \
+    WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(key);
 
     query
         .execute(conn)

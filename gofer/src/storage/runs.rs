@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct Run {
@@ -32,27 +32,25 @@ pub struct UpdatableFields {
 }
 
 pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO runs (namespace_id, pipeline_id, pipeline_config_version, run_id, \
+    let sql = "INSERT INTO runs (namespace_id, pipeline_id, pipeline_config_version, run_id, \
         started, ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id)\
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&run.namespace_id)
-    .bind(&run.pipeline_id)
-    .bind(run.pipeline_config_version)
-    .bind(run.run_id)
-    .bind(&run.started)
-    .bind(&run.ended)
-    .bind(&run.state)
-    .bind(&run.status)
-    .bind(&run.status_reason)
-    .bind(&run.initiator)
-    .bind(&run.variables)
-    .bind(&run.token_id)
-    .bind(run.store_objects_expired)
-    .bind(&run.event_id);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&run.namespace_id)
+        .bind(&run.pipeline_id)
+        .bind(run.pipeline_config_version)
+        .bind(run.run_id)
+        .bind(&run.started)
+        .bind(&run.ended)
+        .bind(&run.state)
+        .bind(&run.status)
+        .bind(&run.status_reason)
+        .bind(&run.initiator)
+        .bind(&run.variables)
+        .bind(&run.token_id)
+        .bind(run.store_objects_expired)
+        .bind(&run.event_id);
 
     query
         .execute(conn)
@@ -71,22 +69,21 @@ pub async fn list(
     limit: i64,
     reverse: bool,
 ) -> Result<Vec<Run>, StorageError> {
-    let order_by = if reverse { "DESC" } else { "ASC" };
-
-    let query_str = format!(
+    let sql = if reverse {
         "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
-    runs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY run_id {} LIMIT ? OFFSET ?;",
-        order_by
-    );
+    runs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY run_id DESC LIMIT ? OFFSET ?;"
+    } else {
+        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
+    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
+    runs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY run_id ASC LIMIT ? OFFSET ?;"
+    };
 
-    let query = sqlx::query_as::<_, Run>(&query_str)
+    let query = sqlx::query_as::<_, Run>(sql)
         .bind(namespace_id)
         .bind(pipeline_id)
         .bind(limit)
         .bind(offset);
-
-    let sql = query.sql();
 
     query
         .fetch_all(conn)
@@ -99,13 +96,11 @@ pub async fn list_unfinished(
     offset: i64,
     limit: i64,
 ) -> Result<Vec<Run>, StorageError> {
-    let query_str = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
     runs WHERE state != 'complete' LIMIT ? OFFSET ?;";
 
-    let query = sqlx::query_as::<_, Run>(query_str).bind(limit).bind(offset);
-
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Run>(sql).bind(limit).bind(offset);
 
     query
         .fetch_all(conn)
@@ -119,14 +114,14 @@ pub async fn get(
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<Run, StorageError> {
-    let query = sqlx::query_as::<_, Run>("SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
     ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
-    namespace_id = ? AND pipeline_id = ? AND run_id = ?;",)
+    namespace_id = ? AND pipeline_id = ? AND run_id = ?;";
+
+    let query = sqlx::query_as::<_, Run>(sql)
         .bind(namespace_id)
         .bind(pipeline_id)
         .bind(run_id);
-
-    let sql = query.sql();
 
     query
         .fetch_one(conn)
@@ -139,13 +134,13 @@ pub async fn get_latest(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Run, StorageError> {
-    let query = sqlx::query_as::<_, Run>("SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
     ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
-    namespace_id = ? AND pipeline_id = ? Order By run_id DESC;",)
+    namespace_id = ? AND pipeline_id = ? Order By run_id DESC;";
+
+    let query = sqlx::query_as::<_, Run>(sql)
         .bind(namespace_id)
         .bind(pipeline_id);
-
-    let sql = query.sql();
 
     query
         .fetch_one(conn)
@@ -239,9 +234,8 @@ pub async fn update(
     update_query.push_bind(run_id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -259,13 +253,12 @@ pub async fn delete(
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<(), StorageError> {
-    let query =
-        sqlx::query("DELETE FROM runs WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ?;")
-            .bind(namespace_id)
-            .bind(pipeline_id)
-            .bind(run_id);
+    let sql = "DELETE FROM runs WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(run_id);
 
     query
         .execute(conn)

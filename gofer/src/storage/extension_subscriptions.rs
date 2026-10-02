@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct ExtensionSubscription {
@@ -24,19 +24,17 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     subscription: &ExtensionSubscription,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO extension_subscriptions (namespace_id, pipeline_id, extension_id, extension_subscription_id, \
-            settings, status, status_reason) VALUES (?, ?, ?, ?, ?, ?, ?);"
-    )
-    .bind(&subscription.namespace_id)
-    .bind(&subscription.pipeline_id)
-    .bind(&subscription.extension_id)
-    .bind(&subscription.extension_subscription_id)
-    .bind(&subscription.settings)
-    .bind(&subscription.status)
-    .bind(&subscription.status_reason);
+    let sql = "INSERT INTO extension_subscriptions (namespace_id, pipeline_id, extension_id, extension_subscription_id, \
+            settings, status, status_reason) VALUES (?, ?, ?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&subscription.namespace_id)
+        .bind(&subscription.pipeline_id)
+        .bind(&subscription.extension_id)
+        .bind(&subscription.extension_subscription_id)
+        .bind(&subscription.settings)
+        .bind(&subscription.status)
+        .bind(&subscription.status_reason);
 
     query
         .execute(conn)
@@ -51,11 +49,13 @@ pub async fn list_by_pipeline(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<ExtensionSubscription>, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionSubscription>("SELECT namespace_id, pipeline_id, extension_id, \
+    let sql = "SELECT namespace_id, pipeline_id, extension_id, \
     extension_subscription_id, settings, status, status_reason FROM extension_subscriptions WHERE namespace_id = ? \
-    AND pipeline_id = ?;").bind(namespace_id).bind(pipeline_id);
+    AND pipeline_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ExtensionSubscription>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_all(conn)
@@ -67,11 +67,10 @@ pub async fn list_by_extension(
     conn: &mut SqliteConnection,
     extension_id: &str,
 ) -> Result<Vec<ExtensionSubscription>, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionSubscription>("SELECT namespace_id, pipeline_id, extension_id, \
-    extension_subscription_id, settings, status, status_reason FROM extension_subscriptions WHERE extension_id= ?;").
-    bind(extension_id);
+    let sql = "SELECT namespace_id, pipeline_id, extension_id, \
+    extension_subscription_id, settings, status, status_reason FROM extension_subscriptions WHERE extension_id= ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ExtensionSubscription>(sql).bind(extension_id);
 
     query
         .fetch_all(conn)
@@ -86,17 +85,15 @@ pub async fn get(
     extension_id: &str,
     extension_subscription_id: &str,
 ) -> Result<ExtensionSubscription, StorageError> {
-    let query = sqlx::query_as::<_, ExtensionSubscription>(
-        "SELECT namespace_id, pipeline_id, extension_id, extension_subscription_id, settings, status, status_reason \
+    let sql = "SELECT namespace_id, pipeline_id, extension_id, extension_subscription_id, settings, status, status_reason \
         FROM extension_subscriptions WHERE namespace_id = ? AND pipeline_id = ? AND extension_id = ? AND \
-        extension_subscription_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(extension_id)
-    .bind(extension_subscription_id);
+        extension_subscription_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ExtensionSubscription>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(extension_id)
+        .bind(extension_subscription_id);
 
     query
         .fetch_one(conn)
@@ -158,9 +155,8 @@ pub async fn update(
     update_query.push_bind(extension_subscription_id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -176,10 +172,13 @@ pub async fn delete(
     extension_id: &str,
     extension_subscription_id: &str,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM extension_subscriptions WHERE namespace_id = ? AND pipeline_id = ? AND extension_id = ? AND extension_subscription_id = ?;")
-        .bind(namespace_id).bind(pipeline_id).bind(extension_id).bind(extension_subscription_id);
+    let sql = "DELETE FROM extension_subscriptions WHERE namespace_id = ? AND pipeline_id = ? AND extension_id = ? AND extension_subscription_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(extension_id)
+        .bind(extension_subscription_id);
 
     query
         .execute(conn)

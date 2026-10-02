@@ -8,7 +8,7 @@ use dropshot::{
     ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
     HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody, endpoint,
 };
-use rand::{Rng, distr::Alphanumeric};
+use rand::{RngExt, distr::Alphanumeric};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -65,11 +65,13 @@ fn generate_rand_str(size: usize) -> String {
 pub fn create_new_api_token() -> (String, String) {
     let token = generate_rand_str(32);
 
-    let mut hasher = Sha256::new();
-    hasher.update(token.as_bytes());
-    let hash = format!("{:x}", hasher.finalize());
+    let hash = hash_token(&token);
 
     (token, hash)
+}
+
+pub fn hash_token(token: &str) -> String {
+    hex::encode(Sha256::digest(token.as_bytes()))
 }
 
 impl Token {
@@ -792,4 +794,17 @@ pub async fn update_token(
     };
 
     Ok(HttpResponseUpdatedNoContent())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hash_token_matches_sha256_lowercase_hex() {
+        assert_eq!(
+            hash_token("abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
 }

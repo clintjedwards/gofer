@@ -73,7 +73,8 @@ pub enum StorageError {
 /// Sqlite Errors are determined by database error code. We map these to the specific code so that
 /// when we come back with a database error we can detect which one happened.
 /// See the codes here: https://www.sqlite.org/rescode.html
-fn map_sqlx_error(e: sqlx::Error, query: &str) -> StorageError {
+fn map_sqlx_error(e: sqlx::Error, query: impl AsRef<str>) -> StorageError {
+    let query = query.as_ref();
     match e {
         sqlx::Error::RowNotFound => StorageError::NotFound,
         sqlx::Error::Database(database_err) => {

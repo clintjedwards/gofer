@@ -11,7 +11,6 @@ use dropshot::{
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use strum::{Display, EnumString};
 use tracing::error;
@@ -613,9 +612,7 @@ impl ApiState {
 
         let token = auth_header.strip_prefix("Bearer ").unwrap();
 
-        let mut hasher = Sha256::new();
-        hasher.update(token.as_bytes());
-        let hash = format!("{:x}", hasher.finalize());
+        let hash = super::tokens::hash_token(token);
 
         let mut conn = match self.storage.read_conn().await {
             Ok(conn) => conn,

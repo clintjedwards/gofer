@@ -1,15 +1,15 @@
 use super::{SecretStore, SecretStoreError, Value};
 use aes_gcm::{
     Aes256Gcm, KeyInit,
-    aead::{Aead, generic_array::GenericArray},
+    aead::{Aead, Nonce},
 };
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use futures::TryFutureExt;
-use rand::{TryRngCore, rngs::OsRng};
+use rand::{TryRng, rngs::SysRng};
 use serde::Deserialize;
 use sqlx::{
-    Execute, Pool, Sqlite, Transaction, pool::PoolConnection, sqlite::SqliteConnectOptions,
+    Pool, Sqlite, Transaction, pool::PoolConnection, sqlite::SqliteConnectOptions,
     sqlite::SqlitePoolOptions,
 };
 use std::str::FromStr;
@@ -36,7 +36,8 @@ pub struct Engine {
 /// Sqlite Errors are determined by database error code. We map these to the specific code so that
 /// when we come back with a database error we can detect which one happened.
 /// See the codes here: https://www.sqlite.org/rescode.html
-fn map_sqlx_error(e: sqlx::Error, query: &str) -> SecretStoreError {
+fn map_sqlx_error(e: sqlx::Error, query: impl AsRef<str>) -> SecretStoreError {
+    let query = query.as_ref();
     match e {
         sqlx::Error::RowNotFound => SecretStoreError::NotFound,
         sqlx::Error::Database(database_err) => {
@@ -180,25 +181,22 @@ impl Engine {
     }
 }
 
-#[instrument(fields(origin = "secret_store::sqlite"))]
+#[instrument(skip_all, fields(origin = "secret_store::sqlite"))]
 pub fn encrypt(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
     let cipher = Aes256Gcm::new_from_slice(key)?;
 
     let mut n = vec![0u8; NONCE_SIZE];
-    OsRng.try_fill_bytes(&mut n)?;
-    let nonce = GenericArray::from_slice(&n);
+    SysRng.try_fill_bytes(&mut n)?;
+    let nonce = Nonce::<Aes256Gcm>::try_from(n.as_slice())?;
 
-    let ciphertext = cipher.encrypt(nonce, plaintext.as_ref()).map_err(|e| {
-        error!(error = %e, key = String::from_utf8_lossy(key).to_string(), "Could not encrypt value for key");
-        anyhow!(
-            "Could not encrypt value for key '{}'",
-            String::from_utf8_lossy(key)
-        )
+    let ciphertext = cipher.encrypt(&nonce, plaintext.as_ref()).map_err(|e| {
+        error!(error = %e, "Could not encrypt value");
+        anyhow!("Could not encrypt value")
     })?;
     Ok([nonce.as_slice(), ciphertext.as_slice()].concat())
 }
 
-#[instrument(fields(origin = "secret_store::sqlite"))]
+#[instrument(skip_all, fields(origin = "secret_store::sqlite"))]
 pub fn decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
     if ciphertext.len() < 12 {
         bail!("Ciphertext is too short and may be malformed");
@@ -206,13 +204,10 @@ pub fn decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
 
     let cipher = Aes256Gcm::new_from_slice(key)?;
     let (nonce, ciphertext) = ciphertext.split_at(NONCE_SIZE);
-    let nonce = GenericArray::from_slice(nonce);
-    cipher.decrypt(nonce, ciphertext.as_ref()).map_err(|e| {
-        error!(error = %e, key = String::from_utf8_lossy(key).to_string(), "Could not decrypt value for key");
-        anyhow!(
-            "Could not decrypt value for key '{}'",
-            String::from_utf8_lossy(key)
-        )
+    let nonce = Nonce::<Aes256Gcm>::try_from(nonce)?;
+    cipher.decrypt(&nonce, ciphertext.as_ref()).map_err(|e| {
+        error!(error = %e, "Could not decrypt value");
+        anyhow!("Could not decrypt value")
     })
 }
 
@@ -221,9 +216,9 @@ impl SecretStore for Engine {
     async fn get(&self, key: &str) -> Result<Value, SecretStoreError> {
         let mut conn = self.read_conn().await?;
 
-        let query = sqlx::query_as("SELECT value FROM secrets WHERE key = ?;").bind(key);
+        let sql = "SELECT value FROM secrets WHERE key = ?;";
 
-        let sql = query.sql();
+        let query = sqlx::query_as(sql).bind(key);
 
         let result: Value = query
             .fetch_one(&mut *conn)
@@ -246,11 +241,9 @@ impl SecretStore for Engine {
 
         let mut conn = self.write_conn().await?;
 
-        let query = sqlx::query("INSERT INTO secrets (key, value) VALUES (?, ?);")
-            .bind(key)
-            .bind(encrypted_value.clone());
+        let sql = "INSERT INTO secrets (key, value) VALUES (?, ?);";
 
-        let sql = query.sql();
+        let query = sqlx::query(sql).bind(key).bind(encrypted_value.clone());
 
         // If there is already a key we provide the functionality to update that key instead of passing back up
         // the conflict error.
@@ -261,12 +254,10 @@ impl SecretStore for Engine {
                         match err_code.deref() {
                             "1555" => {
                                 if force {
-                                    let update_query =
-                                        sqlx::query("UPDATE secrets SET value = ? WHERE key = ?")
-                                            .bind(encrypted_value)
-                                            .bind(key);
+                                    let update_sql = "UPDATE secrets SET value = ? WHERE key = ?";
 
-                                    let update_sql = update_query.sql();
+                                    let update_query =
+                                        sqlx::query(update_sql).bind(encrypted_value).bind(key);
 
                                     update_query
                                         .execute(&mut *conn)
@@ -292,10 +283,9 @@ impl SecretStore for Engine {
     async fn list_keys(&self, prefix: &str) -> Result<Vec<String>, SecretStoreError> {
         let mut conn = self.read_conn().await?;
 
-        let query = sqlx::query_as::<_, (String,)>("SELECT key FROM secrets WHERE key LIKE ?%;")
-            .bind(prefix);
+        let sql = "SELECT key FROM secrets WHERE key LIKE ?%;";
 
-        let sql = query.sql();
+        let query = sqlx::query_as::<_, (String,)>(sql).bind(prefix);
 
         let rows = query
             .fetch_all(&mut *conn)
@@ -310,9 +300,9 @@ impl SecretStore for Engine {
     async fn delete(&self, key: &str) -> Result<(), SecretStoreError> {
         let mut conn = self.write_conn().await?;
 
-        let query = sqlx::query("DELETE FROM secrets WHERE key = ?;").bind(key);
+        let sql = "DELETE FROM secrets WHERE key = ?;";
 
-        let sql = query.sql();
+        let query = sqlx::query(sql).bind(key);
 
         query
             .execute(&mut *conn)
@@ -375,6 +365,26 @@ mod tests {
         harness.db.put(test_key, test_value.to_vec(), false).await?;
 
         Ok(harness)
+    }
+
+    #[test]
+    /// Ciphertext produced by a standard AES-256-GCM implementation still decrypts.
+    fn decrypt_known_ciphertext() {
+        let key = b"0123456789abcdef0123456789abcdef";
+        let ciphertext = hex::decode(
+            "000102030405060708090a0b4a8add19ab38a1c9cbae14ca0c83407e6fd3aa94a3a590296277f348",
+        )
+        .unwrap();
+
+        assert_eq!(decrypt(key, &ciphertext).unwrap(), b"gofer secret");
+    }
+
+    #[test]
+    fn encrypt_round_trip() {
+        let key = b"0123456789abcdef0123456789abcdef";
+        let ciphertext = encrypt(key, b"gofer secret").unwrap();
+
+        assert_eq!(decrypt(key, &ciphertext).unwrap(), b"gofer secret");
     }
 
     #[tokio::test]

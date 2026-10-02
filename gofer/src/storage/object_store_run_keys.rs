@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use sqlx::{FromRow, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct ObjectStoreRunKey {
@@ -15,16 +15,14 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     object_store_run_key: &ObjectStoreRunKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO object_store_run_keys (namespace_id, pipeline_id, run_id, key, created) VALUES (?, ?, ?, ?, ?);",
-    )
-    .bind(&object_store_run_key.namespace_id)
-    .bind(&object_store_run_key.pipeline_id)
-    .bind(object_store_run_key.run_id)
-    .bind(&object_store_run_key.key)
-    .bind(&object_store_run_key.created);
+    let sql = "INSERT INTO object_store_run_keys (namespace_id, pipeline_id, run_id, key, created) VALUES (?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&object_store_run_key.namespace_id)
+        .bind(&object_store_run_key.pipeline_id)
+        .bind(object_store_run_key.run_id)
+        .bind(&object_store_run_key.key)
+        .bind(&object_store_run_key.created);
 
     query
         .execute(conn)
@@ -40,15 +38,13 @@ pub async fn list(
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<Vec<ObjectStoreRunKey>, StorageError> {
-    let query = sqlx::query_as::<_, ObjectStoreRunKey>(
-        "SELECT namespace_id, pipeline_id, run_id, key, created FROM object_store_run_keys \
-        WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? ORDER BY created ASC;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(run_id);
+    let sql = "SELECT namespace_id, pipeline_id, run_id, key, created FROM object_store_run_keys \
+        WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? ORDER BY created ASC;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ObjectStoreRunKey>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(run_id);
 
     query
         .fetch_all(conn)
@@ -63,15 +59,13 @@ pub async fn delete(
     run_id: i64,
     key: &str,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM object_store_run_keys WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND key = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(run_id)
-    .bind(key);
+    let sql = "DELETE FROM object_store_run_keys WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND key = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(run_id)
+        .bind(key);
 
     query
         .execute(conn)

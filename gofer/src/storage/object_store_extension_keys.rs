@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use sqlx::{FromRow, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct ObjectStoreExtensionKey {
@@ -13,14 +13,13 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     object_store_extension_key: &ObjectStoreExtensionKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO object_store_extension_keys (extension_id, key, created) VALUES (?, ?, ?);",
-    )
-    .bind(&object_store_extension_key.extension_id)
-    .bind(&object_store_extension_key.key)
-    .bind(&object_store_extension_key.created);
+    let sql =
+        "INSERT INTO object_store_extension_keys (extension_id, key, created) VALUES (?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&object_store_extension_key.extension_id)
+        .bind(&object_store_extension_key.key)
+        .bind(&object_store_extension_key.created);
 
     query
         .execute(conn)
@@ -34,13 +33,10 @@ pub async fn list(
     conn: &mut SqliteConnection,
     extension_id: &str,
 ) -> Result<Vec<ObjectStoreExtensionKey>, StorageError> {
-    let query = sqlx::query_as::<_, ObjectStoreExtensionKey>(
-        "SELECT extension_id, key, created FROM object_store_extension_keys \
-        WHERE extension_id = ? ORDER BY created ASC;",
-    )
-    .bind(extension_id);
+    let sql = "SELECT extension_id, key, created FROM object_store_extension_keys \
+        WHERE extension_id = ? ORDER BY created ASC;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, ObjectStoreExtensionKey>(sql).bind(extension_id);
 
     query
         .fetch_all(conn)
@@ -53,12 +49,9 @@ pub async fn delete(
     extension_id: &str,
     key: &str,
 ) -> Result<(), StorageError> {
-    let query =
-        sqlx::query("DELETE FROM object_store_extension_keys WHERE extension_id = ? AND key = ?;")
-            .bind(extension_id)
-            .bind(key);
+    let sql = "DELETE FROM object_store_extension_keys WHERE extension_id = ? AND key = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(extension_id).bind(key);
 
     query
         .execute(conn)

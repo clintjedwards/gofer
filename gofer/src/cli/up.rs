@@ -2,7 +2,7 @@ use crate::cli::Cli;
 use anyhow::bail;
 use anyhow::{Context, Result};
 use colored::Colorize;
-use polyfmt::{Spinner, error, println, success};
+use polyfmt::{Format, Options, error, println, success};
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 
@@ -33,7 +33,8 @@ impl Cli {
             None => self.conf.namespace.clone(),
         };
 
-        let spinner = Spinner::create("Creating pipeline");
+        let mut spinner = polyfmt::new(Format::Spinner, Options::default());
+        spinner.print(&"Creating pipeline");
 
         // Figure out absolute path for any given path string.
         let full_path = path.canonicalize().with_context(|| {
@@ -79,11 +80,9 @@ impl Cli {
             let read_line = line.unwrap();
             last_lines.push(read_line.to_string());
             let read_line = read_line.trim();
-            spinner.set_message({
-                let mut status_line = format!("Building pipeline config: {}", read_line);
-                status_line.truncate(max_line_length.into());
-                status_line
-            });
+            let mut status_line = format!("Building pipeline config: {}", read_line);
+            status_line.truncate(max_line_length.into());
+            spinner.print(&status_line);
         }
 
         let exit_status = cmd
@@ -97,32 +96,31 @@ impl Cli {
 
             let last_few_lines: Vec<String> = last_lines.into_iter().rev().take(15).collect();
 
-            spinner.suspend(||
-                error!("Could not successfully build target pipeline; Examine partial error output below:\n..."));
+            spinner.finish();
+
+            error!(
+                "Could not successfully build target pipeline; Examine partial error output below:\n..."
+            );
 
             for line in last_few_lines {
-                spinner.suspend(|| println!("  {}", line));
+                println!("  {}", line);
             }
 
             match language {
-                ConfigLanguage::Rust => spinner.suspend(|| {
-                    println!(
-                        "...\nView full error output: {}",
-                        rust_helper_cmd(&path.to_string_lossy()).cyan()
-                    )
-                }),
-                ConfigLanguage::Golang => spinner.suspend(|| {
-                    println!(
-                        "...\nView full error output: {}",
-                        go_helper_cmd(&path.to_string_lossy()).cyan()
-                    )
-                }),
+                ConfigLanguage::Rust => println!(
+                    "...\nView full error output: {}",
+                    rust_helper_cmd(&path.to_string_lossy()).cyan()
+                ),
+                ConfigLanguage::Golang => println!(
+                    "...\nView full error output: {}",
+                    go_helper_cmd(&path.to_string_lossy()).cyan()
+                ),
                 ConfigLanguage::Unknown => {}
             }
             bail!("");
         }
 
-        spinner.set_message("Parsing pipeline config".into());
+        spinner.print(&"Parsing pipeline config");
 
         let mut output = "".to_string();
         cmd.stdout.unwrap().read_to_string(&mut output).unwrap();
@@ -130,7 +128,7 @@ impl Cli {
         let config: gofer_sdk::api::types::Pipeline =
             serde_json::from_str(&output).context("Could not parse pipeline config")?;
 
-        spinner.set_message("Creating pipeline config".into());
+        spinner.print(&"Creating pipeline config");
 
         let config_req = gofer_sdk::api::types::RegisterPipelineConfigRequest {
             config: config.clone(),
@@ -144,7 +142,7 @@ impl Cli {
             .into_inner()
             .pipeline;
 
-        drop(spinner);
+        spinner.finish();
 
         success!(
             "Registered pipeline: [{}] '{}' {}",

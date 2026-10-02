@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct PipelineConfig {
@@ -25,21 +25,19 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     pipeline_config: &PipelineConfig,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO pipeline_configs (namespace_id, pipeline_id, version, parallelism, name, description, registered, \
-            deprecated, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&pipeline_config.namespace_id)
-    .bind(&pipeline_config.pipeline_id)
-    .bind(pipeline_config.version)
-    .bind(pipeline_config.parallelism)
-    .bind(&pipeline_config.name)
-    .bind(&pipeline_config.description)
-    .bind(&pipeline_config.registered)
-    .bind(&pipeline_config.deprecated)
-    .bind(&pipeline_config.state);
+    let sql = "INSERT INTO pipeline_configs (namespace_id, pipeline_id, version, parallelism, name, description, registered, \
+            deprecated, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&pipeline_config.namespace_id)
+        .bind(&pipeline_config.pipeline_id)
+        .bind(pipeline_config.version)
+        .bind(pipeline_config.parallelism)
+        .bind(&pipeline_config.name)
+        .bind(&pipeline_config.description)
+        .bind(&pipeline_config.registered)
+        .bind(&pipeline_config.deprecated)
+        .bind(&pipeline_config.state);
 
     query
         .execute(conn)
@@ -54,14 +52,12 @@ pub async fn list(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<PipelineConfig>, StorageError> {
-    let query = sqlx::query_as::<_, PipelineConfig>(
-        "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
-        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY version DESC;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY version DESC;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, PipelineConfig>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_all(conn)
@@ -75,15 +71,13 @@ pub async fn get(
     pipeline_id: &str,
     version: i64,
 ) -> Result<PipelineConfig, StorageError> {
-    let query = sqlx::query_as::<_, PipelineConfig>(
-        "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
-        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND version = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(version);
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND version = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, PipelineConfig>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(version);
 
     query
         .fetch_one(conn)
@@ -96,14 +90,12 @@ pub async fn get_latest(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<PipelineConfig, StorageError> {
-    let query = sqlx::query_as::<_, PipelineConfig>(
-        "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
-        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? Order By version DESC;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? Order By version DESC;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, PipelineConfig>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_one(conn)
@@ -117,15 +109,13 @@ pub async fn get_latest_w_state(
     pipeline_id: &str,
     state: &str,
 ) -> Result<PipelineConfig, StorageError> {
-    let query = sqlx::query_as::<_, PipelineConfig>(
-        "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
-        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND state = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(state);
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+        FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND state = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, PipelineConfig>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(state);
 
     query
         .fetch_one(conn)
@@ -175,9 +165,8 @@ pub async fn update(
     update_query.push_bind(version);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -192,14 +181,13 @@ pub async fn delete(
     pipeline_id: &str,
     version: i64,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND version = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(version);
+    let sql =
+        "DELETE FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND version = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(version);
 
     query
         .execute(conn)

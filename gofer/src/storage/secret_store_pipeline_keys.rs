@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, SqliteConnection};
+use sqlx::{FromRow, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct SecretStorePipelineKey {
@@ -14,15 +14,13 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     secret_store_pipeline_key: &SecretStorePipelineKey,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO secret_store_pipeline_keys (namespace_id, pipeline_id, key, created) VALUES (?, ?, ?, ?);",
-    )
-    .bind(&secret_store_pipeline_key.namespace_id)
-    .bind(&secret_store_pipeline_key.pipeline_id)
-    .bind(&secret_store_pipeline_key.key)
-    .bind(&secret_store_pipeline_key.created);
+    let sql = "INSERT INTO secret_store_pipeline_keys (namespace_id, pipeline_id, key, created) VALUES (?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&secret_store_pipeline_key.namespace_id)
+        .bind(&secret_store_pipeline_key.pipeline_id)
+        .bind(&secret_store_pipeline_key.key)
+        .bind(&secret_store_pipeline_key.created);
 
     query
         .execute(conn)
@@ -37,14 +35,12 @@ pub async fn list(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<SecretStorePipelineKey>, StorageError> {
-    let query = sqlx::query_as::<_, SecretStorePipelineKey>(
-        "SELECT namespace_id, pipeline_id, key, created FROM secret_store_pipeline_keys \
-        WHERE namespace_id = ? AND pipeline_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let sql = "SELECT namespace_id, pipeline_id, key, created FROM secret_store_pipeline_keys \
+        WHERE namespace_id = ? AND pipeline_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, SecretStorePipelineKey>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_all(conn)
@@ -58,15 +54,13 @@ pub async fn get(
     pipeline_id: &str,
     key: &str,
 ) -> Result<SecretStorePipelineKey, StorageError> {
-    let query = sqlx::query_as::<_, SecretStorePipelineKey>(
-        "SELECT namespace_id, pipeline_id, key, created FROM secret_store_pipeline_keys \
-        WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(key);
+    let sql = "SELECT namespace_id, pipeline_id, key, created FROM secret_store_pipeline_keys \
+        WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, SecretStorePipelineKey>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(key);
 
     query
         .fetch_one(conn)
@@ -80,15 +74,13 @@ pub async fn delete(
     pipeline_id: &str,
     key: &str,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM secret_store_pipeline_keys \
-    WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(key);
+    let sql = "DELETE FROM secret_store_pipeline_keys \
+    WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(key);
 
     query
         .execute(conn)

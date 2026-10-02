@@ -6,12 +6,12 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aes = "0.8"
-aes-gcm = "0.10"
+aes = "0.9"
+aes-gcm = "0.11"
 anyhow = "1.0"
 async-trait = "0.1"
 base64 = "0.23"
-bollard = "0.18"
+bollard = "0.21"
 bytes = "1.12"
 chrono = "0.4"
 chrono-humanize = "0.2"
@@ -30,12 +30,12 @@ human-panic = "2.0"
 hyper = { version = "1.11", features = ["server", "full"] }
 lazy-regex = "3.6"
 mime_guess = "2.0"
-polyfmt = { git = "https://github.com/clintjedwards/polyfmt-rs.git", tag = "v0.0.13" }
-rand = "0.9"
+polyfmt = { git = "https://github.com/clintjedwards/polyfmt-rs.git", tag = "v0.2.0", features = ["tui"] }
+rand = "0.10"
 regex = "1.13"
-reqwest = { version = "0.12", features = [
+reqwest = { version = "0.13", features = [
     "json",
-    "rustls-tls",
+    "rustls",
     "stream"
 ], default-features = false }
 rstest = "0.27"
@@ -43,24 +43,25 @@ rust-embed = "8.12"
 schemars = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sha2 = "0.10"
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite"] }
+sha2 = "0.11"
+sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite"] }
 strum = { version = "0.28", features = ["derive"] }
-tera = "1.20"
+tera = "2.4"
 thiserror = "2.0"
 tokio = { version = "1.53", features = ["full"] }
 tokio-rustls = "0.26"
-tokio-tungstenite = "0.26"
+tokio-tungstenite = "0.30"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tungstenite = "0.26"
+tungstenite = "0.30"
 uuid = { version = "1.26", features = ["v7"] }
 semver = "1.0"
 libc = "0.2"
-object_store = "0.12"
+object_store = "0.14"
 tokio-stream = "0.1"
 http-body-util = "0.1"
 tokio-util = "0.7"
+hex = "0.4"
 
 [dev-dependencies]
 figment = { version = "0.10", features = ["test"] }

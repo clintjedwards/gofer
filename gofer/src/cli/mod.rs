@@ -17,6 +17,7 @@ use chrono::{LocalResult, TimeZone, Utc};
 use chrono_humanize::HumanTime;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
+use gofer_sdk::api::ClientInfo;
 use lazy_regex::regex;
 use polyfmt::println;
 use reqwest::{Client, header};
@@ -313,7 +314,10 @@ impl Cli {
         println!("CLI configuration:");
         println!("  {:#?}", self.conf);
 
-        println!("Server status (version: {}):", self.client.api_version());
+        println!(
+            "Server status (version: {}):",
+            gofer_sdk::api::Client::api_version()
+        );
         println!("  {:#?}", preferences);
 
         Ok(())

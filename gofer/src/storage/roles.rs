@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct Role {
@@ -17,15 +17,13 @@ pub struct UpdatableFields {
 }
 
 pub async fn insert(conn: &mut SqliteConnection, role: &Role) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO roles (id, description, permissions, system_role) VALUES (?, ?, ?, ?);",
-    )
-    .bind(&role.id)
-    .bind(&role.description)
-    .bind(&role.permissions)
-    .bind(role.system_role);
+    let sql = "INSERT INTO roles (id, description, permissions, system_role) VALUES (?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&role.id)
+        .bind(&role.description)
+        .bind(&role.permissions)
+        .bind(role.system_role);
 
     query
         .execute(conn)
@@ -36,10 +34,9 @@ pub async fn insert(conn: &mut SqliteConnection, role: &Role) -> Result<(), Stor
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Role>, StorageError> {
-    let query =
-        sqlx::query_as::<_, Role>("SELECT id, description, permissions, system_role FROM roles;");
+    let sql = "SELECT id, description, permissions, system_role FROM roles;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Role>(sql);
 
     query
         .fetch_all(conn)
@@ -48,12 +45,9 @@ pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Role>, StorageError
 }
 
 pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Role, StorageError> {
-    let query = sqlx::query_as::<_, Role>(
-        "SELECT id, description, permissions, system_role FROM roles WHERE id = ?;",
-    )
-    .bind(id);
+    let sql = "SELECT id, description, permissions, system_role FROM roles WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Role>(sql).bind(id);
 
     query
         .fetch_one(conn)
@@ -96,9 +90,8 @@ pub async fn update(
     update_query.push_bind(id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -108,9 +101,9 @@ pub async fn update(
 }
 
 pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), StorageError> {
-    let query = sqlx::query("DELETE FROM roles WHERE id = ?;").bind(id);
+    let sql = "DELETE FROM roles WHERE id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql).bind(id);
 
     query
         .execute(conn)

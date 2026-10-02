@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct Deployment {
@@ -30,23 +30,21 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     deployment: &Deployment,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "INSERT INTO deployments (namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, \
-        state, status, status_reason, logs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    .bind(&deployment.namespace_id)
-    .bind(&deployment.pipeline_id)
-    .bind(deployment.deployment_id)
-    .bind(deployment.start_version)
-    .bind(deployment.end_version)
-    .bind(&deployment.started)
-    .bind(&deployment.ended)
-    .bind(&deployment.state)
-    .bind(&deployment.status)
-    .bind(&deployment.status_reason)
-    .bind(&deployment.logs);
+    let sql = "INSERT INTO deployments (namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, \
+        state, status, status_reason, logs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(&deployment.namespace_id)
+        .bind(&deployment.pipeline_id)
+        .bind(deployment.deployment_id)
+        .bind(deployment.start_version)
+        .bind(deployment.end_version)
+        .bind(&deployment.started)
+        .bind(&deployment.ended)
+        .bind(&deployment.state)
+        .bind(&deployment.status)
+        .bind(&deployment.status_reason)
+        .bind(&deployment.logs);
 
     query
         .execute(conn)
@@ -61,14 +59,12 @@ pub async fn list(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<Deployment>, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, state, status, \
-        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let sql = "SELECT namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, state, status, \
+        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Deployment>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_all(conn)
@@ -81,14 +77,12 @@ pub async fn list_running(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<Deployment>, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, state, status, \
-        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND state = 'RUNNING';",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    let sql = "SELECT namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, state, status, \
+        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND state = 'RUNNING';";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Deployment>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_all(conn)
@@ -102,16 +96,14 @@ pub async fn get(
     pipeline_id: &str,
     deployment_id: i64,
 ) -> Result<Deployment, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, \
+    let sql = "SELECT namespace_id, pipeline_id, deployment_id, start_version, \
     end_version, started, ended, state, status, status_reason, logs FROM deployments \
-    WHERE namespace_id = ? AND pipeline_id = ? AND deployment_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(deployment_id);
+    WHERE namespace_id = ? AND pipeline_id = ? AND deployment_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Deployment>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(deployment_id);
 
     query
         .fetch_one(conn)
@@ -124,15 +116,13 @@ pub async fn get_latest(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Deployment, StorageError> {
-    let query = sqlx::query_as::<_, Deployment>(
-        "SELECT namespace_id, pipeline_id, deployment_id, start_version, \
+    let sql = "SELECT namespace_id, pipeline_id, deployment_id, start_version, \
     end_version, started, ended, state, status, status_reason, logs FROM deployments \
-    WHERE namespace_id = ? AND pipeline_id = ? ORDER BY deployment_id DESC LIMIT 1;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id);
+    WHERE namespace_id = ? AND pipeline_id = ? ORDER BY deployment_id DESC LIMIT 1;";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, Deployment>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id);
 
     query
         .fetch_one(conn)
@@ -208,9 +198,8 @@ pub async fn update(
     update_query.push_bind(deployment_id);
     update_query.push(";");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
@@ -228,14 +217,13 @@ pub async fn delete(
     pipeline_id: &str,
     deployment_id: i64,
 ) -> Result<(), StorageError> {
-    let query = sqlx::query(
-        "DELETE FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND deployment_id = ?;",
-    )
-    .bind(namespace_id)
-    .bind(pipeline_id)
-    .bind(deployment_id);
+    let sql =
+        "DELETE FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND deployment_id = ?;";
 
-    let sql = query.sql();
+    let query = sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(deployment_id);
 
     query
         .execute(conn)

@@ -1,6 +1,6 @@
 use crate::storage::{StorageError, map_sqlx_error};
 use futures::TryFutureExt;
-use sqlx::{Execute, FromRow, QueryBuilder, Sqlite, SqliteConnection};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 
 #[derive(Clone, Debug, Default, FromRow)]
 pub struct System {
@@ -9,11 +9,10 @@ pub struct System {
 }
 
 pub async fn get_system_parameters(conn: &mut SqliteConnection) -> Result<System, StorageError> {
-    let query = sqlx::query_as::<_, System>(
-        "SELECT bootstrap_token_created, ignore_pipeline_run_events FROM system; WHERE id = 1",
-    );
+    let sql =
+        "SELECT bootstrap_token_created, ignore_pipeline_run_events FROM system; WHERE id = 1";
 
-    let sql = query.sql();
+    let query = sqlx::query_as::<_, System>(sql);
 
     query
         .fetch_one(conn)
@@ -54,9 +53,8 @@ pub async fn update_system_parameters(
 
     update_query.push(" WHERE id = 1;");
 
-    let update_query = update_query.build();
-
     let sql = update_query.sql();
+    let update_query = update_query.build();
 
     update_query
         .execute(conn)
