@@ -8,6 +8,7 @@ use strum::{Display, EnumString};
 use tokio_stream::Stream;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[allow(dead_code)]
 pub struct Object {
     pub key: String,
     pub content: Bytes,

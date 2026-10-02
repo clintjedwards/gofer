@@ -53,34 +53,39 @@ async function updateCurrentTime() {
   document.getElementById("current-time").innerText = utcTime;
 }
 
+async function getPipelineRuns(token, pipelineId) {
+  const response = await fetch(`/api/namespaces/default/pipelines/${pipelineId}/runs?limit=5&reverse=true`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "gofer-api-version": "v0",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.runs;
+}
+
+// Collects the latest runs from every pipeline in the default namespace and returns the 5 most recent overall.
 async function getRunList(token) {
   let runs = [];
 
   try {
     const resp = await listAllPipelines(token);
 
-    for (const pipeline of resp.pipelines) {
-      if (runs.length >= 5) {
-        runs.splice(5);
-        return runs;
+    const results = await Promise.allSettled(resp.pipelines.map((pipeline) => getPipelineRuns(token, pipeline.pipeline_id)));
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        runs = runs.concat(result.value);
+      } else {
+        console.error("Error fetching runs for pipeline:", result.reason);
       }
-
-      const response = await fetch(`/api/namespaces/default/pipelines/${pipeline.pipeline_id}/runs?limit=5&reverse=true`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "gofer-api-version": "v0",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      runs = runs.concat(data.runs);
     }
   } catch (error) {
     console.error("Error displaying run list:", error);

@@ -13,6 +13,7 @@ use futures::{Stream, StreamExt, TryFutureExt};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{pin::Pin, sync::Arc};
+use tracing::error;
 
 const LARGE_REQUEST_BODY_MAX_BYTES: usize = 50 * 1_000_000_000; // 50GB
 
@@ -1066,6 +1067,24 @@ pub async fn put_pipeline_object(
                         "object entry already exists".into(),
                     ));
                 }
+
+                // An overwritten object counts as new so it isn't the first one evicted by the object limit.
+                if let Err(e) = storage::object_store_pipeline_keys::update_created(
+                    &mut conn,
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    &key,
+                    &new_object_storage.created,
+                )
+                .await
+                {
+                    return Err(http_error!(
+                        "Could not update object in database",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+                }
             }
             _ => {
                 return Err(http_error!(
@@ -1078,12 +1097,71 @@ pub async fn put_pipeline_object(
         }
     };
 
+    evict_oldest_pipeline_objects(api_state, &mut conn, &path.namespace_id, &path.pipeline_id)
+        .await;
+
     let resp = PutPipelineObjectResponse { object: new_object };
 
     Ok(HttpResponseCreated(resp))
+}
 
-    // // TODO(): Implement pipeline object limits
-    // let _ = api_state.config.object_store.pipeline_object_limit;
+/// Pipeline objects act as a ring buffer; once a pipeline goes over the configured limit we remove its oldest
+/// objects. Failures are only logged since the object that triggered this was already stored successfully.
+async fn evict_oldest_pipeline_objects(
+    api_state: &ApiState,
+    conn: &mut sqlx::SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+) {
+    let limit = api_state.config.object_store.pipeline_object_limit as usize;
+
+    // A limit of zero would evict everything, including the object just stored, so we treat it as unlimited.
+    if limit == 0 {
+        return;
+    }
+
+    let objects = match storage::object_store_pipeline_keys::list(conn, namespace_id, pipeline_id)
+        .await
+    {
+        Ok(objects) => objects,
+        Err(e) => {
+            error!(namespace_id, pipeline_id, error = %e, "Could not list pipeline objects for eviction");
+            return;
+        }
+    };
+
+    if objects.len() <= limit {
+        return;
+    }
+
+    // Objects are listed oldest first.
+    for object in objects.iter().take(objects.len() - limit) {
+        if let Err(e) = storage::object_store_pipeline_keys::delete(
+            conn,
+            namespace_id,
+            pipeline_id,
+            &object.key,
+        )
+        .await
+        {
+            error!(namespace_id, pipeline_id, key = object.key, error = %e,
+                "Could not delete evicted pipeline object from database");
+            continue;
+        }
+
+        if let Err(e) = api_state
+            .object_store
+            .delete(&pipeline_object_store_key(
+                namespace_id,
+                pipeline_id,
+                &object.key,
+            ))
+            .await
+        {
+            error!(namespace_id, pipeline_id, key = object.key, error = %e,
+                "Could not delete evicted pipeline object from store");
+        }
+    }
 }
 
 /// Delete pipeline object by key.

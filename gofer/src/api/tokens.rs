@@ -525,6 +525,7 @@ pub async fn create_token(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[allow(dead_code)]
 pub struct DeleteTokenResponse {
     /// Information about the token deleted.
     pub token_details: Token,

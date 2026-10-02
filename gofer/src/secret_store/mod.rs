@@ -11,6 +11,7 @@ use strum::{Display, EnumString};
 pub struct Value(pub Vec<u8>);
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, FromRow)]
+#[allow(dead_code)]
 pub struct Secret {
     pub key: String,
     pub value: Vec<u8>,

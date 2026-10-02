@@ -48,6 +48,29 @@ pub async fn list(
         .await
 }
 
+pub async fn update_created(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    key: &str,
+    created: &str,
+) -> Result<(), StorageError> {
+    let sql = "UPDATE object_store_pipeline_keys SET created = ? \
+    WHERE namespace_id = ? AND pipeline_id = ? AND key = ?;";
+
+    let query = sqlx::query(sql)
+        .bind(created)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(key);
+
+    query
+        .execute(conn)
+        .map_ok(|_| ())
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 pub async fn delete(
     conn: &mut SqliteConnection,
     namespace_id: &str,
@@ -135,6 +158,27 @@ mod tests {
             "some_pipeline_id"
         );
         assert_eq!(some_object_store_pipeline_key.created, "some_time");
+    }
+
+    #[tokio::test]
+    async fn test_update_created_object_store_pipeline_key() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        update_created(
+            &mut conn,
+            "some_id",
+            "some_pipeline_id",
+            "some_id",
+            "some_new_time",
+        )
+        .await
+        .expect("Failed to update object_store_pipeline_key");
+
+        let object_store_pipeline_keys = list(&mut conn, "some_id", "some_pipeline_id")
+            .await
+            .expect("Failed to list object_store_pipeline_keys");
+
+        assert_eq!(object_store_pipeline_keys[0].created, "some_new_time");
     }
 
     #[tokio::test]

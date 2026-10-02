@@ -47,6 +47,7 @@ pub enum OrchestratorError {
     UnrecoverableError(String),
 
     #[error("Object store error occurred")]
+    #[allow(dead_code)]
     ObjectStoreGeneralError(#[source] object_store::Error),
 
     #[error("Secret store error occurred")]

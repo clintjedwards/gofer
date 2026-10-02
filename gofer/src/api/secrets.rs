@@ -447,9 +447,24 @@ pub async fn put_global_secret(
                         ClientErrorStatusCode::CONFLICT,
                         "secret entry already exists".into(),
                     ));
-                } else {
-                    unimplemented!()
-                    //TODO(implement force)
+                }
+
+                // The key already exists so we update its allowed namespaces, the value itself is overwritten below.
+                if let Err(e) = storage::secret_store_global_keys::update(
+                    &mut conn,
+                    &body.key,
+                    storage::secret_store_global_keys::UpdatableFields {
+                        namespaces: Some(new_secret_storage.namespaces.clone()),
+                    },
+                )
+                .await
+                {
+                    return Err(http_error!(
+                        "Could not update secret in database",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
                 }
             }
             _ => {
@@ -854,10 +869,10 @@ pub async fn put_pipeline_secret(
                         ClientErrorStatusCode::CONFLICT,
                         "secret entry already exists".into(),
                     ));
-                } else {
-                    unimplemented!()
-                    //TODO(implement force)
                 }
+
+                // Pipeline secret keys only record that the secret exists, so with force there is nothing to
+                // update here; the value itself is overwritten below.
             }
             _ => {
                 return Err(http_error!(

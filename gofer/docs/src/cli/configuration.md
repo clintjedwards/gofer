@@ -73,7 +73,7 @@ detail = false
 
 ```toml
 # /home/clintjedwards/.gofer.toml
-api_base_url  = "http://127.0.0.1:8080/"
+api_base_url  = "http://127.0.0.1:8080"
 debug         = false
 detail        = false
 namespace     = "default"

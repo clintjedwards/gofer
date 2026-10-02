@@ -406,7 +406,11 @@ pub fn new_api_client(url: &str, token: &str) -> Result<gofer_sdk::api::Client> 
 
     let client = Client::builder().default_headers(headers).build()?;
 
-    Ok(gofer_sdk::api::Client::new_with_client(url, client))
+    // The generated client appends paths starting with "/", so a trailing slash would produce "//" in every URL.
+    Ok(gofer_sdk::api::Client::new_with_client(
+        url.trim_end_matches('/'),
+        client,
+    ))
 }
 
 /// This is a bit of generic function to figure out what color to make state and status text specifically for use in
@@ -599,6 +603,7 @@ fn validate_identifier(value: &str) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 trait TitleCase {
     fn title(&self) -> String;
 }

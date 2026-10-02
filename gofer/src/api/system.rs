@@ -50,6 +50,7 @@ pub async fn get_system_metadata(
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 /// System preferences
+#[allow(dead_code)]
 pub struct System {
     pub bootstrap_token_created: bool,
     pub ignore_pipeline_run_events: bool,

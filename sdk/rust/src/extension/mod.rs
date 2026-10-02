@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, error::Error, pin::Pin};
 use std::{env, str::FromStr};
 use std::{net::SocketAddr, sync::Arc};
-use tracing::{error, info};
+use tracing::info;
 
 /// Represents different extensions failure possibilities. These errors are meant to be consumed by extension authors.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]

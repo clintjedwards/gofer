@@ -41,6 +41,7 @@ pub struct EventQueryArgs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[allow(dead_code)]
 pub struct ListEventsResponse {
     /// A list of all events.
     pub events: Vec<Event>,
