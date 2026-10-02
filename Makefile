@@ -62,7 +62,8 @@ build-release: generate-openapi build-docs
 
 ## run-docs: build and run documentation website for development
 run-docs:
-> @bash -c 'trap "touch book/html/.gitkeep" EXIT; cd gofer/docs && mdbook serve --open'
+> cd gofer/docs
+> mdbook serve --open
 .PHONY: run-docs
 
 ## run-integration-tests: Run integration tests using hurl.dev
@@ -108,9 +109,7 @@ clippy-pedantic:
 ## build-docs: build final documentation site artifacts
 build-docs:
 > cd gofer/docs
-> mkdir -p book/html
 > mdbook build
-> touch book/html/.gitkeep
 .PHONY: build-docs
 
 ## build-containers: build containers

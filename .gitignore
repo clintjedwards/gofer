@@ -20,5 +20,5 @@ examplePipelines/go/simple/simple
 
 # Remove auto-built documentation
 gofer/docs/book/html/*
-!gofer/docs/book/html/.gitkeep
+gofer/docs/book/linkcheck/
 
