@@ -244,9 +244,19 @@ impl Cli {
         let client = new_api_client(&conf.api_base_url, &conf.token)
             .context("Could not initiate gofer api client")?;
 
+        // Starting the service is just a stream of logs, so a spinner would only get in the way.
+        let is_service_start = matches!(
+            &args.command,
+            Commands::Service(service::ServiceSubcommands {
+                command: service::ServiceCommands::Start
+            })
+        );
+
         // Spinners only make sense on a terminal, when output is redirected we fall back to plain.
         let output_format = match conf.output_format {
-            OutputFormat::Spinner if !std::io::stdout().is_terminal() => polyfmt::Format::Plain,
+            OutputFormat::Spinner if is_service_start || !std::io::stdout().is_terminal() => {
+                polyfmt::Format::Plain
+            }
             _ => polyfmt::Format::from(conf.output_format.clone()),
         };
 
