@@ -60,6 +60,22 @@ build-release: generate-openapi build-docs
 > cd ..
 > mv ./target/x86_64-unknown-linux-gnu/release/gofer ./target/x86_64-unknown-linux-gnu/release/gofer_amd64_linux_gnu
 
+DEPLOY_HOST = gofer.clintjedwards.home
+DEPLOY_BIN_PATH = /usr/bin/gofer
+RELEASE_BIN = ./target/x86_64-unknown-linux-gnu/release/gofer_amd64_linux_gnu
+
+## deploy: build release and replace the running Gofer binary on DEPLOY_HOST
+deploy: build-release
+> echo -e "$(COLOR_BLUE)Uploading binary to $(DEPLOY_HOST)$(COLOR_END)"
+> scp $(RELEASE_BIN) $(DEPLOY_HOST):/tmp/gofer_deploy
+> echo -e "$(COLOR_BLUE)Swapping binary and restarting service$(COLOR_END)"
+> ssh $(DEPLOY_HOST) 'sudo systemctl stop gofer && sudo install -m 755 /tmp/gofer_deploy $(DEPLOY_BIN_PATH) && rm /tmp/gofer_deploy && sudo systemctl start gofer'
+> echo -e "$(COLOR_BLUE)Checking that Gofer is responding$(COLOR_END)"
+> curl -s --fail --retry 10 --retry-delay 1 --retry-all-errors -H "gofer-api-version: v0" http://$(DEPLOY_HOST):8080/api/system/metadata
+> echo
+> echo -e "$(COLOR_GREEN)Deploy complete$(COLOR_END)"
+.PHONY: deploy
+
 ## run-docs: build and run documentation website for development
 run-docs:
 > cd gofer/docs
