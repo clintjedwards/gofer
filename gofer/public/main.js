@@ -47,10 +47,7 @@ async function listAllPipelines(token) {
 }
 
 async function updateCurrentTime() {
-  const now = new Date();
-  const utcTime = now.toUTCString();
-
-  document.getElementById("current-time").innerText = utcTime;
+  document.getElementById("current-time").innerText = formatTimestamp(Date.now());
 }
 
 async function getPipelineRuns(token, pipelineId) {
@@ -96,7 +93,7 @@ async function getRunList(token) {
   return runs;
 }
 
-function formatTimestampToUTC(timestamp) {
+function formatTimestamp(timestamp) {
   if (timestamp == 0) {
     return "-";
   }
@@ -105,12 +102,13 @@ function formatTimestampToUTC(timestamp) {
   const date = new Date(timestamp);
 
   // Get the components of the date
-  const year = date.getUTCFullYear();
-  const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
-  const day = date.getUTCDate();
-  const hours = date.getUTCHours().toString().padStart(2, "0");
-  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
-  const seconds = date.getUTCSeconds().toString().padStart(2, "0");
+  const year = date.getFullYear();
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const day = date.getDate();
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const seconds = date.getSeconds().toString().padStart(2, "0");
+  const timeZone = date.toLocaleString("en-US", { timeZoneName: "short" }).split(" ").pop();
 
   // Determine the suffix for the day
   const daySuffix = (day) => {
@@ -129,7 +127,7 @@ function formatTimestampToUTC(timestamp) {
 
   // Format the date and time
   const formattedDate = `${month} ${day}${daySuffix(day)}, ${year}`;
-  const formattedTime = `${hours}:${minutes}:${seconds} UTC`;
+  const formattedTime = `${hours}:${minutes}:${seconds} ${timeZone}`;
 
   // Combine the formatted date and time
   return `${formattedDate} ${formattedTime}`;
@@ -242,8 +240,8 @@ function generateNewRunElement(run) {
         <td class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm font-medium dark:text-gray-300 text-gray-900">${run.pipeline_id}</td>
         <td class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-900">${run.run_id}</td>
         <td title="Token ID: ${run.initiator.id}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${run.initiator.user}</td>
-        <td title="duration: ${duration}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${formatTimestampToUTC(run.started)}</td>
-        <td title="duration: ${duration}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${formatTimestampToUTC(run.ended)}</td>
+        <td title="duration: ${duration}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${formatTimestamp(run.started)}</td>
+        <td title="duration: ${duration}" class="text-center dark:bg-neutral-800 whitespace-nowrap px-2 py-2 text-sm dark:text-gray-200 text-gray-700">${formatTimestamp(run.ended)}</td>
         <td ${statusReasonTitle ? `title="${statusReasonTitle}"` : ''} class="text-center dark:bg-neutral-800 whitespace-nowrap"><span class="${generateStatusColor(run.status)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.status}</span></td>
         <td class="text-center dark:bg-neutral-800 whitespace-nowrap"><span class="${generateStatusColor(run.state)} inline-block w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${run.state}</span></td>
         <td class="relative dark:bg-neutral-800 whitespace-nowrap py-2 pl-3 pr-4 text-right text-sm dark:text-gray-200 font-medium sm:pr-0">
