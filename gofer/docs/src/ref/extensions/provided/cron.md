@@ -2,6 +2,9 @@
 
 Cron allows users to schedule pipeline runs on long term intervals and specific days.
 
+Runs start at the top of each matching minute. Expressions are evaluated in the container's local time, which is UTC
+in the provided image.
+
 It uses a stripped down version of the cron syntax to do so:
 
     Field           Allowed values  Allowed special characters
