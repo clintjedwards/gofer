@@ -163,12 +163,13 @@ impl Cli {
         const TEMPLATE: &str = r#"
   Started {{ started }}
 
+  Image: {{ image }}
   Endpoint: {{ url }}
 
   {%- if documentation %}
 
   Config Params:
-    {%- if config_parms %}
+    {%- if config_params %}
     {%- for line in config_params %}
     • {{ line.key }} ::{% if line.required %} Required {% endif %} :: {{line.documentation}}
     {%- endfor %}
@@ -200,6 +201,7 @@ impl Cli {
                 .format_time(extension.started)
                 .unwrap_or_else(|| "Not yet".to_string()),
         );
+        context.insert("image", &extension.registration.image);
         context.insert("url", &extension.url);
         context.insert("config_params", &extension.documentation.config_params);
         context.insert(
