@@ -421,7 +421,12 @@ pub fn new_api_client(url: &str, token: &str) -> Result<gofer_sdk::api::Client> 
         header::HeaderValue::from_str(&gofer_sdk::api::ApiVersion::V0.to_string())?,
     );
 
-    let client = Client::builder().default_headers(headers).build()?;
+    // Log and event streaming use websockets, which upgrade from an HTTP/1.1 request. Over HTTPS a proxy like Caddy
+    // will happily negotiate HTTP/2, which has no way to carry that upgrade, so the server just sees a normal request.
+    let client = Client::builder()
+        .default_headers(headers)
+        .http1_only()
+        .build()?;
 
     // The generated client appends paths starting with "/", so a trailing slash would produce "//" in every URL.
     Ok(gofer_sdk::api::Client::new_with_client(
