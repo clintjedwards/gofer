@@ -641,9 +641,45 @@ pub async fn stop_extensions(api_state: Arc<ApiState>) {
     }
 }
 
+const STD_EXTENSION_REPO: &str = "ghcr.io/clintjedwards/gofer/extensions";
+const STD_EXTENSIONS: [&str; 2] = ["cron", "interval"];
+
+/// The image tag a standard extension should use for this version of Gofer.
+///
+/// Extension images are published with floating tags (`x.y.z`, `x.y`, `x`, and `latest`) so we can ask the registry
+/// for "the newest compatible version" without having to list tags ourselves. Before 1.0 a minor bump is a breaking
+/// change, so Gofer 0.10.x uses `0.10`. From 1.0 on a major bump is the breaking change, so Gofer 1.4.2 uses `1`.
+fn std_extension_tag(version: &semver::Version) -> String {
+    if version.major == 0 {
+        format!("0.{}", version.minor)
+    } else {
+        version.major.to_string()
+    }
+}
+
+/// Whether an extension's image is one Gofer picked on its own, which means Gofer is free to move it to a new tag
+/// when Gofer itself is upgraded. That's our repo with a floating tag (`latest`, `N`, or `N.N`). A full `x.y.z` tag
+/// or a different image means the user chose it on purpose, so we leave it alone.
+fn is_managed_std_image(extension_id: &str, image: &str) -> bool {
+    let Some(tag) = image.strip_prefix(&format!("{STD_EXTENSION_REPO}/{extension_id}:")) else {
+        return false;
+    };
+
+    if tag == "latest" {
+        return true;
+    }
+
+    let parts: Vec<&str> = tag.split('.').collect();
+    parts.len() <= 2
+        && parts
+            .iter()
+            .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+}
+
 /// Gofer provides default extensions that the user can opt into via their configuration.
-/// This function doesn't start those extensions it just makes sure they are registered
-/// so the more broad [`start_extensions`] function can start them.
+/// This function doesn't start those extensions it just makes sure they are registered, and that the ones Gofer
+/// manages point at the image tag matching this version of Gofer, so the more broad [`start_extensions`] function
+/// can start them.
 pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
     let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
@@ -657,35 +693,58 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
         .await
         .context("Could not list extensions while trying to register std extensions")?;
 
-    // Return connection to the pool.
+    let version = semver::Version::from_str(super::BUILD_SEMVER)
+        .context("Could not parse Gofer's build version")?;
+    let tag = std_extension_tag(&version);
+
+    let mut to_install = vec![];
+
+    for extension_id in STD_EXTENSIONS {
+        let image = format!("{STD_EXTENSION_REPO}/{extension_id}:{tag}");
+
+        if let Some(existing) = extensions.iter().find(|e| e.extension_id == extension_id) {
+            if existing.image == image || !is_managed_std_image(extension_id, &existing.image) {
+                continue;
+            }
+
+            storage::extension_registrations::update(
+                &mut conn,
+                extension_id,
+                storage::extension_registrations::UpdatableFields {
+                    image: Some(image.clone()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .with_context(|| format!("Could not update image for extension '{extension_id}'"))?;
+
+            info!(
+                name = extension_id,
+                old_image = existing.image,
+                new_image = image,
+                "Updated standard extension image to match this version of Gofer"
+            );
+            continue;
+        }
+
+        to_install.push((extension_id, image));
+    }
+
+    // Return connection to the pool. Installing opens its own connection.
     drop(conn);
 
-    let mut cron_installed = false;
-    let mut interval_installed = false;
-
-    for extension in extensions {
-        if extension.extension_id == "cron" {
-            cron_installed = true;
-        }
-
-        if extension.extension_id == "interval" {
-            interval_installed = true;
-        }
-    }
-
-    if !cron_installed {
+    for (extension_id, image) in to_install {
         let install_req = InstallExtensionRequest {
-            id: "cron".into(),
-            image: "ghcr.io/clintjedwards/gofer/extensions/cron:latest".into(),
+            id: extension_id.into(),
+            image: image.clone(),
             settings: HashMap::new(),
             registry_auth: None,
             additional_roles: None,
         };
 
-        let registration: Registration = install_req
-            .clone()
-            .try_into()
-            .context("Could not serialize registration for extension 'cron'")?;
+        let registration: Registration = install_req.try_into().with_context(|| {
+            format!("Could not serialize registration for extension '{extension_id}'")
+        })?;
 
         if let Err(e) = install_new_extension(api_state.clone(), &registration).await {
             let err_str = e.to_string();
@@ -695,36 +754,8 @@ pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
         };
 
         info!(
-            name = "cron",
-            image = install_req.image,
-            "Registered standard extension automatically due to 'install_std_extensions' config"
-        )
-    }
-
-    if !interval_installed {
-        let install_req = InstallExtensionRequest {
-            id: "interval".into(),
-            image: "ghcr.io/clintjedwards/gofer/extensions/interval:latest".into(),
-            settings: HashMap::new(),
-            registry_auth: None,
-            additional_roles: None,
-        };
-
-        let registration: Registration = install_req
-            .clone()
-            .try_into()
-            .context("Could not serialize registration for extension 'interval'")?;
-
-        if let Err(e) = install_new_extension(api_state.clone(), &registration).await {
-            let err_str = e.to_string();
-            if !err_str.contains("already exists") {
-                return Err(e);
-            }
-        };
-
-        info!(
-            name = "interval",
-            image = install_req.image,
+            name = extension_id,
+            image = image,
             "Registered standard extension automatically due to 'install_std_extensions' config"
         )
     }
@@ -1580,4 +1611,36 @@ async fn install_new_extension(
     storage::extension_registrations::insert(&mut conn, &new_extension_storage).await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn std_extension_tag_follows_breaking_version() {
+        let tag = |v: &str| std_extension_tag(&semver::Version::parse(v).unwrap());
+        assert_eq!(tag("0.10.0"), "0.10");
+        assert_eq!(tag("0.10.3"), "0.10");
+        assert_eq!(tag("1.0.0"), "1");
+        assert_eq!(tag("1.4.2"), "1");
+    }
+
+    #[test]
+    fn is_managed_std_image_only_matches_floating_tags() {
+        let repo = STD_EXTENSION_REPO;
+        assert!(is_managed_std_image("cron", &format!("{repo}/cron:latest")));
+        assert!(is_managed_std_image("cron", &format!("{repo}/cron:0.9")));
+        assert!(is_managed_std_image("cron", &format!("{repo}/cron:1")));
+        assert!(!is_managed_std_image(
+            "cron",
+            &format!("{repo}/cron:0.10.0")
+        ));
+        assert!(!is_managed_std_image("cron", &format!("{repo}/cron:dev")));
+        assert!(!is_managed_std_image(
+            "cron",
+            &format!("{repo}/interval:0.10")
+        ));
+        assert!(!is_managed_std_image("cron", "example.com/my/cron:0.10"));
+    }
 }

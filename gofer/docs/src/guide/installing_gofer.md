@@ -7,7 +7,7 @@ Gofer comes as an easy to distribute pre-compiled binary that you can run on you
 You can download the latest version for linux here:
 
 ```bash
-wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer
+wget -O gofer https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_gnu
 ```
 
 ## From Source

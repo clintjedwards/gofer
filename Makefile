@@ -26,6 +26,8 @@ COLOR_BLUE=\033[0;34m
 COLOR_END=\033[0m
 
 SEMVER = 0.0.0
+SEMVER_MAJOR = $(word 1,$(subst ., ,$(SEMVER)))
+SEMVER_MINOR = $(word 2,$(subst ., ,$(SEMVER)))
 
 ## generate-openapi-backend: build json documents for openapi
 generate-openapi-backend:
@@ -134,14 +136,20 @@ build-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Building Cron Extension$(COLOR_END)"
 > docker build -f extensions/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:latest
+> docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}.${SEMVER_MINOR}
+> docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}
 
 > echo -e "$(COLOR_BLUE)Building Interval Extension$(COLOR_END)"
 > docker build -f extensions/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:latest
+> docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}.${SEMVER_MINOR}
+> docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}
 
 > echo -e "$(COLOR_BLUE)Building Github Extension$(COLOR_END)"
 > docker build -f extensions/github/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/github:latest
+> docker tag ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}.${SEMVER_MINOR}
+> docker tag ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}
 
 > echo -e "$(COLOR_BLUE)Building Debug Container Envs$(COLOR_END)"
 > docker build -f debug/envs/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} .
@@ -170,13 +178,19 @@ push-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Push Cron Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:latest
+> docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}.${SEMVER_MINOR}
+> docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}
 > echo -e "$(COLOR_BLUE)Push Internal Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/extensions/interval:latest
+> docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}.${SEMVER_MINOR}
+> docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}
 
 > echo -e "$(COLOR_BLUE)Push Github Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/extensions/github:latest
+> docker push ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}.${SEMVER_MINOR}
+> docker push ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}
 
 > echo -e "$(COLOR_BLUE)Push Debug Env Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER}

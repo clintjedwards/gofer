@@ -62,7 +62,7 @@ You can [view and download releases by version here][releases-url].
 
 ### Download the latest release:
 
-- **Linux:** `wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer`
+- **Linux:** `wget -O gofer https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_gnu`
 
 ### Build from source:
 
