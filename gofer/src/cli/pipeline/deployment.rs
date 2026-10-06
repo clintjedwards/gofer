@@ -1,4 +1,7 @@
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, duration};
+use crate::cli::{
+    Cli, colorize_status_text, colorize_status_text_comfy, duration, event_kind_parts, rail,
+    rail_table,
+};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -134,26 +137,35 @@ impl Cli {
             .context("Could not successfully retrieve deployment from Gofer api")?;
 
         const TEMPLATE: &str = r#"
-    {{ vertical_line }} Start Version: v{{ start_version }}
-    {{ vertical_line }} End Version: v{{ end_version }}
-    {{ vertical_line }} Started: {{ started }} and ran for {{ duration }}
-    {{ vertical_line }} Ended: {{ ended }}
-    {{ vertical_line }} State: {{ state }}
-    {{ vertical_line }} Status: {{ status }}
+  {{ vertical_line }} Start Version: v{{ start_version }}
+  {{ vertical_line }} End Version: v{{ end_version }}
+  {{ vertical_line }} Started {{ started }} and ran for {{ duration }}
+  {{ vertical_line }} Ended {{ ended }}
+  {%- if status_reason %}
 
-    {%- if status_reason %}
-        Status Details:
-        {{ vertical_line }} Reason: {{ status_reason.reason }}
-        {{ vertical_line }} Description: {{ status_reason.description }}
-    {%- endif %}
-    {%- if logs is defined %}
+  $ Status Details:
+  {{ vertical_line }} Reason: {{ status_reason.reason }}
+  {{ vertical_line }} Description: {{ status_reason.description }}
+  {%- endif %}
 
-    $ Logs:
-    {%- for line in logs %}
-    {{ line }}
-    {%- endfor %}
-    {%- endif %}
+  $ Logs:
+  {%- for line in logs %}
+  {{ line }}
+  {%- endfor %}
 "#;
+
+        let mut log_rows = vec![];
+        for event in &deployment.deployment.logs {
+            let (kind, _) = event_kind_parts(&event.kind)?;
+            log_rows.push(vec![
+                Cell::new(
+                    self.format_time(event.emitted)
+                        .unwrap_or("Unknown".to_string()),
+                ),
+                Cell::new(kind).fg(Color::Blue),
+                Cell::new(&event.id).fg(Color::AnsiValue(245)),
+            ]);
+        }
 
         let mut tera = tera::Tera::default();
         tera.add_raw_template("main", TEMPLATE)
@@ -162,7 +174,11 @@ impl Cli {
         let mut context = tera::Context::new();
         context.insert("start_version", &deployment.deployment.start_version);
         context.insert("end_version", &deployment.deployment.end_version);
-        context.insert("vertical_line", &"│".magenta().to_string());
+        context.insert("vertical_line", &rail());
+        context.insert(
+            "logs",
+            &rail_table(&["EMITTED", "KIND", "EVENT ID"], log_rows),
+        );
         context.insert(
             "duration",
             &duration(
@@ -182,15 +198,16 @@ impl Cli {
                 .format_time(deployment.deployment.ended)
                 .unwrap_or("Unknown".to_string()),
         );
-        context.insert("state", &colorize_status_text(deployment.deployment.state));
-        context.insert(
-            "status",
-            &colorize_status_text(deployment.deployment.status),
-        );
         context.insert("status_reason", &deployment.deployment.status_reason);
-        context.insert("logs", &deployment.deployment.logs);
 
         let content = tera.render("main", &context)?;
+        println!(
+            "  Deployment {} for pipeline {} :: {} :: {}",
+            format!("#{}", deployment.deployment.deployment_id).cyan(),
+            deployment.deployment.pipeline_id.cyan(),
+            colorize_status_text(deployment.deployment.state),
+            colorize_status_text(deployment.deployment.status)
+        );
         println!("{}", content.trim_end());
         Ok(())
     }

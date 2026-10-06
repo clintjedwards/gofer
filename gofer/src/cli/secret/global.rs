@@ -1,6 +1,7 @@
-use crate::cli::{Cli, validate_identifier};
+use crate::cli::{Cli, rail, rail_table, validate_identifier};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
+use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use polyfmt::{println, success};
 
@@ -130,14 +131,14 @@ impl Cli {
             .await
             .context("Could not successfully retrieve secret from Gofer api")?;
 
-        const TEMPLATE: &str = r#"  Key: {{ key }}
-  Secret: {{ secret }}
-  Allowed Namespaces:
-  {%- for line in namespaces %}
-    - {{ line }}
-  {%- endfor %}
+        const TEMPLATE: &str = r#"
+  {{ vertical_line }} Value: {{ secret }}
+  {{ vertical_line }} Created {{ created }}
 
-  Created {{ created }}
+  $ Allowed Namespaces:
+  {%- for line in namespaces %}
+  {{ line }}
+  {%- endfor %}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -145,12 +146,23 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("key", &secret.metadata.key);
+        context.insert("vertical_line", &rail());
         context.insert(
             "secret",
             &secret.secret.clone().unwrap_or("[Redacted]".into()),
         );
-        context.insert("namespaces", &secret.metadata.namespaces);
+        context.insert(
+            "namespaces",
+            &rail_table(
+                &[],
+                secret
+                    .metadata
+                    .namespaces
+                    .iter()
+                    .map(|namespace| vec![Cell::new(namespace).fg(Color::Blue)])
+                    .collect(),
+            ),
+        );
         context.insert(
             "created",
             &self
@@ -159,6 +171,7 @@ impl Cli {
         );
 
         let content = tera.render("main", &context)?;
+        println!("  Secret {}", secret.metadata.key.cyan());
         println!("{}", content.trim_end());
         Ok(())
     }

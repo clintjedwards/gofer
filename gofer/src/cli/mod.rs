@@ -473,6 +473,101 @@ fn colorize_status_text<T: ToString>(input: T) -> String {
     }
 }
 
+/// The magenta bar that runs down the left side of each section in `get` output.
+fn rail() -> String {
+    "│".magenta().to_string()
+}
+
+/// Renders rows as a borderless table for a `$ Section:` in `get` output, returning one string per line with the rail
+/// in front. The rail is added after rendering, instead of being its own column, so it continues down rows that wrap.
+fn rail_table(header: &[&str], rows: Vec<Vec<comfy_table::Cell>>) -> Vec<String> {
+    if rows.is_empty() {
+        return vec![format!("{} None", rail())];
+    }
+
+    let mut table = comfy_table::Table::new();
+    table
+        .load_style(comfy_table::presets::NOTHING)
+        .set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+
+    if !header.is_empty() {
+        table.set_header(
+            header
+                .iter()
+                .map(|title| comfy_table::Cell::new(title).fg(comfy_table::Color::AnsiValue(245))),
+        );
+    }
+
+    // Leave room for the indent and rail we put in front of each line so wrapped rows don't overflow.
+    if let Some(width) = table.width() {
+        table.set_width(width.saturating_sub(4));
+    }
+
+    for row in rows {
+        table.add_row(row);
+    }
+
+    table
+        .lines()
+        .map(|line| format!("{}{line}", rail()))
+        .collect()
+}
+
+/// Splits an event kind into its name and fields. Kinds serialize as either a bare name or a single-key object like
+/// {"started_run": {..fields..}}, so going through JSON lets us show any kind without listing every variant.
+fn event_kind_parts(kind: &gofer_sdk::api::types::Kind) -> Result<(String, Vec<(String, String)>)> {
+    let parts = match serde_json::to_value(kind).context("Could not serialize event kind")? {
+        serde_json::Value::Object(map) if map.len() == 1 => {
+            let (name, inner) = map.into_iter().next().unwrap();
+            let fields = match inner {
+                serde_json::Value::Object(fields) => fields
+                    .into_iter()
+                    .map(|(key, value)| match value {
+                        serde_json::Value::String(value) => (key, value),
+                        value => (key, value.to_string()),
+                    })
+                    .collect(),
+                _ => vec![],
+            };
+            (name, fields)
+        }
+        serde_json::Value::String(name) => (name, vec![]),
+        other => (other.to_string(), vec![]),
+    };
+
+    Ok(parts)
+}
+
+/// A pipeline's tasks as a rail table, tasks with fewer dependencies first so it reads roughly in run order.
+fn tasks_table(tasks: &HashMap<String, gofer_sdk::api::types::Task>) -> Vec<String> {
+    let mut tasks: Vec<_> = tasks.values().collect();
+    tasks.sort_by(|a, b| {
+        a.depends_on
+            .len()
+            .cmp(&b.depends_on.len())
+            .then_with(|| a.id.cmp(&b.id))
+    });
+
+    rail_table(
+        &["TASK", "STARTS"],
+        tasks
+            .into_iter()
+            .map(|task| {
+                let depends_on = dependencies(&task.depends_on);
+                let starts = if depends_on.is_empty() {
+                    "Immediately".to_string()
+                } else {
+                    depends_on.join("\n")
+                };
+                vec![
+                    comfy_table::Cell::new(&task.id).fg(comfy_table::Color::Blue),
+                    comfy_table::Cell::new(starts),
+                ]
+            })
+            .collect(),
+    )
+}
+
 /// Formats a duration between two epoch millis into a readable string
 /// like "1 hour, 25 mins, 12 secs" or "12 secs, 4 ms"
 fn duration(start: i64, end: i64) -> String {

@@ -2,13 +2,14 @@ mod config;
 mod deployment;
 mod object;
 
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, dependencies, duration};
+use crate::cli::{
+    Cli, colorize_status_text, colorize_status_text_comfy, duration, rail, rail_table, tasks_table,
+};
 use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use polyfmt::{println, success};
-use serde::Serialize;
 
 #[derive(Debug, Args, Clone)]
 pub struct PipelineSubcommands {
@@ -108,13 +109,6 @@ pub enum PipelineCommands {
 
     /// Manage pipeline deployments
     Deployment(deployment::DeploymentSubcommands),
-}
-
-#[derive(Serialize)]
-struct TaskData {
-    name: String,
-    depends_on: Vec<String>,
-    num_items: usize,
 }
 
 impl Cli {
@@ -269,7 +263,7 @@ impl Cli {
             None => 0,
         };
 
-        let mut run_table = comfy_table::Table::new();
+        let mut run_rows = vec![];
 
         recent_runs.truncate(10);
         for run in recent_runs {
@@ -279,12 +273,8 @@ impl Cli {
                 "Lasted"
             };
 
-            run_table
-                .load_style(comfy_table::presets::NOTHING)
-                .set_content_arrangement(ContentArrangement::Dynamic);
-
-            run_table.add_row(vec![
-                Cell::new(format!("{}:", run.run_id)).fg(Color::Blue),
+            run_rows.push(vec![
+                Cell::new(format!("#{}", run.run_id)).fg(Color::Blue),
                 Cell::new(format!(
                     "{} by {}",
                     self.format_time(run.started).unwrap_or("Never".into()),
@@ -300,68 +290,40 @@ impl Cli {
             ]);
         }
 
-        let mut subscription_table_data = vec![];
+        let mut subscriptions: Vec<_> = subscriptions
+            .into_iter()
+            .map(|subscription| (subscription.subscription_id, subscription.extension_id))
+            .collect();
+        subscriptions.sort();
 
-        for subscription in subscriptions {
-            subscription_table_data.push(vec![
-                "⟳".into(),
-                subscription.subscription_id,
-                subscription.extension_id,
-            ]);
-        }
+        let subscription_rows = subscriptions
+            .into_iter()
+            .map(|(subscription_id, extension_id)| {
+                vec![
+                    Cell::new(subscription_id).fg(Color::Blue),
+                    Cell::new(extension_id),
+                ]
+            })
+            .collect();
 
-        subscription_table_data.sort();
+        const TEMPLATE: &str = r#"
+  {{ vertical_line }} Created {{ created }}
+  {{ vertical_line }} Last run {{ last_run }}
 
-        let mut subscription_table = comfy_table::Table::new();
+  $ Recent Runs:
+  {%- for line in recent_runs %}
+  {{ line }}
+  {%- endfor %}
 
-        for subscription in subscription_table_data {
-            subscription_table
-                .load_style(comfy_table::presets::NOTHING)
-                .set_content_arrangement(ContentArrangement::Dynamic);
+  $ Tasks:
+  {%- for line in tasks %}
+  {{ line }}
+  {%- endfor %}
 
-            subscription_table.add_row(vec![
-                Cell::new(subscription[0].clone()),
-                Cell::new(subscription[1].clone()).fg(Color::Blue),
-                Cell::new(subscription[2].clone()),
-            ]);
-        }
-
-        let mut tasks = vec![];
-
-        for task in pipeline_config.tasks.values() {
-            tasks.push(TaskData {
-                name: task.id.blue().to_string(),
-                depends_on: dependencies(&task.depends_on),
-                num_items: task.depends_on.len(), // We use this for sorting purposes.
-            });
-        }
-
-        tasks.sort_by_key(|task| task.num_items);
-
-        const TEMPLATE: &str = r#"{%- if has_recent_runs %}
-  📦 Recent Runs
-    {%- for line in recent_runs %}
-    {{ line }}
-    {%- endfor %}
-  {% endif %}
-  {%- if tasks %}
-  🗒 Tasks:
-    {%- for task in tasks %}
-    • {{ task.name }}
-    {%- if task.depends_on -%}
-    {%- for dependant in task.depends_on %}
-      - {{ dependant }}
-    {%- endfor -%}
-    {%- endif -%}
-    {%- endfor -%}
-  {%- endif %}
-  {%- if has_subscriptions %}
-
-    🗘 Extension Subscriptions:
-      {{ subscriptions }}
-  {%- endif %}
-
-  Created {{ created }} | Last Run {{ last_run }}
+  $ Subscriptions:
+  {%- for line in subscriptions %}
+  {{ line }}
+  {%- endfor %}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -369,17 +331,16 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("has_recent_runs", &!run_table.is_empty());
+        context.insert("vertical_line", &rail());
         context.insert(
             "recent_runs",
-            &run_table
-                .lines()
-                .map(|line| line.to_string())
-                .collect::<Vec<String>>(),
+            &rail_table(&["RUN", "STARTED", "DURATION", "STATE", "STATUS"], run_rows),
         );
-        context.insert("tasks", &tasks);
-        context.insert("has_subscriptions", &!subscription_table.is_empty());
-        context.insert("subscriptions", &subscription_table.to_string());
+        context.insert("tasks", &tasks_table(&pipeline_config.tasks));
+        context.insert(
+            "subscriptions",
+            &rail_table(&["SUBSCRIPTION", "EXTENSION"], subscription_rows),
+        );
         context.insert(
             "created",
             &self
@@ -393,13 +354,15 @@ impl Cli {
 
         let content = tera.render("main", &context)?;
         println!(
-            "[{}] {} :: {}",
-            &pipeline_metadata.pipeline_id,
+            "  Pipeline {} ({}) :: {}",
+            pipeline_metadata.pipeline_id.cyan(),
             &pipeline_config.name,
             colorize_status_text(pipeline_metadata.state)
         );
-        println!("");
-        println!("{}", &pipeline_config.description);
+        if !pipeline_config.description.is_empty() {
+            println!("");
+            println!("  {}", pipeline_config.description);
+        }
         println!("{}", content.trim_end());
         Ok(())
     }

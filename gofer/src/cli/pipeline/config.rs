@@ -1,4 +1,4 @@
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, rail, tasks_table};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -135,19 +135,15 @@ impl Cli {
             .context("Could not successfully retrieve config from Gofer api")?;
 
         const TEMPLATE: &str = r#"
-  {%- if tasks %}
-  🗒 Tasks:
-    {%- for task_id, task in tasks %}
-    • {{ task_id -}}
-    {%- if task.depends_on -%}
-        {%- for dependant in task.depends_on %}
-        - {{ dependant -}}
-        {%- endfor %}
-    {%- endif %}
-    {%- endfor %}
-  {%- endif %}
+  {{ vertical_line }} Version: {{ version }}
+  {{ vertical_line }} Parallelism: {{ parallelism }}
+  {{ vertical_line }} Registered {{ registered }}
+  {{ vertical_line }} Deprecated {{ deprecated }}
 
-  Registered {{ registered }} | Deprecated {{ deprecated }}
+  $ Tasks:
+  {%- for line in tasks %}
+  {{ line }}
+  {%- endfor %}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -155,10 +151,10 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("version", &config.config.version);
+        context.insert("vertical_line", &rail());
+        context.insert("version", &format!("v{}", config.config.version));
         context.insert("parallelism", &config.config.parallelism);
-        context.insert("description", &config.config.description);
-        context.insert("tasks", &config.config.tasks);
+        context.insert("tasks", &tasks_table(&config.config.tasks));
         context.insert(
             "registered",
             &self
@@ -174,17 +170,15 @@ impl Cli {
 
         let content = tera.render("main", &context)?;
         println!(
-            "[{}] {} :: {}",
-            config.config.pipeline_id.blue(),
+            "  Pipeline Config {} ({}) :: {}",
+            config.config.pipeline_id.cyan(),
             config.config.name,
             colorize_status_text(config.config.state)
         );
-        println!("");
-        println!("  Version: {}", &config.config.version);
-        println!("  Parallelism: {}", &config.config.parallelism);
-        println!("");
-        println!("  {}", &config.config.description);
-
+        if !config.config.description.is_empty() {
+            println!("");
+            println!("  {}", config.config.description);
+        }
         println!("{}", content.trim_end());
         Ok(())
     }

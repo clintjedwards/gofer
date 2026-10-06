@@ -1,6 +1,7 @@
-use crate::cli::Cli;
+use crate::cli::{Cli, rail};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
+use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use polyfmt::{println, success};
 
@@ -132,10 +133,10 @@ impl Cli {
             .into_inner()
             .namespace;
 
-        const TEMPLATE: &str = r#"[{{id}}] {{name}}
-{{description}}
-
-Created {{created}}
+        const TEMPLATE: &str = r#"
+  {{ vertical_line }} Name: {{ name }}
+  {{ vertical_line }} Description: {{ description }}
+  {{ vertical_line }} Created {{ created }}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -143,7 +144,7 @@ Created {{created}}
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("id", &namespace.id);
+        context.insert("vertical_line", &rail());
         context.insert("name", &namespace.name);
         context.insert("description", &namespace.description);
         context.insert(
@@ -154,6 +155,7 @@ Created {{created}}
         );
 
         let content = tera.render("main", &context)?;
+        println!("  Namespace {}", namespace.id.cyan());
         println!("{}", content.trim_end());
         Ok(())
     }

@@ -1,12 +1,13 @@
 mod object;
 
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, dependencies, duration};
+use crate::cli::{
+    Cli, colorize_status_text, colorize_status_text_comfy, dependencies, duration, rail, rail_table,
+};
 use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use polyfmt::{println, success};
-use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Args, Clone)]
@@ -210,13 +211,7 @@ impl Cli {
 
         task_executions.sort_by(|a, b| a.task.depends_on.len().cmp(&b.task.depends_on.len()));
 
-        let mut task_table = comfy_table::Table::new();
-        task_table
-            .load_style(
-                comfy_table::presets::NOTHING
-                    .content_lines(comfy_table::ContentLineStyle::none().junction(':')),
-            )
-            .set_content_arrangement(ContentArrangement::Dynamic);
+        let mut task_rows = vec![];
 
         for task in task_executions.iter() {
             let state_prefix: &str = match task.state {
@@ -226,13 +221,14 @@ impl Cli {
                 _ => "Lasted",
             };
 
-            task_table.add_row(vec![
-                Cell::new(format!("• {}", task.task_id.clone())).fg(Color::Blue),
-                Cell::new(format!(
-                    "Started {}",
+            let depends_on = dependencies(&task.task.depends_on);
+
+            task_rows.push(vec![
+                Cell::new(&task.task_id).fg(Color::Blue),
+                Cell::new(
                     self.format_time(task.started)
-                        .unwrap_or("Not yet".to_string())
-                )),
+                        .unwrap_or("Not yet".to_string()),
+                ),
                 Cell::new(format!(
                     "{} {}",
                     state_prefix,
@@ -240,68 +236,28 @@ impl Cli {
                 )),
                 Cell::new(task.state).fg(colorize_status_text_comfy(task.state)),
                 Cell::new(task.status).fg(colorize_status_text_comfy(task.status)),
+                Cell::new(if depends_on.is_empty() {
+                    "Immediately".to_string()
+                } else {
+                    depends_on.join("\n")
+                }),
             ]);
         }
 
-        #[derive(Serialize)]
-        struct TaskData {
-            line: String,
-            depends_on: Vec<String>,
-        }
-
-        let mut task_data = vec![];
-        let task_table_lines = task_table
-            .lines()
-            .map(|line| line.to_string())
-            .collect::<Vec<String>>();
-
-        for (index, task) in task_executions.into_iter().enumerate() {
-            task_data.push(TaskData {
-                line: task_table_lines[index].clone(),
-                depends_on: dependencies(&task.task.depends_on),
-            })
-        }
-
-        let mut attr_table = comfy_table::Table::new();
-        attr_table
-            .load_style(comfy_table::presets::NOTHING)
-            .set_content_arrangement(ContentArrangement::Dynamic);
-
-        attr_table.add_row(vec![
-            "Objects Expired:",
-            &format!("{}", run.store_objects_expired),
-        ]);
-
-        if let Some(token_id) = run.token_id {
-            attr_table.add_row(vec!["Injected Token ID:", &token_id]);
-        };
-
-        let attr_table_lines = attr_table
-            .lines()
-            .map(|line| line.to_string())
-            .collect::<Vec<String>>();
-
         const TEMPLATE: &str = r#"
-  Initiated by {{ initiator_name }} {{ started }} and ran for {{ duration }}
-  {%- if task_executions is defined and task_executions | length > 0 %}
-
+  {{ vertical_line }} Initiated by {{ initiator_name }}
+  {{ vertical_line }} Started {{ started }} and ran for {{ duration }}
+  {{ vertical_line }} Objects Expired: {{ objects_expired }}
+  {%- if token_id %}
+  {{ vertical_line }} Injected Token ID: {{ token_id }}
+  {%- endif %}
   {%- if status_reason %}
-
-  {{status_message}}: {{ status_reason.reason }}: {{ status_reason.description }}
+  {{ vertical_line }} {{ status_message }}: {{ status_reason.reason }}: {{ status_reason.description }}
   {%- endif %}
 
-  🗒 Task Executions
-    {%- for task in task_executions %}
-    {{ task.line }}
-    {%- if task.depends_on is defined and task.depends_on | length > 0 %}
-      {%- for dependant in task.depends_on %}
-      - {{ dependant }}
-      {%- endfor -%}
-    {%- endif -%}
-    {%- endfor %}
-  {%- endif %}
-  {% for attr in attr_table %}
-  {{ attr }}
+  $ Task Executions:
+  {%- for line in task_executions %}
+  {{ line }}
   {%- endfor %}
 "#;
 
@@ -310,7 +266,8 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("initiator_name", &run.initiator.user.cyan().to_string());
+        context.insert("vertical_line", &rail());
+        context.insert("initiator_name", &run.initiator.user.blue().to_string());
         context.insert(
             "started",
             &self
@@ -319,17 +276,23 @@ impl Cli {
         );
         context.insert("duration", &duration(run.started as i64, run.ended as i64));
         context.insert("objects_expired", &run.store_objects_expired);
-        context.insert("task_executions", &task_data);
+        context.insert("token_id", &run.token_id);
+        context.insert(
+            "task_executions",
+            &rail_table(
+                &["TASK", "STARTED", "DURATION", "STATE", "STATUS", "STARTS"],
+                task_rows,
+            ),
+        );
         context.insert("status_reason", &run.status_reason);
         context.insert("status_message", &"Failure".red().to_string());
-        context.insert("attr_table", &attr_table_lines);
 
         let content = tera.render("main", &context)?;
         println!(
-            "Run {} for Pipeline {} ({}) :: {} :: {}",
-            format!("#{}", run.run_id).blue(),
-            run.pipeline_id.blue(),
-            format!("v{}", run.pipeline_config_version),
+            "  Run {} for pipeline {} (v{}) :: {} :: {}",
+            format!("#{}", run.run_id).cyan(),
+            run.pipeline_id.cyan(),
+            run.pipeline_config_version,
             colorize_status_text(run.state),
             colorize_status_text(run.status)
         );

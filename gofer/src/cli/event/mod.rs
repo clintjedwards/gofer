@@ -1,7 +1,9 @@
-use crate::cli::Cli;
+use crate::cli::{Cli, event_kind_parts, rail, rail_table};
 use anyhow::{Context, Result, anyhow, bail};
 use chrono::TimeZone;
 use clap::{Args, Subcommand};
+use colored::Colorize;
+use comfy_table::{Cell, Color};
 use futures::StreamExt;
 use polyfmt::{error, println};
 use tokio_tungstenite::WebSocketStream;
@@ -120,12 +122,16 @@ impl Cli {
             .into_inner()
             .event;
 
-        const TEMPLATE: &str = r#"  [{{id}}]
+        let (kind, fields) = event_kind_parts(&event.kind)?;
 
-  🗒 Details:
-    {{kind}}
+        const TEMPLATE: &str = r#"
+  {{ vertical_line }} Kind: {{ kind }}
+  {{ vertical_line }} Emitted {{ emitted }}
 
-  Emitted {{emitted}}
+  $ Details:
+  {%- for line in details %}
+  {{ line }}
+  {%- endfor %}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -133,16 +139,27 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
+        context.insert("vertical_line", &rail());
+        context.insert("kind", &kind.blue().to_string());
         context.insert(
             "emitted",
             &self
                 .format_time(event.emitted)
                 .unwrap_or_else(|| "Unknown".to_string()),
         );
-        context.insert("id", &event.id);
-        context.insert("kind", &format!("{:#?}", event.kind));
+        context.insert(
+            "details",
+            &rail_table(
+                &[],
+                fields
+                    .into_iter()
+                    .map(|(key, value)| vec![Cell::new(key), Cell::new(value).fg(Color::Blue)])
+                    .collect(),
+            ),
+        );
 
         let content = tera.render("main", &context)?;
+        println!("  Event {}", event.id.cyan());
         println!("{}", content.trim_end());
 
         Ok(())

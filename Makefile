@@ -78,6 +78,15 @@ deploy: build-release
 > echo -e "$(COLOR_GREEN)Deploy complete$(COLOR_END)"
 .PHONY: deploy
 
+INSTALL_BIN_PATH = $(HOME)/.bin/gofer
+
+## install: build release and install the Gofer binary to INSTALL_BIN_PATH
+install: build-release
+> mkdir -p $(dir $(INSTALL_BIN_PATH))
+> install -m 755 $(RELEASE_BIN) $(INSTALL_BIN_PATH)
+> echo -e "$(COLOR_GREEN)Installed $$($(INSTALL_BIN_PATH) --version) to $(INSTALL_BIN_PATH)$(COLOR_END)"
+.PHONY: install
+
 ## run-docs: build and run documentation website for development
 run-docs:
 > cd gofer/docs

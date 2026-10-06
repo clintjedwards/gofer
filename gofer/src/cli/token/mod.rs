@@ -1,6 +1,7 @@
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, rail, rail_table};
 use anyhow::{Context, Result, bail};
 use clap::{Args, Subcommand};
+use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement, presets::ASCII_MARKDOWN};
 use polyfmt::{println, success};
 use std::collections::HashMap;
@@ -156,29 +157,52 @@ impl Cli {
             .token;
 
         const TEMPLATE: &str = r#"
-  {%- if roles %}
-  Roles:
-    {%- for role in roles %}
-    • {{ role }}
-    {%- endfor -%}
-  {%- endif -%}
-  {% if metadata %}
-  Metadata:
-    {%- for key, value in metadata %}
-    • {{ key }}: {{ value }}
-    {%- endfor -%}
-  {%- endif %}
+  {{ vertical_line }} User: {{ user }}
+  {{ vertical_line }} Created {{ created }}
+  {{ vertical_line }} Expires {{ expires }}
 
-  Created {{created}} | Expires {{expires}} | Active: {{disabled}}
+  $ Roles:
+  {%- for line in roles %}
+  {{ line }}
+  {%- endfor %}
+
+  $ Metadata:
+  {%- for line in metadata %}
+  {{ line }}
+  {%- endfor %}
 "#;
 
         let mut tera = tera::Tera::default();
         tera.add_raw_template("main", TEMPLATE)
             .context("Failed to render context")?;
 
+        let mut metadata: Vec<_> = token.metadata.iter().collect();
+        metadata.sort();
+
         let mut context = tera::Context::new();
-        context.insert("roles", &token.roles);
-        context.insert("metadata", &token.metadata);
+        context.insert("vertical_line", &rail());
+        context.insert("user", &token.user.blue().to_string());
+        context.insert(
+            "roles",
+            &rail_table(
+                &[],
+                token
+                    .roles
+                    .iter()
+                    .map(|role| vec![Cell::new(role).fg(Color::Blue)])
+                    .collect(),
+            ),
+        );
+        context.insert(
+            "metadata",
+            &rail_table(
+                &[],
+                metadata
+                    .into_iter()
+                    .map(|(key, value)| vec![Cell::new(key), Cell::new(value).fg(Color::Blue)])
+                    .collect(),
+            ),
+        );
         context.insert(
             "created",
             &self
@@ -189,15 +213,17 @@ impl Cli {
             "expires",
             &self
                 .format_time(token.expires)
-                .unwrap_or_else(|| "Unknown".to_string()),
+                .unwrap_or_else(|| "Never".to_string()),
         );
 
-        let active = !token.disabled;
-
-        context.insert("disabled", &colorize_status_text(active.to_string()));
+        let state = if token.disabled { "disabled" } else { "active" };
 
         let content = tera.render("main", &context)?;
-        println!("[{}] :: User: {}", &token.id, &token.user);
+        println!(
+            "  Token {} :: {}",
+            token.id.cyan(),
+            colorize_status_text(state)
+        );
         println!("{}", content.trim_end());
         Ok(())
     }

@@ -1,4 +1,4 @@
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, duration};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, duration, rail_table};
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -244,19 +244,17 @@ impl Cli {
             .into_inner()
             .task_execution;
 
-        let mut variable_table = comfy_table::Table::new();
-        variable_table
-            .load_style(comfy_table::presets::NOTHING)
-            .set_content_arrangement(ContentArrangement::Dynamic);
-
-        for variable in task.variables {
-            variable_table.add_row(vec![
-                Cell::new("│").fg(Color::Magenta),
-                Cell::new(variable.key),
-                Cell::new(variable.value).fg(Color::Blue),
-                Cell::new(variable.source.to_string()).fg(Color::AnsiValue(245)),
-            ]);
-        }
+        let variable_rows = task
+            .variables
+            .into_iter()
+            .map(|variable| {
+                vec![
+                    Cell::new(variable.key),
+                    Cell::new(variable.value).fg(Color::Blue),
+                    Cell::new(variable.source.to_string()).fg(Color::AnsiValue(245)),
+                ]
+            })
+            .collect();
 
         const TEMPLATE: &str = r#"
   {{ vertical_line }} Parent Pipeline: {{ pipeline_id }}
@@ -267,9 +265,10 @@ impl Cli {
   {{ vertical_line }} Started {{ started }} and ran for {{ duration }}
 
   {%- if status_reason %}
-    Status Details:
-    {{ vertical_line }} Reason: {{ status_reason.reason }}
-    {{ vertical_line }} Description: {{ status_reason.description }}
+
+  $ Status Details:
+  {{ vertical_line }} Reason: {{ status_reason.reason }}
+  {{ vertical_line }} Description: {{ status_reason.description }}
   {%- endif %}
   {%- if env_vars is defined %}
 
@@ -314,10 +313,7 @@ impl Cli {
         context.insert("status_reason", &task.status_reason);
         context.insert(
             "env_vars",
-            &variable_table
-                .lines()
-                .map(|line| line.to_string())
-                .collect::<Vec<String>>(),
+            &rail_table(&["KEY", "VALUE", "SOURCE"], variable_rows),
         );
         context.insert(
             "task_execution_cmd",
@@ -331,8 +327,8 @@ impl Cli {
 
         let content = tera.render("main", &context)?;
         println!(
-            "Task {} :: {} :: {}",
-            task.task_id.blue(),
+            "  Task {} :: {} :: {}",
+            task.task_id.cyan(),
             colorize_status_text(task.state),
             colorize_status_text(task.status)
         );

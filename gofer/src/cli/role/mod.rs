@@ -1,4 +1,4 @@
-use crate::cli::Cli;
+use crate::cli::{Cli, rail, rail_table};
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -113,15 +113,13 @@ impl Cli {
             .into_inner()
             .role;
 
-        const TEMPLATE: &str = r#"  Role: {{id}}
+        const TEMPLATE: &str = r#"
+  {{ vertical_line }} Description: {{ description }}
 
-  {{description}}
-
-  Permissions:
-
-{%- for line in permissions %}
+  $ Permissions:
+  {%- for line in permissions %}
   {{ line }}
-{%- endfor %}
+  {%- endfor %}
 "#;
 
         let mut permission_map: std::collections::BTreeMap<String, HashSet<String>> =
@@ -130,7 +128,7 @@ impl Cli {
         for permission in &role.permissions {
             for resource in &permission.resources {
                 permission_map
-                    .entry(format!("{:?}:", resource))
+                    .entry(resource.to_string())
                     .and_modify(|actions| {
                         for value in &permission.actions {
                             actions.insert(value.to_string());
@@ -146,24 +144,11 @@ impl Cli {
             }
         }
 
-        let mut permission_table = comfy_table::Table::new();
-        permission_table
-            .load_style(comfy_table::presets::NOTHING)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                Cell::new("Resource")
-                    .set_alignment(CellAlignment::Center)
-                    .fg(Color::Blue),
-                Cell::new("Actions")
-                    .set_alignment(CellAlignment::Center)
-                    .fg(Color::Blue),
-            ]);
-
-        // Add empty row to space out the header from the actual permissions.
-        permission_table.add_row(vec!["", ""]);
+        let mut permission_rows = vec![];
 
         let custom_order = ["Read", "Write", "Delete"];
 
+        // Resources come from a BTreeMap so rows are already in a stable order; allows user to quickly scan.
         for (resource, action_list) in permission_map {
             let mut sorted_actions: Vec<_> = action_list.into_iter().collect();
 
@@ -174,28 +159,26 @@ impl Cli {
                     .position(|&a| a.eq_ignore_ascii_case(action))
                     .unwrap_or(usize::MAX)
             });
-            permission_table.add_row(vec![
+            permission_rows.push(vec![
                 Cell::new(resource),
                 Cell::new(sorted_actions.join(", ")).fg(Color::Blue),
             ]);
         }
-
-        // Resources come from a BTreeMap so rows are already in a stable order; allows user to quickly scan.
-        let permissions = permission_table
-            .lines()
-            .map(|line| line.to_string())
-            .collect::<Vec<String>>();
 
         let mut tera = tera::Tera::default();
         tera.add_raw_template("main", TEMPLATE)
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
-        context.insert("id", &role.id);
+        context.insert("vertical_line", &rail());
         context.insert("description", &role.description);
-        context.insert("permissions", &permissions);
+        context.insert(
+            "permissions",
+            &rail_table(&["RESOURCE", "ACTIONS"], permission_rows),
+        );
 
         let content = tera.render("main", &context)?;
+        println!("  Role {}", role.id.cyan());
         println!("{}", content.trim_end());
         Ok(())
     }

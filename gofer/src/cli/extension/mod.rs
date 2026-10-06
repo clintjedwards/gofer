@@ -1,4 +1,4 @@
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy};
+use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, rail, rail_table};
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -112,6 +112,22 @@ impl Cli {
     }
 }
 
+fn params_table(params: &[gofer_sdk::api::types::Parameter]) -> Vec<String> {
+    rail_table(
+        &["KEY", "REQUIRED", "DESCRIPTION"],
+        params
+            .iter()
+            .map(|param| {
+                vec![
+                    Cell::new(&param.key).fg(Color::Blue),
+                    Cell::new(if param.required { "yes" } else { "no" }),
+                    Cell::new(&param.documentation),
+                ]
+            })
+            .collect(),
+    )
+}
+
 impl Cli {
     pub async fn extension_list(&self) -> Result<()> {
         let extensions = self
@@ -161,33 +177,21 @@ impl Cli {
             .extension;
 
         const TEMPLATE: &str = r#"
-  Started {{ started }}
+  {{ vertical_line }} Image: {{ image }}
+  {{ vertical_line }} Endpoint: {{ url }}
+  {{ vertical_line }} Started {{ started }}
 
-  Image: {{ image }}
-  Endpoint: {{ url }}
+  $ Pipeline Params:
+  {%- for line in pipeline_params %}
+  {{ line }}
+  {%- endfor %}
 
-  {%- if documentation %}
-
-  Config Params:
-    {%- if config_params %}
-    {%- for line in config_params %}
-    • {{ line.key }} ::{% if line.required %} Required {% endif %} :: {{line.documentation}}
-    {%- endfor %}
-    {%- else %}
-    None
-    {%- endif %}
-
-  Pipeline Params:
-    {%- if pipeline_params %}
-    {%- for line in pipeline_params %}
-    • {{ line.key }} {% if line.required %}:: Required {% endif %}:: {{line.documentation}}
-    {%- endfor %}
-    {%- else -%}
-    None
-    {%- endif %}
+  $ Config Params:
+  {%- for line in config_params %}
+  {{ line }}
+  {%- endfor %}
 
   Info:
-  {%- endif %}
 "#;
 
         let mut tera = tera::Tera::default();
@@ -195,20 +199,23 @@ impl Cli {
             .context("Failed to render context")?;
 
         let mut context = tera::Context::new();
+        context.insert("vertical_line", &rail());
+        context.insert("image", &extension.registration.image.blue().to_string());
+        context.insert("url", &extension.url.blue().to_string());
         context.insert(
             "started",
             &self
                 .format_time(extension.started)
                 .unwrap_or_else(|| "Not yet".to_string()),
         );
-        context.insert("image", &extension.registration.image);
-        context.insert("url", &extension.url);
-        context.insert("config_params", &extension.documentation.config_params);
         context.insert(
             "pipeline_params",
-            &extension.documentation.pipeline_subscription_params,
+            &params_table(&extension.documentation.pipeline_subscription_params),
         );
-        context.insert("documentation", &extension.documentation.body);
+        context.insert(
+            "config_params",
+            &params_table(&extension.documentation.config_params),
+        );
 
         let content = tera.render("main", &context)?;
         println!(
@@ -217,11 +224,12 @@ impl Cli {
             colorize_status_text(extension.state)
         );
         println!("{}", content.trim_end());
-        println!("");
         if extension.documentation.body.is_empty() {
-            println!("{}", "No documentation found");
+            println!("  No documentation found");
         } else {
-            println!("{}", &extension.documentation.body);
+            for line in extension.documentation.body.lines() {
+                println!("  {line}");
+            }
         }
         Ok(())
     }
