@@ -130,7 +130,7 @@ function accountPanel() {
     sessionState === "verified"
       ? `<p class="text-sm">Signed in as <span class="font-medium">${escapeHtml(session.user)}</span></p>
         <dl class="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
-          <div class="flex justify-between gap-4"><dt>Token</dt><dd class="font-mono truncate">${escapeHtml(session.id)}</dd></div>
+          <div><dt>Token ID</dt><dd class="mt-0.5 font-mono text-gray-700 dark:text-gray-300 break-all select-all">${escapeHtml(session.id)}</dd></div>
           <div class="flex justify-between gap-4"><dt>Expires</dt><dd>${session.expires ? formatTimestamp(session.expires) : "Never"}</dd></div>
           ${session.roles.length ? `<div class="flex justify-between gap-4"><dt>Roles</dt><dd class="text-right">${session.roles.map(escapeHtml).join(", ")}</dd></div>` : ""}
         </dl>`
@@ -182,6 +182,38 @@ function setAccountOpen(open) {
   }
 }
 
+// `gofer web` opens the page with `#login=<code>`. The fragment never reaches the server, and we scrub it from the
+// address bar straight away, then trade the code for the CLI's token. Each code works once and expires quickly, so a
+// stale link shows a short notice instead of signing anyone in.
+async function consumeLoginCode() {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const code = params.get("login");
+  if (!code) return;
+
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+
+  const resp = await fetch("/api/tokens/web-login/exchange", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "gofer-api-version": "v0" },
+    body: JSON.stringify({ code }),
+  }).catch(() => null);
+
+  if (resp && resp.ok) {
+    const data = await resp.json();
+    saveApiKey(data.secret);
+    return;
+  }
+
+  const notice = document.createElement("div");
+  notice.className = "mx-auto mt-4 max-w-6xl px-6";
+  notice.innerHTML = `<div class="flex items-center justify-between gap-4 rounded-md border border-yellow-300 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/40 px-4 py-3 text-sm text-yellow-900 dark:text-yellow-100">
+      <span>That sign-in link expired or was already used. Run <code class="font-mono">gofer web</code> again for a fresh one.</span>
+      <button type="button" class="shrink-0 text-yellow-700 dark:text-yellow-300 hover:underline">Dismiss</button>
+    </div>`;
+  notice.querySelector("button").addEventListener("click", () => notice.remove());
+  document.getElementById("site-header").after(notice);
+}
+
 // Draws the shared top bar into <header id="site-header">, wires up the theme and account controls, and resolves
 // once we know who's signed in. `onSessionChange` runs after a sign in or sign out so the page can reload data.
 async function setupHeader({ active = "", onSessionChange = () => {} } = {}) {
@@ -194,7 +226,7 @@ async function setupHeader({ active = "", onSessionChange = () => {} } = {}) {
       </a>
       <span class="hidden lg:block text-sm text-gray-500 dark:text-gray-400">Run short lived jobs easily.</span>
       <nav class="ml-auto hidden md:flex items-center gap-1">
-        ${navLink("/", "Runs", active === "runs")}
+        ${navLink("/", "Overview", active === "overview")}
         ${navLink("/docs", "Docs", false)}
         ${navLink("/docs/api_reference.html", "API", false)}
         ${navLink("https://github.com/clintjedwards/gofer", "GitHub", false, true)}
@@ -271,6 +303,7 @@ async function setupHeader({ active = "", onSessionChange = () => {} } = {}) {
     }
   });
 
+  await consumeLoginCode();
   await loadSession();
   renderAccount();
 }

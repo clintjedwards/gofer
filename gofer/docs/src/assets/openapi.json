@@ -3484,6 +3484,72 @@
         }
       }
     },
+    "/api/tokens/web-login": {
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Start a browser sign in.",
+        "description": "Returns a short lived, single use code that a browser can trade for the calling token, so the CLI can open the web UI already signed in without ever putting the token itself in a URL.",
+        "operationId": "create_web_login",
+        "responses": {
+          "201": {
+            "description": "successful creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateWebLoginResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/tokens/web-login/exchange": {
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Finish a browser sign in.",
+        "description": "Trades a code from `create_web_login` for the token that created it. Each code works once. The code is sent in the body rather than the path so it stays out of request logs.",
+        "operationId": "exchange_web_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeWebLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeWebLoginResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/tokens/whoami": {
       "get": {
         "tags": [
@@ -3907,6 +3973,25 @@
           "token_details"
         ]
       },
+      "CreateWebLoginResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "description": "Single use code the browser trades for the token. Pass it in a URL fragment so it never reaches server logs.",
+            "type": "string"
+          },
+          "expires": {
+            "description": "When the code stops working, in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "code",
+          "expires"
+        ]
+      },
       "DebugResponse": {
         "type": "object",
         "properties": {
@@ -4096,6 +4181,30 @@
           "emitted",
           "id",
           "kind"
+        ]
+      },
+      "ExchangeWebLoginRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "description": "The code from `create_web_login`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "ExchangeWebLoginResponse": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "description": "The token to sign in with. Protect it like a password.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret"
         ]
       },
       "Extension": {

@@ -1,4 +1,4 @@
-use super::permissioning::{Action, GlobalResource, Requirement, SystemRoles};
+use super::permissioning::{Action, GlobalResource, Requirement, SystemRoles, bearer_token};
 use crate::{
     api::{ApiState, PreflightOptions, epoch_milli},
     http_error, storage,
@@ -396,6 +396,127 @@ pub async fn whoami(
 
     let resp = WhoAmIResponse { token };
     Ok(HttpResponseOk(resp))
+}
+
+/// How long a web login code stays valid. Long enough for a browser to open, short enough that a code someone
+/// copies out of a process list or terminal is useless shortly after.
+const WEB_LOGIN_TTL_MILLIS: u64 = 60 * 1000;
+
+/// A pending browser sign in started by `gofer web`. Holds the caller's own token until the browser claims it.
+#[derive(Debug, Clone)]
+pub struct WebLogin {
+    secret: String,
+    expires: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CreateWebLoginResponse {
+    /// Single use code the browser trades for the token. Pass it in a URL fragment so it never reaches server logs.
+    pub code: String,
+
+    /// When the code stops working, in epoch milliseconds.
+    pub expires: u64,
+}
+
+/// Start a browser sign in.
+///
+/// Returns a short lived, single use code that a browser can trade for the calling token, so the CLI can open the
+/// web UI already signed in without ever putting the token itself in a URL.
+#[endpoint(
+    method = POST,
+    path = "/api/tokens/web-login",
+    tags = ["Tokens"]
+)]
+pub async fn create_web_login(
+    rqctx: RequestContext<Arc<ApiState>>,
+) -> Result<HttpResponseCreated<CreateWebLoginResponse>, HttpError> {
+    let api_state = rqctx.context();
+    let _req_metadata = api_state
+        .preflight_check(
+            &rqctx.request,
+            PreflightOptions {
+                bypass_auth: false,
+                admin_only: false,
+                allow_anonymous: false,
+                requires: Requirement::Authenticated,
+                action: Action::Read,
+            },
+        )
+        .await?;
+
+    // The browser ends up holding exactly the token the caller used, so it can never do more than the caller can.
+    let secret = bearer_token(&rqctx.request)?.to_string();
+
+    let now = epoch_milli();
+    api_state.web_logins.retain(|_, login| login.expires > now);
+
+    let code = generate_rand_str(32);
+    let expires = now + WEB_LOGIN_TTL_MILLIS;
+    api_state
+        .web_logins
+        .insert(code.clone(), WebLogin { secret, expires });
+
+    Ok(HttpResponseCreated(CreateWebLoginResponse {
+        code,
+        expires,
+    }))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ExchangeWebLoginRequest {
+    /// The code from `create_web_login`.
+    pub code: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ExchangeWebLoginResponse {
+    /// The token to sign in with. Protect it like a password.
+    pub secret: String,
+}
+
+/// Finish a browser sign in.
+///
+/// Trades a code from `create_web_login` for the token that created it. Each code works once. The code is sent in
+/// the body rather than the path so it stays out of request logs.
+#[endpoint(
+    method = POST,
+    path = "/api/tokens/web-login/exchange",
+    tags = ["Tokens"]
+)]
+pub async fn exchange_web_login(
+    rqctx: RequestContext<Arc<ApiState>>,
+    body: TypedBody<ExchangeWebLoginRequest>,
+) -> Result<HttpResponseOk<ExchangeWebLoginResponse>, HttpError> {
+    let api_state = rqctx.context();
+    let _req_metadata = api_state
+        .preflight_check(
+            &rqctx.request,
+            PreflightOptions {
+                // The code is the credential here; the browser doesn't have a token yet.
+                bypass_auth: true,
+                admin_only: false,
+                allow_anonymous: false,
+                requires: Requirement::Authenticated,
+                action: Action::Read,
+            },
+        )
+        .await?;
+
+    let body = body.into_inner();
+
+    // Removing it up front is what makes the code single use, even if two requests race for it.
+    match api_state.web_logins.remove(&body.code) {
+        Some((_, login)) if login.expires > epoch_milli() => {
+            Ok(HttpResponseOk(ExchangeWebLoginResponse {
+                secret: login.secret,
+            }))
+        }
+        _ => Err(HttpError::for_client_error(
+            None,
+            ClientErrorStatusCode::NOT_FOUND,
+            "This sign-in link has expired or was already used".into(),
+        )),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

@@ -381,6 +381,32 @@ pub struct AuthContext {
     pub roles: Vec<String>,
 }
 
+/// Pulls the raw token out of a request's `Authorization: Bearer <token>` header.
+pub fn bearer_token(request: &RequestInfo) -> Result<&str, HttpError> {
+    let auth_header = request
+        .headers()
+        .get("Authorization")
+        .ok_or(HttpError::for_client_error(
+            None,
+            ClientErrorStatusCode::UNAUTHORIZED,
+            "Authorization header not found but required".into(),
+        ))?;
+
+    let auth_header = auth_header.to_str().map_err(|e| {
+        HttpError::for_bad_request(
+            None,
+            format!("Could not parse Authorization header; {:#?}", e),
+        )
+    })?;
+
+    auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+        HttpError::for_bad_request(
+            None,
+            "Authorization header malformed; should start with 'Bearer'".into(),
+        )
+    })
+}
+
 impl ApiState {
     /// Resolves request specific context for handlers. This is used to perform auth checks and generally other
     /// actions that should happen before a route runs it's handler.
@@ -519,30 +545,7 @@ impl ApiState {
 
     /// Checks request authentication and returns valid auth information.
     async fn get_auth_context(&self, request: &RequestInfo) -> Result<AuthContext, HttpError> {
-        let auth_header =
-            request
-                .headers()
-                .get("Authorization")
-                .ok_or(HttpError::for_client_error(
-                    None,
-                    ClientErrorStatusCode::UNAUTHORIZED,
-                    "Authorization header not found but required".into(),
-                ))?;
-
-        let auth_header = auth_header.to_str().map_err(|e| {
-            HttpError::for_bad_request(
-                None,
-                format!("Could not parse Authorization header; {:#?}", e),
-            )
-        })?;
-        if !auth_header.starts_with("Bearer ") {
-            return Err(HttpError::for_bad_request(
-                None,
-                "Authorization header malformed; should start with 'Bearer'".into(),
-            ));
-        }
-
-        let token = auth_header.strip_prefix("Bearer ").unwrap();
+        let token = bearer_token(request)?;
 
         let hash = super::tokens::hash_token(token);
 

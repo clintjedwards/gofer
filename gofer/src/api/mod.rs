@@ -171,6 +171,10 @@ pub struct ApiState {
 
     /// SecretStore is the mechanism in which Gofer manages pipeline secrets.
     secret_store: Box<dyn secret_store::SecretStore>,
+
+    /// Short lived, single use codes that let `gofer web` sign the browser in without putting a token in a URL.
+    /// Keyed by code. Kept in memory only, since a code that outlives a restart isn't worth keeping.
+    web_logins: DashMap<String, tokens::WebLogin>,
 }
 
 impl ApiState {
@@ -196,6 +200,7 @@ impl ApiState {
             scheduler,
             secret_store,
             storage,
+            web_logins: DashMap::new(),
         }
     }
 }
@@ -637,6 +642,8 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
 
     /* /api/tokens/whoami */
     api.register(tokens::whoami).unwrap();
+    api.register(tokens::create_web_login).unwrap();
+    api.register(tokens::exchange_web_login).unwrap();
 
     /* /api/extensions */
     api.register(extensions::list_extensions).unwrap();

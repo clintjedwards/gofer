@@ -10,6 +10,7 @@ mod service;
 mod task;
 mod token;
 mod up;
+mod web;
 
 use crate::conf::{
     Configuration,
@@ -207,6 +208,28 @@ enum Commands {
 
     /// Manage Gofer API Tokens.
     Token(token::TokenSubcommands),
+
+    /// Open the web UI, already signed in with your CLI token.
+    ///
+    /// With no arguments this opens the front page. Pass a pipeline to open its latest run, or a pipeline and run to
+    /// open that run's details page.
+    ///
+    /// Ex. `gofer web dag 3`
+    Web {
+        /// Pipeline Identifier.
+        pipeline_id: Option<String>,
+
+        /// Run Identifier.
+        run_id: Option<u64>,
+
+        /// Namespace Identifier.
+        #[arg(long)]
+        namespace: Option<String>,
+
+        /// Print a sign-in link instead of opening a browser. Handy over SSH or to use a different browser.
+        #[arg(long, default_value = "false")]
+        print: bool,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -311,6 +334,12 @@ impl Cli {
             Commands::Extension(extension) => self.handle_extension_subcommands(extension).await,
             Commands::Event(event) => self.handle_event_subcommands(event).await,
             Commands::Token(token) => self.handle_token_subcommands(token).await,
+            Commands::Web {
+                pipeline_id,
+                run_id,
+                namespace,
+                print,
+            } => self.web(namespace, pipeline_id, run_id, print).await,
         }
     }
 

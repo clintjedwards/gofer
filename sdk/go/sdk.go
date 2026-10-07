@@ -487,6 +487,15 @@ type CreateTokenResponse struct {
 	TokenDetails Token `json:"token_details"`
 }
 
+// CreateWebLoginResponse defines model for CreateWebLoginResponse.
+type CreateWebLoginResponse struct {
+	// Code Single use code the browser trades for the token. Pass it in a URL fragment so it never reaches server logs.
+	Code string `json:"code"`
+
+	// Expires When the code stops working, in epoch milliseconds.
+	Expires uint64 `json:"expires"`
+}
+
 // DebugResponse defines model for DebugResponse.
 type DebugResponse struct {
 	Info string `json:"info"`
@@ -563,6 +572,18 @@ type Event struct {
 
 	// Kind The type of event it is.
 	Kind Kind `json:"kind"`
+}
+
+// ExchangeWebLoginRequest defines model for ExchangeWebLoginRequest.
+type ExchangeWebLoginRequest struct {
+	// Code The code from `create_web_login`.
+	Code string `json:"code"`
+}
+
+// ExchangeWebLoginResponse defines model for ExchangeWebLoginResponse.
+type ExchangeWebLoginResponse struct {
+	// Secret The token to sign in with. Protect it like a password.
+	Secret string `json:"secret"`
 }
 
 // Extension An Extension is the way that pipelines add extra functionality to themselves. Pipelines can "subscribe" to extensions and extensions then act on behalf of that pipeline.
@@ -1999,6 +2020,9 @@ type UpdateSystemPreferencesJSONRequestBody = UpdateSystemPreferencesRequest
 
 // CreateTokenJSONRequestBody defines body for CreateToken for application/json ContentType.
 type CreateTokenJSONRequestBody = CreateTokenRequest
+
+// ExchangeWebLoginJSONRequestBody defines body for ExchangeWebLogin for application/json ContentType.
+type ExchangeWebLoginJSONRequestBody = ExchangeWebLoginRequest
 
 // UpdateTokenJSONRequestBody defines body for UpdateToken for application/json ContentType.
 type UpdateTokenJSONRequestBody = UpdateTokenRequest
@@ -4431,6 +4455,14 @@ type ClientInterface interface {
 	// CreateBootstrapToken request
 	CreateBootstrapToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateWebLogin request
+	CreateWebLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExchangeWebLoginWithBody request with any body
+	ExchangeWebLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ExchangeWebLogin(ctx context.Context, body ExchangeWebLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Whoami request
 	Whoami(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5492,6 +5524,42 @@ func (c *Client) CreateToken(ctx context.Context, body CreateTokenJSONRequestBod
 
 func (c *Client) CreateBootstrapToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateBootstrapTokenRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateWebLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWebLoginRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ExchangeWebLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExchangeWebLoginRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ExchangeWebLogin(ctx context.Context, body ExchangeWebLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExchangeWebLoginRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9031,6 +9099,73 @@ func NewCreateBootstrapTokenRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewCreateWebLoginRequest generates requests for CreateWebLogin
+func NewCreateWebLoginRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tokens/web-login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewExchangeWebLoginRequest calls the generic ExchangeWebLogin builder with application/json body
+func NewExchangeWebLoginRequest(server string, body ExchangeWebLoginJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewExchangeWebLoginRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewExchangeWebLoginRequestWithBody generates requests for ExchangeWebLogin with any type of body
+func NewExchangeWebLoginRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/tokens/web-login/exchange")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewWhoamiRequest generates requests for Whoami
 func NewWhoamiRequest(server string) (*http.Request, error) {
 	var err error
@@ -9464,6 +9599,14 @@ type ClientWithResponsesInterface interface {
 
 	// CreateBootstrapTokenWithResponse request
 	CreateBootstrapTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateBootstrapTokenResp, error)
+
+	// CreateWebLoginWithResponse request
+	CreateWebLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateWebLoginResp, error)
+
+	// ExchangeWebLoginWithBodyWithResponse request with any body
+	ExchangeWebLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExchangeWebLoginResp, error)
+
+	ExchangeWebLoginWithResponse(ctx context.Context, body ExchangeWebLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*ExchangeWebLoginResp, error)
 
 	// WhoamiWithResponse request
 	WhoamiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*WhoamiResp, error)
@@ -11207,6 +11350,54 @@ func (r CreateBootstrapTokenResp) StatusCode() int {
 	return 0
 }
 
+type CreateWebLoginResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateWebLoginResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWebLoginResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWebLoginResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ExchangeWebLoginResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ExchangeWebLoginResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ExchangeWebLoginResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExchangeWebLoginResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type WhoamiResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -12076,6 +12267,32 @@ func (c *ClientWithResponses) CreateBootstrapTokenWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseCreateBootstrapTokenResp(rsp)
+}
+
+// CreateWebLoginWithResponse request returning *CreateWebLoginResp
+func (c *ClientWithResponses) CreateWebLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateWebLoginResp, error) {
+	rsp, err := c.CreateWebLogin(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWebLoginResp(rsp)
+}
+
+// ExchangeWebLoginWithBodyWithResponse request with arbitrary body returning *ExchangeWebLoginResp
+func (c *ClientWithResponses) ExchangeWebLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExchangeWebLoginResp, error) {
+	rsp, err := c.ExchangeWebLoginWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExchangeWebLoginResp(rsp)
+}
+
+func (c *ClientWithResponses) ExchangeWebLoginWithResponse(ctx context.Context, body ExchangeWebLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*ExchangeWebLoginResp, error) {
+	rsp, err := c.ExchangeWebLogin(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExchangeWebLoginResp(rsp)
 }
 
 // WhoamiWithResponse request returning *WhoamiResp
@@ -14847,6 +15064,86 @@ func ParseCreateBootstrapTokenResp(rsp *http.Response) (*CreateBootstrapTokenRes
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateWebLoginResp parses an HTTP response from a CreateWebLoginWithResponse call
+func ParseCreateWebLoginResp(rsp *http.Response) (*CreateWebLoginResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWebLoginResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateWebLoginResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseExchangeWebLoginResp parses an HTTP response from a ExchangeWebLoginWithResponse call
+func ParseExchangeWebLoginResp(rsp *http.Response) (*ExchangeWebLoginResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExchangeWebLoginResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExchangeWebLoginResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error

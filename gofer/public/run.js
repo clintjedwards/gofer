@@ -389,10 +389,11 @@ function renderVariables(variables) {
 // ---------------------------------------------------------------------------------------------------------------
 
 function renderTitle(run) {
+  const namespaceOverview = run.namespace_id === "default" ? "/" : `/?namespace=${encodeURIComponent(run.namespace_id)}`;
   return `<nav class="text-sm text-gray-500 dark:text-gray-400">
-      <a href="/" class="hover:text-emerald-600">Runs</a>
+      <a href="/" class="hover:text-emerald-600">Overview</a>
       <span class="mx-1">/</span>
-      <span>${escapeHtml(run.namespace_id)}</span>
+      <a href="${escapeHtml(namespaceOverview)}" class="hover:text-emerald-600">${escapeHtml(run.namespace_id)}</a>
       <span class="mx-1">/</span>
       <span>${escapeHtml(run.pipeline_id)}</span>
     </nav>
@@ -867,8 +868,9 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("DOMContentLoaded", async function () {
-  // A new token can unlock this run's tasks, and polling may have stopped, so reload and restart it.
-  setupHeader({
+  // A new token can unlock this run's tasks, and polling may have stopped, so reload and restart it. Awaited so a
+  // sign in from `gofer web` finishes before the first fetch.
+  await setupHeader({
     onSessionChange: () => {
       loadRun();
       startPolling();

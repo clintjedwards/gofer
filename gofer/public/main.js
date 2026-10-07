@@ -530,7 +530,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   };
 
   // The session decides whether "Started by me" is offered, so the header goes first.
-  await setupHeader({ active: "runs", onSessionChange: reload });
+  await setupHeader({ active: "overview", onSessionChange: reload });
   loadNamespaces();
   await loadDashboard();
 
