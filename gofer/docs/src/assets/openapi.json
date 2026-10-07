@@ -6338,6 +6338,10 @@
             "format": "uint8",
             "minimum": 0
           },
+          "image_digest": {
+            "description": "The exact image the task execution ran with. Tags can move between runs, so this pins down what actually ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started.",
+            "type": "string"
+          },
           "logs_expired": {
             "description": "Whether the logs have past their retention time.",
             "type": "boolean"
@@ -6414,6 +6418,7 @@
         "required": [
           "created",
           "ended",
+          "image_digest",
           "logs_expired",
           "logs_removed",
           "namespace_id",

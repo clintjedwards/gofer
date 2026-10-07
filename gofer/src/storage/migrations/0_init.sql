@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS task_executions (
     status            TEXT    NOT NULL,
     status_reason     TEXT    NOT NULL,
     variables         TEXT    NOT NULL,
+    image_digest      TEXT    NOT NULL,
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace_id, pipeline_id) REFERENCES pipeline_metadata(namespace_id, pipeline_id) ON DELETE CASCADE,
     FOREIGN KEY (namespace_id, pipeline_id, run_id) REFERENCES runs(namespace_id, pipeline_id, run_id) ON DELETE CASCADE,

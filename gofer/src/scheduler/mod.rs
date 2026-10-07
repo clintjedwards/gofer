@@ -100,6 +100,9 @@ pub struct StartContainerResponse {
 
     /// An endpoint that only is returned for containers with networking set to on.
     pub url: Option<String>,
+
+    /// The exact image the container was started with. Usually the repo digest, or the image ID for local images.
+    pub image_digest: Option<String>,
 }
 
 #[derive(Debug)]

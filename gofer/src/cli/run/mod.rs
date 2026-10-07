@@ -1,3 +1,4 @@
+mod debug;
 mod object;
 
 use crate::cli::{
@@ -48,6 +49,23 @@ pub enum RunCommands {
         /// Run Identifier.
         run_id: u64,
     },
+
+    /// Show what went wrong in a run.
+    ///
+    /// Prints a timeline of every task in the run, then details on each task that failed, was cancelled, or was
+    /// skipped. Failed tasks include the last few lines of their output.
+    Debug {
+        /// Pipeline Identifier.
+        pipeline_id: String,
+
+        /// Run Identifier.
+        run_id: u64,
+
+        /// How many lines of output to show for each failed task.
+        #[arg(short, long, default_value = "10")]
+        lines: usize,
+    },
+
     /// Start a run.
     Start {
         /// Pipeline Identifier.
@@ -86,6 +104,14 @@ impl Cli {
                 pipeline_id,
                 run_id,
             } => self.run_get(command.namespace, &pipeline_id, run_id).await,
+            RunCommands::Debug {
+                pipeline_id,
+                run_id,
+                lines,
+            } => {
+                self.run_debug(command.namespace, &pipeline_id, run_id, lines)
+                    .await
+            }
             RunCommands::Start {
                 pipeline_id,
                 variable,
@@ -103,6 +129,18 @@ impl Cli {
             RunCommands::Object(object) => self.handle_run_object_subcommands(object).await,
         }
     }
+}
+
+/// The first line of `run get` and `run debug`, so both commands start out looking the same.
+fn run_title(run: &gofer_sdk::api::types::Run) -> String {
+    format!(
+        "  Run {} for pipeline {} (v{}) :: {} :: {}",
+        format!("#{}", run.run_id).cyan(),
+        run.pipeline_id.cyan(),
+        run.pipeline_config_version,
+        colorize_status_text(run.state),
+        colorize_status_text(run.status)
+    )
 }
 
 impl Cli {
@@ -246,7 +284,7 @@ impl Cli {
 
         const TEMPLATE: &str = r#"
   {{ vertical_line }} Initiated by {{ initiator_name }}
-  {{ vertical_line }} Started {{ started }} and ran for {{ duration }}
+  {{ vertical_line }} Started {{ started }} and {{ duration }}
   {{ vertical_line }} Objects Expired: {{ objects_expired }}
   {%- if token_id %}
   {{ vertical_line }} Injected Token ID: {{ token_id }}
@@ -274,7 +312,7 @@ impl Cli {
                 .format_time(run.started)
                 .unwrap_or_else(|| "Not yet".to_string()),
         );
-        context.insert("duration", &duration(run.started as i64, run.ended as i64));
+        context.insert("duration", &debug::run_duration(&run));
         context.insert("objects_expired", &run.store_objects_expired);
         context.insert("token_id", &run.token_id);
         context.insert(
@@ -288,15 +326,56 @@ impl Cli {
         context.insert("status_message", &"Failure".red().to_string());
 
         let content = tera.render("main", &context)?;
-        println!(
-            "  Run {} for pipeline {} (v{}) :: {} :: {}",
-            format!("#{}", run.run_id).cyan(),
-            run.pipeline_id.cyan(),
-            run.pipeline_config_version,
-            colorize_status_text(run.state),
-            colorize_status_text(run.status)
-        );
+        println!("{}", run_title(&run));
         println!("{}", content.trim_end());
+
+        let mut run_ordered = task_executions.clone();
+        debug::sort_by_run_order(&mut run_ordered);
+
+        let mut problems: Vec<_> = run_ordered
+            .iter()
+            .filter(|task| {
+                task.state == gofer_sdk::api::types::TaskExecutionState::Complete
+                    && task.status != gofer_sdk::api::types::TaskExecutionStatus::Successful
+            })
+            .collect();
+        problems.sort_by_key(|task| debug::problem_rank(task));
+
+        if !problems.is_empty() {
+            let task_width = problems
+                .iter()
+                .map(|task| task.task_id.chars().count())
+                .max()
+                .unwrap_or(0);
+
+            let mut output = vec![String::new(), "  $ Problems:".to_string()];
+
+            for task in problems {
+                let mut line = format!(
+                    "  {} {}  {}",
+                    rail(),
+                    format!("{:<task_width$}", task.task_id).blue(),
+                    debug::status_text(task)
+                );
+
+                if task.status != gofer_sdk::api::types::TaskExecutionStatus::Skipped
+                    && let Some(reason) = &task.status_reason
+                {
+                    line.push_str(&format!(": {}", reason.reason).dimmed().to_string());
+                }
+
+                output.push(line);
+            }
+
+            output.push(String::new());
+            output.push(format!(
+                "* Use '{}' for details.",
+                format!("gofer run debug {} {}", run.pipeline_id, run.run_id).cyan()
+            ));
+
+            println!("{}", output.join("\n"));
+        }
+
         Ok(())
     }
 

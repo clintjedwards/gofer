@@ -5,6 +5,7 @@ use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::{SinkExt, StreamExt};
 use polyfmt::{error, pause, println, resume, success};
+use std::collections::VecDeque;
 use std::io::{IsTerminal, Read, Write};
 use termion::raw::IntoRawMode;
 use tokio_tungstenite::WebSocketStream;
@@ -240,6 +241,16 @@ impl Cli {
             .into_inner()
             .task_execution;
 
+        let finished = task.state == gofer_sdk::api::types::TaskExecutionState::Complete;
+        let log_lines = if finished && task.started != 0 && !task.logs_removed && !task.logs_expired
+        {
+            self.log_tail(&namespace, pipeline_id, run_id, task_id, 5)
+                .await
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
+
         let variable_rows = task
             .variables
             .into_iter()
@@ -257,6 +268,9 @@ impl Cli {
   {{ run_prefix }} Parent Run: {{ run_id }}
   {{ task_prefix }} Task ID: {{ task_id }}
   {{ vertical_line }} Image: {{ image_name }}
+  {%- if image_digest %}
+  {{ vertical_line }} Image Digest: {{ image_digest }}
+  {%- endif %}
   {{ vertical_line }} Exit Code: {{ exit_code }}
   {{ vertical_line }} Started {{ started }} and ran for {{ duration }}
 
@@ -271,6 +285,13 @@ impl Cli {
   $ Environment Variables:
   {%- for line in env_vars %}
   {{ line }}
+  {%- endfor %}
+  {%- endif %}
+  {%- if log_lines %}
+
+  $ Last {{ log_lines | length }} Log Lines:
+  {%- for line in log_lines %}
+  {{ vertical_line }} {{ line }}
   {%- endfor %}
   {%- endif %}
 
@@ -299,6 +320,8 @@ impl Cli {
             &duration(task.started as i64, task.ended as i64),
         );
         context.insert("image_name", &task.task.image.blue().to_string());
+        context.insert("image_digest", &task.image_digest);
+        context.insert("log_lines", &log_lines);
         context.insert(
             "exit_code",
             &task
@@ -330,6 +353,67 @@ impl Cli {
         );
         println!("{}", content.trim_end());
         Ok(())
+    }
+
+    /// Returns the last `lines` lines of a task execution's log. The log stream only ends once the task is complete,
+    /// so callers should only use this for finished tasks. The timeout keeps us from hanging on a log that never got
+    /// its end marker, like one from an orphaned task.
+    pub async fn log_tail(
+        &self,
+        namespace: &str,
+        pipeline_id: &str,
+        run_id: u64,
+        task_id: &str,
+        lines: usize,
+    ) -> Result<Vec<String>> {
+        if lines == 0 {
+            return Ok(vec![]);
+        }
+
+        let conn = self
+            .client
+            .get_logs(namespace, pipeline_id, run_id, task_id)
+            .await
+            .map_err(|e| anyhow!("could not get logs; {:#?}", e))?
+            .into_inner();
+
+        let stream = WebSocketStream::from_raw_socket(
+            conn,
+            tokio_tungstenite::tungstenite::protocol::Role::Client,
+            None,
+        )
+        .await;
+
+        let (_, mut read) = stream.split();
+        let mut tail = VecDeque::with_capacity(lines);
+
+        let read_all = async {
+            while let Some(message) = read.next().await {
+                match message {
+                    Ok(Message::Text(text)) => {
+                        if tail.len() == lines {
+                            tail.pop_front();
+                        }
+                        tail.push_back(text.trim_end_matches(['\n', '\r']).to_string());
+                    }
+                    Ok(Message::Close(Some(frame))) if frame.code != CloseCode::Normal => {
+                        bail!("{}", frame.reason);
+                    }
+                    Ok(Message::Close(_))
+                    | Err(tokio_tungstenite::tungstenite::Error::ConnectionClosed) => break,
+                    Err(e) => bail!("Error receiving logs: {}", e),
+                    _ => {}
+                }
+            }
+
+            Ok(())
+        };
+
+        tokio::time::timeout(std::time::Duration::from_secs(15), read_all)
+            .await
+            .context("Timed out while reading logs")??;
+
+        Ok(tail.into())
     }
 
     pub async fn task_logs(

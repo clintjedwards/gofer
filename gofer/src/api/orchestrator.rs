@@ -1325,7 +1325,7 @@ impl Run {
         // short tasks can finish before start_container even returns.
         let started = epoch_milli();
 
-        if let Err(e) = self
+        let start_response = match self
             .api_state
             .scheduler
             .start_container(scheduler::StartContainerRequest {
@@ -1347,41 +1347,44 @@ impl Run {
             })
             .await
         {
-            let mut conn = match self.api_state.storage.write_conn().await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
+            Ok(response) => response,
+            Err(e) => {
+                let mut conn = match self.api_state.storage.write_conn().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        error!(namespace_id = &self.pipeline.metadata.namespace_id,
                             pipeline_id = &self.pipeline.metadata.pipeline_id,
                             run_id = self.run.run_id,
                             task_id = task.id,
                             error = %e, "Could not establish connection to database");
-                    return;
-                }
-            };
+                        return;
+                    }
+                };
 
-            if let Err(e) = self
-                .set_task_execution_complete(
-                    &mut conn,
-                    &new_task_execution.task_id,
-                    1,
-                    task_executions::Status::Failed,
-                    Some(task_executions::StatusReason {
-                        reason: task_executions::StatusReasonType::SchedulerError,
-                        description: format!(
-                            "Task could not be run due to inability to be scheduled; {}",
-                            e
-                        ),
-                    }),
-                )
-                .await
-            {
-                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                if let Err(e) = self
+                    .set_task_execution_complete(
+                        &mut conn,
+                        &new_task_execution.task_id,
+                        1,
+                        task_executions::Status::Failed,
+                        Some(task_executions::StatusReason {
+                            reason: task_executions::StatusReasonType::SchedulerError,
+                            description: format!(
+                                "Task could not be run due to inability to be scheduled; {}",
+                                e
+                            ),
+                        }),
+                    )
+                    .await
+                {
+                    error!(namespace_id = &self.pipeline.metadata.namespace_id,
                     pipeline_id = &self.pipeline.metadata.pipeline_id,
                     run_id = self.run.run_id,
                     task_id = task.id,
                     error = %e, "Could not mark task execution as failed during scheduling of task");
-            };
-            return;
+                };
+                return;
+            }
         };
 
         trace!(
@@ -1413,6 +1416,7 @@ impl Run {
             storage::task_executions::UpdatableFields {
                 state: Some(task_executions::State::Running.to_string()),
                 started: Some(started.to_string()),
+                image_digest: start_response.image_digest,
                 ..Default::default()
             },
         )

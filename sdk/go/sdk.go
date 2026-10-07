@@ -1454,6 +1454,9 @@ type TaskExecution struct {
 	// ExitCode The exit code of the task execution completion if it is finished.
 	ExitCode *uint8 `json:"exit_code"`
 
+	// ImageDigest The exact image the task execution ran with. Tags can move between runs, so this pins down what actually ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started.
+	ImageDigest string `json:"image_digest"`
+
 	// LogsExpired Whether the logs have past their retention time.
 	LogsExpired bool `json:"logs_expired"`
 

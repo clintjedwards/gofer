@@ -236,9 +236,26 @@ impl super::Scheduler for Scheduler {
             .await
             .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
 
+        // A tag like 'latest' can point at a different image from one run to the next, so we record the exact image
+        // the container started with. Locally built images have no repo digest, so we fall back to the image ID.
+        let image_digest = match &container_info.image {
+            Some(image_id) => match self.client.inspect_image(image_id).await {
+                Ok(image) => image
+                    .repo_digests
+                    .and_then(|digests| digests.into_iter().next())
+                    .or_else(|| Some(image_id.clone())),
+                Err(e) => {
+                    debug!(container_name = &request.id, error = %e, "could not inspect image for digest");
+                    Some(image_id.clone())
+                }
+            },
+            None => None,
+        };
+
         let mut response = StartContainerResponse {
             scheduler_id: Some(created_container.id),
             url: None,
+            image_digest,
         };
 
         if let Some(port) = request.networking {

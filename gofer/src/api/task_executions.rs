@@ -218,6 +218,10 @@ pub struct TaskExecution {
 
     /// Information about the underlying task this task execution ran.
     pub task: tasks::Task,
+
+    /// The exact image the task execution ran with. Tags can move between runs, so this pins down what actually
+    /// ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started.
+    pub image_digest: String,
 }
 
 impl TaskExecution {
@@ -238,6 +242,7 @@ impl TaskExecution {
             status_reason: None,
             variables: vec![],
             task,
+            image_digest: String::new(),
         }
     }
 }
@@ -330,6 +335,7 @@ impl TryFrom<storage::task_executions::TaskExecution> for TaskExecution {
             status_reason,
             variables,
             task,
+            image_digest: value.image_digest,
         })
     }
 }
@@ -377,6 +383,7 @@ impl TryFrom<TaskExecution> for storage::task_executions::TaskExecution {
             status_reason,
             variables,
             task,
+            image_digest: value.image_digest,
         })
     }
 }
