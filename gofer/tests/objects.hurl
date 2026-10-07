@@ -13,7 +13,7 @@
 #         {
 #             "depends_on": {},
 #             "command": ["echo", "Hello from Gofer!"],
-#             "id": "task_one",
+#             "id": "task-one",
 #             "image": "ubuntu:latest",
 #             "inject_api_token": false,
 #             "variables": {"test": "sample"}

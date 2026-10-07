@@ -52,7 +52,7 @@ type UserPipelineTaskConfig struct {
 	Description    string                          `json:"description" example:"My pipeline does x" doc:"A short description for the task"`
 	Image          string                          `json:"image" example:"ubuntu:latest" doc:"Which container image to run for this specific task"`
 	RegistryAuth   *RegistryAuth                   `json:"registry_auth" doc:"Auth credentials for the image's registry"`
-	DependsOn      map[string]RequiredParentStatus `json:"depends_on" example:"{\"task_one\":\"SUCCESS\"}"`
+	DependsOn      map[string]RequiredParentStatus `json:"depends_on" example:"{\"task-one\":\"SUCCESS\"}"`
 	Variables      map[string]string               `json:"variables" example:"{\"APP_VAR_ONE\":\"some_var_value\"}" doc:"Variables which will be passed in as env vars to the task"`
 	Entrypoint     []string                        `json:"entrypoint" example:"[\"printenv\"]" doc:"Command to run on init of container; can be overridden"`
 	Command        []string                        `json:"command" example:"[\"printenv\"]" doc:"Command to run on init of container; cannot be overridden"`
@@ -93,7 +93,7 @@ type UserPipelineConfig struct {
 //	                  Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.")
 //	    // Adding a single task to the pipeline.
 //	    .tasks(vec![
-//	        Task::new("simple_task", "ubuntu:latest")
+//	        Task::new("simple-task", "ubuntu:latest")
 //	            .description("This task uses the Ubuntu container to print a 'Hello World' message.")
 //	            .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
 //	    ])

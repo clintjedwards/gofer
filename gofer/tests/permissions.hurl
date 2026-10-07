@@ -99,7 +99,7 @@ Authorization: Bearer {{secret}}
           "echo",
           "hello"
         ],
-        "id": "task_one",
+        "id": "task-one",
         "image": "ubuntu:latest",
         "inject_api_token": false,
         "variables": {}
@@ -128,7 +128,7 @@ Authorization: Bearer {{secret}}
           "echo",
           "hello"
         ],
-        "id": "task_one",
+        "id": "task-one",
         "image": "ubuntu:latest",
         "inject_api_token": false,
         "variables": {}
@@ -157,7 +157,7 @@ Authorization: Bearer {{secret}}
           "echo",
           "hello"
         ],
-        "id": "task_one",
+        "id": "task-one",
         "image": "ubuntu:latest",
         "inject_api_token": false,
         "variables": {}

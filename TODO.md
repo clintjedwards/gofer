@@ -1,24 +1,6 @@
 # Large Projects on the docket
 
-## Better debugging tooling.
-
-A huge problem with thingdoers is it's hard to debug because you can't really run the code locally in most situations.
-Because of this we should give the user as many tools as we can to make sure they can debug on the fly.
-
-* Make sure attach works correctly.
-* The CLI should output a debug command that dumps all the logs from a particular task.
-* The CLI should output a debug command that dumps all the info from the run in general.
-* Find other ways we can debug and make the user's life easier in this regard. It's possible that if we put a lot of
-thought into this feature that it can become a game changer for Gofer as a whole.
-* Maybe create a timeline on when each task execution happened for a particular run?
-* Each pipeline run should have a comprehensive log of what happened in the entire run from start to finish. Each task
-  that was started and when, everytime a task changes state, so on and so forth. This should enable the user to read
-  through a run from the perspective of the scheduler.
-* For debugging which EXACT container ran especially for tags that stay the same we should make the scheduler return to
-  use the RepoDigest of the image.`docker image inspect ...`
-* We have the ability to attach to containers... an interesting debugging tool would be to have the ability to grab
-  a failed task, maybe copy the filesystem somehow? and then give the user a shell into that task. This would help
-  immensely when attempting to figure out what exactly went wrong.
+None
 
 # Small things I want to keep track of that I definitely need to do.
 
@@ -26,8 +8,6 @@ thought into this feature that it can become a game changer for Gofer as a whole
   * Also make it so that the github extension can do this as well, if a new run for a branch gets kicked off, if there
     is already a run for that branch, cancel the ongoing one and trigger a new one.
 * Check documentation for broken links, there are many. Linkcheck seems not to be working properly.
-* When the user tries to get a run and the status if failed, we should automaticallly print the failed reasonings and
-  then tell the user how to go about finding more information.
 * We should allow the ops side to somehow set the GOFER_API_BASE_URL for the containers. This can change based on
 where the container is running.
 * When you insert a new pipeline it should show you a diff on what you're changing.
@@ -36,7 +16,6 @@ where the container is running.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
 * There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
-* Implement pipeline object limits
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.

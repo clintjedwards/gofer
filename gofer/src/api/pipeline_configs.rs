@@ -567,6 +567,16 @@ pub async fn register_config(
         ));
     };
 
+    // Task ids end up in container names, so we check them here rather than trusting the SDK to have done it.
+    for task in &body.config.tasks {
+        if let Err(e) = is_valid_identifier(&task.id) {
+            return Err(HttpError::for_bad_request(
+                None,
+                format!("'{}' is not a valid identifier for task id; {}", task.id, e),
+            ));
+        };
+    }
+
     if path.pipeline_id != body.config.id {
         return Err(HttpError::for_bad_request(
             None,

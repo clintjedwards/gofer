@@ -1,7 +1,7 @@
 use crate::{
     api::{
         ApiState, PreflightOptions, RegistryAuth, Variable, VariableSource, epoch_milli,
-        event_utils, format_duration, listen_for_terminate_signal, load_tls,
+        event_utils, format_duration, is_valid_identifier, listen_for_terminate_signal, load_tls,
         permissioning::{
             Action, ExtensionGrant, ExtensionResource, GlobalGrant, GlobalResource, Grants,
             NamespaceGrant, NamespaceResource, Requirement, Role,
@@ -951,6 +951,16 @@ pub async fn install_extension(
             },
         )
         .await?;
+
+    if let Err(e) = is_valid_identifier(&body.id) {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!(
+                "'{}' is not a valid identifier for extension id; {}",
+                body.id, e
+            ),
+        ));
+    };
 
     let registration: Registration = body.try_into().map_err(|err| {
         error!(message = "Could not parse request into registration", error = %err);

@@ -54,7 +54,7 @@ err := sdk.NewPipeline("simple", "Simple Pipeline").
 
 ```go
 ...
-sdk.NewTask("simple_task", "ubuntu:latest").
+sdk.NewTask("simple-task", "ubuntu:latest").
     Description("This task simply prints our hello-world message and exits!").
     Command("echo", "Hello from Gofer!").Variables(map[string]string{"test": "sample"}),
 ...

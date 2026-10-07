@@ -68,7 +68,7 @@ pub enum ConfigError {
 ///                    Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.")
 ///      // Adding a single task to the pipeline.
 ///      .tasks(vec![
-///          Task::new("simple_task", "ubuntu:latest")
+///          Task::new("simple-task", "ubuntu:latest")
 ///              .description("This task uses the Ubuntu container to print a 'Hello World' message.")
 ///              .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
 ///      ])
@@ -142,6 +142,10 @@ impl Pipeline {
 
     pub fn validate(&self) -> Result<(), ConfigError> {
         validate_identifier("id", &self.id)?;
+
+        for task in &self.tasks {
+            validate_identifier("task id", &task.id)?;
+        }
 
         self.is_dag()?;
 

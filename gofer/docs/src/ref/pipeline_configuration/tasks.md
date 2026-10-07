@@ -9,7 +9,7 @@ A Task can be any container you want to run. In the
 
 ```go
 Tasks(
-    sdk.NewTask("simple_task", "ubuntu:latest").
+    sdk.NewTask("simple-task", "ubuntu:latest").
         Description("This task simply prints our hello-world message and exists!").
         Command("echo", "Hello from Gofer!"),
 )
