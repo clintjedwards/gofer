@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
         ApiState, PreflightOptions, Variable, VariableSource, event_utils, extensions,
@@ -222,11 +222,11 @@ pub async fn list_subscriptions(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Subscriptions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Subscriptions,
+                ),
                 action: Action::Read,
             },
         )
@@ -306,11 +306,11 @@ pub async fn get_subscription(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Subscriptions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Subscriptions,
+                ),
                 action: Action::Read,
             },
         )
@@ -401,11 +401,11 @@ pub async fn update_subscription(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Subscriptions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Subscriptions,
+                ),
                 action: Action::Write,
             },
         )
@@ -505,11 +505,11 @@ pub async fn create_subscription(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Subscriptions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Subscriptions,
+                ),
                 action: Action::Write,
             },
         )
@@ -670,11 +670,11 @@ pub async fn delete_subscription(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Subscriptions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Subscriptions,
+                ),
                 action: Action::Delete,
             },
         )

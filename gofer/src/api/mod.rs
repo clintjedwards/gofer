@@ -85,8 +85,8 @@ impl FromStr for ApiVersion {
     }
 }
 
-fn generate_inject_api_token_role_id(pipeline_id: &str) -> String {
-    format!("inject_api_token_{}", pipeline_id)
+fn generate_inject_api_token_role_id(namespace_id: &str, pipeline_id: &str) -> String {
+    format!("inject_api_token_{namespace_id}_{pipeline_id}")
 }
 
 /// Holds objects that are created and used over the lifetime of a single request.
@@ -102,24 +102,17 @@ pub struct RequestMetadata {
     /// Admin tokens skip permission checks entirely.
     admin: bool,
 
-    /// Every permission granted to the token across all of its roles.
-    permissions: Vec<permissioning::InternalPermission>,
+    /// Every grant given to the token across all of its roles.
+    grants: permissioning::Grants,
 }
 
 impl RequestMetadata {
-    /// Reports whether the token has a single permission granting the action on all of the given resources. An
-    /// empty resource list only requires that the token is valid.
     pub fn allows(
         &self,
-        resources: &[permissioning::Resource],
+        requirement: &permissioning::Requirement,
         action: &permissioning::Action,
     ) -> bool {
-        self.admin
-            || resources.is_empty()
-            || self
-                .permissions
-                .iter()
-                .any(|permission| permission.allows(resources, action))
+        self.admin || self.grants.allows(requirement, action)
     }
 }
 
@@ -131,20 +124,9 @@ pub struct PreflightOptions {
     /// Allows unauthenticated users to access particular things under the default namespace.
     allow_anonymous: bool,
 
-    /// The resources the user should have permission for in order to access this route.
-    ///
-    /// Certain resources also are able to take 'targets' which allows token creators to restrict specific objects
-    /// under a specific resource. For example, a 'Namespace' resource might have a specifier of '^devops_.*' this
-    /// would make it so the token that has this resource/target combination can access routes that use any
-    /// namespace with a prefix of 'devops_'.
-    ///
-    /// When including these resources inside a route handler you should include the 'target' resource that was asked
-    /// for in the path. This will be used to check that the user has the correct permissions to access that
-    /// resource/target combination.
-    ///
-    /// All resources must be granted by a single permission on the token. Leaving this empty means any valid token
-    /// can access the route.
-    resources: Vec<permissioning::Resource>,
+    /// What the token needs to be granted in order to access this route. Use the ids from the request path as
+    /// targets so they can be matched against the token's grants.
+    requires: permissioning::Requirement,
     action: permissioning::Action,
 }
 

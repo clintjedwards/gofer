@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource, SystemRoles};
+use super::permissioning::{Action, GlobalResource, Requirement, SystemRoles};
 use crate::{
     api::{ApiState, PreflightOptions, epoch_milli},
     http_error, storage,
@@ -204,7 +204,7 @@ pub async fn list_tokens(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Tokens],
+                requires: Requirement::Global(GlobalResource::Tokens),
                 action: Action::Read,
             },
         )
@@ -278,7 +278,7 @@ pub async fn get_token_by_id(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Tokens],
+                requires: Requirement::Global(GlobalResource::Tokens),
                 action: Action::Read,
             },
         )
@@ -349,7 +349,7 @@ pub async fn whoami(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![],
+                requires: Requirement::Authenticated,
                 action: Action::Read,
             },
         )
@@ -444,7 +444,7 @@ pub async fn create_token(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Tokens],
+                requires: Requirement::Global(GlobalResource::Tokens),
                 action: Action::Write,
             },
         )
@@ -552,7 +552,7 @@ pub async fn delete_token(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Tokens],
+                requires: Requirement::Global(GlobalResource::Tokens),
                 action: Action::Delete,
             },
         )
@@ -612,7 +612,7 @@ pub async fn create_bootstrap_token(
                 bypass_auth: true,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Tokens],
+                requires: Requirement::Global(GlobalResource::Tokens),
                 action: Action::Write,
             },
         )
@@ -744,7 +744,7 @@ pub async fn update_token(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Tokens],
+                requires: Requirement::Global(GlobalResource::Tokens),
                 action: Action::Write,
             },
         )

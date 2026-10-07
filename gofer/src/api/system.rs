@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, GlobalResource, Requirement};
 use crate::api::{ApiState, BUILD_COMMIT, BUILD_SEMVER, PreflightOptions, storage};
 use crate::http_error;
 use anyhow::Result;
@@ -35,7 +35,7 @@ pub async fn get_system_metadata(
                 bypass_auth: true, // Anyone can query for the version/commit of the system.
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::System],
+                requires: Requirement::Global(GlobalResource::System),
                 action: Action::Read,
             },
         )
@@ -79,7 +79,7 @@ pub async fn get_system_preferences(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::System],
+                requires: Requirement::Global(GlobalResource::System),
                 action: Action::Read,
             },
         )
@@ -148,7 +148,7 @@ pub async fn update_system_preferences(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::System],
+                requires: Requirement::Global(GlobalResource::System),
                 action: Action::Write,
             },
         )

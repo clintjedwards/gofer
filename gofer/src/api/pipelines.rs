@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{ApiState, PreflightOptions, epoch_milli, pipeline_configs},
     http_error, storage,
@@ -163,10 +163,11 @@ pub async fn list_pipelines(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: true,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines("".into()),
-                ],
+                requires: Requirement::Pipeline {
+                    namespace: path.namespace_id.clone(),
+                    pipeline: None,
+                    resource: NamespaceResource::Pipelines,
+                },
                 action: Action::Read,
             },
         )
@@ -209,12 +210,13 @@ pub async fn list_pipelines(
             )
         })?;
 
-        let resources = [
-            Resource::Namespaces(pipeline.namespace_id.clone()),
-            Resource::Pipelines(pipeline.pipeline_id.clone()),
-        ];
+        let requirement = Requirement::pipeline(
+            &pipeline.namespace_id,
+            &pipeline.pipeline_id,
+            NamespaceResource::Pipelines,
+        );
 
-        if req_metadata.allows(&resources, &Action::Read) {
+        if req_metadata.allows(&requirement, &Action::Read) {
             pipelines.push(pipeline);
         }
     }
@@ -248,10 +250,11 @@ pub async fn get_pipeline(
                 bypass_auth: false,
                 allow_anonymous: true,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Pipelines,
+                ),
                 action: Action::Read,
             },
         )
@@ -328,10 +331,11 @@ pub async fn update_pipeline(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Pipelines,
+                ),
                 action: Action::Write,
             },
         )
@@ -405,10 +409,11 @@ pub async fn delete_pipeline(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Pipelines,
+                ),
                 action: Action::Delete,
             },
         )

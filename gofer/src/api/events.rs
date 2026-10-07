@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, GlobalResource, Requirement};
 use crate::{
     api::{
         ApiState, PreflightOptions,
@@ -67,7 +67,7 @@ pub async fn stream_events(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Events],
+                requires: Requirement::Global(GlobalResource::Events),
                 action: Action::Read,
             },
         )
@@ -295,7 +295,7 @@ pub async fn get_event(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Events],
+                requires: Requirement::Global(GlobalResource::Events),
                 action: Action::Read,
             },
         )
@@ -364,7 +364,7 @@ pub async fn delete_event(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Events],
+                requires: Requirement::Global(GlobalResource::Events),
                 action: Action::Delete,
             },
         )

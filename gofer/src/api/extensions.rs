@@ -2,7 +2,10 @@ use crate::{
     api::{
         ApiState, PreflightOptions, RegistryAuth, Variable, VariableSource, epoch_milli,
         event_utils, format_duration, listen_for_terminate_signal, load_tls,
-        permissioning::{Action, InternalPermission, InternalRole, Resource},
+        permissioning::{
+            Action, ExtensionGrant, ExtensionResource, GlobalGrant, GlobalResource, Grants,
+            NamespaceGrant, NamespaceResource, Requirement, Role,
+        },
         subscriptions, tokens, websocket_error,
     },
     http_error,
@@ -23,7 +26,7 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
 use tracing::{debug, error, info};
 use tungstenite::Message;
-use tungstenite::protocol::{Role, frame::coding::CloseCode};
+use tungstenite::protocol::{Role as WebsocketRole, frame::coding::CloseCode};
 
 /// The address Gofer tells the extension it should bind to on startup.
 const EXTENSION_BIND_ADDRESS: &str = "0.0.0.0:8082";
@@ -786,7 +789,10 @@ pub async fn list_extensions(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions("".into())],
+                requires: Requirement::Extension {
+                    extension: None,
+                    resource: None,
+                },
                 action: Action::Read,
             },
         )
@@ -796,9 +802,12 @@ pub async fn list_extensions(
 
     for extension_ref in &api_state.extensions {
         let extension = extension_ref.value();
-        let resource = Resource::Extensions(extension.registration.extension_id.clone());
+        let requirement = Requirement::Extension {
+            extension: Some(extension.registration.extension_id.clone()),
+            resource: None,
+        };
 
-        if req_metadata.allows(&[resource], &Action::Read) {
+        if req_metadata.allows(&requirement, &Action::Read) {
             extensions.push(extension.clone());
         }
     }
@@ -832,7 +841,10 @@ pub async fn get_extension(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                requires: Requirement::Extension {
+                    extension: Some(path.extension_id.clone()),
+                    resource: None,
+                },
                 action: Action::Read,
             },
         )
@@ -931,7 +943,10 @@ pub async fn install_extension(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions("".into())],
+                requires: Requirement::Extension {
+                    extension: None,
+                    resource: None,
+                },
                 action: Action::Write,
             },
         )
@@ -1005,7 +1020,10 @@ pub async fn update_extension(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                requires: Requirement::Extension {
+                    extension: Some(path.extension_id.clone()),
+                    resource: None,
+                },
                 action: Action::Write,
             },
         )
@@ -1084,7 +1102,10 @@ pub async fn uninstall_extension(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                requires: Requirement::Extension {
+                    extension: Some(path.extension_id.clone()),
+                    resource: None,
+                },
                 action: Action::Delete,
             },
         )
@@ -1167,7 +1188,10 @@ pub async fn get_extension_logs(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                requires: Requirement::Extension {
+                    extension: Some(path.extension_id.clone()),
+                    resource: Some(ExtensionResource::Logs),
+                },
                 action: Action::Read,
             },
         )
@@ -1175,9 +1199,12 @@ pub async fn get_extension_logs(
 
     let start_time = std::time::Instant::now();
 
-    let ws =
-        tokio_tungstenite::WebSocketStream::from_raw_socket(conn.into_inner(), Role::Server, None)
-            .await;
+    let ws = tokio_tungstenite::WebSocketStream::from_raw_socket(
+        conn.into_inner(),
+        WebsocketRole::Server,
+        None,
+    )
+    .await;
 
     if !api_state.extensions.contains_key(&path.extension_id) {
         return Err(websocket_error(
@@ -1363,7 +1390,10 @@ pub async fn list_extension_subscriptions(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                requires: Requirement::Extension {
+                    extension: Some(path.extension_id.clone()),
+                    resource: Some(ExtensionResource::Subscriptions),
+                },
                 action: Action::Read,
             },
         )
@@ -1440,7 +1470,10 @@ pub async fn get_extension_debug_info(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Extensions(path.extension_id.clone())],
+                requires: Requirement::Extension {
+                    extension: Some(path.extension_id.clone()),
+                    resource: None,
+                },
                 action: Action::Read,
             },
         )
@@ -1511,55 +1544,50 @@ pub fn new_extension_client(
     ))
 }
 
-/// The role every extension's token gets. Changing this requires a database migration, since roles for already
-/// installed extensions are only created once.
-pub fn extension_role(extension_id: &str) -> InternalRole {
-    InternalRole {
+/// The role every extension's token gets.
+pub fn extension_role(extension_id: &str) -> Role {
+    Role {
         id: extension_role_id(extension_id),
-        description:
-            "Auto-created role for registered extension; Allows extension to access needful \
-            resources"
-                .to_string(),
-        permissions: vec![
-            // The only write access extensions need is to their own object store so they can use that as a database.
-            InternalPermission {
-                resources: vec![
-                    Resource::Extensions(format!(
-                        "^{}$", // Match only exactly extension targets with this name.
-                        extension_id
-                    )),
-                    Resource::Objects,
-                ],
+        description: "Auto-created role for registered extension; Allows extension to access needful resources"
+            .to_string(),
+        grants: Grants {
+            // Extensions use their object store as a database and read their own subscriptions on startup.
+            extensions: vec![ExtensionGrant {
+                extension: regex::escape(extension_id),
+                resources: vec![ExtensionResource::Objects, ExtensionResource::Subscriptions],
                 actions: vec![Action::Read, Action::Write, Action::Delete],
-            },
-            // Allow extensions to start runs.
-            InternalPermission {
-                resources: vec![
-                    Resource::Namespaces(".*".to_string()),
-                    Resource::Pipelines(".*".to_string()),
-                    Resource::Runs,
-                ],
-                actions: vec![Action::Read, Action::Write],
-            },
-            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
-            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
-            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
-            // intellectual propety.
-            InternalPermission {
-                resources: vec![
-                    Resource::Configs,
-                    Resource::Deployments,
-                    Resource::Events,
-                    Resource::Namespaces(".*".to_string()),
-                    Resource::Pipelines(".*".to_string()),
-                    Resource::Runs,
-                    Resource::Subscriptions,
-                    Resource::System,
-                    Resource::TaskExecutions,
-                ],
+            }],
+            namespaces: vec![
+                // Allow extensions to start runs.
+                NamespaceGrant {
+                    namespace: ".*".into(),
+                    pipeline: None,
+                    resources: vec![NamespaceResource::Runs],
+                    actions: vec![Action::Read, Action::Write],
+                },
+                // Provide read to most resources so that extensions can be somewhat useful. The decision here on
+                // where to provide access is quite difficult, but we went with a more open model assuming that the
+                // extensions are from somewhat trusted parties and not allowing TOO much access to things that can
+                // really leak intellectual property.
+                NamespaceGrant {
+                    namespace: ".*".into(),
+                    pipeline: None,
+                    resources: vec![
+                        NamespaceResource::Pipelines,
+                        NamespaceResource::Configs,
+                        NamespaceResource::Deployments,
+                        NamespaceResource::Runs,
+                        NamespaceResource::Subscriptions,
+                        NamespaceResource::TaskExecutions,
+                    ],
+                    actions: vec![Action::Read],
+                },
+            ],
+            global: vec![GlobalGrant {
+                resources: vec![GlobalResource::Events],
                 actions: vec![Action::Read],
-            },
-        ],
+            }],
+        },
         system_role: true,
     }
 }

@@ -230,7 +230,7 @@ CREATE INDEX idx_tokens_hash ON tokens (hash);
 CREATE TABLE IF NOT EXISTS roles (
     id          TEXT    NOT NULL,
     description TEXT    NOT NULL,
-    permissions TEXT    NOT NULL,
+    grants      TEXT    NOT NULL,
     system_role INTEGER NOT NULL CHECK (system_role IN (0, 1)),
     PRIMARY KEY (id)
 ) STRICT;

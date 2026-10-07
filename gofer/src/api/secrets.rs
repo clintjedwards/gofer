@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, GlobalResource, NamespaceResource, Requirement};
 use crate::{
     api::{ApiState, PreflightOptions, epoch_milli},
     http_error, secret_store, storage,
@@ -203,7 +203,7 @@ pub async fn list_global_secrets(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
-                resources: vec![Resource::Secrets],
+                requires: Requirement::Global(GlobalResource::Secrets),
                 action: Action::Read,
                 allow_anonymous: false,
             },
@@ -290,7 +290,7 @@ pub async fn get_global_secret(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
-                resources: vec![Resource::Secrets],
+                requires: Requirement::Global(GlobalResource::Secrets),
                 allow_anonymous: false,
                 action: Action::Read,
             },
@@ -404,7 +404,7 @@ pub async fn put_global_secret(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
-                resources: vec![Resource::Secrets],
+                requires: Requirement::Global(GlobalResource::Secrets),
                 action: Action::Write,
                 allow_anonymous: false,
             },
@@ -520,7 +520,7 @@ pub async fn delete_global_secret(
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
-                resources: vec![Resource::Secrets],
+                requires: Requirement::Global(GlobalResource::Secrets),
                 allow_anonymous: false,
                 action: Action::Delete,
             },
@@ -599,11 +599,11 @@ pub async fn list_pipeline_secrets(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Secrets,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Secrets,
+                ),
                 action: Action::Read,
             },
         )
@@ -694,11 +694,11 @@ pub async fn get_pipeline_secret(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Secrets,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Secrets,
+                ),
                 action: Action::Read,
             },
         )
@@ -821,11 +821,11 @@ pub async fn put_pipeline_secret(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Secrets,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Secrets,
+                ),
                 action: Action::Write,
             },
         )
@@ -926,11 +926,11 @@ pub async fn delete_pipeline_secret(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Secrets,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Secrets,
+                ),
                 action: Action::Delete,
             },
         )

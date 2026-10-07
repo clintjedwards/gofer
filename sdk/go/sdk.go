@@ -43,9 +43,37 @@ const (
 	Deprecated ConfigState3 = "deprecated"
 )
 
+// Defines values for ExtensionResource.
+const (
+	ExtensionResourceLogs          ExtensionResource = "logs"
+	ExtensionResourceObjects       ExtensionResource = "objects"
+	ExtensionResourceSubscriptions ExtensionResource = "subscriptions"
+)
+
+// Defines values for GlobalResource.
+const (
+	GlobalResourceEvents  GlobalResource = "events"
+	GlobalResourceRoles   GlobalResource = "roles"
+	GlobalResourceSecrets GlobalResource = "secrets"
+	GlobalResourceSystem  GlobalResource = "system"
+	GlobalResourceTokens  GlobalResource = "tokens"
+)
+
 // Defines values for Kind0.
 const (
 	Kind0Any Kind0 = "any"
+)
+
+// Defines values for NamespaceResource.
+const (
+	NamespaceResourceConfigs        NamespaceResource = "configs"
+	NamespaceResourceDeployments    NamespaceResource = "deployments"
+	NamespaceResourceObjects        NamespaceResource = "objects"
+	NamespaceResourcePipelines      NamespaceResource = "pipelines"
+	NamespaceResourceRuns           NamespaceResource = "runs"
+	NamespaceResourceSecrets        NamespaceResource = "secrets"
+	NamespaceResourceSubscriptions  NamespaceResource = "subscriptions"
+	NamespaceResourceTaskExecutions NamespaceResource = "task_executions"
 )
 
 // Defines values for PipelineState.
@@ -89,7 +117,7 @@ const (
 
 // Defines values for VariableSource2.
 const (
-	System VariableSource2 = "system"
+	VariableSource2System VariableSource2 = "system"
 )
 
 // Defines values for VariableSource3.
@@ -409,11 +437,11 @@ type CreateRoleRequest struct {
 	// Description Short description about what the role is used for.
 	Description string `json:"description"`
 
+	// Grants What the role allows.
+	Grants Grants `json:"grants"`
+
 	// Id The unique identifier for the role. Only accepts alphanumeric chars with hyphens. No spaces.
 	Id string `json:"id"`
-
-	// Permissions Permissions that the role allows.
-	Permissions []Permission `json:"permissions"`
 }
 
 // CreateRoleResponse defines model for CreateRoleResponse.
@@ -555,6 +583,18 @@ type Extension struct {
 	Url string `json:"url"`
 }
 
+// ExtensionGrant Grants access to resources belonging to matching extensions.
+type ExtensionGrant struct {
+	Actions []Action `json:"actions"`
+
+	// Extension Regex matched against the entire extension id. Use '.*' to match every extension.
+	Extension string              `json:"extension"`
+	Resources []ExtensionResource `json:"resources"`
+}
+
+// ExtensionResource Things that belong to a specific extension.
+type ExtensionResource string
+
 // GetDeploymentResponse defines model for GetDeploymentResponse.
 type GetDeploymentResponse struct {
 	// Deployment The target deployment.
@@ -652,6 +692,22 @@ type GetTaskExecutionResponse struct {
 type GetTokenByIDResponse struct {
 	// Token The target token.
 	Token Token `json:"token"`
+}
+
+// GlobalGrant Grants access to resources that aren't scoped to a namespace or extension.
+type GlobalGrant struct {
+	Actions   []Action         `json:"actions"`
+	Resources []GlobalResource `json:"resources"`
+}
+
+// GlobalResource Things that aren't scoped to a namespace or extension.
+type GlobalResource string
+
+// Grants Everything a role allows. Each grant stands on its own; a request is allowed only if a single grant matches its target and includes both the resource and the action.
+type Grants struct {
+	Extensions *[]ExtensionGrant `json:"extensions,omitempty"`
+	Global     *[]GlobalGrant    `json:"global,omitempty"`
+	Namespaces *[]NamespaceGrant `json:"namespaces,omitempty"`
 }
 
 // Initiator defines model for Initiator.
@@ -1040,6 +1096,21 @@ type Namespace struct {
 	Name string `json:"name"`
 }
 
+// NamespaceGrant Grants access to resources within matching namespaces and pipelines.
+type NamespaceGrant struct {
+	Actions []Action `json:"actions"`
+
+	// Namespace Regex matched against the entire namespace id. Use '.*' to match every namespace.
+	Namespace string `json:"namespace"`
+
+	// Pipeline Regex matched against the entire pipeline id. Leaving it out matches every pipeline.
+	Pipeline  *string             `json:"pipeline"`
+	Resources []NamespaceResource `json:"resources"`
+}
+
+// NamespaceResource Things that live under a namespace and pipeline.
+type NamespaceResource string
+
 // Object defines model for Object.
 type Object struct {
 	// Created Time in epoch milliseconds that this object was registered.
@@ -1054,23 +1125,6 @@ type Parameter struct {
 	Documentation string `json:"documentation"`
 	Key           string `json:"key"`
 	Required      bool   `json:"required"`
-}
-
-// Permission Permission is exactly like ['InternalPermission'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.
-//
-// The ['InternalPermissions'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the enum system with a simple string declaration and manually do the translation between the two types.
-type Permission struct {
-	// Actions Actions are specific operations a user is allowed to perform for those resources. Endpoints will define which "action" they belong under.
-	Actions []Action `json:"actions"`
-
-	// Resources Which resource to target. A resource refers to a particular group of endpoints. Resources might also have specific objects being targeted. (Denoted by a '(target)')
-	//
-	// The current list of resources:
-	//
-	// "all" "configs" "deployments" "events" "extensions:(target)" "namespaces:(target)" "objects" "permissions" "pipelines:(target)" "runs" "secrets" "subscriptions" "system" "task_executions" "tokens"
-	//
-	// Example: ["configs", "namespaces:^default$", "pipelines:.*"]
-	Resources []string `json:"resources"`
 }
 
 // Pipeline `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute. - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`
@@ -1225,15 +1279,15 @@ type RequiredParentStatus string
 // RequiredParentStatus2 defines model for RequiredParentStatus2.
 type RequiredParentStatus2 string
 
-// Role Role is exactly like ['InternalRole'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.
-//
-// The ['InternalRole'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the complicated enum system with a simple string declaration and manually do the translation between the two types.
+// Role defines model for Role.
 type Role struct {
 	Description string `json:"description"`
 
+	// Grants Everything a role allows. Each grant stands on its own; a request is allowed only if a single grant matches its target and includes both the resource and the action.
+	Grants Grants `json:"grants"`
+
 	// Id Alphanumeric with dashes only
-	Id          string       `json:"id"`
-	Permissions []Permission `json:"permissions"`
+	Id string `json:"id"`
 
 	// SystemRole If this role was created by Gofer itself. System roles cannot be modified.
 	SystemRole bool `json:"system_role"`
@@ -1493,8 +1547,8 @@ type UpdateRoleRequest struct {
 	// Description Short description about what the role is used for.
 	Description *string `json:"description"`
 
-	// Permissions Permissions that the role allows.
-	Permissions *[]Permission `json:"permissions"`
+	// Grants Replaces everything the role allows.
+	Grants *Grants `json:"grants"`
 }
 
 // UpdateRoleResponse defines model for UpdateRoleResponse.

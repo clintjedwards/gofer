@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, Requirement};
 use crate::{
     api::{ApiState, PreflightOptions, epoch_milli, event_utils, is_valid_identifier},
     http_error, storage,
@@ -114,7 +114,7 @@ pub async fn list_namespaces(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Namespaces("".into())],
+                requires: Requirement::Namespace { namespace: None },
                 action: Action::Read,
             },
         )
@@ -156,7 +156,11 @@ pub async fn list_namespaces(
             )
         })?;
 
-        if req_metadata.allows(&[Resource::Namespaces(namespace.id.clone())], &Action::Read) {
+        let requirement = Requirement::Namespace {
+            namespace: Some(namespace.id.clone()),
+        };
+
+        if req_metadata.allows(&requirement, &Action::Read) {
             namespaces.push(namespace);
         }
     }
@@ -190,7 +194,9 @@ pub async fn get_namespace(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Namespaces(path.namespace_id.clone())],
+                requires: Requirement::Namespace {
+                    namespace: Some(path.namespace_id.clone()),
+                },
                 action: Action::Read,
             },
         )
@@ -277,7 +283,7 @@ pub async fn create_namespace(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Namespaces("".into())],
+                requires: Requirement::Namespace { namespace: None },
                 action: Action::Write,
             },
         )
@@ -388,7 +394,9 @@ pub async fn update_namespace(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Namespaces(path.namespace_id.clone())],
+                requires: Requirement::Namespace {
+                    namespace: Some(path.namespace_id.clone()),
+                },
                 action: Action::Write,
             },
         )
@@ -491,7 +499,9 @@ pub async fn delete_namespace(
                 bypass_auth: false,
                 admin_only: true,
                 allow_anonymous: false,
-                resources: vec![Resource::Namespaces(path.namespace_id.clone())],
+                requires: Requirement::Namespace {
+                    namespace: Some(path.namespace_id.clone()),
+                },
                 action: Action::Delete,
             },
         )

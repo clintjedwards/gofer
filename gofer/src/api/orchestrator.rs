@@ -192,7 +192,7 @@ impl Orchestrator {
                 ]),
                 1_814_400, // 3 weeks in seconds.
                 "system_generated_run_token".into(),
-                vec![generate_inject_api_token_role_id(pipeline_id)],
+                vec![generate_inject_api_token_role_id(namespace_id, pipeline_id)],
             );
 
             let new_token_storage = match new_token.clone().try_into() {

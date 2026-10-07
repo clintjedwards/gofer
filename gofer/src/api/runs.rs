@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
         ApiState, PreflightOptions, Variable, epoch_milli, event_utils,
@@ -367,11 +367,11 @@ pub async fn list_runs(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: true,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Runs,
+                ),
                 action: Action::Read,
             },
         )
@@ -454,11 +454,11 @@ pub async fn get_run(
                 bypass_auth: false,
                 allow_anonymous: true,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Runs,
+                ),
                 action: Action::Read,
             },
         )
@@ -547,11 +547,11 @@ pub async fn start_run(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Runs,
+                ),
                 action: Action::Write,
             },
         )
@@ -664,11 +664,11 @@ pub async fn cancel_run(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Runs,
+                ),
                 action: Action::Delete,
             },
         )

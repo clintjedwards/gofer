@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, ExtensionResource, NamespaceResource, Requirement};
 use crate::{
     api::{ApiState, PreflightOptions, epoch_milli},
     http_error, object_store, storage,
@@ -248,12 +248,11 @@ pub async fn list_run_objects(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Read,
             },
         )
@@ -338,12 +337,11 @@ pub async fn get_run_object(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Read,
             },
         )
@@ -454,12 +452,11 @@ pub async fn put_run_object(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Write,
             },
         )
@@ -632,12 +629,11 @@ pub async fn delete_run_object(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Delete,
             },
         )
@@ -738,11 +734,11 @@ pub async fn list_pipeline_objects(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Read,
             },
         )
@@ -816,11 +812,11 @@ pub async fn get_pipeline_object(
                 allow_anonymous: false,
                 bypass_auth: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Read,
             },
         )
@@ -928,11 +924,11 @@ pub async fn put_pipeline_object(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Write,
             },
         )
@@ -1183,11 +1179,11 @@ pub async fn delete_pipeline_object(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Objects,
+                ),
                 action: Action::Delete,
             },
         )
@@ -1276,10 +1272,7 @@ pub async fn list_extension_objects(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Extensions(path.extension_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::extension(&path.extension_id, ExtensionResource::Objects),
                 action: Action::Read,
             },
         )
@@ -1348,10 +1341,7 @@ pub async fn get_extension_object(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Extensions(path.extension_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::extension(&path.extension_id, ExtensionResource::Objects),
                 action: Action::Read,
             },
         )
@@ -1455,10 +1445,7 @@ pub async fn put_extension_object(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Extensions(path.extension_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::extension(&path.extension_id, ExtensionResource::Objects),
                 action: Action::Write,
             },
         )
@@ -1628,10 +1615,7 @@ pub async fn delete_extension_object(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Extensions(path.extension_id.clone()),
-                    Resource::Objects,
-                ],
+                requires: Requirement::extension(&path.extension_id, ExtensionResource::Objects),
                 action: Action::Delete,
             },
         )

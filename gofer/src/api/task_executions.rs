@@ -1,4 +1,4 @@
-use super::permissioning::{Action, Resource};
+use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
         ApiState, GOFER_EOF, PreflightOptions, Variable, epoch_milli,
@@ -433,12 +433,11 @@ pub async fn list_task_executions(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::TaskExecutions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::TaskExecutions,
+                ),
                 action: Action::Read,
             },
         )
@@ -526,12 +525,11 @@ pub async fn get_task_execution(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::TaskExecutions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::TaskExecutions,
+                ),
                 action: Action::Read,
             },
         )
@@ -621,12 +619,11 @@ pub async fn cancel_task_execution(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::TaskExecutions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::TaskExecutions,
+                ),
                 action: Action::Delete,
             },
         )
@@ -709,12 +706,11 @@ pub async fn get_logs(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::TaskExecutions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::TaskExecutions,
+                ),
                 action: Action::Read,
             },
         )
@@ -983,12 +979,11 @@ pub async fn delete_logs(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::TaskExecutions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::TaskExecutions,
+                ),
                 action: Action::Delete,
             },
         )
@@ -1132,12 +1127,11 @@ pub async fn attach_task_execution(
                 allow_anonymous: false,
                 bypass_auth: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::TaskExecutions,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::TaskExecutions,
+                ),
                 action: Action::Write,
             },
         )

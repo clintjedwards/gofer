@@ -3711,22 +3711,23 @@
             "description": "Short description about what the role is used for.",
             "type": "string"
           },
+          "grants": {
+            "description": "What the role allows.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Grants"
+              }
+            ]
+          },
           "id": {
             "description": "The unique identifier for the role. Only accepts alphanumeric chars with hyphens. No spaces.",
             "type": "string"
-          },
-          "permissions": {
-            "description": "Permissions that the role allows.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Permission"
-            }
           }
         },
         "required": [
           "description",
-          "id",
-          "permissions"
+          "grants",
+          "id"
         ]
       },
       "CreateRoleResponse": {
@@ -4077,6 +4078,42 @@
           "url"
         ]
       },
+      "ExtensionGrant": {
+        "description": "Grants access to resources belonging to matching extensions.",
+        "type": "object",
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            }
+          },
+          "extension": {
+            "description": "Regex matched against the entire extension id. Use '.*' to match every extension.",
+            "type": "string"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtensionResource"
+            }
+          }
+        },
+        "required": [
+          "actions",
+          "extension",
+          "resources"
+        ]
+      },
+      "ExtensionResource": {
+        "description": "Things that belong to a specific extension.",
+        "type": "string",
+        "enum": [
+          "objects",
+          "subscriptions",
+          "logs"
+        ]
+      },
       "GetDeploymentResponse": {
         "type": "object",
         "properties": {
@@ -4326,6 +4363,66 @@
         "required": [
           "token"
         ]
+      },
+      "GlobalGrant": {
+        "description": "Grants access to resources that aren't scoped to a namespace or extension.",
+        "type": "object",
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            }
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GlobalResource"
+            }
+          }
+        },
+        "required": [
+          "actions",
+          "resources"
+        ]
+      },
+      "GlobalResource": {
+        "description": "Things that aren't scoped to a namespace or extension.",
+        "type": "string",
+        "enum": [
+          "events",
+          "tokens",
+          "roles",
+          "secrets",
+          "system"
+        ]
+      },
+      "Grants": {
+        "description": "Everything a role allows. Each grant stands on its own; a request is allowed only if a single grant matches its target and includes both the resource and the action.",
+        "type": "object",
+        "properties": {
+          "extensions": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtensionGrant"
+            }
+          },
+          "global": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GlobalGrant"
+            }
+          },
+          "namespaces": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespaceGrant"
+            }
+          }
+        }
       },
       "Initiator": {
         "type": "object",
@@ -5404,6 +5501,53 @@
           "name"
         ]
       },
+      "NamespaceGrant": {
+        "description": "Grants access to resources within matching namespaces and pipelines.",
+        "type": "object",
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            }
+          },
+          "namespace": {
+            "description": "Regex matched against the entire namespace id. Use '.*' to match every namespace.",
+            "type": "string"
+          },
+          "pipeline": {
+            "nullable": true,
+            "description": "Regex matched against the entire pipeline id. Leaving it out matches every pipeline.",
+            "default": null,
+            "type": "string"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespaceResource"
+            }
+          }
+        },
+        "required": [
+          "actions",
+          "namespace",
+          "resources"
+        ]
+      },
+      "NamespaceResource": {
+        "description": "Things that live under a namespace and pipeline.",
+        "type": "string",
+        "enum": [
+          "pipelines",
+          "configs",
+          "deployments",
+          "runs",
+          "task_executions",
+          "objects",
+          "secrets",
+          "subscriptions"
+        ]
+      },
       "Object": {
         "type": "object",
         "properties": {
@@ -5440,30 +5584,6 @@
           "documentation",
           "key",
           "required"
-        ]
-      },
-      "Permission": {
-        "description": "Permission is exactly like ['InternalPermission'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.\n\nThe ['InternalPermissions'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the enum system with a simple string declaration and manually do the translation between the two types.",
-        "type": "object",
-        "properties": {
-          "actions": {
-            "description": "Actions are specific operations a user is allowed to perform for those resources. Endpoints will define which \"action\" they belong under.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Action"
-            }
-          },
-          "resources": {
-            "description": "Which resource to target. A resource refers to a particular group of endpoints. Resources might also have specific objects being targeted. (Denoted by a '(target)')\n\nThe current list of resources:\n\n\"all\" \"configs\" \"deployments\" \"events\" \"extensions:(target)\" \"namespaces:(target)\" \"objects\" \"permissions\" \"pipelines:(target)\" \"runs\" \"secrets\" \"subscriptions\" \"system\" \"task_executions\" \"tokens\"\n\nExample: [\"configs\", \"namespaces:^default$\", \"pipelines:.*\"]",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "actions",
-          "resources"
         ]
       },
       "Pipeline": {
@@ -5817,21 +5937,17 @@
         ]
       },
       "Role": {
-        "description": "Role is exactly like ['InternalRole'] except it abstracts away the type specification of the permissions. This is used to interface with the user via the API.\n\nThe ['InternalRole'] object cannot be used due to issues with openapi and the generation of the ['Resource'] types. Instead we replace the complicated enum system with a simple string declaration and manually do the translation between the two types.",
         "type": "object",
         "properties": {
           "description": {
             "type": "string"
           },
+          "grants": {
+            "$ref": "#/components/schemas/Grants"
+          },
           "id": {
             "description": "Alphanumeric with dashes only",
             "type": "string"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Permission"
-            }
           },
           "system_role": {
             "description": "If this role was created by Gofer itself. System roles cannot be modified.",
@@ -5840,8 +5956,8 @@
         },
         "required": [
           "description",
+          "grants",
           "id",
-          "permissions",
           "system_role"
         ]
       },
@@ -6427,13 +6543,14 @@
             "description": "Short description about what the role is used for.",
             "type": "string"
           },
-          "permissions": {
+          "grants": {
             "nullable": true,
-            "description": "Permissions that the role allows.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Permission"
-            }
+            "description": "Replaces everything the role allows.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Grants"
+              }
+            ]
           }
         }
       },

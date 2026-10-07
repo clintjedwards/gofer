@@ -1,4 +1,7 @@
-use super::permissioning::{Action, InternalPermission, InternalRole, Resource};
+use super::permissioning::{
+    Action, GlobalGrant, GlobalResource, Grants, NamespaceGrant, NamespaceResource, Requirement,
+    Role,
+};
 use crate::{
     api::{
         ApiState, PreflightOptions, deployments, epoch_milli, event_utils,
@@ -231,11 +234,11 @@ pub async fn list_configs(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Configs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Configs,
+                ),
                 action: Action::Read,
             },
         )
@@ -341,11 +344,11 @@ pub async fn get_config(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Configs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Configs,
+                ),
                 action: Action::Read,
             },
         )
@@ -464,6 +467,63 @@ pub struct RegisterPipelineConfigResponse {
     pub pipeline: pipelines::Pipeline,
 }
 
+/// The role given to tokens created by the 'inject_api_token' feature. Each pipeline gets its own copy, so all tokens
+/// generated for that pipeline's runs share it.
+///
+/// Some may be wondering why do we generate a token per run but give tokens permission to act on all
+/// runs. This is subject to change in the future, but to sum it up:
+///
+/// * Generating tokens per run is nice because we can revoke tokens at the run boundary. This gives us
+///   slightly better security than generating a single token for all pipeline runs.
+/// * Generating per token roles (which is what is required to make sure each token only has access to it's
+///   specific run context) is cumbersome right now and not well supported.
+pub fn inject_api_token_role(namespace_id: &str, pipeline_id: &str) -> Role {
+    Role {
+        id: generate_inject_api_token_role_id(namespace_id, pipeline_id),
+        description: "Automatically created role to aid in 'inject_api_token' feature. All tokens generated from \
+        this feature will use this role/permissions."
+            .into(),
+        grants: Grants {
+            namespaces: vec![
+                // Allow tokens to perform write actions on things only belonging to their own pipeline.
+                NamespaceGrant {
+                    namespace: regex::escape(namespace_id),
+                    pipeline: Some(regex::escape(pipeline_id)),
+                    resources: vec![
+                        NamespaceResource::Pipelines,
+                        NamespaceResource::Configs,
+                        NamespaceResource::Objects,
+                        NamespaceResource::Runs,
+                        NamespaceResource::TaskExecutions,
+                    ],
+                    actions: vec![Action::Read, Action::Write],
+                },
+                // Read access to pipelines in the default namespace and the pipeline's own namespace.
+                NamespaceGrant {
+                    namespace: format!("default|{}", regex::escape(namespace_id)),
+                    pipeline: None,
+                    resources: vec![
+                        NamespaceResource::Pipelines,
+                        NamespaceResource::Configs,
+                        NamespaceResource::Deployments,
+                        NamespaceResource::Runs,
+                        NamespaceResource::TaskExecutions,
+                        NamespaceResource::Objects,
+                        NamespaceResource::Subscriptions,
+                    ],
+                    actions: vec![Action::Read],
+                },
+            ],
+            extensions: vec![],
+            global: vec![GlobalGrant {
+                resources: vec![GlobalResource::Events],
+                actions: vec![Action::Read],
+            }],
+        },
+        system_role: true,
+    }
+}
+
 /// Register a new pipeline configuration.
 ///
 /// This creates both the pipeline metadata and the initial config object.
@@ -487,11 +547,11 @@ pub async fn register_config(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Configs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Configs,
+                ),
                 action: Action::Write,
             },
         )
@@ -547,56 +607,7 @@ pub async fn register_config(
     };
 
     // We generate a system created role for each pipeline to aid in the `inject_api_token` feature.
-    // This enables us to be able to reference a single permission set for each token that is provided
-    // via that feature.
-    //
-    // Some may be wondering why do we generate a token per run but give tokens permission to act on all
-    // runs. This is subject to change in the future, but to sum it up:
-    //
-    // * Generating tokens per run is nice because we can revoke tokens at the run boundary. This gives us
-    //   slightly better security than generating a single token for all pipeline runs.
-    // * Generating per token roles (which is what is required to make sure each token only has access to it's
-    //   specific run context) is cumbersome right now and not well supported. We need to think further about how
-    //   to make it easier to separate system generated roles so that we don't have a million roles to scroll through
-    //   to figure out what does what.(maybe a special type for just inject_api_token?)
-    let new_role = InternalRole {
-        id: generate_inject_api_token_role_id(&path.pipeline_id),
-        description: "Automatically created role to aid in 'inject_api_token' feature. All tokens generated from this \
-        feature will use this role/permissions.".to_string(),
-                permissions: vec![
-            // Allow tokens to perform write actions on things only belonging to the namespace/pipeline.
-            InternalPermission {
-                resources: vec![
-                    Resource::Configs,
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Objects,
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Runs,
-                    Resource::TaskExecutions,
-                ],
-                actions: vec![Action::Read, Action::Write],
-            },
-            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
-            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
-            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
-            // intellectual property.
-            InternalPermission {
-                resources: vec![
-                    Resource::Configs,
-                    Resource::Deployments,
-                    Resource::Events,
-                    Resource::Namespaces(format!("default|{}$", path.namespace_id.clone())),
-                    Resource::Pipelines(".*".to_string()),
-                    Resource::Subscriptions,
-                    Resource::System,
-                    Resource::TaskExecutions,
-                    Resource::Objects,
-                ],
-                actions: vec![Action::Read],
-            },
-                ],
-        system_role: true,
-    };
+    let new_role = inject_api_token_role(&path.namespace_id, &path.pipeline_id);
 
     let new_role_storage = match new_role.clone().try_into() {
         Ok(role) => role,
@@ -778,11 +789,11 @@ pub async fn deploy_config(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Configs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Configs,
+                ),
                 action: Action::Write,
             },
         )
@@ -1120,11 +1131,11 @@ pub async fn delete_config(
                 bypass_auth: false,
                 allow_anonymous: false,
                 admin_only: false,
-                resources: vec![
-                    Resource::Namespaces(path.namespace_id.clone()),
-                    Resource::Pipelines(path.pipeline_id.clone()),
-                    Resource::Configs,
-                ],
+                requires: Requirement::pipeline(
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    NamespaceResource::Configs,
+                ),
                 action: Action::Delete,
             },
         )

@@ -6,23 +6,23 @@ use sqlx::{FromRow, QueryBuilder, Sqlite, SqliteConnection};
 pub struct Role {
     pub id: String,
     pub description: String,
-    pub permissions: String,
+    pub grants: String,
     pub system_role: bool,
 }
 
 #[derive(Clone, Debug)]
 pub struct UpdatableFields {
     pub description: Option<String>,
-    pub permissions: Option<String>,
+    pub grants: Option<String>,
 }
 
 pub async fn insert(conn: &mut SqliteConnection, role: &Role) -> Result<(), StorageError> {
-    let sql = "INSERT INTO roles (id, description, permissions, system_role) VALUES (?, ?, ?, ?);";
+    let sql = "INSERT INTO roles (id, description, grants, system_role) VALUES (?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&role.id)
         .bind(&role.description)
-        .bind(&role.permissions)
+        .bind(&role.grants)
         .bind(role.system_role);
 
     query
@@ -34,7 +34,7 @@ pub async fn insert(conn: &mut SqliteConnection, role: &Role) -> Result<(), Stor
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Role>, StorageError> {
-    let sql = "SELECT id, description, permissions, system_role FROM roles;";
+    let sql = "SELECT id, description, grants, system_role FROM roles;";
 
     let query = sqlx::query_as::<_, Role>(sql);
 
@@ -45,7 +45,7 @@ pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Role>, StorageError
 }
 
 pub async fn get(conn: &mut SqliteConnection, id: &str) -> Result<Role, StorageError> {
-    let sql = "SELECT id, description, permissions, system_role FROM roles WHERE id = ?;";
+    let sql = "SELECT id, description, grants, system_role FROM roles WHERE id = ?;";
 
     let query = sqlx::query_as::<_, Role>(sql).bind(id);
 
@@ -63,11 +63,11 @@ pub async fn update(
     let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE roles SET "#);
     let mut updated_fields_total = 0;
 
-    if let Some(value) = &fields.permissions {
+    if let Some(value) = &fields.grants {
         if updated_fields_total > 0 {
             update_query.push(", ");
         }
-        update_query.push("permissions = ");
+        update_query.push("grants = ");
         update_query.push_bind(value);
         updated_fields_total += 1;
     }
@@ -125,7 +125,7 @@ mod tests {
         let role = Role {
             id: "some_id".into(),
             description: "some_description".into(),
-            permissions: "permissioning".into(),
+            grants: "permissioning".into(),
             system_role: false,
         };
 
@@ -146,7 +146,7 @@ mod tests {
         for role in roles {
             match role.id.as_str() {
                 "some_id" => {
-                    assert_eq!(role.permissions, "permissioning");
+                    assert_eq!(role.grants, "permissioning");
                 }
                 _ => panic!("Unexpected role"),
             }
@@ -159,7 +159,7 @@ mod tests {
 
         let fields_to_update = UpdatableFields {
             description: None,
-            permissions: Some("some_permissioning".into()),
+            grants: Some("some_permissioning".into()),
         };
 
         update(&mut conn, "some_id", fields_to_update.clone())
@@ -170,10 +170,7 @@ mod tests {
             .await
             .expect("Failed to retrieve updated role");
 
-        assert_eq!(
-            fields_to_update.permissions.unwrap(),
-            updated_role.permissions
-        );
+        assert_eq!(fields_to_update.grants.unwrap(), updated_role.grants);
     }
 
     #[tokio::test]
@@ -182,7 +179,7 @@ mod tests {
 
         let fetched_role = get(&mut conn, "some_id").await.expect("Failed to get Role");
         assert_eq!(fetched_role.id, "some_id");
-        assert_eq!(fetched_role.permissions, "permissioning",);
+        assert_eq!(fetched_role.grants, "permissioning",);
     }
 
     #[tokio::test]
