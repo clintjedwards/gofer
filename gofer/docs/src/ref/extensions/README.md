@@ -8,7 +8,7 @@ On startup, Gofer launches the interval extension as a long-running container. W
 
 ## Gofer Provided Extensions
 
-You can [create](#how-to-add-new-extensions) your own extensions, but Gofer provides some [provided extensions](./provided/index.html) for use.
+You can [create](#how-to-add-new-extensions-how-do-i-create-my-own) your own extensions, but Gofer provides some [provided extensions](./provided/index.html) for use.
 
 ## How do I install a Extension?
 
