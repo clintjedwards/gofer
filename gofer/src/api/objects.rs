@@ -1,6 +1,6 @@
 use super::permissioning::{Action, ExtensionResource, NamespaceResource, Requirement};
 use crate::{
-    api::{ApiState, PreflightOptions, epoch_milli},
+    api::{ApiState, PreflightOptions, ensure_pipeline_exists, ensure_run_exists, epoch_milli},
     http_error, object_store, storage,
 };
 use anyhow::{Context, Result};
@@ -270,6 +270,15 @@ pub async fn list_run_objects(
         }
     };
 
+    ensure_run_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+        path.run_id,
+    )
+    .await?;
+
     let run_id_i64: i64 = match path.run_id.try_into() {
         Ok(id) => id,
         Err(e) => {
@@ -461,6 +470,28 @@ pub async fn put_run_object(
             },
         )
         .await?;
+
+    // Check the run exists before uploading, otherwise the object lands in the store and only fails at the
+    // database insert, leaving it orphaned.
+    {
+        let mut conn = api_state.storage.read_conn().await.map_err(|e| {
+            http_error!(
+                "Could not open connection to database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+        ensure_run_exists(
+            &mut conn,
+            &rqctx.request_id,
+            &path.namespace_id,
+            &path.pipeline_id,
+            path.run_id,
+        )
+        .await?;
+    }
 
     let key = path.key;
     let force = query.force;
@@ -672,8 +703,9 @@ pub async fn delete_run_object(
     {
         match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(
+                return Err(HttpError::for_client_error(
                     None,
+                    ClientErrorStatusCode::NOT_FOUND,
                     "object for key given does not exist".into(),
                 ));
             }
@@ -755,6 +787,14 @@ pub async fn list_pipeline_objects(
             ));
         }
     };
+
+    ensure_pipeline_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
 
     let storage_objects = match storage::object_store_pipeline_keys::list(
         &mut conn,
@@ -933,6 +973,27 @@ pub async fn put_pipeline_object(
             },
         )
         .await?;
+
+    // Check the pipeline exists before uploading, otherwise the object lands in the store and only fails at the
+    // database insert, leaving it orphaned.
+    {
+        let mut conn = api_state.storage.read_conn().await.map_err(|e| {
+            http_error!(
+                "Could not open connection to database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+        ensure_pipeline_exists(
+            &mut conn,
+            &rqctx.request_id,
+            &path.namespace_id,
+            &path.pipeline_id,
+        )
+        .await?;
+    }
 
     let key = path.key;
     let force = query.force;
@@ -1211,8 +1272,9 @@ pub async fn delete_pipeline_object(
     {
         match e {
             storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(
+                return Err(HttpError::for_client_error(
                     None,
+                    ClientErrorStatusCode::NOT_FOUND,
                     "object for key given does not exist".into(),
                 ));
             }

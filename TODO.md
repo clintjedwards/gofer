@@ -24,14 +24,8 @@ try to register the same thing twice.
 * If the parent does not exist for a particular thing it errors incorrectly. For example if you request a correct task
 execution but mistype the pipeline, you might get an error instead of a "hey that thing doesn't exist".
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
-* By default docker doesn't allow you to do versioning tricks like pinning to a major version but freely updating the minor
-version. I wonder if there is a way we can offer this feature for free for the purposes of extensions. Since extensions with
-the same major version should work, but extensions might all have different minor versions, it would be useful to be able
-to tell Gofer to use a major version of the extension but we always want the latest minor version.
-* Deployments needs a type parameter so when we add extra deployments.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
   It should use task leasing to avoid any stuck processors.
-* Pipeline object input needs to finish the implementation for a ring buffer.
 
 # Small things I'll probably never get around to.
 
@@ -61,12 +55,9 @@ from that pipeline in one place. Maybe this is a watch feature where each task r
 finishes at which time it reflects a summary about what it did.
 * The CLI could have a diff command so we know exactly what is about the change from the last pipeline version.
 * When using the SDK to build a pipeline, that pipeline should print to stdout the json that will be collected
-* The attach prompt currently echos back user input, unsure how to fix that.
 * In monitor_task_execution calls to the scheduler to check on container status are expected to succeed. If they fail
 the whole thing is aborted, which is obviously bad because when we implement networked schedulers network calls will fail
 sometimes.
-* Deployment logs need to be reinstated.
-* Simplify how we check our RBAC permissions.
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 
@@ -89,10 +80,8 @@ sometimes.
 
 - Test that unsubscribing works with all extensions. And create a test suite that extensions can run against.
 - The interval extension should create jitter of about 2-5 mins. During that time it can choose when to start counting to extension an event. This is so that when we restart the server all events don't perfectly line up with each other and cause a storm. There might be other, smarter ways to handle this queue and api calling as well.
-- Extensions should follow semver. Extensions that use the same major version of Gofer should be compatible.
 - If a extension by the same name is already installed, we should refuse to install another but instead allow the user to update it.
 - Extensions should be able to report details about their execution somehow. It would be nice when looking at my pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension that is taking overly long.
-- Make sure to put in the extension documentation which versions are compatible with gofer. The current scheme is that all major versions are compatible with all same major versions. So if Gofer releases a 1.0, then all extensions will have to release a 1.0. This means that extensions can update their minor and patch versioning, but major versions will also be compatible with the same Gofer major version. Make sure this is documented.
 - Github sometimes changes their payloads and this causes us to always have to be at the latest release or else casting payloads might break. Investigate payload casting and see if maybe we can get something even partial if not a better error for the user.
 - Extensions probably need a healthcheck endpoint, so we can try to self heal and if not we can at least inform the user. We
   can also report things like latency and metrics from each extension via this endpoint.

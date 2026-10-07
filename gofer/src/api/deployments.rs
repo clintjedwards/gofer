@@ -1,6 +1,6 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
-    api::{ApiState, PreflightOptions, epoch_milli, event_utils},
+    api::{ApiState, PreflightOptions, ensure_pipeline_exists, epoch_milli, event_utils},
     http_error, storage,
 };
 use anyhow::{Context, Result};
@@ -332,6 +332,14 @@ pub async fn list_deployments(
             ));
         }
     };
+
+    ensure_pipeline_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
 
     let storage_deployments =
         match storage::deployments::list(&mut conn, &path.namespace_id, &path.pipeline_id).await {

@@ -1,6 +1,6 @@
 use super::permissioning::{Action, GlobalResource, NamespaceResource, Requirement};
 use crate::{
-    api::{ApiState, PreflightOptions, epoch_milli},
+    api::{ApiState, PreflightOptions, ensure_pipeline_exists, epoch_milli},
     http_error, secret_store, storage,
 };
 use anyhow::{Context, Result};
@@ -621,6 +621,14 @@ pub async fn list_pipeline_secrets(
         }
     };
 
+    ensure_pipeline_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
+
     let storage_secrets = match storage::secret_store_pipeline_keys::list(
         &mut conn,
         &path.namespace_id,
@@ -842,6 +850,14 @@ pub async fn put_pipeline_secret(
             ));
         }
     };
+
+    ensure_pipeline_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
 
     let new_secret = Secret::new(&body.key, vec![]);
 

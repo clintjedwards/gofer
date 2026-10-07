@@ -4,8 +4,9 @@ use super::permissioning::{
 };
 use crate::{
     api::{
-        ApiState, PreflightOptions, deployments, epoch_milli, event_utils,
-        generate_inject_api_token_role_id, is_valid_identifier, pipelines, tasks,
+        ApiState, PreflightOptions, deployments, ensure_namespace_exists, ensure_pipeline_exists,
+        epoch_milli, event_utils, generate_inject_api_token_role_id, is_valid_identifier,
+        pipelines, tasks,
     },
     http_error,
     storage::{self, StorageError},
@@ -255,6 +256,14 @@ pub async fn list_configs(
             ));
         }
     };
+
+    ensure_pipeline_exists(
+        &mut tx,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
 
     let storage_configs =
         match storage::pipeline_configs::list(&mut tx, &path.namespace_id, &path.pipeline_id).await
@@ -596,6 +605,8 @@ pub async fn register_config(
         }
     };
 
+    ensure_namespace_exists(&mut tx, &rqctx.request_id, &path.namespace_id).await?;
+
     let new_pipeline_metadata = pipelines::Metadata::new(&path.namespace_id, &path.pipeline_id);
 
     if let Err(e) =
@@ -820,6 +831,14 @@ pub async fn deploy_config(
             ));
         }
     };
+
+    ensure_pipeline_exists(
+        &mut tx,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
 
     let end_version = path.version;
 

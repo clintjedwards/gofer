@@ -1,7 +1,7 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
-        ApiState, PreflightOptions, Variable, epoch_milli, event_utils,
+        ApiState, PreflightOptions, Variable, ensure_pipeline_exists, epoch_milli, event_utils,
         orchestrator::OrchestratorError,
     },
     http_error, storage,
@@ -9,8 +9,8 @@ use crate::{
 
 use anyhow::{Context, Result};
 use dropshot::{
-    HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk, Path, Query,
-    RequestContext, TypedBody, endpoint,
+    ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
+    Path, Query, RequestContext, TypedBody, endpoint,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -389,6 +389,14 @@ pub async fn list_runs(
         }
     };
 
+    ensure_pipeline_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
+
     let storage_runs = match storage::runs::list(
         &mut conn,
         &path.namespace_id,
@@ -598,11 +606,13 @@ pub async fn start_run(
                 ));
             }
             OrchestratorError::PipelineMetadataNotFound => {
-                return Err(http_error!(
-                    "Could not find pipeline metadata",
-                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id,
-                    Some(err.into())
+                return Err(HttpError::for_client_error(
+                    None,
+                    ClientErrorStatusCode::NOT_FOUND,
+                    format!(
+                        "pipeline '{}' does not exist in namespace '{}'",
+                        path.pipeline_id, path.namespace_id
+                    ),
                 ));
             }
             OrchestratorError::PipelineInactive => {

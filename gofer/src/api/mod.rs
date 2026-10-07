@@ -24,9 +24,10 @@ use crate::{conf, object_store, scheduler, secret_store, storage};
 use anyhow::{Context, Result, anyhow, bail};
 use dashmap::DashMap;
 use dropshot::{
-    ApiDescription, Body, CompressionConfig, ConfigDropshot, ConfigTls, DropshotState,
-    EndpointTagPolicy, ErrorStatusCode, HandlerError, HandlerTaskMode, HttpError, HttpServer,
-    RequestInfo, ServerBuilder, ServerContext, TagConfig, TagDetails, WebsocketConnectionRaw,
+    ApiDescription, Body, ClientErrorStatusCode, CompressionConfig, ConfigDropshot, ConfigTls,
+    DropshotState, EndpointTagPolicy, ErrorStatusCode, HandlerError, HandlerTaskMode, HttpError,
+    HttpServer, RequestInfo, ServerBuilder, ServerContext, TagConfig, TagDetails,
+    WebsocketConnectionRaw,
 };
 use futures::Future;
 use lazy_regex::regex;
@@ -864,6 +865,92 @@ pub fn is_valid_identifier(id: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Returns a 404 if the namespace doesn't exist.
+///
+/// Routes that work on a resource's children call these first so that a mistyped parent gets a clear "doesn't
+/// exist" instead of an empty list or a foreign key failure turned into a 500.
+pub async fn ensure_namespace_exists(
+    conn: &mut sqlx::SqliteConnection,
+    request_id: &str,
+    namespace_id: &str,
+) -> Result<(), HttpError> {
+    match storage::namespaces::get(conn, namespace_id).await {
+        Ok(_) => Ok(()),
+        Err(storage::StorageError::NotFound) => Err(HttpError::for_client_error(
+            None,
+            ClientErrorStatusCode::NOT_FOUND,
+            format!("namespace '{namespace_id}' does not exist"),
+        )),
+        Err(e) => Err(crate::http_error!(
+            "Could not get namespace from database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            request_id.to_string(),
+            Some(e.into())
+        )),
+    }
+}
+
+/// Returns a 404 naming whichever of the namespace or pipeline doesn't exist.
+pub async fn ensure_pipeline_exists(
+    conn: &mut sqlx::SqliteConnection,
+    request_id: &str,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<(), HttpError> {
+    match storage::pipeline_metadata::get(conn, namespace_id, pipeline_id).await {
+        Ok(_) => Ok(()),
+        Err(storage::StorageError::NotFound) => {
+            // Only worth the extra query when something is missing, so the user knows which part they mistyped.
+            ensure_namespace_exists(conn, request_id, namespace_id).await?;
+            Err(HttpError::for_client_error(
+                None,
+                ClientErrorStatusCode::NOT_FOUND,
+                format!("pipeline '{pipeline_id}' does not exist in namespace '{namespace_id}'"),
+            ))
+        }
+        Err(e) => Err(crate::http_error!(
+            "Could not get pipeline from database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            request_id.to_string(),
+            Some(e.into())
+        )),
+    }
+}
+
+/// Returns a 404 naming whichever of the namespace, pipeline, or run doesn't exist.
+pub async fn ensure_run_exists(
+    conn: &mut sqlx::SqliteConnection,
+    request_id: &str,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: u64,
+) -> Result<(), HttpError> {
+    let Ok(storage_run_id) = i64::try_from(run_id) else {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!("run id '{run_id}' is too large"),
+        ));
+    };
+
+    match storage::runs::get(conn, namespace_id, pipeline_id, storage_run_id).await {
+        Ok(_) => Ok(()),
+        Err(storage::StorageError::NotFound) => {
+            ensure_pipeline_exists(conn, request_id, namespace_id, pipeline_id).await?;
+            Err(HttpError::for_client_error(
+                None,
+                ClientErrorStatusCode::NOT_FOUND,
+                format!("run '{run_id}' does not exist for pipeline '{pipeline_id}'"),
+            ))
+        }
+        Err(e) => Err(crate::http_error!(
+            "Could not get run from database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            request_id.to_string(),
+            Some(e.into())
+        )),
+    }
 }
 
 /// Authentication information for container registries.

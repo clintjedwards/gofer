@@ -1,6 +1,9 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
-    api::{ApiState, PreflightOptions, epoch_milli, pipeline_configs},
+    api::{
+        ApiState, PreflightOptions, ensure_namespace_exists, ensure_pipeline_exists, epoch_milli,
+        pipeline_configs,
+    },
     http_error, storage,
 };
 use anyhow::{Context, Result};
@@ -185,6 +188,8 @@ pub async fn list_pipelines(
         }
     };
 
+    ensure_namespace_exists(&mut conn, &rqctx.request_id, &path.namespace_id).await?;
+
     let storage_pipelines =
         match storage::pipeline_metadata::list(&mut conn, &path.namespace_id).await {
             Ok(pipelines) => pipelines,
@@ -352,6 +357,14 @@ pub async fn update_pipeline(
             ));
         }
     };
+
+    ensure_pipeline_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
 
     let updatable_fields = storage::pipeline_metadata::UpdatableFields {
         state: body.state.map(|state| state.to_string()),

@@ -85,11 +85,17 @@ pub async fn delete(
         .bind(pipeline_id)
         .bind(key);
 
-    query
+    let result = query
         .execute(conn)
-        .map_ok(|_| ())
         .map_err(|e| map_sqlx_error(e, sql))
-        .await
+        .await?;
+
+    // Callers rely on this to tell a missing key apart from a successful delete.
+    if result.rows_affected() == 0 {
+        return Err(StorageError::NotFound);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

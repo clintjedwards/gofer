@@ -1,7 +1,7 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
-        ApiState, GOFER_EOF, PreflightOptions, Variable, epoch_milli,
+        ApiState, GOFER_EOF, PreflightOptions, Variable, ensure_run_exists, epoch_milli,
         event_utils::{self, EventListener},
         format_duration, listen_for_terminate_signal, tasks, websocket_error,
     },
@@ -468,6 +468,15 @@ pub async fn list_task_executions(
             ));
         }
     };
+
+    ensure_run_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+        path.run_id,
+    )
+    .await?;
 
     let storage_task_executions = match storage::task_executions::list(
         &mut conn,

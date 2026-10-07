@@ -1,8 +1,8 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
-        ApiState, PreflightOptions, Variable, VariableSource, event_utils, extensions,
-        interpolate_vars, is_valid_identifier,
+        ApiState, PreflightOptions, Variable, VariableSource, ensure_pipeline_exists, event_utils,
+        extensions, interpolate_vars, is_valid_identifier,
     },
     http_error, storage,
 };
@@ -243,6 +243,14 @@ pub async fn list_subscriptions(
             ));
         }
     };
+
+    ensure_pipeline_exists(
+        &mut conn,
+        &rqctx.request_id,
+        &path.namespace_id,
+        &path.pipeline_id,
+    )
+    .await?;
 
     let storage_subscriptions = match storage::extension_subscriptions::list_by_pipeline(
         &mut conn,
