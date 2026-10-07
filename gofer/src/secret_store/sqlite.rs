@@ -253,18 +253,20 @@ impl SecretStore for Engine {
                     if let Some(err_code) = database_err.code() {
                         match err_code.deref() {
                             "1555" => {
-                                if force {
-                                    let update_sql = "UPDATE secrets SET value = ? WHERE key = ?";
+                                match force {
+                                    true => {
+                                        let update_sql =
+                                            "UPDATE secrets SET value = ? WHERE key = ?";
 
-                                    let update_query =
-                                        sqlx::query(update_sql).bind(encrypted_value).bind(key);
+                                        let update_query =
+                                            sqlx::query(update_sql).bind(encrypted_value).bind(key);
 
-                                    update_query
-                                        .execute(&mut *conn)
-                                        .await
-                                        .map_err(|err| map_sqlx_error(err, update_sql))?;
-                                } else {
-                                    return Err(map_sqlx_error(e, sql));
+                                        update_query
+                                            .execute(&mut *conn)
+                                            .await
+                                            .map_err(|err| map_sqlx_error(err, update_sql))?;
+                                    }
+                                    false => return Err(map_sqlx_error(e, sql)),
                                 };
                             }
                             _ => return Err(map_sqlx_error(e, sql)),
@@ -351,8 +353,8 @@ mod tests {
     impl Drop for TestHarness {
         fn drop(&mut self) {
             std::fs::remove_file(&self.storage_path).unwrap();
-            std::fs::remove_file(format!("{}{}", &self.storage_path, "-shm")).unwrap();
-            std::fs::remove_file(format!("{}{}", &self.storage_path, "-wal")).unwrap();
+            std::fs::remove_file(format!("{}{}", self.storage_path, "-shm")).unwrap();
+            std::fs::remove_file(format!("{}{}", self.storage_path, "-wal")).unwrap();
         }
     }
 

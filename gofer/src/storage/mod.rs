@@ -249,8 +249,8 @@ mod tests {
     impl Drop for TestHarness {
         fn drop(&mut self) {
             std::fs::remove_file(&self.storage_path).unwrap();
-            std::fs::remove_file(format!("{}{}", &self.storage_path, "-shm")).unwrap();
-            std::fs::remove_file(format!("{}{}", &self.storage_path, "-wal")).unwrap();
+            std::fs::remove_file(format!("{}{}", self.storage_path, "-shm")).unwrap();
+            std::fs::remove_file(format!("{}{}", self.storage_path, "-wal")).unwrap();
         }
     }
 }

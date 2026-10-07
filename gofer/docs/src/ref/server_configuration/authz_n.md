@@ -27,41 +27,68 @@ where `system_role` is marked as `true`.
 
 ### Permissions
 
-Permissions in Gofer are composed of two key components: "Resources" and "Actions."
+A permission is made up of two parts: a list of "resources" and a list of "actions". A role can contain many
+permissions.
+
+**Each permission is a standalone grant.** For a request to be allowed, a single permission has to cover every
+resource the route needs, along with the route's action. Gofer never combines separate permissions to satisfy a
+route. For example, take this role:
+
+```json
+"permissions": [
+  { "actions": ["read"], "resources": ["namespaces:^frontend$", "pipelines:^website$"] },
+  { "actions": ["read"], "resources": ["namespaces:^backend$", "pipelines:^billing$"] }
+]
+```
+
+This allows reading `frontend/website` and `backend/billing`, but not `frontend/billing`. If you want one permission
+to cover several things, put all of them in the same permission.
+
+A token can have several roles. The permissions from all of its roles are pooled together, and the request is allowed
+if any one of them covers the route.
 
 #### Resources
 
-Resources refer to specific groups of objects or collections within Gofer. Below is an example list of Gofer resources:
+Resources are groups of related routes within Gofer. They are written as plain strings:
 
-```rust
-pub enum Resource {
-    Configs,
-    Deployments,
-    Events,
-    Extensions(String),
-    Namespaces(String),
-    Objects,
-    Permissions,
-    Pipelines(String),
-    Runs,
-    Secrets,
-    Subscriptions,
-    System,
-    TaskExecutions,
-    Tokens,
-}
-```
+| Resource               | Covers                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `all`                  | Every resource.                                                               |
+| `configs`              | Pipeline configurations.                                                      |
+| `deployments`          | Pipeline deployments.                                                         |
+| `events`               | The event stream and individual events.                                       |
+| `extensions:<target>`  | Extensions, targeted by extension id.                                         |
+| `namespaces:<target>`  | Namespaces, targeted by namespace id.                                         |
+| `objects`              | Pipeline, run, and extension object stores.                                   |
+| `permissions`          | Roles.                                                                        |
+| `pipelines:<target>`   | Pipelines, targeted by pipeline id.                                           |
+| `runs`                 | Runs.                                                                         |
+| `secrets`              | Pipeline and global secret stores.                                            |
+| `subscriptions`        | Pipeline extension subscriptions.                                             |
+| `system`               | System settings.                                                              |
+| `task_executions`      | Task executions, their logs, and attaching to them.                           |
+| `tokens`               | API tokens.                                                                   |
 
-Some resources may include what Gofer refers to as "targets." Targets allow the creator of the permission
-to specify particular resources or a set of resources. The true power of targets lies in their ability to leverage
-regular expressions (regex).
+Routes usually need more than one resource. Reading a pipeline's secrets, for instance, needs
+`namespaces:<namespace>`, `pipelines:<pipeline>` and `secrets` in the same permission.
 
-For example, you might want to grant access to all namespaces that begin with a specific prefix.
+#### Targets
 
-To achieve this, you would create a role similar to the following:
+`extensions`, `namespaces` and `pipelines` require a target, which is a regex that the resource's id is matched
+against. A few rules:
+
+- Targets always match the entire id. `namespaces:default` matches `default` but not `not-default`; use
+  `namespaces:default.*` if you want a prefix match. Writing `^` and `$` yourself is fine but not needed.
+- A target is required. Use `.*` to match everything, e.g. `pipelines:.*`.
+- The other resources don't take a target.
+- Gofer rejects roles with unknown resources, missing targets, or targets that aren't valid regex.
+
+When a route lists things, like listing namespaces, the token only needs a permission for that resource type. The
+results are then filtered down to the items the token is allowed to read.
+
+Here is a role that grants full access to every namespace starting with "devops":
 
 ```json
-# Create a new role with permissions limited to the devops namespaces.
 POST https://gofer.clintjedwards.com/api/roles
 gofer-api-version: v0
 Content-Type: application/json
@@ -71,27 +98,51 @@ Authorization: Bearer {{secret}}
   "description": "Access only to namespaces that start with devops",
   "permissions": [
     {
-      "actions": [
-        "read",
-        "write",
-        "delete"
-      ],
+      "actions": ["read", "write", "delete"],
       "resources": [
-        { "resource": "namespaces", "target": "^devops.*" },
-        { "resource": "pipelines", "target": ".*" }
+        "namespaces:devops.*",
+        "pipelines:.*",
+        "configs",
+        "deployments",
+        "objects",
+        "runs",
+        "secrets",
+        "subscriptions",
+        "task_executions"
       ]
     }
   ]
 }
-HTTP 201
 ```
-This grants full read, write, and delete permissions for any namespace that begins with "devops"
 
 #### Actions
 
-Actions are straightforward. Each route in Gofer is associated with an action, which typically corresponds to the
-HTTP method used (e.g., GET, POST, DELETE). Only tokens with the correct combination of resource and
-action are permitted to proceed.
+There are three actions: `read`, `write` and `delete`. Each route belongs to one of them, which generally follows the
+HTTP method: `GET` is `read`, `POST` and `PATCH` are `write`, and `DELETE` is `delete`. Cancelling a run or task
+execution is a `delete`.
+
+#### Admin only routes
+
+Some routes can only be used by tokens with the `admin` or `bootstrap` role, regardless of what other permissions a
+token has. These include managing namespaces, tokens, roles, extensions, global secrets, and system settings.
+
+### System roles
+
+| Role        | Access                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| `bootstrap` | Everything. Given to the first token created; it can't be assigned to any other token.                 |
+| `admin`     | Everything.                                                                                            |
+| `user`      | Read, write, and delete for pipelines in the `default` namespace and everything under them (configs, deployments, objects, runs, secrets, subscriptions, task executions). Can also follow events for the whole system. |
+| `anonymous` | Read only access to pipelines and runs in the `default` namespace. Used for requests without a token on routes that allow it. |
+
+Each extension also gets its own system role named `extension_<extension_id>`. It can use its own object store,
+start runs in any pipeline, and read most pipeline information.
+
+### Errors
+
+- `401 Unauthorized` means the request didn't include a valid token: it's missing, unknown, disabled, or expired.
+- `403 Forbidden` means the token is valid but doesn't have permission for the route. The response explains which
+  resources and action the route needs.
 
 ## Authentication
 

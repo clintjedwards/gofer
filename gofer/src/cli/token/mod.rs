@@ -80,7 +80,7 @@ impl Cli {
                 metadata,
                 user,
             } => self.token_create(roles, expiry, metadata, user).await,
-            TokenCommands::Bootstrap {} => self.token_bootstrap().await,
+            TokenCommands::Bootstrap => self.token_bootstrap().await,
             TokenCommands::Enable { id } => self.token_enable(&id).await,
             TokenCommands::Disable { id } => self.token_disable(&id).await,
             TokenCommands::Whoami => self.token_whoami().await,

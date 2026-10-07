@@ -15,11 +15,9 @@ use std::sync::Arc;
 use strum::{Display, EnumString};
 use tracing::error;
 
-#[derive(Debug, Clone, Display, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-#[strum(ascii_case_insensitive)]
-/// Resources are representitive group names for collections of endpoints and concepts within Gofer.
+/// Resources are representative group names for collections of endpoints and concepts within Gofer.
 /// It's used mostly by the permissioning system to identify collections and grant users permissions
 /// to those collections.
 pub enum Resource {
@@ -41,33 +39,97 @@ pub enum Resource {
 }
 
 impl Resource {
-    fn from_str(input: &str) -> Option<Self> {
-        let user_resource_target_split: Vec<&str> = input.split(':').collect();
-        let user_resource = user_resource_target_split.first().unwrap().to_lowercase();
-        let user_target = user_resource_target_split.get(1).unwrap_or(&"").to_string();
-
-        let resource = match user_resource.as_str() {
-            "all" => Resource::All,
-            "configs" => Resource::Configs,
-            "deployments" => Resource::Deployments,
-            "events" => Resource::Events,
-            "extensions" => Resource::Extensions(user_target),
-            "namespaces" => Resource::Namespaces(user_target),
-            "objects" => Resource::Objects,
-            "permissions" => Resource::Permissions,
-            "pipelines" => Resource::Pipelines(user_target),
-            "runs" => Resource::Runs,
-            "secrets" => Resource::Secrets,
-            "subscriptions" => Resource::Subscriptions,
-            "system" => Resource::System,
-            "task_executions" => Resource::TaskExecutions,
-            "tokens" => Resource::Tokens,
-            _ => {
-                return None;
-            }
+    /// Parses the user facing "resource:target" form. Targeted resources must include a valid regex target and
+    /// untargeted resources must not include one, so that a role can never be broader than it looks.
+    fn parse(input: &str) -> Result<Self> {
+        let (name, target) = match input.split_once(':') {
+            Some((name, target)) => (name.to_lowercase(), Some(target.to_string())),
+            None => (input.to_lowercase(), None),
         };
 
-        Some(resource)
+        let untargeted = match name.as_str() {
+            "all" => Some(Resource::All),
+            "configs" => Some(Resource::Configs),
+            "deployments" => Some(Resource::Deployments),
+            "events" => Some(Resource::Events),
+            "objects" => Some(Resource::Objects),
+            "permissions" => Some(Resource::Permissions),
+            "runs" => Some(Resource::Runs),
+            "secrets" => Some(Resource::Secrets),
+            "subscriptions" => Some(Resource::Subscriptions),
+            "system" => Some(Resource::System),
+            "task_executions" => Some(Resource::TaskExecutions),
+            "tokens" => Some(Resource::Tokens),
+            "extensions" | "namespaces" | "pipelines" => None,
+            _ => bail!("'{name}' is not a valid resource type"),
+        };
+
+        if let Some(resource) = untargeted {
+            if target.is_some() {
+                bail!("resource '{name}' does not accept a target");
+            }
+            return Ok(resource);
+        }
+
+        let target = match target {
+            Some(target) if !target.is_empty() => target,
+            _ => bail!("resource '{name}' requires a target, e.g. '{name}:.*' to match everything"),
+        };
+
+        Regex::new(&anchored(&target)).with_context(|| {
+            format!("target '{target}' for resource '{name}' is not a valid regex")
+        })?;
+
+        Ok(match name.as_str() {
+            "extensions" => Resource::Extensions(target),
+            "namespaces" => Resource::Namespaces(target),
+            _ => Resource::Pipelines(target),
+        })
+    }
+
+    /// Reports whether this resource, as granted by a role, covers the resource a route requires.
+    ///
+    /// An empty route target is used by listing routes, which don't target a single object. It matches any grant
+    /// for that resource type and the handler is then responsible for filtering results with
+    /// [`RequestMetadata::allows`].
+    fn covers(&self, required: &Resource) -> bool {
+        match (self, required) {
+            (Resource::All, _) => true,
+            (Resource::Extensions(granted), Resource::Extensions(target))
+            | (Resource::Namespaces(granted), Resource::Namespaces(target))
+            | (Resource::Pipelines(granted), Resource::Pipelines(target)) => {
+                target.is_empty()
+                    || Regex::new(&anchored(granted)).is_ok_and(|regex| regex.is_match(target))
+            }
+            (granted, required) => granted == required,
+        }
+    }
+}
+
+/// Targets always match the whole identifier. Without this, a target of 'default' would also match 'not-default'.
+fn anchored(target: &str) -> String {
+    format!("^(?:{target})$")
+}
+
+impl std::fmt::Display for Resource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Resource::All => write!(f, "all"),
+            Resource::Configs => write!(f, "configs"),
+            Resource::Deployments => write!(f, "deployments"),
+            Resource::Events => write!(f, "events"),
+            Resource::Extensions(target) => write!(f, "extensions:{target}"),
+            Resource::Namespaces(target) => write!(f, "namespaces:{target}"),
+            Resource::Objects => write!(f, "objects"),
+            Resource::Permissions => write!(f, "permissions"),
+            Resource::Pipelines(target) => write!(f, "pipelines:{target}"),
+            Resource::Runs => write!(f, "runs"),
+            Resource::Secrets => write!(f, "secrets"),
+            Resource::Subscriptions => write!(f, "subscriptions"),
+            Resource::System => write!(f, "system"),
+            Resource::TaskExecutions => write!(f, "task_executions"),
+            Resource::Tokens => write!(f, "tokens"),
+        }
     }
 }
 
@@ -276,21 +338,11 @@ impl TryFrom<Permission> for InternalPermission {
     type Error = anyhow::Error;
 
     fn try_from(value: Permission) -> Result<Self> {
-        let mut resources = vec![];
-
-        for resource_str in value.resources {
-            let resource = match Resource::from_str(&resource_str) {
-                Some(resource) => resource,
-                None => {
-                    bail!(
-                        "Could not parse resource '{}', not a valid resource type",
-                        resource_str
-                    );
-                }
-            };
-
-            resources.push(resource);
-        }
+        let resources = value
+            .resources
+            .iter()
+            .map(|resource| Resource::parse(resource))
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(InternalPermission {
             resources,
@@ -299,13 +351,25 @@ impl TryFrom<Permission> for InternalPermission {
     }
 }
 
+impl InternalPermission {
+    /// A permission is a standalone grant; it allows a route only if it covers every resource the route requires
+    /// along with the route's action. Resources are never combined across separate permissions.
+    pub fn allows(&self, required: &[Resource], action: &Action) -> bool {
+        self.actions.contains(action)
+            && required.iter().all(|required| {
+                self.resources
+                    .iter()
+                    .any(|granted| granted.covers(required))
+            })
+    }
+}
+
 impl From<InternalPermission> for Permission {
     fn from(value: InternalPermission) -> Self {
         let mut resources = vec![];
 
         for resource in value.resources {
-            let internal_resource = Resource::to_string(&resource);
-            resources.push(internal_resource);
+            resources.push(resource.to_string());
         }
 
         Permission {
@@ -338,8 +402,8 @@ impl ApiState {
     /// route that it is included. The different options here map to different actions that are checked per call.
     ///
     /// When defining a preflight option resource, give the resource an empty string to communicate no specific targets
-    /// otherwise include the path identifer. This is compared against the user's token permissions to see if they have
-    /// access.
+    /// otherwise include the path identifier. This is compared against the user's token permissions to see if they have
+    /// access. Routes that use an empty target must filter what they return with [`RequestMetadata::allows`].
     pub async fn preflight_check(
         &self,
         request: &RequestInfo,
@@ -378,22 +442,57 @@ impl ApiState {
         };
         let api_version = super::check_version_handler(request)?;
 
-        // If the user is admin they automatically have access to every route.
-        if auth_ctx.roles.contains(&SystemRoles::Admin.to_string())
-            || auth_ctx.roles.contains(&SystemRoles::Bootstrap.to_string())
-        {
-            return Ok(RequestMetadata {
-                auth: auth_ctx,
-                api_version,
-            });
-        } else if options.admin_only {
+        let admin = auth_ctx.roles.contains(&SystemRoles::Admin.to_string())
+            || auth_ctx.roles.contains(&SystemRoles::Bootstrap.to_string());
+
+        if options.admin_only && !admin {
             return Err(HttpError::for_client_error(
                 None,
-                ClientErrorStatusCode::UNAUTHORIZED,
+                ClientErrorStatusCode::FORBIDDEN,
                 "Route requires admin level token".into(),
             ));
         }
 
+        let permissions = if admin {
+            vec![]
+        } else {
+            self.get_permissions(&auth_ctx.roles).await?
+        };
+
+        let metadata = RequestMetadata {
+            auth: auth_ctx,
+            api_version,
+            admin,
+            permissions,
+        };
+
+        if !metadata.allows(&options.resources, &options.action) {
+            return Err(HttpError::for_client_error(
+                None,
+                ClientErrorStatusCode::FORBIDDEN,
+                format!(
+                    "Token does not have permission to access this route. \
+                    Route requires a single permission that grants action '{}' on resources [{}]",
+                    options.action,
+                    options
+                        .resources
+                        .iter()
+                        .map(|resource| resource.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            ));
+        }
+
+        Ok(metadata)
+    }
+
+    /// Collects every permission from the given roles. Since each permission is evaluated on its own there is no
+    /// need to keep track of which role it came from.
+    async fn get_permissions(
+        &self,
+        role_ids: &[String],
+    ) -> Result<Vec<InternalPermission>, HttpError> {
         let mut conn = match self.storage.read_conn().await {
             Ok(conn) => conn,
             Err(e) => {
@@ -406,24 +505,21 @@ impl ApiState {
             }
         };
 
-        // Check that token actually has the correct permissions for the targeted resource.
-        for role_id in &auth_ctx.roles {
+        let mut permissions = vec![];
+
+        for role_id in role_ids {
             let storage_role = match storage::roles::get(&mut conn, role_id).await {
                 Ok(role) => role,
-                Err(e) => match e {
-                    storage::StorageError::NotFound => {
-                        // If we find a role that doesn't exist then we don't care.
-                        continue;
-                    }
-                    _ => {
-                        return Err(http_error!(
-                            "Could not query database for roles during authentication permission checking",
-                            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                            "0".into(),
-                            Some(e.into())
-                        ));
-                    }
-                },
+                // A token can reference a role that has since been deleted; it simply grants nothing.
+                Err(storage::StorageError::NotFound) => continue,
+                Err(e) => {
+                    return Err(http_error!(
+                        "Could not query database for roles during authentication permission checking",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        "0".into(),
+                        Some(e.into())
+                    ));
+                }
             };
 
             let role = InternalRole::try_from(storage_role).map_err(|err| {
@@ -436,154 +532,10 @@ impl ApiState {
                 )
             })?;
 
-            let mut all_resources_valid = true;
+            permissions.extend(role.permissions);
+        }
 
-            // TODO(): This should be simplified. This is the brute force solution, but I'm unsure of what an optimal
-            // solution would look like.
-            //
-            // First we need to iterate through the route's resource declarations and make sure each of them are valid.
-            for route_resource_declaration in &options.resources {
-                let mut resource_valid = false;
-
-                // For each of the route's resource declarations we need to iterate through all the user's
-                // role permissions as they may have many.
-                for permission in &role.permissions {
-                    // For each of the user's role permissions, we look up the resource/target combinations and
-                    // we must check that at least one of them satisfies the route resource constraint.
-                    for user_resource in &permission.resources {
-                        match (user_resource, route_resource_declaration) {
-                            // Certain resources can have specific targets for which the user only has access to.
-                            // This is represented by a regex on the Token's version of a 'Resource' object.
-                            // We compare this to the resource target defined by the route being accessed to see if its a match.
-                            //
-                            // This functionality enables the ability for users to be able to be granted specific permissions for
-                            // a single or set of specific resources. For example, a user might be created a token that has
-                            // access to only roles whose ids start with 'devops_'
-                            (
-                                Resource::Namespaces(user_target),
-                                Resource::Namespaces(route_target),
-                            ) => {
-                                // We first check if the target is empty here because some routes like listing routes
-                                // don't have specific targets. So in order to get them to match, we leave them empty and
-                                // then check for the empty target. We're rather not compile the user token resource regex
-                                // if we don't have to because that wastes time and CPU cycles so we put this check ahead
-                                // of that.
-                                if route_target.is_empty()
-                                    && permission.actions.contains(&options.action)
-                                {
-                                    resource_valid = true;
-                                    break;
-                                }
-
-                                if let Ok(regex) = Regex::new(user_target) {
-                                    if regex.is_match(route_target)
-                                        && permission.actions.contains(&options.action)
-                                    {
-                                        resource_valid = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            (
-                                Resource::Extensions(user_target),
-                                Resource::Extensions(route_target),
-                            ) => {
-                                if route_target.is_empty()
-                                    && permission.actions.contains(&options.action)
-                                {
-                                    resource_valid = true;
-                                    break;
-                                }
-
-                                if let Ok(regex) = Regex::new(user_target) {
-                                    if regex.is_match(route_target)
-                                        && permission.actions.contains(&options.action)
-                                    {
-                                        resource_valid = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            (
-                                Resource::Pipelines(user_target),
-                                Resource::Pipelines(route_target),
-                            ) => {
-                                if route_target.is_empty()
-                                    && permission.actions.contains(&options.action)
-                                {
-                                    resource_valid = true;
-                                    break;
-                                }
-
-                                if let Ok(regex) = Regex::new(user_target) {
-                                    if regex.is_match(route_target)
-                                        && permission.actions.contains(&options.action)
-                                    {
-                                        resource_valid = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // These resources don't have specific targets so there is no need to check the inner values.
-                            (Resource::All, _) => {
-                                if permission.actions.contains(&options.action) {
-                                    resource_valid = true;
-                                    break;
-                                }
-                            }
-                            (Resource::Configs, Resource::Configs)
-                            | (Resource::Deployments, Resource::Deployments)
-                            | (Resource::Events, Resource::Events)
-                            | (Resource::Objects, Resource::Objects)
-                            | (Resource::Permissions, Resource::Permissions)
-                            | (Resource::Runs, Resource::Runs)
-                            | (Resource::Secrets, Resource::Secrets)
-                            | (Resource::Subscriptions, Resource::Subscriptions)
-                            | (Resource::System, Resource::System)
-                            | (Resource::TaskExecutions, Resource::TaskExecutions)
-                            | (Resource::Tokens, Resource::Tokens) => {
-                                if permission.actions.contains(&options.action) {
-                                    resource_valid = true;
-                                    break;
-                                }
-                            }
-                            _ => continue, // Catch-all for cases where the resource types don't match
-                        }
-
-                        if resource_valid {
-                            break;
-                        }
-                    } // for user_resource in &permission.resources
-
-                    if resource_valid {
-                        break;
-                    }
-                } // for permission in &role.permissions
-
-                if !resource_valid {
-                    all_resources_valid = false;
-                    break;
-                }
-            } // for route_resource_declaration in &options.resources
-
-            if all_resources_valid {
-                return Ok(RequestMetadata {
-                    auth: auth_ctx,
-                    api_version,
-                });
-            }
-        } // for role_id in &auth_ctx.roles
-
-        Err(HttpError::for_client_error(
-            None,
-            ClientErrorStatusCode::UNAUTHORIZED,
-            format!(
-                "Token does not contain role required for access to this route. \
-                Route requires: resource '{:?}' and action '{}' permissions",
-                options.resources, &options.action
-            ),
-        ))
+        Ok(permissions)
     }
 
     /// Checks request authentication and returns valid auth information.
@@ -592,8 +544,9 @@ impl ApiState {
             request
                 .headers()
                 .get("Authorization")
-                .ok_or(HttpError::for_bad_request(
+                .ok_or(HttpError::for_client_error(
                     None,
+                    ClientErrorStatusCode::UNAUTHORIZED,
                     "Authorization header not found but required".into(),
                 ))?;
 
@@ -685,6 +638,38 @@ impl ApiState {
 ///
 /// We create most of the roles mentioned in the [`SystemRoles`] enum.
 pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<()> {
+    let mut conn = match api_state.storage.write_conn().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!(message = "Could not open connection to database", error = %e);
+            bail!("Could not open connection to database")
+        }
+    };
+
+    for role in system_roles() {
+        let storage_role: storage::roles::Role = role.try_into().context(
+            "Could not serialize role into storage role \
+            while attempting to insert system roles.",
+        )?;
+
+        if let Err(e) = storage::roles::insert(&mut conn, &storage_role).await {
+            match e {
+                storage::StorageError::Exists => {
+                    return Ok(());
+                }
+                _ => {
+                    bail!("{e}")
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// The roles Gofer ships with. Changing these requires a database migration, since existing installs keep whatever
+/// was inserted when they were first started.
+fn system_roles() -> Vec<InternalRole> {
     let bootstrap_role = InternalRole::new(
         &SystemRoles::Bootstrap.to_string(),
         "The original role that all other tokens/roles are created from.",
@@ -719,6 +704,7 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
                 Resource::Runs,
                 Resource::Secrets,
                 Resource::Subscriptions,
+                Resource::TaskExecutions,
             ],
             actions: vec![Action::Read, Action::Write, Action::Delete],
         }],
@@ -739,35 +725,7 @@ pub async fn create_system_roles(api_state: std::sync::Arc<ApiState>) -> Result<
         true,
     );
 
-    let roles = vec![bootstrap_role, admin_role, user_role, anon_role];
-
-    let mut conn = match api_state.storage.write_conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!(message = "Could not open connection to database", error = %e);
-            bail!("Could not open connection to database")
-        }
-    };
-
-    for role in roles {
-        let storage_role: storage::roles::Role = role.try_into().context(
-            "Could not seralized role into storage role \
-            while attempting to insert system roles.",
-        )?;
-
-        if let Err(e) = storage::roles::insert(&mut conn, &storage_role).await {
-            match e {
-                storage::StorageError::Exists => {
-                    return Ok(());
-                }
-                _ => {
-                    bail!("{e}")
-                }
-            }
-        }
-    }
-
-    Ok(())
+    vec![bootstrap_role, admin_role, user_role, anon_role]
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -988,11 +946,7 @@ pub async fn create_role(
     if let Err(e) = is_valid_identifier(&body.id) {
         return Err(HttpError::for_bad_request(
             None,
-            format!(
-                "'{}' is not a valid identifier; {}",
-                &body.id,
-                &e.to_string()
-            ),
+            format!("'{}' is not a valid identifier; {}", body.id, e),
         ));
     };
 
@@ -1013,14 +967,9 @@ pub async fn create_role(
         .into_iter()
         .map(|permission| permission.try_into())
         .collect();
-    let permissions = permissions.map_err(|e| {
-        http_error!(
-            "Could not parse permissions from api contract",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(e.into())
-        )
-    })?;
+
+    let permissions = permissions
+        .map_err(|e| HttpError::for_bad_request(None, format!("Invalid permissions; {e:#}")))?;
 
     let new_role = InternalRole {
         id: body.id.to_string(),
@@ -1095,16 +1044,19 @@ impl TryFrom<UpdateRoleRequest> for storage::roles::UpdatableFields {
     type Error = anyhow::Error;
 
     fn try_from(value: UpdateRoleRequest) -> Result<Self> {
-        let permissions: Option<String> = match value.permissions {
-            Some(value) => {
-                let permission_str = serde_json::to_string(&value).with_context(|| {
-                    format!(
-                        "Could not parse field 'permissions' from value '{:#?}'",
-                        value
-                    )
-                })?;
+        // Permissions have to go through the internal type first; storage holds the internal representation and
+        // this is also where user supplied resources get validated.
+        let permissions = match value.permissions {
+            Some(permissions) => {
+                let permissions = permissions
+                    .into_iter()
+                    .map(InternalPermission::try_from)
+                    .collect::<Result<Vec<_>>>()?;
 
-                Some(permission_str)
+                Some(
+                    serde_json::to_string(&permissions)
+                        .context("Could not serialize permissions")?,
+                )
             }
             None => None,
         };
@@ -1166,11 +1118,9 @@ pub async fn update_role(
     let updatable_fields = match storage::roles::UpdatableFields::try_from(body.clone()) {
         Ok(fields) => fields,
         Err(e) => {
-            return Err(http_error!(
-                "Could not serialize role for database insertion",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
+            return Err(HttpError::for_bad_request(
+                None,
+                format!("Invalid permissions; {e:#}"),
             ));
         }
     };
@@ -1377,4 +1327,310 @@ pub async fn delete_role(
         });
 
     Ok(HttpResponseDeleted())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn permission(resources: &[&str], actions: &[Action]) -> InternalPermission {
+        Permission {
+            resources: resources.iter().map(|r| r.to_string()).collect(),
+            actions: actions.to_vec(),
+        }
+        .try_into()
+        .unwrap()
+    }
+
+    fn system_role(id: SystemRoles) -> InternalRole {
+        system_roles()
+            .into_iter()
+            .find(|role| role.id == id.to_string())
+            .unwrap()
+    }
+
+    fn allowed(permissions: &[InternalPermission], resources: &[Resource], action: Action) -> bool {
+        permissions
+            .iter()
+            .any(|permission| permission.allows(resources, &action))
+    }
+
+    fn pipeline_route(namespace: &str, pipeline: &str, extra: &[Resource]) -> Vec<Resource> {
+        let mut resources = vec![
+            Resource::Namespaces(namespace.into()),
+            Resource::Pipelines(pipeline.into()),
+        ];
+        resources.extend_from_slice(extra);
+        resources
+    }
+
+    #[test]
+    fn parse_rejects_invalid_resources() {
+        assert!(Resource::parse("nonsense").is_err());
+        assert!(Resource::parse("namespaces").is_err());
+        assert!(Resource::parse("namespaces:").is_err());
+        assert!(Resource::parse("namespaces:(").is_err());
+        assert!(Resource::parse("secrets:.*").is_err());
+    }
+
+    #[test]
+    fn parse_keeps_colons_in_targets() {
+        assert_eq!(
+            Resource::parse("namespaces:a:b").unwrap(),
+            Resource::Namespaces("a:b".into())
+        );
+    }
+
+    #[test]
+    fn resources_round_trip_through_api_format() {
+        for input in [
+            "all",
+            "secrets",
+            "task_executions",
+            "namespaces:^default$",
+            "pipelines:.*",
+        ] {
+            assert_eq!(Resource::parse(input).unwrap().to_string(), input);
+        }
+    }
+
+    #[test]
+    fn targets_match_whole_identifier() {
+        let granted = Resource::Namespaces("default".into());
+        assert!(granted.covers(&Resource::Namespaces("default".into())));
+        assert!(!granted.covers(&Resource::Namespaces("not-default".into())));
+        assert!(!granted.covers(&Resource::Namespaces("default-two".into())));
+
+        let prefix = Resource::Namespaces("devops.*".into());
+        assert!(prefix.covers(&Resource::Namespaces("devops-test".into())));
+        assert!(!prefix.covers(&Resource::Namespaces("not-devops".into())));
+    }
+
+    #[test]
+    fn empty_route_target_matches_any_grant_of_that_type() {
+        let granted = Resource::Namespaces("^devops$".into());
+        assert!(granted.covers(&Resource::Namespaces("".into())));
+        assert!(!granted.covers(&Resource::Pipelines("".into())));
+    }
+
+    #[test]
+    fn all_covers_everything() {
+        let permissions = [permission(&["all"], &[Action::Read])];
+        assert!(allowed(
+            &permissions,
+            &pipeline_route("anything", "anything", &[Resource::Secrets]),
+            Action::Read
+        ));
+        assert!(!allowed(&permissions, &[Resource::Secrets], Action::Write));
+    }
+
+    #[test]
+    fn permissions_do_not_combine_targets() {
+        let permissions = [
+            permission(
+                &["namespaces:frontend", "pipelines:website"],
+                &[Action::Read],
+            ),
+            permission(
+                &["namespaces:backend", "pipelines:billing"],
+                &[Action::Read],
+            ),
+        ];
+
+        assert!(allowed(
+            &permissions,
+            &pipeline_route("frontend", "website", &[]),
+            Action::Read
+        ));
+        assert!(allowed(
+            &permissions,
+            &pipeline_route("backend", "billing", &[]),
+            Action::Read
+        ));
+        assert!(!allowed(
+            &permissions,
+            &pipeline_route("frontend", "billing", &[]),
+            Action::Read
+        ));
+        assert!(!allowed(
+            &permissions,
+            &pipeline_route("backend", "website", &[]),
+            Action::Read
+        ));
+    }
+
+    #[test]
+    fn permissions_do_not_combine_untargeted_resources() {
+        let permissions = [
+            permission(
+                &["namespaces:default", "pipelines:.*", "runs"],
+                &[Action::Read],
+            ),
+            permission(
+                &["namespaces:devops", "pipelines:.*", "secrets"],
+                &[Action::Read],
+            ),
+        ];
+
+        assert!(allowed(
+            &permissions,
+            &pipeline_route("devops", "x", &[Resource::Secrets]),
+            Action::Read
+        ));
+        assert!(!allowed(
+            &permissions,
+            &pipeline_route("default", "x", &[Resource::Secrets]),
+            Action::Read
+        ));
+    }
+
+    #[test]
+    fn permissions_do_not_combine_actions() {
+        let permissions = [
+            permission(
+                &["namespaces:default", "pipelines:.*", "runs"],
+                &[Action::Read],
+            ),
+            permission(&["secrets"], &[Action::Write]),
+        ];
+
+        assert!(!allowed(
+            &permissions,
+            &pipeline_route("default", "x", &[Resource::Runs]),
+            Action::Write
+        ));
+    }
+
+    #[test]
+    fn user_role_access() {
+        let user = system_role(SystemRoles::User).permissions;
+
+        for action in [Action::Read, Action::Write, Action::Delete] {
+            for extra in [
+                vec![],
+                vec![Resource::Configs],
+                vec![Resource::Deployments],
+                vec![Resource::Objects],
+                vec![Resource::Runs],
+                vec![Resource::Runs, Resource::Objects],
+                vec![Resource::Runs, Resource::TaskExecutions],
+                vec![Resource::Secrets],
+                vec![Resource::Subscriptions],
+            ] {
+                assert!(
+                    allowed(
+                        &user,
+                        &pipeline_route("default", "x", &extra),
+                        action.clone()
+                    ),
+                    "user should have {action} on default/{extra:?}"
+                );
+                assert!(
+                    !allowed(&user, &pipeline_route("other", "x", &extra), action.clone()),
+                    "user should not have {action} on other/{extra:?}"
+                );
+            }
+        }
+
+        assert!(allowed(&user, &[Resource::Events], Action::Read));
+        assert!(!allowed(
+            &user,
+            &[Resource::Extensions("x".into())],
+            Action::Read
+        ));
+        assert!(!allowed(&user, &[Resource::Tokens], Action::Read));
+        assert!(!allowed(&user, &[Resource::Permissions], Action::Read));
+    }
+
+    #[test]
+    fn anonymous_role_access() {
+        let anonymous = system_role(SystemRoles::Anonymous).permissions;
+
+        assert!(allowed(
+            &anonymous,
+            &pipeline_route("default", "", &[]),
+            Action::Read
+        ));
+        assert!(allowed(
+            &anonymous,
+            &pipeline_route("default", "x", &[]),
+            Action::Read
+        ));
+        assert!(allowed(
+            &anonymous,
+            &pipeline_route("default", "x", &[Resource::Runs]),
+            Action::Read
+        ));
+        assert!(!allowed(
+            &anonymous,
+            &pipeline_route("default", "x", &[Resource::Runs]),
+            Action::Write
+        ));
+        assert!(!allowed(
+            &anonymous,
+            &pipeline_route("default", "x", &[Resource::Secrets]),
+            Action::Read
+        ));
+        assert!(!allowed(
+            &anonymous,
+            &pipeline_route("other", "x", &[]),
+            Action::Read
+        ));
+    }
+
+    #[test]
+    fn extension_role_access() {
+        let extension = crate::api::extensions::extension_role("github").permissions;
+        let own = Resource::Extensions("github".into());
+        let other = Resource::Extensions("cron".into());
+
+        for action in [Action::Read, Action::Write, Action::Delete] {
+            assert!(allowed(
+                &extension,
+                &[own.clone(), Resource::Objects],
+                action.clone()
+            ));
+            assert!(!allowed(
+                &extension,
+                &[other.clone(), Resource::Objects],
+                action.clone()
+            ));
+        }
+
+        assert!(allowed(
+            &extension,
+            &pipeline_route("any", "x", &[Resource::Runs]),
+            Action::Write
+        ));
+        assert!(allowed(
+            &extension,
+            &pipeline_route("any", "x", &[Resource::Runs, Resource::TaskExecutions]),
+            Action::Read
+        ));
+        assert!(!allowed(
+            &extension,
+            &pipeline_route("any", "x", &[Resource::Objects]),
+            Action::Write
+        ));
+        assert!(!allowed(
+            &extension,
+            &pipeline_route("any", "x", &[Resource::Secrets]),
+            Action::Read
+        ));
+    }
+
+    #[test]
+    fn migration_matches_role_definitions() {
+        let migration = include_str!("../storage/migrations/1_permission_fixes.sql");
+
+        let user = serde_json::to_string(&system_role(SystemRoles::User).permissions).unwrap();
+        assert!(migration.contains(&format!("'{user}'")));
+
+        let extension = serde_json::to_string(
+            &crate::api::extensions::extension_role("EXTENSION_ID").permissions,
+        )
+        .unwrap();
+        let templated = extension.replace("EXTENSION_ID", "' || substr(id, 11) || '");
+        assert!(migration.contains(&format!("'{templated}'")));
+    }
 }

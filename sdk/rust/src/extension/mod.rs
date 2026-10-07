@@ -384,10 +384,10 @@ impl SystemConfig {
 /// Does a more thorough evaluation of env vars by making sure not only they are set, but also making sure they're
 /// not an empty string.
 fn get_env(key: &str) -> Option<String> {
-    if let Ok(value) = env::var(key) {
-        if !value.is_empty() {
-            return Some(value);
-        }
+    if let Ok(value) = env::var(key)
+        && !value.is_empty()
+    {
+        return Some(value);
     }
 
     None
@@ -427,7 +427,7 @@ pub async fn run(ext: Box<dyn Extension>) -> Result<(), Box<dyn Error>> {
             "Could not parse url '{}' while trying to bind binary to port; \
     should be in format '<ip>:<port>'; Please be sure to use an ip instead of something like 'localhost', \
     when attempting to bind; {:#?}",
-            &config.bind_address, e
+            config.bind_address, e
         )
     ))?;
 

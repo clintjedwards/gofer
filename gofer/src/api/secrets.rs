@@ -826,7 +826,7 @@ pub async fn put_pipeline_secret(
                     Resource::Pipelines(path.pipeline_id.clone()),
                     Resource::Secrets,
                 ],
-                action: Action::Read,
+                action: Action::Write,
             },
         )
         .await?;
@@ -931,7 +931,7 @@ pub async fn delete_pipeline_secret(
                     Resource::Pipelines(path.pipeline_id.clone()),
                     Resource::Secrets,
                 ],
-                action: Action::Read,
+                action: Action::Delete,
             },
         )
         .await?;

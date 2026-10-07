@@ -449,7 +449,7 @@ impl EventBus {
             new_event.clone().try_into().with_context(|| {
                 format!(
                     "could not publish event for kind '{}'; could not serialize event into storage",
-                    &kind.to_string()
+                    kind
                 )
             })?;
 
@@ -458,7 +458,7 @@ impl EventBus {
             .with_context(|| {
                 format!(
                     "could not publish event for kind '{}'; Database insert error",
-                    &kind.to_string()
+                    kind
                 )
             })?;
 
@@ -468,7 +468,7 @@ impl EventBus {
             .with_context(|| {
                 format!(
                     "could not publish event for kind '{}'; Database error;",
-                    &kind.to_string(),
+                    kind,
                 )
             })?;
 

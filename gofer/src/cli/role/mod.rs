@@ -191,11 +191,11 @@ impl Cli {
             "configs",
             "deployments",
             "events",
-            "extensions (target capable)", // target capable
-            "namespaces (target capable)", // target capable
+            "extensions:<target>",
+            "namespaces:<target>",
             "objects",
             "permissions",
-            "pipelines (target capable)", // target capable
+            "pipelines:<target>",
             "runs",
             "secrets",
             "subscriptions",
@@ -209,8 +209,8 @@ impl Cli {
         println!("Possible resources: {:?}", resources);
         println!();
         println!(
-            "For some resources you are allowed to enter a 'target'. You can enter that target after a colon \
-            after the resource name."
+            "Extensions, namespaces, and pipelines require a 'target' after a colon. The target is a regex \
+            matched against the entire id; use '.*' to match everything."
         );
         println!();
         println!("Example normal resource: {}", "deployments".cyan());
@@ -223,6 +223,11 @@ impl Cli {
             "namespaces:^default$,deployments,configs,pipelines:.*".cyan()
         );
         println!();
+        println!(
+            "Each permission is a standalone grant; a route is only allowed if a single permission covers every \
+            resource it needs."
+        );
+        println!();
         println!("Enter a comma separated list of resources to give this token access to.");
         println!();
 
@@ -233,7 +238,8 @@ impl Cli {
             let user_given_resources: Vec<&str> = user_given_resources.split(',').collect();
             let resources: Vec<String> = user_given_resources
                 .into_iter()
-                .map(|resource| resource.to_string())
+                .map(|resource| resource.trim().to_string())
+                .filter(|resource| !resource.is_empty())
                 .collect();
 
             if resources.is_empty() {

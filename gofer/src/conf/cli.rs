@@ -84,6 +84,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
+    #[allow(clippy::result_large_err)]
     fn load_from_environment_variables() {
         Jail::expect_with(|jail| {
             let home = jail.directory().to_path_buf();

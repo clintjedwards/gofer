@@ -511,7 +511,7 @@ async fn start_extension(
     let extension_url = format!(
         "{}{}",
         scheme,
-        &start_response.url.clone().unwrap_or_default()
+        start_response.url.clone().unwrap_or_default()
     );
 
     let extension_client = new_extension_client(
@@ -779,7 +779,7 @@ pub async fn list_extensions(
     rqctx: RequestContext<Arc<ApiState>>,
 ) -> Result<HttpResponseOk<ListExtensionsResponse>, HttpError> {
     let api_state = rqctx.context();
-    let _req_metadata = api_state
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -796,7 +796,11 @@ pub async fn list_extensions(
 
     for extension_ref in &api_state.extensions {
         let extension = extension_ref.value();
-        extensions.push(extension.clone());
+        let resource = Resource::Extensions(extension.registration.extension_id.clone());
+
+        if req_metadata.allows(&[resource], &Action::Read) {
+            extensions.push(extension.clone());
+        }
     }
 
     let resp = ListExtensionsResponse { extensions };
@@ -1089,7 +1093,7 @@ pub async fn uninstall_extension(
     if !api_state.extensions.contains_key(&path.extension_id) {
         return Err(HttpError::for_not_found(
             None,
-            format!("Extension id '{}' does not exist", &path.extension_id),
+            format!("Extension id '{}' does not exist", path.extension_id),
         ));
     };
 
@@ -1447,7 +1451,7 @@ pub async fn get_extension_debug_info(
         None => {
             return Err(HttpError::for_bad_request(
                 None,
-                format!("extension_id '{}' not found", &path.extension_id,),
+                format!("extension_id '{}' not found", path.extension_id,),
             ));
         }
     };
@@ -1507,6 +1511,59 @@ pub fn new_extension_client(
     ))
 }
 
+/// The role every extension's token gets. Changing this requires a database migration, since roles for already
+/// installed extensions are only created once.
+pub fn extension_role(extension_id: &str) -> InternalRole {
+    InternalRole {
+        id: extension_role_id(extension_id),
+        description:
+            "Auto-created role for registered extension; Allows extension to access needful \
+            resources"
+                .to_string(),
+        permissions: vec![
+            // The only write access extensions need is to their own object store so they can use that as a database.
+            InternalPermission {
+                resources: vec![
+                    Resource::Extensions(format!(
+                        "^{}$", // Match only exactly extension targets with this name.
+                        extension_id
+                    )),
+                    Resource::Objects,
+                ],
+                actions: vec![Action::Read, Action::Write, Action::Delete],
+            },
+            // Allow extensions to start runs.
+            InternalPermission {
+                resources: vec![
+                    Resource::Namespaces(".*".to_string()),
+                    Resource::Pipelines(".*".to_string()),
+                    Resource::Runs,
+                ],
+                actions: vec![Action::Read, Action::Write],
+            },
+            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
+            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
+            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
+            // intellectual propety.
+            InternalPermission {
+                resources: vec![
+                    Resource::Configs,
+                    Resource::Deployments,
+                    Resource::Events,
+                    Resource::Namespaces(".*".to_string()),
+                    Resource::Pipelines(".*".to_string()),
+                    Resource::Runs,
+                    Resource::Subscriptions,
+                    Resource::System,
+                    Resource::TaskExecutions,
+                ],
+                actions: vec![Action::Read],
+            },
+        ],
+        system_role: true,
+    }
+}
+
 async fn install_new_extension(
     api_state: Arc<ApiState>,
     registration: &Registration,
@@ -1531,50 +1588,7 @@ async fn install_new_extension(
 
     // We need to create a new role for the extension so that it has appropriate permissions to perform actions
     // to aid the user.
-    let new_role = InternalRole {
-        id: extension_role_id(&registration.extension_id),
-        description:
-            "Auto-created role for registered extension; Allows extension to access needful \
-            resources"
-                .to_string(),
-        permissions: vec![
-            // The only write access extensions need is to their own object store so they can use that as a database.
-            InternalPermission {
-                resources: vec![Resource::Extensions(format!(
-                    "^{}$", // Match only exactly extension targets with this name.
-                    registration.extension_id
-                ))],
-                actions: vec![Action::Read, Action::Write, Action::Delete],
-            },
-            // Allow extensions to start runs.
-            InternalPermission {
-                resources: vec![
-                    Resource::Namespaces(".*".to_string()),
-                    Resource::Pipelines(".*".to_string()),
-                    Resource::Runs,
-                ],
-                actions: vec![Action::Read, Action::Write],
-            },
-            // Provide read to most resources so that extensions can be somewhat useful. The decision here on where
-            // to provide access is quite difficult, but we went with a more open model assuming that the extensions
-            // are from somewhat trusted parties and not allowing TOO much access to things that can really leak
-            // intellectual propety.
-            InternalPermission {
-                resources: vec![
-                    Resource::Configs,
-                    Resource::Deployments,
-                    Resource::Events,
-                    Resource::Namespaces(".*".to_string()),
-                    Resource::Pipelines(".*".to_string()),
-                    Resource::Subscriptions,
-                    Resource::System,
-                    Resource::TaskExecutions,
-                ],
-                actions: vec![Action::Read],
-            },
-        ],
-        system_role: true,
-    };
+    let new_role = extension_role(&registration.extension_id);
 
     let new_role_storage = match new_role.clone().try_into() {
         Ok(role) => role,

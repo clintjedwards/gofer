@@ -520,8 +520,7 @@ pub async fn create_subscription(
             None,
             format!(
                 "'{}' is not a valid identifier; {}",
-                &body.subscription_id,
-                &e.to_string()
+                body.subscription_id, e
             ),
         ));
     };

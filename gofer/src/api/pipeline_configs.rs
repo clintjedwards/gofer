@@ -502,8 +502,7 @@ pub async fn register_config(
             None,
             format!(
                 "'{}' is not a valid identifier for pipeline id; {}",
-                &body.config.id,
-                &e.to_string()
+                body.config.id, e
             ),
         ));
     };
@@ -586,7 +585,7 @@ pub async fn register_config(
                     Resource::Configs,
                     Resource::Deployments,
                     Resource::Events,
-                    Resource::Namespaces(format!("default|{}$", &path.namespace_id.clone())),
+                    Resource::Namespaces(format!("default|{}$", path.namespace_id.clone())),
                     Resource::Pipelines(".*".to_string()),
                     Resource::Subscriptions,
                     Resource::System,
@@ -778,7 +777,7 @@ pub async fn deploy_config(
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
-                admin_only: true,
+                admin_only: false,
                 resources: vec![
                     Resource::Namespaces(path.namespace_id.clone()),
                     Resource::Pipelines(path.pipeline_id.clone()),

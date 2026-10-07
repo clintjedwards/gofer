@@ -97,8 +97,30 @@ fn generate_inject_api_token_role_id(pipeline_id: &str) -> String {
 pub struct RequestMetadata {
     #[allow(dead_code)]
     api_version: ApiVersion,
-    #[allow(dead_code)]
     auth: permissioning::AuthContext,
+
+    /// Admin tokens skip permission checks entirely.
+    admin: bool,
+
+    /// Every permission granted to the token across all of its roles.
+    permissions: Vec<permissioning::InternalPermission>,
+}
+
+impl RequestMetadata {
+    /// Reports whether the token has a single permission granting the action on all of the given resources. An
+    /// empty resource list only requires that the token is valid.
+    pub fn allows(
+        &self,
+        resources: &[permissioning::Resource],
+        action: &permissioning::Action,
+    ) -> bool {
+        self.admin
+            || resources.is_empty()
+            || self
+                .permissions
+                .iter()
+                .any(|permission| permission.allows(resources, action))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -119,6 +141,9 @@ pub struct PreflightOptions {
     /// When including these resources inside a route handler you should include the 'target' resource that was asked
     /// for in the path. This will be used to check that the user has the correct permissions to access that
     /// resource/target combination.
+    ///
+    /// All resources must be granted by a single permission on the token. Leaving this empty means any valid token
+    /// can access the route.
     resources: Vec<permissioning::Resource>,
     action: permissioning::Action,
 }
@@ -392,7 +417,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
             "Could not parse url '{}' while trying to bind binary to port; \
     should be in format '<ip>:<port>'; Please be sure to use an ip instead of something like 'localhost', \
     when attempting to bind",
-            &conf.server.bind_address.clone()
+            conf.server.bind_address.clone()
         )
     })?;
 
@@ -992,7 +1017,7 @@ pub async fn interpolate_vars(
                     Ok(val) => String::from_utf8_lossy(&val.0).to_string(),
                     Err(e) => match e {
                         secret_store::SecretStoreError::NotFound => {
-                            bail!("Could not find pipeline secret '{}'", &value);
+                            bail!("Could not find pipeline secret '{}'", value);
                         }
                         _ => {
                             bail!(
@@ -1060,7 +1085,7 @@ pub async fn interpolate_vars(
                     Ok(val) => val,
                     Err(e) => {
                         if e == secret_store::SecretStoreError::NotFound {
-                            bail!("Could not find global secret {}", &key_metadata.key)
+                            bail!("Could not find global secret {}", key_metadata.key)
                         };
 
                         bail!("Could not retrieve global secret: {:#?}", e)
@@ -1086,7 +1111,7 @@ pub async fn interpolate_vars(
                     Ok(val) => val,
                     Err(e) => {
                         if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find pipeline object {}", &variable.key.clone(),)
+                            bail!("Could not find pipeline object {}", variable.key.clone(),)
                         };
 
                         bail!("Could not retrieve pipeline object: {:#?}", e)
@@ -1120,7 +1145,7 @@ pub async fn interpolate_vars(
                     Ok(val) => val,
                     Err(e) => {
                         if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find run object {}", &variable.key.clone(),)
+                            bail!("Could not find run object {}", variable.key.clone(),)
                         };
 
                         bail!("Could not retrieve run object: {:#?}", e)

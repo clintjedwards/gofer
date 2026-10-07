@@ -289,7 +289,7 @@ impl Cli {
         context.insert("vertical_line", &"│".magenta().to_string());
         context.insert("pipeline_id", &task.pipeline_id.blue().to_string());
         context.insert("run_prefix", &"├─".magenta().to_string());
-        context.insert("run_id", &format!("#{}", &task.run_id).blue().to_string());
+        context.insert("run_id", &format!("#{}", task.run_id).blue().to_string());
         context.insert("task_id", &task.task_id.blue().to_string());
         context.insert("task_prefix", &"├──".magenta().to_string());
         context.insert(

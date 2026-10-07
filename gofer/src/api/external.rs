@@ -16,7 +16,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
             "Could not parse url '{}' while trying to bind binary to port; \
     should be in format '<ip>:<port>'; Please be sure to use an ip instead of something like 'localhost', \
     when attempting to bind",
-            &conf.server.bind_address.clone()
+            conf.server.bind_address.clone()
         )
     })?;
 
@@ -85,7 +85,8 @@ pub struct ExternalEventPathArgs {
 ///
 /// The data here will be passed to the targeted extension.
 ///
-/// This route is only accessible for admin tokens.
+/// This route does not require a Gofer token. It's meant for outside services like webhooks which can't send one,
+/// so the extension is responsible for verifying the request, usually through a signature in the headers.
 #[endpoint(
     method = POST,
     path = "/api/external/{extension_id}",
@@ -104,7 +105,7 @@ pub async fn external_event_handler(
         None => {
             return Err(HttpError::for_bad_request(
                 None,
-                format!("extension_id '{}' not found", &path.extension_id,),
+                format!("extension_id '{}' not found", path.extension_id,),
             ));
         }
     };

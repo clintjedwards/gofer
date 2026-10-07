@@ -156,7 +156,7 @@ pub async fn list_pipelines(
 ) -> Result<HttpResponseOk<ListPipelinesResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let _req_metadata = api_state
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -209,7 +209,14 @@ pub async fn list_pipelines(
             )
         })?;
 
-        pipelines.push(pipeline);
+        let resources = [
+            Resource::Namespaces(pipeline.namespace_id.clone()),
+            Resource::Pipelines(pipeline.pipeline_id.clone()),
+        ];
+
+        if req_metadata.allows(&resources, &Action::Read) {
+            pipelines.push(pipeline);
+        }
     }
 
     let resp = ListPipelinesResponse { pipelines };

@@ -349,7 +349,7 @@ pub async fn whoami(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                resources: vec![Resource::Tokens],
+                resources: vec![],
                 action: Action::Read,
             },
         )
@@ -469,7 +469,7 @@ pub async fn create_token(
         if role.to_lowercase() == "bootstrap" {
             return Err(HttpError::for_client_error(
                 None,
-                ClientErrorStatusCode::UNAUTHORIZED,
+                ClientErrorStatusCode::FORBIDDEN,
                 "cannot assign the bootstrap role to any other token".into(),
             ));
         };

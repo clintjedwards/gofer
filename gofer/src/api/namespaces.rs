@@ -107,7 +107,7 @@ pub async fn list_namespaces(
     rqctx: RequestContext<Arc<ApiState>>,
 ) -> Result<HttpResponseOk<ListNamespacesResponse>, HttpError> {
     let api_state = rqctx.context();
-    let _req_metadata = api_state
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -156,7 +156,9 @@ pub async fn list_namespaces(
             )
         })?;
 
-        namespaces.push(namespace);
+        if req_metadata.allows(&[Resource::Namespaces(namespace.id.clone())], &Action::Read) {
+            namespaces.push(namespace);
+        }
     }
 
     let resp = ListNamespacesResponse { namespaces };
@@ -284,11 +286,7 @@ pub async fn create_namespace(
     if let Err(e) = is_valid_identifier(&body.id) {
         return Err(HttpError::for_bad_request(
             None,
-            format!(
-                "'{}' is not a valid identifier; {}",
-                &body.id,
-                &e.to_string()
-            ),
+            format!("'{}' is not a valid identifier; {}", body.id, e),
         ));
     };
 

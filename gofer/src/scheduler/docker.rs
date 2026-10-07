@@ -181,12 +181,12 @@ impl super::Scheduler for Scheduler {
             ..Default::default()
         };
 
-        if request.entrypoint.is_some() {
-            container_config.entrypoint = Some(request.entrypoint.unwrap());
+        if let Some(entrypoint) = request.entrypoint {
+            container_config.entrypoint = Some(entrypoint);
         }
 
-        if request.command.is_some() {
-            container_config.cmd = Some(request.command.unwrap());
+        if let Some(command) = request.command {
+            container_config.cmd = Some(command);
         }
 
         // In order to properly set up a container such that we can talk to it we need several things:

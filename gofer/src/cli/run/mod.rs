@@ -209,7 +209,7 @@ impl Cli {
             .into_inner()
             .task_executions;
 
-        task_executions.sort_by(|a, b| a.task.depends_on.len().cmp(&b.task.depends_on.len()));
+        task_executions.sort_by_key(|a| a.task.depends_on.len());
 
         let mut task_rows = vec![];
 

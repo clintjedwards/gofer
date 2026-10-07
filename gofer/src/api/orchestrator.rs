@@ -1786,7 +1786,7 @@ impl Run {
                                 {
                                     bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
                                 };
-                            } else { match self
+                            } else { if let Err(e) = self
                                 .set_task_execution_complete(
                                     &mut conn,
                                     &task_id,
@@ -1798,10 +1798,9 @@ impl Run {
                                             "Task execution has exited with an abnormal exit code.".into(),
                                     }),
                                 )
-                                .await
-                            { Err(e) => {
+                                .await {
                                 bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
-                            } _ => {}}}
+                            }}
 
                             return Ok(());
                         }

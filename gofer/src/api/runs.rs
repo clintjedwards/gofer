@@ -669,7 +669,7 @@ pub async fn cancel_run(
                     Resource::Pipelines(path.pipeline_id.clone()),
                     Resource::Runs,
                 ],
-                action: Action::Read,
+                action: Action::Delete,
             },
         )
         .await?;
