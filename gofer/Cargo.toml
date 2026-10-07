@@ -62,6 +62,8 @@ tokio-stream = "0.1"
 http-body-util = "0.1"
 tokio-util = "0.7"
 hex = "0.4"
+shlex = "2.0"
+termion = "4.0"
 
 [dev-dependencies]
 figment = { version = "0.10", features = ["test"] }

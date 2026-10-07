@@ -1271,10 +1271,12 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "shlex",
  "sqlx",
  "strum 0.28.0",
  "tempfile",
  "tera",
+ "termion 4.0.6",
  "thiserror",
  "tokio",
  "tokio-rustls",
@@ -2096,6 +2098,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8f8bdf33df195859076e54ab11ee78a1b208382d3a26ec40d142ffc1ecc49ef"
 
 [[package]]
+name = "numtoa"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6aa2c4e539b869820a2b82e1aef6ff40aa85e65decdd5185e83fb4b1249cd00f"
+
+[[package]]
 name = "objc2-core-foundation"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2282,7 +2290,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum 0.25.0",
- "termion",
+ "termion 3.0.0",
 ]
 
 [[package]]
@@ -3544,8 +3552,18 @@ checksum = "417813675a504dfbbf21bfde32c03e5bf9f2413999962b479023c02848c1c7a5"
 dependencies = [
  "libc",
  "libredox 0.0.2",
- "numtoa",
+ "numtoa 0.1.0",
  "redox_termios",
+]
+
+[[package]]
+name = "termion"
+version = "4.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f44138a9ae08f0f502f24104d82517ef4da7330c35acd638f1f29d3cd5475ecb"
+dependencies = [
+ "libc",
+ "numtoa 0.2.4",
 ]
 
 [[package]]

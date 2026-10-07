@@ -900,21 +900,10 @@ pub async fn get_logs(
     });
 
     set.spawn(async move {
-        loop {
-            if let Some(output) = client_read.next().await {
-                match output {
-                    Ok(message) => match message {
-                        tungstenite::protocol::Message::Close(_) => {
-                            break;
-                        }
-                        _ => {
-                            continue;
-                        }
-                    },
-                    Err(_) => {
-                        break;
-                    }
-                }
+        while let Some(output) = client_read.next().await {
+            match output {
+                Ok(tungstenite::protocol::Message::Close(_)) | Err(_) => break,
+                Ok(_) => continue,
             }
         }
 
@@ -1166,6 +1155,10 @@ pub async fn attach_task_execution(
         &path.task_id,
     );
 
+    // We subscribe before checking the task's state so that a completion event that lands between the
+    // check and the start of the session isn't missed.
+    let mut event_receiver = api_state.event_bus.subscribe_live();
+
     let mut conn = match api_state.storage.read_conn().await {
         Ok(conn) => conn,
         Err(e) => {
@@ -1193,7 +1186,15 @@ pub async fn attach_task_execution(
         Ok(task_execution) => task_execution,
         Err(e) => match e {
             storage::StorageError::NotFound => {
-                return Err(Box::new(HttpError::for_not_found(None, String::new())));
+                return Err(websocket_error(
+                    "Task execution not found",
+                    CloseCode::Policy,
+                    rqctx.request_id.clone(),
+                    ws,
+                    None,
+                )
+                .await
+                .into());
             }
             _ => {
                 return Err(websocket_error(
@@ -1236,15 +1237,26 @@ pub async fn attach_task_execution(
         .into());
     }
 
+    let command = match shlex::split(&query.command) {
+        Some(command) if !command.is_empty() => command,
+        _ => {
+            return Err(websocket_error(
+                "Could not parse 'command'; make sure it is not empty and any quotes are closed",
+                CloseCode::Policy,
+                rqctx.request_id.clone(),
+                ws,
+                None,
+            )
+            .await
+            .into());
+        }
+    };
+
     let attach_response = match api_state
         .scheduler
         .attach_container(scheduler::AttachContainerRequest {
             id: container_id,
-            command: query
-                .command
-                .split(' ')
-                .map(|val| val.to_string())
-                .collect(),
+            command,
         })
         .await
     {
@@ -1287,99 +1299,76 @@ pub async fn attach_task_execution(
 
     // Launch thread to collect messages from the user and write them to the container.
     set.spawn(async move {
-        loop {
-                if let Some(output) = client_read.next().await {
-                    match output {
-                        Ok(message) => {
-                            match message {
-                                tungstenite::protocol::Message::Text(text) => {
-                                    let mut text = text.to_string();
-
-                                    // Carriage return is needed in the case that the user is communicating
-                                    // with a terminal.
-                                    text.push('\r');
-
-                                    let result = container_input.write_all(text.as_bytes()).await;
-
-                                    if let Err(e) = result {
-                                        debug!(error = %e, "Error occurred while attempting to write message from client to container");
-                                        continue;
-                                    }
-                                },
-                                tungstenite::protocol::Message::Close(_) => {
-                                    break;
-                                },
-                                _ => {
-                                    continue;
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            debug!(error = %e, "Error occurred while attempting to unpack message from client to container");
-                            break;
-                        }
-                    }
+        while let Some(output) = client_read.next().await {
+            let message = match output {
+                Ok(message) => message,
+                Err(e) => {
+                    debug!(error = %e, "Error occurred while attempting to unpack message from client to container");
+                    break;
                 }
+            };
+
+            let input = match message {
+                // Binary messages are raw keystrokes from a client with its terminal in raw mode, so they're
+                // passed through untouched.
+                tungstenite::protocol::Message::Binary(bytes) => bytes.to_vec(),
+                // Text messages are whole lines from line-based clients. The carriage return is needed since the
+                // container side is a terminal.
+                tungstenite::protocol::Message::Text(text) => {
+                    let mut text = text.to_string();
+                    text.push('\r');
+                    text.into_bytes()
+                }
+                tungstenite::protocol::Message::Close(_) => break,
+                _ => continue,
+            };
+
+            if let Err(e) = container_input.write_all(&input).await {
+                debug!(error = %e, "Error occurred while attempting to write message from client to container");
+            }
         }
     });
 
-    // Launch thread to pass messages from the container back to the user.
+    // Launch thread to pass messages from the container back to the user. The output stream ends when the command
+    // we exec'd exits, which ends the session.
     set.spawn(async move {
-        loop {
-            if let Some(output) = container_output.next().await {
-                match output {
-                    Ok(message)=> {
-                        match message {
-                            scheduler::Log::Unknown  => {continue},
-                            scheduler::Log::Stdout(text) | scheduler::Log::Stderr(text) | scheduler::Log::Console(text) => {
-                                let mut locked_write = client_writer_handle.lock().await;
-
-                                if let Err(e) = locked_write.send(tungstenite::Message::Binary(text.into())).await {
-                                    debug!(error = %e, "Error occurred while attempting to write message from container to client");
-                                    continue;
-                                }
-                            },
-                            scheduler::Log::Stdin(_) => {continue},
-                        }
-                    },
-                    Err(e) => {
-                        debug!(error = %e, "Error occurred while attempting to unpack message from container to client");
-                        continue;
-                    }
+        while let Some(output) = container_output.next().await {
+            let text = match output {
+                Ok(scheduler::Log::Stdout(text))
+                | Ok(scheduler::Log::Stderr(text))
+                | Ok(scheduler::Log::Console(text)) => text,
+                Ok(scheduler::Log::Stdin(_)) | Ok(scheduler::Log::Unknown) => continue,
+                Err(e) => {
+                    debug!(error = %e, "Error occurred while attempting to unpack message from container to client");
+                    break;
                 }
+            };
+
+            let mut locked_write = client_writer_handle.lock().await;
+
+            if let Err(e) = locked_write.send(tungstenite::Message::Binary(text.into())).await {
+                debug!(error = %e, "Error occurred while attempting to write message from container to client");
+                break;
             }
         }
-
     });
 
     // Launch thread to wait for the container to finish and clean up both the container write and container read threads.
-    let mut event_receiver = api_state.event_bus.subscribe_live();
-
     set.spawn(async move {
-        loop {
-            if let Ok(event) = event_receiver.next().await {
-                match &event.kind {
-                    event_utils::Kind::CompletedTaskExecution {
-                        namespace_id,
-                        pipeline_id,
-                        run_id,
-                        task_execution_id,
-                        ..
-                    } => {
-                        if *namespace_id != path.namespace_id.clone()
-                            || *pipeline_id != path.pipeline_id.clone()
-                            || *run_id != path.run_id
-                            || *task_execution_id != path.task_id.clone()
-                        {
-                            continue;
-                        }
-
-                        break;
-                    }
-                    _ => {
-                        continue;
-                    }
-                }
+        while let Ok(event) = event_receiver.next().await {
+            if let event_utils::Kind::CompletedTaskExecution {
+                namespace_id,
+                pipeline_id,
+                run_id,
+                task_execution_id,
+                ..
+            } = &event.kind
+                && *namespace_id == path.namespace_id
+                && *pipeline_id == path.pipeline_id
+                && *run_id == path.run_id
+                && *task_execution_id == path.task_id
+            {
+                break;
             }
         }
     });

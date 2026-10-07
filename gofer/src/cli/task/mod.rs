@@ -4,15 +4,11 @@ use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::{SinkExt, StreamExt};
-use polyfmt::{error, finish, pause, println, resume, success};
-use std::{io::Write, sync::Arc};
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    signal,
-    sync::Mutex,
-};
+use polyfmt::{error, pause, println, resume, success};
+use std::io::{IsTerminal, Read, Write};
+use termion::raw::IntoRawMode;
 use tokio_tungstenite::WebSocketStream;
-use tungstenite::Message;
+use tungstenite::{Message, protocol::frame::coding::CloseCode};
 
 #[derive(Debug, Args, Clone)]
 pub struct TaskSubcommands {
@@ -443,7 +439,7 @@ impl Cli {
             .client
             .attach_task_execution(&namespace, pipeline_id, run_id, task_id, command)
             .await
-            .map_err(|e| anyhow!("could not get logs; {:#?}", e))?
+            .map_err(|e| anyhow!("could not attach to task; {:#?}", e))?
             .into_inner();
 
         let stream = WebSocketStream::from_raw_socket(
@@ -453,84 +449,85 @@ impl Cli {
         )
         .await;
 
-        let (write, mut read) = stream.split();
+        let (mut write, mut read) = stream.split();
 
-        let shared_writer = Arc::new(Mutex::new(write));
-
-        let close_writer = shared_writer.clone();
-
-        // The session writes straight to the terminal so we pause the formatter and resume it once the session ends.
-        pause!();
-
-        tokio::spawn(async move {
-            signal::ctrl_c()
-                .await
-                .expect("Failed to listen for Ctrl+C signal");
-
-            let _ = close_writer.lock().await.send(Message::Close(None)).await;
-            resume!();
-            finish!();
-            std::process::exit(0);
-        });
-
-        // Read handler
-        tokio::spawn(async move {
-            while let Some(message) = read.next().await {
-                match message {
-                    Ok(Message::Text(text)) => {
-                        std::print!("{}", text);
-                        std::io::stdout().flush().unwrap();
+        // Stdin is read on a plain thread because a blocked read on tokio's stdin keeps the runtime from shutting
+        // down, which would leave the CLI hanging after the server ends the session.
+        let (input_tx, mut input_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(32);
+        std::thread::spawn(move || {
+            let mut stdin = std::io::stdin();
+            let mut buf = [0u8; 1024];
+            loop {
+                match stdin.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        if input_tx.blocking_send(buf[..n].to_vec()).is_err() {
+                            break;
+                        }
                     }
-                    Ok(Message::Binary(text)) => {
-                        std::print!("{}", String::from_utf8_lossy(&text));
-                        std::io::stdout().flush().unwrap();
-                    }
-                    Ok(Message::Close(_)) => {
-                        std::eprintln!("Connection closed by server");
-                        break;
-                    }
-                    Err(tokio_tungstenite::tungstenite::Error::ConnectionClosed) => {
-                        std::eprintln!("Connection closed");
-                        break;
-                    }
-                    Err(tokio_tungstenite::tungstenite::Error::Protocol(e))
-                        if e.to_string()
-                            .contains("Connection reset without closing handshake") =>
-                    {
-                        std::eprintln!("Connection reset without closing handshake");
-                        break;
-                    }
-                    Err(e) => {
-                        std::eprintln!("Error receiving message: {}", e);
-                    }
-                    _ => {}
                 }
             }
         });
 
-        // Write handler
-        let result = async {
-            let stdin = tokio::io::stdin();
-            let reader = BufReader::new(stdin);
-            let mut lines = reader.lines();
+        // The session writes straight to the terminal so we pause the formatter and resume it once the session ends.
+        pause!();
 
-            while let Some(line) = lines
-                .next_line()
-                .await
-                .context("Error while attempting to process user input")?
-            {
-                shared_writer
-                    .lock()
-                    .await
-                    .send(Message::Text(line.into()))
-                    .await
-                    .context("Error while attempting to copy user input to server")?;
+        // Raw mode sends each keystroke to the container as it's typed, so the container's terminal handles echo,
+        // line editing, and Ctrl-C instead of ours. The guard puts the terminal back when it's dropped.
+        let raw_terminal = if std::io::stdin().is_terminal() {
+            match std::io::stdout().into_raw_mode() {
+                Ok(raw_terminal) => Some(raw_terminal),
+                Err(e) => {
+                    resume!();
+                    return Err(anyhow!("could not put terminal into raw mode; {}", e));
+                }
             }
+        } else {
+            None
+        };
 
-            Ok(())
+        let result = async {
+            let mut stdout = std::io::stdout();
+
+            loop {
+                tokio::select! {
+                    input = input_rx.recv() => {
+                        let Some(input) = input else {
+                            let _ = write.send(Message::Close(None)).await;
+                            return Ok(());
+                        };
+
+                        write
+                            .send(Message::Binary(input.into()))
+                            .await
+                            .context("Error while attempting to copy user input to server")?;
+                    }
+                    message = read.next() => {
+                        let output = match message {
+                            Some(Ok(Message::Binary(bytes))) => bytes.to_vec(),
+                            Some(Ok(Message::Text(text))) => text.as_bytes().to_vec(),
+                            Some(Ok(Message::Close(Some(frame))))
+                                if frame.code != CloseCode::Normal && !frame.reason.is_empty() =>
+                            {
+                                bail!("{}", frame.reason);
+                            }
+                            Some(Ok(Message::Close(_))) | None => return Ok(()),
+                            Some(Err(tokio_tungstenite::tungstenite::Error::ConnectionClosed)) => {
+                                return Ok(());
+                            }
+                            Some(Err(e)) => bail!("Error receiving message: {}", e),
+                            Some(Ok(_)) => continue,
+                        };
+
+                        stdout.write_all(&output)?;
+                        stdout.flush()?;
+                    }
+                }
+            }
         }
         .await;
 
+        drop(raw_terminal);
         resume!();
 
         result
