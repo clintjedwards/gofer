@@ -1,3 +1,4 @@
+<!-- ANCHOR: before_demo -->
 # [Gofer](https://gofer.clintjedwards.com/docs/assets/urban_dictionary_gofer.png): Run short-lived jobs easily.
 
 ## Summary
@@ -46,7 +47,9 @@ pretty low priority for me.
 
 ## Demo:
 
-<img src="https://gofer.clintjedwards.com/docs/assets/demo.gif" />
+<!-- ANCHOR_END: before_demo -->
+https://github.com/user-attachments/assets/ff9a39ca-c85a-4cfc-8c99-da510c01e3c2
+<!-- ANCHOR: after_demo -->
 
 ## Documentation & Getting Started
 
@@ -144,19 +147,43 @@ cargo install mdbook-linkcheck
 Once you have mdbook you can simply run `make run-docs` to give you an auto-reloading dev version of the documentation
 in a browser.
 
-### Regenerating Demo Gif
+### Regenerating the Demo Video
 
-The Gif on the README page uses [vhs](https://github.com/charmbracelet/vhs); a very handy tool that allows you to write a configuration file which will pop out
-a gif on the other side.
+The demo video is recorded with [vhs](https://github.com/charmbracelet/vhs); a very handy tool that allows you to write a
+configuration file which will pop out a video on the other side.
 
-In order to do this VHS has to run the commands so we must start the server first before we regenerate the gif.
+In order to do this VHS has to run the commands so we must start the server first before we regenerate the video.
 
 ```bash
 rm -rf /tmp/gofer* # Start with a fresh database
 make run # Start the server in dev mode
-cd documentation/src/assets
-vhs < demo.tape # this will start running commands against the server and output the gif as demo.gif.
+cd gofer/docs/src/assets
+vhs demo.tape # this will start running commands against the server and output the video as demo.mp4.
 ```
+
+The video shows up in two places, and each one gets it differently:
+
+- **The documentation site** plays `demo.mp4` straight from the repo. `introduction.md` includes this README in two
+  pieces using the `before_demo` and `after_demo` anchor comments around the Demo section, and puts a `<video>` tag in
+  between. Committing the new `demo.mp4` is all it needs.
+- **GitHub** strips `<video>` tags out of READMEs and won't play videos hosted anywhere else, so the README needs its
+  own copy uploaded to GitHub by hand:
+  1. Upload it by attaching it to an issue. This needs a `gh` new enough to have `--attach`:
+
+     ```bash
+     gh issue create --title "Demo video upload" --body "Hosts the demo video for the README." \
+       --attach gofer/docs/src/assets/demo.mp4
+     ```
+
+     The issue body ends up with a `https://github.com/user-attachments/assets/...` URL; `gh issue view <number>`
+     shows it. Close the issue afterwards with `gh issue close <number>`; the upload stays around. Uploads are
+     limited to 10MB on a free plan.
+
+  2. Put that URL on its own line in the README's Demo section, replacing whatever is between the
+     `ANCHOR_END: before_demo` and `ANCHOR: after_demo` comments. GitHub turns a bare user-attachments URL into a
+     video player.
+
+  The docs site skips everything between those two comments, since mdbook would show the URL as a plain link.
 
 ## Authors
 
@@ -170,3 +197,4 @@ If you're looking for the previous Golang version you can [find it here.](https:
 [concourse-url]: https://concourse-ci.org/
 [canarying-url]: https://sre.google/workbook/canarying-releases/
 [releases-url]: https://github.com/clintjedwards/gofer/releases
+<!-- ANCHOR_END: after_demo -->

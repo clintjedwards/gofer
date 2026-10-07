@@ -41,46 +41,52 @@
 #   Show                            Show the subsequent commands in the output
 
 
-Output demo.gif
+Output demo.mp4
 
-Set FontSize 20
-Set Width 1600
-Set Height 1000
+Set FontSize 18
+Set Width 1640
+Set Height 1300
 Set Padding 20
 Set TypingSpeed 60ms
 Set Theme { "name": "Eastwood", "black": "#424242", "red": "#ff7675", "green": "#badc58", "yellow": "#ffeaa7", "blue": "#74b9ff", "magenta": "#cc99cc", "cyan": "#81ecec", "white": "#d3d0c8", "brightBlack": "#c4c2bb", "brightRed": "#ff7675", "brightGreen": "#badc58", "brightYellow": "#ffeaa7", "brightBlue": "#74b9ff", "brightMagenta": "#cc99cc", "brightCyan": "#81ecec", "brightWhite": "#d3d0c8", "background": "#424242", "foreground": "#d3d0c8", "selection": "#74b9ff", "cursor": "#d3d0c8" }
 
 Hide
-Type "export PATH=$PWD/../../../../target/debug:$PATH BAT_THEME=ansi BAT_STYLE=plain BAT_PAGING=never && cd ../../../../examplePipelines/go/dag && clear"
+Type "export PATH=$PWD/../../../../target/debug:$PATH BAT_THEME=ansi BAT_STYLE=plain BAT_PAGING=never BAT_TABS=4 && cd ../../../../examplePipelines/go/dag && clear"
 Enter
 Sleep 500ms
 Show
 
+Sleep 1s
 Type "bat main.go"
+Sleep 500ms
 Enter
-Sleep 5s
+Sleep 10s
 
 Type "gofer up ."
+Sleep 500ms
 Enter
-Sleep 4s
+Sleep 6s
 
 Type "clear"
 Enter
 
 Type "gofer fetch dag"
+Sleep 500ms
 Enter
-Sleep 4s
+Sleep 6s
 
 Type "gofer pipeline run dag"
+Sleep 500ms
 Enter
-Sleep 2s
+Sleep 3s
 
 Type "clear"
 Enter
 
 Type "gofer fetch dag 1"
+Sleep 500ms
 Enter
-Sleep 4s
+Sleep 6s
 
 Hide
 Sleep 20s
@@ -89,17 +95,19 @@ Enter
 Show
 
 Type "gofer fetch dag 1"
+Sleep 500ms
 Enter
-Sleep 4s
+Sleep 6s
 
 Type "clear"
 Enter
 
 Type "gofer task logs dag 1 depends-on-first"
+Sleep 500ms
 Enter
 Sleep 10s
 Ctrl+C
-Sleep 500ms
+Sleep 1s
 
 Hide
 Sleep 18s
@@ -108,9 +116,22 @@ Enter
 Show
 
 Type "gofer fetch dag 1"
+Sleep 500ms
 Enter
-Sleep 3s
+Sleep 8s
+
+Type "clear"
+Enter
+
+Type "gofer run debug dag 1"
+Sleep 500ms
+Enter
+Sleep 15s
+
+Type "clear"
+Enter
 
 Type "gofer extension list"
+Sleep 500ms
 Enter
-Sleep 4s
+Sleep 6s

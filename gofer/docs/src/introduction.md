@@ -6,4 +6,8 @@ Welcome to the Gofer documentation! This documentation is a reference for all av
 - To read more about Gofer's Feature set visit: [Features](./features.md)
 - To understand the why of Gofer visit: [Philosophy](./philosophy.md)
 
-{{#include ../../../README.md}}
+{{#include ../../../README.md:before_demo}}
+
+<video src="assets/demo.mp4" controls muted loop playsinline style="width: 100%"></video>
+
+{{#include ../../../README.md:after_demo}}
