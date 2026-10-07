@@ -969,6 +969,53 @@ impl From<gofer_sdk::config::RegistryAuth> for RegistryAuth {
     }
 }
 
+/// Stands in for credentials in API responses. Whoever set a credential already has it, and anyone else with read
+/// access to the object (a teammate's token, a custom role) shouldn't be able to pull it back out. Admins can still
+/// see real values by asking for them; see [`include_secrets`].
+///
+/// This is applied when building responses rather than with serde attributes because these same types are
+/// serialized into the database, where the real values have to survive.
+pub const REDACTED: &str = "[redacted]";
+
+/// Query args for routes that redact credentials. Admins can ask for the real values when they need to debug,
+/// mirroring `include_secret` on the secret store routes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct IncludeSecretQueryArgs {
+    /// Return credentials in plaintext instead of redacted. Admin only.
+    pub include_secret: Option<bool>,
+}
+
+/// Whether a response should carry real credentials. It has to be asked for explicitly so a routine listing never
+/// puts a key on someone's screen, and asking without being an admin is an error rather than a silent redaction so
+/// the caller knows why they aren't seeing values.
+pub fn include_secrets(
+    req_metadata: &RequestMetadata,
+    query: &IncludeSecretQueryArgs,
+) -> Result<bool, HttpError> {
+    if !query.include_secret.unwrap_or_default() {
+        return Ok(false);
+    }
+
+    if !req_metadata.admin {
+        return Err(HttpError::for_client_error(
+            None,
+            ClientErrorStatusCode::FORBIDDEN,
+            "'include_secret' requires an admin token".into(),
+        ));
+    }
+
+    Ok(true)
+}
+
+impl RegistryAuth {
+    pub fn redacted(self) -> Self {
+        RegistryAuth {
+            user: self.user,
+            pass: REDACTED.into(),
+        }
+    }
+}
+
 #[derive(
     Debug, Clone, Display, Default, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
 )]

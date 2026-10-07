@@ -49,7 +49,7 @@ pub struct Task {
     /// Example: "ubuntu:latest"
     pub image: String,
 
-    /// Auth credentials for the image's registry
+    /// Auth credentials for the image's registry. The password is redacted in API responses.
     pub registry_auth: Option<RegistryAuth>,
 
     /// Which other tasks (by id) this task depends on.
@@ -69,6 +69,14 @@ pub struct Task {
 
     /// Always check for most recent version of the current image before running.
     pub always_pull_newest_image: bool,
+}
+
+impl Task {
+    /// The copy of a task that's safe to hand back to API callers. See [`crate::api::REDACTED`].
+    pub fn redacted(mut self) -> Self {
+        self.registry_auth = self.registry_auth.map(RegistryAuth::redacted);
+        self
+    }
 }
 
 impl From<gofer_sdk::config::Task> for Task {

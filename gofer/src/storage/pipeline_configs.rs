@@ -85,6 +85,28 @@ pub async fn get(
         .await
 }
 
+/// The newest config for every pipeline in a namespace, in one query so listing pipelines doesn't cost a round trip
+/// per pipeline.
+pub async fn list_latest(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+) -> Result<Vec<PipelineConfig>, StorageError> {
+    let sql = "SELECT c.namespace_id, c.pipeline_id, c.version, c.parallelism, c.name, c.description, c.registered, \
+        c.deprecated, c.state FROM pipeline_configs c \
+        JOIN (SELECT pipeline_id, MAX(version) AS version FROM pipeline_configs WHERE namespace_id = ? \
+        GROUP BY pipeline_id) latest ON c.pipeline_id = latest.pipeline_id AND c.version = latest.version \
+        WHERE c.namespace_id = ?;";
+
+    let query = sqlx::query_as::<_, PipelineConfig>(sql)
+        .bind(namespace_id)
+        .bind(namespace_id);
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 pub async fn get_latest(
     conn: &mut SqliteConnection,
     namespace_id: &str,
@@ -264,6 +286,32 @@ mod tests {
             .find(|n| n.namespace_id == "some_id" && n.pipeline_id == "some_pipeline_id")
             .expect("PipelineConfig not found");
         assert_eq!(some_pipeline_config.state, "active");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_latest_pipeline_configs() -> Result<(), Box<dyn std::error::Error>> {
+        let (_harness, mut conn) = setup().await?;
+
+        let newer = PipelineConfig {
+            namespace_id: "some_id".to_string(),
+            pipeline_id: "some_pipeline_id".to_string(),
+            version: 2,
+            parallelism: 4,
+            name: "Renamed Pipeline".to_string(),
+            description: "The second version".to_string(),
+            registered: "2023-01-02".to_string(),
+            deprecated: "none".to_string(),
+            state: "active".to_string(),
+        };
+        insert(&mut conn, &newer).await?;
+
+        let latest = list_latest(&mut conn, "some_id").await?;
+
+        assert_eq!(latest.len(), 1, "Should return one config per pipeline");
+        assert_eq!(latest[0].version, 2);
+        assert_eq!(latest[0].name, "Renamed Pipeline");
 
         Ok(())
     }

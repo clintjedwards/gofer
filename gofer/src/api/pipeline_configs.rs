@@ -4,9 +4,9 @@ use super::permissioning::{
 };
 use crate::{
     api::{
-        ApiState, PreflightOptions, deployments, ensure_namespace_exists, ensure_pipeline_exists,
-        epoch_milli, event_utils, generate_inject_api_token_role_id, is_valid_identifier,
-        pipelines, tasks,
+        ApiState, IncludeSecretQueryArgs, PreflightOptions, deployments, ensure_namespace_exists,
+        ensure_pipeline_exists, epoch_milli, event_utils, generate_inject_api_token_role_id,
+        include_secrets, is_valid_identifier, pipelines, tasks,
     },
     http_error,
     storage::{self, StorageError},
@@ -14,7 +14,7 @@ use crate::{
 use anyhow::{Context, Result};
 use dropshot::{
     ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
-    Path, RequestContext, TypedBody, endpoint,
+    Path, Query, RequestContext, TypedBody, endpoint,
 };
 use gofer_sdk::config;
 use schemars::JsonSchema;
@@ -123,6 +123,16 @@ impl Config {
             deprecated: 0,
         })
     }
+
+    /// The copy of a config that's safe to hand back to API callers. See [`crate::api::REDACTED`].
+    pub fn redacted(mut self) -> Self {
+        self.tasks = self
+            .tasks
+            .into_iter()
+            .map(|(id, task)| (id, task.redacted()))
+            .collect();
+        self
+    }
 }
 
 impl Config {
@@ -225,10 +235,12 @@ pub struct ListPipelineConfigsResponse {
 pub async fn list_configs(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<PipelineConfigPathArgsRoot>,
+    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<ListPipelineConfigsResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let _req_metadata = api_state
+    let query = query_params.into_inner();
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -279,6 +291,8 @@ pub async fn list_configs(
             }
         };
 
+    let show_secrets = include_secrets(&req_metadata, &query)?;
+
     let mut configs: Vec<Config> = vec![];
 
     for storage_config in storage_configs {
@@ -310,7 +324,11 @@ pub async fn list_configs(
             )
         })?;
 
-        configs.push(config);
+        configs.push(if show_secrets {
+            config
+        } else {
+            config.redacted()
+        });
     }
 
     if let Err(e) = tx.commit().await {
@@ -343,10 +361,12 @@ pub struct GetPipelineConfigResponse {
 pub async fn get_config(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<PipelineConfigPathArgs>,
+    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<GetPipelineConfigResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let _req_metadata = api_state
+    let query = query_params.into_inner();
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -459,7 +479,13 @@ pub async fn get_config(
         ));
     };
 
-    let resp = GetPipelineConfigResponse { config };
+    let resp = GetPipelineConfigResponse {
+        config: if include_secrets(&req_metadata, &query)? {
+            config
+        } else {
+            config.redacted()
+        },
+    };
     Ok(HttpResponseOk(resp))
 }
 
@@ -778,7 +804,7 @@ pub async fn register_config(
     let resp = RegisterPipelineConfigResponse {
         pipeline: pipelines::Pipeline {
             metadata: new_pipeline_metadata,
-            config: new_pipeline_config,
+            config: new_pipeline_config.redacted(),
         },
     };
 

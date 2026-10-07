@@ -4,6 +4,13 @@ None
 
 # Small things I want to keep track of that I definitely need to do.
 
+* new: Let extension settings use secret store references (`global_secret{{key}}`) the same way pipeline variables do.
+  Right now settings are passed to the extension container verbatim (`start_extension` in api/extensions.rs), so
+  credentials like the github extension's app key end up stored raw in the registration. That's why settings are
+  redacted in API responses and only shown to admins who pass `include_secret`. With references, settings would hold
+  `global_secret{{github_app_key}}`, which is safe to show anyone who can read the extension and still useful for
+  debugging, and the real value would sit behind the secret store's admin only access. The redaction could then be
+  dropped for settings that are references.
 * Allow a parallelism mode where when parallelism is at it's max the oldest run, if still running gets, cancelled.
   * Also make it so that the github extension can do this as well, if a new run for a branch gets kicked off, if there
     is already a run for that branch, cancel the ongoing one and trigger a new one.

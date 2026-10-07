@@ -121,6 +121,17 @@
         ],
         "summary": "List all extensions currently registered.",
         "operationId": "list_extensions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Return credentials in plaintext instead of redacted. Admin only.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "successful operation",
@@ -192,6 +203,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Return credentials in plaintext instead of redacted. Admin only.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
             }
           }
         ],
@@ -956,6 +976,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Return credentials in plaintext instead of redacted. Admin only.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1069,6 +1098,15 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Return credentials in plaintext instead of redacted. Admin only.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
             }
           }
         ],
@@ -1576,6 +1614,17 @@
               "nullable": true,
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "description": "Only return runs started at or after this time, in epoch milliseconds.",
+            "schema": {
+              "nullable": true,
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
           }
         ],
         "responses": {
@@ -2064,6 +2113,15 @@
               "format": "uint64",
               "minimum": 0
             }
+          },
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Return credentials in plaintext instead of redacted. Admin only.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -2130,6 +2188,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_secret",
+            "description": "Return credentials in plaintext instead of redacted. Admin only.",
+            "schema": {
+              "nullable": true,
+              "type": "boolean"
             }
           }
         ],
@@ -5322,10 +5389,10 @@
         "type": "object",
         "properties": {
           "pipelines": {
-            "description": "A list of all pipelines metadata.",
+            "description": "A list of all pipelines.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Metadata"
+              "$ref": "#/components/schemas/PipelineSummary"
             }
           }
         },
@@ -5657,6 +5724,57 @@
           "disabled"
         ]
       },
+      "PipelineSummary": {
+        "description": "A pipeline as it shows up in a listing: its metadata plus the name and description from its newest config, so callers can show something friendlier than the id without fetching every config.",
+        "type": "object",
+        "properties": {
+          "created": {
+            "description": "Time of pipeline creation in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "description": {
+            "description": "Description from the newest registered config.",
+            "type": "string"
+          },
+          "modified": {
+            "description": "Time pipeline was updated to a new version in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "name": {
+            "description": "Humanized name from the newest registered config.",
+            "type": "string"
+          },
+          "namespace_id": {
+            "description": "Unique identifier of the target namespace.",
+            "type": "string"
+          },
+          "pipeline_id": {
+            "description": "Unique identifier of the target pipeline.",
+            "type": "string"
+          },
+          "state": {
+            "description": "The current running state of the pipeline. This is used to determine if the pipeline should run or not.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineState"
+              }
+            ]
+          }
+        },
+        "required": [
+          "created",
+          "description",
+          "modified",
+          "name",
+          "namespace_id",
+          "pipeline_id",
+          "state"
+        ]
+      },
       "PutExtensionObjectResponse": {
         "type": "object",
         "properties": {
@@ -5854,7 +5972,7 @@
           },
           "registry_auth": {
             "nullable": true,
-            "description": "Auth credentials for the image's registry.",
+            "description": "Auth credentials for the image's registry. The password is redacted in API responses.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/RegistryAuth"
@@ -5862,7 +5980,7 @@
             ]
           },
           "settings": {
-            "description": "Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values.",
+            "description": "Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values. Values are redacted in API responses since settings routinely carry credentials (the github extension's app key, for example).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Variable"
@@ -6225,7 +6343,7 @@
           },
           "registry_auth": {
             "nullable": true,
-            "description": "Auth credentials for the image's registry",
+            "description": "Auth credentials for the image's registry. The password is redacted in API responses.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/RegistryAuth"

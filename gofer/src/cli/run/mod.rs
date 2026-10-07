@@ -167,6 +167,7 @@ impl Cli {
                 Some(limit),
                 Some(offset),
                 Some(reverse),
+                None,
             )
             .await
             .context("Could not successfully retrieve runs from Gofer api")?
@@ -241,7 +242,7 @@ impl Cli {
 
         let mut task_executions = self
             .client
-            .list_task_executions(&namespace, pipeline_id, run_id)
+            .list_task_executions(&namespace, pipeline_id, run_id, None)
             .await
             .context("Could not successfully retrieve task executions from Gofer api")?
             .into_inner()

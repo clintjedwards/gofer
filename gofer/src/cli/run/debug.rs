@@ -36,7 +36,7 @@ impl Cli {
 
         let mut task_executions = self
             .client
-            .list_task_executions(&namespace, pipeline_id, run_id)
+            .list_task_executions(&namespace, pipeline_id, run_id, None)
             .await
             .context("Could not successfully retrieve task executions from Gofer api")?
             .into_inner()

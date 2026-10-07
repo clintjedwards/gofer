@@ -13,6 +13,7 @@ use dropshot::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 use strum::{Display, EnumString};
@@ -138,10 +139,36 @@ pub struct Pipeline {
     pub config: pipeline_configs::Config,
 }
 
+/// A pipeline as it shows up in a listing: its metadata plus the name and description from its newest config, so
+/// callers can show something friendlier than the id without fetching every config.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PipelineSummary {
+    /// Unique identifier of the target namespace.
+    pub namespace_id: String,
+
+    /// Unique identifier of the target pipeline.
+    pub pipeline_id: String,
+
+    /// Time of pipeline creation in epoch milliseconds.
+    pub created: u64,
+
+    /// Time pipeline was updated to a new version in epoch milliseconds.
+    pub modified: u64,
+
+    /// The current running state of the pipeline. This is used to determine if the pipeline should run or not.
+    pub state: PipelineState,
+
+    /// Humanized name from the newest registered config.
+    pub name: String,
+
+    /// Description from the newest registered config.
+    pub description: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ListPipelinesResponse {
-    /// A list of all pipelines metadata.
-    pub pipelines: Vec<Metadata>,
+    /// A list of all pipelines.
+    pub pipelines: Vec<PipelineSummary>,
 }
 
 /// List all pipelines.
@@ -203,7 +230,25 @@ pub async fn list_pipelines(
             }
         };
 
-    let mut pipelines: Vec<Metadata> = vec![];
+    let latest_configs =
+        match storage::pipeline_configs::list_latest(&mut conn, &path.namespace_id).await {
+            Ok(configs) => configs,
+            Err(e) => {
+                return Err(http_error!(
+                    "Could not get objects from database",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        };
+
+    let mut names: HashMap<String, (String, String)> = latest_configs
+        .into_iter()
+        .map(|config| (config.pipeline_id, (config.name, config.description)))
+        .collect();
+
+    let mut pipelines: Vec<PipelineSummary> = vec![];
 
     for storage_pipeline in storage_pipelines {
         let pipeline = Metadata::try_from(storage_pipeline).map_err(|e| {
@@ -222,7 +267,18 @@ pub async fn list_pipelines(
         );
 
         if req_metadata.allows(&requirement, &Action::Read) {
-            pipelines.push(pipeline);
+            // Every pipeline is created with a config, so this only falls back if the data is inconsistent.
+            let (name, description) = names.remove(&pipeline.pipeline_id).unwrap_or_default();
+
+            pipelines.push(PipelineSummary {
+                namespace_id: pipeline.namespace_id,
+                pipeline_id: pipeline.pipeline_id,
+                created: pipeline.created,
+                modified: pipeline.modified,
+                state: pipeline.state,
+                name,
+                description,
+            });
         }
     }
 

@@ -20,6 +20,11 @@ pub enum ExtensionCommands {
     Get {
         /// Extension Identifier.
         id: String,
+
+        /// Show setting values in plaintext instead of redacted. Requires an admin token; useful when debugging an
+        /// extension's configuration.
+        #[arg(long, default_value = "false")]
+        include_secret: bool,
     },
 
     /// List all extensions.
@@ -91,7 +96,9 @@ impl Cli {
     pub async fn handle_extension_subcommands(&self, command: ExtensionSubcommands) -> Result<()> {
         let cmds = command.command;
         match cmds {
-            ExtensionCommands::Get { id } => self.extension_get(&id).await,
+            ExtensionCommands::Get { id, include_secret } => {
+                self.extension_get(&id, include_secret).await
+            }
             ExtensionCommands::List => self.extension_list().await,
             ExtensionCommands::Install {
                 id,
@@ -132,7 +139,7 @@ impl Cli {
     pub async fn extension_list(&self) -> Result<()> {
         let extensions = self
             .client
-            .list_extensions()
+            .list_extensions(None)
             .await
             .context("Could not successfully retrieve extensions from Gofer api")?
             .into_inner()
@@ -167,10 +174,10 @@ impl Cli {
         Ok(())
     }
 
-    pub async fn extension_get(&self, id: &str) -> Result<()> {
+    pub async fn extension_get(&self, id: &str, include_secret: bool) -> Result<()> {
         let extension = self
             .client
-            .get_extension(id)
+            .get_extension(id, Some(include_secret))
             .await
             .context("Could not successfully retrieve extension from Gofer api")?
             .into_inner()
@@ -188,6 +195,11 @@ impl Cli {
 
   $ Config Params:
   {%- for line in config_params %}
+  {{ line }}
+  {%- endfor %}
+
+  $ Settings:
+  {%- for line in settings %}
   {{ line }}
   {%- endfor %}
 
@@ -216,6 +228,18 @@ impl Cli {
             "config_params",
             &params_table(&extension.documentation.config_params),
         );
+
+        // Values come back redacted unless the caller is an admin who passed --include-secret.
+        let mut settings: Vec<String> = extension
+            .registration
+            .settings
+            .iter()
+            .map(|setting| format!("{} {} = {}", rail(), setting.key.blue(), setting.value))
+            .collect();
+        if settings.is_empty() {
+            settings.push(format!("{} None", rail()));
+        }
+        context.insert("settings", &settings);
 
         let content = tera.render("main", &context)?;
         println!(

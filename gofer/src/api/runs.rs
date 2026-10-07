@@ -342,6 +342,9 @@ pub struct ListRunsQueryArgs {
     pub limit: Option<u64>,
     pub offset: Option<u64>,
     pub reverse: Option<bool>,
+
+    /// Only return runs started at or after this time, in epoch milliseconds.
+    pub since: Option<u64>,
 }
 
 /// List all runs.
@@ -404,6 +407,12 @@ pub async fn list_runs(
         query.offset.unwrap_or_default() as i64,
         query.limit.unwrap_or(50) as i64,
         query.reverse.unwrap_or_default(),
+        query.since.unwrap_or_default().try_into().map_err(|err| {
+            HttpError::for_bad_request(
+                None,
+                format!("Could not successfully parse 'since'. Must be epoch milliseconds; {err}"),
+            )
+        })?,
     )
     .await
     {

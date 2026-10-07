@@ -1,7 +1,8 @@
 use crate::{
     api::{
-        ApiState, PreflightOptions, RegistryAuth, Variable, VariableSource, epoch_milli,
-        event_utils, format_duration, is_valid_identifier, listen_for_terminate_signal, load_tls,
+        ApiState, IncludeSecretQueryArgs, PreflightOptions, RegistryAuth, Variable, VariableSource,
+        epoch_milli, event_utils, format_duration, include_secrets, is_valid_identifier,
+        listen_for_terminate_signal, load_tls,
         permissioning::{
             Action, ExtensionGrant, ExtensionResource, GlobalGrant, GlobalResource, Grants,
             NamespaceGrant, NamespaceResource, Requirement, Role,
@@ -15,7 +16,7 @@ use crate::{
 use anyhow::{Context, Result, anyhow, bail};
 use dropshot::{
     HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
-    HttpResponseUpdatedNoContent, Path, RequestContext, TypedBody, WebsocketChannelResult,
+    HttpResponseUpdatedNoContent, Path, Query, RequestContext, TypedBody, WebsocketChannelResult,
     WebsocketConnection, channel, endpoint,
 };
 use futures::{SinkExt, StreamExt};
@@ -96,11 +97,12 @@ pub struct Registration {
     /// Which container image this extension should run.
     pub image: String,
 
-    /// Auth credentials for the image's registry.
+    /// Auth credentials for the image's registry. The password is redacted in API responses.
     pub registry_auth: Option<RegistryAuth>,
 
     /// Extensions allow configuration through env vars passed to them through this field. Refer to the extension's
-    /// documentation for setting values.
+    /// documentation for setting values. Values are redacted in API responses since settings routinely carry
+    /// credentials (the github extension's app key, for example).
     pub settings: Vec<Variable>,
 
     /// Time of registration creation in epoch milliseconds.
@@ -295,6 +297,18 @@ pub struct Extension {
     /// extensions directly.
     #[serde(skip)]
     pub secret: String,
+}
+
+impl Extension {
+    /// The copy of an extension that's safe to hand back to API callers. See [`crate::api::REDACTED`].
+    pub fn redacted(mut self) -> Self {
+        self.registration.registry_auth =
+            self.registration.registry_auth.map(RegistryAuth::redacted);
+        for setting in &mut self.registration.settings {
+            setting.value = crate::api::REDACTED.into();
+        }
+        self
+    }
 }
 
 async fn start_extension(
@@ -780,8 +794,10 @@ pub struct ListExtensionsResponse {
 )]
 pub async fn list_extensions(
     rqctx: RequestContext<Arc<ApiState>>,
+    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<ListExtensionsResponse>, HttpError> {
     let api_state = rqctx.context();
+    let query = query_params.into_inner();
     let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
@@ -798,6 +814,8 @@ pub async fn list_extensions(
         )
         .await?;
 
+    let show_secrets = include_secrets(&req_metadata, &query)?;
+
     let mut extensions: Vec<Extension> = vec![];
 
     for extension_ref in &api_state.extensions {
@@ -808,7 +826,11 @@ pub async fn list_extensions(
         };
 
         if req_metadata.allows(&requirement, &Action::Read) {
-            extensions.push(extension.clone());
+            if show_secrets {
+                extensions.push(extension.clone());
+            } else {
+                extensions.push(extension.clone().redacted());
+            }
         }
     }
 
@@ -831,10 +853,12 @@ pub struct GetExtensionResponse {
 pub async fn get_extension(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<ExtensionPathArgs>,
+    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<GetExtensionResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let _req_metadata = api_state
+    let query = query_params.into_inner();
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -859,10 +883,14 @@ pub async fn get_extension(
                 "Extension does not exist".into(),
             ))?;
 
-    let extension = extension.value();
+    let extension = extension.value().clone();
 
     let resp = GetExtensionResponse {
-        extension: extension.clone(),
+        extension: if include_secrets(&req_metadata, &query)? {
+            extension
+        } else {
+            extension.redacted()
+        },
     };
 
     Ok(HttpResponseOk(resp))
@@ -996,7 +1024,7 @@ pub async fn install_extension(
         })?;
 
     let resp = InstallExtensionResponse {
-        extension: new_extension,
+        extension: new_extension.redacted(),
     };
 
     Ok(HttpResponseCreated(resp))

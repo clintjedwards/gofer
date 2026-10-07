@@ -1020,8 +1020,8 @@ type ListPipelineSecretsResponse struct {
 
 // ListPipelinesResponse defines model for ListPipelinesResponse.
 type ListPipelinesResponse struct {
-	// Pipelines A list of all pipelines metadata.
-	Pipelines []Metadata `json:"pipelines"`
+	// Pipelines A list of all pipelines.
+	Pipelines []PipelineSummary `json:"pipelines"`
 }
 
 // ListRolesResponse defines model for ListRolesResponse.
@@ -1165,6 +1165,30 @@ type Pipeline2 struct {
 // PipelineState defines model for PipelineState.
 type PipelineState string
 
+// PipelineSummary A pipeline as it shows up in a listing: its metadata plus the name and description from its newest config, so callers can show something friendlier than the id without fetching every config.
+type PipelineSummary struct {
+	// Created Time of pipeline creation in epoch milliseconds.
+	Created uint64 `json:"created"`
+
+	// Description Description from the newest registered config.
+	Description string `json:"description"`
+
+	// Modified Time pipeline was updated to a new version in epoch milliseconds.
+	Modified uint64 `json:"modified"`
+
+	// Name Humanized name from the newest registered config.
+	Name string `json:"name"`
+
+	// NamespaceId Unique identifier of the target namespace.
+	NamespaceId string `json:"namespace_id"`
+
+	// PipelineId Unique identifier of the target pipeline.
+	PipelineId string `json:"pipeline_id"`
+
+	// State The current running state of the pipeline. This is used to determine if the pipeline should run or not.
+	State PipelineState `json:"state"`
+}
+
 // PutExtensionObjectResponse defines model for PutExtensionObjectResponse.
 type PutExtensionObjectResponse struct {
 	// Object Information about the object created.
@@ -1251,10 +1275,10 @@ type Registration struct {
 	// Modified Time of last modification in epoch milliseconds.
 	Modified uint64 `json:"modified"`
 
-	// RegistryAuth Auth credentials for the image's registry.
+	// RegistryAuth Auth credentials for the image's registry. The password is redacted in API responses.
 	RegistryAuth *RegistryAuth `json:"registry_auth"`
 
-	// Settings Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values.
+	// Settings Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values. Values are redacted in API responses since settings routinely carry credentials (the github extension's app key, for example).
 	Settings []Variable `json:"settings"`
 
 	// Status Whether the extension is enabled or not; extensions can be disabled to prevent use by admins.
@@ -1417,7 +1441,7 @@ type Task struct {
 	// InjectApiToken Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container.
 	InjectApiToken bool `json:"inject_api_token"`
 
-	// RegistryAuth Auth credentials for the image's registry
+	// RegistryAuth Auth credentials for the image's registry. The password is redacted in API responses.
 	RegistryAuth *RegistryAuth `json:"registry_auth"`
 
 	// Variables Variables which will be passed in as env vars to the task.
@@ -1844,10 +1868,34 @@ type StreamEventsParams struct {
 	Reverse *bool `form:"reverse,omitempty" json:"reverse,omitempty"`
 }
 
+// ListExtensionsParams defines parameters for ListExtensions.
+type ListExtensionsParams struct {
+	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
+	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
+}
+
+// GetExtensionParams defines parameters for GetExtension.
+type GetExtensionParams struct {
+	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
+	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
+}
+
 // PutExtensionObjectParams defines parameters for PutExtensionObject.
 type PutExtensionObjectParams struct {
 	// Force Overwrite a value of a object if it already exists.
 	Force bool `form:"force" json:"force"`
+}
+
+// ListConfigsParams defines parameters for ListConfigs.
+type ListConfigsParams struct {
+	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
+	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
+}
+
+// GetConfigParams defines parameters for GetConfig.
+type GetConfigParams struct {
+	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
+	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
 }
 
 // PutPipelineObjectParams defines parameters for PutPipelineObject.
@@ -1861,6 +1909,9 @@ type ListRunsParams struct {
 	Limit   *uint64 `form:"limit,omitempty" json:"limit,omitempty"`
 	Offset  *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
 	Reverse *bool   `form:"reverse,omitempty" json:"reverse,omitempty"`
+
+	// Since Only return runs started at or after this time, in epoch milliseconds.
+	Since *uint64 `form:"since,omitempty" json:"since,omitempty"`
 }
 
 // PutRunObjectParams defines parameters for PutRunObject.
@@ -1869,10 +1920,22 @@ type PutRunObjectParams struct {
 	Force bool `form:"force" json:"force"`
 }
 
+// ListTaskExecutionsParams defines parameters for ListTaskExecutions.
+type ListTaskExecutionsParams struct {
+	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
+	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
+}
+
 // CancelTaskExecutionParams defines parameters for CancelTaskExecution.
 type CancelTaskExecutionParams struct {
 	// WaitFor Period of time to wait the task before forcing it to cancel. 0 means send SIGKILL instantly.
 	WaitFor uint64 `form:"wait_for" json:"wait_for"`
+}
+
+// GetTaskExecutionParams defines parameters for GetTaskExecution.
+type GetTaskExecutionParams struct {
+	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
+	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
 }
 
 // AttachTaskExecutionParams defines parameters for AttachTaskExecution.
@@ -4129,7 +4192,7 @@ type ClientInterface interface {
 	GetEvent(ctx context.Context, eventId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListExtensions request
-	ListExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListExtensions(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// InstallExtensionWithBody request with any body
 	InstallExtensionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4140,7 +4203,7 @@ type ClientInterface interface {
 	UninstallExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetExtension request
-	GetExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetExtension(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateExtensionWithBody request with any body
 	UpdateExtensionWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4202,7 +4265,7 @@ type ClientInterface interface {
 	UpdatePipeline(ctx context.Context, namespaceId string, pipelineId string, body UpdatePipelineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListConfigs request
-	ListConfigs(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListConfigs(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RegisterConfigWithBody request with any body
 	RegisterConfigWithBody(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4213,7 +4276,7 @@ type ClientInterface interface {
 	DeleteConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetConfig request
-	GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeployConfig request
 	DeployConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4263,13 +4326,13 @@ type ClientInterface interface {
 	PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTaskExecutions request
-	ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CancelTaskExecution request
 	CancelTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *CancelTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTaskExecution request
-	GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AttachTaskExecution request
 	AttachTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *AttachTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4419,8 +4482,8 @@ func (c *Client) GetEvent(ctx context.Context, eventId string, reqEditors ...Req
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListExtensionsRequest(c.Server)
+func (c *Client) ListExtensions(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExtensionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4467,8 +4530,8 @@ func (c *Client) UninstallExtension(ctx context.Context, extensionId string, req
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetExtensionRequest(c.Server, extensionId)
+func (c *Client) GetExtension(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExtensionRequest(c.Server, extensionId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4731,8 +4794,8 @@ func (c *Client) UpdatePipeline(ctx context.Context, namespaceId string, pipelin
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListConfigs(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListConfigsRequest(c.Server, namespaceId, pipelineId)
+func (c *Client) ListConfigs(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListConfigsRequest(c.Server, namespaceId, pipelineId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4779,8 +4842,8 @@ func (c *Client) DeleteConfig(ctx context.Context, namespaceId string, pipelineI
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetConfigRequest(c.Server, namespaceId, pipelineId, version)
+func (c *Client) GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetConfigRequest(c.Server, namespaceId, pipelineId, version, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4983,8 +5046,8 @@ func (c *Client) PutRunObjectWithBody(ctx context.Context, namespaceId string, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTaskExecutionsRequest(c.Server, namespaceId, pipelineId, runId)
+func (c *Client) ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTaskExecutionsRequest(c.Server, namespaceId, pipelineId, runId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5007,8 +5070,8 @@ func (c *Client) CancelTaskExecution(ctx context.Context, namespaceId string, pi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTaskExecutionRequest(c.Server, namespaceId, pipelineId, runId, taskId)
+func (c *Client) GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskExecutionRequest(c.Server, namespaceId, pipelineId, runId, taskId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5633,7 +5696,7 @@ func NewGetEventRequest(server string, eventId string) (*http.Request, error) {
 }
 
 // NewListExtensionsRequest generates requests for ListExtensions
-func NewListExtensionsRequest(server string) (*http.Request, error) {
+func NewListExtensionsRequest(server string, params *ListExtensionsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -5649,6 +5712,28 @@ func NewListExtensionsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.IncludeSecret != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -5734,7 +5819,7 @@ func NewUninstallExtensionRequest(server string, extensionId string) (*http.Requ
 }
 
 // NewGetExtensionRequest generates requests for GetExtension
-func NewGetExtensionRequest(server string, extensionId string) (*http.Request, error) {
+func NewGetExtensionRequest(server string, extensionId string, params *GetExtensionParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5757,6 +5842,28 @@ func NewGetExtensionRequest(server string, extensionId string) (*http.Request, e
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.IncludeSecret != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -6446,7 +6553,7 @@ func NewUpdatePipelineRequestWithBody(server string, namespaceId string, pipelin
 }
 
 // NewListConfigsRequest generates requests for ListConfigs
-func NewListConfigsRequest(server string, namespaceId string, pipelineId string) (*http.Request, error) {
+func NewListConfigsRequest(server string, namespaceId string, pipelineId string, params *ListConfigsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6476,6 +6583,28 @@ func NewListConfigsRequest(server string, namespaceId string, pipelineId string)
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.IncludeSecret != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -6589,7 +6718,7 @@ func NewDeleteConfigRequest(server string, namespaceId string, pipelineId string
 }
 
 // NewGetConfigRequest generates requests for GetConfig
-func NewGetConfigRequest(server string, namespaceId string, pipelineId string, version int64) (*http.Request, error) {
+func NewGetConfigRequest(server string, namespaceId string, pipelineId string, version int64, params *GetConfigParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6626,6 +6755,28 @@ func NewGetConfigRequest(server string, namespaceId string, pipelineId string, v
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.IncludeSecret != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -7062,6 +7213,22 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 
 		}
 
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -7457,7 +7624,7 @@ func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineI
 }
 
 // NewListTaskExecutionsRequest generates requests for ListTaskExecutions
-func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId string, runId uint64) (*http.Request, error) {
+func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7494,6 +7661,28 @@ func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.IncludeSecret != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -7578,7 +7767,7 @@ func NewCancelTaskExecutionRequest(server string, namespaceId string, pipelineId
 }
 
 // NewGetTaskExecutionRequest generates requests for GetTaskExecution
-func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId string, runId uint64, taskId string) (*http.Request, error) {
+func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7622,6 +7811,28 @@ func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId st
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.IncludeSecret != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -9015,7 +9226,7 @@ type ClientWithResponsesInterface interface {
 	GetEventWithResponse(ctx context.Context, eventId string, reqEditors ...RequestEditorFn) (*GetEventResp, error)
 
 	// ListExtensionsWithResponse request
-	ListExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error)
+	ListExtensionsWithResponse(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error)
 
 	// InstallExtensionWithBodyWithResponse request with any body
 	InstallExtensionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InstallExtensionResp, error)
@@ -9026,7 +9237,7 @@ type ClientWithResponsesInterface interface {
 	UninstallExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*UninstallExtensionResp, error)
 
 	// GetExtensionWithResponse request
-	GetExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*GetExtensionResp, error)
+	GetExtensionWithResponse(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*GetExtensionResp, error)
 
 	// UpdateExtensionWithBodyWithResponse request with any body
 	UpdateExtensionWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateExtensionResp, error)
@@ -9088,7 +9299,7 @@ type ClientWithResponsesInterface interface {
 	UpdatePipelineWithResponse(ctx context.Context, namespaceId string, pipelineId string, body UpdatePipelineJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePipelineResp, error)
 
 	// ListConfigsWithResponse request
-	ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*ListConfigsResp, error)
+	ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*ListConfigsResp, error)
 
 	// RegisterConfigWithBodyWithResponse request with any body
 	RegisterConfigWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RegisterConfigResp, error)
@@ -9099,7 +9310,7 @@ type ClientWithResponsesInterface interface {
 	DeleteConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*DeleteConfigResp, error)
 
 	// GetConfigWithResponse request
-	GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*GetConfigResp, error)
+	GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*GetConfigResp, error)
 
 	// DeployConfigWithResponse request
 	DeployConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*DeployConfigResp, error)
@@ -9149,13 +9360,13 @@ type ClientWithResponsesInterface interface {
 	PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error)
 
 	// ListTaskExecutionsWithResponse request
-	ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error)
+	ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error)
 
 	// CancelTaskExecutionWithResponse request
 	CancelTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *CancelTaskExecutionParams, reqEditors ...RequestEditorFn) (*CancelTaskExecutionResp, error)
 
 	// GetTaskExecutionWithResponse request
-	GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error)
+	GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error)
 
 	// AttachTaskExecutionWithResponse request
 	AttachTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *AttachTaskExecutionParams, reqEditors ...RequestEditorFn) (*AttachTaskExecutionResp, error)
@@ -11118,8 +11329,8 @@ func (c *ClientWithResponses) GetEventWithResponse(ctx context.Context, eventId 
 }
 
 // ListExtensionsWithResponse request returning *ListExtensionsResp
-func (c *ClientWithResponses) ListExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error) {
-	rsp, err := c.ListExtensions(ctx, reqEditors...)
+func (c *ClientWithResponses) ListExtensionsWithResponse(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error) {
+	rsp, err := c.ListExtensions(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -11153,8 +11364,8 @@ func (c *ClientWithResponses) UninstallExtensionWithResponse(ctx context.Context
 }
 
 // GetExtensionWithResponse request returning *GetExtensionResp
-func (c *ClientWithResponses) GetExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*GetExtensionResp, error) {
-	rsp, err := c.GetExtension(ctx, extensionId, reqEditors...)
+func (c *ClientWithResponses) GetExtensionWithResponse(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*GetExtensionResp, error) {
+	rsp, err := c.GetExtension(ctx, extensionId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -11347,8 +11558,8 @@ func (c *ClientWithResponses) UpdatePipelineWithResponse(ctx context.Context, na
 }
 
 // ListConfigsWithResponse request returning *ListConfigsResp
-func (c *ClientWithResponses) ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*ListConfigsResp, error) {
-	rsp, err := c.ListConfigs(ctx, namespaceId, pipelineId, reqEditors...)
+func (c *ClientWithResponses) ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*ListConfigsResp, error) {
+	rsp, err := c.ListConfigs(ctx, namespaceId, pipelineId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -11382,8 +11593,8 @@ func (c *ClientWithResponses) DeleteConfigWithResponse(ctx context.Context, name
 }
 
 // GetConfigWithResponse request returning *GetConfigResp
-func (c *ClientWithResponses) GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*GetConfigResp, error) {
-	rsp, err := c.GetConfig(ctx, namespaceId, pipelineId, version, reqEditors...)
+func (c *ClientWithResponses) GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*GetConfigResp, error) {
+	rsp, err := c.GetConfig(ctx, namespaceId, pipelineId, version, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -11534,8 +11745,8 @@ func (c *ClientWithResponses) PutRunObjectWithBodyWithResponse(ctx context.Conte
 }
 
 // ListTaskExecutionsWithResponse request returning *ListTaskExecutionsResp
-func (c *ClientWithResponses) ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error) {
-	rsp, err := c.ListTaskExecutions(ctx, namespaceId, pipelineId, runId, reqEditors...)
+func (c *ClientWithResponses) ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error) {
+	rsp, err := c.ListTaskExecutions(ctx, namespaceId, pipelineId, runId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -11552,8 +11763,8 @@ func (c *ClientWithResponses) CancelTaskExecutionWithResponse(ctx context.Contex
 }
 
 // GetTaskExecutionWithResponse request returning *GetTaskExecutionResp
-func (c *ClientWithResponses) GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error) {
-	rsp, err := c.GetTaskExecution(ctx, namespaceId, pipelineId, runId, taskId, reqEditors...)
+func (c *ClientWithResponses) GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error) {
+	rsp, err := c.GetTaskExecution(ctx, namespaceId, pipelineId, runId, taskId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

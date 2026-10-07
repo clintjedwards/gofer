@@ -61,6 +61,7 @@ pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), Storag
 }
 
 /// Sorted by run_id ascending by default.
+/// Lists a pipeline's runs. `since` only returns runs started at or after that epoch millisecond; pass 0 for all.
 pub async fn list(
     conn: &mut SqliteConnection,
     namespace_id: &str,
@@ -68,20 +69,26 @@ pub async fn list(
     offset: i64,
     limit: i64,
     reverse: bool,
+    since: i64,
 ) -> Result<Vec<Run>, StorageError> {
+    // `started` is stored as text, so it's cast before comparing; comparing the strings would only work while every
+    // timestamp happens to have the same number of digits.
     let sql = if reverse {
         "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
-    runs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY run_id DESC LIMIT ? OFFSET ?;"
+    runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(started AS INTEGER) >= ? \
+    ORDER BY run_id DESC LIMIT ? OFFSET ?;"
     } else {
         "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
-    runs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY run_id ASC LIMIT ? OFFSET ?;"
+    runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(started AS INTEGER) >= ? \
+    ORDER BY run_id ASC LIMIT ? OFFSET ?;"
     };
 
     let query = sqlx::query_as::<_, Run>(sql)
         .bind(namespace_id)
         .bind(pipeline_id)
+        .bind(since)
         .bind(limit)
         .bind(offset);
 
@@ -376,7 +383,7 @@ mod tests {
         let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
 
         // Test fetching with sorting by run_id ascending
-        let runs_asc = list(&mut conn, "some_id", "some_pipeline_id", 0, 10, false)
+        let runs_asc = list(&mut conn, "some_id", "some_pipeline_id", 0, 10, false, 0)
             .await
             .expect("Failed to list runs in ascending order");
 
@@ -386,7 +393,7 @@ mod tests {
         assert_eq!(runs_asc[2].run_id, 3, "Third run should have run_id 3");
 
         // Test fetching with sorting by run_id descending
-        let runs_desc = list(&mut conn, "some_id", "some_pipeline_id", 0, 10, true)
+        let runs_desc = list(&mut conn, "some_id", "some_pipeline_id", 0, 10, true, 0)
             .await
             .expect("Failed to list runs in descending order");
 
@@ -396,7 +403,7 @@ mod tests {
         assert_eq!(runs_desc[2].run_id, 1, "Third run should have run_id 1");
 
         // Test limit and offset
-        let limited_runs = list(&mut conn, "some_id", "some_pipeline_id", 1, 1, false)
+        let limited_runs = list(&mut conn, "some_id", "some_pipeline_id", 1, 1, false, 0)
             .await
             .expect("Failed to list runs with limit and offset");
 
@@ -405,6 +412,43 @@ mod tests {
             limited_runs[0].run_id, 2,
             "Should return the second run due to offset"
         );
+    }
+
+    #[tokio::test]
+    async fn test_list_runs_since() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        // Real runs store epoch milliseconds. Mixing digit counts makes sure the filter compares numbers, not text.
+        for (run_id, started) in [(4, "1000"), (5, "9000000000000")] {
+            let run = Run {
+                namespace_id: "some_id".to_string(),
+                pipeline_id: "some_pipeline_id".to_string(),
+                pipeline_config_version: 1,
+                run_id,
+                started: started.to_string(),
+                ended: "0".to_string(),
+                state: "complete".to_string(),
+                status: "successful".to_string(),
+                status_reason: "".to_string(),
+                initiator: "UserA".to_string(),
+                variables: "".to_string(),
+                token_id: None,
+                store_objects_expired: false,
+                event_id: None,
+            };
+            insert(&mut conn, &run).await.expect("Failed to insert run");
+        }
+
+        let runs = list(&mut conn, "some_id", "some_pipeline_id", 0, 10, false, 5000)
+            .await
+            .expect("Failed to list runs since a time");
+
+        assert_eq!(
+            runs.len(),
+            1,
+            "Should only return runs started at or after 'since'"
+        );
+        assert_eq!(runs[0].run_id, 5);
     }
 
     #[tokio::test]

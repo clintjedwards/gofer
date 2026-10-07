@@ -191,7 +191,14 @@ impl Cli {
         for pipeline in pipelines {
             let last_run = self
                 .client
-                .list_runs(&namespace, &pipeline.pipeline_id, Some(1), None, Some(true))
+                .list_runs(
+                    &namespace,
+                    &pipeline.pipeline_id,
+                    Some(1),
+                    None,
+                    Some(true),
+                    None,
+                )
                 .await
                 .context("Could not successfully retrieve last run from Gofer api")?
                 .into_inner()
@@ -236,7 +243,7 @@ impl Cli {
 
         let pipeline_config = self
             .client
-            .get_config(&namespace, id, 0)
+            .get_config(&namespace, id, 0, None)
             .await
             .context("Could not successfully retrieve pipeline config from Gofer api")?
             .into_inner()
@@ -252,7 +259,7 @@ impl Cli {
 
         let mut recent_runs = self
             .client
-            .list_runs(&namespace, id, Some(5), None, Some(true))
+            .list_runs(&namespace, id, Some(5), None, Some(true), None)
             .await
             .context("Could not successfully retrieve recent runs for pipeline from Gofer api")?
             .into_inner()

@@ -169,7 +169,7 @@ impl Cli {
 
         let tasks = self
             .client
-            .list_task_executions(&namespace, pipeline_id, run_id)
+            .list_task_executions(&namespace, pipeline_id, run_id, None)
             .await
             .context("Could not successfully retrieve tasks from Gofer api")?
             .into_inner()
@@ -235,7 +235,7 @@ impl Cli {
 
         let task = self
             .client
-            .get_task_execution(&namespace, pipeline_id, run_id, task_id)
+            .get_task_execution(&namespace, pipeline_id, run_id, task_id, None)
             .await
             .context("Could not successfully retrieve task from Gofer api")?
             .into_inner()

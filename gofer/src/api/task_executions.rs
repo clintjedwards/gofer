@@ -1,9 +1,10 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
-        ApiState, GOFER_EOF, PreflightOptions, Variable, ensure_run_exists, epoch_milli,
+        ApiState, GOFER_EOF, IncludeSecretQueryArgs, PreflightOptions, Variable, ensure_run_exists,
+        epoch_milli,
         event_utils::{self, EventListener},
-        format_duration, listen_for_terminate_signal, tasks, websocket_error,
+        format_duration, include_secrets, listen_for_terminate_signal, tasks, websocket_error,
     },
     http_error, scheduler, storage,
 };
@@ -245,6 +246,12 @@ impl TaskExecution {
             image_digest: String::new(),
         }
     }
+
+    /// The copy of a task execution that's safe to hand back to API callers. See [`crate::api::REDACTED`].
+    pub fn redacted(mut self) -> Self {
+        self.task = self.task.redacted();
+        self
+    }
 }
 
 impl TryFrom<storage::task_executions::TaskExecution> for TaskExecution {
@@ -430,10 +437,12 @@ pub struct ListTaskExecutionsResponse {
 pub async fn list_task_executions(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<TaskExecutionPathArgsRoot>,
+    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<ListTaskExecutionsResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let _req_metadata = api_state
+    let query = query_params.into_inner();
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -497,6 +506,8 @@ pub async fn list_task_executions(
         }
     };
 
+    let show_secrets = include_secrets(&req_metadata, &query)?;
+
     let mut task_executions: Vec<TaskExecution> = vec![];
 
     for storage_task_execution in storage_task_executions {
@@ -509,7 +520,11 @@ pub async fn list_task_executions(
             )
         })?;
 
-        task_executions.push(task_execution);
+        task_executions.push(if show_secrets {
+            task_execution
+        } else {
+            task_execution.redacted()
+        });
     }
 
     let resp = ListTaskExecutionsResponse { task_executions };
@@ -531,10 +546,12 @@ pub struct GetTaskExecutionResponse {
 pub async fn get_task_execution(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<TaskExecutionPathArgs>,
+    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<GetTaskExecutionResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let _req_metadata = api_state
+    let query = query_params.into_inner();
+    let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -604,7 +621,13 @@ pub async fn get_task_execution(
         )
     })?;
 
-    let resp = GetTaskExecutionResponse { task_execution };
+    let resp = GetTaskExecutionResponse {
+        task_execution: if include_secrets(&req_metadata, &query)? {
+            task_execution
+        } else {
+            task_execution.redacted()
+        },
+    };
     Ok(HttpResponseOk(resp))
 }
 

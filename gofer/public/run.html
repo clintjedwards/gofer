@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="css/main.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.ico">
+    <script>
+      // Applied before first paint so dark mode doesn't flash light while the page loads.
+      try {
+        if (localStorage.getItem("theme") === "dark") document.documentElement.classList.add("dark");
+      } catch (_) {}
+    </script>
+    <script src="common.js" defer></script>
+    <script src="run.js" defer></script>
+    <title>Gofer │ Run</title>
+  </head>
+  <body class="dark:bg-neutral-800 bg-white text-gray-900 dark:text-gray-100">
+    <header id="site-header"></header>
+
+    <main class="mx-auto max-w-6xl px-6 pt-10 pb-24 space-y-8">
+      <!-- Shown instead of everything else when the run can't be loaded. -->
+      <div id="run-error" class="hidden rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-6 text-sm text-red-800 dark:text-red-200"></div>
+
+      <div id="run-content" class="hidden space-y-8">
+        <header id="run-title"></header>
+
+        <div id="run-reason"></div>
+
+        <section id="run-summary" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px overflow-hidden rounded-md ring-1 ring-gray-200 dark:ring-neutral-700 bg-gray-200 dark:bg-neutral-700"></section>
+
+        <div id="run-cli-tips" class="space-y-2"></div>
+
+        <div id="tasks-notice" class="hidden rounded-md border border-dashed border-gray-300 dark:border-neutral-600 p-6 text-sm text-gray-600 dark:text-gray-300"></div>
+
+        <div id="task-sections" class="hidden space-y-8">
+          <section>
+            <div class="flex items-baseline justify-between">
+              <h2 class="text-base font-semibold">Task graph</h2>
+              <div id="graph-legend" class="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400"></div>
+            </div>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">How tasks depend on each other. Click a task to jump to its details.</p>
+            <div id="task-graph" class="mt-4 overflow-x-auto rounded-md ring-1 ring-gray-200 dark:ring-neutral-700 bg-gray-50 dark:bg-neutral-900/40 p-2"></div>
+          </section>
+
+          <section>
+            <h2 class="text-base font-semibold">Timeline</h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">When each task waited and ran, relative to the start of the run.</p>
+            <div id="task-timeline" class="mt-4 rounded-md ring-1 ring-gray-200 dark:ring-neutral-700 p-4"></div>
+          </section>
+
+          <section id="problems-section">
+            <h2 class="text-base font-semibold">What went wrong</h2>
+            <div id="task-problems" class="mt-4 space-y-4"></div>
+          </section>
+
+          <section>
+            <h2 class="text-base font-semibold">Tasks</h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Click a row to see the image, command, and variables a task ran with.</p>
+            <div class="mt-4 overflow-x-auto rounded-md ring-1 ring-gray-200 dark:ring-neutral-700">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-neutral-700 text-sm">
+                <thead class="bg-gray-50 dark:bg-neutral-900/40">
+                  <tr class="text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <th scope="col" class="px-4 py-3 font-medium">Task</th>
+                    <th scope="col" class="px-4 py-3 font-medium">Started</th>
+                    <th scope="col" class="px-4 py-3 font-medium">Duration</th>
+                    <th scope="col" class="px-4 py-3 font-medium">State</th>
+                    <th scope="col" class="px-4 py-3 font-medium">Status</th>
+                    <th scope="col" class="px-4 py-3 font-medium">Starts</th>
+                  </tr>
+                </thead>
+                <tbody id="task-table" class="divide-y divide-gray-200 dark:divide-neutral-700"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section id="run-variables-section" class="hidden">
+          <h2 class="text-base font-semibold">Run variables</h2>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Passed to every task in this run.</p>
+          <div id="run-variables" class="mt-4"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>
