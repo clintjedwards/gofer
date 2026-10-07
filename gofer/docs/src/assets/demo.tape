@@ -40,70 +40,77 @@
 #   Hide                            Hide the subsequent commands from the output
 #   Show                            Show the subsequent commands in the output
 
+
 Output demo.gif
 
-Set FontSize 24
-Set Width 1300
-Set Height 700
-Set Theme { "name": "Eastwood", "black": "#424242", "red": "#ff7675", "green": "#badc58", "yellow": "#ffeaa7", "blue": "#74b9ff", "purple": "#cc99cc", "cyan": "#81ecec", "white": "#d3d0c8", "brightBlack": "#c4c2bb", "brightRed": "#ff7675", "brightGreen": "#badc58", "brightYellow": "#ffeaa7", "brightBlue": "#74b9ff", "brightPurple": "#cc99cc", "brightCyan": "#81ecec", "brightWhite": "#d3d0c8", "background": "#424242", "foreground": "#d3d0c8", "selectionBackground": "#74b9ff", "cursorColor": "#d3d0c8" }
+Set FontSize 20
+Set Width 1600
+Set Height 1000
+Set Padding 20
+Set TypingSpeed 60ms
+Set Theme { "name": "Eastwood", "black": "#424242", "red": "#ff7675", "green": "#badc58", "yellow": "#ffeaa7", "blue": "#74b9ff", "magenta": "#cc99cc", "cyan": "#81ecec", "white": "#d3d0c8", "brightBlack": "#c4c2bb", "brightRed": "#ff7675", "brightGreen": "#badc58", "brightYellow": "#ffeaa7", "brightBlue": "#74b9ff", "brightMagenta": "#cc99cc", "brightCyan": "#81ecec", "brightWhite": "#d3d0c8", "background": "#424242", "foreground": "#d3d0c8", "selection": "#74b9ff", "cursor": "#d3d0c8" }
 
-Type "gofer -v"
-
+Hide
+Type "export PATH=$PWD/../../../../target/debug:$PATH BAT_THEME=ansi BAT_STYLE=plain BAT_PAGING=never && cd ../../../../examplePipelines/go/dag && clear"
 Enter
-
 Sleep 500ms
+Show
 
-Type "pwd"
-
+Type "bat main.go"
 Enter
+Sleep 5s
 
-Sleep 500ms
-
-Type "gofer up"
-
+Type "gofer up ."
 Enter
-
-Sleep 2.5s
-
-Type "gofer pipeline list"
-
-Enter
-
-Sleep 1.5s
+Sleep 4s
 
 Type "clear"
+Enter
 
+Type "gofer fetch dag"
+Enter
+Sleep 4s
+
+Type "gofer pipeline run dag"
+Enter
+Sleep 2s
+
+Type "clear"
+Enter
+
+Type "gofer fetch dag 1"
+Enter
+Sleep 4s
+
+Hide
+Sleep 20s
+Type "clear"
+Enter
+Show
+
+Type "gofer fetch dag 1"
+Enter
+Sleep 4s
+
+Type "clear"
+Enter
+
+Type "gofer task logs dag 1 depends-on-first"
+Enter
+Sleep 10s
+Ctrl+C
 Sleep 500ms
 
+Hide
+Sleep 18s
+Type "clear"
 Enter
+Show
 
-Type "gofer run start simple"
-
+Type "gofer fetch dag 1"
 Enter
-
 Sleep 3s
 
-Type "gofer run get simple 1"
-
+Type "gofer extension list"
 Enter
-
-Sleep 3s
-
-Type "gofer task list simple 1"
-
-Enter
-
-Sleep 4.5s
-
-Type "gofer task get simple 1 simple_task"
-
-Enter
-
-Sleep 4.5s
-
-Type "gofer task logs simple 1 simple_task"
-
-Enter
-
-Sleep 4.5s
-
+Sleep 4s
