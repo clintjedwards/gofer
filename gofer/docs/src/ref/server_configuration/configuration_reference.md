@@ -139,7 +139,7 @@ The sqlite store is a built-in, easy to use object store. It is meant for develo
 | name           | type   | default                            | description                                                                                                                                                                                                            |
 | -------------- | ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | path           | string | /tmp/gofer-secret.db               | The path of the file that sqlite will use. If this file does not exist Gofer will create it.                                                                                                                           |
-| encryption_key | string | "changemechangemechangemechangeme" | Key used to encrypt keys to keep them safe. This encryption key is responsible for facilitating that. It MUST be 32 characters long and cannot be changed for any reason once it is set or else all data will be lost. |
+| encryption_key | string | "changemechangemechangemechangeme" | Key used to encrypt keys to keep them safe. This encryption key is responsible for facilitating that. It MUST be exactly 32 bytes (32 ASCII characters; `openssl rand -hex 16` makes one) and cannot be changed for any reason once it is set or else all data will be lost. |
 
 ```toml
 [secret_store]

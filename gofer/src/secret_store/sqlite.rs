@@ -22,7 +22,8 @@ const NONCE_SIZE: usize = 12; // Standard nonce size for AES-GCM
 pub struct Config {
     pub path: String,
 
-    /// Must be 32 characters long.
+    /// Must be exactly 32 bytes long, since it's used directly as an AES-256 key. Use 32 ASCII characters, e.g. the
+    /// output of `openssl rand -hex 16`.
     pub encryption_key: String,
 }
 
@@ -74,8 +75,12 @@ impl Engine {
     pub async fn new(config: &Config) -> Result<Self> {
         let config = config.clone();
 
-        if config.encryption_key.len() < 32 {
-            bail!("secret_store.sqlite.encryption_key must be at least 32 characters");
+        // AES-256 only takes a 32 byte key. Anything else would start fine and then fail every secret read and write.
+        if config.encryption_key.len() != 32 {
+            bail!(
+                "secret_store.sqlite.encryption_key must be exactly 32 bytes; got {}",
+                config.encryption_key.len()
+            );
         }
 
         touch_file(Path::new(&config.path)).unwrap();
