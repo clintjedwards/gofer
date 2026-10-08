@@ -89,7 +89,8 @@ pub struct ExtensionGrant {
     pub actions: Vec<Action>,
 }
 
-/// Grants access to resources that aren't scoped to a namespace or extension.
+/// Grants access to resources that aren't scoped to a namespace or extension. Only 'read' on 'events', 'tokens', or
+/// 'roles' is accepted; the rest is admin only.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct GlobalGrant {
     pub resources: Vec<GlobalResource>,
@@ -188,7 +189,7 @@ impl std::fmt::Display for Requirement {
 }
 
 /// Targets always match the whole identifier. Without this, a target of 'default' would also match 'not-default'.
-fn anchored(target: &str) -> String {
+pub fn anchored(target: &str) -> String {
     format!("^(?:{target})$")
 }
 
@@ -200,7 +201,7 @@ fn target_matches(target: &str, id: Option<&str>) -> bool {
     }
 }
 
-fn validate_target(kind: &str, target: &str) -> Result<()> {
+pub fn validate_target(kind: &str, target: &str) -> Result<()> {
     if target.is_empty() {
         bail!("{kind} target cannot be empty; use '.*' to match everything");
     }
@@ -289,6 +290,24 @@ impl Grants {
         for grant in &self.global {
             if grant.resources.is_empty() || grant.actions.is_empty() {
                 bail!("global grant needs at least one resource and action");
+            }
+
+            // Everything else under global is behind admin only routes, so granting it would silently do nothing.
+            for resource in &grant.resources {
+                for action in &grant.actions {
+                    let grantable = *action == Action::Read
+                        && matches!(
+                            resource,
+                            GlobalResource::Events | GlobalResource::Tokens | GlobalResource::Roles
+                        );
+
+                    if !grantable {
+                        bail!(
+                            "global '{resource}' '{action}' is admin only and can't be granted; \
+                            global grants can only give 'read' on 'events', 'tokens', or 'roles'"
+                        );
+                    }
+                }
             }
         }
 
@@ -1464,6 +1483,33 @@ mod tests {
 
         for role in system_roles() {
             role.grants.validate().unwrap();
+        }
+    }
+
+    #[test]
+    fn validate_rejects_admin_only_global_grants() {
+        let global = |resource: GlobalResource, action: Action| Grants {
+            global: vec![GlobalGrant {
+                resources: vec![resource],
+                actions: vec![action],
+            }],
+            ..Default::default()
+        };
+
+        for resource in [
+            GlobalResource::Events,
+            GlobalResource::Tokens,
+            GlobalResource::Roles,
+        ] {
+            global(resource.clone(), Action::Read).validate().unwrap();
+            assert!(global(resource.clone(), Action::Write).validate().is_err());
+            assert!(global(resource, Action::Delete).validate().is_err());
+        }
+
+        for resource in [GlobalResource::Secrets, GlobalResource::System] {
+            for action in [Action::Read, Action::Write, Action::Delete] {
+                assert!(global(resource.clone(), action).validate().is_err());
+            }
         }
     }
 

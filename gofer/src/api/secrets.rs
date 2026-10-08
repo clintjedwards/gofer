@@ -1,4 +1,6 @@
-use super::permissioning::{Action, GlobalResource, NamespaceResource, Requirement};
+use super::permissioning::{
+    Action, GlobalResource, NamespaceResource, Requirement, anchored, validate_target,
+};
 use crate::{
     api::{ApiState, PreflightOptions, ensure_pipeline_exists, epoch_milli},
     http_error, secret_store, storage,
@@ -54,7 +56,7 @@ pub struct Secret {
     /// The identifier for the secret value.
     pub key: String,
 
-    /// The namespaces this secret is allowed to be accessed from. Accepts regexes.
+    /// The namespaces this secret is allowed to be accessed from. Regexes matched against the entire namespace id.
     pub namespaces: Vec<String>,
 
     /// Time in epoch milliseconds that this secret was registered.
@@ -87,6 +89,9 @@ impl Secret {
 
     /// Checks the secret key's namespace list to confirm it actually does match a given namespace.
     /// It loops through the namespaces list and tries to evaluate regexp when it can.
+    ///
+    /// Filters match the whole namespace id, the same as role grant targets, so a filter of 'prod' doesn't also
+    /// let 'prod-sandbox' use the secret.
     pub fn is_allowed_namespace(&self, namespace_id: &str) -> bool {
         for namespace_filter_str in &self.namespaces {
             if namespace_filter_str.is_empty() {
@@ -94,7 +99,7 @@ impl Secret {
             }
 
             // Check if the string is a valid regex
-            let namespace_regex = match regex::Regex::new(namespace_filter_str) {
+            let namespace_regex = match regex::Regex::new(&anchored(namespace_filter_str)) {
                 Ok(val) => val,
                 Err(e) => {
                     debug!(error = %e, "Could not parse namespace filter during is_allowed_namespace check");
@@ -371,7 +376,7 @@ pub struct PutGlobalSecretRequest {
     /// The actual plaintext secret.
     pub content: String,
 
-    /// The namespaces you want this secret to be accessible by. Accepts Regexes.
+    /// The namespaces you want this secret to be accessible by. Regexes matched against the entire namespace id.
     pub namespaces: Vec<String>,
 
     /// Overwrite a value of a secret if it already exists.
@@ -410,6 +415,16 @@ pub async fn put_global_secret(
             },
         )
         .await?;
+
+    // Bad filters would otherwise be skipped silently at run time, leaving the secret unusable without saying why.
+    for namespace in &body.namespaces {
+        if let Err(e) = validate_target("namespace", namespace) {
+            return Err(HttpError::for_bad_request(
+                None,
+                format!("Invalid namespace filter; {e:#}"),
+            ));
+        }
+    }
 
     let mut conn = match api_state.storage.write_conn().await {
         Ok(conn) => conn,
@@ -1020,6 +1035,9 @@ mod tests {
     #[case::exact_mismatch("my_namespace", vec!["another_namespace".into()], false)]
     // A paranoid test to make sure we don't get regex matches that simply match on the first part of the namespace.
     #[case::mismatch_substring("my_namespace", vec!["my_namespacee".into()], false)]
+    #[case::mismatch_contains("my_namespace-two", vec!["my_namespace".into()], false)]
+    #[case::mismatch_suffix("not-my_namespace", vec!["my_namespace".into()], false)]
+    #[case::prefix_match("ops-teama", vec!["ops-.*".into()], true)]
     #[case::match_all_namespaces_with_variable_num("test123", vec!["^test\\d+$".into()], true)]
     #[case::regex_mismatch("test123", vec!["^test\\d{4}$".into()], false)]
     #[case::regex_invalid_pattern("namespace", vec!["[".into()], false)]

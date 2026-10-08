@@ -30,8 +30,8 @@ pub enum GlobalSecretCommands {
     /// You can store both regular text values or read in from stdin using the '@' prefix.
     ///
     /// Global secrets are namespaced to allow the segregation of global secrets among different groups.
-    /// These namespaces strings allow simple regex expressions to match the actual namespaces within your
-    /// environment.
+    /// These namespaces strings are regexes that must match the entire namespace id; '-n "prod"' matches
+    /// "prod" but not "prod-sandbox".
     ///
     /// By default, omitting the namespace allows it to match ALL namespaces.
     ///
@@ -40,7 +40,7 @@ pub enum GlobalSecretCommands {
     ///
     /// In this case a global secret can be assigned to a specific team by just using the flag '-n "ops-teama"'. In the case
     /// that you had a global secret that need to be shared amongst all ops teams you could simply write a namespace filter
-    /// that has a prefix like so '-n "ops-*"'.
+    /// that has a prefix like so '-n "ops-.*"'.
     Put {
         key: String,
 

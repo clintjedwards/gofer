@@ -255,11 +255,17 @@ fn prompt_for_grants() -> Result<Grants> {
             "global" | "g" => {
                 let resources = ask_list::<GlobalResource>(
                     "Resources (comma separated)",
-                    &["events", "tokens", "roles", "secrets", "system"],
+                    &["events", "tokens", "roles"],
                 );
-                let actions = ask_actions()?;
 
-                grants.global.push(GlobalGrant { resources, actions });
+                // Writing or deleting global resources is admin only, so read is the only action worth asking about.
+                println!("Global grants are read only.");
+                println!();
+
+                grants.global.push(GlobalGrant {
+                    resources,
+                    actions: vec![Action::Read],
+                });
             }
             _ => {
                 error!("Grant type must be one of namespace, extension, or global");

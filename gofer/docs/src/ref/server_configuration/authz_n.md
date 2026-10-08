@@ -110,15 +110,17 @@ Any extension grant also lets the token read the extension's details.
 
 #### Global grants
 
-Global grants cover things that don't belong to a namespace or extension.
+Global grants cover things that don't belong to a namespace or extension. Only `read` can be granted; everything
+else here is [admin only](#admin-only-routes).
 
-| Resource  | Covers                                 |
-| --------- | -------------------------------------- |
-| `events`  | The event stream and individual events. |
-| `tokens`  | API tokens.                            |
-| `roles`   | Roles.                                 |
-| `secrets` | The global secret store.               |
-| `system`  | System settings.                       |
+| Resource | Covers                                                      |
+| -------- | ----------------------------------------------------------- |
+| `events` | The event stream and individual events.                     |
+| `tokens` | Looking up a single token by id. Listing tokens is admin only. |
+| `roles`  | Listing and reading roles.                                  |
+
+Gofer rejects global grants for `secrets` or `system`, or with `write` or `delete`, since admin only routes would
+ignore them.
 
 #### Targets
 
@@ -141,7 +143,16 @@ execution is a `delete`, and attaching to a task execution is a `write`.
 #### Admin only routes
 
 Some routes can only be used by tokens with the `admin` or `bootstrap` role, regardless of what grants a token has.
-These include managing namespaces, tokens, roles, extensions, global secrets, and system settings.
+No grant can give access to them:
+
+- Creating, updating, and deleting namespaces.
+- Listing, creating, updating, and deleting tokens.
+- Creating, updating, and deleting roles.
+- Installing, updating, and uninstalling extensions, and reading an extension's debug info.
+- Everything in the global secret store.
+- Reading and updating system preferences.
+- Deleting events.
+- Using `include_secret` to see unredacted values.
 
 ### Creating roles
 
