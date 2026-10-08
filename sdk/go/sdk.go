@@ -715,7 +715,7 @@ type GetTokenByIDResponse struct {
 	Token Token `json:"token"`
 }
 
-// GlobalGrant Grants access to resources that aren't scoped to a namespace or extension.
+// GlobalGrant Grants access to resources that aren't scoped to a namespace or extension. Only 'read' on 'events', 'tokens', or 'roles' is accepted; the rest is admin only.
 type GlobalGrant struct {
 	Actions   []Action         `json:"actions"`
 	Resources []GlobalResource `json:"resources"`
@@ -1227,7 +1227,7 @@ type PutGlobalSecretRequest struct {
 	// Key The name for the secret you would like to store.
 	Key string `json:"key"`
 
-	// Namespaces The namespaces you want this secret to be accessible by. Accepts Regexes.
+	// Namespaces The namespaces you want this secret to be accessible by. Regexes matched against the entire namespace id.
 	Namespaces []string `json:"namespaces"`
 }
 
@@ -1395,7 +1395,7 @@ type Secret struct {
 	// Key The identifier for the secret value.
 	Key string `json:"key"`
 
-	// Namespaces The namespaces this secret is allowed to be accessed from. Accepts regexes.
+	// Namespaces The namespaces this secret is allowed to be accessed from. Regexes matched against the entire namespace id.
 	Namespaces []string `json:"namespaces"`
 }
 

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Gofer",
-    "version": "0.10.0"
+    "version": "0.11.0"
   },
   "paths": {
     "/api/events": {
@@ -4541,7 +4541,7 @@
         ]
       },
       "GlobalGrant": {
-        "description": "Grants access to resources that aren't scoped to a namespace or extension.",
+        "description": "Grants access to resources that aren't scoped to a namespace or extension. Only 'read' on 'events', 'tokens', or 'roles' is accepted; the rest is admin only.",
         "type": "object",
         "properties": {
           "actions": {
@@ -5916,7 +5916,7 @@
             "type": "string"
           },
           "namespaces": {
-            "description": "The namespaces you want this secret to be accessible by. Accepts Regexes.",
+            "description": "The namespaces you want this secret to be accessible by. Regexes matched against the entire namespace id.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6307,7 +6307,7 @@
             "type": "string"
           },
           "namespaces": {
-            "description": "The namespaces this secret is allowed to be accessed from. Accepts regexes.",
+            "description": "The namespaces this secret is allowed to be accessed from. Regexes matched against the entire namespace id.",
             "type": "array",
             "items": {
               "type": "string"
