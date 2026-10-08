@@ -36,19 +36,24 @@ pub enum PipelineSecretCommands {
 
     /// Write a secret to a pipeline's secret store.
     ///
-    /// You can store both regular text values or read in entire files using the '@' prefix.
+    /// Leave out the secret to be prompted for it, which keeps it out of your shell history. You can also pipe in
+    /// a value or a whole file. Trailing newlines are trimmed.
     Put {
         /// Pipeline identifier.
         pipeline_id: String,
         key: String,
 
-        /// takes a plain text string or use character '@' to pass in text to stdin.
-        /// ex. echo "some_secret" > gofer secret put mysecret @
-        secret: String,
+        /// Plain text value. Leave it out (or pass '@') to read from stdin or be prompted.
+        /// ex. gofer secret pipeline put my-pipeline mysecret < secret.txt
+        secret: Option<String>,
 
         /// Replace value if it exists.
         #[arg(short, long, default_value = "false")]
         force: bool,
+
+        /// Show the secret as you type it at the prompt.
+        #[arg(long, default_value = "false")]
+        echo: bool,
     },
 }
 
@@ -76,8 +81,9 @@ impl Cli {
                 key,
                 secret,
                 force,
+                echo,
             } => {
-                self.pipeline_secret_put(command.namespace, &pipeline_id, &key, &secret, force)
+                self.pipeline_secret_put(command.namespace, &pipeline_id, &key, secret, force, echo)
                     .await
             }
         }
@@ -181,25 +187,19 @@ impl Cli {
         namespace_id: Option<String>,
         pipeline_id: &str,
         key: &str,
-        secret: &str,
+        secret: Option<String>,
         force: bool,
+        echo: bool,
     ) -> Result<()> {
         let namespace = match namespace_id {
             Some(namespace) => namespace,
             None => self.conf.namespace.clone(),
         };
 
-        let mut secret_input = String::new();
-
-        if secret == "@" {
-            std::io::stdin()
-                .read_line(&mut secret_input)
-                .context("Could not read secret from stdin")?;
-        } else {
-            secret_input = secret.into();
-        };
-
+        // Check the key first so nobody types out a secret only to have it rejected.
         validate_identifier(key).context("invalid key name")?;
+
+        let secret_input = super::resolve_secret(secret, echo)?;
 
         self.client
             .put_pipeline_secret(

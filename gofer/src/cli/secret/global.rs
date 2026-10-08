@@ -27,7 +27,8 @@ pub enum GlobalSecretCommands {
 
     /// Write a secret to the global secret store.
     ///
-    /// You can store both regular text values or read in from stdin using the '@' prefix.
+    /// Leave out the secret to be prompted for it, which keeps it out of your shell history. You can also pipe in
+    /// a value or a whole file. Trailing newlines are trimmed.
     ///
     /// Global secrets are namespaced to allow the segregation of global secrets among different groups.
     /// These namespaces strings are regexes that must match the entire namespace id; '-n "prod"' matches
@@ -44,9 +45,9 @@ pub enum GlobalSecretCommands {
     Put {
         key: String,
 
-        /// takes a plain text string or use character '@' to pass in text to stdin.
-        /// ex. echo "some_secret" > gofer secret put mysecret @
-        secret: String,
+        /// Plain text value. Leave it out (or pass '@') to read from stdin or be prompted.
+        /// ex. gofer secret global put mysecret < secret.txt
+        secret: Option<String>,
 
         /// List of namespaces allowed to access this secret. Accepts regexes.
         #[arg(short, long, default_value = ".*")]
@@ -55,6 +56,10 @@ pub enum GlobalSecretCommands {
         /// Replace value if it exists.
         #[arg(short, long, default_value = "false")]
         force: bool,
+
+        /// Show the secret as you type it at the prompt.
+        #[arg(long, default_value = "false")]
+        echo: bool,
     },
 }
 
@@ -75,8 +80,9 @@ impl Cli {
                 secret,
                 namespaces,
                 force,
+                echo,
             } => {
-                self.global_secret_put(&key, &secret, namespaces, force)
+                self.global_secret_put(&key, secret, namespaces, force, echo)
                     .await
             }
         }
@@ -179,21 +185,15 @@ impl Cli {
     pub async fn global_secret_put(
         &self,
         key: &str,
-        secret: &str,
+        secret: Option<String>,
         namespaces: Vec<String>,
         force: bool,
+        echo: bool,
     ) -> Result<()> {
-        let mut secret_input = String::new();
-
-        if secret == "@" {
-            std::io::stdin()
-                .read_line(&mut secret_input)
-                .context("Could not read secret from stdin")?;
-        } else {
-            secret_input = secret.into();
-        };
-
+        // Check the key first so nobody types out a secret only to have it rejected.
         validate_identifier(key).context("invalid key name")?;
+
+        let secret_input = super::resolve_secret(secret, echo)?;
 
         self.client
             .put_global_secret(&gofer_sdk::api::types::PutGlobalSecretRequest {
