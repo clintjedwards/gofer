@@ -117,7 +117,9 @@ it can be confusing if not known.
 Gofer uses OpenAPI to generate a REST API in which is uses both to communicate with extensions and the main web service.
 
 - You can find the OpenAPI spec files located in `sdk/openapi.json` and `gofer/docs/src/assets/openapi.json`.
-- This means you can also access the API reference by going to `/docs/api_reference.html` in the main web service.
+- The documentation site has an API reference section generated from the spec, available at `/docs/api/index.html`
+  in the main web service. `make generate-api-docs` (included in `make generate-openapi`) regenerates those pages
+  into `gofer/docs/src/api/` via the `generate_api_docs` binary.
 
 #### How do we generate new spec files?
 

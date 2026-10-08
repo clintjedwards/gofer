@@ -34,6 +34,11 @@ generate-openapi-backend:
 > cd gofer
 > cargo run --bin generate_openapi
 
+## generate-api-docs: build the documentation's api reference pages from the openapi spec
+generate-api-docs:
+> cd gofer
+> cargo run --bin generate_api_docs
+
 ## generate-openapi-sdk: build json documents for openapi
 generate-openapi-sdk:
 > cd sdk
@@ -42,7 +47,7 @@ generate-openapi-sdk:
 > cargo run --bin generate_openapi_sdk
 
 ## generate-openapi
-generate-openapi: generate-openapi-backend generate-openapi-sdk
+generate-openapi: generate-openapi-backend generate-api-docs generate-openapi-sdk
 
 ## run: build and run Gofer web service
 run:

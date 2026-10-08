@@ -1,0 +1,42 @@
+/* Styling for the generated API reference pages (docs/src/api/). */
+
+.api-method {
+    display: inline-block;
+    min-width: 3.2em;
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #fff;
+    padding: 0.25em 0.55em;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+/* GitHub's palette; these hold up with white text in both light and dark themes. */
+.api-method-get { background-color: #0969da; }
+.api-method-post { background-color: #1a7f37; }
+.api-method-put { background-color: #bc4c00; }
+.api-method-patch { background-color: #8250df; }
+.api-method-delete { background-color: #cf222e; }
+.api-method-ws { background-color: #57606a; }
+
+/* The method + path bar under each operation heading. */
+.api-endpoint {
+    display: flex;
+    align-items: center;
+    gap: 0.7em;
+    padding: 0.55em 0.8em;
+    margin: 1em 0;
+    border: 1px solid var(--table-border-color);
+    border-radius: 6px;
+    background: var(--quote-bg);
+    overflow-x: auto;
+}
+
+.api-endpoint code {
+    background: transparent;
+    padding: 0;
+    font-size: 0.95em;
+    white-space: nowrap;
+}

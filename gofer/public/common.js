@@ -228,7 +228,7 @@ async function setupHeader({ active = "", onSessionChange = () => {} } = {}) {
       <nav class="ml-auto hidden md:flex items-center gap-1">
         ${navLink("/", "Overview", active === "overview")}
         ${navLink("/docs", "Docs", false)}
-        ${navLink("/docs/api_reference.html", "API", false)}
+        ${navLink("/docs/api/index.html", "API", false)}
         ${navLink("https://github.com/clintjedwards/gofer", "GitHub", false, true)}
       </nav>
       <div class="ml-auto md:ml-2 flex items-center gap-2">

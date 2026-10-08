@@ -8,7 +8,6 @@
 [Best Practices](./best_practices.md)
 [Troubleshooting](./troubleshooting.md)
 [Philosophy](./philosophy.md)
-[API Reference](api_reference.md)
 
 # User Guide
 
@@ -44,3 +43,25 @@
 
 - [Command Line](./cli/README.md)
   - [Configuration](./cli/configuration.md)
+
+# API
+
+<!-- Everything between these markers is written by `make generate-api-docs`; don't edit by hand. -->
+<!-- API_DOCS_GEN_START -->
+- [API Reference](./api/README.md)
+  - [Configs](./api/configs.md)
+  - [Deployments](./api/deployments.md)
+  - [Events](./api/events.md)
+  - [Extensions](./api/extensions.md)
+  - [Namespaces](./api/namespaces.md)
+  - [Objects](./api/objects.md)
+  - [Permissions](./api/permissions.md)
+  - [Pipelines](./api/pipelines.md)
+  - [Runs](./api/runs.md)
+  - [Secrets](./api/secrets.md)
+  - [Subscriptions](./api/subscriptions.md)
+  - [System](./api/system.md)
+  - [Tasks](./api/tasks.md)
+  - [Tokens](./api/tokens.md)
+  - [Schemas](./api/schemas.md)
+<!-- API_DOCS_GEN_END -->
