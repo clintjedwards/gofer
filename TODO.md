@@ -4,17 +4,25 @@ None
 
 # Small things I want to keep track of that I definitely need to do.
 
-* new: Let extension settings use secret store references (`global_secret{{key}}`) the same way pipeline variables do.
-  Right now settings are passed to the extension container verbatim (`start_extension` in api/extensions.rs), so
-  credentials like the github extension's app key end up stored raw in the registration. That's why settings are
-  redacted in API responses and only shown to admins who pass `include_secret`. With references, settings would hold
-  `global_secret{{github_app_key}}`, which is safe to show anyone who can read the extension and still useful for
-  debugging, and the real value would sit behind the secret store's admin only access. The redaction could then be
-  dropped for settings that are references.
+* Let extension manifests declare the additional roles an extension needs, instead of operators having to know and
+  list them in `additional_roles`. Could also be a way to permission extensions per pipeline or per purpose. Needs a
+  design session.
+* Pin extension images by digest in manifests (`image@sha256:...`) instead of by tag. Gofer pulls on every start, so
+  if someone re-pushes a tag the extension's code changes without the manifest changing and without reload showing
+  anything. With digests, "the manifest didn't change" really means "the code didn't change". The SDKs' manifest
+  command would need the digest, so this probably happens after the image is pushed in the release flow.
+* Follow up: pipelines aren't told when an extension they're subscribed to stops (disabled, unconfigured, or failed to
+  start). The subscriptions stay but nothing triggers them, so a pipeline owner just sees runs that never happen.
+  Showing the extension's state next to a pipeline's subscriptions might be a quick fix; worth checking whether
+  there's more to it (events, notifying the pipeline, what the web UI shows).
+* Buffer external events (webhooks) for extensions that are down, e.g. while one restarts during a reload. Keep the
+  last N requests per extension with the time they arrived and hand them over when the extension starts, letting the
+  extension decide what to do with them. That covers webhook driven extensions like github. Time based extensions
+  (cron, interval) are harder since there's nothing for Gofer to store; they'd need their own way to notice and
+  handle what they missed while down.
 * Allow a parallelism mode where when parallelism is at it's max the oldest run, if still running gets, cancelled.
   * Also make it so that the github extension can do this as well, if a new run for a branch gets kicked off, if there
     is already a run for that branch, cancel the ongoing one and trigger a new one.
-* Check documentation for broken links, there are many. Linkcheck seems not to be working properly.
 * We should allow the ops side to somehow set the GOFER_API_BASE_URL for the containers. This can change based on
 where the container is running.
 * When you insert a new pipeline it should show you a diff on what you're changing.
@@ -22,14 +30,11 @@ where the container is running.
   directory. Think more about how the UX should be handled here.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
-* There needs to be a way to update extensions in place so that updating versions of extensions can be done online.
 * Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
 * There should probably be a global timeout for all runs.
 * Create a setting to allow operators to turn off the ability to attach to a container.
-* If the parent does not exist for a particular thing it errors incorrectly. For example if you request a correct task
-execution but mistype the pipeline, you might get an error instead of a "hey that thing doesn't exist".
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
   It should use task leasing to avoid any stuck processors.
@@ -87,7 +92,6 @@ sometimes.
 
 - Test that unsubscribing works with all extensions. And create a test suite that extensions can run against.
 - The interval extension should create jitter of about 2-5 mins. During that time it can choose when to start counting to extension an event. This is so that when we restart the server all events don't perfectly line up with each other and cause a storm. There might be other, smarter ways to handle this queue and api calling as well.
-- If a extension by the same name is already installed, we should refuse to install another but instead allow the user to update it.
 - Extensions should be able to report details about their execution somehow. It would be nice when looking at my pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension that is taking overly long.
 - Github sometimes changes their payloads and this causes us to always have to be at the latest release or else casting payloads might break. Investigate payload casting and see if maybe we can get something even partial if not a better error for the user.
 - Extensions probably need a healthcheck endpoint, so we can try to self heal and if not we can at least inform the user. We

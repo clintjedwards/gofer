@@ -100,12 +100,15 @@ pub async fn external_event_handler(
     let api_state = rqctx.context();
     let path = path.into_inner();
 
-    let extension = match api_state.extensions.get(&path.extension_id) {
-        Some(extension) => extension.value().clone(),
+    let extension = match api_state.running_extension(&path.extension_id) {
+        Some(extension) => extension,
         None => {
             return Err(HttpError::for_bad_request(
                 None,
-                format!("extension_id '{}' not found", path.extension_id,),
+                format!(
+                    "extension_id '{}' not found or not running",
+                    path.extension_id,
+                ),
             ));
         }
     };

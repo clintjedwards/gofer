@@ -1,9 +1,11 @@
 package extensions
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -25,9 +27,6 @@ import (
 type ExtensionServiceInterface interface {
 	// A simple healthcheck endpoint used by Gofer to make sure the extension is still in good health and reachable.
 	Health(context.Context) *HttpError
-
-	// Returns information specific to the extension.
-	Info(context.Context) (*InfoResponse, *HttpError)
 
 	// Allows the extension to print any information relevant to it's execution.
 	// This endpoint is freely open so make sure to not include any particularly sensitive information in this
@@ -87,10 +86,39 @@ func handleResponse(w http.ResponseWriter, _ *http.Request, data any, statusCode
 	}
 }
 
+// Parameter is one setting or subscription parameter an extension accepts. It ends up in the extension's manifest,
+// which is where Gofer reads it from.
+type Parameter struct {
+	Key           string
+	Documentation string
+	Required      bool
+
+	// Secret params hold credentials. Gofer only accepts a global secret reference (`global_secret{{key}}`) for them
+	// so the raw value never sits in Gofer's config or database.
+	Secret bool
+
+	// Default is used when the operator doesn't set a value. Empty means there is no default.
+	Default string
+}
+
+// Documentation is everything Gofer needs to know about an extension besides its image. Run prints it as the
+// extension's manifest, and the manifest is the only place Gofer reads it from; the running extension is never asked.
+type Documentation struct {
+	// Body is anything the extension wants to explain to the user, usually a link to its docs.
+	Body string
+
+	// ConfigParams are the settings an operator gives the extension in Gofer's config. They control the extension
+	// for its entire lifetime.
+	ConfigParams []Parameter
+
+	// PipelineSubscriptionParams are passed by a pipeline when it subscribes to the extension, and control how the
+	// extension treats that one subscription.
+	PipelineSubscriptionParams []Parameter
+}
+
 type extensionWrapper struct {
-	authKey     string
-	extension   ExtensionServiceInterface
-	extensionID string
+	authKey   string
+	extension ExtensionServiceInterface
 }
 
 func (e *extensionWrapper) healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -107,19 +135,6 @@ func (e *extensionWrapper) healthHandler(w http.ResponseWriter, r *http.Request)
 func (e *extensionWrapper) debugHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	resp := e.extension.Debug(ctx)
-
-	handleResponse(w, r, resp, http.StatusOK)
-}
-
-func (e *extensionWrapper) infoHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	resp, err := e.extension.Info(ctx)
-	if err != nil {
-		handleError(w, r, err.Message, err.StatusCode, nil)
-		return
-	}
-
-	resp.ExtensionId = e.extensionID
 
 	handleResponse(w, r, resp, http.StatusOK)
 }
@@ -190,8 +205,28 @@ func (e *extensionWrapper) externalEventHandler(w http.ResponseWriter, r *http.R
 	handleResponse(w, r, nil, http.StatusNoContent)
 }
 
-// NewExtension starts the provided extension service
-func NewExtension(impl ExtensionServiceInterface) {
+// Run is the entrypoint for every extension. It takes the extension's documentation as plain data, separate from the
+// extension itself, so the documentation can be read without the extension's config being present.
+//
+// Running the extension binary as `<binary> manifest --image <image>` prints the extension's manifest and exits
+// without calling newExtension. The manifest is how Gofer learns everything about the extension: its image, its
+// settings, and its subscription parameters.
+// Otherwise Run calls newExtension and starts the extension's HTTP service.
+func Run(docs Documentation, newExtension func() ExtensionServiceInterface) {
+	if len(os.Args) > 1 && os.Args[1] == "manifest" {
+		flags := flag.NewFlagSet("manifest", flag.ExitOnError)
+		image := flags.String("image", "", "The container image the manifest should point Gofer at.")
+		_ = flags.Parse(os.Args[2:])
+
+		if *image == "" {
+			fmt.Fprintln(os.Stderr, "--image is required; ex. manifest --image ghcr.io/example/my_extension:1.0.0")
+			os.Exit(1)
+		}
+
+		fmt.Print(Manifest(*image, docs))
+		return
+	}
+
 	config, err := GetExtensionSystemConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not retrieve system configuration via env vars")
@@ -200,11 +235,47 @@ func NewExtension(impl ExtensionServiceInterface) {
 	setupLogging(config.ID, config.LogLevel)
 
 	extensionServer := &extensionWrapper{
-		authKey:     config.Secret,
-		extension:   impl,
-		extensionID: config.ID,
+		authKey:   config.Secret,
+		extension: newExtension(),
 	}
 	extensionServer.run()
+}
+
+// Manifest renders the TOML manifest Gofer uses to install an extension. Gofer's server config points at this file,
+// and it's the only place Gofer learns about the extension: which image to run, which settings it takes, and which
+// parameters pipelines pass when they subscribe.
+func Manifest(image string, docs Documentation) string {
+	var b strings.Builder
+
+	b.WriteString("# Generated by the extension's `manifest` command; edit the extension's documentation in code instead.\n")
+	fmt.Fprintf(&b, "image = %s\n", tomlString(image))
+	fmt.Fprintf(&b, "documentation = %s\n", tomlString(docs.Body))
+
+	writeParams := func(table string, params []Parameter) {
+		for _, param := range params {
+			fmt.Fprintf(&b, "\n[[%s]]\n", table)
+			fmt.Fprintf(&b, "key = %s\n", tomlString(param.Key))
+			fmt.Fprintf(&b, "required = %t\n", param.Required)
+			fmt.Fprintf(&b, "secret = %t\n", param.Secret)
+			fmt.Fprintf(&b, "default = %s\n", tomlString(param.Default))
+			fmt.Fprintf(&b, "documentation = %s\n", tomlString(param.Documentation))
+		}
+	}
+
+	writeParams("config_params", docs.ConfigParams)
+	writeParams("pipeline_subscription_params", docs.PipelineSubscriptionParams)
+
+	return b.String()
+}
+
+// tomlString quotes a string as a TOML basic string. JSON's string escapes are a subset of TOML's, so we lean on the
+// JSON encoder rather than writing our own escaping.
+func tomlString(s string) string {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	_ = encoder.Encode(s)
+	return strings.TrimSuffix(buf.String(), "\n")
 }
 
 // getTLS finds the certificates which are appropriate and
@@ -229,7 +300,6 @@ func getTLS() *tls.Config {
 func InitRouter(e *extensionWrapper) (router *http.ServeMux) {
 	router = http.NewServeMux()
 	router.HandleFunc("GET /api/health", e.healthHandler)
-	router.HandleFunc("GET /api/info", e.infoHandler)
 	router.HandleFunc("GET /api/debug", e.debugHandler)
 	router.HandleFunc("POST /api/subscribe", e.subscribeHandler)
 	router.HandleFunc("DELETE /api/subscribe", e.unsubscribeHandler)
@@ -347,9 +417,10 @@ func (config *ExtensionSystemConfig) validate() error {
 }
 
 // Convenience function for grabbing the extension specific config value from the environment.
-// Gofer passes in these values into the environment when the extension first starts.
+// Gofer passes in these values into the environment when the extension first starts, as
+// `GOFER_EXTENSION_CONFIG_<KEY>`. The prefix keeps an operator's settings from colliding with the system vars.
 func GetConfigFromEnv(key string) string {
-	return os.Getenv(strings.ToUpper(key))
+	return os.Getenv("GOFER_EXTENSION_CONFIG_" + strings.ToUpper(key))
 }
 
 // setupLogging inits a global logging configuration that is used by all extensions.

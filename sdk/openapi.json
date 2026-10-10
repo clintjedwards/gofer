@@ -74,30 +74,6 @@
         }
       }
     },
-    "/api/info": {
-      "get": {
-        "summary": "Returns general metadata about the extension.",
-        "operationId": "info",
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InfoResponse"
-                }
-              }
-            }
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
     "/api/shutdown": {
       "post": {
         "summary": "Shutdown tells the extension to cleanup and gracefully shutdown. If a extension",
@@ -182,34 +158,6 @@
           "info"
         ]
       },
-      "Documentation": {
-        "type": "object",
-        "properties": {
-          "body": {
-            "description": "Anything the extension wants to explain to the user. This text is inserted into the documentation a user can look up about the extension. Supports AsciiDoc.",
-            "type": "string"
-          },
-          "config_params": {
-            "description": "Each extension has configuration parameters that can be passed in at extension startup. These parameters should control extension behavior for it's entire lifetime.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Parameter"
-            }
-          },
-          "pipeline_subscription_params": {
-            "description": "Each extension has pipeline subscription parameters that are passed in by a pipeline when it attempts to subscribe to an extension. This controls how the extension treats that specific pipeline subscription.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Parameter"
-            }
-          }
-        },
-        "required": [
-          "body",
-          "config_params",
-          "pipeline_subscription_params"
-        ]
-      },
       "Error": {
         "description": "Error information from a response.",
         "type": "object",
@@ -252,46 +200,6 @@
         "required": [
           "body",
           "headers"
-        ]
-      },
-      "InfoResponse": {
-        "type": "object",
-        "properties": {
-          "documentation": {
-            "description": "Documentation about how to use the extension.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Documentation"
-              }
-            ]
-          },
-          "extension_id": {
-            "description": "The unique extension identifier",
-            "type": "string"
-          }
-        },
-        "required": [
-          "documentation",
-          "extension_id"
-        ]
-      },
-      "Parameter": {
-        "type": "object",
-        "properties": {
-          "documentation": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "required": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "documentation",
-          "key",
-          "required"
         ]
       },
       "SubscriptionRequest": {

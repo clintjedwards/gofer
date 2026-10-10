@@ -87,21 +87,16 @@ func (e *extension) Health(_ context.Context) *extsdk.HttpError {
 	return nil
 }
 
-func (e *extension) Info(_ context.Context) (*extsdk.InfoResponse, *extsdk.HttpError) {
-	return &extsdk.InfoResponse{
-		ExtensionId: "", // The extension wrapper automagically fills this in.
-		Documentation: extsdk.Documentation{
-			Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
-			PipelineSubscriptionParams: []extsdk.Parameter{
-				{
-					Key:           ParameterExpression,
-					Documentation: "The cron expression to run on. You can find more information on crafting this expression at https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
-					Required:      true,
-				},
-			},
-			ConfigParams: []extsdk.Parameter{},
+var documentation = extsdk.Documentation{
+	Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
+	PipelineSubscriptionParams: []extsdk.Parameter{
+		{
+			Key:           ParameterExpression,
+			Documentation: "The cron expression to run on. You can find more information on crafting this expression at https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
+			Required:      true,
 		},
-	}, nil
+	},
+	ConfigParams: []extsdk.Parameter{},
 }
 
 func (e *extension) Debug(_ context.Context) extsdk.DebugResponse {
@@ -344,6 +339,5 @@ func startRun(client *sdk.Client, sub subscription, minute time.Time) {
 }
 
 func main() {
-	extension := newExtension()
-	extsdk.NewExtension(extension)
+	extsdk.Run(documentation, func() extsdk.ExtensionServiceInterface { return newExtension() })
 }

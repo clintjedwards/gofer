@@ -516,7 +516,9 @@ fn write_schemas_page(spec: &Value) {
 /// share one variant schema); variants with data are serde's externally tagged form, an object
 /// with a single key naming the variant.
 fn write_enum(out: &mut String, variants: &[Value]) {
-    let has_data = variants.iter().any(|v| v["type"].as_str() == Some("object"));
+    let has_data = variants
+        .iter()
+        .any(|v| v["type"].as_str() == Some("object"));
 
     if has_data {
         writeln!(
@@ -549,12 +551,7 @@ fn write_enum(out: &mut String, variants: &[Value]) {
         }
 
         let Some(properties) = variant["properties"].as_object() else {
-            writeln!(
-                out,
-                "| {} | | {description} |",
-                render_type(variant, "")
-            )
-            .unwrap();
+            writeln!(out, "| {} | | {description} |", render_type(variant, "")).unwrap();
             continue;
         };
         for (name, payload) in properties {

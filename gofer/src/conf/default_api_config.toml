@@ -26,7 +26,6 @@ bypass_auth = true        # Turns off auth.
 use_included_certs = true # Automatically loads localhost certs for development.
 
 [extensions]
-install_std_extensions = true
 stop_timeout = 300            # 5 mins
 use_tls = false
 verify_certs = false          # When attempting to communicate with an extension verify the cert is correct and known.

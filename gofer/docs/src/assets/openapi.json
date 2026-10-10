@@ -121,17 +121,6 @@
         ],
         "summary": "List all extensions currently registered.",
         "operationId": "list_extensions",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "include_secret",
-            "description": "Return credentials in plaintext instead of redacted. Admin only.",
-            "schema": {
-              "nullable": true,
-              "type": "boolean"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "successful operation",
@@ -150,31 +139,23 @@
             "$ref": "#/components/responses/Error"
           }
         }
-      },
+      }
+    },
+    "/api/extensions/plan": {
       "post": {
         "tags": [
           "Extensions"
         ],
-        "summary": "Register and start a new extension.",
-        "description": "This route is only available to admin tokens.",
-        "operationId": "install_extension",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InstallExtensionRequest"
-              }
-            }
-          },
-          "required": true
-        },
+        "summary": "Compare Gofer's config with the extensions currently running.",
+        "description": "Rereads Gofer's config file and reports, for each extension, what applying the config would change. Nothing is changed. This backs `gofer extension reload`. This route is only accessible for admin tokens.",
+        "operationId": "plan_extensions",
         "responses": {
-          "201": {
-            "description": "successful creation",
+          "200": {
+            "description": "successful operation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InstallExtensionResponse"
+                  "$ref": "#/components/schemas/PlanExtensionsResponse"
                 }
               }
             }
@@ -204,15 +185,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "query",
-            "name": "include_secret",
-            "description": "Return credentials in plaintext instead of redacted. Admin only.",
-            "schema": {
-              "nullable": true,
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
@@ -238,9 +210,9 @@
         "tags": [
           "Extensions"
         ],
-        "summary": "Uninstall a registered extension.",
-        "description": "This route is only accessible for admin tokens.",
-        "operationId": "uninstall_extension",
+        "summary": "Permanently delete an extension along with its pipeline subscriptions and stored objects.",
+        "description": "Only extensions that have already been removed from Gofer's config can be purged; Gofer would just install a configured one again. This route is only accessible for admin tokens.",
+        "operationId": "purge_extension",
         "parameters": [
           {
             "in": "path",
@@ -263,14 +235,16 @@
             "$ref": "#/components/responses/Error"
           }
         }
-      },
-      "patch": {
+      }
+    },
+    "/api/extensions/{extension_id}/apply": {
+      "post": {
         "tags": [
           "Extensions"
         ],
-        "summary": "Enable or disable an extension.",
-        "description": "This route is only accessible for admin tokens.",
-        "operationId": "update_extension",
+        "summary": "Bring one extension in line with Gofer's config.",
+        "description": "Rereads Gofer's config file and installs, updates, starts, or stops the extension to match. The request carries the `plan_hash` from the plan the operator reviewed; if anything changed since then (the config, the manifest, or a secret) the request is refused so the operator can look at a fresh plan. This route is only accessible for admin tokens.",
+        "operationId": "apply_extension",
         "parameters": [
           {
             "in": "path",
@@ -286,15 +260,22 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateExtensionRequest"
+                "$ref": "#/components/schemas/ApplyExtensionRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "resource updated"
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyExtensionResponse"
+                }
+              }
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -551,6 +532,45 @@
         "responses": {
           "204": {
             "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions/{extension_id}/revert": {
+      "post": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Go back to the version of an extension that was running before the last apply.",
+        "description": "Meant for when a new version won't start. The extension stays different from Gofer's config until the config is fixed, so it'll show up in the next plan again. This route is only accessible for admin tokens.",
+        "operationId": "revert_extension",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "description": "The unique identifier for the target extension.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyExtensionResponse"
+                }
+              }
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -3695,6 +3715,39 @@
           "delete"
         ]
       },
+      "ApplyExtensionRequest": {
+        "type": "object",
+        "properties": {
+          "plan_hash": {
+            "description": "The `plan_hash` from the plan the operator reviewed.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_hash"
+        ]
+      },
+      "ApplyExtensionResponse": {
+        "type": "object",
+        "properties": {
+          "can_revert": {
+            "description": "Whether the version that was running before can be brought back with revert.",
+            "type": "boolean"
+          },
+          "extension": {
+            "description": "The extension as it ended up. Check `state` and `state_reason` to see whether it started.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Extension"
+              }
+            ]
+          }
+        },
+        "required": [
+          "can_revert",
+          "extension"
+        ]
+      },
       "Config": {
         "description": "A representation of the user's configuration settings for a particular pipeline.",
         "type": "object",
@@ -4212,12 +4265,16 @@
         "type": "object",
         "properties": {
           "documentation": {
-            "description": "Extension given documentation usually in markdown.",
+            "description": "What the extension's manifest says about it. Comes from the manifest alone, so it's there whether or not the extension is running; empty only for extensions that are no longer in Gofer's config.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/Documentation"
               }
             ]
+          },
+          "manifest": {
+            "description": "Where the extension's manifest came from. Empty for extensions that are no longer in Gofer's config.",
+            "type": "string"
           },
           "registration": {
             "description": "Metadata about the extension as it is registered within Gofer.",
@@ -4241,6 +4298,10 @@
               }
             ]
           },
+          "state_reason": {
+            "description": "Why the extension is in its current state; set when it failed to start or was stopped.",
+            "type": "string"
+          },
           "url": {
             "description": "The network address used to communicate with the extension by the main process.",
             "type": "string"
@@ -4248,9 +4309,11 @@
         },
         "required": [
           "documentation",
+          "manifest",
           "registration",
           "started",
           "state",
+          "state_reason",
           "url"
         ]
       },
@@ -4288,6 +4351,25 @@
           "objects",
           "subscriptions",
           "logs"
+        ]
+      },
+      "FieldChange": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "new": {
+            "type": "string"
+          },
+          "old": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "new",
+          "old"
         ]
       },
       "GetDeploymentResponse": {
@@ -4615,59 +4697,6 @@
         "required": [
           "id",
           "user"
-        ]
-      },
-      "InstallExtensionRequest": {
-        "type": "object",
-        "properties": {
-          "additional_roles": {
-            "nullable": true,
-            "description": "Additional roles to add to the extension. This allows operators to extend extension access to things that otherwise the extension might not be able to do with it's default role.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "id": {
-            "description": "A unique id for the extension. Since this needs to only be unique across extensions simply using the extension's name usually suffices.",
-            "type": "string"
-          },
-          "image": {
-            "description": "The container image this extension should use.",
-            "type": "string"
-          },
-          "registry_auth": {
-            "nullable": true,
-            "description": "Registry auth credentials",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RegistryAuth"
-              }
-            ]
-          },
-          "settings": {
-            "description": "Each extension has a list of settings it takes to configure how it runs. You can usually find this in the documentation.",
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "image",
-          "settings"
-        ]
-      },
-      "InstallExtensionResponse": {
-        "type": "object",
-        "properties": {
-          "extension": {
-            "$ref": "#/components/schemas/Extension"
-          }
-        },
-        "required": [
-          "extension"
         ]
       },
       "Kind": {
@@ -5746,6 +5775,11 @@
       "Parameter": {
         "type": "object",
         "properties": {
+          "default": {
+            "description": "The value used when the operator doesn't set one. Empty means there is no default.",
+            "default": "",
+            "type": "string"
+          },
           "documentation": {
             "type": "string"
           },
@@ -5753,6 +5787,11 @@
             "type": "string"
           },
           "required": {
+            "type": "boolean"
+          },
+          "secret": {
+            "description": "Secret params only accept a global secret reference (`global_secret{{key}}`).",
+            "default": false,
             "type": "boolean"
           }
         },
@@ -5882,6 +5921,112 @@
           "namespace_id",
           "pipeline_id",
           "state"
+        ]
+      },
+      "PlanAction": {
+        "oneOf": [
+          {
+            "description": "New to Gofer; it'll be registered and started.",
+            "type": "string",
+            "enum": [
+              "install"
+            ]
+          },
+          {
+            "description": "Its config changed; the old container is stopped and a new one started.",
+            "type": "string",
+            "enum": [
+              "update"
+            ]
+          },
+          {
+            "description": "Its config is unchanged but it isn't running, usually because it failed to start earlier.",
+            "type": "string",
+            "enum": [
+              "start"
+            ]
+          },
+          {
+            "description": "Already running as the config describes.",
+            "type": "string",
+            "enum": [
+              "unchanged"
+            ]
+          },
+          {
+            "description": "Turned off with `enabled = false`; it'll be stopped.",
+            "type": "string",
+            "enum": [
+              "disable"
+            ]
+          },
+          {
+            "description": "No longer in the config; it'll be stopped but its subscriptions and data are kept.",
+            "type": "string",
+            "enum": [
+              "unconfigure"
+            ]
+          },
+          {
+            "description": "The config entry has a problem. Nothing will be changed until it's fixed.",
+            "type": "string",
+            "enum": [
+              "invalid"
+            ]
+          }
+        ]
+      },
+      "PlanExtensionsResponse": {
+        "type": "object",
+        "properties": {
+          "extensions": {
+            "description": "Every extension Gofer knows about or the config mentions, and what applying the config would do to it.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlannedExtension"
+            }
+          }
+        },
+        "required": [
+          "extensions"
+        ]
+      },
+      "PlannedExtension": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/PlanAction"
+          },
+          "changes": {
+            "description": "What's different between what's running and what the config describes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldChange"
+            }
+          },
+          "error": {
+            "description": "Why the config entry is invalid. Empty unless the action is `invalid`.",
+            "type": "string"
+          },
+          "extension_id": {
+            "type": "string"
+          },
+          "manifest": {
+            "description": "Where the extension's manifest comes from.",
+            "type": "string"
+          },
+          "plan_hash": {
+            "description": "Pass this back when applying so Gofer can refuse if anything changed after the plan was made.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "changes",
+          "error",
+          "extension_id",
+          "manifest",
+          "plan_hash"
         ]
       },
       "PutExtensionObjectResponse": {
@@ -6081,7 +6226,7 @@
           },
           "registry_auth": {
             "nullable": true,
-            "description": "Auth credentials for the image's registry. The password is redacted in API responses.",
+            "description": "Auth credentials for the image's registry. The password is a global secret reference.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/RegistryAuth"
@@ -6089,7 +6234,7 @@
             ]
           },
           "settings": {
-            "description": "Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values. Values are redacted in API responses since settings routinely carry credentials (the github extension's app key, for example).",
+            "description": "The extension's settings from Gofer's config, passed to the extension as env vars. Secrets are stored as global secret references, never the values themselves, so settings are safe to show.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Variable"
@@ -6712,17 +6857,6 @@
           "user"
         ]
       },
-      "UpdateExtensionRequest": {
-        "type": "object",
-        "properties": {
-          "enable": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enable"
-        ]
-      },
       "UpdateNamespaceRequest": {
         "type": "object",
         "properties": {
@@ -7016,6 +7150,20 @@
             "enum": [
               "exited"
             ]
+          },
+          {
+            "description": "Not running on purpose, because it's disabled or no longer in the config.",
+            "type": "string",
+            "enum": [
+              "stopped"
+            ]
+          },
+          {
+            "description": "Gofer couldn't start the extension. The extension's `state_reason` says why.",
+            "type": "string",
+            "enum": [
+              "failed"
+            ]
           }
         ]
       },
@@ -7036,10 +7184,17 @@
             ]
           },
           {
-            "description": "Not available to be used by pipelines, either through lack of installation or being disabled by an admin.",
+            "description": "Turned off in Gofer's config with `enabled = false`.",
             "type": "string",
             "enum": [
               "disabled"
+            ]
+          },
+          {
+            "description": "Installed at some point but no longer listed in Gofer's config. Its subscriptions and data are kept so adding it back to the config picks up where it left off; `gofer extension purge` deletes them for good.",
+            "type": "string",
+            "enum": [
+              "unconfigured"
             ]
           }
         ]

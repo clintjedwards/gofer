@@ -271,7 +271,7 @@ impl Cli {
         let is_service_start = matches!(
             &args.command,
             Commands::Service(service::ServiceSubcommands {
-                command: service::ServiceCommands::Start
+                command: service::ServiceCommands::Start { .. }
             })
         );
 

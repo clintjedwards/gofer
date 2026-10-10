@@ -12,6 +12,19 @@ A string, one of:
 | `write` |  |
 | `delete` |  |
 
+## ApplyExtensionRequest
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `plan_hash` | string | yes | The `plan_hash` from the plan the operator reviewed. |
+
+## ApplyExtensionResponse
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `can_revert` | boolean | yes | Whether the version that was running before can be brought back with revert. |
+| `extension` | [Extension](#extension) | yes | The extension as it ended up. Check `state` and `state_reason` to see whether it started. |
+
 ## Config
 
 A representation of the user's configuration settings for a particular pipeline.
@@ -181,10 +194,12 @@ An Extension is the way that pipelines add extra functionality to themselves. Pi
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
-| `documentation` | [Documentation](#documentation) | yes | Extension given documentation usually in markdown. |
+| `documentation` | [Documentation](#documentation) | yes | What the extension's manifest says about it. Comes from the manifest alone, so it's there whether or not the extension is running; empty only for extensions that are no longer in Gofer's config. |
+| `manifest` | string | yes | Where the extension's manifest came from. Empty for extensions that are no longer in Gofer's config. |
 | `registration` | [Registration](#registration) | yes | Metadata about the extension as it is registered within Gofer. |
 | `started` | integer | yes | The start time of the extension in epoch milliseconds. |
 | `state` | [extension_state](#extension_state) | yes | The current state of the extension as it exists within Gofer's operating model. |
+| `state_reason` | string | yes | Why the extension is in its current state; set when it failed to start or was stopped. |
 | `url` | string | yes | The network address used to communicate with the extension by the main process. |
 
 ## ExtensionGrant
@@ -208,6 +223,14 @@ A string, one of:
 | `objects` |  |
 | `subscriptions` |  |
 | `logs` |  |
+
+## FieldChange
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `field` | string | yes |  |
+| `new` | string | yes |  |
+| `old` | string | yes |  |
 
 ## GetDeploymentResponse
 
@@ -342,22 +365,6 @@ Everything a role allows. Each grant stands on its own; a request is allowed onl
 | ----- | ---- | -------- | ----------- |
 | `id` | string | yes | The unique identifier for the token that initiated the request. |
 | `user` | string | yes | The plaintext username for of the token. |
-
-## InstallExtensionRequest
-
-| Field | Type | Required | Description |
-| ----- | ---- | -------- | ----------- |
-| `additional_roles` | array of string (nullable) | no | Additional roles to add to the extension. This allows operators to extend extension access to things that otherwise the extension might not be able to do with it's default role. |
-| `id` | string | yes | A unique id for the extension. Since this needs to only be unique across extensions simply using the extension's name usually suffices. |
-| `image` | string | yes | The container image this extension should use. |
-| `registry_auth` | [RegistryAuth](#registryauth) (nullable) | no | Registry auth credentials |
-| `settings` | map of string to string | yes | Each extension has a list of settings it takes to configure how it runs. You can usually find this in the documentation. |
-
-## InstallExtensionResponse
-
-| Field | Type | Required | Description |
-| ----- | ---- | -------- | ----------- |
-| `extension` | [Extension](#extension) | yes |  |
 
 ## Kind
 
@@ -550,9 +557,11 @@ A string, one of:
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
+| `default` | string | no | The value used when the operator doesn't set one. Empty means there is no default. |
 | `documentation` | string | yes |  |
 | `key` | string | yes |  |
 | `required` | boolean | yes |  |
+| `secret` | boolean | no | Secret params only accept a global secret reference (`global_secret{{key}}`). |
 
 ## Pipeline
 
@@ -598,6 +607,37 @@ A pipeline as it shows up in a listing: its metadata plus the name and descripti
 | `namespace_id` | string | yes | Unique identifier of the target namespace. |
 | `pipeline_id` | string | yes | Unique identifier of the target pipeline. |
 | `state` | [PipelineState](#pipelinestate) | yes | The current running state of the pipeline. This is used to determine if the pipeline should run or not. |
+
+## PlanAction
+
+A string, one of:
+
+| Value | Description |
+| ----- | ----------- |
+| `install` | New to Gofer; it'll be registered and started. |
+| `update` | Its config changed; the old container is stopped and a new one started. |
+| `start` | Its config is unchanged but it isn't running, usually because it failed to start earlier. |
+| `unchanged` | Already running as the config describes. |
+| `disable` | Turned off with `enabled = false`; it'll be stopped. |
+| `unconfigure` | No longer in the config; it'll be stopped but its subscriptions and data are kept. |
+| `invalid` | The config entry has a problem. Nothing will be changed until it's fixed. |
+
+## PlanExtensionsResponse
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `extensions` | array of [PlannedExtension](#plannedextension) | yes | Every extension Gofer knows about or the config mentions, and what applying the config would do to it. |
+
+## PlannedExtension
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `action` | [PlanAction](#planaction) | yes |  |
+| `changes` | array of [FieldChange](#fieldchange) | yes | What's different between what's running and what the config describes. |
+| `error` | string | yes | Why the config entry is invalid. Empty unless the action is `invalid`. |
+| `extension_id` | string | yes |  |
+| `manifest` | string | yes | Where the extension's manifest comes from. |
+| `plan_hash` | string | yes | Pass this back when applying so Gofer can refuse if anything changed after the plan was made. |
 
 ## PutExtensionObjectResponse
 
@@ -669,8 +709,8 @@ When installing a new extension, we allow the extension installer to pass a bunc
 | `extension_id` | string | yes | Unique identifier for the extension. |
 | `image` | string | yes | Which container image this extension should run. |
 | `modified` | integer | yes | Time of last modification in epoch milliseconds. |
-| `registry_auth` | [RegistryAuth](#registryauth) (nullable) | no | Auth credentials for the image's registry. The password is redacted in API responses. |
-| `settings` | array of [Variable](#variable) | yes | Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values. Values are redacted in API responses since settings routinely carry credentials (the github extension's app key, for example). |
+| `registry_auth` | [RegistryAuth](#registryauth) (nullable) | no | Auth credentials for the image's registry. The password is a global secret reference. |
+| `settings` | array of [Variable](#variable) | yes | The extension's settings from Gofer's config, passed to the extension as env vars. Secrets are stored as global secret references, never the values themselves, so settings are safe to show. |
 | `status` | [extension_status](#extension_status) | yes | Whether the extension is enabled or not; extensions can be disabled to prevent use by admins. |
 
 ## RegistryAuth
@@ -848,12 +888,6 @@ The hash field is skipped during serialization to prevent it from being exposed 
 | `roles` | array of string | yes | The role ids for the current token. |
 | `user` | string | yes | The user of the token in plaintext. |
 
-## UpdateExtensionRequest
-
-| Field | Type | Required | Description |
-| ----- | ---- | -------- | ----------- |
-| `enable` | boolean | yes |  |
-
 ## UpdateNamespaceRequest
 
 | Field | Type | Required | Description |
@@ -990,6 +1024,8 @@ A string, one of:
 | `processing` | Pre-scheduling validation and prep. |
 | `running` | Currently running as reported by scheduler. |
 | `exited` | Extension has exited; usually because of an error. |
+| `stopped` | Not running on purpose, because it's disabled or no longer in the config. |
+| `failed` | Gofer couldn't start the extension. The extension's `state_reason` says why. |
 
 ## extension_status
 
@@ -999,7 +1035,8 @@ A string, one of:
 | ----- | ----------- |
 | `unknown` | Cannot determine status of Extension; should never be in this status. |
 | `enabled` | Installed and able to be used by pipelines. |
-| `disabled` | Not available to be used by pipelines, either through lack of installation or being disabled by an admin. |
+| `disabled` | Turned off in Gofer's config with `enabled = false`. |
+| `unconfigured` | Installed at some point but no longer listed in Gofer's config. Its subscriptions and data are kept so adding it back to the config picks up where it left off; `gofer extension purge` deletes them for good. |
 
 ## run_state
 

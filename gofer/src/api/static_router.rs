@@ -78,6 +78,37 @@ pub async fn static_documentation_handler(
     }
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct ManifestPath {
+    name: String,
+}
+
+/// Serve the manifests for Gofer's default extensions, which are built into Gofer. Operators can read exactly what
+/// Gofer runs for them, and `gofer extension manifest <name>` reads them from here.
+#[endpoint {
+    method = GET,
+    path = "/extensions/manifests/{name}",
+    unpublished = true,
+}]
+pub async fn default_manifest_handler(
+    _rqctx: RequestContext<Arc<ApiState>>,
+    path: Path<ManifestPath>,
+) -> Result<Response<Body>, HttpError> {
+    let name = path.into_inner().name;
+    let name = name.strip_suffix(".toml").unwrap_or(&name);
+
+    match crate::api::extensions::reconcile::default_manifest(name) {
+        Some(content) => Ok(Response::builder()
+            .header(header::CONTENT_TYPE, "application/toml")
+            .body(Body::from(content))
+            .unwrap()),
+        None => Err(HttpError::for_not_found(
+            None,
+            format!("'{name}' isn't one of Gofer's default extensions"),
+        )),
+    }
+}
+
 /// Serve files from the specified root path.
 ///
 /// Dropshot does not allow paths to overlap, see discussions here:

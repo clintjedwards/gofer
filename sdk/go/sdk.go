@@ -83,6 +83,41 @@ const (
 	PipelineStateUnknown  PipelineState = "unknown"
 )
 
+// Defines values for PlanAction0.
+const (
+	Install PlanAction0 = "install"
+)
+
+// Defines values for PlanAction1.
+const (
+	Update PlanAction1 = "update"
+)
+
+// Defines values for PlanAction2.
+const (
+	Start PlanAction2 = "start"
+)
+
+// Defines values for PlanAction3.
+const (
+	Unchanged PlanAction3 = "unchanged"
+)
+
+// Defines values for PlanAction4.
+const (
+	Disable PlanAction4 = "disable"
+)
+
+// Defines values for PlanAction5.
+const (
+	Unconfigure PlanAction5 = "unconfigure"
+)
+
+// Defines values for PlanAction6.
+const (
+	Invalid PlanAction6 = "invalid"
+)
+
 // Defines values for RequiredParentStatus.
 const (
 	RequiredParentStatusAny     RequiredParentStatus = "any"
@@ -181,6 +216,16 @@ const (
 	Exited ExtensionState3 = "exited"
 )
 
+// Defines values for ExtensionState4.
+const (
+	Stopped ExtensionState4 = "stopped"
+)
+
+// Defines values for ExtensionState5.
+const (
+	ExtensionState5Failed ExtensionState5 = "failed"
+)
+
 // Defines values for ExtensionStatus0.
 const (
 	ExtensionStatus0Unknown ExtensionStatus0 = "unknown"
@@ -194,6 +239,11 @@ const (
 // Defines values for ExtensionStatus2.
 const (
 	ExtensionStatus2Disabled ExtensionStatus2 = "disabled"
+)
+
+// Defines values for ExtensionStatus3.
+const (
+	Unconfigured ExtensionStatus3 = "unconfigured"
 )
 
 // Defines values for RunState0.
@@ -333,7 +383,7 @@ const (
 
 // Defines values for TaskExecutionStatusReasonType0.
 const (
-	Unknown TaskExecutionStatusReasonType0 = "unknown"
+	TaskExecutionStatusReasonType0Unknown TaskExecutionStatusReasonType0 = "unknown"
 )
 
 // Defines values for TaskExecutionStatusReasonType1.
@@ -363,6 +413,21 @@ const (
 
 // Action defines model for Action.
 type Action string
+
+// ApplyExtensionRequest defines model for ApplyExtensionRequest.
+type ApplyExtensionRequest struct {
+	// PlanHash The `plan_hash` from the plan the operator reviewed.
+	PlanHash string `json:"plan_hash"`
+}
+
+// ApplyExtensionResponse defines model for ApplyExtensionResponse.
+type ApplyExtensionResponse struct {
+	// CanRevert Whether the version that was running before can be brought back with revert.
+	CanRevert bool `json:"can_revert"`
+
+	// Extension The extension as it ended up. Check `state` and `state_reason` to see whether it started.
+	Extension Extension `json:"extension"`
+}
 
 // Config A representation of the user's configuration settings for a particular pipeline.
 type Config struct {
@@ -588,8 +653,11 @@ type ExchangeWebLoginResponse struct {
 
 // Extension An Extension is the way that pipelines add extra functionality to themselves. Pipelines can "subscribe" to extensions and extensions then act on behalf of that pipeline.
 type Extension struct {
-	// Documentation Extension given documentation usually in markdown.
+	// Documentation What the extension's manifest says about it. Comes from the manifest alone, so it's there whether or not the extension is running; empty only for extensions that are no longer in Gofer's config.
 	Documentation Documentation `json:"documentation"`
+
+	// Manifest Where the extension's manifest came from. Empty for extensions that are no longer in Gofer's config.
+	Manifest string `json:"manifest"`
 
 	// Registration Metadata about the extension as it is registered within Gofer.
 	Registration Registration `json:"registration"`
@@ -599,6 +667,9 @@ type Extension struct {
 
 	// State The current state of the extension as it exists within Gofer's operating model.
 	State ExtensionState `json:"state"`
+
+	// StateReason Why the extension is in its current state; set when it failed to start or was stopped.
+	StateReason string `json:"state_reason"`
 
 	// Url The network address used to communicate with the extension by the main process.
 	Url string `json:"url"`
@@ -615,6 +686,13 @@ type ExtensionGrant struct {
 
 // ExtensionResource Things that belong to a specific extension.
 type ExtensionResource string
+
+// FieldChange defines model for FieldChange.
+type FieldChange struct {
+	Field string `json:"field"`
+	New   string `json:"new"`
+	Old   string `json:"old"`
+}
 
 // GetDeploymentResponse defines model for GetDeploymentResponse.
 type GetDeploymentResponse struct {
@@ -738,30 +816,6 @@ type Initiator struct {
 
 	// User The plaintext username for of the token.
 	User string `json:"user"`
-}
-
-// InstallExtensionRequest defines model for InstallExtensionRequest.
-type InstallExtensionRequest struct {
-	// AdditionalRoles Additional roles to add to the extension. This allows operators to extend extension access to things that otherwise the extension might not be able to do with it's default role.
-	AdditionalRoles *[]string `json:"additional_roles"`
-
-	// Id A unique id for the extension. Since this needs to only be unique across extensions simply using the extension's name usually suffices.
-	Id string `json:"id"`
-
-	// Image The container image this extension should use.
-	Image string `json:"image"`
-
-	// RegistryAuth Registry auth credentials
-	RegistryAuth *RegistryAuth `json:"registry_auth"`
-
-	// Settings Each extension has a list of settings it takes to configure how it runs. You can usually find this in the documentation.
-	Settings map[string]string `json:"settings"`
-}
-
-// InstallExtensionResponse defines model for InstallExtensionResponse.
-type InstallExtensionResponse struct {
-	// Extension An Extension is the way that pipelines add extra functionality to themselves. Pipelines can "subscribe" to extensions and extensions then act on behalf of that pipeline.
-	Extension Extension `json:"extension"`
 }
 
 // Kind defines model for Kind.
@@ -1143,9 +1197,14 @@ type Object struct {
 
 // Parameter defines model for Parameter.
 type Parameter struct {
-	Documentation string `json:"documentation"`
-	Key           string `json:"key"`
-	Required      bool   `json:"required"`
+	// Default The value used when the operator doesn't set one. Empty means there is no default.
+	Default       *string `json:"default,omitempty"`
+	Documentation string  `json:"documentation"`
+	Key           string  `json:"key"`
+	Required      bool    `json:"required"`
+
+	// Secret Secret params only accept a global secret reference (`global_secret{{key}}`).
+	Secret *bool `json:"secret,omitempty"`
 }
 
 // Pipeline `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container. This structure allows you to organize and define the workflow for the tasks you want to execute. - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`
@@ -1208,6 +1267,56 @@ type PipelineSummary struct {
 
 	// State The current running state of the pipeline. This is used to determine if the pipeline should run or not.
 	State PipelineState `json:"state"`
+}
+
+// PlanAction defines model for PlanAction.
+type PlanAction struct {
+	union json.RawMessage
+}
+
+// PlanAction0 New to Gofer; it'll be registered and started.
+type PlanAction0 string
+
+// PlanAction1 Its config changed; the old container is stopped and a new one started.
+type PlanAction1 string
+
+// PlanAction2 Its config is unchanged but it isn't running, usually because it failed to start earlier.
+type PlanAction2 string
+
+// PlanAction3 Already running as the config describes.
+type PlanAction3 string
+
+// PlanAction4 Turned off with `enabled = false`; it'll be stopped.
+type PlanAction4 string
+
+// PlanAction5 No longer in the config; it'll be stopped but its subscriptions and data are kept.
+type PlanAction5 string
+
+// PlanAction6 The config entry has a problem. Nothing will be changed until it's fixed.
+type PlanAction6 string
+
+// PlanExtensionsResponse defines model for PlanExtensionsResponse.
+type PlanExtensionsResponse struct {
+	// Extensions Every extension Gofer knows about or the config mentions, and what applying the config would do to it.
+	Extensions []PlannedExtension `json:"extensions"`
+}
+
+// PlannedExtension defines model for PlannedExtension.
+type PlannedExtension struct {
+	Action PlanAction `json:"action"`
+
+	// Changes What's different between what's running and what the config describes.
+	Changes []FieldChange `json:"changes"`
+
+	// Error Why the config entry is invalid. Empty unless the action is `invalid`.
+	Error       string `json:"error"`
+	ExtensionId string `json:"extension_id"`
+
+	// Manifest Where the extension's manifest comes from.
+	Manifest string `json:"manifest"`
+
+	// PlanHash Pass this back when applying so Gofer can refuse if anything changed after the plan was made.
+	PlanHash string `json:"plan_hash"`
 }
 
 // PutExtensionObjectResponse defines model for PutExtensionObjectResponse.
@@ -1296,10 +1405,10 @@ type Registration struct {
 	// Modified Time of last modification in epoch milliseconds.
 	Modified uint64 `json:"modified"`
 
-	// RegistryAuth Auth credentials for the image's registry. The password is redacted in API responses.
+	// RegistryAuth Auth credentials for the image's registry. The password is a global secret reference.
 	RegistryAuth *RegistryAuth `json:"registry_auth"`
 
-	// Settings Extensions allow configuration through env vars passed to them through this field. Refer to the extension's documentation for setting values. Values are redacted in API responses since settings routinely carry credentials (the github extension's app key, for example).
+	// Settings The extension's settings from Gofer's config, passed to the extension as env vars. Secrets are stored as global secret references, never the values themselves, so settings are safe to show.
 	Settings []Variable `json:"settings"`
 
 	// Status Whether the extension is enabled or not; extensions can be disabled to prevent use by admins.
@@ -1565,11 +1674,6 @@ type Token struct {
 	User string `json:"user"`
 }
 
-// UpdateExtensionRequest defines model for UpdateExtensionRequest.
-type UpdateExtensionRequest struct {
-	Enable bool `json:"enable"`
-}
-
 // UpdateNamespaceRequest defines model for UpdateNamespaceRequest.
 type UpdateNamespaceRequest struct {
 	// Description Short description about what the namespace is used for.
@@ -1713,6 +1817,12 @@ type ExtensionState2 string
 // ExtensionState3 Extension has exited; usually because of an error.
 type ExtensionState3 string
 
+// ExtensionState4 Not running on purpose, because it's disabled or no longer in the config.
+type ExtensionState4 string
+
+// ExtensionState5 Gofer couldn't start the extension. The extension's `state_reason` says why.
+type ExtensionState5 string
+
 // ExtensionStatus defines model for extension_status.
 type ExtensionStatus struct {
 	union json.RawMessage
@@ -1724,8 +1834,11 @@ type ExtensionStatus0 string
 // ExtensionStatus1 Installed and able to be used by pipelines.
 type ExtensionStatus1 string
 
-// ExtensionStatus2 Not available to be used by pipelines, either through lack of installation or being disabled by an admin.
+// ExtensionStatus2 Turned off in Gofer's config with `enabled = false`.
 type ExtensionStatus2 string
+
+// ExtensionStatus3 Installed at some point but no longer listed in Gofer's config. Its subscriptions and data are kept so adding it back to the config picks up where it left off; `gofer extension purge` deletes them for good.
+type ExtensionStatus3 string
 
 // RunState The current state of the run. The state is described as the progress of the run towards completion.
 type RunState struct {
@@ -1889,18 +2002,6 @@ type StreamEventsParams struct {
 	Reverse *bool `form:"reverse,omitempty" json:"reverse,omitempty"`
 }
 
-// ListExtensionsParams defines parameters for ListExtensions.
-type ListExtensionsParams struct {
-	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
-	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
-}
-
-// GetExtensionParams defines parameters for GetExtension.
-type GetExtensionParams struct {
-	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
-	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
-}
-
 // PutExtensionObjectParams defines parameters for PutExtensionObject.
 type PutExtensionObjectParams struct {
 	// Force Overwrite a value of a object if it already exists.
@@ -1976,11 +2077,8 @@ type GetGlobalSecretParams struct {
 	IncludeSecret bool `form:"include_secret" json:"include_secret"`
 }
 
-// InstallExtensionJSONRequestBody defines body for InstallExtension for application/json ContentType.
-type InstallExtensionJSONRequestBody = InstallExtensionRequest
-
-// UpdateExtensionJSONRequestBody defines body for UpdateExtension for application/json ContentType.
-type UpdateExtensionJSONRequestBody = UpdateExtensionRequest
+// ApplyExtensionJSONRequestBody defines body for ApplyExtension for application/json ContentType.
+type ApplyExtensionJSONRequestBody = ApplyExtensionRequest
 
 // CreateNamespaceJSONRequestBody defines body for CreateNamespace for application/json ContentType.
 type CreateNamespaceJSONRequestBody = CreateNamespaceRequest
@@ -2801,6 +2899,198 @@ func (t *Kind) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsPlanAction0 returns the union data inside the PlanAction as a PlanAction0
+func (t PlanAction) AsPlanAction0() (PlanAction0, error) {
+	var body PlanAction0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlanAction0 overwrites any union data inside the PlanAction as the provided PlanAction0
+func (t *PlanAction) FromPlanAction0(v PlanAction0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePlanAction0 performs a merge with any union data inside the PlanAction, using the provided PlanAction0
+func (t *PlanAction) MergePlanAction0(v PlanAction0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlanAction1 returns the union data inside the PlanAction as a PlanAction1
+func (t PlanAction) AsPlanAction1() (PlanAction1, error) {
+	var body PlanAction1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlanAction1 overwrites any union data inside the PlanAction as the provided PlanAction1
+func (t *PlanAction) FromPlanAction1(v PlanAction1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePlanAction1 performs a merge with any union data inside the PlanAction, using the provided PlanAction1
+func (t *PlanAction) MergePlanAction1(v PlanAction1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlanAction2 returns the union data inside the PlanAction as a PlanAction2
+func (t PlanAction) AsPlanAction2() (PlanAction2, error) {
+	var body PlanAction2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlanAction2 overwrites any union data inside the PlanAction as the provided PlanAction2
+func (t *PlanAction) FromPlanAction2(v PlanAction2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePlanAction2 performs a merge with any union data inside the PlanAction, using the provided PlanAction2
+func (t *PlanAction) MergePlanAction2(v PlanAction2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlanAction3 returns the union data inside the PlanAction as a PlanAction3
+func (t PlanAction) AsPlanAction3() (PlanAction3, error) {
+	var body PlanAction3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlanAction3 overwrites any union data inside the PlanAction as the provided PlanAction3
+func (t *PlanAction) FromPlanAction3(v PlanAction3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePlanAction3 performs a merge with any union data inside the PlanAction, using the provided PlanAction3
+func (t *PlanAction) MergePlanAction3(v PlanAction3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlanAction4 returns the union data inside the PlanAction as a PlanAction4
+func (t PlanAction) AsPlanAction4() (PlanAction4, error) {
+	var body PlanAction4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlanAction4 overwrites any union data inside the PlanAction as the provided PlanAction4
+func (t *PlanAction) FromPlanAction4(v PlanAction4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePlanAction4 performs a merge with any union data inside the PlanAction, using the provided PlanAction4
+func (t *PlanAction) MergePlanAction4(v PlanAction4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlanAction5 returns the union data inside the PlanAction as a PlanAction5
+func (t PlanAction) AsPlanAction5() (PlanAction5, error) {
+	var body PlanAction5
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlanAction5 overwrites any union data inside the PlanAction as the provided PlanAction5
+func (t *PlanAction) FromPlanAction5(v PlanAction5) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePlanAction5 performs a merge with any union data inside the PlanAction, using the provided PlanAction5
+func (t *PlanAction) MergePlanAction5(v PlanAction5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPlanAction6 returns the union data inside the PlanAction as a PlanAction6
+func (t PlanAction) AsPlanAction6() (PlanAction6, error) {
+	var body PlanAction6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPlanAction6 overwrites any union data inside the PlanAction as the provided PlanAction6
+func (t *PlanAction) FromPlanAction6(v PlanAction6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePlanAction6 performs a merge with any union data inside the PlanAction, using the provided PlanAction6
+func (t *PlanAction) MergePlanAction6(v PlanAction6) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PlanAction) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PlanAction) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsVariableSource0 returns the union data inside the VariableSource as a VariableSource0
 func (t VariableSource) AsVariableSource0() (VariableSource0, error) {
 	var body VariableSource0
@@ -3195,6 +3485,58 @@ func (t *ExtensionState) MergeExtensionState3(v ExtensionState3) error {
 	return err
 }
 
+// AsExtensionState4 returns the union data inside the ExtensionState as a ExtensionState4
+func (t ExtensionState) AsExtensionState4() (ExtensionState4, error) {
+	var body ExtensionState4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromExtensionState4 overwrites any union data inside the ExtensionState as the provided ExtensionState4
+func (t *ExtensionState) FromExtensionState4(v ExtensionState4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeExtensionState4 performs a merge with any union data inside the ExtensionState, using the provided ExtensionState4
+func (t *ExtensionState) MergeExtensionState4(v ExtensionState4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsExtensionState5 returns the union data inside the ExtensionState as a ExtensionState5
+func (t ExtensionState) AsExtensionState5() (ExtensionState5, error) {
+	var body ExtensionState5
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromExtensionState5 overwrites any union data inside the ExtensionState as the provided ExtensionState5
+func (t *ExtensionState) FromExtensionState5(v ExtensionState5) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeExtensionState5 performs a merge with any union data inside the ExtensionState, using the provided ExtensionState5
+func (t *ExtensionState) MergeExtensionState5(v ExtensionState5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t ExtensionState) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -3273,6 +3615,32 @@ func (t *ExtensionStatus) FromExtensionStatus2(v ExtensionStatus2) error {
 
 // MergeExtensionStatus2 performs a merge with any union data inside the ExtensionStatus, using the provided ExtensionStatus2
 func (t *ExtensionStatus) MergeExtensionStatus2(v ExtensionStatus2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsExtensionStatus3 returns the union data inside the ExtensionStatus as a ExtensionStatus3
+func (t ExtensionStatus) AsExtensionStatus3() (ExtensionStatus3, error) {
+	var body ExtensionStatus3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromExtensionStatus3 overwrites any union data inside the ExtensionStatus as the provided ExtensionStatus3
+func (t *ExtensionStatus) FromExtensionStatus3(v ExtensionStatus3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeExtensionStatus3 performs a merge with any union data inside the ExtensionStatus, using the provided ExtensionStatus3
+func (t *ExtensionStatus) MergeExtensionStatus3(v ExtensionStatus3) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -4216,23 +4584,21 @@ type ClientInterface interface {
 	GetEvent(ctx context.Context, eventId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListExtensions request
-	ListExtensions(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// InstallExtensionWithBody request with any body
-	InstallExtensionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PlanExtensions request
+	PlanExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	InstallExtension(ctx context.Context, body InstallExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UninstallExtension request
-	UninstallExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PurgeExtension request
+	PurgeExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetExtension request
-	GetExtension(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateExtensionWithBody request with any body
-	UpdateExtensionWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ApplyExtensionWithBody request with any body
+	ApplyExtensionWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateExtension(ctx context.Context, extensionId string, body UpdateExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ApplyExtension(ctx context.Context, extensionId string, body ApplyExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetExtensionDebugInfo request
 	GetExtensionDebugInfo(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4251,6 +4617,9 @@ type ClientInterface interface {
 
 	// PutExtensionObjectWithBody request with any body
 	PutExtensionObjectWithBody(ctx context.Context, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevertExtension request
+	RevertExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListExtensionSubscriptions request
 	ListExtensionSubscriptions(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4514,8 +4883,8 @@ func (c *Client) GetEvent(ctx context.Context, eventId string, reqEditors ...Req
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListExtensions(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListExtensionsRequest(c.Server, params)
+func (c *Client) ListExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExtensionsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -4526,8 +4895,8 @@ func (c *Client) ListExtensions(ctx context.Context, params *ListExtensionsParam
 	return c.Client.Do(req)
 }
 
-func (c *Client) InstallExtensionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewInstallExtensionRequestWithBody(c.Server, contentType, body)
+func (c *Client) PlanExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPlanExtensionsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -4538,8 +4907,8 @@ func (c *Client) InstallExtensionWithBody(ctx context.Context, contentType strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) InstallExtension(ctx context.Context, body InstallExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewInstallExtensionRequest(c.Server, body)
+func (c *Client) PurgeExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPurgeExtensionRequest(c.Server, extensionId)
 	if err != nil {
 		return nil, err
 	}
@@ -4550,8 +4919,8 @@ func (c *Client) InstallExtension(ctx context.Context, body InstallExtensionJSON
 	return c.Client.Do(req)
 }
 
-func (c *Client) UninstallExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUninstallExtensionRequest(c.Server, extensionId)
+func (c *Client) GetExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExtensionRequest(c.Server, extensionId)
 	if err != nil {
 		return nil, err
 	}
@@ -4562,8 +4931,8 @@ func (c *Client) UninstallExtension(ctx context.Context, extensionId string, req
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetExtension(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetExtensionRequest(c.Server, extensionId, params)
+func (c *Client) ApplyExtensionWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApplyExtensionRequestWithBody(c.Server, extensionId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4574,20 +4943,8 @@ func (c *Client) GetExtension(ctx context.Context, extensionId string, params *G
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateExtensionWithBody(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateExtensionRequestWithBody(c.Server, extensionId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateExtension(ctx context.Context, extensionId string, body UpdateExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateExtensionRequest(c.Server, extensionId, body)
+func (c *Client) ApplyExtension(ctx context.Context, extensionId string, body ApplyExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApplyExtensionRequest(c.Server, extensionId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4660,6 +5017,18 @@ func (c *Client) GetExtensionObject(ctx context.Context, extensionId string, key
 
 func (c *Client) PutExtensionObjectWithBody(ctx context.Context, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutExtensionObjectRequestWithBody(c.Server, extensionId, key, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RevertExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevertExtensionRequest(c.Server, extensionId)
 	if err != nil {
 		return nil, err
 	}
@@ -5764,7 +6133,7 @@ func NewGetEventRequest(server string, eventId string) (*http.Request, error) {
 }
 
 // NewListExtensionsRequest generates requests for ListExtensions
-func NewListExtensionsRequest(server string, params *ListExtensionsParams) (*http.Request, error) {
+func NewListExtensionsRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -5780,28 +6149,6 @@ func NewListExtensionsRequest(server string, params *ListExtensionsParams) (*htt
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.IncludeSecret != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -5812,19 +6159,8 @@ func NewListExtensionsRequest(server string, params *ListExtensionsParams) (*htt
 	return req, nil
 }
 
-// NewInstallExtensionRequest calls the generic InstallExtension builder with application/json body
-func NewInstallExtensionRequest(server string, body InstallExtensionJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewInstallExtensionRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewInstallExtensionRequestWithBody generates requests for InstallExtension with any type of body
-func NewInstallExtensionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPlanExtensionsRequest generates requests for PlanExtensions
+func NewPlanExtensionsRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -5832,7 +6168,7 @@ func NewInstallExtensionRequestWithBody(server string, contentType string, body 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/extensions")
+	operationPath := fmt.Sprintf("/api/extensions/plan")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5842,18 +6178,16 @@ func NewInstallExtensionRequestWithBody(server string, contentType string, body 
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), body)
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Content-Type", contentType)
-
 	return req, nil
 }
 
-// NewUninstallExtensionRequest generates requests for UninstallExtension
-func NewUninstallExtensionRequest(server string, extensionId string) (*http.Request, error) {
+// NewPurgeExtensionRequest generates requests for PurgeExtension
+func NewPurgeExtensionRequest(server string, extensionId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5887,7 +6221,7 @@ func NewUninstallExtensionRequest(server string, extensionId string) (*http.Requ
 }
 
 // NewGetExtensionRequest generates requests for GetExtension
-func NewGetExtensionRequest(server string, extensionId string, params *GetExtensionParams) (*http.Request, error) {
+func NewGetExtensionRequest(server string, extensionId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5910,28 +6244,6 @@ func NewGetExtensionRequest(server string, extensionId string, params *GetExtens
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.IncludeSecret != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -5942,19 +6254,19 @@ func NewGetExtensionRequest(server string, extensionId string, params *GetExtens
 	return req, nil
 }
 
-// NewUpdateExtensionRequest calls the generic UpdateExtension builder with application/json body
-func NewUpdateExtensionRequest(server string, extensionId string, body UpdateExtensionJSONRequestBody) (*http.Request, error) {
+// NewApplyExtensionRequest calls the generic ApplyExtension builder with application/json body
+func NewApplyExtensionRequest(server string, extensionId string, body ApplyExtensionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateExtensionRequestWithBody(server, extensionId, "application/json", bodyReader)
+	return NewApplyExtensionRequestWithBody(server, extensionId, "application/json", bodyReader)
 }
 
-// NewUpdateExtensionRequestWithBody generates requests for UpdateExtension with any type of body
-func NewUpdateExtensionRequestWithBody(server string, extensionId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewApplyExtensionRequestWithBody generates requests for ApplyExtension with any type of body
+func NewApplyExtensionRequestWithBody(server string, extensionId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5969,7 +6281,7 @@ func NewUpdateExtensionRequestWithBody(server string, extensionId string, conten
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/extensions/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/extensions/%s/apply", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5979,7 +6291,7 @@ func NewUpdateExtensionRequestWithBody(server string, extensionId string, conten
 		return nil, err
 	}
 
-	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -6230,6 +6542,40 @@ func NewPutExtensionObjectRequestWithBody(server string, extensionId string, key
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRevertExtensionRequest generates requests for RevertExtension
+func NewRevertExtensionRequest(server string, extensionId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "extension_id", runtime.ParamLocationPath, extensionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/%s/revert", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9361,23 +9707,21 @@ type ClientWithResponsesInterface interface {
 	GetEventWithResponse(ctx context.Context, eventId string, reqEditors ...RequestEditorFn) (*GetEventResp, error)
 
 	// ListExtensionsWithResponse request
-	ListExtensionsWithResponse(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error)
+	ListExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error)
 
-	// InstallExtensionWithBodyWithResponse request with any body
-	InstallExtensionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InstallExtensionResp, error)
+	// PlanExtensionsWithResponse request
+	PlanExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PlanExtensionsResp, error)
 
-	InstallExtensionWithResponse(ctx context.Context, body InstallExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*InstallExtensionResp, error)
-
-	// UninstallExtensionWithResponse request
-	UninstallExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*UninstallExtensionResp, error)
+	// PurgeExtensionWithResponse request
+	PurgeExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*PurgeExtensionResp, error)
 
 	// GetExtensionWithResponse request
-	GetExtensionWithResponse(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*GetExtensionResp, error)
+	GetExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*GetExtensionResp, error)
 
-	// UpdateExtensionWithBodyWithResponse request with any body
-	UpdateExtensionWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateExtensionResp, error)
+	// ApplyExtensionWithBodyWithResponse request with any body
+	ApplyExtensionWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApplyExtensionResp, error)
 
-	UpdateExtensionWithResponse(ctx context.Context, extensionId string, body UpdateExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateExtensionResp, error)
+	ApplyExtensionWithResponse(ctx context.Context, extensionId string, body ApplyExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*ApplyExtensionResp, error)
 
 	// GetExtensionDebugInfoWithResponse request
 	GetExtensionDebugInfoWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*GetExtensionDebugInfoResp, error)
@@ -9396,6 +9740,9 @@ type ClientWithResponsesInterface interface {
 
 	// PutExtensionObjectWithBodyWithResponse request with any body
 	PutExtensionObjectWithBodyWithResponse(ctx context.Context, extensionId string, key string, params *PutExtensionObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionObjectResp, error)
+
+	// RevertExtensionWithResponse request
+	RevertExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*RevertExtensionResp, error)
 
 	// ListExtensionSubscriptionsWithResponse request
 	ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error)
@@ -9717,16 +10064,16 @@ func (r ListExtensionsResp) StatusCode() int {
 	return 0
 }
 
-type InstallExtensionResp struct {
+type PlanExtensionsResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *InstallExtensionResponse
+	JSON200      *PlanExtensionsResponse
 	JSON4XX      *Error
 	JSON5XX      *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r InstallExtensionResp) Status() string {
+func (r PlanExtensionsResp) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -9734,14 +10081,14 @@ func (r InstallExtensionResp) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r InstallExtensionResp) StatusCode() int {
+func (r PlanExtensionsResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type UninstallExtensionResp struct {
+type PurgeExtensionResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON4XX      *Error
@@ -9749,7 +10096,7 @@ type UninstallExtensionResp struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r UninstallExtensionResp) Status() string {
+func (r PurgeExtensionResp) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -9757,7 +10104,7 @@ func (r UninstallExtensionResp) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UninstallExtensionResp) StatusCode() int {
+func (r PurgeExtensionResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -9788,15 +10135,16 @@ func (r GetExtensionResp) StatusCode() int {
 	return 0
 }
 
-type UpdateExtensionResp struct {
+type ApplyExtensionResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ApplyExtensionResponse
 	JSON4XX      *Error
 	JSON5XX      *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r UpdateExtensionResp) Status() string {
+func (r ApplyExtensionResp) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -9804,7 +10152,7 @@ func (r UpdateExtensionResp) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpdateExtensionResp) StatusCode() int {
+func (r ApplyExtensionResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -9946,6 +10294,30 @@ func (r PutExtensionObjectResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PutExtensionObjectResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RevertExtensionResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ApplyExtensionResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r RevertExtensionResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevertExtensionResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11520,64 +11892,56 @@ func (c *ClientWithResponses) GetEventWithResponse(ctx context.Context, eventId 
 }
 
 // ListExtensionsWithResponse request returning *ListExtensionsResp
-func (c *ClientWithResponses) ListExtensionsWithResponse(ctx context.Context, params *ListExtensionsParams, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error) {
-	rsp, err := c.ListExtensions(ctx, params, reqEditors...)
+func (c *ClientWithResponses) ListExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error) {
+	rsp, err := c.ListExtensions(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseListExtensionsResp(rsp)
 }
 
-// InstallExtensionWithBodyWithResponse request with arbitrary body returning *InstallExtensionResp
-func (c *ClientWithResponses) InstallExtensionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InstallExtensionResp, error) {
-	rsp, err := c.InstallExtensionWithBody(ctx, contentType, body, reqEditors...)
+// PlanExtensionsWithResponse request returning *PlanExtensionsResp
+func (c *ClientWithResponses) PlanExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PlanExtensionsResp, error) {
+	rsp, err := c.PlanExtensions(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseInstallExtensionResp(rsp)
+	return ParsePlanExtensionsResp(rsp)
 }
 
-func (c *ClientWithResponses) InstallExtensionWithResponse(ctx context.Context, body InstallExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*InstallExtensionResp, error) {
-	rsp, err := c.InstallExtension(ctx, body, reqEditors...)
+// PurgeExtensionWithResponse request returning *PurgeExtensionResp
+func (c *ClientWithResponses) PurgeExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*PurgeExtensionResp, error) {
+	rsp, err := c.PurgeExtension(ctx, extensionId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseInstallExtensionResp(rsp)
-}
-
-// UninstallExtensionWithResponse request returning *UninstallExtensionResp
-func (c *ClientWithResponses) UninstallExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*UninstallExtensionResp, error) {
-	rsp, err := c.UninstallExtension(ctx, extensionId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUninstallExtensionResp(rsp)
+	return ParsePurgeExtensionResp(rsp)
 }
 
 // GetExtensionWithResponse request returning *GetExtensionResp
-func (c *ClientWithResponses) GetExtensionWithResponse(ctx context.Context, extensionId string, params *GetExtensionParams, reqEditors ...RequestEditorFn) (*GetExtensionResp, error) {
-	rsp, err := c.GetExtension(ctx, extensionId, params, reqEditors...)
+func (c *ClientWithResponses) GetExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*GetExtensionResp, error) {
+	rsp, err := c.GetExtension(ctx, extensionId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetExtensionResp(rsp)
 }
 
-// UpdateExtensionWithBodyWithResponse request with arbitrary body returning *UpdateExtensionResp
-func (c *ClientWithResponses) UpdateExtensionWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateExtensionResp, error) {
-	rsp, err := c.UpdateExtensionWithBody(ctx, extensionId, contentType, body, reqEditors...)
+// ApplyExtensionWithBodyWithResponse request with arbitrary body returning *ApplyExtensionResp
+func (c *ClientWithResponses) ApplyExtensionWithBodyWithResponse(ctx context.Context, extensionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApplyExtensionResp, error) {
+	rsp, err := c.ApplyExtensionWithBody(ctx, extensionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateExtensionResp(rsp)
+	return ParseApplyExtensionResp(rsp)
 }
 
-func (c *ClientWithResponses) UpdateExtensionWithResponse(ctx context.Context, extensionId string, body UpdateExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateExtensionResp, error) {
-	rsp, err := c.UpdateExtension(ctx, extensionId, body, reqEditors...)
+func (c *ClientWithResponses) ApplyExtensionWithResponse(ctx context.Context, extensionId string, body ApplyExtensionJSONRequestBody, reqEditors ...RequestEditorFn) (*ApplyExtensionResp, error) {
+	rsp, err := c.ApplyExtension(ctx, extensionId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateExtensionResp(rsp)
+	return ParseApplyExtensionResp(rsp)
 }
 
 // GetExtensionDebugInfoWithResponse request returning *GetExtensionDebugInfoResp
@@ -11632,6 +11996,15 @@ func (c *ClientWithResponses) PutExtensionObjectWithBodyWithResponse(ctx context
 		return nil, err
 	}
 	return ParsePutExtensionObjectResp(rsp)
+}
+
+// RevertExtensionWithResponse request returning *RevertExtensionResp
+func (c *ClientWithResponses) RevertExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*RevertExtensionResp, error) {
+	rsp, err := c.RevertExtension(ctx, extensionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevertExtensionResp(rsp)
 }
 
 // ListExtensionSubscriptionsWithResponse request returning *ListExtensionSubscriptionsResp
@@ -12485,26 +12858,26 @@ func ParseListExtensionsResp(rsp *http.Response) (*ListExtensionsResp, error) {
 	return response, nil
 }
 
-// ParseInstallExtensionResp parses an HTTP response from a InstallExtensionWithResponse call
-func ParseInstallExtensionResp(rsp *http.Response) (*InstallExtensionResp, error) {
+// ParsePlanExtensionsResp parses an HTTP response from a PlanExtensionsWithResponse call
+func ParsePlanExtensionsResp(rsp *http.Response) (*PlanExtensionsResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &InstallExtensionResp{
+	response := &PlanExtensionsResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest InstallExtensionResponse
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlanExtensionsResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON201 = &dest
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error
@@ -12525,15 +12898,15 @@ func ParseInstallExtensionResp(rsp *http.Response) (*InstallExtensionResp, error
 	return response, nil
 }
 
-// ParseUninstallExtensionResp parses an HTTP response from a UninstallExtensionWithResponse call
-func ParseUninstallExtensionResp(rsp *http.Response) (*UninstallExtensionResp, error) {
+// ParsePurgeExtensionResp parses an HTTP response from a PurgeExtensionWithResponse call
+func ParsePurgeExtensionResp(rsp *http.Response) (*PurgeExtensionResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UninstallExtensionResp{
+	response := &PurgeExtensionResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -12598,20 +12971,27 @@ func ParseGetExtensionResp(rsp *http.Response) (*GetExtensionResp, error) {
 	return response, nil
 }
 
-// ParseUpdateExtensionResp parses an HTTP response from a UpdateExtensionWithResponse call
-func ParseUpdateExtensionResp(rsp *http.Response) (*UpdateExtensionResp, error) {
+// ParseApplyExtensionResp parses an HTTP response from a ApplyExtensionWithResponse call
+func ParseApplyExtensionResp(rsp *http.Response) (*ApplyExtensionResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpdateExtensionResp{
+	response := &ApplyExtensionResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApplyExtensionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -12830,6 +13210,46 @@ func ParsePutExtensionObjectResp(rsp *http.Response) (*PutExtensionObjectResp, e
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevertExtensionResp parses an HTTP response from a RevertExtensionWithResponse call
+func ParseRevertExtensionResp(rsp *http.Response) (*RevertExtensionResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevertExtensionResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApplyExtensionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error

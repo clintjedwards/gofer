@@ -20,6 +20,10 @@ Gofer accepts configuration through environment variables or a configuration fil
 is set both in an environment variable and in a configuration file, the value of the environment variable's
 value will be the final value.
 
+Gofer reads its configuration file from `/etc/gofer/gofer_web.toml`, or from the path passed to
+`gofer service start --config <path>`. Extensions are configured in this file too, and `gofer extension reload`
+rereads it to pick up extension changes without a restart.
+
 You can view a list of environment variables Gofer takes by using the `gofer service start -h` command. It's
 important to note that each environment variable starts with a prefix of `GOFER_WEB_`. So setting the `api.log_level`
 configuration can be set as:

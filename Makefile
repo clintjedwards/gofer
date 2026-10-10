@@ -49,6 +49,28 @@ generate-openapi-sdk:
 ## generate-openapi
 generate-openapi: generate-openapi-backend generate-api-docs generate-openapi-sdk
 
+# Provided extension manifests are built into Gofer and point at the extension images built for the same release, so
+# they have to be pinned to the version in gofer/Cargo.toml.
+GOFER_SEMVER = $(shell grep -m1 '^version' gofer/Cargo.toml | cut -d '"' -f 2)
+PROVIDED_EXTENSIONS = cron interval github
+
+## generate-manifests: write each provided extension's manifest.toml, pinned to the version in gofer/Cargo.toml
+generate-manifests:
+> for ext in $(PROVIDED_EXTENSIONS); do
+>   (cd containers/extensions/$$ext && go run . manifest --image ghcr.io/clintjedwards/gofer/extensions/$$ext:$(GOFER_SEMVER) > manifest.toml)
+> done
+.PHONY: generate-manifests
+
+## check-manifests: fail if a provided extension's committed manifest.toml doesn't match what its code generates
+check-manifests:
+> for ext in $(PROVIDED_EXTENSIONS); do
+>   if ! (cd containers/extensions/$$ext && go run . manifest --image ghcr.io/clintjedwards/gofer/extensions/$$ext:$(GOFER_SEMVER) | diff -u manifest.toml -); then
+>     echo -e "$(COLOR_RED)manifest.toml for $$ext is out of date; run 'make generate-manifests'$(COLOR_END)"
+>     exit 1
+>   fi
+> done
+.PHONY: check-manifests
+
 ## run: build and run Gofer web service
 run:
 > @$(MAKE) -j run-tailwind run-backend
@@ -61,7 +83,7 @@ run-backend:
 > cargo run --bin gofer -- service start
 
 ## build-release: build Gofer for release.
-build-release: generate-openapi build-docs
+build-release: generate-openapi generate-manifests build-docs
 > cd gofer
 > cargo build --release --target=x86_64-unknown-linux-gnu
 > cd ..

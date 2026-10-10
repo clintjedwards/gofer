@@ -148,7 +148,7 @@ No grant can give access to them:
 - Creating, updating, and deleting namespaces.
 - Listing, creating, updating, and deleting tokens.
 - Creating, updating, and deleting roles.
-- Installing, updating, and uninstalling extensions, and reading an extension's debug info.
+- Reloading extensions (planning, applying, and reverting), purging them, and reading an extension's debug info.
 - Everything in the global secret store.
 - Reading and updating system preferences.
 - Deleting events.

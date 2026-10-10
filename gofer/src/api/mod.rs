@@ -137,6 +137,9 @@ pub struct ApiState {
     /// The API configuration read in at init.
     config: conf::api::ApiConfig,
 
+    /// The config file Gofer was started with, if one was given on the command line. Extension reloads reread it.
+    config_path: Option<PathBuf>,
+
     /// An in-memory mapping of currently registered and started extensions. These extensions are registered on startup
     /// and launched as long running containers via the scheduler. Gofer refers to this cache as a way to communicate
     /// quickly with the containers and their potentially changing endpoints.
@@ -175,12 +178,17 @@ pub struct ApiState {
     /// Short lived, single use codes that let `gofer web` sign the browser in without putting a token in a URL.
     /// Keyed by code. Kept in memory only, since a code that outlives a restart isn't worth keeping.
     web_logins: DashMap<String, tokens::WebLogin>,
+
+    /// Held while an extension is being started, stopped, or swapped so two reloads can't fight over the same
+    /// container.
+    extension_lock: tokio::sync::Mutex<()>,
 }
 
 impl ApiState {
     #[allow(clippy::too_many_arguments)]
     fn new(
         conf: conf::api::ApiConfig,
+        config_path: Option<PathBuf>,
         event_bus: event_utils::EventBus,
         ignore_pipeline_run_events: atomic::AtomicBool,
         object_store: Box<dyn object_store::ObjectStore>,
@@ -191,6 +199,7 @@ impl ApiState {
     ) -> Self {
         Self {
             config: conf.clone(),
+            config_path,
             event_bus,
             extensions: DashMap::new(),
             ignore_pipeline_run_events,
@@ -201,6 +210,7 @@ impl ApiState {
             secret_store,
             storage,
             web_logins: DashMap::new(),
+            extension_lock: tokio::sync::Mutex::new(()),
         }
     }
 }
@@ -291,7 +301,10 @@ fn init_api_description() -> Result<ApiDescription<Arc<ApiState>>> {
 
 /// The main initialization function for the Gofer main process. Encompasses all functionality that needs to happen
 /// before Gofer can successfully start serving requests.
-async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
+async fn init_api(
+    conf: conf::api::ApiConfig,
+    config_path: Option<PathBuf>,
+) -> Result<Arc<ApiState>> {
     // First we initialize all the main subsystems.
     let storage = storage::Db::new(&conf.server.storage_path)
         .await
@@ -333,6 +346,7 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
 
     let api_state = Arc::new(ApiState::new(
         conf.clone(),
+        config_path,
         event_bus,
         ignore_pipeline_runs,
         object_store,
@@ -343,12 +357,6 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
     ));
 
     // Then we perform additional housekeeping.
-
-    if conf.extensions.install_std_extensions {
-        extensions::install_std_extensions(api_state.clone())
-            .await
-            .context("Could not register standard extensions")?;
-    }
 
     namespaces::create_default_namespace(api_state.clone())
         .await
@@ -368,13 +376,13 @@ async fn init_api(conf: conf::api::ApiConfig) -> Result<Arc<ApiState>> {
 }
 
 /// Starts both the gofer main api and the external events web service.
-pub async fn start_web_services() -> Result<()> {
-    let conf = conf::Configuration::<conf::api::ApiConfig>::load(None)
+pub async fn start_web_services(config_path: Option<PathBuf>) -> Result<()> {
+    let conf = conf::Configuration::<conf::api::ApiConfig>::load(config_path.clone())
         .context("Could not initialize configuration")?;
 
     init_logger(&conf.api.log_level, conf.development.pretty_logging)?;
 
-    let api_state = init_api(conf.clone())
+    let api_state = init_api(conf.clone(), config_path)
         .await
         .context("Could not initialize API")?;
 
@@ -462,9 +470,9 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     // This might cause a race conditions if the containers somehow start up before the API, but this could be trivially
     // solved on either side by either delaying this call a bit or probably in a less brittle fashion by writing some
     // retry logic on the container side.
-    extensions::start_extensions(api_state.clone())
-        .await
-        .context("Could not start extensions")?;
+    // A broken extension shouldn't keep Gofer from starting, so failures here are recorded on the extension itself
+    // and shown by `gofer extension list` rather than returned.
+    extensions::reconcile::reconcile_on_boot(api_state.clone()).await;
 
     shutdown
         .await
@@ -647,12 +655,22 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
 
     /* /api/extensions */
     api.register(extensions::list_extensions).unwrap();
-    api.register(extensions::install_extension).unwrap();
+
+    /* /api/extensions/plan */
+    api.register(extensions::reconcile::plan_extensions)
+        .unwrap();
 
     /* /api/extensions/{extension_id} */
     api.register(extensions::get_extension).unwrap();
-    api.register(extensions::update_extension).unwrap();
-    api.register(extensions::uninstall_extension).unwrap();
+    api.register(extensions::purge_extension).unwrap();
+
+    /* /api/extensions/{extension_id}/apply */
+    api.register(extensions::reconcile::apply_extension)
+        .unwrap();
+
+    /* /api/extensions/{extension_id}/revert */
+    api.register(extensions::reconcile::revert_extension)
+        .unwrap();
 
     /* /api/extensions/{extension_id}/logs */
     api.register(extensions::get_extension_logs).unwrap();
@@ -713,6 +731,10 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
 
     // /docs/*
     api.register(static_router::static_documentation_handler)
+        .unwrap();
+
+    // /extensions/manifests/{name}
+    api.register(static_router::default_manifest_handler)
         .unwrap();
 
     // /
@@ -1093,6 +1115,57 @@ pub enum InterpolationKind {
     PipelineObject,
 }
 
+/// Looks up the value of a global secret.
+///
+/// Pipelines pass the namespace they're running in, and the secret has to allow that namespace. Extensions pass
+/// `None` since they don't belong to a namespace; that skips the check, which is fine because only admins can
+/// install extensions and only admins can manage global secrets.
+pub async fn fetch_global_secret(
+    api_state: &ApiState,
+    key: &str,
+    namespace_id: Option<&str>,
+) -> Result<String> {
+    let mut conn = api_state
+        .storage
+        .read_conn()
+        .await
+        .map_err(|e| anyhow!("Could not establish a connection to the database; {:#?}", e))?;
+
+    let key_metadata = match storage::secret_store_global_keys::get(&mut conn, key).await {
+        Ok(val) => val,
+        Err(storage::StorageError::NotFound) => bail!("Could not find global secret '{key}'"),
+        Err(e) => bail!("Could not retrieve global secret '{key}'; {:#?}", e),
+    };
+
+    let key_metadata: secrets::Secret = key_metadata
+        .try_into()
+        .map_err(|e| anyhow!("Could not parse global secret '{key}'; {:#?}", e))?;
+
+    if let Some(namespace_id) = namespace_id
+        && !key_metadata.is_allowed_namespace(namespace_id)
+    {
+        bail!(
+            "Global secret {} cannot be used in this current namespace. Valid namespaces: {:#?}",
+            key_metadata.key,
+            key_metadata.namespaces
+        )
+    }
+
+    let value = match api_state
+        .secret_store
+        .get(&secrets::global_secret_store_key(&key_metadata.key))
+        .await
+    {
+        Ok(val) => val,
+        Err(secret_store::SecretStoreError::NotFound) => {
+            bail!("Could not find global secret '{}'", key_metadata.key)
+        }
+        Err(e) => bail!("Could not retrieve global secret: {:#?}", e),
+    };
+
+    Ok(String::from_utf8_lossy(&value.0).to_string())
+}
+
 /// Gofer allows users to use secrets and objects from it's built-in sources. To facilitate this the user
 /// simply includes a special string in into special places within the Gofer pipeline manifest(for now this is only
 /// the "variables" field within a pipeline's tasks or a run). These special strings are decoded here.
@@ -1158,66 +1231,11 @@ pub async fn interpolate_vars(
                 });
             }
             InterpolationKind::GlobalSecret => {
-                let mut conn = match api_state.storage.read_conn().await {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        bail!(
-                            "Could not establish a connection to the database during interpolation; {:#?}",
-                            e
-                        );
-                    }
-                };
-
-                let retrieved_key_metadata = match storage::secret_store_global_keys::get(
-                    &mut conn, &value,
-                )
-                .await
-                {
-                    Ok(val) => val,
-                    Err(e) => {
-                        bail!(
-                            "Encountered error while attempting to retrieve global secret during interpolation: {:#?}",
-                            e
-                        )
-                    }
-                };
-
-                let key_metadata: secrets::Secret = match retrieved_key_metadata.try_into() {
-                    Ok(secret) => secret,
-                    Err(e) => {
-                        bail!(
-                            "Could not serialize retrieved global secret during interpolation: {:#?}",
-                            e
-                        );
-                    }
-                };
-
-                if !key_metadata.is_allowed_namespace(namespace_id) {
-                    bail!(
-                        "Global secret {} cannot be used in this current namespace. Valid namespaces: {:#?}",
-                        key_metadata.key,
-                        key_metadata.namespaces
-                    )
-                }
-
-                let retrieved_value = match api_state
-                    .secret_store
-                    .get(&secrets::global_secret_store_key(&key_metadata.key))
-                    .await
-                {
-                    Ok(val) => val,
-                    Err(e) => {
-                        if e == secret_store::SecretStoreError::NotFound {
-                            bail!("Could not find global secret {}", key_metadata.key)
-                        };
-
-                        bail!("Could not retrieve global secret: {:#?}", e)
-                    }
-                };
+                let value = fetch_global_secret(api_state, &value, Some(namespace_id)).await?;
 
                 variable_list.push(Variable {
                     key: variable.key.clone(),
-                    value: String::from_utf8_lossy(&retrieved_value.0).to_string(),
+                    value,
                     source: variable.source.clone(),
                 });
             }

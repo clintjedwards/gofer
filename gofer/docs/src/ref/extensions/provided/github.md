@@ -62,31 +62,44 @@ gofer pipeline subscribe simple github run_tests \
 ```
 ## Extension Configuration
 
-Extension configurations are set upon startup and cannot be changed afterwards.
+The Github extension isn't installed by default. It requires a [Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps)
+of your own; the [setup walkthrough below](#setting-it-up) covers creating one and installing the extension.
 
-The Github extension requires the setup and use of a [new Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps). You can [view setup instructions below](#additional-setup) which will walk you through how to retrieve the required env var variables.
+| Key                | Default  | Secret | Description                                                                                                                                         |
+| ------------------ | -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| app_id             | Required | no     | The Github app's ID, shown on the app's settings page.                                                                                              |
+| app_installation   | Required | no     | The ID of the app's installation on your account or organization. See [finding the installation ID](#2-find-the-installation-id) below.           |
+| app_key            | Required | yes    | The Github app's private key in PEM format, exactly as Github gives it to you.                                                                      |
+| app_webhook_secret | Required | yes    | The webhook secret set on the Github app. Gofer uses it to verify that webhooks really came from Github. It should be a long, random string.        |
 
-| Key                | Default  | Description                                                                                                                                                             |
-| -------------------| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| APP_ID             | Required | The Github app ID                                                                                                                                                       |
-| APP_INSTALLATION   | Required | The Github installation ID. This can be found by viewing the webhook payload delivery. See a more details walkthrough on where to find this below.                      |
-| APP_KEY            | Required | The base64'd private key of the Github app. This can be generated during Github app creation time.                                                                      |
-| APP_WEBHOOK_SECRET | Required | The Github app webhook secret key. This should be a long, randomized character string. It will be used to verify that an event came from Github and not another source. |
+Secret settings must be [global secret references](../index.html#secrets) like `global_secret{{github-app-key}}`.
 
 ### Example
 
-```bash
-gofer extension install github ghcr.io/clintjedwards/gofer/extension_github:latest \
-    -c "APP_ID=112348" \
-    -c "APP_INSTALLATION=99560091" \
-    -c "APP_KEY=TUtkUnhYY01LTUI1ejgzZU84MFhKQWhoNnBka..." \
-    -c "APP_WEBHOOK_SECRET=somereallylongstringofcharacters"
+```toml
+[[extensions.install]]
+id = "github"
+manifest = "https://raw.githubusercontent.com/clintjedwards/gofer/v<gofer version>/containers/extensions/github/manifest.toml"
+[extensions.install.settings]
+app_id = "112348"
+app_installation = "99560091"
+app_key = "global_secret{{github-app-key}}"
+app_webhook_secret = "global_secret{{github-app-webhook-secret}}"
 ```
 
-### Additional setup
+<div class="box note">
+  <div class="text">
+  <strong>Note:</strong>
+
+  <p>Before Gofer 0.12 the private key had to be base64 encoded. It's now passed exactly as Github gives it to you;
+  store the original <code>.pem</code> file, not the base64 version.</p>
+  </div>
+</div>
+
+### Setting it up
 
 Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.
-Once this app has been set up, you'll have access to all the required environment variables that you'll need to pass into Gofer's server configuration.
+Once this app has been set up, you'll have everything you need to configure the extension.
 
 Here is a quick and dirty walkthrough on the important parts of setting up the Github application.
 
@@ -102,9 +115,8 @@ On the configuration page for the new Github application the following should be
   `ex: https://mygoferinstance.yourdomain.com/external/github`
 
 - **Webhook Secret**: Make this a secure, long, random string of characters and note it for future extension configuration.
-- **Private Keys**: Generate a private key and store it somewhere safe. You'll need to base64 this key and insert it into the extension configuration.
-
-  `base64 ~/Desktop/myorg-gofer.2022-01-24.private-key.pem`
+- **Private Keys**: Generate a private key and keep the `.pem` file Github gives you; you'll store it in Gofer's
+  secret store in step 3.
 
 <div class="box note">
   <div class="text">
@@ -132,6 +144,32 @@ then viewing it in the "Recent Deliveries" page.
 
 ![Recent Deliveries](../../../assets/github-apps-recent-deliveries.png)
 ![Installation webhook event](../../../assets/github-apps-installation-id.png)
+
+#### 3. Store the secrets
+
+Put the private key and webhook secret in Gofer's global secret store. Leaving out the value prompts for it, which
+keeps it out of your shell history.
+
+```bash
+gofer secret global put github-app-key < ~/Downloads/myorg-gofer.2022-01-24.private-key.pem
+gofer secret global put github-app-webhook-secret
+```
+
+#### 4. Add the extension to Gofer's config
+
+Add an `[[extensions.install]]` entry like the [example above](#example), with your app ID and installation ID and
+references to the two secrets. Point `manifest` at the github manifest for your version of Gofer.
+
+`gofer extension manifest <manifest url> --id github` prints this block for you, with every setting documented.
+
+#### 5. Reload
+
+```bash
+gofer extension reload
+```
+
+Gofer shows the extension it's about to install and its settings; confirm, and it starts. If it doesn't,
+`gofer extension list` shows why and `gofer extension logs github` shows what the extension itself reported.
 
 ## Events
 

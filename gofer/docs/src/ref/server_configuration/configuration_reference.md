@@ -212,14 +212,29 @@ You can find [more information on the extension block here.](../extensions/index
 
 | name                    | type    | default    | description                                                                                                                                      |
 | ----------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| install_base_extensions | boolean | true       | Attempts to automatically install the `cron` and `interval` extensions on first startup.                                                         |
+| install                 | list    | empty      | The extensions Gofer should run, one `[[extensions.install]]` entry each. The `cron` and `interval` extensions are always included unless an entry with their id sets `enabled = false`. See [installing and configuring extensions](../extensions/index.html#installing-and-configuring-extensions) for every field. |
 | stop_timeout            | string  | 5m         | The amount of time Gofer will wait until extension containers have stopped before sending a SIGKILL.                                             |
 | tls_cert_path           | string  | <Required> | The TLS certificate path Gofer will use for the extensions. This should be a certificate that the main Gofer service will be able to access.     |
 | tls_key_path            | string  | <Required> | The TLS certificate path key Gofer will use for the extensions. This should be a certificate that the main Gofer service will be able to access. |
 
+`gofer extension reload` applies changes to the `install` entries without restarting Gofer. Everything else in this
+block needs a restart.
+
 ```toml
 [extensions]
-install_std_extensions = true
 stop_timeout = 300            # 5 mins
 use_tls = false
+
+[[extensions.install]]
+id = "github"
+manifest = "https://raw.githubusercontent.com/clintjedwards/gofer/v<gofer version>/containers/extensions/github/manifest.toml"
+[extensions.install.settings]
+app_id = "112348"
+app_installation = "99560091"
+app_key = "global_secret{{github-app-key}}"
+app_webhook_secret = "global_secret{{github-app-webhook-secret}}"
+
+[[extensions.install]]
+id = "cron"
+enabled = false
 ```

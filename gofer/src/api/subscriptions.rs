@@ -764,11 +764,9 @@ async fn unsubscribe_extension(
     extension_id: &str,
     subscription_id: &str,
 ) -> Result<()> {
-    let extension = api_state
-        .extensions
-        .get(extension_id)
-        .ok_or(anyhow!("could not find extension"))?;
-    let extension = extension.value();
+    let extension = api_state.running_extension(extension_id).ok_or(anyhow!(
+        "could not find a running extension '{extension_id}'"
+    ))?;
 
     let client = extensions::new_extension_client(
         &extension.url,
@@ -801,10 +799,11 @@ async fn unsubscribe_extension(
 /// pipeline.
 async fn subscribe_extension(api_state: &ApiState, subscription: &Subscription) -> Result<()> {
     let extension = api_state
-        .extensions
-        .get(&subscription.extension_id)
-        .ok_or(anyhow!("could not find extension"))?;
-    let extension = extension.value();
+        .running_extension(&subscription.extension_id)
+        .ok_or(anyhow!(
+            "could not find a running extension '{}'",
+            subscription.extension_id
+        ))?;
 
     let client = extensions::new_extension_client(
         &extension.url,

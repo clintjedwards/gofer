@@ -1,7 +1,7 @@
 use crate::conf::ConfigType;
 use crate::{object_store, scheduler, secret_store};
-use serde::Deserialize;
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, path::PathBuf};
 
 const DEFAULT_API_CONFIG: &str = include_str!("./default_api_config.toml");
 
@@ -65,8 +65,10 @@ pub struct Development {
 
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Extensions {
-    /// Gofer attempts to automatically install known good, default extensions defined as the "standard extensions".
-    pub install_std_extensions: bool,
+    /// The extensions Gofer should run. Gofer always installs its default extensions (cron and interval) on top of
+    /// this list; add an entry with the same id to change their settings or set `enabled = false` to turn one off.
+    #[serde(default)]
+    pub install: Vec<ExtensionInstall>,
 
     /// The time the scheduler will wait for an extension container to stop. After this period Gofer will attempt to
     /// force stop the container.
@@ -79,6 +81,46 @@ pub struct Extensions {
 
     /// When attempting to communicate from Gofer to an extension verify the cert is correct and known.
     pub verify_certs: bool,
+}
+
+/// One `[[extensions.install]]` entry.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct ExtensionInstall {
+    /// Unique id for the extension. Pipelines subscribe to an extension by this id, so it should stay the same
+    /// across upgrades.
+    pub id: String,
+
+    /// Where to find the extension's manifest: an https URL or a path on the server. Optional for Gofer's default
+    /// extensions, which already know where their manifest lives.
+    #[serde(default)]
+    pub manifest: Option<String>,
+
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
+    /// Values for the extension's config params, as listed in its manifest. Params marked secret must be a global
+    /// secret reference like `global_secret{{github-app-key}}`.
+    #[serde(default)]
+    pub settings: BTreeMap<String, String>,
+
+    /// Extra roles to give the extension's token, beyond the role every extension gets.
+    #[serde(default)]
+    pub additional_roles: Vec<String>,
+
+    /// Credentials for pulling the extension's image from a private registry. `pass` must be a global secret
+    /// reference.
+    #[serde(default)]
+    pub registry_auth: Option<ExtensionRegistryAuth>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct ExtensionRegistryAuth {
+    pub user: String,
+    pub pass: String,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Deserialize, Default, Debug, Clone)]
@@ -153,5 +195,38 @@ impl ConfigType for ApiConfig {
 
     fn env_prefix() -> &'static str {
         "GOFER_WEB_"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::conf::Configuration;
+    use figment::Jail;
+
+    // Arrays of tables can be set through env vars too, which is handy for pointing an extension at a local
+    // manifest without touching the config file.
+    #[test]
+    #[allow(clippy::result_large_err)]
+    fn extension_installs_from_environment_variables() {
+        Jail::expect_with(|jail| {
+            jail.set_env(
+                "GOFER_WEB_EXTENSIONS__INSTALL",
+                r#"[{id="cron",manifest="../containers/extensions/cron/manifest.toml"},{id="interval",enabled=false}]"#,
+            );
+
+            let config = Configuration::<ApiConfig>::load(None).unwrap();
+            let install = &config.extensions.install;
+
+            assert_eq!(install.len(), 2);
+            assert_eq!(install[0].id, "cron");
+            assert_eq!(
+                install[0].manifest.as_deref(),
+                Some("../containers/extensions/cron/manifest.toml")
+            );
+            assert!(install[0].enabled);
+            assert!(!install[1].enabled);
+            Ok(())
+        });
     }
 }

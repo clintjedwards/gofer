@@ -1,8 +1,7 @@
 use crate::{
     api::{
-        ApiState, IncludeSecretQueryArgs, PreflightOptions, RegistryAuth, Variable, VariableSource,
-        epoch_milli, event_utils, format_duration, include_secrets, is_valid_identifier,
-        listen_for_terminate_signal, load_tls,
+        ApiState, PreflightOptions, RegistryAuth, Variable, VariableSource, epoch_milli,
+        event_utils, format_duration, listen_for_terminate_signal, load_tls,
         permissioning::{
             Action, ExtensionGrant, ExtensionResource, GlobalGrant, GlobalResource, Grants,
             NamespaceGrant, NamespaceResource, Requirement, Role,
@@ -15,8 +14,7 @@ use crate::{
 };
 use anyhow::{Context, Result, anyhow, bail};
 use dropshot::{
-    HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
-    HttpResponseUpdatedNoContent, Path, Query, RequestContext, TypedBody, WebsocketChannelResult,
+    HttpError, HttpResponseDeleted, HttpResponseOk, Path, RequestContext, WebsocketChannelResult,
     WebsocketConnection, channel, endpoint,
 };
 use futures::{SinkExt, StreamExt};
@@ -28,6 +26,8 @@ use strum::{Display, EnumString};
 use tracing::{debug, error, info};
 use tungstenite::Message;
 use tungstenite::protocol::{Role as WebsocketRole, frame::coding::CloseCode};
+
+pub mod reconcile;
 
 /// The address Gofer tells the extension it should bind to on startup.
 const EXTENSION_BIND_ADDRESS: &str = "0.0.0.0:8082";
@@ -66,6 +66,12 @@ pub enum State {
 
     /// Extension has exited; usually because of an error.
     Exited,
+
+    /// Not running on purpose, because it's disabled or no longer in the config.
+    Stopped,
+
+    /// Gofer couldn't start the extension. The extension's `state_reason` says why.
+    Failed,
 }
 
 #[derive(
@@ -83,8 +89,12 @@ pub enum Status {
     /// Installed and able to be used by pipelines.
     Enabled,
 
-    /// Not available to be used by pipelines, either through lack of installation or being disabled by an admin.
+    /// Turned off in Gofer's config with `enabled = false`.
     Disabled,
+
+    /// Installed at some point but no longer listed in Gofer's config. Its subscriptions and data are kept so adding
+    /// it back to the config picks up where it left off; `gofer extension purge` deletes them for good.
+    Unconfigured,
 }
 
 /// When installing a new extension, we allow the extension installer to pass a bunch of settings that allow us to
@@ -97,12 +107,11 @@ pub struct Registration {
     /// Which container image this extension should run.
     pub image: String,
 
-    /// Auth credentials for the image's registry. The password is redacted in API responses.
+    /// Auth credentials for the image's registry. The password is a global secret reference.
     pub registry_auth: Option<RegistryAuth>,
 
-    /// Extensions allow configuration through env vars passed to them through this field. Refer to the extension's
-    /// documentation for setting values. Values are redacted in API responses since settings routinely carry
-    /// credentials (the github extension's app key, for example).
+    /// The extension's settings from Gofer's config, passed to the extension as env vars. Secrets are stored as
+    /// global secret references, never the values themselves, so settings are safe to show.
     pub settings: Vec<Variable>,
 
     /// Time of registration creation in epoch milliseconds.
@@ -225,14 +234,22 @@ impl TryFrom<Registration> for storage::extension_registrations::ExtensionRegist
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Parameter {
     pub key: String,
     pub required: bool,
     pub documentation: String,
+
+    /// Secret params only accept a global secret reference (`global_secret{{key}}`).
+    #[serde(default)]
+    pub secret: bool,
+
+    /// The value used when the operator doesn't set one. Empty means there is no default.
+    #[serde(default)]
+    pub default: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Documentation {
     /// Each extension has configuration parameters that can be passed in at extension startup. These parameters
     /// should control extension behavior for it's entire lifetime.
@@ -245,32 +262,6 @@ pub struct Documentation {
     /// Anything the extension wants to explain to the user. This text is inserted into the documentation a user
     /// can look up about the extension. Supports AsciiDoc.
     pub body: String,
-}
-
-impl From<gofer_sdk::extension::api::types::Documentation> for Documentation {
-    fn from(value: gofer_sdk::extension::api::types::Documentation) -> Self {
-        Documentation {
-            config_params: value
-                .config_params
-                .into_iter()
-                .map(|param| Parameter {
-                    key: param.key,
-                    required: param.required,
-                    documentation: param.documentation,
-                })
-                .collect(),
-            pipeline_subscription_params: value
-                .pipeline_subscription_params
-                .into_iter()
-                .map(|param| Parameter {
-                    key: param.key,
-                    required: param.required,
-                    documentation: param.documentation,
-                })
-                .collect(),
-            body: value.body,
-        }
-    }
 }
 
 /// An Extension is the way that pipelines add extra functionality to themselves. Pipelines can "subscribe" to
@@ -289,31 +280,68 @@ pub struct Extension {
     /// The current state of the extension as it exists within Gofer's operating model.
     pub state: State,
 
-    /// Extension given documentation usually in markdown.
+    /// What the extension's manifest says about it. Comes from the manifest alone, so it's there whether or not the
+    /// extension is running; empty only for extensions that are no longer in Gofer's config.
     pub documentation: Documentation,
+
+    /// Where the extension's manifest came from. Empty for extensions that are no longer in Gofer's config.
+    pub manifest: String,
+
+    /// Why the extension is in its current state; set when it failed to start or was stopped.
+    pub state_reason: String,
 
     /// Key is an extension's authentication key used to validate requests from the Gofer main service. On every
     /// request the Gofer main service passes this key so that it is impossible for others to contact and manipulate
     /// extensions directly.
     #[serde(skip)]
     pub secret: String,
+
+    /// The configuration this extension is running with, secrets resolved. Reloads compare against it to tell
+    /// whether the extension needs restarting. Empty when the extension isn't running.
+    #[serde(skip)]
+    pub applied: Option<Box<reconcile::Prepared>>,
+
+    /// What was running before the last apply, kept so a bad upgrade can be reverted.
+    #[serde(skip)]
+    pub previous: Option<Box<reconcile::Prepared>>,
 }
 
 impl Extension {
-    /// The copy of an extension that's safe to hand back to API callers. See [`crate::api::REDACTED`].
-    pub fn redacted(mut self) -> Self {
-        self.registration.registry_auth =
-            self.registration.registry_auth.map(RegistryAuth::redacted);
-        for setting in &mut self.registration.settings {
-            setting.value = crate::api::REDACTED.into();
+    /// An entry for an extension that isn't running, so it still shows up in listings with the reason why.
+    fn not_running(registration: Registration, manifest: &str, state: State, reason: &str) -> Self {
+        Extension {
+            registration,
+            url: String::new(),
+            started: 0,
+            state,
+            documentation: Documentation::default(),
+            manifest: manifest.into(),
+            state_reason: reason.into(),
+            secret: String::new(),
+            applied: None,
+            previous: None,
         }
-        self
     }
 }
 
+impl ApiState {
+    /// The extension with the given id, but only if it's running. Anything that needs to talk to an extension's
+    /// container should go through this.
+    pub fn running_extension(&self, extension_id: &str) -> Option<Extension> {
+        self.extensions
+            .get(extension_id)
+            .filter(|extension| extension.state == State::Running)
+            .map(|extension| extension.value().clone())
+    }
+}
+
+/// Starts the extension's container and waits until it answers. `resolved` carries the registration's settings and
+/// registry auth with their secret references swapped for real values; those never get written back to the
+/// registration.
 async fn start_extension(
     api_state: Arc<ApiState>,
     registration: Registration,
+    resolved: &reconcile::Resolved,
 ) -> Result<Extension> {
     // First we create a new token for the extension and then update the registration with the key_id.
 
@@ -445,11 +473,17 @@ async fn start_extension(
     ];
 
     // Now that we've defined the system vars that are included on every extension launch we need to
-    // insert the env vars that are from the extension registration.
+    // insert the env vars that are from the extension's config. They get their own prefix so an operator's setting
+    // can never overwrite one of the system vars above.
+    let config_extension_vars = resolved.settings.iter().map(|(key, value)| Variable {
+        key: format!("GOFER_EXTENSION_CONFIG_{}", key.to_uppercase()),
+        value: value.clone(),
+        source: VariableSource::System,
+    });
+
     let extension_vars: Vec<Variable> = system_extension_vars
-        .iter()
-        .chain(registration.settings.iter())
-        .cloned()
+        .into_iter()
+        .chain(config_extension_vars)
         .collect();
 
     debug!(id = registration.extension_id.clone(), "Starting extension");
@@ -463,7 +497,7 @@ async fn start_extension(
             .into_iter()
             .map(|var| (var.key, var.value))
             .collect(),
-        registry_auth: registration
+        registry_auth: resolved
             .registry_auth
             .clone()
             .map(|auth| scheduler::RegistryAuth {
@@ -565,24 +599,18 @@ async fn start_extension(
         };
     }
 
-    let info_response = extension_client
-        .info()
-        .await
-        .context("Could not connect to extension")?
-        .into_inner();
-
     let new_extension = Extension {
         registration: registration.clone(),
         url: extension_url.clone(),
         started: epoch_milli(),
         state: State::Running,
-        documentation: info_response.documentation.into(),
+        documentation: Documentation::default(),
+        manifest: String::new(),
+        state_reason: String::new(),
         secret: token,
+        applied: None,
+        previous: None,
     };
-
-    api_state
-        .extensions
-        .insert(registration.extension_id.clone(), new_extension.clone());
 
     info!(
         id = registration.extension_id.clone(),
@@ -593,38 +621,10 @@ async fn start_extension(
     Ok(new_extension)
 }
 
-/// Attempts to start each extension from config on the provided scheduler. Once scheduled it then collects
-/// the initial extension information so it can check for connectivity and store the network location.
-/// This information will eventually be used in other parts of the API to communicate with said extensions.
-pub async fn start_extensions(api_state: Arc<ApiState>) -> Result<()> {
-    let mut conn = match api_state.storage.read_conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!(message = "Could not open connection to database", error = %e);
-            bail!("Could not open connection to database")
-        }
-    };
-
-    let registrations = storage::extension_registrations::list(&mut conn)
-        .await
-        .context("Could not load extensions while attempting to start all extensions")?;
-
-    for registration_raw in registrations {
-        let registration: Registration = registration_raw
-            .try_into()
-            .context("Could not parse extension")?;
-
-        start_extension(api_state.clone(), registration)
-            .await
-            .context("Could not start extension")?;
-    }
-
-    Ok(())
-}
-
-pub async fn stop_extensions(api_state: Arc<ApiState>) {
-    for extension in api_state.extensions.iter() {
-        let (id, extension) = extension.pair();
+/// Asks the extension to shut down cleanly, then stops its container. The container is stopped even if the extension
+/// doesn't answer, since a half-started or wedged extension is exactly the kind we need to get rid of.
+async fn stop_extension(api_state: &ApiState, extension_id: &str) {
+    if let Some(extension) = api_state.running_extension(extension_id) {
         match new_extension_client(
             &extension.url,
             &extension.secret,
@@ -632,152 +632,40 @@ pub async fn stop_extensions(api_state: Arc<ApiState>) {
         ) {
             Ok(extension_client) => {
                 if let Err(e) = extension_client.shutdown().await {
-                    error!(error = %e, extension_id = id, "Could not call shutdown on extension");
-                    continue;
-                }
-
-                let container_id = extension_container_id(id);
-
-                if let Err(e) = api_state
-                    .scheduler
-                    .stop_container(scheduler::StopContainerRequest {
-                        id: container_id.clone(),
-                        timeout: api_state.config.extensions.stop_timeout as i64,
-                    })
-                    .await
-                {
-                    error!(error = %e, container_id = container_id, "Could not shutdown extension via scheduler");
-                    continue;
+                    error!(error = %e, extension_id = extension_id, "Could not call shutdown on extension");
                 }
             }
-            _ => {
-                error!("Could not create extension client while attempting to stop extensions");
-                continue;
+            Err(e) => {
+                error!(error = %e, extension_id = extension_id, "Could not create extension client while attempting to stop extension");
             }
-        };
-    }
-}
-
-const STD_EXTENSION_REPO: &str = "ghcr.io/clintjedwards/gofer/extensions";
-const STD_EXTENSIONS: [&str; 2] = ["cron", "interval"];
-
-/// The image tag a standard extension should use for this version of Gofer.
-///
-/// Extension images are published with floating tags (`x.y.z`, `x.y`, `x`, and `latest`) so we can ask the registry
-/// for "the newest compatible version" without having to list tags ourselves. Before 1.0 a minor bump is a breaking
-/// change, so Gofer 0.10.x uses `0.10`. From 1.0 on a major bump is the breaking change, so Gofer 1.4.2 uses `1`.
-fn std_extension_tag(version: &semver::Version) -> String {
-    if version.major == 0 {
-        format!("0.{}", version.minor)
-    } else {
-        version.major.to_string()
-    }
-}
-
-/// Whether an extension's image is one Gofer picked on its own, which means Gofer is free to move it to a new tag
-/// when Gofer itself is upgraded. That's our repo with a floating tag (`latest`, `N`, or `N.N`). A full `x.y.z` tag
-/// or a different image means the user chose it on purpose, so we leave it alone.
-fn is_managed_std_image(extension_id: &str, image: &str) -> bool {
-    let Some(tag) = image.strip_prefix(&format!("{STD_EXTENSION_REPO}/{extension_id}:")) else {
-        return false;
-    };
-
-    if tag == "latest" {
-        return true;
-    }
-
-    let parts: Vec<&str> = tag.split('.').collect();
-    parts.len() <= 2
-        && parts
-            .iter()
-            .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
-}
-
-/// Gofer provides default extensions that the user can opt into via their configuration.
-/// This function doesn't start those extensions it just makes sure they are registered, and that the ones Gofer
-/// manages point at the image tag matching this version of Gofer, so the more broad [`start_extensions`] function
-/// can start them.
-pub async fn install_std_extensions(api_state: Arc<ApiState>) -> Result<()> {
-    let mut conn = match api_state.storage.write_conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!(message = "Could not open connection to database", error = %e);
-            bail!("Could not open connection to database")
         }
-    };
+    }
 
-    let extensions = storage::extension_registrations::list(&mut conn)
+    let container_id = extension_container_id(extension_id);
+
+    if let Err(e) = api_state
+        .scheduler
+        .stop_container(scheduler::StopContainerRequest {
+            id: container_id.clone(),
+            timeout: api_state.config.extensions.stop_timeout as i64,
+        })
         .await
-        .context("Could not list extensions while trying to register std extensions")?;
-
-    let version = semver::Version::from_str(super::BUILD_SEMVER)
-        .context("Could not parse Gofer's build version")?;
-    let tag = std_extension_tag(&version);
-
-    let mut to_install = vec![];
-
-    for extension_id in STD_EXTENSIONS {
-        let image = format!("{STD_EXTENSION_REPO}/{extension_id}:{tag}");
-
-        if let Some(existing) = extensions.iter().find(|e| e.extension_id == extension_id) {
-            if existing.image == image || !is_managed_std_image(extension_id, &existing.image) {
-                continue;
-            }
-
-            storage::extension_registrations::update(
-                &mut conn,
-                extension_id,
-                storage::extension_registrations::UpdatableFields {
-                    image: Some(image.clone()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .with_context(|| format!("Could not update image for extension '{extension_id}'"))?;
-
-            info!(
-                name = extension_id,
-                old_image = existing.image,
-                new_image = image,
-                "Updated standard extension image to match this version of Gofer"
-            );
-            continue;
-        }
-
-        to_install.push((extension_id, image));
+    {
+        debug!(error = %e, container_id = container_id, "Could not stop extension container; it may not have been running");
     }
+}
 
-    // Return connection to the pool. Installing opens its own connection.
-    drop(conn);
+pub async fn stop_extensions(api_state: Arc<ApiState>) {
+    let running: Vec<String> = api_state
+        .extensions
+        .iter()
+        .filter(|extension| extension.state == State::Running)
+        .map(|extension| extension.key().clone())
+        .collect();
 
-    for (extension_id, image) in to_install {
-        let install_req = InstallExtensionRequest {
-            id: extension_id.into(),
-            image: image.clone(),
-            settings: HashMap::new(),
-            registry_auth: None,
-            additional_roles: None,
-        };
-
-        let registration: Registration = install_req.try_into().with_context(|| {
-            format!("Could not serialize registration for extension '{extension_id}'")
-        })?;
-
-        if let Err(e) = install_new_extension(api_state.clone(), &registration).await {
-            let err_str = e.to_string();
-            if !err_str.contains("already exists") {
-                return Err(e);
-            }
-        };
-
-        info!(
-            name = extension_id,
-            image = image,
-            "Registered standard extension automatically due to 'install_std_extensions' config"
-        )
+    for extension_id in running {
+        stop_extension(&api_state, &extension_id).await;
     }
-
-    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -794,10 +682,8 @@ pub struct ListExtensionsResponse {
 )]
 pub async fn list_extensions(
     rqctx: RequestContext<Arc<ApiState>>,
-    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<ListExtensionsResponse>, HttpError> {
     let api_state = rqctx.context();
-    let query = query_params.into_inner();
     let req_metadata = api_state
         .preflight_check(
             &rqctx.request,
@@ -814,8 +700,6 @@ pub async fn list_extensions(
         )
         .await?;
 
-    let show_secrets = include_secrets(&req_metadata, &query)?;
-
     let mut extensions: Vec<Extension> = vec![];
 
     for extension_ref in &api_state.extensions {
@@ -826,11 +710,7 @@ pub async fn list_extensions(
         };
 
         if req_metadata.allows(&requirement, &Action::Read) {
-            if show_secrets {
-                extensions.push(extension.clone());
-            } else {
-                extensions.push(extension.clone().redacted());
-            }
+            extensions.push(extension.clone());
         }
     }
 
@@ -853,12 +733,10 @@ pub struct GetExtensionResponse {
 pub async fn get_extension(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<ExtensionPathArgs>,
-    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<GetExtensionResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let query = query_params.into_inner();
-    let req_metadata = api_state
+    let _req_metadata = api_state
         .preflight_check(
             &rqctx.request,
             PreflightOptions {
@@ -885,249 +763,21 @@ pub async fn get_extension(
 
     let extension = extension.value().clone();
 
-    let resp = GetExtensionResponse {
-        extension: if include_secrets(&req_metadata, &query)? {
-            extension
-        } else {
-            extension.redacted()
-        },
-    };
+    let resp = GetExtensionResponse { extension };
 
     Ok(HttpResponseOk(resp))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct InstallExtensionRequest {
-    /// A unique id for the extension. Since this needs to only be unique across extensions simply using the
-    /// extension's name usually suffices.
-    pub id: String,
-
-    /// The container image this extension should use.
-    pub image: String,
-
-    /// Each extension has a list of settings it takes to configure how it runs. You can usually find this in the
-    /// documentation.
-    pub settings: HashMap<String, String>,
-
-    /// Registry auth credentials
-    pub registry_auth: Option<RegistryAuth>,
-
-    /// Additional roles to add to the extension. This allows operators to extend extension access to things that
-    /// otherwise the extension might not be able to do with it's default role.
-    pub additional_roles: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct InstallExtensionResponse {
-    pub extension: Extension,
-}
-
-impl TryFrom<InstallExtensionRequest> for Registration {
-    type Error = anyhow::Error;
-
-    fn try_from(value: InstallExtensionRequest) -> Result<Self> {
-        let mut settings: Vec<Variable> = vec![];
-
-        for (key, value) in value.settings {
-            settings.push(Variable {
-                key,
-                value,
-                source: VariableSource::System,
-            })
-        }
-
-        Ok(Registration {
-            extension_id: value.id,
-            image: value.image,
-            registry_auth: value.registry_auth,
-            settings,
-            created: epoch_milli(),
-            modified: 0,
-            status: Status::Unknown,
-            additional_roles: value.additional_roles.unwrap_or_default(),
-            key_id: String::new(),
-        })
-    }
-}
-
-/// Register and start a new extension.
+/// Permanently delete an extension along with its pipeline subscriptions and stored objects.
 ///
-/// This route is only available to admin tokens.
-#[endpoint(
-    method = POST,
-    path = "/api/extensions",
-    tags = ["Extensions"],
-)]
-pub async fn install_extension(
-    rqctx: RequestContext<Arc<ApiState>>,
-    body: TypedBody<InstallExtensionRequest>,
-) -> Result<HttpResponseCreated<InstallExtensionResponse>, HttpError> {
-    let api_state = rqctx.context();
-    let body = body.into_inner();
-    let _req_metadata = api_state
-        .preflight_check(
-            &rqctx.request,
-            PreflightOptions {
-                bypass_auth: false,
-                admin_only: true,
-                allow_anonymous: false,
-                requires: Requirement::Extension {
-                    extension: None,
-                    resource: None,
-                },
-                action: Action::Write,
-            },
-        )
-        .await?;
-
-    if let Err(e) = is_valid_identifier(&body.id) {
-        return Err(HttpError::for_bad_request(
-            None,
-            format!(
-                "'{}' is not a valid identifier for extension id; {}",
-                body.id, e
-            ),
-        ));
-    };
-
-    let registration: Registration = body.try_into().map_err(|err| {
-        error!(message = "Could not parse request into registration", error = %err);
-        HttpError::for_bad_request(
-            None,
-            format!("Could not parse request into registration; {:#?}", err),
-        )
-    })?;
-
-    if let Err(e) = install_new_extension(api_state.clone(), &registration).await {
-        let err_str = e.to_string();
-        if !err_str.contains("already exists") {
-            return Err(http_error!(
-                "Could not install extension",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into()),
-                id = registration.extension_id
-            ));
-        }
-    };
-
-    let new_extension = start_extension(api_state.clone(), registration.clone())
-        .await
-        .map_err(|err| {
-            http_error!(
-                "Could not start extension",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(err.into()),
-                id = registration.extension_id
-            )
-        })?;
-
-    let resp = InstallExtensionResponse {
-        extension: new_extension.redacted(),
-    };
-
-    Ok(HttpResponseCreated(resp))
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct UpdateExtensionRequest {
-    pub enable: bool,
-}
-
-/// Enable or disable an extension.
-///
-/// This route is only accessible for admin tokens.
-#[endpoint(
-    method = PATCH,
-    path = "/api/extensions/{extension_id}",
-    tags = ["Extensions"],
-)]
-pub async fn update_extension(
-    rqctx: RequestContext<Arc<ApiState>>,
-    path_params: Path<ExtensionPathArgs>,
-    body: TypedBody<UpdateExtensionRequest>,
-) -> Result<HttpResponseUpdatedNoContent, HttpError> {
-    let api_state = rqctx.context();
-    let body = body.into_inner();
-    let path = path_params.into_inner();
-    let _req_metadata = api_state
-        .preflight_check(
-            &rqctx.request,
-            PreflightOptions {
-                bypass_auth: false,
-                admin_only: true,
-                allow_anonymous: false,
-                requires: Requirement::Extension {
-                    extension: Some(path.extension_id.clone()),
-                    resource: None,
-                },
-                action: Action::Write,
-            },
-        )
-        .await?;
-
-    let mut conn = match api_state.storage.write_conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open connection to database",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    let status = match body.enable {
-        true => Status::Enabled,
-        false => Status::Disabled,
-    };
-
-    let updatable_fields = storage::extension_registrations::UpdatableFields {
-        image: None,
-        registry_auth: None,
-        settings: None,
-        key_id: None,
-        status: Some(status.to_string()),
-        additional_roles: None,
-        modified: epoch_milli().to_string(),
-    };
-
-    if let Err(e) =
-        storage::extension_registrations::update(&mut conn, &path.extension_id, updatable_fields)
-            .await
-    {
-        match e {
-            storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(
-                    None,
-                    "Extension entry for id given does not exist".into(),
-                ));
-            }
-            _ => {
-                return Err(http_error!(
-                    "Could not update object in database",
-                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id.clone(),
-                    Some(e.into())
-                ));
-            }
-        }
-    };
-
-    Ok(HttpResponseUpdatedNoContent())
-}
-
-/// Uninstall a registered extension.
-///
-/// This route is only accessible for admin tokens.
+/// Only extensions that have already been removed from Gofer's config can be purged; Gofer would just install a
+/// configured one again. This route is only accessible for admin tokens.
 #[endpoint(
     method = DELETE,
     path = "/api/extensions/{extension_id}",
     tags = ["Extensions"],
 )]
-pub async fn uninstall_extension(
+pub async fn purge_extension(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<ExtensionPathArgs>,
 ) -> Result<HttpResponseDeleted, HttpError> {
@@ -1149,23 +799,31 @@ pub async fn uninstall_extension(
         )
         .await?;
 
-    if !api_state.extensions.contains_key(&path.extension_id) {
-        return Err(HttpError::for_not_found(
-            None,
-            format!("Extension id '{}' does not exist", path.extension_id),
-        ));
+    let _guard = api_state.extension_lock.lock().await;
+
+    let status = match api_state.extensions.get(&path.extension_id) {
+        Some(extension) => extension.registration.status.clone(),
+        None => {
+            return Err(HttpError::for_not_found(
+                None,
+                format!("Extension id '{}' does not exist", path.extension_id),
+            ));
+        }
     };
 
-    let container_id = extension_container_id(&path.extension_id);
+    if status != Status::Unconfigured {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!(
+                "Extension '{}' is still in Gofer's config; remove its [[extensions.install]] entry and run \
+                'gofer extension reload' before purging it",
+                path.extension_id
+            ),
+        ));
+    }
 
-    // We don't care about the error here. We'll just try to shut it down on best effort.
-    let _ = api_state
-        .scheduler
-        .stop_container(scheduler::StopContainerRequest {
-            id: container_id,
-            timeout: 120, // 2 mins
-        })
-        .await;
+    // Unconfigured extensions are already stopped, but make sure nothing is left behind.
+    stop_extension(api_state, &path.extension_id).await;
 
     let _ = api_state.extensions.remove(&path.extension_id);
 
@@ -1175,7 +833,7 @@ pub async fn uninstall_extension(
             return Err(http_error!(
                 "Could not open connection to database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
@@ -1517,12 +1175,15 @@ pub async fn get_extension_debug_info(
         )
         .await?;
 
-    let extension = match api_state.extensions.get(&path.extension_id) {
-        Some(extension) => extension.value().clone(),
+    let extension = match api_state.running_extension(&path.extension_id) {
+        Some(extension) => extension,
         None => {
             return Err(HttpError::for_bad_request(
                 None,
-                format!("extension_id '{}' not found", path.extension_id,),
+                format!(
+                    "extension_id '{}' not found or not running",
+                    path.extension_id,
+                ),
             ));
         }
     };
@@ -1630,10 +1291,7 @@ pub fn extension_role(extension_id: &str) -> Role {
     }
 }
 
-async fn install_new_extension(
-    api_state: Arc<ApiState>,
-    registration: &Registration,
-) -> Result<()> {
+async fn install_new_extension(api_state: &ApiState, registration: &Registration) -> Result<()> {
     let mut conn = api_state.storage.write_conn().await?;
 
     // Check to make sure extension doesn't exist already.
@@ -1691,36 +1349,4 @@ async fn install_new_extension(
     storage::extension_registrations::insert(&mut conn, &new_extension_storage).await?;
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn std_extension_tag_follows_breaking_version() {
-        let tag = |v: &str| std_extension_tag(&semver::Version::parse(v).unwrap());
-        assert_eq!(tag("0.10.0"), "0.10");
-        assert_eq!(tag("0.10.3"), "0.10");
-        assert_eq!(tag("1.0.0"), "1");
-        assert_eq!(tag("1.4.2"), "1");
-    }
-
-    #[test]
-    fn is_managed_std_image_only_matches_floating_tags() {
-        let repo = STD_EXTENSION_REPO;
-        assert!(is_managed_std_image("cron", &format!("{repo}/cron:latest")));
-        assert!(is_managed_std_image("cron", &format!("{repo}/cron:0.9")));
-        assert!(is_managed_std_image("cron", &format!("{repo}/cron:1")));
-        assert!(!is_managed_std_image(
-            "cron",
-            &format!("{repo}/cron:0.10.0")
-        ));
-        assert!(!is_managed_std_image("cron", &format!("{repo}/cron:dev")));
-        assert!(!is_managed_std_image(
-            "cron",
-            &format!("{repo}/interval:0.10")
-        ));
-        assert!(!is_managed_std_image("cron", "example.com/my/cron:0.10"));
-    }
 }

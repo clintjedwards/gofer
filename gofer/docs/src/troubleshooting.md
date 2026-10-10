@@ -6,8 +6,12 @@ This page provides various tips on how to troubleshoot and find issues/errors wi
 
 Extensions are simply long running containers that internally wait for an event to happen and then communicate with Gofer it's API.
 
-There are two main avenues to debug extensions:
+There are a few avenues to debug extensions:
 
+- `gofer extension list` shows each extension's state. When one failed to start, the reason column says why; a
+  missing global secret or a setting the extension doesn't take shows up there.
+- `gofer extension reload --dry-run` rereads Gofer's config and shows which extensions differ from it, and which
+  entries have problems, without changing anything.
 - `gofer extension logs <id>` will stream an extension's logs.
 - Each extension has a `/api/debug` endpoint that dumps debug information about that extension.
 

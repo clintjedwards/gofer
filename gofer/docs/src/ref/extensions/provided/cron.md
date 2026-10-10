@@ -43,4 +43,11 @@ gofer pipeline subscribe simple cron yearly_on_xmas -s expression="0 1 25 12 * *
 
 ## Extension Configuration
 
-None
+Cron takes no settings. It's installed by default; to turn it off, add this to Gofer's config and run
+`gofer extension reload`:
+
+```toml
+[[extensions.install]]
+id = "cron"
+enabled = false
+```

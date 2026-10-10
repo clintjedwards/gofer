@@ -8,18 +8,6 @@ type DebugResponse struct {
 	Info string `json:"info"`
 }
 
-// Documentation defines model for Documentation.
-type Documentation struct {
-	// Body Anything the extension wants to explain to the user. This text is inserted into the documentation a user can look up about the extension. Supports AsciiDoc.
-	Body string `json:"body"`
-
-	// ConfigParams Each extension has configuration parameters that can be passed in at extension startup. These parameters should control extension behavior for it's entire lifetime.
-	ConfigParams []Parameter `json:"config_params"`
-
-	// PipelineSubscriptionParams Each extension has pipeline subscription parameters that are passed in by a pipeline when it attempts to subscribe to an extension. This controls how the extension treats that specific pipeline subscription.
-	PipelineSubscriptionParams []Parameter `json:"pipeline_subscription_params"`
-}
-
 // Error Error information from a response.
 type Error struct {
 	ErrorCode *string `json:"error_code,omitempty"`
@@ -34,22 +22,6 @@ type ExternalEventRequest struct {
 
 	// Headers The headers for the incoming external request.
 	Headers map[string]string `json:"headers"`
-}
-
-// InfoResponse defines model for InfoResponse.
-type InfoResponse struct {
-	// Documentation Documentation about how to use the extension.
-	Documentation Documentation `json:"documentation"`
-
-	// ExtensionId The unique extension identifier
-	ExtensionId string `json:"extension_id"`
-}
-
-// Parameter defines model for Parameter.
-type Parameter struct {
-	Documentation string `json:"documentation"`
-	Key           string `json:"key"`
-	Required      bool   `json:"required"`
 }
 
 // SubscriptionRequest defines model for SubscriptionRequest.

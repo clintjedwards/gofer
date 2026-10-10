@@ -1,28 +1,44 @@
-# Provided Extensions
+# Gofer's Extensions
 
-Gofer provides some pre-written extensions for quick use:
+Gofer comes with a set of extensions, a bit like a standard library. They're all maintained and released alongside
+Gofer and share its version number. Some are basic enough that every install gets them; the rest are there when you
+need them.
 
-| name                      | image                                                     | included by default | description                                                                                                       |
-| ------------------------- | --------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| [interval](./interval.md) | ghcr.io/clintjedwards/gofer/extensions/interval:\<version\> | yes                 | Interval triggers a run after a predetermined amount of time has passed.                                          |
-| [cron](./cron.md)         | ghcr.io/clintjedwards/gofer/extensions/cron:\<version\>     | yes                 | Cron is used for longer termed, more nuanced intervals. For instance, running a pipeline every year on Christmas. |
-| [github](./github.md)     | ghcr.io/clintjedwards/gofer/extensions/github:\<version\>   | no                  | Allow your pipelines to run based on branch, tag, or release activity.                                            |
+## Default extensions
 
-## Versions
+These are always available: Gofer installs them unless the config turns them off with `enabled = false`.
 
-Each extension release is published under its full version (`0.10.1`) and also under floating tags that always point
-at the newest release in that line (`0.10`, `0`, and `latest`).
+| name                      | image                                                       | description                                                                                                       |
+| ------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [interval](./interval.md) | ghcr.io/clintjedwards/gofer/extensions/interval:\<version\> | Interval triggers a run after a predetermined amount of time has passed.                                          |
+| [cron](./cron.md)         | ghcr.io/clintjedwards/gofer/extensions/cron:\<version\>     | Cron is used for longer termed, more nuanced intervals. For instance, running a pipeline every year on Christmas. |
 
-An extension is compatible with Gofer when the part of the version that signals breaking changes matches. Before 1.0
-that's the minor version, so Gofer 0.10.x works with any 0.10.x extension. From 1.0 on it's the major version, so Gofer
-1.4.2 works with any 1.x.y extension.
+Their [manifests](../manifest.md) are built into Gofer, so they don't need a `manifest` in the config, always match
+the version of Gofer you're running, and never depend on downloading anything to start. Gofer serves them at
+`/extensions/manifests/<name>.toml` (for example `http://localhost:8080/extensions/manifests/cron.toml`) so you can
+read exactly what it runs. Upgrading Gofer upgrades them on the next restart or `gofer extension reload`.
 
-The extensions Gofer installs by default use the floating tag for the running version of Gofer (`cron:0.10` for Gofer
-0.10.x). Gofer pulls the image every time it starts, so new compatible releases are picked up on restart. When you
-upgrade Gofer to a new breaking version, it moves those default extensions to the matching tag on startup.
+If you need a different version of one, set `manifest` in its `[[extensions.install]]` entry to your own copy and
+Gofer uses that instead.
 
-If you'd rather control the version yourself, install the extension with a full version tag such as `cron:0.10.1`.
-Gofer won't change an extension installed with a full version tag or an image from somewhere else.
+## Optional extensions
 
-When installing an extension that isn't included by default, like github, use the floating tag that matches your Gofer
-version (e.g. `github:0.10`).
+These are just as supported as the default ones, but not everyone needs them, so they aren't installed until you add
+them to your config. You install them with a manifest URL, the same way as any other extension.
+
+| name                  | image                                                     | description                                                            |
+| --------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [github](./github.md) | ghcr.io/clintjedwards/gofer/extensions/github:\<version\> | Allow your pipelines to run based on branch, tag, or release activity. |
+
+Each one keeps its manifest in the Gofer repository, next to its code, and every Gofer release tag has a copy pinned
+to the images built for that release:
+
+```text
+https://raw.githubusercontent.com/clintjedwards/gofer/v<gofer version>/containers/extensions/<name>/manifest.toml
+```
+
+They're released alongside Gofer and share its version number, so use the manifest from the same release as your
+Gofer server, and change the version in the URL when you upgrade Gofer. See [Upgrading Extensions](../upgrading.md).
+
+Images are still published under floating tags (`0.11`, `0`, and `latest`) as well as the full version, but manifests
+always pin the full version so that a reload only ever changes an extension when you change its manifest.

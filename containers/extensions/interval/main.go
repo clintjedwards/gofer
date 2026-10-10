@@ -298,29 +298,26 @@ func (e *extension) Unsubscribe(_ context.Context, request extsdk.Unsubscription
 	return nil
 }
 
-// Info is mostly used as a health check endpoint. It returns some basic info about a extension, the most important
-// being where to get more documentation about that specific extension.
-func (e *extension) Info(_ context.Context) (*extsdk.InfoResponse, *extsdk.HttpError) {
-	return &extsdk.InfoResponse{
-		ExtensionId: "", // The extension wrapper automagically fills this in.
-		Documentation: extsdk.Documentation{
-			Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/interval.html",
-			PipelineSubscriptionParams: []extsdk.Parameter{
-				{
-					Key:           ParameterEvery,
-					Documentation: "'every' is the time between pipeline runs. Supports golang native duration strings: https://pkg.go.dev/time#ParseDuration. Examples: '1m', '60s', '3h', '3m30s'",
-					Required:      true,
-				},
-			},
-			ConfigParams: []extsdk.Parameter{
-				{
-					Key:           ConfigMinInterval,
-					Documentation: "The minimum interval pipelines can set for the 'every' parameter. Supports golang native duration strings: https://pkg.go.dev/time#ParseDuration. Examples: '1m', '60s', '3h', '3m30s'. Defaults to 1 minute.",
-					Required:      false,
-				},
-			},
+// The documentation describes the extension to Gofer and its users. It's plain data rather than a method on the
+// extension so the SDK can print it as a manifest without starting the extension, which is how Gofer learns which
+// config params to expect before it ever runs the container.
+var documentation = extsdk.Documentation{
+	Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/interval.html",
+	PipelineSubscriptionParams: []extsdk.Parameter{
+		{
+			Key:           ParameterEvery,
+			Documentation: "'every' is the time between pipeline runs. Supports golang native duration strings: https://pkg.go.dev/time#ParseDuration. Examples: '1m', '60s', '3h', '3m30s'",
+			Required:      true,
 		},
-	}, nil
+	},
+	ConfigParams: []extsdk.Parameter{
+		{
+			Key:           ConfigMinInterval,
+			Documentation: "The minimum interval pipelines can set for the 'every' parameter. Supports golang native duration strings: https://pkg.go.dev/time#ParseDuration. Examples: '1m', '60s', '3h', '3m30s'.",
+			Required:      false,
+			Default:       "1m",
+		},
+	},
 }
 
 // The ExternalEvent endpoint tells the extension what to do if they get messages from Gofer's external event system.
@@ -364,15 +361,11 @@ func (e *extension) Debug(_ context.Context) extsdk.DebugResponse {
 	}
 }
 
-// Lastly we call our personal NewExtension function, which now implements the ExtensionServerInterface and then we
-// pass it to the NewExtension function within the SDK.
+// Lastly we hand our documentation and constructor to the SDK's Run function.
 //
-// From here the SDK will use the given interface and run a GRPC service whenever this program is called with the
-// positional parameter "server". Ex. "./extension server"
-//
-// Whenever this program is called with the parameter "installer" then it will print out the installation instructions
-// instead.
+// Normally Run calls newExtension and starts the extension's HTTP service. When this program is called as
+// "./extension manifest --image <image>" Run instead prints the extension's manifest and exits without calling
+// newExtension, so it works without any of the extension's config being set.
 func main() {
-	extension := newExtension()
-	extsdk.NewExtension(extension)
+	extsdk.Run(documentation, func() extsdk.ExtensionServiceInterface { return newExtension() })
 }

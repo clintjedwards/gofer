@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -128,10 +127,9 @@ func newExtension() extension {
 		log.Fatal().Err(err).Str(configAppInstallation, installationStr).Msg("malformed github installation id")
 	}
 
-	keyStr := extsdk.GetConfigFromEnv(configAppKey)
-	key, err := base64.StdEncoding.DecodeString(keyStr)
-	if err != nil {
-		log.Fatal().Err(err).Str(configAppKey, keyStr).Msg("could not decode base64 private key")
+	key := []byte(extsdk.GetConfigFromEnv(configAppKey))
+	if len(key) == 0 {
+		log.Fatal().Str("env_var", configAppKey).Msg("could not find required env var")
 	}
 
 	webhookSecret := extsdk.GetConfigFromEnv(configAppWebhookSecret)
@@ -553,52 +551,52 @@ func (e *extension) Unsubscribe(_ context.Context, request extsdk.Unsubscription
 	return nil
 }
 
-func (e *extension) Info(_ context.Context) (*extsdk.InfoResponse, *extsdk.HttpError) {
-	return &extsdk.InfoResponse{
-		ExtensionId: "", // The extension wrapper automagically fills this in.
-		Documentation: extsdk.Documentation{
-			Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/github.html",
-			PipelineSubscriptionParams: []extsdk.Parameter{
-				{
-					Key: ParameterEventFilter,
-					Documentation: "The event/action combination the pipeline will be triggered upon. It's presented in" +
-						" the form: <event>/<action>,<action2>... For events that do not have actions or if you simply want to trigger on any" +
-						" action, just putting the <event> wil suffice. To be clear if you don't include actions on an event that has multiple," +
-						" Gofer will be triggered on any action. you can find a list of events and their actions here(Actions listed as 'activity type'):" +
-						" https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows.",
-					Required: true,
-				},
-				{
-					Key: ParameterRepository,
-					Documentation: "The repository the pipeline will be alerted for. The format is <organization>/<repository>" +
-						" Ex: clintjedwards/gofer",
-					Required: true,
-				},
-			},
-			ConfigParams: []extsdk.Parameter{
-				{
-					Key:           configAppID,
-					Documentation: "General settings for all Github apps: https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id",
-					Required:      true,
-				},
-				{
-					Key:           configAppInstallation,
-					Documentation: "General settings for all Github apps: https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id",
-					Required:      true,
-				},
-				{
-					Key:           configAppKey,
-					Documentation: "General settings for all Github apps: https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id",
-					Required:      true,
-				},
-				{
-					Key:           configAppWebhookSecret,
-					Documentation: "General settings for all Github apps: https://docs.github.com/en/developers/apps/getting-started-with-apps/setting-up-your-development-environment-to-create-a-github-app#step-3-save-your-private-key-and-app-id",
-					Required:      true,
-				},
-			},
+var documentation = extsdk.Documentation{
+	Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/github.html",
+	PipelineSubscriptionParams: []extsdk.Parameter{
+		{
+			Key: ParameterEventFilter,
+			Documentation: "The event/action combination the pipeline will be triggered upon. It's presented in" +
+				" the form: <event>/<action>,<action2>... For events that do not have actions or if you simply want to trigger on any" +
+				" action, just putting the <event> wil suffice. To be clear if you don't include actions on an event that has multiple," +
+				" Gofer will be triggered on any action. you can find a list of events and their actions here(Actions listed as 'activity type'):" +
+				" https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows.",
+			Required: true,
 		},
-	}, nil
+		{
+			Key: ParameterRepository,
+			Documentation: "The repository the pipeline will be alerted for. The format is <organization>/<repository>" +
+				" Ex: clintjedwards/gofer",
+			Required: true,
+		},
+	},
+	ConfigParams: []extsdk.Parameter{
+		{
+			Key:           configAppID,
+			Documentation: "The Github app's ID, shown on the app's settings page.",
+			Required:      true,
+		},
+		{
+			Key: configAppInstallation,
+			Documentation: "The ID of the app's installation on your account or organization. It's the number at the end of" +
+				" the installation's settings URL, and it's also included in every webhook payload.",
+			Required: true,
+		},
+		{
+			Key: configAppKey,
+			Documentation: "The Github app's private key in PEM format, exactly as Github gives it to you." +
+				" See: https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/managing-private-keys-for-github-apps",
+			Required: true,
+			Secret:   true,
+		},
+		{
+			Key: configAppWebhookSecret,
+			Documentation: "The webhook secret set on the Github app. Gofer uses it to verify that webhooks really came" +
+				" from Github. It should be a long, random string.",
+			Required: true,
+			Secret:   true,
+		},
+	},
 }
 
 func (e *extension) Debug(_ context.Context) extsdk.DebugResponse {
@@ -737,6 +735,8 @@ func (e *extension) ExternalEvent(_ context.Context, request extsdk.ExternalEven
 }
 
 func main() {
-	extension := newExtension()
-	extsdk.NewExtension(&extension)
+	extsdk.Run(documentation, func() extsdk.ExtensionServiceInterface {
+		extension := newExtension()
+		return &extension
+	})
 }
