@@ -22,14 +22,27 @@ pub struct Configuration<T: ConfigType> {
 
 impl<T: ConfigType> Configuration<T> {
     pub fn load(path_override: Option<PathBuf>) -> Result<T> {
+        let parsed_config: T = Self::figment(path_override).extract()?;
+
+        Ok(parsed_config)
+    }
+
+    /// The config file that settings are read from, if there is one. Only the first file that exists is used, so
+    /// a stray second file can't quietly override the one the user is actually editing.
+    pub fn config_file(path_override: Option<PathBuf>) -> Option<PathBuf> {
+        match path_override {
+            Some(path) => Some(path).filter(|path| path.exists()),
+            None => T::config_paths().into_iter().find(|path| path.exists()),
+        }
+    }
+
+    /// The merged configuration before it's parsed. Useful for finding out where a setting's value came from
+    /// through [`Figment::find_metadata`].
+    pub fn figment(path_override: Option<PathBuf>) -> Figment {
         let mut config = Figment::new().merge(Toml::string(T::default_config()));
 
-        if let Some(path) = path_override {
+        if let Some(path) = Self::config_file(path_override) {
             config = config.merge(Toml::file(path));
-        } else {
-            for path in T::config_paths() {
-                config = config.merge(Toml::file(path));
-            }
         }
 
         // The split function below is actually pretty load bearing.
@@ -43,9 +56,6 @@ impl<T: ConfigType> Configuration<T> {
         //
         // To solve this we use a double underscore which denotes the difference between what are actual
         // keys and what are levels of the struct we need to dive into.
-        config = config.merge(Env::prefixed(T::env_prefix()).split("__"));
-        let parsed_config: T = config.extract()?;
-
-        Ok(parsed_config)
+        config.merge(Env::prefixed(T::env_prefix()).split("__"))
     }
 }

@@ -13,7 +13,7 @@ mod up;
 mod web;
 
 use crate::conf::{
-    Configuration,
+    ConfigType, Configuration,
     cli::{CliConfig, OutputFormat},
 };
 use anyhow::{Context, Result, bail};
@@ -21,7 +21,6 @@ use chrono::{LocalResult, TimeZone, Utc};
 use chrono_humanize::HumanTime;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use gofer_sdk::api::ClientInfo;
 use lazy_regex::regex;
 use polyfmt::{finish, println};
 use reqwest::{Client, header};
@@ -134,9 +133,13 @@ enum Commands {
 
     /// Prints information about the current context of the Gofer CLI.
     ///
-    /// Helpful for things like figuring out which environment you're currently communicating with, the server status,
-    /// CLI configuration options and more.
-    Context,
+    /// Helpful for figuring out which server you're talking to and who you are on it, whether that server is
+    /// accepting new runs, which config file the CLI read and where each setting came from.
+    Context {
+        /// Show the API token instead of hiding it.
+        #[arg(long, default_value = "false")]
+        include_secrets: bool,
+    },
 
     /// Manage the Gofer api service.
     Service(service::ServiceSubcommands),
@@ -311,7 +314,7 @@ impl Cli {
                 )
                 .await
             }
-            Commands::Context => self.get_context().await,
+            Commands::Context { include_secrets } => self.get_context(include_secrets).await,
             Commands::Service(service) => self.handle_service_subcommands(service).await,
             Commands::Namespace(namespace) => self.handle_namespace_subcommands(namespace).await,
             Commands::Pipeline(pipeline) => self.handle_pipeline_subcommands(pipeline).await,
@@ -350,36 +353,170 @@ impl Cli {
         }
     }
 
-    pub async fn get_context(&self) -> Result<()> {
-        let preferences = self
-            .client
-            .get_system_preferences()
-            .await
-            .context("Could not retrieve system preferences from Gofer api")?
-            .into_inner();
+    pub async fn get_context(&self, include_secrets: bool) -> Result<()> {
+        // Server errors are shown inline instead of returned, since a CLI pointed at the wrong place is usually why
+        // someone runs this and the local half is still worth seeing.
+        let metadata = self.client.get_system_metadata().await;
+        let token = self.client.whoami().await;
+        let preferences = self.client.get_system_preferences().await;
 
-        let current_token = self
-            .client
-            .whoami()
-            .await
-            .context("Could not retrieve current token from Gofer api")?
-            .into_inner()
-            .token;
+        const TEMPLATE: &str = r#"
+  {{ vertical_line }} Server version {{ server_version }}
+  {{ vertical_line }} CLI version {{ cli_version }}
+  {{ vertical_line }} Namespace {{ namespace }}
+  {{ vertical_line }} {{ config_file }}
 
-        println!("Whoami?");
-        println!("  id: {}", current_token.id);
-        println!("  user: {}", current_token.user);
-        println!("  roles: {:#?}", current_token.roles);
+  $ Token:
+  {%- for line in token %}
+  {{ line }}
+  {%- endfor %}
 
-        println!("CLI configuration:");
-        println!("  {:#?}", self.conf);
+  $ Settings:
+  {%- for line in settings %}
+  {{ line }}
+  {%- endfor %}
+"#;
 
-        println!(
-            "Server status (version: {}):",
-            gofer_sdk::api::Client::api_version()
+        let mut tera = tera::Tera::default();
+        tera.add_raw_template("main", TEMPLATE)
+            .context("Failed to render context")?;
+
+        let cli_version = env!("BUILD_SEMVER");
+
+        let reachable = metadata.is_ok();
+        let server_version = match metadata {
+            Ok(metadata) => {
+                let metadata = metadata.into_inner();
+                let commit: String = metadata.commit.trim().chars().take(7).collect();
+                let version = format!("v{} ({commit})", metadata.semver);
+
+                // A mismatch is the first thing to rule out when a command behaves differently than the docs say.
+                if metadata.semver == cli_version {
+                    version.blue().to_string()
+                } else {
+                    format!("{} {}", version.yellow(), "(doesn't match the CLI)".yellow())
+                }
+            }
+            Err(e) => format!("{} {}", "unreachable;".red(), api_error_message(e)),
+        };
+
+        let config_file = match Configuration::<CliConfig>::config_file(None) {
+            Some(path) => format!("Config file {}", path.display().to_string().blue()),
+            None => format!(
+                "No config file found (looked for {})",
+                CliConfig::config_paths()
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        };
+
+        let token = match token {
+            Ok(token) => {
+                let token = token.into_inner().token;
+                let state = if token.disabled { "disabled" } else { "active" };
+                let field = |key: &str, value: comfy_table::Cell| {
+                    vec![
+                        comfy_table::Cell::new(key).fg(comfy_table::Color::AnsiValue(245)),
+                        value,
+                    ]
+                };
+
+                rail_table(
+                    &[],
+                    vec![
+                        field(
+                            "User",
+                            comfy_table::Cell::new(&token.user).fg(comfy_table::Color::Blue),
+                        ),
+                        field("ID", comfy_table::Cell::new(&token.id)),
+                        field("Roles", comfy_table::Cell::new(token.roles.join(", "))),
+                        field(
+                            "State",
+                            comfy_table::Cell::new(state).fg(colorize_status_text_comfy(state)),
+                        ),
+                        field(
+                            "Expires",
+                            comfy_table::Cell::new(
+                                self.format_time(token.expires)
+                                    .unwrap_or_else(|| "Never".to_string()),
+                            ),
+                        ),
+                    ],
+                )
+            }
+            Err(e) => vec![format!("{} {}", rail(), api_error_message(e).red())],
+        };
+
+        let figment = Configuration::<CliConfig>::figment(None);
+        let hidden_token = if self.conf.token.is_empty() {
+            "not set".to_string()
+        } else {
+            "hidden, pass --include-secrets to show".to_string()
+        };
+
+        let settings = [
+            ("api_base_url", self.conf.api_base_url.clone()),
+            ("namespace", self.conf.namespace.clone()),
+            (
+                "token",
+                if include_secrets {
+                    self.conf.token.clone()
+                } else {
+                    hidden_token
+                },
+            ),
+            ("output_format", self.conf.output_format.to_string().to_lowercase()),
+            ("detail", self.conf.detail.to_string()),
+            ("debug", self.conf.debug.to_string()),
+        ];
+
+        let settings = rail_table(
+            &["SETTING", "VALUE", "FROM"],
+            settings
+                .into_iter()
+                .map(|(key, value)| {
+                    vec![
+                        comfy_table::Cell::new(key),
+                        comfy_table::Cell::new(value).fg(comfy_table::Color::Blue),
+                        comfy_table::Cell::new(setting_source(&figment, key)),
+                    ]
+                })
+                .collect(),
         );
-        println!("  {:#?}", preferences);
 
+        let mut context = tera::Context::new();
+        context.insert("vertical_line", &rail());
+        context.insert("server_version", &server_version);
+        context.insert("cli_version", &format!("v{cli_version}").blue().to_string());
+        context.insert("namespace", &self.conf.namespace.blue().to_string());
+        context.insert("config_file", &config_file);
+        context.insert("token", &token);
+        context.insert("settings", &settings);
+
+        // The preferences route is admin only, so for everyone else we can't tell whether runs are being accepted.
+        let run_status = match (reachable, preferences) {
+            (false, _) => "unknown".dimmed().to_string(),
+            (true, Ok(preferences)) if preferences.ignore_pipeline_run_events => {
+                "not accepting new runs".red().to_string()
+            }
+            (true, Ok(_)) => "accepting new runs".green().to_string(),
+            (true, Err(e)) if e.status() == Some(reqwest::StatusCode::FORBIDDEN) => {
+                "run status visible to admins only".dimmed().to_string()
+            }
+            (true, Err(e)) => format!("run status unknown; {}", api_error_message(e))
+                .dimmed()
+                .to_string(),
+        };
+
+        let content = tera.render("main", &context)?;
+        println!(
+            "  Gofer {} :: {}",
+            self.conf.api_base_url.cyan(),
+            run_status
+        );
+        println!("{}", content.trim_end());
         Ok(())
     }
 }
@@ -423,6 +560,30 @@ fn format_duration(time: u64) -> Option<String> {
             chrono_humanize::Accuracy::Rough,
             chrono_humanize::Tense::Future,
         ))
+    }
+}
+
+/// Pulls the message out of an API error so failures read as a sentence instead of a debug dump.
+fn api_error_message(err: gofer_sdk::api::Error<gofer_sdk::api::types::Error>) -> String {
+    match err {
+        gofer_sdk::api::Error::ErrorResponse(response) => response.into_inner().message,
+        other => other.to_string(),
+    }
+}
+
+/// Where a CLI setting's value came from: the config file, an environment variable or the built in default. The
+/// config file's path is already printed once in `gofer context`, so it isn't repeated here.
+fn setting_source(figment: &figment::Figment, key: &str) -> String {
+    let Some(metadata) = figment.find_metadata(key) else {
+        return "default".to_string();
+    };
+
+    match &metadata.source {
+        Some(figment::Source::File(_)) => "config file".to_string(),
+        _ if metadata.name.contains("environment variable") => {
+            format!("{}{}", CliConfig::env_prefix(), key.to_ascii_uppercase())
+        }
+        _ => "default".to_string(),
     }
 }
 

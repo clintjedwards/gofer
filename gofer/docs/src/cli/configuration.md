@@ -38,6 +38,9 @@ Gofer reads the first of these it finds:
 Development builds of Gofer read `$HOME/.gofer_dev.toml` and `$HOME/.config/gofer_dev.toml` instead, so you can
 work on Gofer without touching the config you use for your real server.
 
+`gofer context` shows which file was read and, for each setting, whether its value came from that file, an
+environment variable or the default.
+
 ### Configuration file options
 
 | configuration            | type   | default                 | description                                                                                                                                                      |

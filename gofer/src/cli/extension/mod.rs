@@ -1,5 +1,7 @@
 use crate::api::extensions::reconcile::{Manifest, default_manifest, fetch_manifest};
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, rail, rail_table};
+use crate::cli::{
+    Cli, api_error_message, colorize_status_text, colorize_status_text_comfy, rail, rail_table,
+};
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
@@ -125,14 +127,6 @@ fn params_table(params: &[gofer_sdk::api::types::Parameter]) -> Vec<String> {
             })
             .collect(),
     )
-}
-
-/// Pulls the message out of an API error so per-extension failures read as a sentence instead of a debug dump.
-fn api_error_message(err: gofer_sdk::api::Error<gofer_sdk::api::types::Error>) -> String {
-    match err {
-        gofer_sdk::api::Error::ErrorResponse(response) => response.into_inner().message,
-        other => other.to_string(),
-    }
 }
 
 fn action_color(action: &PlanAction) -> Color {

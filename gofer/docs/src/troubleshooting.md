@@ -21,8 +21,9 @@ From there:
 - `gofer task attach <pipeline_id> <run_id> <task_id>` opens a shell in a task's container while it's still running,
   if the server allows it (`api.allow_task_attach`).
 
-If the CLI is acting strangely, `gofer context` shows who your token belongs to, the CLI configuration it's using,
-and the server's version and settings.
+If the CLI is acting strangely, `gofer context` shows which server it's talking to and that server's version, who
+your token belongs to, which config file was read and where each setting came from. It still prints the local half
+when the server can't be reached.
 
 ## Debugging extensions
 

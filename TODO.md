@@ -49,12 +49,6 @@ None
   rolling back. The API already supports it (`POST .../pipelines/{id}/configs/{version}`), but from the CLI the only
   way today is to `gofer up` the old code again, and `gofer up --deploy false` leaves you with an unreleased version
   you can't deploy without curl. Update the "Rolling back" section in the Updating Pipelines docs when it lands.
-* Clean up `gofer context`. Right now it dumps three `{:#?}` debug prints (the token's roles, the whole CLI config and
-  the server preferences), so it reads like Rust structs instead of an answer to "who am I and where am I pointed".
-  It should be laid out like the rest of the CLI's output: server URL and version, namespace, who the token belongs
-  to and its roles, and whether new runs are being accepted.
-  * The CLI config dump includes the API token in plain text. Hide it by default and add something like
-    `--include-secrets` for when you actually want to see it.
 * Add `gofer service drain` for admins, for safely stopping Gofer before an upgrade or restart.
   * It sets `ignore_pipeline_run_events` (already supported through `PUT /api/system`) so new runs are refused, then
     streams the runs still in progress and how far along each one is (tasks done out of total, maybe the task
@@ -75,7 +69,8 @@ None
       waits forever.
     * Runs that were queued (waiting on parallelism) before the drain still start, so count them as in progress.
   * `gofer context` (and the web UI) should show when Gofer is drained, since a drained server looks a lot like a
-    broken one from a pipeline owner's point of view.
+    broken one from a pipeline owner's point of view. `gofer context` already shows "not accepting new runs", but
+    only to admins since `GET /api/system` is admin only; non-admins need some way to see it too.
   * Document it in the server configuration docs as the way to stop new work before an upgrade.
 * Allow a parallelism mode where when parallelism is at it's max the oldest run, if still running gets, cancelled.
   * Also make it so that the github extension can do this as well, if a new run for a branch gets kicked off, if there
