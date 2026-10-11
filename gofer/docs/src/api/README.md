@@ -1,6 +1,6 @@
 # API Reference
 
-Gofer exposes a REST API; every endpoint lives under `/api` and speaks JSON unless noted otherwise. These pages are generated from the [OpenAPI spec](../assets/openapi.json) (Gofer v0.11.0) by `make generate-api-docs`.
+Gofer exposes a REST API; every endpoint lives under `/api` and speaks JSON unless noted otherwise. These pages are generated from the [OpenAPI spec](../assets/openapi.json) (Gofer v0.12.0) by `make generate-api-docs`.
 
 ## Authentication
 
