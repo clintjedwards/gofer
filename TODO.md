@@ -11,6 +11,25 @@ None
   if someone re-pushes a tag the extension's code changes without the manifest changing and without reload showing
   anything. With digests, "the manifest didn't change" really means "the code didn't change". The SDKs' manifest
   command would need the digest, so this probably happens after the image is pushed in the release flow.
+* Build the provided extensions against the in-repo Go SDK with a `replace` directive, like examplePipelines already
+  does. Right now a breaking SDK change means pushing main, then running `go get ...@main` in each extension and
+  committing again before the release can be tagged. With `replace` it's one commit. Things to fix or accept if we do:
+  * The Docker build context has to move from `containers/` to the repo root so `sdk/go` is visible. Needs a root
+    `.dockerignore` (target/, .git, node_modules) and Dockerfiles that copy only `sdk/go` and their own extension dir
+    instead of `ADD .`, or builds get slow and the layer cache breaks on any repo change.
+  * Images can pick up uncommitted SDK edits since builds use the working tree. Add a clean tree check
+    (`git status --porcelain`) to `build-containers`.
+  * Nothing exercises the published SDK anymore, so something that only breaks for outside consumers (like an
+    uncommitted SDK file) goes unnoticed. Could cover this with a release check that builds one extension with the
+    replace dropped (`go mod edit -dropreplace` on a temp copy).
+  * We stop feeling breaking SDK changes the way third party extension authors do, since our extensions never break.
+  * The extensions stop working as copy and paste templates; the replace path breaks outside the repo. Docs that
+    point at them as examples would need to say to drop that line.
+  * The `require` version in each go.mod goes stale and is misleading.
+  * `go install .../containers/extensions/<ext>@latest` stops working since Go refuses modules with replace
+    directives. Probably nobody does this.
+  * champagne/run_tests has the same problem on the Rust side (`gofer_sdk` from git on `branch = "main"`); a path
+    dependency would fix it.
 * Follow up: pipelines aren't told when an extension they're subscribed to stops (disabled, unconfigured, or failed to
   start). The subscriptions stay but nothing triggers them, so a pipeline owner just sees runs that never happen.
   Showing the extension's state next to a pipeline's subscriptions might be a quick fix; worth checking whether

@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/clintjedwards/avail/v2 v2.0.1
-	github.com/clintjedwards/gofer/sdk/go v0.0.0-20261002012124-2469189c185e
+	github.com/clintjedwards/gofer/sdk/go v0.0.0-20261011021859-2fa56e660d55
 	github.com/rs/zerolog v1.35.1
 )
 

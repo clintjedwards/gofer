@@ -4,8 +4,8 @@ github.com/apapsch/go-jsonmerge/v2 v2.0.0/go.mod h1:lvDnEdqiQrp0O42VQGgmlKpxL1AP
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
 github.com/clintjedwards/avail/v2 v2.0.1 h1:/SN0LDBh46Jh3mYqZ5Als/FDo038d0hbLUOz1dyG9gk=
 github.com/clintjedwards/avail/v2 v2.0.1/go.mod h1:1Iug5KWa+q0PiDtgImzJULSSc/R4KLKcPM1nBDTHkeI=
-github.com/clintjedwards/gofer/sdk/go v0.0.0-20261002012124-2469189c185e h1:HaowTG2OxVZKOOQBX2t7seS0IodJfYlwfZt8lmG2DEU=
-github.com/clintjedwards/gofer/sdk/go v0.0.0-20261002012124-2469189c185e/go.mod h1:3VJoTCt7Bi+lvJwLUol7ALF2Sn/AAqDxBhjxuh4Z2p8=
+github.com/clintjedwards/gofer/sdk/go v0.0.0-20261011021859-2fa56e660d55 h1:tFt6+yfLrGSdkSXoYgb/hBzCxzvhkxf7I/Rod7xi7ho=
+github.com/clintjedwards/gofer/sdk/go v0.0.0-20261011021859-2fa56e660d55/go.mod h1:OcwC3HLOllKJCCiaGtzZx2Kq6QqHeHnB6Zop59rGyJU=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
