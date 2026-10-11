@@ -186,7 +186,7 @@ build-docs:
 
 ## build-containers: build containers
 build-containers: check-semver-included
-> cd containers
+> @cd containers
 > echo -e "$(COLOR_BLUE)Building Cron Extension$(COLOR_END)"
 > docker build -f extensions/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:latest
@@ -229,7 +229,7 @@ build-containers: check-semver-included
 
 ## push-containers: push containers to github
 push-containers: check-semver-included
-> echo -e "$(COLOR_BLUE)Push Cron Extension Container$(COLOR_END)"
+> @echo -e "$(COLOR_BLUE)Push Cron Extension Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:latest
 > docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}.${SEMVER_MINOR}
