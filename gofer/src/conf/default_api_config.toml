@@ -9,6 +9,7 @@ log_level = "info"
 task_execution_log_retention = 50  # total runs
 task_execution_logs_dir = "/tmp"
 task_execution_stop_timeout = 300  # 5 mins
+allow_task_attach = true
 admin_key = "test"
 
 [server]

@@ -49,6 +49,10 @@ pub struct Api {
     /// You can you use a timeout of 0 to convey that no timeout should be specified and the
     /// scheduler should instantly kill all containers.
     pub task_execution_stop_timeout: u64,
+
+    /// Lets users open a shell inside a running task execution's container. Anyone with write access to a
+    /// pipeline's task executions can run any command in its containers, so operators may want to turn this off.
+    pub allow_task_attach: bool,
 }
 
 #[derive(Deserialize, Default, Debug, Clone)]

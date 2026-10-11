@@ -138,7 +138,8 @@ results are then filtered down to the items the token is allowed to read.
 
 There are three actions: `read`, `write` and `delete`. Each route belongs to one of them, which generally follows the
 HTTP method: `GET` is `read`, `POST` and `PATCH` are `write`, and `DELETE` is `delete`. Cancelling a run or task
-execution is a `delete`, and attaching to a task execution is a `write`.
+execution is a `delete`, and attaching to a task execution is a `write`. Attaching lets a token run any command in
+the task's container; operators can turn it off for everyone with the `allow_task_attach` server setting.
 
 #### Admin only routes
 

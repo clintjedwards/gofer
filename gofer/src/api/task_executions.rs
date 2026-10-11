@@ -1172,6 +1172,18 @@ pub async fn attach_task_execution(
     )
     .await;
 
+    if !api_state.config.api.allow_task_attach {
+        return Err(websocket_error(
+            "Attaching to task executions has been turned off by the Gofer operator",
+            CloseCode::Policy,
+            rqctx.request_id.clone(),
+            ws,
+            None,
+        )
+        .await
+        .into());
+    }
+
     let run_id = match path.run_id.try_into() {
         Ok(run_id) => run_id,
         Err(err) => {

@@ -18,6 +18,7 @@ If examples of these values are needed you can find a sample file by using `gofe
 
 | name                        | type              | default | description                                                                                                                                                                                                                                                                     |
 | --------------------------- | ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| allow_task_attach           | boolean           | true    | Lets users open a shell inside a running task's container with `gofer task attach`. Anyone with write access to a pipeline's task executions can run any command in its containers, so you may want to turn this off.                                                           |
 | event_log_retention         | string (duration) | 4380h   | Controls how long Gofer will hold onto events before discarding them. This is important factor in disk space and memory footprint. Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention puts the memory and storage footprint at about 9GB. |
 | event_prune_interval        | string            | 3h      | How often to check for old events and remove them from the database. Will only remove events older than the value in event_log_retention.                                                                                                                                       |
 | ignore_pipeline_run_events  | boolean           | false   | Controls the ability for the Gofer service to execute jobs on startup. If this is set to false you can set it to true manually using the CLI command `gofer service toggle-event-ingress`.                                                                                      |
@@ -47,6 +48,7 @@ log_level = "info"
 task_execution_log_retention = 50  # total runs
 task_execution_logs_dir = "/tmp"
 task_execution_stop_timeout = 300  # 5 mins
+allow_task_attach = true
 admin_key = "test"
 ```
 

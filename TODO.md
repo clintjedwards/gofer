@@ -30,11 +30,9 @@ where the container is running.
   directory. Think more about how the UX should be handled here.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
-* Make sure is_valid_identifier is used in all the places where the user has to enter an id.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
 * There should probably be a global timeout for all runs.
-* Create a setting to allow operators to turn off the ability to attach to a container.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
   It should use task leasing to avoid any stuck processors.
@@ -53,8 +51,6 @@ code. Right now it doesn't quite work due to the main api trait being too large.
 in one very large file or split them up). https://github.com/oxidecomputer/dropshot/issues/1069 should fix this.
 * Registry auth is largely untested and possibly unsecured, don't use it for anything serious.
 * Write/Design a way to clean up expired tokens after long enough.
-* When a user removes an extension we should remove the subscriptions also (check we don't already do this,
-  due to cascade delete).
 * Check that our websockets stuff makes sense we use joinset, make sure we're returning errors to the main thread and
 bubbling them up properly.
 * API needs validation for all endpoints.
@@ -120,14 +116,12 @@ There are several useful things we can do with the concept of extensions:
 ### General
 
 - Metrics via openTelemetry
-- Check that when we create the run specific token for a run and enter it into the user's run stuff. We also need to make sure we clean that token up after the run is done.
 - Create a container for custom use that has gofer-cli already packed in and possibly allows
   - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So users can get zero to code ultra-fast.
 - Improve Logging:
   - We should change extensions(and probably main?) over to use slog instead so we can get consistent logging patterns from extensions.
   - We need to refactor logging for some routes to build on top of each other so that they we automatically get things
     like namespace, pipeline.
-- When first spinning up Gofer we attempt to check for a bootstrap token. To do this we must filter out any extension tokens that get automagically created now. Instead of checking if there are any tokens at all, we should instead just have a gofer metadata table and bootstrap_token_created: true.
 
 ### Rough spots in design
 
