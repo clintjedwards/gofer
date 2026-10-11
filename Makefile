@@ -82,6 +82,24 @@ run-backend:
 > export GOFER_WEB_API__LOG_LEVEL=$${GOFER_WEB_API__LOG_LEVEL:-debug}
 > cargo run --bin gofer -- service start
 
+## bump-version: set gofer and the rust sdk to SEMVER and update Cargo.lock
+bump-version: check-semver-included
+> echo -e "$(COLOR_BLUE)Bumping gofer and gofer_sdk to $(SEMVER)$(COLOR_END)"
+> for toml in gofer/Cargo.toml sdk/rust/Cargo.toml; do
+>   sed -i '0,/^version = ".*"/s//version = "$(SEMVER)"/' $$toml
+> done
+> cargo check
+.PHONY: bump-version
+
+## prep-release: bump to SEMVER, then regenerate and build everything for release
+# Each step is its own make so build-release's GOFER_SEMVER reads the bumped Cargo.toml. It also keeps 'make -n' safe;
+# with .ONESHELL any recipe line using $(MAKE) runs the whole recipe even on a dry run.
+prep-release: check-semver-included
+> $(MAKE) bump-version
+> $(MAKE) build-release
+> echo -e "$(COLOR_GREEN)Release $(SEMVER) prepped; review the diff, then commit and tag v$(SEMVER)$(COLOR_END)"
+.PHONY: prep-release
+
 ## build-release: build Gofer for release.
 build-release: generate-openapi generate-manifests build-docs
 > cd gofer
