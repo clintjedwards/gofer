@@ -82,7 +82,12 @@ run-backend:
 > export GOFER_WEB_API__LOG_LEVEL=$${GOFER_WEB_API__LOG_LEVEL:-debug}
 > cargo run --bin gofer -- service start
 
-## bump-version: set gofer and the rust sdk to SEMVER and update Cargo.lock
+## build: build Gofer with its documentation site for the current platform, without regenerating anything
+build: build-docs
+> cargo build --release --bin gofer
+.PHONY: build
+
+## bump-version:set gofer and the rust sdk to SEMVER and update Cargo.lock
 bump-version: check-semver-included
 > echo -e "$(COLOR_BLUE)Bumping gofer and gofer_sdk to $(SEMVER)$(COLOR_END)"
 > for toml in gofer/Cargo.toml sdk/rust/Cargo.toml; do

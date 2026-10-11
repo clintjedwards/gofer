@@ -73,6 +73,9 @@ You can [view and download releases by version here][releases-url].
 2. `make build`
 3. `ls ./target/release/gofer`
 
+You'll need Rust, plus mdbook and mdbook-linkcheck (`cargo install mdbook mdbook-linkcheck`) to build the
+documentation site that Gofer serves at `/docs`.
+
 The Gofer binary comes with a CLI to manage the server as well as act as a client.
 
 ## Development
