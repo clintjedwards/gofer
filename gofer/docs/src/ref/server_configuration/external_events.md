@@ -32,7 +32,7 @@ external events should verify them, and you should limit who can reach the port 
 
 3. Gofer serializes and forwards the request, including all of its headers and body, to the relevant extension where
    it is validated for authenticity of sender and then processed.
-4. A extension may then handle this external event in any way it pleases. For example, the Github extension takes in
+4. An extension may then handle this external event in any way it pleases. For example, the Github extension takes in
    external events which are expected to be Github webhooks and starts a pipeline if the event type matches one the user wanted.
 
 [^1]:

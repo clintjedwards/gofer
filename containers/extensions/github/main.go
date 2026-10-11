@@ -552,7 +552,7 @@ func (e *extension) Unsubscribe(_ context.Context, request extsdk.Unsubscription
 }
 
 var documentation = extsdk.Documentation{
-	Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/github.html",
+	Body: "You can find more information on this extension at the official Gofer docs site: https://gofer.clintjedwards.com/docs/ref/extensions/provided/github.html",
 	PipelineSubscriptionParams: []extsdk.Parameter{
 		{
 			Key: ParameterEventFilter,

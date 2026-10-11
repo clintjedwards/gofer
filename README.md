@@ -91,7 +91,7 @@ This software is provided as-is. It's a hobby project, done in my free time, and
 
 If you're looking for the previous Golang version you can [find it here.](https://github.com/clintjedwards/gofer/tree/e83adcd5c5164bba791f06e38702d81621b5624b)
 
-[website-url]: https://clintjedwards.github.io/gofer
+[website-url]: https://gofer.clintjedwards.com/docs
 [concourse-url]: https://concourse-ci.org/
 [canarying-url]: https://sre.google/workbook/canarying-releases/
 [releases-url]: https://github.com/clintjedwards/gofer/releases

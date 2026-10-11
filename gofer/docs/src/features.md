@@ -2,7 +2,7 @@
 
 ## Write your pipelines in a real programming language.
 
-Other infrastructure tooling tried configuration languages(yaml, hcl).... and they kinda suck[^1]. The Gofer CLI allows you to create your pipelines in a fully featured programming language. Pipelines can be currently be written in Go or Rust[^2].
+Other infrastructure tooling tried configuration languages(yaml, hcl).... and they kinda suck[^1]. The Gofer CLI allows you to create your pipelines in a fully featured programming language. Pipelines can currently be written in Go or Rust[^2].
 
 ## DAG(Directed Acyclic Graph) Support.
 
@@ -20,7 +20,7 @@ With DAG support you can run containers:
 Gofer uses [OpenAPI](https://www.openapis.org/) to construct its API surface. This means that Gofer's API is easy to use,
 well defined, and can easily be developed for in any language.
 
-The use of OpenAPI gives us two main advantages:
+The use of OpenAPI gives us three main advantages:
 
 1. The most up-to-date API contract can always be found by reading [the openapi spec files](https://github.com/clintjedwards/gofer/blob/main/gofer/docs/src/assets/openapi.json) included in the source.
 2. Developing against the API for developers working within Golang/Rust simply means importing the provided sdk.

@@ -216,7 +216,7 @@ pub fn epoch_milli() -> u64 {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use rand::prelude::*;
     use std::ops::Deref;

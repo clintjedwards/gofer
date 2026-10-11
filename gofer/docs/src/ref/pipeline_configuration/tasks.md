@@ -10,10 +10,45 @@ A Task can be any container you want to run. In the
 ```go
 Tasks(
     sdk.NewTask("simple-task", "ubuntu:latest").
-        Description("This task simply prints our hello-world message and exists!").
+        Description("This task simply prints our hello-world message and exits!").
         Command("echo", "Hello from Gofer!"),
 )
 ```
+
+## Task Dependencies (DAGs)
+
+By default every task in a pipeline starts as soon as the run does, so tasks run in parallel. To make a task wait on
+another one, use `DependsOn` and say what state the parent has to end in:
+
+| Status                        | The child runs when the parent...        |
+| ----------------------------- | ---------------------------------------- |
+| `RequiredParentStatusSuccess` | finishes successfully.                   |
+| `RequiredParentStatusFailure` | fails.                                   |
+| `RequiredParentStatusAny`     | finishes in any way, even being skipped. |
+
+If the parent doesn't end in the required state, the child is skipped. Skipped tasks count as neither success nor
+failure, so whole branches below a skipped task get skipped too, except for tasks that depend on it with `Any`.
+
+```go
+Tasks(
+    sdk.NewTask("run-tests", "alpine:latest").
+        Command("sh", "-c", "./run_tests.sh"),
+
+    // Only publish if the tests pass.
+    sdk.NewTask("publish-release", "alpine:latest").
+        DependsOn("run-tests", sdk.RequiredParentStatusSuccess).
+        Command("echo", "publishing release"),
+
+    // Tell someone the tests broke.
+    sdk.NewTask("alert", "alpine:latest").
+        DependsOn("run-tests", sdk.RequiredParentStatusFailure).
+        Command("echo", "the tests failed"),
+)
+```
+
+A task can depend on several parents with `DependsOnMany`; it runs once all of them have finished in their required
+states. The [dag example pipeline](https://github.com/clintjedwards/gofer/tree/main/examplePipelines/go/dag) shows a
+few of these together. `gofer run debug <pipeline> <run>` is handy here since it shows why each task was skipped.
 
 ## Task Environment Variables and Configuration
 
@@ -29,31 +64,76 @@ When a container is run by Gofer, the Gofer scheduler has the potential to pass 
 2. **Runtime Configurations:** When a pipeline is run you can pass in variables that the pipeline should be run with.
    This is also how extensions pass in variable configurations.
 3. **Gofer's system configurations:** Gofer will pass in system configurations that might be helpful to the user.
-   (For example, what current pipeline is running.)[^2]
+   (For example, what current pipeline is running.)
 
 The exact key names injected for each of these configurations can be seen on any task by getting that task's details:
 `gofer task get <pipeline_name> <run_id> <task_id>`
 
-[^1]:
-    These sources are ordered from most to least important. Since the configuration is passed in a "Key => Value"
-    format any conflicts between sources will default to the source with the greater importance. For instance,
-    a pipeline config with the key `GOFER_PIPELINE_ID` will replace the key of the same name later injected by the
-    Gofer system itself.
+These are the system variables Gofer injects into every task:
 
-| Key                 | Description                                                                                                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GOFER_PIPELINE_ID` | The pipeline identification string.                                                                                                                                             |
-| `GOFER_RUN_ID`      | The run identification number.                                                                                                                                                  |
-| `GOFER_TASK_ID`     | The task execution identification string.                                                                                                                                       |
-| `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                              |
-| `GOFER_API_TOKEN`   | Optional. Runs can be assigned a unique Gofer API token automatically. This makes it easy and manageable for tasks to query Gofer's API and do lots of other convenience tasks. |
+| Key                 | Description                                                                                                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GOFER_PIPELINE_ID` | The pipeline identification string.                                                                                                                                                          |
+| `GOFER_RUN_ID`      | The run identification number.                                                                                                                                                               |
+| `GOFER_TASK_ID`     | The task execution identification string.                                                                                                                                                    |
+| `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                                           |
+| `GOFER_TOKEN`       | Optional. Only set when the task uses `InjectAPIToken`. It's the same variable the Gofer CLI reads its token from, so a CLI inside the container works without any extra setup. |
+
+## Using Secrets and Objects in Variables
+
+A variable's value can pull from Gofer's [secret store](../secret_store/index.html) or
+[object store](../object_store/index.html) instead of being written into the pipeline config. That keeps secrets out
+of your code and lets one task hand a value to the next.
+
+You do this with a special string as the value. The SDK has a helper function for each kind, or you can write the
+string yourself:
+
+| Go SDK                    | Rust SDK               | String                   | Pulls from                                                         |
+| ------------------------- | ---------------------- | ------------------------ | ------------------------------------------------------------------ |
+| `sdk.PipelineSecret(key)` | `pipeline_secret(key)` | `pipeline_secret{{key}}` | This pipeline's secrets.                                           |
+| `sdk.GlobalSecret(key)`   | `global_secret(key)`   | `global_secret{{key}}`   | Global secrets. The secret has to allow your pipeline's namespace. |
+| `sdk.PipelineObject(key)` | `pipeline_object(key)` | `pipeline_object{{key}}` | This pipeline's objects.                                           |
+| `sdk.RunObject(key)`      | `run_object(key)`      | `run_object{{key}}`      | Objects stored on the current run.                                 |
+
+```go
+sdk.NewTask("deploy", "my-org/deployer:latest").
+    Variables(map[string]string{
+        "ENVIRONMENT":  "production",                    // Passed in as is.
+        "DEPLOY_KEY":   sdk.PipelineSecret("deploy_key"), // Becomes the value of the pipeline secret "deploy_key".
+        "BUILD_NUMBER": sdk.RunObject("build_number"),    // Becomes the value of the run object "build_number".
+    })
+```
+
+Secrets and objects have to be stored before the task that uses them starts:
+
+```bash
+gofer secret pipeline put my-pipeline deploy_key        # Prompts for the value.
+gofer secret global put slack_token -n "ops-.*"          # Admins only; usable from namespaces matching "ops-.*".
+gofer pipeline object put my-pipeline logs_header ./header.txt
+```
+
+Gofer swaps in the real values right before each task starts, after its parents have finished. So a task can store
+a run object (using the [injected token](./index.html#auto-inject-api-tokens) and the Gofer CLI) and any task that
+depends on it can read it as a variable. Objects are converted to UTF-8 text when they're inserted; if you need the
+raw bytes, fetch the object with the CLI inside your task instead.
+
+If a secret or object doesn't exist, or a global secret doesn't allow your namespace, the task fails before its
+container starts and the reason says which key was missing.
 
 ## What happens when a task is run?
 
 The high level flow is:
 
 1. Gofer checks to make sure your task configuration is valid.
-2. Gofer parses the task configuration's variables list. It attempts replace any substitution variables with their actual values from the object or secret store.
-3. Gofer then passes the details of your task to the configured scheduler, variables are passed in as environment variables.
-4. Usually this means the scheduler will take the configuration and attempt to pull the `image` mentioned in the configuration.
-5. Once the image is successfully pulled the container is then run with the settings passed.
+2. Gofer waits for the task's parents to finish and checks they ended in the states the task requires.
+3. Gofer parses the task configuration's variables list. It replaces any secret or object strings with their actual
+   values from the object or secret store.
+4. Gofer then passes the details of your task to the configured scheduler, variables are passed in as environment variables.
+5. Usually this means the scheduler will take the configuration and attempt to pull the `image` mentioned in the configuration.
+6. Once the image is successfully pulled the container is then run with the settings passed.
+
+[^1]:
+    These sources are ordered from most to least important. Since the configuration is passed in a "Key => Value"
+    format any conflicts between sources will default to the source with the greater importance. For instance,
+    a pipeline config with the key `GOFER_PIPELINE_ID` will replace the key of the same name later injected by the
+    Gofer system itself.

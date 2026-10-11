@@ -418,7 +418,7 @@ impl Task {
         self
     }
 
-    /// Gofer will auto-generate and inject a short-lived Gofer API token as `GOFER_API_TOKEN`. This allows you to
+    /// Gofer will auto-generate and inject a short-lived Gofer API token as `GOFER_TOKEN`. This allows you to
     /// easily have tasks communicate with Gofer by either embedding Gofer's CLI or just simply using the token to
     /// authenticate to the REST API.
     ///

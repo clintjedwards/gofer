@@ -3,7 +3,8 @@
 Gofer provides an object store as a way to share values and objects between containers. It can also be used as a cache.
 It is common for one container to run, generate an artifact or values, and then store that object in the object store
 for the next container or next run. The object store can be accessed through the [Gofer CLI](../../cli/index.html) or
-through the normal Gofer API.
+through the normal Gofer API. Tasks can also receive objects directly as environment variables; see
+[Using Secrets and Objects in Variables](../pipeline_configuration/tasks.md#using-secrets-and-objects-in-variables).
 
 Gofer divides the objects stored into two different lifetime groups:
 
@@ -31,8 +32,8 @@ stored at the run level will expire and that object will be deleted.
 You can access the run-level store using the run level store CLI commands. Here is an example:
 
 ```bash
-gofer run object put simple_pipeline 1 my_key ./some_file
-gofer run object get simple_pipeline 1 my_key
+gofer run object put my-pipeline 1 my_key ./some_file
+gofer run object get my-pipeline 1 my_key
 ```
 
 ## Supported Object Stores

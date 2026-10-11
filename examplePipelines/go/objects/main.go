@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	sdk "github.com/clintjedwards/gofer/sdk/go/config"
@@ -16,7 +15,7 @@ func main() {
 				Variables(map[string]string{
 					"SOME_VARIABLE":         "something here",
 					"LOGS_HEADER":           sdk.PipelineObject("logs_header"),
-					"ALTERNATE_LOGS_HEADER": fmt.Sprintf("pipeline_object%s", sdk.PipelineObject("alternate_logs_header")),
+					"ALTERNATE_LOGS_HEADER": "pipeline_object{{alternate_logs_header}}",
 				})).Finish()
 	if err != nil {
 		log.Fatal(err)

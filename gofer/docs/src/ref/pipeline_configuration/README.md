@@ -39,9 +39,10 @@ giving it a machine referable ID and a human referable name.
 err := sdk.NewPipeline("simple", "My Simple Pipeline")
 ```
 
-It's important to note here that while your human readable name ("My Simple Pipeline" in this case) can contain a large 
-array of characters the ID can only container alphanumeric letters, numbers, and hyphens. Any other characters will 
-result in an error when attempting to register the pipeline, due to each id needing to be URL safe.
+It's important to note here that while your human readable name ("My Simple Pipeline" in this case) can contain a large
+array of characters the ID can only contain letters, numbers, and hyphens, and has to be 3 to 32 characters long. Any
+other characters will result in an error when attempting to register the pipeline, due to each id needing to be URL
+safe.
 
 ### Add a Description
 
@@ -64,7 +65,7 @@ run on container start to just say "Hello from Gofer!".
 err := sdk.NewPipeline("simple", "My Simple Pipeline").
         Description("This pipeline is purely for testing purposes.").
         Tasks(sdk.NewTask("simple-task", "ubuntu:latest").
-			Description("This task simply prints our hello-world message and exists!").
+			Description("This task simply prints our hello-world message and exits!").
 			Command("echo", "Hello from Gofer!"),
     )
 ```
@@ -77,13 +78,13 @@ You can see we:
 - Tack on a description.
 - And then finally specify the command.
 
-To tie a bow on it, we add the `.Finish()` function to specify that our pipeline is in it's final form.
+To tie a bow on it, we add the `.Finish()` function to specify that our pipeline is in its final form.
 
 ```go
 err := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
     Tasks(sdk.NewTask("simple-task", "ubuntu:latest").
-			Description("This task simply prints our hello-world message and exists!").
+			Description("This task simply prints our hello-world message and exits!").
 			Command("echo", "Hello from Gofer!"),
     ).Finish()
 ```
@@ -95,6 +96,30 @@ a JSON output which Gofer uses to pass to the server.
 
 You can find examples like this and more in [example pipelines](https://github.com/clintjedwards/gofer/tree/main/examplePipelines)
 
+### The same pipeline in Rust
+
+The Rust SDK has the same functions in snake case. Add `gofer_sdk` to your `Cargo.toml` and put this in
+`src/main.rs`:
+
+```rust
+use gofer_sdk::config::{Pipeline, Task};
+
+fn main() {
+    Pipeline::new("my-pipeline", "My Simple Pipeline")
+        .description("This pipeline is purely for testing purposes.")
+        .tasks(vec![
+            Task::new("simple-task", "ubuntu:latest")
+                .description("This task simply prints our hello-world message and exits!")
+                .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()]),
+        ])
+        .finish()
+        .unwrap();
+}
+```
+
+`gofer up` works out which language a pipeline is written in by looking for a `go.mod` or `Cargo.toml` in the folder
+you point it at.
+
 ## Extra Examples
 
 ### Auto Inject API Tokens
@@ -103,16 +128,19 @@ Gofer has the ability to auto-create and inject a token into your tasks. This is
 want to use the [Gofer CLI](../../cli/index.html) or the Gofer API to communicate with Gofer at
 some point in your task.
 
-You can tell Gofer to do this by using the `InjectAPIToken` function for a particular task.
+You can tell Gofer to do this by using the `InjectAPIToken` function for a particular task. The token shows up in the
+task as the `GOFER_TOKEN` environment variable, which is the same variable the Gofer CLI reads, so a CLI inside your
+container is ready to go.
 
-The token will be cleaned up the same time the logs for a particular run is cleaned up.
+The token is deleted when the run's objects expire (see `run_object_expiry` in the
+[configuration reference](../server_configuration/configuration_reference.md)).
 
 ```go
 err := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
     Description("This pipeline is purely for testing purposes.").
     Tasks(
 		sdk.NewTask("simple-task", "ubuntu:latest").
-			Description("This task simply prints our hello-world message and exists!").
+			Description("This task simply prints our hello-world message and exits!").
 			Command("echo", "Hello from Gofer!").InjectAPIToken(true),
     ).Finish()
 ```

@@ -88,11 +88,11 @@ func (e *extension) Health(_ context.Context) *extsdk.HttpError {
 }
 
 var documentation = extsdk.Documentation{
-	Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
+	Body: "You can find more information on this extension at the official Gofer docs site: https://gofer.clintjedwards.com/docs/ref/extensions/provided/cron.html",
 	PipelineSubscriptionParams: []extsdk.Parameter{
 		{
 			Key:           ParameterExpression,
-			Documentation: "The cron expression to run on. You can find more information on crafting this expression at https://clintjedwards.com/gofer/ref/extensions/provided/cron.html",
+			Documentation: "The cron expression to run on. You can find more information on crafting this expression at https://gofer.clintjedwards.com/docs/ref/extensions/provided/cron.html",
 			Required:      true,
 		},
 	},

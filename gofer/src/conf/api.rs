@@ -3,6 +3,8 @@ use crate::{object_store, scheduler, secret_store};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf};
 
+// Adding, removing or changing a key here means updating default_api_config.toml and
+// gofer/docs/src/ref/server_configuration/configuration_reference.md too; that page is hand written.
 const DEFAULT_API_CONFIG: &str = include_str!("./default_api_config.toml");
 
 #[derive(Deserialize, Default, Debug, Clone)]
@@ -148,7 +150,7 @@ pub struct Server {
     pub bind_address: String,
 
     /// URL for the Gofer API that can be contacted by extensions. This is important due to extensions likely being
-    /// part of a local network and as such they need a different address than the default 'url' address.
+    /// part of a local network and as such they need a different address than the one users reach Gofer at.
     ///
     /// For example, development for Gofer is done locally and that requires us to set this address to the 'docker host'
     /// address such that when extensions make a request they make it through the proper network stack.

@@ -813,7 +813,9 @@ async fn subscribe_extension(api_state: &ApiState, subscription: &Subscription) 
     .context("Could not establish client while attempting to unsubscribe")?;
 
     let settings = interpolate_vars(
-        api_state,
+        &api_state.storage,
+        api_state.secret_store.as_ref(),
+        api_state.object_store.as_ref(),
         &subscription.namespace_id,
         &subscription.pipeline_id,
         None,

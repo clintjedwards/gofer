@@ -40,7 +40,7 @@ go mod tidy
 The pipeline we generated above gives you a very simple pipeline with a few pre-prepared testing containers. You
 should be able to view it using your favorite IDE.
 
-The configuration itself is very simple. Essentially a pipeline contains of a few parts:
+The configuration itself is very simple. Essentially a pipeline consists of a few parts:
 
 #### > Some basic attributes so we know what to call it and how to document it.
 

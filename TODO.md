@@ -39,6 +39,40 @@ None
   extension decide what to do with them. That covers webhook driven extensions like github. Time based extensions
   (cron, interval) are harder since there's nothing for Gofer to store; they'd need their own way to notice and
   handle what they missed while down.
+* Consider dropping TLS support entirely and expecting a reverse proxy (like Caddy) in front of Gofer. What's there
+  now has been buggy (until recently turning on TLS always served the bundled localhost cert, and external events only
+  used TLS when `server.use_tls` was set) and it's spread over three blocks (`server`, `external_events`,
+  `extensions`) plus `development.use_included_certs`. Things to check if we do: extensions talk to Gofer over the
+  docker network, so `extensions.use_tls`/`verify_certs` and the certs handed to extensions need their own decision;
+  update the production config in the server configuration docs and the configuration reference.
+* Clean up `gofer context`. Right now it dumps three `{:#?}` debug prints (the token's roles, the whole CLI config and
+  the server preferences), so it reads like Rust structs instead of an answer to "who am I and where am I pointed".
+  It should be laid out like the rest of the CLI's output: server URL and version, namespace, who the token belongs
+  to and its roles, and whether new runs are being accepted.
+  * The CLI config dump includes the API token in plain text. Hide it by default and add something like
+    `--include-secrets` for when you actually want to see it.
+* Add `gofer service drain` for admins, for safely stopping Gofer before an upgrade or restart.
+  * It sets `ignore_pipeline_run_events` (already supported through `PUT /api/system`) so new runs are refused, then
+    streams the runs still in progress and how far along each one is (tasks done out of total, maybe the task
+    currently running), until there are none left and it's safe to stop Gofer.
+  * `--no-wait` turns on draining and returns right away, for scripts or when you just want to stop new work.
+  * Ctrl-C while it's watching should only stop the watching; the server stays drained. Say so when it exits.
+  * Needs a way to turn it back off; `gofer service undrain` is the obvious name. Since the setting is stored in the
+    database it survives a restart, so after an upgrade Gofer comes back up still refusing runs until someone undrains
+    it. Print that clearly at the end of `drain`, and probably log a warning at startup when Gofer starts drained.
+  * Watch progress through the event stream (`/api/events`). It already has `StartedRun`, `CompletedRun`,
+    `QueuedRun` and the task execution events, which is everything drain needs to show progress and know when the
+    last run finishes.
+    * The stream only covers what happens after you connect, so drain also needs the runs that were already going
+      when it started. Replaying `history` would mean walking up to 6 months of events, so instead have the server
+      hand over the current list. It already keeps an in-memory count per pipeline (`in_progress_runs`); that could
+      become a list of run ids and be returned from `GET /api/system` or the drain call itself.
+    * Subscribe to the stream before fetching that list, or a run that finishes in between gets missed and drain
+      waits forever.
+    * Runs that were queued (waiting on parallelism) before the drain still start, so count them as in progress.
+  * `gofer context` (and the web UI) should show when Gofer is drained, since a drained server looks a lot like a
+    broken one from a pipeline owner's point of view.
+  * Document it in the server configuration docs as the way to stop new work before an upgrade.
 * Allow a parallelism mode where when parallelism is at it's max the oldest run, if still running gets, cancelled.
   * Also make it so that the github extension can do this as well, if a new run for a branch gets kicked off, if there
     is already a run for that branch, cancel the ongoing one and trigger a new one.
@@ -188,7 +222,7 @@ There are several useful things we can do with the concept of extensions:
   - Test that two tasks can pass things to each other via objects.
   - Test that run objects expire correctly and that they get properly marked as expired
   - Test that logs are removed correctly.
-  - Test that GOFER_API_TOKEN and inject works correctly, make sure it gets cleaned up properly.
+  - Test that GOFER_TOKEN and inject works correctly, make sure it gets cleaned up properly.
 
 ### Security
 

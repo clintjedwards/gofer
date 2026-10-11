@@ -5,7 +5,7 @@ Gofer runs as a single static binary that you deploy onto your favorite VPS.
 While Gofer will happily run in development mode without any additional configuration, this mode is **NOT**
 recommended for production workloads and **not intended to be secure.**
 
-Instead Gofer allows you to edit it's startup configuration allowing you to configure it to run on your favorite
+Instead Gofer allows you to edit its startup configuration allowing you to configure it to run on your favorite
 container orchestrator, object store, and/or secret backend.
 
 ## Setup
@@ -24,9 +24,9 @@ Gofer reads its configuration file from `/etc/gofer/gofer_web.toml`, or from the
 `gofer service start --config <path>`. Extensions are configured in this file too, and `gofer extension reload`
 rereads it to pick up extension changes without a restart.
 
-You can view a list of environment variables Gofer takes by using the `gofer service start -h` command. It's
-important to note that each environment variable starts with a prefix of `GOFER_WEB_`. So setting the `api.log_level`
-configuration can be set as:
+Every key in the [configuration reference](./configuration_reference.md) can also be set as an environment variable.
+Each one starts with a prefix of `GOFER_WEB_` and uses a double underscore between the block and the key. So the
+`api.log_level` configuration can be set as:
 
 ```bash
 export GOFER_WEB_API__LOG_LEVEL=debug
@@ -38,16 +38,59 @@ The Gofer service configuration file is written in [TOML](https://toml.io/en/).
 
 ##### Load order
 
-The Gofer service looks for its configuration in one of several places (ordered by first searched):
+Gofer starts from its built in defaults, then layers on top of them, in order:
 
-1. /etc/gofer/gofer_web.toml
+1. The file passed to `gofer service start --config <path>`, or `/etc/gofer/gofer_web.toml` if no path is given.
+2. `GOFER_WEB_` environment variables.
+
+You only need to set the keys you want to change.
 
 #### Bare minimum production file
 
 These are the bare minimum values you should populate for a production ready Gofer configuration.
 
-The values below should be changed depending on your environment; leaving them as they currently are will lead to loss
-of data on server restarts.
+The values below should be changed depending on your environment. The defaults keep everything in `/tmp`, which will
+lead to loss of data on server restarts, and they turn off authentication.
+
+```toml
+[server]
+bind_address = "0.0.0.0:8080"
+# The address extension containers use to reach Gofer. With the docker scheduler this is usually the docker
+# bridge's address on the host.
+extension_address = "172.17.0.1:8080"
+storage_path = "/var/lib/gofer/gofer.db"
+use_tls = true
+tls_cert_path = "/etc/gofer/tls/cert.pem"
+tls_key_path = "/etc/gofer/tls/key.pem"
+
+# The defaults are on to make local development easy. All of them are unsafe in production.
+[development]
+pretty_logging = false
+bypass_auth = false
+use_included_certs = false
+
+[api]
+task_execution_logs_dir = "/var/lib/gofer/logs"
+
+[external_events]
+use_tls = true
+tls_cert_path = "/etc/gofer/tls/cert.pem"
+tls_key_path = "/etc/gofer/tls/key.pem"
+
+[object_store.filesystem]
+path = "/var/lib/gofer/objects"
+
+[secret_store.sqlite]
+path = "/var/lib/gofer/secrets.db"
+# Exactly 32 characters; `openssl rand -hex 16` makes one. Never change it after secrets are stored.
+encryption_key = "<your key here>"
+```
+
+If you don't use external events (for example the Github extension), set `external_events.enable = false` instead
+of configuring TLS for it.
+
+Gofer creates the object store directory itself, but not the others, so create `/var/lib/gofer` and
+`/var/lib/gofer/logs` and make sure the user Gofer runs as can write to them.
 
 ### 2) Running the binary
 

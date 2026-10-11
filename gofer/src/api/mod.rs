@@ -437,7 +437,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     let tls_config = match conf.server.use_tls {
         true => {
             let (tls_cert, tls_key) = load_tls(
-                conf.server.use_tls,
+                conf.development.use_included_certs,
                 conf.server.tls_cert_path,
                 conf.server.tls_key_path,
             )?;
@@ -1121,12 +1121,12 @@ pub enum InterpolationKind {
 /// `None` since they don't belong to a namespace; that skips the check, which is fine because only admins can
 /// install extensions and only admins can manage global secrets.
 pub async fn fetch_global_secret(
-    api_state: &ApiState,
+    storage: &storage::Db,
+    secret_store: &dyn secret_store::SecretStore,
     key: &str,
     namespace_id: Option<&str>,
 ) -> Result<String> {
-    let mut conn = api_state
-        .storage
+    let mut conn = storage
         .read_conn()
         .await
         .map_err(|e| anyhow!("Could not establish a connection to the database; {:#?}", e))?;
@@ -1151,8 +1151,7 @@ pub async fn fetch_global_secret(
         )
     }
 
-    let value = match api_state
-        .secret_store
+    let value = match secret_store
         .get(&secrets::global_secret_store_key(&key_metadata.key))
         .await
     {
@@ -1177,8 +1176,12 @@ pub async fn fetch_global_secret(
 /// is when we process a new run, in which case there might be some run specific vars that need to be interpolated.
 /// The second is during pipeline subscriptions in which case you might want to pass a secret, but we aren't in the
 /// context of a run and don't require it.
+///
+/// This takes the stores it reads from instead of [`ApiState`] so it can be tested without a scheduler.
 pub async fn interpolate_vars(
-    api_state: &ApiState,
+    storage: &storage::Db,
+    secret_store: &dyn secret_store::SecretStore,
+    object_store: &dyn object_store::ObjectStore,
     namespace_id: &str,
     pipeline_id: &str,
     run_id: Option<u64>,
@@ -1201,8 +1204,7 @@ pub async fn interpolate_vars(
                 bail!("Encountered error during variable interpolation; Interpolation kind unknown")
             }
             InterpolationKind::PipelineSecret => {
-                let value = match api_state
-                    .secret_store
+                let value = match secret_store
                     .get(&secrets::pipeline_secret_store_key(
                         namespace_id,
                         pipeline_id,
@@ -1231,7 +1233,7 @@ pub async fn interpolate_vars(
                 });
             }
             InterpolationKind::GlobalSecret => {
-                let value = fetch_global_secret(api_state, &value, Some(namespace_id)).await?;
+                let value = fetch_global_secret(storage, secret_store, &value, Some(namespace_id)).await?;
 
                 variable_list.push(Variable {
                     key: variable.key.clone(),
@@ -1240,19 +1242,18 @@ pub async fn interpolate_vars(
                 });
             }
             InterpolationKind::PipelineObject => {
-                let retrieved_value = match api_state
-                    .object_store
+                let retrieved_value = match object_store
                     .get(&objects::pipeline_object_store_key(
                         namespace_id,
                         pipeline_id,
-                        &variable.key.clone(),
+                        &value,
                     ))
                     .await
                 {
                     Ok(val) => val,
                     Err(e) => {
                         if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find pipeline object {}", variable.key.clone(),)
+                            bail!("Could not find pipeline object '{}'", value)
                         };
 
                         bail!("Could not retrieve pipeline object: {:#?}", e)
@@ -1273,20 +1274,19 @@ pub async fn interpolate_vars(
                     continue;
                 }
 
-                let retrieved_value = match api_state
-                    .object_store
+                let retrieved_value = match object_store
                     .get(&objects::run_object_store_key(
                         namespace_id,
                         pipeline_id,
                         run_id.unwrap(),
-                        &variable.key.clone(),
+                        &value,
                     ))
                     .await
                 {
                     Ok(val) => val,
                     Err(e) => {
                         if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find run object {}", variable.key.clone(),)
+                            bail!("Could not find run object '{}'", value)
                         };
 
                         bail!("Could not retrieve run object: {:#?}", e)
@@ -1568,5 +1568,153 @@ mod tests {
             "uppercase_key".to_string(),
         ));
         assert_eq!(parse_interpolation_syntax(input), expected);
+    }
+
+    fn variable(key: &str, value: &str) -> Variable {
+        Variable {
+            key: key.into(),
+            value: value.into(),
+            source: VariableSource::PipelineConfig,
+        }
+    }
+
+    // Users pick their variable names and their secret/object keys separately, so each value has to be looked up
+    // by the key inside the braces and never by the variable's name. The names here purposely don't match the keys.
+    #[tokio::test]
+    async fn test_interpolate_vars_looks_up_keys_inside_braces() {
+        use crate::object_store::ObjectStore;
+        use crate::secret_store::SecretStore;
+
+        let storage = storage::tests::TestHarness::new().await;
+        let secret_store = secret_store::sqlite::tests::TestHarness::new().await;
+        let object_store = object_store::filesystem::tests::TestHarness::new().await;
+
+        secret_store
+            .put(
+                &secrets::pipeline_secret_store_key("default", "simple", "deploy_key"),
+                b"pipeline secret value".to_vec(),
+                false,
+            )
+            .await
+            .unwrap();
+
+        let global_secret = secrets::Secret::new("slack_token", vec!["default".into()]);
+        let mut conn = storage.write_conn().await.unwrap();
+        storage::secret_store_global_keys::insert(&mut conn, &global_secret.try_into().unwrap())
+            .await
+            .unwrap();
+        drop(conn);
+        secret_store
+            .put(
+                &secrets::global_secret_store_key("slack_token"),
+                b"global secret value".to_vec(),
+                false,
+            )
+            .await
+            .unwrap();
+
+        object_store
+            .put(
+                &objects::pipeline_object_store_key("default", "simple", "logs_header"),
+                bytes::Bytes::from("pipeline object value"),
+                false,
+            )
+            .await
+            .unwrap();
+        object_store
+            .put(
+                &objects::run_object_store_key("default", "simple", 1, "build_number"),
+                bytes::Bytes::from("run object value"),
+                false,
+            )
+            .await
+            .unwrap();
+
+        let variables = vec![
+            variable("PLAIN", "plain value"),
+            variable("DEPLOY_KEY", "pipeline_secret{{deploy_key}}"),
+            variable("SLACK", "global_secret{{slack_token}}"),
+            variable("HEADER", "pipeline_object{{logs_header}}"),
+            variable("BUILD", "run_object{{build_number}}"),
+        ];
+
+        let result = interpolate_vars(
+            &storage,
+            &secret_store.db,
+            &object_store.db,
+            "default",
+            "simple",
+            Some(1),
+            &variables,
+        )
+        .await
+        .unwrap();
+
+        let result: HashMap<String, String> =
+            result.into_iter().map(|v| (v.key, v.value)).collect();
+
+        assert_eq!(result["PLAIN"], "plain value");
+        assert_eq!(result["DEPLOY_KEY"], "pipeline secret value");
+        assert_eq!(result["SLACK"], "global secret value");
+        assert_eq!(result["HEADER"], "pipeline object value");
+        assert_eq!(result["BUILD"], "run object value");
+    }
+
+    #[tokio::test]
+    async fn test_interpolate_vars_missing_key_names_the_key() {
+        let storage = storage::tests::TestHarness::new().await;
+        let secret_store = secret_store::sqlite::tests::TestHarness::new().await;
+        let object_store = object_store::filesystem::tests::TestHarness::new().await;
+
+        let err = interpolate_vars(
+            &storage,
+            &secret_store.db,
+            &object_store.db,
+            "default",
+            "simple",
+            Some(1),
+            &vec![variable("HEADER", "pipeline_object{{logs_header}}")],
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("logs_header"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn test_interpolate_vars_global_secret_wrong_namespace() {
+        use crate::secret_store::SecretStore;
+
+        let storage = storage::tests::TestHarness::new().await;
+        let secret_store = secret_store::sqlite::tests::TestHarness::new().await;
+        let object_store = object_store::filesystem::tests::TestHarness::new().await;
+
+        let global_secret = secrets::Secret::new("slack_token", vec!["ops".into()]);
+        let mut conn = storage.write_conn().await.unwrap();
+        storage::secret_store_global_keys::insert(&mut conn, &global_secret.try_into().unwrap())
+            .await
+            .unwrap();
+        drop(conn);
+        secret_store
+            .put(
+                &secrets::global_secret_store_key("slack_token"),
+                b"global secret value".to_vec(),
+                false,
+            )
+            .await
+            .unwrap();
+
+        let result = interpolate_vars(
+            &storage,
+            &secret_store.db,
+            &object_store.db,
+            "default",
+            "simple",
+            Some(1),
+            &vec![variable("SLACK", "global_secret{{slack_token}}")],
+        )
+        .await;
+
+        assert!(result.is_err());
     }
 }

@@ -44,7 +44,7 @@ type Task struct {
 	Command      *[]string                       `json:"command"`
 	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
 	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
-	// environment variables "GOFER_API_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
+	// environment variable "GOFER_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
 	// the Run's objects.
 	InjectAPIToken        bool `json:"inject_api_token"`
 	AlwaysPullNewestImage bool `json:"always_pull_newest_image"`
@@ -185,7 +185,7 @@ func (t *TaskWrapper) Script(script string) *TaskWrapper {
 	return t
 }
 
-// Gofer will auto-generate and inject a Gofer API token as `GOFER_API_TOKEN`. This allows you to easily have tasks
+// Gofer will auto-generate and inject a Gofer API token as `GOFER_TOKEN`. This allows you to easily have tasks
 // communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
 //
 // This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run

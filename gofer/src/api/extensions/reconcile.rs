@@ -281,7 +281,13 @@ async fn resolve_value(api_state: &ApiState, value: &str) -> Result<String> {
     match parse_interpolation_syntax(value) {
         None => Ok(value.to_string()),
         Some((InterpolationKind::GlobalSecret, key)) => {
-            fetch_global_secret(api_state, &key, None).await
+            fetch_global_secret(
+                &api_state.storage,
+                api_state.secret_store.as_ref(),
+                &key,
+                None,
+            )
+            .await
         }
         Some((kind, _)) => bail!(
             "'{value}' uses {kind} interpolation, but extension settings only support global secrets"

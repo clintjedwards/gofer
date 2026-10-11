@@ -1,47 +1,40 @@
 # Configuration Reference
 
-## This page might be outdated.
+Gofer reads its configuration from `/etc/gofer/gofer_web.toml`, or the file passed to
+`gofer service start --config <path>`. Any key can also be set through an environment variable that starts with
+`GOFER_WEB_`, using a double underscore between the block and the key. For example `api.log_level` becomes
+`GOFER_WEB_API__LOG_LEVEL`. Environment variables win over the file.
 
-Gofer has a variety of parameters that can be specified via environment variables or the configuration file.
+Every key has a default, so you only need to set the ones you want to change. The defaults are set up for running
+Gofer locally; see the [bare minimum production file](./index.html#bare-minimum-production-file) for what to change
+before running it for real.
 
-To view a list of all possible environment variables simply type: `gofer service start -h`.
+The defaults come from
+[default_api_config.toml](https://github.com/clintjedwards/gofer/blob/main/gofer/src/conf/default_api_config.toml) and
+the keys themselves are defined in
+[conf/api.rs](https://github.com/clintjedwards/gofer/blob/main/gofer/src/conf/api.rs). If this page and those files
+ever disagree, the files are right.
 
-The most up to date config file values can be found by
-[reading the code](https://github.com/clintjedwards/gofer/blob/main/gofer/src/scheduler/mod.rs) or running the
-command above, but a best effort key and description list is given below.
+Durations are all whole numbers of seconds.
 
-If examples of these values are needed you can find a sample file by using `gofer service init-config`.
+## API
 
-## Values
-
-### API
-
-| name                        | type              | default | description                                                                                                                                                                                                                                                                     |
-| --------------------------- | ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| allow_task_attach           | boolean           | true    | Lets users open a shell inside a running task's container with `gofer task attach`. Anyone with write access to a pipeline's task executions can run any command in its containers, so you may want to turn this off.                                                           |
-| event_log_retention         | string (duration) | 4380h   | Controls how long Gofer will hold onto events before discarding them. This is important factor in disk space and memory footprint. Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention puts the memory and storage footprint at about 9GB. |
-| event_prune_interval        | string            | 3h      | How often to check for old events and remove them from the database. Will only remove events older than the value in event_log_retention.                                                                                                                                       |
-| ignore_pipeline_run_events  | boolean           | false   | Controls the ability for the Gofer service to execute jobs on startup. If this is set to false you can set it to true manually using the CLI command `gofer service toggle-event-ingress`.                                                                                      |
-| log_level                   | string            | debug   | The logging level that is output. It is common to start with `info`.                                                                                                                                                                                                            |
-| run_parallelism_limit       | int               | N/A     | The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.                                                                                                                                                                                        |
-| task_execution_logs_dir     | string            | /tmp    | The path of the directory to store task execution logs. Task execution logs are stored as a text file on the server.                                                                                                                                                            |
-| task_execution_log_expiry   | int               | 20      | The total amount of runs before logs of the oldest run will be deleted.                                                                                                                                                                                                         |
-| task_execution_stop_timeout | string            | 5m      | The amount of time Gofer will wait for a container to gracefully stop before sending it a SIGKILL.                                                                                                                                                                              |
-| external_events_api         | block             | N/A     | The external events API controls webhook type interactions with extensions. HTTP requests go through the events endpoint and Gofer routes them to the proper extension for handling.                                                                                            |
-| object_store                | block             | N/A     | The settings for the Gofer object store. The object store assists Gofer with storing values between tasks since Gofer is by nature distributed. This helps jobs avoid having to download the same objects over and over or simply just allows tasks to share certain values.    |
-| secret_store                | block             | N/A     | The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, extension configuration, or scheduler.                                                                      |
-| scheduler                   | block             | N/A     | The settings for the container orchestrator that Gofer will use to schedule workloads.                                                                                                                                                                                          |
-| server                      | block             | N/A     | Controls the settings for the Gofer API service properties.                                                                                                                                                                                                                     |
-| extensions                  | block             | N/A     | Controls settings for Gofer's extension system. Extensions are different workflows for running pipelines usually based on some other event (like the passing of time).                                                                                                          |
-
-
-#### Example
+| name                           | type   | default  | description                                                                                                                                                                                                           |
+| ------------------------------ | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| allow_task_attach              | bool   | true     | Lets users open a shell inside a running task's container with `gofer task attach`. Anyone with write access to a pipeline's task executions can run any command in its containers, so you may want to turn this off. |
+| event_log_retention            | int    | 15768000 | How long, in seconds, Gofer holds onto events before discarding them (6 months by default). This is an important factor in disk space; rough math on a 5,000 pipeline Gofer instance with 6 months of retention puts it at about 9GB. |
+| event_prune_interval           | int    | 604800   | How often, in seconds, Gofer checks for and removes events older than `event_log_retention`.                                                                                                                          |
+| global_run_concurrency_limit   | int    | 2000     | How many runs can be in progress across all of Gofer at once.                                                                                                                                                        |
+| log_level                      | string | info     | The log level for the service and its extensions.                                                                                                                                                                     |
+| pipeline_run_concurrency_limit | int    | 200      | How many runs a single pipeline can have in progress at once. Pipelines can set a lower limit with `Parallelism`, but not a higher one. 0 is unlimited. |
+| task_execution_log_retention   | int    | 50       | How many of each pipeline's runs keep their task logs. Once a pipeline has more runs than this, the logs of its oldest run are deleted. |
+| task_execution_logs_dir        | string | /tmp     | The directory task execution logs are stored in. Each one is a text file on the server.                                                                                                                              |
+| task_execution_stop_timeout    | int    | 300      | How long, in seconds, Gofer waits for a task's container to stop gracefully before killing it. 0 kills containers immediately.                                                                                        |
 
 ```toml
 [api]
-ignore_pipeline_run_events = false
-run_parallelism_limit = 200
-pipeline_version_retention = 10
+pipeline_run_concurrency_limit = 200
+global_run_concurrency_limit = 2000
 event_log_retention = 15768000     # 6 months
 event_prune_interval = 604800      # 1 week
 log_level = "info"
@@ -49,69 +42,82 @@ task_execution_log_retention = 50  # total runs
 task_execution_logs_dir = "/tmp"
 task_execution_stop_timeout = 300  # 5 mins
 allow_task_attach = true
-admin_key = "test"
 ```
 
-### Development (block)
+## Server
 
-Special feature flags to make development easier
+| name              | type   | default          | description                                                                                                                                                                                                    |
+| ----------------- | ------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| bind_address      | string | 0.0.0.0:8080     | The address and port the API and web UI listen on.                                                                                                                                                             |
+| extension_address | string | 172.17.0.1:8080  | The address extension containers use to reach Gofer. Extensions usually sit on a different network than your users, like the docker bridge network, so they need their own address. The default is the docker bridge's host address. |
+| storage_path      | string | /tmp/gofer.db    | Where Gofer keeps its sqlite database.                                                                                                                                                                         |
+| use_tls           | bool   | false            | Serve the API over TLS. Requires `tls_cert_path` and `tls_key_path`, unless `development.use_included_certs` is on.                                                                                           |
+| tls_cert_path     | string |                  | Path to the TLS certificate.                                                                                                                                                                                   |
+| tls_key_path      | string |                  | Path to the TLS certificate's key.                                                                                                                                                                             |
 
-| name               | type    | default | description                                                                |
-| ------------------ | ------- | ------- | -------------------------------------------------------------------------- |
-| bypass_auth        | boolean | false   | Skip authentication for all routes.                                        |
-| default_encryption | boolean | false   | Use default encryption key to avoid prompting for a unique one.            |
-| pretty_logging     | boolean | false   | Turn on human readable logging instead of JSON.                            |
-| use_localhost_tls  | boolean | false   | Use embedded localhost certs instead of prompting the user to provide one. |
+```toml
+[server]
+bind_address = "0.0.0.0:8080"
+extension_address = "172.17.0.1:8080"
+storage_path = "/tmp/gofer.db"
+use_tls = false
+```
 
-#### Example
+## Development
+
+Feature flags that make running Gofer locally easier. **The defaults are all on**, which is what lets
+`gofer service start` work with no configuration. Turn them all off in production.
+
+| name               | type | default | description                                                                                                                       |
+| ------------------ | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| bypass_auth        | bool | true    | Skip authentication for all routes. Anyone who can reach Gofer can do anything.                                                    |
+| pretty_logging     | bool | true    | Human readable logs instead of JSON.                                                                                              |
+| use_included_certs | bool | true    | When TLS is turned on, use the localhost certificates built into Gofer instead of the paths you give it. They're public, so they don't protect anything. |
 
 ```toml
 [development]
-pretty_logging = true     # Tells the logging package to use human readable output.
-bypass_auth = true        # Turns off auth.
-use_included_certs = true # Automatically loads localhost certs for development.
+pretty_logging = true
+bypass_auth = true
+use_included_certs = true
 ```
 
-### External Events API (block)
+## External Events
 
-The external events API controls webhook type interactions with extensions. HTTP requests go through the events
-endpoint and Gofer routes them to the proper extension for handling.
+The external events service is a separate HTTP server that takes webhooks and passes them on to extensions. It runs
+on its own port so you can expose it to services like Github without exposing the rest of Gofer. See
+[External Events](./external_events.md) for how it works.
 
-| name   | type    | default        | description                                                                               |
-| ------ | ------- | -------------- | ----------------------------------------------------------------------------------------- |
-| enable | boolean | true           | Enable the events api. If this is turned off the events http service will not be started. |
-| host   | string  | localhost:8081 | The address and port to bind the events service to.                                       |
-
-#### Example
+| name          | type   | default      | description                                                                                                  |
+| ------------- | ------ | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| enable        | bool   | true         | Start the external events service.                                                                           |
+| bind_address  | string | 0.0.0.0:8081 | The address and port the external events service listens on.                                                 |
+| use_tls       | bool   | false        | Serve external events over TLS. Requires `tls_cert_path` and `tls_key_path`, unless `development.use_included_certs` is on. |
+| tls_cert_path | string |              | Path to the TLS certificate.                                                                                 |
+| tls_key_path  | string |              | Path to the TLS certificate's key.                                                                           |
 
 ```toml
 [external_events]
 enable = true
 bind_address = "0.0.0.0:8081"
 use_tls = false
-````
+```
 
-### Object Store (block)
+## Object Store
 
-The settings for the Gofer object store. The object store assists Gofer with storing values between tasks since Gofer is by nature distributed. This helps jobs avoid having to download the same objects over and over or simply just allows tasks to share certain values.
+The object store holds values that tasks share with each other or keep between runs.
+[More about the object store.](../object_store/index.html)
 
-You can find [more information on the object store block here.](../object_store/index.html)
+| name                  | type   | default    | description                                                                                                                                                                                                                         |
+| --------------------- | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| engine                | string | filesystem | The engine Gofer uses to store objects. The only accepted value is `filesystem`.                                                                                                                                                     |
+| pipeline_object_limit | int    | 50         | How many objects each pipeline can store. Pipeline objects are kept until the limit is reached, then the oldest one is deleted to make room. Overwriting an object counts it as the newest. 0 is unlimited.                          |
+| run_object_expiry     | int    | 2          | How many runs keep their run objects. An object stored on run #5 with an expiry of 2 is deleted when run #7 starts, regardless of how the runs went. Tokens from `InjectAPIToken` are deleted at the same time.                     |
 
-| name                  | type   | default | description                                                                                                                                                                                                                                                                                                          |
-| --------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| engine                | string | filesystem | The engine Gofer will use to store objects. The accepted values here are "filesystem".                                                                                                                                                                                                                         |
-| pipeline_object_limit | int    | 50      | The limit to the amount of objects that can be stored at the pipeline level. Objects stored at the pipeline level are kept permanently, but once the object limit is reached the oldest object will be deleted. Overwriting an object counts it as the newest. A limit of 0 means unlimited.                                                                                                        |
-| run_object_expiry     | int    | 2       | Objects stored at the run level are unlimited in number, but only last for a certain number of runs. The number below controls how many runs until the run objects for the oldest run will be deleted. Ex. an object stored on run number #5 with an expiry of 2 will be deleted on run #7 regardless of run health. |
+### Filesystem
 
-#### Filesystem (block)
-
-The filesystem store is a built-in, easy to use object store that keeps objects as files in a local directory. It is
-meant for development and small deployments.
-
-| name       | type   | default            | description                                                        |
-| ---------- | ------ | ------------------ | ------------------------------------------------------------------ |
-| path       | string | /tmp/gofer_objects | The directory that object files are stored in.                     |
-| filesystem | block  | N/A                | The filesystem storage engine.                                     |
+| name | type   | default            | description                                    |
+| ---- | ------ | ------------------ | ---------------------------------------------- |
+| path | string | /tmp/gofer_objects | The directory that object files are stored in. |
 
 ```toml
 [object_store]
@@ -123,25 +129,21 @@ run_object_expiry = 2
 path = "/tmp/gofer_objects"
 ```
 
-### Secret Store (block)
+## Secret Store
 
-The settings for the Gofer secret store. The secret store allows users to securely populate their pipeline configuration with secrets that are used by their tasks, extension configuration, or scheduler.
+The secret store holds secrets that pipelines and extensions pull in at runtime.
+[More about the secret store.](../secret_store/index.html)
 
-You can find [more information on the secret store block here.](../secret_store/index.html)
+| name   | type   | default | description                                                         |
+| ------ | ------ | ------- | ------------------------------------------------------------------- |
+| engine | string | sqlite  | The engine Gofer uses to store secrets. The only accepted value is `sqlite`. |
 
-| name   | type   | default | description                                                                      |
-| ------ | ------ | ------- | -------------------------------------------------------------------------------- |
-| engine | string | sqlite  | The engine Gofer will use to store state. The accepted values here are "sqlite". |
-| sqlite | block  | N/A     | The sqlite storage engine.                                                       |
+### Sqlite
 
-#### Sqlite (block)
-
-The sqlite store is a built-in, easy to use object store. It is meant for development and small deployments.
-
-| name           | type   | default                            | description                                                                                                                                                                                                            |
-| -------------- | ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| path           | string | /tmp/gofer-secret.db               | The path of the file that sqlite will use. If this file does not exist Gofer will create it.                                                                                                                           |
-| encryption_key | string | "changemechangemechangemechangeme" | Key used to encrypt keys to keep them safe. This encryption key is responsible for facilitating that. It MUST be exactly 32 bytes (32 ASCII characters; `openssl rand -hex 16` makes one) and cannot be changed for any reason once it is set or else all data will be lost. |
+| name           | type   | default                          | description                                                                                                                                                                       |
+| -------------- | ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| path           | string | /tmp/gofer_secrets.db            | The path of the sqlite file. Gofer creates it if it doesn't exist.                                                                                                               |
+| encryption_key | string | changemechangemechangemechangeme | The key secrets are encrypted with. It must be exactly 32 bytes (32 ASCII characters; `openssl rand -hex 16` makes one). Don't change it once it's set; every existing secret becomes unreadable. |
 
 ```toml
 [secret_store]
@@ -152,25 +154,22 @@ path = "/tmp/gofer_secrets.db"
 encryption_key = "changemechangemechangemechangeme"
 ```
 
-### Scheduler (block)
+## Scheduler
 
-The settings for the container orchestrator that Gofer will use to schedule workloads.
+The scheduler is the container orchestrator Gofer runs tasks and extensions on.
+[More about schedulers.](../scheduler/index.html)
 
-You can find [more information on the scheduler block here.](../scheduler/index.html)
+| name   | type   | default | description                                                              |
+| ------ | ------ | ------- | ------------------------------------------------------------------------ |
+| engine | string | docker  | The scheduler Gofer uses. The only accepted value is `docker`.           |
 
-| name   | type   | default | description                                                                                                                                               |
-| ------ | ------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| engine | string | sqlite  | The engine Gofer will use as a container orchestrator. The accepted values here are "docker".                                                             |
-| docker | block  | N/A     | [Docker](https://www.docker.com/why-docker) is the default container orchestrator and leverages the machine's local docker engine to schedule containers. |
+### Docker
 
-#### Docker (block)
-
-[Docker](https://www.docker.com/why-docker) is the default container orchestrator and leverages the machine's local docker engine to schedule containers.
-
-| name           | type    | default | description                                                                   |
-| -------------- | ------- | ------- | ----------------------------------------------------------------------------- |
-| prune          | boolean | false   | Controls if the docker scheduler should periodically clean up old containers. |
-| prune_interval | string  | 24h     | Controls how often the prune container job should run.                        |
+| name           | type | default | description                                                                                                          |
+| -------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| prune          | bool | true    | Periodically remove stopped containers. Without this the host's disk eventually fills with old containers.            |
+| prune_interval | int  | 604800  | How often, in seconds, the prune job runs.                                                                           |
+| timeout        | int  | 300     | How long, in seconds, a request to docker can take. Should be at least as long as `api.task_execution_stop_timeout`. |
 
 ```toml
 [scheduler]
@@ -179,45 +178,21 @@ engine = "docker"
 [scheduler.docker]
 prune = true
 prune_interval = 604800
-timeout = 300           # Should be the same or more than the task_execution_stop_timeout
+timeout = 300
 ```
 
-### Server (block)
+## Extensions
 
-Controls the settings for the Gofer service's server properties.
+Controls Gofer's extension system. [More about extensions.](../extensions/index.html)
 
-| name                  | type   | default        | description                                                                             |
-| --------------------- | ------ | -------------- | --------------------------------------------------------------------------------------- |
-| host                  | string | localhost:8080 | The address and port for the service to bind to.                                        |
-| shutdown_timeout      | string | 15s            | The time Gofer will wait for all connections to drain before exiting.                   |
-| tls_cert_path         | string | <Required>     | The TLS certificate Gofer will use for the main service endpoint. This is required.     |
-| tls_key_path          | string | <Required>     | The TLS certificate key Gofer will use for the main service endpoint. This is required. |
-| storage_path          | string | /tmp/gofer.db  | Where to put Gofer's sqlite database.                                                   |
-| storage_results_limit | int    | 200            | The amount of results Gofer's database is allowed to return on one query.               |
-
-```toml
-[server]
-url = "http://localhost:8080"
-bind_address = "0.0.0.0:8080"
-extension_address = "172.17.0.1:8080"
-shutdown_timeout = 15
-storage_path = "/tmp/gofer.db"
-storage_results_limit = 200
-use_tls = false
-```
-
-### Extensions (block)
-
-Controls settings for Gofer's extension system. Extensions are different workflows for running pipelines usually based on some other event (like the passing of time).
-
-You can find [more information on the extension block here.](../extensions/index.html)
-
-| name                    | type    | default    | description                                                                                                                                      |
-| ----------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| install                 | list    | empty      | The extensions Gofer should run, one `[[extensions.install]]` entry each. The `cron` and `interval` extensions are always included unless an entry with their id sets `enabled = false`. See [installing and configuring extensions](../extensions/index.html#installing-and-configuring-extensions) for every field. |
-| stop_timeout            | string  | 5m         | The amount of time Gofer will wait until extension containers have stopped before sending a SIGKILL.                                             |
-| tls_cert_path           | string  | <Required> | The TLS certificate path Gofer will use for the extensions. This should be a certificate that the main Gofer service will be able to access.     |
-| tls_key_path            | string  | <Required> | The TLS certificate path key Gofer will use for the extensions. This should be a certificate that the main Gofer service will be able to access. |
+| name          | type   | default | description                                                                                                                                                                                                                                       |
+| ------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| install       | list   | empty   | The extensions Gofer should run, one `[[extensions.install]]` entry each. The `cron` and `interval` extensions are always included unless an entry with their id sets `enabled = false`. See [installing and configuring extensions](../extensions/index.html#installing-and-configuring-extensions) for every field. |
+| stop_timeout  | int    | 300     | How long, in seconds, Gofer waits for an extension container to stop before killing it.                                                                                                                                                          |
+| use_tls       | bool   | false   | Have extensions serve over TLS. Gofer hands each extension the certificate below, unless `development.use_included_certs` is on.                                                                                                                 |
+| tls_cert_path | string |         | Path to the TLS certificate Gofer gives extensions.                                                                                                                                                                                              |
+| tls_key_path  | string |         | Path to the TLS certificate's key.                                                                                                                                                                                                               |
+| verify_certs  | bool   | false   | Check the extension's certificate when Gofer talks to it. Only matters when `use_tls` is on.                                                                                                                                                     |
 
 `gofer extension reload` applies changes to the `install` entries without restarting Gofer. Everything else in this
 block needs a restart.
@@ -226,6 +201,7 @@ block needs a restart.
 [extensions]
 stop_timeout = 300            # 5 mins
 use_tls = false
+verify_certs = false
 
 [[extensions.install]]
 id = "github"

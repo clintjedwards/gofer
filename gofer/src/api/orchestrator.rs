@@ -1259,7 +1259,9 @@ impl Run {
         // We create a copy of variables so that we can substitute in secrets and objects.
         // to eventually pass them into the start container function.
         let env_vars = match interpolate_vars(
-            &self.api_state,
+            &self.api_state.storage,
+            self.api_state.secret_store.as_ref(),
+            self.api_state.object_store.as_ref(),
             &self.pipeline.metadata.namespace_id,
             &self.pipeline.metadata.pipeline_id,
             Some(self.run.run_id),
@@ -1601,15 +1603,12 @@ impl Run {
         let pipeline_run_limit = self.pipeline.config.parallelism;
         let global_run_limit = self.api_state.config.api.pipeline_run_concurrency_limit;
 
-        if pipeline_run_limit == 0 && global_run_limit == 0 {
-            return false;
-        }
-
-        let mut limit = pipeline_run_limit;
-
-        if pipeline_run_limit > global_run_limit {
-            limit = global_run_limit
-        }
+        // A pipeline without its own limit gets the global one, and a pipeline can't set a limit above it.
+        let limit = match (pipeline_run_limit, global_run_limit) {
+            (0, global) => global,
+            (pipeline, 0) => pipeline,
+            (pipeline, global) => pipeline.min(global),
+        };
 
         if limit == 0 {
             return false;

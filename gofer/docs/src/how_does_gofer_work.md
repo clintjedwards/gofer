@@ -11,7 +11,7 @@ Interaction with Gofer is mostly done through its [command line interface](./cli
 ### General Workflow
 
 1. Gofer is connected to a container orchestrator of some sort. This can be just your local docker service or something like K8s or Nomad.
-2. It launches it's configured extensions (extensions are just containers) and these extensions wait for events to happen or perform some service on behalf of your pipeline.
+2. It launches its configured extensions (extensions are just containers) and these extensions wait for events to happen or perform some service on behalf of your pipeline.
 3. Users create pipelines (by configuration file) that define exactly in which order and what containers they would like to run.
 4. These pipelines don't have to, but usually involve extensions so that pipelines can run automatically.
 5. Either by extension or manual intervention a pipeline run will start and schedule the containers defined in the configuration file.

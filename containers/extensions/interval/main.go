@@ -302,7 +302,7 @@ func (e *extension) Unsubscribe(_ context.Context, request extsdk.Unsubscription
 // extension so the SDK can print it as a manifest without starting the extension, which is how Gofer learns which
 // config params to expect before it ever runs the container.
 var documentation = extsdk.Documentation{
-	Body: "You can find more information on this extension at the official Gofer docs site: https://clintjedwards.com/gofer/ref/extensions/provided/interval.html",
+	Body: "You can find more information on this extension at the official Gofer docs site: https://gofer.clintjedwards.com/docs/ref/extensions/provided/interval.html",
 	PipelineSubscriptionParams: []extsdk.Parameter{
 		{
 			Key:           ParameterEvery,

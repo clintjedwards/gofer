@@ -141,7 +141,7 @@ impl ObjectStore for Engine {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use bytes::{BufMut, BytesMut};
     use futures::stream;

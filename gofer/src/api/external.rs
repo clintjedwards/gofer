@@ -37,10 +37,10 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     /* /api/external/{extension_id} */
     api.register(external_event_handler).unwrap();
 
-    let tls_config = match conf.server.use_tls {
+    let tls_config = match conf.external_events.use_tls {
         true => {
             let (tls_cert, tls_key) = load_tls(
-                conf.external_events.use_tls,
+                conf.development.use_included_certs,
                 conf.external_events.tls_cert_path,
                 conf.external_events.tls_key_path,
             )?;
@@ -67,7 +67,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
         message = "Started Gofer external http service",
         host = %bind_address.ip(),
         port = %bind_address.port(),
-        tls = conf.server.use_tls,
+        tls = conf.external_events.use_tls,
     );
 
     shutdown

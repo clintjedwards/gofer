@@ -1,81 +1,59 @@
 # Configuration
 
-The Gofer CLI accepts configuration through flags, environment variables, or a configuration file.
+The Gofer CLI accepts configuration through a configuration file or environment variables.
 
-When multiple configuration sources are used the hierarchy is (from lowest to highest)
-config file values -> environment variables -> flags. Meaning that if you give the same configurations different
-values through a configuration file and through flags, the value given in the flag will prevail.
-
-## Flags
-
-You can view Gofer's global flags by simply typing `gofer -h`.
+When both are used, environment variables win. So if your config file sets `namespace = "default"` and you
+`export GOFER_NAMESPACE=ops`, the CLI uses `ops`. Some commands also take flags like `--namespace` that override
+both for that one command.
 
 ## Environment variables
 
-You can also set configuration values through environment variables. Each environment variable has a prefix
-of `GOFER_`.
+Each configuration option can be set as an environment variable by upper casing it and adding a `GOFER_` prefix.
 
 For example, setting your API token:
 
 ```bash
 export GOFER_TOKEN=mysupersecrettoken
-gofer service token whoami
+gofer token whoami
 ```
 
-Each environment variable available is just the flag with a prefix of `GOFER_`.
+Or pointing the CLI at a different server:
 
 ```bash
-export GOFER_HOST=localhost:8080
+export GOFER_API_BASE_URL=http://localhost:8080
 ```
 
 ## Configuration file
 
 For convenience reasons Gofer can also use a standard configuration file. The language of this file is
-[TOML](https://toml.io/en/). Most of the options are simply in the form of `key=value`.
+[TOML](https://toml.io/en/). Each option is just `key = value`.
 
 ### Configuration file locations
 
-You can put your CLI configuration file in any of the following locations and Gofer will automatically
-detect and read from it(in order of first searched):
+Gofer reads the first of these it finds:
 
-1. The path given to the `--config` flag
-2. $HOME/.gofer.toml
-3. $HOME/.config/gofer.toml
+1. `$HOME/.gofer.toml`
+2. `$HOME/.config/gofer.toml`
+
+Development builds of Gofer read `$HOME/.gofer_dev.toml` and `$HOME/.config/gofer_dev.toml` instead, so you can
+work on Gofer without touching the config you use for your real server.
 
 ### Configuration file options
 
-The options available in the configuration file are the same as the global flags:
-
-```bash
-gofer -h
-
-...
-Flags:
-   --detail
-...
-
-# The flag 'detail' maps back to the configuration file as the same name
-
-# gofer.toml
-detail = false
-```
-
-| configuration | type   | description                                                                                                                          |
-| ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| namespace     | string | The namespace ID of the namespace you'd like to default to. This is used to target specific namespaces when there might be multiple. |
-| detail        | string | Show extra detail for some commands (ex. Exact time instead of humanized)                                                            |
-| output_format | string | Can be one of `spinner` (default), `plain`, `silent`, `json`. Controls the output of CLI commands. `spinner` falls back to `plain` when output isn't a terminal. |
-| api_base_url  | string | The URL of the Gofer server; used to point the CLI and that correct host.                                                            |
-| token         | string | The authentication token passed Gofer for Ident and Auth purposes.                                                                   |
-| debug         | bool   | Print debug statements.                                                                                                              |
+| configuration            | type   | default                 | description                                                                                                                                                      |
+| ------------------------ | ------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| api_base_url             | string | `http://127.0.0.1:8080` | The URL of the Gofer server.                                                                                                                                     |
+| token                    | string |                         | The API token the CLI sends with each request.                                                                                                                   |
+| namespace                | string | `default`               | The namespace commands work in unless you pass `--namespace`.                                                                                                    |
+| detail                   | bool   | `false`                 | Show extra detail for some commands (ex. exact time instead of humanized).                                                                                       |
+| output_format            | string | `spinner`               | Can be one of `spinner`, `plain`, `silent`, `json`. Controls the output of CLI commands. `spinner` falls back to `plain` when output isn't a terminal.            |
+| debug                    | bool   | `false`                 | Print debug statements.                                                                                                                                          |
 
 ### Example configuration file
 
 ```toml
-# /home/clintjedwards/.gofer.toml
-api_base_url  = "http://127.0.0.1:8080"
-debug         = false
-detail        = false
+# ~/.gofer.toml
+api_base_url  = "https://gofer.example.com"
 namespace     = "default"
 output_format = "spinner"
 token         = "mysupersecrettoken"

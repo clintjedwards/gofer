@@ -4,7 +4,7 @@
 
 - **Run:** A run is a single execution of a pipeline. A run can be started automatically via [extensions](./ref/extensions/index.html) or manually via the API or [CLI](./cli/index.html)
 
-- **Extension:** A extension allow for the extension of pipeline functionality. Extension start-up with Gofer as long running containers and
+- **Extension:** An extension adds functionality to pipelines. Extensions start up with Gofer as long running containers and
   pipelines can subscribe to them to have additional functionality.
 
 - **Task:** A task is the lowest unit in Gofer. It is a small abstraction over running a single container. Through tasks you can define what container you want to run, when to run it in relation to other containers, and what variables/secrets those containers should use.

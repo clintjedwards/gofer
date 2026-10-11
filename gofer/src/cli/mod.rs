@@ -41,43 +41,31 @@ use std::{
 /// For longer, more complete documentation visit: https://gofer.clintjedwards.com/docs
 ///
 /// ## Configuration
-/// This program retrieves it's settings from multiple sources in a specific sequence. First it loads default settings,
-/// then it looks for a configuration file, then environment variables, and lastly CLI flags. Settings from later sources
-/// will supersede identical settings from earlier ones.
+/// Settings are loaded from defaults, then a configuration file, then environment variables. Settings from later
+/// sources replace the same settings from earlier ones.
 ///
 /// ### Config file
 ///
-/// Gofer will automatically attempt to load a configuration file from the following locations:
-/// [~/.gofer.toml, ~/.config/gofer.toml]
+/// Gofer reads the first configuration file it finds out of: [~/.gofer.toml, ~/.config/gofer.toml]
 ///
-/// Gofer will automatically create a configuration file for you at `~/.gofer.toml` with default settings
-/// if it doesn't find one on command run. You will need to update the configuration file to include your Gofer API key
-/// that has been shared with you.
+/// ```toml
+/// api_base_url = 'https://gofer.example.com'
+/// token = 'mysupersecrettoken'
+/// namespace = 'default'
+/// ```
 ///
 /// ### Env vars
 ///
-/// The environment variables that the program accepts are 1:1 with the config file keys it accepts. The key for the value
-/// is specifically formatted in a particular way though. Firstly, all env vars have a prefix of 'GOFER_', and they
-/// respect any nesting by using double underscores to differentiate when they're now in a new nested level.
+/// Every config file key can also be set as an environment variable by upper casing it and adding a 'GOFER_' prefix.
+/// For example, the file above is the same as:
 ///
-/// Let's look at some examples:
+/// GOFER_API_BASE_URL = https://gofer.example.com
 ///
-/// The following config toml:
+/// GOFER_TOKEN = mysupersecrettoken
 ///
-/// ```toml
+/// GOFER_NAMESPACE = default
 ///
-/// log_level = 'debug'
-///
-/// [server]
-/// admin_key = 'test'
-///
-/// ```
-///
-/// Would result in the corresponding environment variables:
-///
-/// GOFER_LOG_LEVEL = debug
-///
-/// GOFER_SERVER__ADMIN_KEY = test
+/// The full list of options is at https://gofer.clintjedwards.com/docs/cli/configuration.html
 #[derive(Debug, Parser, Clone)]
 #[command(name = "gofer")]
 #[command(bin_name = "gofer")]

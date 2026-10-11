@@ -2,7 +2,7 @@
 
 ### > I have a job that works with a remote git repository, other CI/CD tools make this trivial, how do I mimic that?
 
-The drawback of this model and architecture is does not specifically cater to GitOps. So certain workflows
+The drawback of this model and architecture is that it does not specifically cater to GitOps. So certain workflows
 that come out of the box from other CI/CD tooling will need to be recreated, due to its inherently distributed nature.
 
 Gofer has provided several tooling options to help with this.

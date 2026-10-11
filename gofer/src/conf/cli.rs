@@ -31,9 +31,6 @@ pub struct CliConfig {
     /// Turn on extra detail for certain commands. Controls things like what format time is in.
     pub detail: bool,
 
-    /// Don't verify server certificate; useful for development.
-    pub insecure_skip_tls_verify: Option<bool>,
-
     /// The default namespace to work within. You can change this on the fly via the CLI.
     pub namespace: String,
 

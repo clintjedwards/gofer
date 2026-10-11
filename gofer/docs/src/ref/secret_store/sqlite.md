@@ -1,6 +1,6 @@
 # Sqlite <small>secret store</small>
 
-The sqlite object store is great for development and small deployments.
+The sqlite secret store is great for development and small deployments.
 
 ```toml
 [secret_store]
@@ -13,9 +13,9 @@ encryption_key = "changemechangemechangemechangeme"
 
 ## Configuration
 
-Sqlite needs to create a file on the local machine making the only parameter it accepts a path to the database file.
+Sqlite keeps secrets in a database file on the local machine, encrypted with the key you give it.
 
-| Parameter      | Type   | Default              | Description                                  |
-| -------------- | ------ | -------------------- | -------------------------------------------- |
-| path           | string | /tmp/gofer-secret.db | The path on disk to the sqlite b file        |
-| encryption_key | string | <required>           | Key used to encrypt secrets. Must be exactly 32 bytes (32 ASCII characters); `openssl rand -hex 16` makes one. |
+| Parameter      | Type   | Default                            | Description                                                                                                                                         |
+| -------------- | ------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| path           | string | /tmp/gofer_secrets.db              | The path on disk to the sqlite database file.                                                                                                       |
+| encryption_key | string | changemechangemechangemechangeme   | Key used to encrypt secrets. Must be exactly 32 bytes (32 ASCII characters); `openssl rand -hex 16` makes one. Always change the default in production. |
