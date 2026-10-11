@@ -37,25 +37,50 @@ go mod init test/simple_pipeline
 go mod tidy
 ```
 
-The pipeline we generated above gives you a very simple pipeline with a few pre-prepared testing containers. You
-should be able to view it using your favorite IDE.
 
-The configuration itself is very simple. Essentially a pipeline consists of a few parts:
+## What is in it?
 
-#### > Some basic attributes so we know what to call it and how to document it.
+Here is `main.go` with its long description shortened:
 
 ```go
-err := sdk.NewPipeline("simple", "Simple Pipeline").
-		Description("This pipeline shows off a very simple Gofer pipeline that simply pulls in " +
-...
+package main
+
+import (
+	"log"
+
+	sdk "github.com/clintjedwards/gofer/sdk/go/config"
+)
+
+func main() {
+	err := sdk.NewPipeline("simple", "Simple Pipeline").
+		Description("This pipeline shows off a very simple Gofer pipeline...").
+		Tasks(
+			sdk.NewTask("simple-task", "ubuntu:latest").
+				Description("This task simply prints our hello-world message and exits!").
+				Command("echo", "Hello from Gofer!").Variables(map[string]string{"test": "sample"}),
+		).Finish()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 ```
 
-#### > The containers we want to run are defined through [tasks](../ref/pipeline_configuration/tasks.md).
+A pipeline consists of a few parts:
 
-```go
-...
-sdk.NewTask("simple-task", "ubuntu:latest").
-    Description("This task simply prints our hello-world message and exits!").
-    Command("echo", "Hello from Gofer!").Variables(map[string]string{"test": "sample"}),
-...
+- **An id and a name.** `simple` is the id you'll use in commands; "Simple Pipeline" is the name people see.
+- **A description** so others know what it's for.
+- **One or more [tasks](../ref/pipeline_configuration/tasks.md).** Each task is a container to run. This one runs
+  `ubuntu:latest`, prints a message, and gets an environment variable `TEST=sample`.
+- **`Finish()`**, which checks the pipeline for mistakes and prints it out.
+
+## Try it
+
+A pipeline config is an ordinary program, so you can run it yourself:
+
+```bash
+go run .
 ```
+
+It prints your pipeline as JSON. That JSON is what Gofer actually receives; in the next step, `gofer up` runs this
+program for you and uploads what it prints. If something is wrong with the pipeline, like a task that depends on one
+that doesn't exist, `go run .` tells you here before anything reaches Gofer.

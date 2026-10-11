@@ -56,18 +56,22 @@ Gofer handles container configuration [the cloud native way](https://12factor.ne
 configuration is passed in as an environment variable. This allows for many advantages, the greatest of
 which is standardization.
 
-As a user, you pass your configuration in via the `Variable(s)` flavor of functions in your pipeline config.
+When a container is run by Gofer, its environment variables come from three places:
 
-When a container is run by Gofer, the Gofer scheduler has the potential to pass in configuration from multiple sources[^1]:
+1. **Run variables:** Values passed in when a run is started. You can pass them yourself with
+   `gofer pipeline run my-pipeline -v KEY=VALUE` (repeat `-v` for more than one), and extensions pass them in when
+   they start a run; the [github extension](../extensions/provided/github.md), for example, passes in details about
+   the commit that triggered it.
+2. **Your pipeline configuration:** Values you set with the `Variables` function on a task.
+3. **Gofer's system variables:** Values Gofer sets on every task, listed below.
 
-1. **Your pipeline configuration:** Configs you pass in by using the `Variable(s)` functions.
-2. **Runtime Configurations:** When a pipeline is run you can pass in variables that the pipeline should be run with.
-   This is also how extensions pass in variable configurations.
-3. **Gofer's system configurations:** Gofer will pass in system configurations that might be helpful to the user.
-   (For example, what current pipeline is running.)
+If the same name comes from more than one place, the one higher on this list wins. So a run variable can override a
+value from your pipeline configuration for a single run, and either one can override a system variable.
 
-The exact key names injected for each of these configurations can be seen on any task by getting that task's details:
-`gofer task get <pipeline_name> <run_id> <task_id>`
+Variable names are always uppercased, so `Variables(map[string]string{"log_level": "debug"})` shows up in the
+container as `LOG_LEVEL`.
+
+You can see exactly what a task was given with `gofer task get <pipeline_id> <run_id> <task_id>`.
 
 These are the system variables Gofer injects into every task:
 
@@ -77,7 +81,7 @@ These are the system variables Gofer injects into every task:
 | `GOFER_RUN_ID`      | The run identification number.                                                                                                                                                               |
 | `GOFER_TASK_ID`     | The task execution identification string.                                                                                                                                                    |
 | `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                                           |
-| `GOFER_TOKEN`       | Optional. Only set when the task uses `InjectAPIToken`. It's the same variable the Gofer CLI reads its token from, so a CLI inside the container works without any extra setup. |
+| `GOFER_TOKEN`       | Optional. Only set when the task uses `InjectAPIToken`. It's the same variable the Gofer CLI reads its token from. See [passing data between tasks](../object_store/index.html#passing-data-between-tasks) for an example. |
 
 ## Using Secrets and Objects in Variables
 
@@ -113,9 +117,10 @@ gofer pipeline object put my-pipeline logs_header ./header.txt
 ```
 
 Gofer swaps in the real values right before each task starts, after its parents have finished. So a task can store
-a run object (using the [injected token](./index.html#auto-inject-api-tokens) and the Gofer CLI) and any task that
-depends on it can read it as a variable. Objects are converted to UTF-8 text when they're inserted; if you need the
-raw bytes, fetch the object with the CLI inside your task instead.
+a run object and any task that depends on it can read it as a variable; see
+[passing data between tasks](../object_store/index.html#passing-data-between-tasks) for a full example. Objects are
+converted to UTF-8 text when they're inserted; if you need the raw bytes, fetch the object through the API inside
+your task instead.
 
 If a secret or object doesn't exist, or a global secret doesn't allow your namespace, the task fails before its
 container starts and the reason says which key was missing.
@@ -131,9 +136,3 @@ The high level flow is:
 4. Gofer then passes the details of your task to the configured scheduler, variables are passed in as environment variables.
 5. Usually this means the scheduler will take the configuration and attempt to pull the `image` mentioned in the configuration.
 6. Once the image is successfully pulled the container is then run with the settings passed.
-
-[^1]:
-    These sources are ordered from most to least important. Since the configuration is passed in a "Key => Value"
-    format any conflicts between sources will default to the source with the greater importance. For instance,
-    a pipeline config with the key `GOFER_PIPELINE_ID` will replace the key of the same name later injected by the
-    Gofer system itself.

@@ -20,13 +20,13 @@ pub struct DeploymentSubcommands {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum DeploymentCommands {
-    /// List pipeline Deploymenturations.
+    /// List pipeline deployments.
     List {
         /// Pipeline Identifier.
         id: String,
     },
 
-    /// Get pipeline Deploymenturation details.
+    /// Get pipeline deployment details.
     Get {
         /// Pipeline Identifier.
         id: String,

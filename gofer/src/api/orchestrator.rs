@@ -43,6 +43,9 @@ pub enum OrchestratorError {
     #[error("Cannot start run due to pipeline being in inactive state")]
     PipelineInactive,
 
+    #[error("Cannot start run since the pipeline has no deployed config")]
+    NoLiveConfig,
+
     #[error("An error occurred that should generally never happen and cannot be recovered from")]
     UnrecoverableError(String),
 
@@ -125,14 +128,24 @@ impl Orchestrator {
             return Err(OrchestratorError::PipelineInactive);
         };
 
-        // We need the latest pipeline config to know what tasks and settings to run the pipeline with.
-        let latest_pipeline_config_storage =
-            match storage::pipeline_configs::get_latest(&mut tx, namespace_id, pipeline_id).await {
-                Ok(config) => config,
-                Err(e) => {
-                    return Err(OrchestratorError::DatabaseGeneralError(e));
-                }
-            };
+        // Runs use the deployed (live) config, not just the newest one; a config can be registered without being
+        // deployed and that shouldn't change what runs.
+        let latest_pipeline_config_storage = match storage::pipeline_configs::get_latest_w_state(
+            &mut tx,
+            namespace_id,
+            pipeline_id,
+            &pipeline_configs::ConfigState::Live.to_string(),
+        )
+        .await
+        {
+            Ok(config) => config,
+            Err(storage::StorageError::NotFound) => {
+                return Err(OrchestratorError::NoLiveConfig);
+            }
+            Err(e) => {
+                return Err(OrchestratorError::DatabaseGeneralError(e));
+            }
+        };
 
         let pipeline_tasks = match storage::tasks::list(
             &mut tx,

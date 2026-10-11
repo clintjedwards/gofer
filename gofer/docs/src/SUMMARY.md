@@ -23,6 +23,9 @@
 
 - [Pipeline Configuration](./ref/pipeline_configuration/README.md)
   - [Tasks](./ref/pipeline_configuration/tasks.md)
+  - [Updating Pipelines](./ref/pipeline_configuration/updating.md)
+  - [Running Pipelines Automatically](./ref/pipeline_configuration/subscriptions.md)
+- [Namespaces](./ref/namespaces.md)
 - [Server Configuration](./ref/server_configuration/README.md)
   - [Configuration Reference](./ref/server_configuration/configuration_reference.md)
   - [Authentication and Authorization](./ref/server_configuration/authz_n.md)

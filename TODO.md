@@ -45,6 +45,10 @@ None
   `extensions`) plus `development.use_included_certs`. Things to check if we do: extensions talk to Gofer over the
   docker network, so `extensions.use_tls`/`verify_certs` and the certs handed to extensions need their own decision;
   update the production config in the server configuration docs and the configuration reference.
+* Add `gofer pipeline config deploy <pipeline_id> <version>` so you can deploy an existing version, mainly for
+  rolling back. The API already supports it (`POST .../pipelines/{id}/configs/{version}`), but from the CLI the only
+  way today is to `gofer up` the old code again, and `gofer up --deploy false` leaves you with an unreleased version
+  you can't deploy without curl. Update the "Rolling back" section in the Updating Pipelines docs when it lands.
 * Clean up `gofer context`. Right now it dumps three `{:#?}` debug prints (the token's roles, the whole CLI config and
   the server preferences), so it reads like Rust structs instead of an answer to "who am I and where am I pointed".
   It should be laid out like the rest of the CLI's output: server URL and version, namespace, who the token belongs

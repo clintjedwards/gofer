@@ -50,7 +50,7 @@ pub enum ObjectCommands {
     /// You can store both regular text values or read in entire files using the '@' symbol and piping.
     #[command(after_help = r#"Examples:
   gofer pipeline object put simple test ~/.bin/gofer
-  echo "hello" > gofer pipeline object put simple test @
+  echo "hello" | gofer pipeline object put simple test @
 "#)]
     Put {
         /// Pipeline Identifier.

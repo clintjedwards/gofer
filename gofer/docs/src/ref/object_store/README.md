@@ -26,8 +26,8 @@ the newest object. Overwriting an existing object with `--force` counts it as th
 ## Run-level objects
 
 Gofer can also store objects on a per-run basis. Unlike the pipeline-level objects run-level do not have a limit to how
-many can be stored, but instead have a limit of how long they last. Typically after a certain number of runs a object
-stored at the run level will expire and that object will be deleted.
+many can be stored, but instead have a limit of how long they last. Only the most recent runs keep their objects
+(`run_object_expiry`, 2 by default); once a pipeline moves past that, the oldest run's objects are deleted.
 
 You can access the run-level store using the run level store CLI commands. Here is an example:
 
@@ -35,6 +35,49 @@ You can access the run-level store using the run level store CLI commands. Here 
 gofer run object put my-pipeline 1 my_key ./some_file
 gofer run object get my-pipeline 1 my_key
 ```
+
+## Passing data between tasks
+
+The most common use of run objects is one task handing a value to the tasks after it. The first task stores the
+object through Gofer's API, and the tasks that depend on it read it as an environment variable.
+
+```go
+const storeVersion = `
+VERSION="1.4.2" # Stand in for something your task works out, like a build number.
+curl -sf -X POST \
+  -H "Authorization: Bearer $GOFER_TOKEN" \
+  -H "gofer-api-version: v0" \
+  --data-binary "$VERSION" \
+  "$GOFER_URL/api/namespaces/default/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/version"
+`
+
+err := sdk.NewPipeline("release", "Release").
+    Tasks(
+        sdk.NewTask("work-out-version", "curlimages/curl:latest").
+            InjectAPIToken(true). // Gives the task a GOFER_TOKEN that can write this pipeline's objects.
+            Variables(map[string]string{"GOFER_URL": "http://172.17.0.1:8080"}).
+            Command("sh", "-c", storeVersion),
+
+        sdk.NewTask("publish", "alpine:latest").
+            DependsOn("work-out-version", sdk.RequiredParentStatusSuccess).
+            Variables(map[string]string{"VERSION": sdk.RunObject("version")}).
+            Command("sh", "-c", "echo publishing version $VERSION"),
+    ).Finish()
+```
+
+A few things to note:
+
+- **Tasks need to know where Gofer is.** Gofer doesn't tell tasks its own address, so you pass it in yourself
+  (`GOFER_URL` above). It has to be an address the container can reach. For a local Gofer using the docker scheduler,
+  that's the docker bridge's host address, `http://172.17.0.1:8080` on Linux; it's usually the same address you set
+  for `server.extension_address`.
+- **The child has to depend on the parent.** Gofer reads `run_object{{version}}` right before `publish` starts, so
+  `publish` has to wait for `work-out-version` with `DependsOn`. Without it both tasks start at once and `publish`
+  fails because the object doesn't exist yet.
+- **The namespace isn't passed to tasks either**, so it's written into the URL. Change `default` if your pipeline
+  lives somewhere else.
+- **Use pipeline objects for things that should outlast the run**, like a cache: the same request with
+  `/pipelines/$GOFER_PIPELINE_ID/objects/<key>` instead, and `sdk.PipelineObject` to read it.
 
 ## Supported Object Stores
 

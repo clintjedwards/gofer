@@ -123,7 +123,17 @@ To create your root/bootstrap token use the command: `gofer token bootstrap`
     </div>
 </div>
 
-From here you can use your root token to provision extra, lower permissioned tokens for everyday use.
+From here you can use your root token to provision extra, lower permissioned tokens for everyday use. For example,
+a token for a person who works in the `default` namespace:
+
+```bash
+export GOFER_TOKEN=<your bootstrap token>
+gofer token create alice --roles user
+```
+
+The built in `user` role can do everything with pipelines in the `default` namespace. For other namespaces, create a
+role that covers them first; [Authentication and Authorization](./authz_n.md) explains how. Pass `--expiry <seconds>`
+to have a token stop working after a while.
 
 When communicating with Gofer through the CLI you can set the token to be automatically passed per request in
 [one of many ways.](../../cli/configuration.md)

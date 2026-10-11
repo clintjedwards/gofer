@@ -43,7 +43,7 @@ pretty low priority for me.
 - **Extensible Architecture**: Easily extend Gofer's capabilities by writing your own plugins, backends, and more, in any language via OpenAPI.
 - **Built-In Storage**: Comes with an integrated Object and Secret store for your convenience.
 - **DAG Support**: Harness the power of Directed Acyclic Graphs (DAGs) for complex workflow automation.
-- **Robust Reliability**: Automatic versioning, Blue/Green deployments, and canary releases ensure the stability and dependability of your pipelines.
+- **Versioned Pipelines**: Every update to a pipeline is kept as a new version, so you can see exactly what each run ran with and roll back to an earlier one.
 
 ## Demo:
 

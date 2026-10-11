@@ -59,7 +59,7 @@ pub enum ObjectCommands {
     /// store per run is of a much higher limit.
     #[command(after_help = r#"Examples:
   gofer run object put simple 1 test ~/.bin/gofer
-  echo "hello" > gofer run object put simple 1 test @
+  echo "hello" | gofer run object put simple 1 test @
 "#)]
     Put {
         /// Pipeline Identifier.

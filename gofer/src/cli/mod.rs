@@ -91,9 +91,9 @@ enum Commands {
         #[arg(long)]
         namespace: Option<String>,
 
-        /// Performs a registration and deployment of the pipeline. If this is set to false, the pipeline config
-        /// will be registered but not deployed.
-        #[arg(short, long, default_value = "true")]
+        /// Deploy the new version after registering it, making it the one new runs use. Pass `--deploy false` to
+        /// only register it.
+        #[arg(short, long, default_value_t = true, action = clap::ArgAction::Set)]
         deploy: bool,
     },
 

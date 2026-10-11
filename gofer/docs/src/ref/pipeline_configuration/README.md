@@ -21,7 +21,23 @@ That is to say:
 
 ## SDK
 
-Creating a pipeline involves using the SDK currently written in Go or Rust.
+Creating a pipeline involves using the SDK currently written in Go or Rust. A pipeline config is just a small
+program: it describes the pipeline with the SDK and prints it as JSON, and `gofer up` builds it, runs it, and sends
+that JSON to Gofer.
+
+- **Go:** `github.com/clintjedwards/gofer/sdk/go/config`. Every function is documented on
+  [pkg.go.dev](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk/go/config).
+- **Rust:** the `gofer_sdk` crate. It isn't published on crates.io, so depend on it from Git, using the tag that
+  matches your Gofer version:
+
+  ```toml
+  [dependencies]
+  gofer_sdk = { git = "https://github.com/clintjedwards/gofer", tag = "v<gofer version>" }
+  ```
+
+  `cargo doc --open` shows its documentation.
+
+Both SDKs have the same functions; Go uses `CamelCase` names and Rust uses `snake_case`.
 
 ## Small Walkthrough
 
@@ -98,8 +114,8 @@ You can find examples like this and more in [example pipelines](https://github.c
 
 ### The same pipeline in Rust
 
-The Rust SDK has the same functions in snake case. Add `gofer_sdk` to your `Cargo.toml` and put this in
-`src/main.rs`:
+With `gofer_sdk` added to your `Cargo.toml` (see [SDK](#sdk) above), the same pipeline in `src/main.rs` looks like
+this:
 
 ```rust
 use gofer_sdk::config::{Pipeline, Task};
@@ -129,8 +145,9 @@ want to use the [Gofer CLI](../../cli/index.html) or the Gofer API to communicat
 some point in your task.
 
 You can tell Gofer to do this by using the `InjectAPIToken` function for a particular task. The token shows up in the
-task as the `GOFER_TOKEN` environment variable, which is the same variable the Gofer CLI reads, so a CLI inside your
-container is ready to go.
+task as the `GOFER_TOKEN` environment variable, which is the same variable the Gofer CLI reads. Your task still needs
+to be told where Gofer is; see [passing data between tasks](../object_store/index.html#passing-data-between-tasks)
+for a full example.
 
 The token is deleted when the run's objects expire (see `run_object_expiry` in the
 [configuration reference](../server_configuration/configuration_reference.md)).
@@ -144,3 +161,25 @@ err := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
 			Command("echo", "Hello from Gofer!").InjectAPIToken(true),
     ).Finish()
 ```
+
+### Limiting Concurrent Runs
+
+By default a pipeline can have up to 200 runs going at once (the server's `pipeline_run_concurrency_limit`). Use
+`Parallelism` to set a lower limit for one pipeline. For example, a deploy pipeline that should never run twice at the
+same time:
+
+```go
+err := sdk.NewPipeline("deploy", "Deploy").
+    Parallelism(1).
+    Tasks(...).Finish()
+```
+
+Runs started while the pipeline is at its limit wait until an earlier one finishes. A pipeline can't set a limit
+higher than the server's.
+
+## Next Steps
+
+- [Tasks](./tasks.md) covers everything a task can do: dependencies, variables, secrets, and objects.
+- [Updating Pipelines](./updating.md) explains what happens when you `gofer up` a pipeline again.
+- [Running Pipelines Automatically](./subscriptions.md) shows how to make a pipeline run on a schedule or when
+  something happens.

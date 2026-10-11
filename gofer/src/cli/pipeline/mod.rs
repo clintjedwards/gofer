@@ -73,7 +73,7 @@ pub enum PipelineCommands {
     /// For example, the "interval" extension requires the subscribing pipeline to specify which time interval it would like to
     ///  be run on. The setting is called "every". So one might subscribe to the interval extension like so:
     ///
-    /// ex. gofer pipeline subscribe simple interval every_5_seconds -s every="5s"
+    /// ex. gofer pipeline subscribe simple interval every_5_minutes -s every="5m"
     Subscribe {
         /// Pipeline Identifier.
         id: String,

@@ -632,6 +632,16 @@ pub async fn start_run(
                     Some(err.into())
                 ));
             }
+            OrchestratorError::NoLiveConfig => {
+                return Err(HttpError::for_client_error(
+                    None,
+                    ClientErrorStatusCode::CONFLICT,
+                    format!(
+                        "pipeline '{}' has no deployed config; deploy one with 'gofer up' before starting a run",
+                        path.pipeline_id
+                    ),
+                ));
+            }
             OrchestratorError::UnrecoverableError(err) => {
                 return Err(http_error!(
                     "Could not process run due to unforeseen circumstances",
