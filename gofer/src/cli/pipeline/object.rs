@@ -1,4 +1,4 @@
-use crate::cli::Cli;
+use crate::cli::{Cli, archive};
 use anyhow::{Context, Result, bail};
 use bytes::BufMut;
 use clap::{Args, Subcommand};
@@ -6,6 +6,7 @@ use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
 use polyfmt::{Format, pause, print, println, resume, success};
 use std::io::Write;
+use std::path::PathBuf;
 
 #[derive(Debug, Args, Clone)]
 pub struct ObjectSubcommands {
@@ -15,30 +16,33 @@ pub struct ObjectSubcommands {
     /// Namespace Identifier.
     #[clap(long, global = true)]
     pub namespace: Option<String>,
+
+    /// Pipeline Identifier. Gofer sets GOFER_PIPELINE_ID inside every task.
+    #[clap(long, global = true, env = "GOFER_PIPELINE_ID")]
+    pub pipeline: Option<String>,
 }
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum ObjectCommands {
     /// List all objects from the pipeline specific store.
-    List {
-        /// Pipeline Identifier.
-        id: String,
-    },
+    List,
 
     /// Read an object from the pipeline store
     #[command(after_help = r#"Examples:
-  gofer pipeline object get simple test > /tmp/gofer_test
-  gofer pipeline object get simple test --stringify
+  gofer pipeline object get test --pipeline simple > /tmp/gofer_test
+  gofer pipeline object get test --stringify
+  gofer pipeline object get cache --extract ./node_modules
 "#)]
     Get {
-        /// Pipeline Identifier.
-        id: String,
-
         key: String,
 
         /// Attempt to print the object as a utf-8 string.
-        #[arg(short, long, default_value = "false")]
+        #[arg(short, long, default_value = "false", conflicts_with = "extract")]
         stringify: bool,
+
+        /// Extract an object uploaded from a directory into this directory, creating it if needed.
+        #[arg(short, long, value_name = "DIR")]
+        extract: Option<PathBuf>,
     },
 
     /// Write an object into the pipeline store
@@ -48,17 +52,17 @@ pub enum ObjectCommands {
     /// on configuration). Once this limit is reached the _oldest_ object will be removed to make space for the new object.
     ///
     /// You can store both regular text values or read in entire files using the '@' symbol and piping.
+    ///
+    /// If the path is a directory it's uploaded as a gzipped tarball; use `get --extract` to unpack it.
     #[command(after_help = r#"Examples:
-  gofer pipeline object put simple test ~/.bin/gofer
-  echo "hello" | gofer pipeline object put simple test @
+  gofer pipeline object put test ~/.bin/gofer --pipeline simple
+  gofer pipeline object put cache ./node_modules --force
+  echo "hello" | gofer pipeline object put test @
 "#)]
     Put {
-        /// Pipeline Identifier.
-        id: String,
-
         key: String,
 
-        /// Path the object file. Use an @ character to pass object via stdin instead.
+        /// Path to the object file or directory. Use an @ character to pass object via stdin instead.
         path: String,
 
         /// Replace value if it exists.
@@ -67,12 +71,7 @@ pub enum ObjectCommands {
     },
 
     /// Remove a pipeline object.
-    Delete {
-        /// Pipeline Identifier.
-        id: String,
-
-        key: String,
-    },
+    Delete { key: String },
 }
 
 impl Cli {
@@ -80,23 +79,25 @@ impl Cli {
         &self,
         command: ObjectSubcommands,
     ) -> Result<()> {
-        let cmds = command.command;
-        match cmds {
-            ObjectCommands::List { id } => self.pipeline_object_list(command.namespace, &id).await,
-            ObjectCommands::Get { id, key, stringify } => {
-                self.pipeline_object_get(command.namespace, &id, &key, stringify)
+        let id = command
+            .pipeline
+            .context("Pipeline id not provided; pass --pipeline or set GOFER_PIPELINE_ID")?;
+
+        match command.command {
+            ObjectCommands::List => self.pipeline_object_list(command.namespace, &id).await,
+            ObjectCommands::Get {
+                key,
+                stringify,
+                extract,
+            } => {
+                self.pipeline_object_get(command.namespace, &id, &key, stringify, extract)
                     .await
             }
-            ObjectCommands::Put {
-                id,
-                key,
-                path,
-                force,
-            } => {
+            ObjectCommands::Put { key, path, force } => {
                 self.pipeline_object_put(command.namespace, &id, &key, &path, force)
                     .await
             }
-            ObjectCommands::Delete { id, key } => {
+            ObjectCommands::Delete { key } => {
                 self.pipeline_object_delete(command.namespace, &id, &key)
                     .await
             }
@@ -152,6 +153,7 @@ impl Cli {
         id: &str,
         key: &str,
         stringify: bool,
+        extract: Option<PathBuf>,
     ) -> Result<()> {
         let namespace = match namespace_id {
             Some(namespace) => namespace,
@@ -164,6 +166,16 @@ impl Cli {
             .await
             .context("Could not successfully retrieve object from Gofer api")?;
         let mut object = object.into_inner_stream();
+
+        if let Some(dest) = extract {
+            archive::untar_into(object, dest.clone()).await?;
+            success!(
+                "Successfully extracted object '{}' into '{}'",
+                key,
+                dest.display()
+            );
+            return Ok(());
+        }
 
         if stringify {
             let mut buffer = bytes::BytesMut::with_capacity(1024); // 1kb
@@ -220,30 +232,21 @@ impl Cli {
 
         print!("Uploading object"; vec![Format::Spinner]);
 
-        if path == "@" {
+        let body_stream = if path == "@" {
             let stdin = tokio::io::stdin();
-            let stdin_stream = tokio_util::io::ReaderStream::new(stdin);
-            let body_stream = reqwest::Body::wrap_stream(stdin_stream);
+            reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::new(stdin))
+        } else {
+            let path = PathBuf::from(path);
 
-            let object = &self
-                .client
-                .put_pipeline_object(&namespace, id, key, Some(force), body_stream)
-                .await
-                .context("Could not successfully push object to Gofer api")?
-                .object;
-
-            success!("Successfully uploaded object '{}'", object.key);
-
-            return Ok(());
-        }
-
-        let path = std::path::PathBuf::from(path);
-        let file = tokio::fs::File::open(path)
-            .await
-            .context("Could not open file")?;
-
-        let file_stream = tokio_util::io::ReaderStream::new(file);
-        let body_stream = reqwest::Body::wrap_stream(file_stream);
+            if path.is_dir() {
+                archive::tar_directory(path)
+            } else {
+                let file = tokio::fs::File::open(path)
+                    .await
+                    .context("Could not open file")?;
+                reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::new(file))
+            }
+        };
 
         let object = &self
             .client

@@ -27,8 +27,13 @@ curl -sf -H "Authorization: Bearer $GOFER_TOKEN" -H "gofer-api-version: v0" \
   | tar -xzf -
 ```
 
-If your image has the `gofer` binary, `gofer run object put $GOFER_PIPELINE_ID $GOFER_RUN_ID dist @` and
-`gofer run object get ...` do the same thing.
+If your image has the `gofer` binary, it'll do the tar work for you. Inside a task it picks up the pipeline and run
+from the environment, so all you need is the key and the directory:
+
+```bash
+gofer run object put dist ./dist           # Uploads the directory as a tarball.
+gofer run object get dist --extract ./dist # Downloads and unpacks it.
+```
 
 Two things trip people up:
 

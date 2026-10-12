@@ -1,3 +1,4 @@
+mod archive;
 mod event;
 mod extension;
 mod fetch;

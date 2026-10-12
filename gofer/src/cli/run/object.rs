@@ -1,4 +1,4 @@
-use crate::cli::Cli;
+use crate::cli::{Cli, archive};
 use anyhow::{Context, Result, bail};
 use bytes::BufMut;
 use clap::{Args, Subcommand};
@@ -6,6 +6,7 @@ use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
 use futures::StreamExt;
 use polyfmt::{Format, pause, print, println, resume, success};
 use std::io::Write;
+use std::path::PathBuf;
 
 #[derive(Debug, Args, Clone)]
 pub struct ObjectSubcommands {
@@ -15,36 +16,37 @@ pub struct ObjectSubcommands {
     /// Namespace Identifier.
     #[clap(long, global = true)]
     pub namespace: Option<String>,
+
+    /// Pipeline Identifier. Gofer sets GOFER_PIPELINE_ID inside every task.
+    #[clap(long, global = true, env = "GOFER_PIPELINE_ID")]
+    pub pipeline: Option<String>,
+
+    /// Run Identifier. Gofer sets GOFER_RUN_ID inside every task.
+    #[clap(long, global = true, env = "GOFER_RUN_ID")]
+    pub run: Option<u64>,
 }
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum ObjectCommands {
     /// List all objects from the run specific store.
-    List {
-        /// Pipeline Identifier.
-        pipeline_id: String,
-
-        /// Run Identifier.
-        run_id: u64,
-    },
+    List,
 
     /// Read an object from the run store
     #[command(after_help = r#"Examples:
-  gofer run object get simple 1 test > /tmp/gofer_test
-  gofer run object get simple 1 test --stringify
+  gofer run object get test --pipeline simple --run 1 > /tmp/gofer_test
+  gofer run object get test --stringify
+  gofer run object get dist --extract ./dist
 "#)]
     Get {
-        /// Pipeline Identifier.
-        pipeline_id: String,
-
-        /// Run Identifier.
-        run_id: u64,
-
         key: String,
 
         /// Attempt to print the object as a utf-8 string.
-        #[arg(short, long, default_value = "false")]
+        #[arg(short, long, default_value = "false", conflicts_with = "extract")]
         stringify: bool,
+
+        /// Extract an object uploaded from a directory into this directory, creating it if needed.
+        #[arg(short, long, value_name = "DIR")]
+        extract: Option<PathBuf>,
     },
 
     /// Write an object into the run store
@@ -57,20 +59,17 @@ pub enum ObjectCommands {
     /// Run objects are kept individual to each run and removed after a certain run limit. This means that after a certain
     /// amount of runs for a particular pipeline a run's objects will be discarded. The limit of amount of objects you can
     /// store per run is of a much higher limit.
+    ///
+    /// If the path is a directory it's uploaded as a gzipped tarball; use `get --extract` to unpack it.
     #[command(after_help = r#"Examples:
-  gofer run object put simple 1 test ~/.bin/gofer
-  echo "hello" | gofer run object put simple 1 test @
+  gofer run object put test ~/.bin/gofer --pipeline simple --run 1
+  gofer run object put dist ./dist
+  echo "hello" | gofer run object put test @
 "#)]
     Put {
-        /// Pipeline Identifier.
-        pipeline_id: String,
-
-        /// Run Identifier.
-        run_id: u64,
-
         key: String,
 
-        /// Path the object file. Use an @ character to pass object via stdin instead.
+        /// Path to the object file or directory. Use an @ character to pass object via stdin instead.
         path: String,
 
         /// Replace value if it exists.
@@ -79,52 +78,43 @@ pub enum ObjectCommands {
     },
 
     /// Remove a run object.
-    Delete {
-        /// Pipeline Identifier.
-        pipeline_id: String,
-
-        /// Run Identifier.
-        run_id: u64,
-
-        key: String,
-    },
+    Delete { key: String },
 }
 
 impl Cli {
     pub async fn handle_run_object_subcommands(&self, command: ObjectSubcommands) -> Result<()> {
-        let cmds = command.command;
-        match cmds {
-            ObjectCommands::List {
-                pipeline_id,
-                run_id,
-            } => {
+        let pipeline_id = command
+            .pipeline
+            .context("Pipeline id not provided; pass --pipeline or set GOFER_PIPELINE_ID")?;
+        let run_id = command
+            .run
+            .context("Run id not provided; pass --run or set GOFER_RUN_ID")?;
+
+        match command.command {
+            ObjectCommands::List => {
                 self.run_object_list(command.namespace, &pipeline_id, run_id)
                     .await
             }
             ObjectCommands::Get {
-                pipeline_id,
-                run_id,
                 key,
                 stringify,
+                extract,
             } => {
-                self.run_object_get(command.namespace, &pipeline_id, run_id, &key, stringify)
-                    .await
+                self.run_object_get(
+                    command.namespace,
+                    &pipeline_id,
+                    run_id,
+                    &key,
+                    stringify,
+                    extract,
+                )
+                .await
             }
-            ObjectCommands::Put {
-                pipeline_id,
-                run_id,
-                key,
-                path,
-                force,
-            } => {
+            ObjectCommands::Put { key, path, force } => {
                 self.run_object_put(command.namespace, &pipeline_id, run_id, &key, &path, force)
                     .await
             }
-            ObjectCommands::Delete {
-                pipeline_id,
-                run_id,
-                key,
-            } => {
+            ObjectCommands::Delete { key } => {
                 self.run_object_delete(command.namespace, &pipeline_id, run_id, &key)
                     .await
             }
@@ -186,6 +176,7 @@ impl Cli {
         run_id: u64,
         key: &str,
         stringify: bool,
+        extract: Option<PathBuf>,
     ) -> Result<()> {
         let namespace = match namespace_id {
             Some(namespace) => namespace,
@@ -198,6 +189,16 @@ impl Cli {
             .await
             .context("Could not successfully retrieve object from Gofer api")?;
         let mut object = object.into_inner_stream();
+
+        if let Some(dest) = extract {
+            archive::untar_into(object, dest.clone()).await?;
+            success!(
+                "Successfully extracted object '{}' into '{}'",
+                key,
+                dest.display()
+            );
+            return Ok(());
+        }
 
         if stringify {
             let mut buffer = bytes::BytesMut::with_capacity(1024); // 1kb
@@ -255,37 +256,21 @@ impl Cli {
 
         print!("Uploading object"; vec![Format::Spinner]);
 
-        if path == "@" {
+        let body_stream = if path == "@" {
             let stdin = tokio::io::stdin();
-            let stdin_stream = tokio_util::io::ReaderStream::new(stdin);
-            let body_stream = reqwest::Body::wrap_stream(stdin_stream);
+            reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::new(stdin))
+        } else {
+            let path = PathBuf::from(path);
 
-            let object = &self
-                .client
-                .put_run_object(
-                    &namespace,
-                    pipeline_id,
-                    run_id,
-                    key,
-                    Some(force),
-                    body_stream,
-                )
-                .await
-                .context("Could not successfully push object to Gofer api")?
-                .object;
-
-            success!("Successfully uploaded object '{}'", object.key);
-
-            return Ok(());
-        }
-
-        let path = std::path::PathBuf::from(path);
-        let file = tokio::fs::File::open(path)
-            .await
-            .context("Could not open file")?;
-
-        let file_stream = tokio_util::io::ReaderStream::new(file);
-        let body_stream = reqwest::Body::wrap_stream(file_stream);
+            if path.is_dir() {
+                archive::tar_directory(path)
+            } else {
+                let file = tokio::fs::File::open(path)
+                    .await
+                    .context("Could not open file")?;
+                reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::new(file))
+            }
+        };
 
         let object = &self
             .client

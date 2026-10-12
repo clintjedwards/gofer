@@ -115,7 +115,7 @@ Secrets and objects have to be stored before the task that uses them starts:
 ```bash
 gofer secret pipeline put my-pipeline deploy_key        # Prompts for the value.
 gofer secret global put slack_token -n "ops-.*"          # Admins only; usable from namespaces matching "ops-.*".
-gofer pipeline object put my-pipeline logs_header ./header.txt
+gofer pipeline object put logs_header ./header.txt --pipeline my-pipeline
 ```
 
 Gofer swaps in the real values right before each task starts, after its parents have finished. So a task can store

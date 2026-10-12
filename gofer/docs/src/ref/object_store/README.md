@@ -14,9 +14,9 @@ Gofer can store objects permanently for each pipeline. You can store objects at 
 gofer pipeline object store command:
 
 ```bash
-gofer pipeline object put my-pipeline my_key1 ./some_file
-echo "my_value" | gofer pipeline object put my-pipeline my_key2 @
-gofer pipeline object get my-pipeline my_key1
+gofer pipeline object put my_key1 ./some_file --pipeline my-pipeline
+echo "my_value" | gofer pipeline object put my_key2 @ --pipeline my-pipeline
+gofer pipeline object get my_key1 --pipeline my-pipeline
 ```
 
 The limitation to pipeline level objects is that they have a limit of the number of objects that can be stored
@@ -32,8 +32,21 @@ many can be stored, but instead have a limit of how long they last. Only the mos
 You can access the run-level store using the run level store CLI commands. Here is an example:
 
 ```bash
-gofer run object put my-pipeline 1 my_key ./some_file
-gofer run object get my-pipeline 1 my_key
+gofer run object put my_key ./some_file --pipeline my-pipeline --run 1
+gofer run object get my_key --pipeline my-pipeline --run 1
+```
+
+Inside a task you can leave off `--pipeline` and `--run`. The CLI falls back to `GOFER_PIPELINE_ID` and
+`GOFER_RUN_ID`, which Gofer sets on every task.
+
+## Storing directories
+
+If you `put` a directory, the CLI uploads it as a gzipped tarball. `get --extract <dir>` downloads and unpacks it,
+so you don't have to write your own tar commands:
+
+```bash
+gofer run object put dist ./dist           # In the task that builds it.
+gofer run object get dist --extract ./dist # In a task that depends on it.
 ```
 
 ## Passing data between tasks
@@ -69,9 +82,9 @@ A few things to note:
 - **Gofer tells each task where it is.** `GOFER_API_BASE_URL` and `GOFER_NAMESPACE` are set on every task.
   The URL comes from the server's `server.extension_address`, since tasks and extensions sit on the same container
   network. If tasks can't reach Gofer, that setting is the one to fix.
-- **The Gofer CLI works here too.** It reads `GOFER_API_BASE_URL`, `GOFER_NAMESPACE` and `GOFER_TOKEN`, so if your
-  image has the `gofer` binary, `echo "$VERSION" | gofer run object put $GOFER_PIPELINE_ID $GOFER_RUN_ID version @`
-  does the same thing as the curl call with no extra setup.
+- **The Gofer CLI works here too.** It reads `GOFER_API_BASE_URL`, `GOFER_NAMESPACE`, `GOFER_TOKEN`,
+  `GOFER_PIPELINE_ID` and `GOFER_RUN_ID`, so if your image has the `gofer` binary,
+  `echo "$VERSION" | gofer run object put version @` does the same thing as the curl call with no extra setup.
 - **The child has to depend on the parent.** Gofer reads `run_object{{version}}` right before `publish` starts, so
   `publish` has to wait for `work-out-version` with `DependsOn`. Without it both tasks start at once and `publish`
   fails because the object doesn't exist yet.
