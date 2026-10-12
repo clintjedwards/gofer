@@ -394,7 +394,11 @@ impl Cli {
                 if metadata.semver == cli_version {
                     version.blue().to_string()
                 } else {
-                    format!("{} {}", version.yellow(), "(doesn't match the CLI)".yellow())
+                    format!(
+                        "{} {}",
+                        version.yellow(),
+                        "(doesn't match the CLI)".yellow()
+                    )
                 }
             }
             Err(e) => format!("{} {}", "unreachable;".red(), api_error_message(e)),
@@ -467,7 +471,10 @@ impl Cli {
                     hidden_token
                 },
             ),
-            ("output_format", self.conf.output_format.to_string().to_lowercase()),
+            (
+                "output_format",
+                self.conf.output_format.to_string().to_lowercase(),
+            ),
             ("detail", self.conf.detail.to_string()),
             ("debug", self.conf.debug.to_string()),
         ];

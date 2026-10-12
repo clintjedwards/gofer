@@ -1233,7 +1233,8 @@ pub async fn interpolate_vars(
                 });
             }
             InterpolationKind::GlobalSecret => {
-                let value = fetch_global_secret(storage, secret_store, &value, Some(namespace_id)).await?;
+                let value =
+                    fetch_global_secret(storage, secret_store, &value, Some(namespace_id)).await?;
 
                 variable_list.push(Variable {
                     key: variable.key.clone(),
