@@ -83,3 +83,7 @@ path = "src/generate_openapi.rs"
 [[bin]]
 name = "generate_api_docs"
 path = "src/generate_api_docs.rs"
+
+[[bin]]
+name = "check_docs_links"
+path = "src/check_docs_links.rs"

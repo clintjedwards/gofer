@@ -13,7 +13,7 @@ pipeline.
   <p>Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.</p>
   <i>
 
-  Steps to accomplish this can be found in the [additional steps section.](#additional-setup)
+  Steps to accomplish this can be found in the [setup section.](#setting-it-up)
 
   </i>
   </div>

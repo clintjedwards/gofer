@@ -2023,7 +2023,7 @@ type GetConfigParams struct {
 // PutPipelineObjectParams defines parameters for PutPipelineObject.
 type PutPipelineObjectParams struct {
 	// Force Overwrite a value of a object if it already exists.
-	Force bool `form:"force" json:"force"`
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // ListRunsParams defines parameters for ListRuns.
@@ -2039,7 +2039,7 @@ type ListRunsParams struct {
 // PutRunObjectParams defines parameters for PutRunObject.
 type PutRunObjectParams struct {
 	// Force Overwrite a value of a object if it already exists.
-	Force bool `form:"force" json:"force"`
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // ListTaskExecutionsParams defines parameters for ListTaskExecutions.
@@ -7518,16 +7518,20 @@ func NewPutPipelineObjectRequestWithBody(server string, namespaceId string, pipe
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, params.Force); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+		if params.Force != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8012,16 +8016,20 @@ func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineI
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, params.Force); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+		if params.Force != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()

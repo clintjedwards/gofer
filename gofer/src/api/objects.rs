@@ -433,6 +433,7 @@ pub struct PutRunObjectResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct PutRunObjectParams {
     /// Overwrite a value of a object if it already exists.
+    #[serde(default)]
     pub force: bool,
 }
 
@@ -938,6 +939,7 @@ pub struct PutPipelineObjectResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct PutPipelineObjectParams {
     /// Overwrite a value of a object if it already exists.
+    #[serde(default)]
     pub force: bool,
 }
 

@@ -262,7 +262,14 @@ impl Cli {
 
             let object = &self
                 .client
-                .put_run_object(&namespace, pipeline_id, run_id, key, force, body_stream)
+                .put_run_object(
+                    &namespace,
+                    pipeline_id,
+                    run_id,
+                    key,
+                    Some(force),
+                    body_stream,
+                )
                 .await
                 .context("Could not successfully push object to Gofer api")?
                 .object;
@@ -282,7 +289,14 @@ impl Cli {
 
         let object = &self
             .client
-            .put_run_object(&namespace, pipeline_id, run_id, key, force, body_stream)
+            .put_run_object(
+                &namespace,
+                pipeline_id,
+                run_id,
+                key,
+                Some(force),
+                body_stream,
+            )
             .await
             .context("Could not successfully push object to Gofer api")?
             .object;

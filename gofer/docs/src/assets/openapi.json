@@ -1496,7 +1496,6 @@
             "in": "query",
             "name": "force",
             "description": "Overwrite a value of a object if it already exists.",
-            "required": true,
             "schema": {
               "type": "boolean"
             }
@@ -2001,7 +2000,6 @@
             "in": "query",
             "name": "force",
             "description": "Overwrite a value of a object if it already exists.",
-            "required": true,
             "schema": {
               "type": "boolean"
             }

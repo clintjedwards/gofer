@@ -77,6 +77,8 @@ These are the system variables Gofer injects into every task:
 
 | Key                 | Description                                                                                                                                                                                  |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GOFER_NAMESPACE`   | The namespace the pipeline lives in.                                                                                                                                                         |
+| `GOFER_API_BASE_URL`| The address the task can reach Gofer's API at, taken from the server's `server.extension_address`.                                                                                          |
 | `GOFER_PIPELINE_ID` | The pipeline identification string.                                                                                                                                                          |
 | `GOFER_RUN_ID`      | The run identification number.                                                                                                                                                               |
 | `GOFER_TASK_ID`     | The task execution identification string.                                                                                                                                                    |

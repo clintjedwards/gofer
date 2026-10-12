@@ -48,14 +48,13 @@ curl -sf -X POST \
   -H "Authorization: Bearer $GOFER_TOKEN" \
   -H "gofer-api-version: v0" \
   --data-binary "$VERSION" \
-  "$GOFER_URL/api/namespaces/default/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/version"
+  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/version"
 `
 
 err := sdk.NewPipeline("release", "Release").
     Tasks(
         sdk.NewTask("work-out-version", "curlimages/curl:latest").
             InjectAPIToken(true). // Gives the task a GOFER_TOKEN that can write this pipeline's objects.
-            Variables(map[string]string{"GOFER_URL": "http://172.17.0.1:8080"}).
             Command("sh", "-c", storeVersion),
 
         sdk.NewTask("publish", "alpine:latest").
@@ -67,15 +66,15 @@ err := sdk.NewPipeline("release", "Release").
 
 A few things to note:
 
-- **Tasks need to know where Gofer is.** Gofer doesn't tell tasks its own address, so you pass it in yourself
-  (`GOFER_URL` above). It has to be an address the container can reach. For a local Gofer using the docker scheduler,
-  that's the docker bridge's host address, `http://172.17.0.1:8080` on Linux; it's usually the same address you set
-  for `server.extension_address`.
+- **Gofer tells each task where it is.** `GOFER_API_BASE_URL` and `GOFER_NAMESPACE` are set on every task.
+  The URL comes from the server's `server.extension_address`, since tasks and extensions sit on the same container
+  network. If tasks can't reach Gofer, that setting is the one to fix.
+- **The Gofer CLI works here too.** It reads `GOFER_API_BASE_URL`, `GOFER_NAMESPACE` and `GOFER_TOKEN`, so if your
+  image has the `gofer` binary, `echo "$VERSION" | gofer run object put $GOFER_PIPELINE_ID $GOFER_RUN_ID version @`
+  does the same thing as the curl call with no extra setup.
 - **The child has to depend on the parent.** Gofer reads `run_object{{version}}` right before `publish` starts, so
   `publish` has to wait for `work-out-version` with `DependsOn`. Without it both tasks start at once and `publish`
   fails because the object doesn't exist yet.
-- **The namespace isn't passed to tasks either**, so it's written into the URL. Change `default` if your pipeline
-  lives somewhere else.
 - **Use pipeline objects for things that should outlast the run**, like a cache: the same request with
   `/pipelines/$GOFER_PIPELINE_ID/objects/<key>` instead, and `sdk.PipelineObject` to read it.
 

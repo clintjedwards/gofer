@@ -5,7 +5,7 @@ use crate::{
         generate_inject_api_token_role_id, in_progress_runs_key, interpolate_vars, objects,
         pipeline_configs, pipelines, runs, secrets, task_executions, tasks, tokens,
     },
-    scheduler, secret_store, storage,
+    conf, scheduler, secret_store, storage,
 };
 
 use anyhow::{Context, Result, bail};
@@ -1003,7 +1003,11 @@ impl Run {
             }
         }
 
-        let env_vars = combine_variables(&self.run, &task);
+        let env_vars = combine_variables(
+            &self.run,
+            &task,
+            &task_api_base_url(&self.api_state.config.server),
+        );
         let env_vars_json = match serde_json::to_string(&env_vars) {
             Ok(env_vars) => env_vars,
             Err(e) => {
@@ -2588,8 +2592,8 @@ impl Run {
 /// 3) Lastly we pass in the run specific defined envvars. These are usually provided by either a trigger
 ///    or the user when they attempt to start a new run manually. Since these are the most likely to be
 ///    edited adhoc they are treated as the most important.
-pub fn combine_variables(run: &runs::Run, task: &tasks::Task) -> Vec<Variable> {
-    let system_injected_vars = system_injected_vars(run, task, task.inject_api_token);
+pub fn combine_variables(run: &runs::Run, task: &tasks::Task, api_base_url: &str) -> Vec<Variable> {
+    let system_injected_vars = system_injected_vars(run, task, api_base_url);
 
     let task_vars: HashMap<String, Variable> = task
         .variables
@@ -2623,15 +2627,44 @@ pub fn combine_variables(run: &runs::Run, task: &tasks::Task) -> Vec<Variable> {
     task_execution_vars.into_values().collect()
 }
 
+/// The address tasks use to reach Gofer. Tasks run on the same container network as extensions, so they use the
+/// extension address; it's stored without a scheme so we add one here.
+fn task_api_base_url(server: &conf::api::Server) -> String {
+    if server.extension_address.contains("://") {
+        return server.extension_address.clone();
+    }
+
+    let scheme = if server.use_tls { "https" } else { "http" };
+    format!("{scheme}://{}", server.extension_address)
+}
+
 /// On every run Gofer injects some vars that are determined by the system.
 /// These are usually meant to give the user some basic information that they can pull
 /// into their program about the details of the run.
 fn system_injected_vars(
     run: &runs::Run,
     task: &tasks::Task,
-    inject_api_token: bool,
+    api_base_url: &str,
 ) -> HashMap<String, Variable> {
+    // GOFER_NAMESPACE and GOFER_API_BASE_URL use the same names the Gofer CLI reads its config from, so a task
+    // that has the CLI and an injected token can talk to Gofer without any extra setup.
     let mut vars = HashMap::from([
+        (
+            "GOFER_NAMESPACE".to_string(),
+            Variable {
+                key: "GOFER_NAMESPACE".to_string(),
+                value: run.namespace_id.clone(),
+                source: VariableSource::System,
+            },
+        ),
+        (
+            "GOFER_API_BASE_URL".to_string(),
+            Variable {
+                key: "GOFER_API_BASE_URL".to_string(),
+                value: api_base_url.to_string(),
+                source: VariableSource::System,
+            },
+        ),
         (
             "GOFER_PIPELINE_ID".to_string(),
             Variable {
@@ -2666,7 +2699,7 @@ fn system_injected_vars(
         ),
     ]);
 
-    if inject_api_token {
+    if task.inject_api_token {
         vars.insert(
             // The exact key 'GOFER_TOKEN' is what is expected by the Gofer CLI. This enables the user to not have
             // to edit anything to be able to use an embedded gofer cli.
@@ -2680,4 +2713,24 @@ fn system_injected_vars(
     }
 
     vars
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn task_api_base_url_adds_scheme() {
+        let mut server = conf::api::Server {
+            extension_address: "172.17.0.1:8080".into(),
+            ..Default::default()
+        };
+        assert_eq!(task_api_base_url(&server), "http://172.17.0.1:8080");
+
+        server.use_tls = true;
+        assert_eq!(task_api_base_url(&server), "https://172.17.0.1:8080");
+
+        server.extension_address = "http://gofer.internal:8080".into();
+        assert_eq!(task_api_base_url(&server), "http://gofer.internal:8080");
+    }
 }

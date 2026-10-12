@@ -175,7 +175,7 @@ The object store is a temporary key-vale storage mechanism for pipelines and run
 
 | Name | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
-| `force` | boolean | yes | Overwrite a value of a object if it already exists. |
+| `force` | boolean | no | Overwrite a value of a object if it already exists. |
 
 **Request body** (required): raw bytes (`application/octet-stream`)
 
@@ -279,7 +279,7 @@ Overwrites can be performed by passing the `force` query param.
 
 | Name | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
-| `force` | boolean | yes | Overwrite a value of a object if it already exists. |
+| `force` | boolean | no | Overwrite a value of a object if it already exists. |
 
 **Request body** (required): raw bytes (`application/octet-stream`)
 

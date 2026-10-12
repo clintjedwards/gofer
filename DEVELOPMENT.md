@@ -78,6 +78,13 @@ cargo install mdbook-linkcheck
 Once you have mdbook you can simply run `make run-docs` to give you an auto-reloading dev version of the documentation
 in a browser.
 
+`make build-docs` also runs `make check-docs-links`, which checks the links in the built site. mdbook-linkcheck only
+reads the markdown, so it misses links that break once the site is built. Two things to know:
+
+- Link to a section's README page as `index.html` (like `./ref/object_store/index.html`). mdbook renders `README.md`
+  as `index.html` but rewrites links to it as `README.html`, which doesn't exist.
+- Renaming a heading breaks any `#anchor` links to it; the check lists each one.
+
 ### Regenerating the Demo Video
 
 The demo video is recorded with [vhs](https://github.com/charmbracelet/vhs); a very handy tool that allows you to write a

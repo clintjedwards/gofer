@@ -187,7 +187,15 @@ clippy-pedantic:
 build-docs:
 > cd gofer/docs
 > mdbook build
+> cd ..
+> cargo run --bin check_docs_links
 .PHONY: build-docs
+
+## check-docs-links: fail if the built docs have links to missing pages or headings
+check-docs-links:
+> cd gofer
+> cargo run --bin check_docs_links
+.PHONY: check-docs-links
 
 ## build-containers: build containers
 build-containers: check-semver-included
