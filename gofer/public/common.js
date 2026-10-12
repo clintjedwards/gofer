@@ -150,7 +150,7 @@ function accountButton() {
   }
 
   const name = sessionState === "verified" ? session.user : "Token saved";
-  return `<span class="grid size-6 place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">${escapeHtml(name.charAt(0).toUpperCase())}</span>
+  return `<span class="grid size-6 place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white [text-box:trim-both_cap_alphabetic]">${escapeHtml(name.charAt(0).toUpperCase())}</span>
     <span class="max-w-[10rem] truncate">${escapeHtml(name)}</span>`;
 }
 

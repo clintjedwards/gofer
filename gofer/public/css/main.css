@@ -1740,6 +1740,10 @@ video {
   transition-duration: 150ms;
 }
 
+.\[text-box\:trim-both_cap_alphabetic\] {
+  text-box: trim-both cap alphabetic;
+}
+
 .placeholder\:font-sans::-moz-placeholder {
   font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
