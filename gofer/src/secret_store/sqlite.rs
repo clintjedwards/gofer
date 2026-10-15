@@ -115,11 +115,6 @@ impl Engine {
 
         sqlx::query(
             r#"
-            CREATE TABLE IF NOT EXISTS transaction_mutex (
-                id          TEXT    NOT NULL,
-                lock        INTEGER NOT NULL CHECK (lock IN (0, 1))
-            ) STRICT;
-
             CREATE TABLE IF NOT EXISTS secrets (
                 key   TEXT NOT NULL,
                 value BLOB NOT NULL,
@@ -153,36 +148,13 @@ impl Engine {
 
     #[allow(dead_code)]
     pub async fn open_tx(&self) -> Result<Transaction<'_, Sqlite>, SecretStoreError> {
-        let mut tx = self
-            .write_pool
-            .begin()
+        // Sqlite opens transactions as DEFERRED by default, which means no lock is taken until the first write.
+        // If another write lands in between, our transaction fails with "database is busy" when it tries to
+        // upgrade. IMMEDIATE grabs the write lock up front so that can't happen.
+        self.write_pool
+            .begin_with("BEGIN IMMEDIATE")
             .await
-            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))?;
-
-        // This is a hack to support IMMEDIATE transaction locks within sqlite.
-        //
-        // Sqlite by default opens all transactions as deferred, this means that the transaction is registered, but
-        // no locks are held until a write operation comes in. The downside to this is that if during the connection
-        // there is a write to the database the entire transaction is void (and the error returned is "Sqlite DB busy").
-        // To overcome this usually you can set the transaction to instead be IMMEDIATE, which would establish a lock
-        // that would then prevent write access to the database until the transaction was finished.
-        //
-        // The further issue is that the sqlx library does not yet support opening transactions in IMMEDIATE mode.
-        // To subvert that, we instead force a write operation to a dummy table to force the transaction to grab a lock
-        // before it can be preempted by some other write.
-        //
-        // Relevant ticket here: https://github.com/launchbadge/sqlx/issues/481
-        sqlx::query("INSERT INTO transaction_mutex (id, lock) VALUES (1, 1);")
-            .execute(tx.as_mut())
-            .await
-            .map_err(|e| {
-                SecretStoreError::Connection(format!(
-                "Error while attempting to start transaction using transaction_mutex table; {:?}",
-                e
-            ))
-            })?;
-
-        Ok(tx)
+            .map_err(|e| SecretStoreError::Connection(format!("{:?}", e)))
     }
 }
 
