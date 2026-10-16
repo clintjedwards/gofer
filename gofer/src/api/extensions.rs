@@ -508,6 +508,7 @@ async fn start_extension(
         networking: Some(8082), //TODO(Replace this with port listed in the conf package)
         entrypoint: None,
         command: None,
+        timeline: None,
     };
 
     let start_response = api_state

@@ -310,10 +310,49 @@ function taskTone(task) {
 // "ran for 2 minutes" once the run is done, "has been running for 2 minutes" while it's still going.
 function runDuration(run) {
   if (run.started === 0) {
-    return "hasn't started yet";
+    return `has been queued for ${humanizeDuration(run.created, Date.now())}`;
   }
   const elapsed = humanizeDuration(run.started, run.ended || Date.now());
   return lower(run.state) === "complete" ? `ran for ${elapsed}` : `has been running for ${elapsed}`;
+}
+
+// When the run started, and how long it sat queued behind the pipeline's parallelism limit when that's worth
+// mentioning. Anything under a second is just setup, not real queueing.
+function runStarted(run) {
+  if (run.started === 0) {
+    return "Queued";
+  }
+  const queued = run.started - run.created;
+  if (!run.created || queued < 1000) {
+    return formatTimestamp(run.started);
+  }
+  return `${formatTimestamp(run.started)}
+      <span class="block text-xs font-normal text-amber-600 dark:text-amber-400">after ${offset(queued)} queued</span>`;
+}
+
+// Labels and bar colors for each phase of a task execution's timeline. Setup phases are lighter tints of the running
+// green that get stronger as the task gets closer to running, so the bar reads as one task warming up rather than a
+// row of unrelated colors. The running bar uses the task's status tone instead so it matches the graph.
+const PHASES = {
+  waiting_on_dependencies: { label: "waiting on dependencies", bar: "bg-gray-200 dark:bg-neutral-600" },
+  preparing: { label: "preparing", bar: "bg-emerald-500/20" },
+  pulling_image: { label: "pulling image", bar: "bg-emerald-500/35" },
+  starting_container: { label: "starting container", bar: "bg-emerald-500/50" },
+  running: { label: "running", bar: null },
+};
+
+// Each phase of a task with how long it lasted. A phase lasts until the next one begins, or until the task ended
+// (or now, if it's still going). Task executions from before timelines existed fall back to waiting and running.
+function taskPhases(task) {
+  const end = task.ended || Date.now();
+  let entries = task.timeline || [];
+  if (entries.length === 0 && task.started !== 0) {
+    entries = [{ phase: "running", started: task.started }];
+  }
+  return entries.map((entry, i) => {
+    const until = i + 1 < entries.length ? entries[i + 1].started : end;
+    return { phase: lower(entry.phase), started: entry.started, ended: until, duration: Math.max(until - entry.started, 0) };
+  });
 }
 
 function taskDuration(task) {
@@ -429,7 +468,7 @@ function renderSummary(run) {
 
   const cells = [
     cell("Initiated by", escapeHtml(run.initiator.user), `Token ID: ${run.initiator.id}`),
-    cell("Started", run.started ? formatTimestamp(run.started) : "Not yet"),
+    cell("Started", runStarted(run)),
     cell("Ended", run.ended ? formatTimestamp(run.ended) : "-"),
     cell("Duration", escapeHtml(runDuration(run))),
     cell("Objects expired", run.store_objects_expired ? "Yes" : "No"),
@@ -597,24 +636,38 @@ function renderTimeline(run, tasks) {
   const rows = tasks.map((task) => {
     let bar = "";
     let times = "not started";
+    const phases = taskPhases(task);
+
+    if (phases.length > 0) {
+      const tone = TONES[taskTone(task)];
+      // The time between being created and the first phase is just bookkeeping, so it's drawn as waiting too.
+      const segments = [{ phase: "waiting_on_dependencies", started: Math.max(task.created, runStart), ended: phases[0].started }, ...phases];
+
+      bar = segments
+        .map((segment, i) => {
+          const from = percent(segment.started);
+          // The last segment still gets a sliver so very short tasks don't vanish.
+          const width = i === segments.length - 1 ? Math.max(percent(segment.ended) - from, 0.75) : Math.max(percent(segment.ended) - from, 0);
+          const color = PHASES[segment.phase]?.bar ?? tone.bar;
+          const text = `${PHASES[segment.phase]?.label ?? segment.phase} · ${phaseDuration(segment.ended - segment.started)}`;
+          const left = Math.min(from, 100 - width);
+          // Keep the hover label on screen for segments near either end of the bar.
+          const middle = left + width / 2;
+          const anchor = middle < 15 ? "left-0" : middle > 85 ? "right-0" : "left-1/2 -translate-x-1/2";
+          return `<div class="group absolute inset-y-0 ${color} hover:z-10 hover:outline hover:outline-2 hover:outline-gray-900 dark:hover:outline-gray-100"
+              style="left:${left}%;width:${width}%" aria-label="${escapeHtml(text)}">
+              <span class="pointer-events-none absolute bottom-full ${anchor} mb-1.5 hidden group-hover:block whitespace-nowrap rounded bg-gray-900 dark:bg-gray-100 px-1.5 py-0.5 text-xs text-white dark:text-gray-900">${escapeHtml(text)}</span>
+            </div>`;
+        })
+        .join("");
+    }
 
     if (task.started !== 0) {
-      const end = task.ended || now;
-      const waitFrom = percent(Math.max(task.created, runStart));
-      const runFrom = percent(task.started);
-      // Very short tasks still get a sliver so they don't vanish.
-      const runWidth = Math.max(percent(end) - runFrom, 0.75);
-      const tone = TONES[taskTone(task)];
-
-      bar = `<div class="absolute inset-y-0 rounded-sm bg-gray-200 dark:bg-neutral-600"
-            style="left:${waitFrom}%;width:${Math.max(runFrom - waitFrom, 0)}%" title="waiting"></div>
-          <div class="absolute inset-y-0 rounded-sm ${tone.bar}"
-            style="left:${Math.min(runFrom, 100 - runWidth)}%;width:${runWidth}%" title="running"></div>`;
       times = `${offset(task.started - runStart)} → ${task.ended ? offset(task.ended - runStart) : "now"}`;
     }
 
     return `<button type="button" data-task="${escapeHtml(task.task_id)}" class="truncate text-left font-mono text-xs text-sky-700 dark:text-sky-300 py-1 hover:underline">${escapeHtml(task.task_id)}</button>
-        <span class="relative my-1 h-4 rounded-sm bg-gray-50 dark:bg-neutral-900/60">${bar}</span>
+        <span class="relative my-1 h-4 bg-gray-50 dark:bg-neutral-900/60">${bar}</span>
         <span class="whitespace-nowrap font-mono text-xs text-gray-500 dark:text-gray-400 py-1">${times}</span>
         <span class="whitespace-nowrap text-xs py-1">${escapeHtml(statusText(task))}</span>`;
   });
@@ -627,9 +680,13 @@ function renderTimeline(run, tasks) {
       </span>
       <span></span><span></span>
     </div>
-    <div class="mt-3 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
-      <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-sm bg-gray-200 dark:bg-neutral-600"></span>waiting</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-sm bg-emerald-500"></span>running</span>
+    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+      ${Object.values(PHASES)
+        .map(
+          (phase) =>
+            `<span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 ${phase.bar ?? "bg-emerald-500"}"></span>${phase.label}</span>`
+        )
+        .join("")}
     </div>`;
 }
 
@@ -732,7 +789,7 @@ function renderRunCliTips(run, tasks) {
 
 // Per-task commands shown in the expanded row of the tasks table.
 function taskCliTips(task) {
-  const commands = [];
+  const commands = [commandBlock(`gofer task get ${task.pipeline_id} ${task.run_id} ${task.task_id}${namespaceFlag()}`)];
   const logsAvailable = task.started !== 0 && !task.logs_removed && !task.logs_expired;
 
   if (logsAvailable) {
@@ -740,10 +797,6 @@ function taskCliTips(task) {
   }
   if (lower(task.state) === "running") {
     commands.push(commandBlock(`gofer task attach ${task.pipeline_id} ${task.run_id} ${task.task_id}${namespaceFlag()}`));
-  }
-
-  if (commands.length === 0) {
-    return "";
   }
 
   return `<div class="md:col-span-2 space-y-2">
@@ -758,6 +811,30 @@ function formatArgs(args) {
   }
   const quoted = args.map((arg) => (/[\s"']/.test(arg) ? JSON.stringify(arg) : arg)).join(" ");
   return `<code class="font-mono text-xs whitespace-pre-wrap break-all">${escapeHtml(quoted)}</code>`;
+}
+
+// Short phases get tenths of a second so a quick image check doesn't read as "0s".
+function phaseDuration(millis) {
+  return millis < 10000 ? `${(millis / 1000).toFixed(1)}s` : offset(millis);
+}
+
+// Where the task's time went, phase by phase, so a slow image pull or a long dependency wait stands out.
+function renderTimeSpent(task) {
+  const phases = taskPhases(task);
+  if (phases.length === 0) {
+    return "";
+  }
+
+  const rows = phases
+    .map(
+      (phase) => `<div class="flex justify-between gap-4">
+          <span>${escapeHtml(PHASES[phase.phase]?.label ?? phase.phase)}</span>
+          <span class="font-mono text-xs">${phaseDuration(phase.duration)}</span>
+        </div>`
+    )
+    .join("");
+
+  return labeled("Time spent", `<div class="max-w-xs">${rows}</div>`);
 }
 
 function renderTaskDetails(task) {
@@ -780,6 +857,7 @@ function renderTaskDetails(task) {
         ${task.status_reason ? labeled("Reason", `${escapeHtml(task.status_reason.reason)}: ${escapeHtml(task.status_reason.description)}`) : ""}
         ${labeled("Created", formatTimestamp(task.created))}
         ${labeled("Ended", formatTimestamp(task.ended))}
+        ${renderTimeSpent(task)}
         ${labeled("Logs", logs)}
         ${labeled("API token", yesNo(task.task.inject_api_token))}
         ${labeled("Always pull", yesNo(task.task.always_pull_newest_image))}

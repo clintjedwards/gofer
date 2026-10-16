@@ -251,6 +251,24 @@ impl Cli {
             vec![]
         };
 
+        // Line the durations up after the longest phase name.
+        let phases = crate::cli::run::phase_durations(&task);
+        let phase_width = phases
+            .iter()
+            .map(|(phase, _)| crate::cli::run::phase_text(phase).len())
+            .max()
+            .unwrap_or(0);
+        let breakdown: Vec<String> = phases
+            .iter()
+            .map(|(phase, millis)| {
+                format!(
+                    "{:<phase_width$}  {}",
+                    crate::cli::run::phase_text(phase),
+                    crate::cli::run::phase_duration_text(*millis).blue()
+                )
+            })
+            .collect();
+
         let variable_rows = task
             .variables
             .into_iter()
@@ -273,6 +291,13 @@ impl Cli {
   {%- endif %}
   {{ vertical_line }} Exit Code: {{ exit_code }}
   {{ vertical_line }} Started {{ started }} and ran for {{ duration }}
+  {%- if breakdown %}
+
+  $ Time Breakdown:
+  {%- for line in breakdown %}
+  {{ vertical_line }} {{ line }}
+  {%- endfor %}
+  {%- endif %}
 
   {%- if status_reason %}
 
@@ -322,6 +347,7 @@ impl Cli {
         context.insert("image_name", &task.task.image.blue().to_string());
         context.insert("image_digest", &task.image_digest);
         context.insert("log_lines", &log_lines);
+        context.insert("breakdown", &breakdown);
         context.insert(
             "exit_code",
             &task

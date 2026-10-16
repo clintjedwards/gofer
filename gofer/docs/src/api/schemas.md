@@ -766,6 +766,7 @@ A run is one or more tasks being executed on behalf of some extension. Run is a 
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
+| `created` | integer | yes | Time the run was created in epoch milliseconds. A run can sit queued behind the pipeline's parallelism limit for a while, so this can be well before `started`. |
 | `ended` | integer | yes | Time of run end in epoch milliseconds. |
 | `event_id` | string (nullable) | no | The UUID of the QueuedRun event for this run. Essentially pointing to the start of the run in the event stream. This is used internally to help with run recovery. |
 | `initiator` | [Initiator](#initiator) | yes | Information about what started the run. |
@@ -773,7 +774,7 @@ A run is one or more tasks being executed on behalf of some extension. Run is a 
 | `pipeline_config_version` | integer | yes | Which version of the pipeline did this run execute. |
 | `pipeline_id` | string | yes | Unique identifier of the target pipeline. |
 | `run_id` | integer | yes | Unique identifier of the target run. |
-| `started` | integer | yes | Time of run start in epoch milliseconds. |
+| `started` | integer | yes | Time the run left the queue and started launching tasks, in epoch milliseconds. 0 while still queued. |
 | `state` | [run_state](#run_state) | yes | The current state of the run within the Gofer execution model. Describes if the run is in progress or not. |
 | `status` | [run_status](#run_status) | yes | The final result of the run. |
 | `status_reason` | [run_status_reason](#run_status_reason) (nullable) | no | More information on the circumstances around a particular run's status. |
@@ -870,6 +871,7 @@ a task execution is a specific execution of a task/container. It represents a 4t
 | `status_reason` | [task_execution_status_reason](#task_execution_status_reason) (nullable) | no | More information on the circumstances around a particular task execution's status. |
 | `task` | [Task](#task) | yes | Information about the underlying task this task execution ran. |
 | `task_id` | string | yes | Unique identifier of the current task being executed. |
+| `timeline` | array of [task_execution_timeline_entry](#task_execution_timeline_entry) | yes | The phases the task execution went through in order, so you can tell where its time went. |
 | `variables` | array of [Variable](#variable) | yes | The environment variables injected during this particular task execution. |
 
 ## Token
@@ -1112,6 +1114,20 @@ A string, one of:
 | `not_found` |  |
 | `failed` |  |
 
+## task_execution_phase
+
+A step a task execution goes through on its way to finishing. Used to break down where a task execution spent its time, especially the time before its container actually started running.
+
+A string, one of:
+
+| Value | Description |
+| ----- | ----------- |
+| `waiting_on_dependencies` | Waiting for the tasks it depends on to finish. |
+| `preparing` | Resolving variables, which includes reading from the secret and object stores. |
+| `pulling_image` | The scheduler is pulling the container image. |
+| `starting_container` | The scheduler is creating and starting the container. |
+| `running` | The container is running. |
+
 ## task_execution_state
 
 A string, one of:
@@ -1155,4 +1171,11 @@ A string, one of:
 | `failed_precondition` | User error in task execution parameters. |
 | `cancelled` | User invoked cancellation.k |
 | `orphaned` | Task execution was lost due to extreme internal error. |
+
+## task_execution_timeline_entry
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `phase` | [task_execution_phase](#task_execution_phase) | yes | The phase the task execution entered. |
+| `started` | integer | yes | When the phase began in epoch milliseconds. A phase lasts until the next entry begins, or until the task execution ended if it's the last one. |
 

@@ -159,6 +159,51 @@ pub enum StatusReasonType {
     Orphaned,
 }
 
+/// A step a task execution goes through on its way to finishing. Used to break down where a task execution spent its
+/// time, especially the time before its container actually started running.
+#[derive(Debug, Clone, Display, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+#[schemars(rename = "task_execution_phase")]
+#[strum(serialize_all = "snake_case")]
+#[strum(ascii_case_insensitive)]
+pub enum Phase {
+    /// Waiting for the tasks it depends on to finish.
+    WaitingOnDependencies,
+
+    /// Resolving variables, which includes reading from the secret and object stores.
+    Preparing,
+
+    /// The scheduler is pulling the container image.
+    PullingImage,
+
+    /// The scheduler is creating and starting the container.
+    StartingContainer,
+
+    /// The container is running.
+    Running,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[schemars(rename = "task_execution_timeline_entry")]
+pub struct TimelineEntry {
+    /// The phase the task execution entered.
+    pub phase: Phase,
+
+    /// When the phase began in epoch milliseconds. A phase lasts until the next entry begins, or until the task
+    /// execution ended if it's the last one.
+    pub started: u64,
+}
+
+impl TimelineEntry {
+    /// An entry for a phase that's starting right now.
+    pub fn now(phase: Phase) -> Self {
+        Self {
+            phase,
+            started: epoch_milli(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[schemars(rename = "task_execution_status_reason")]
 pub struct StatusReason {
@@ -223,6 +268,9 @@ pub struct TaskExecution {
     /// The exact image the task execution ran with. Tags can move between runs, so this pins down what actually
     /// ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started.
     pub image_digest: String,
+
+    /// The phases the task execution went through in order, so you can tell where its time went.
+    pub timeline: Vec<TimelineEntry>,
 }
 
 impl TaskExecution {
@@ -244,6 +292,7 @@ impl TaskExecution {
             variables: vec![],
             task,
             image_digest: String::new(),
+            timeline: vec![],
         }
     }
 
@@ -314,6 +363,13 @@ impl TryFrom<storage::task_executions::TaskExecution> for TaskExecution {
             )
         })?;
 
+        let timeline = serde_json::from_str(&value.timeline).with_context(|| {
+            format!(
+                "Could not parse field 'timeline' from storage value; '{:#?}'",
+                value.timeline
+            )
+        })?;
+
         let exit_code = value.exit_code.and_then(|value| match u8::try_from(value) {
             Ok(v) => Some(v),
             Err(e) => {
@@ -343,6 +399,7 @@ impl TryFrom<storage::task_executions::TaskExecution> for TaskExecution {
             variables,
             task,
             image_digest: value.image_digest,
+            timeline,
         })
     }
 }
@@ -372,6 +429,13 @@ impl TryFrom<TaskExecution> for storage::task_executions::TaskExecution {
             )
         })?;
 
+        let timeline = serde_json::to_string(&value.timeline).with_context(|| {
+            format!(
+                "Could not parse field 'timeline' to storage value; '{:#?}'",
+                value.timeline
+            )
+        })?;
+
         let exit_code = value.exit_code.map(i64::from);
 
         Ok(Self {
@@ -391,6 +455,7 @@ impl TryFrom<TaskExecution> for storage::task_executions::TaskExecution {
             variables,
             task,
             image_digest: value.image_digest,
+            timeline,
         })
     }
 }

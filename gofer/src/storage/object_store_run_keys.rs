@@ -131,6 +131,7 @@ mod tests {
             pipeline_id: "some_pipeline_id".to_string(),
             pipeline_config_version: 1,
             run_id: 1,
+            created: "2021-01-01T00:00:00Z".to_string(),
             started: "2021-01-01T00:00:00Z".to_string(),
             ended: "2021-01-01T01:00:00Z".to_string(),
             state: "Running".to_string(),

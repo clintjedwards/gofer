@@ -2,7 +2,8 @@ use crate::cli::{Cli, colorize_status_text, duration, epoch_milli, rail};
 use anyhow::{Context, Result};
 use colored::{ColoredString, Colorize};
 use gofer_sdk::api::types::{
-    RequiredParentStatus, Run, RunState, TaskExecution, TaskExecutionState, TaskExecutionStatus,
+    RequiredParentStatus, Run, RunState, TaskExecution, TaskExecutionPhase, TaskExecutionState,
+    TaskExecutionStatus,
 };
 use polyfmt::println;
 use std::collections::HashMap;
@@ -51,13 +52,11 @@ impl Cli {
             rail(),
             run.initiator.user.blue()
         ));
-        output.push(format!(
-            "  {} Started {} and {}",
-            rail(),
-            self.format_time(run.started)
-                .unwrap_or_else(|| "not yet".to_string()),
-            run_duration(&run)
-        ));
+
+        for line in self.run_timing(&run) {
+            output.push(format!("  {} {}", rail(), line));
+        }
+
         if let Some(reason) = &run.status_reason {
             output.push(format!(
                 "  {} {}: {}: {}",
@@ -248,6 +247,37 @@ impl Cli {
     }
 }
 
+impl Cli {
+    /// When the run started and how long it's taken, plus how long it sat in the queue behind the pipeline's
+    /// parallelism limit when that's worth mentioning.
+    pub(super) fn run_timing(&self, run: &Run) -> Vec<String> {
+        if run.started == 0 {
+            return vec![format!(
+                "Queued {} and hasn't started yet",
+                self.format_time(run.created)
+                    .unwrap_or_else(|| "at an unknown time".to_string())
+            )];
+        }
+
+        let mut lines = vec![format!(
+            "Started {} and {}",
+            self.format_time(run.started)
+                .unwrap_or_else(|| "at an unknown time".to_string()),
+            run_duration(run)
+        )];
+
+        // Anything under a second is just the time it takes to set the run up, not real queueing.
+        if run.created != 0 && run.started.saturating_sub(run.created) >= 1000 {
+            lines.push(format!(
+                "Waited in the queue for {} before starting",
+                duration(run.created as i64, run.started as i64)
+            ));
+        }
+
+        lines
+    }
+}
+
 /// "ran for 2 mins" once the run is done, "has been running for 2 mins" while it's still going.
 pub(super) fn run_duration(run: &Run) -> String {
     let elapsed = duration(run.started as i64, run.ended as i64);
@@ -256,6 +286,39 @@ pub(super) fn run_duration(run: &Run) -> String {
     } else {
         format!("has been running for {elapsed}")
     }
+}
+
+/// How long each phase of a task execution lasted, in order. A phase lasts until the next one begins, or until the
+/// task ended (or now, if it's still going).
+pub(crate) fn phase_durations(task: &TaskExecution) -> Vec<(&TaskExecutionPhase, u64)> {
+    let end = if task.ended != 0 {
+        task.ended
+    } else {
+        epoch_milli()
+    };
+
+    task.timeline
+        .iter()
+        .enumerate()
+        .map(|(i, entry)| {
+            let next = task.timeline.get(i + 1).map_or(end, |next| next.started);
+            (&entry.phase, next.saturating_sub(entry.started))
+        })
+        .collect()
+}
+
+/// How long a phase took. Short phases get tenths of a second so a quick image check doesn't read as "0s".
+pub(crate) fn phase_duration_text(millis: u64) -> String {
+    if millis < 10_000 {
+        format!("{:.1}s", millis as f64 / 1000.0)
+    } else {
+        offset(millis)
+    }
+}
+
+/// A phase in plain words, like "pulling image".
+pub(crate) fn phase_text(phase: &TaskExecutionPhase) -> String {
+    phase.to_string().replace('_', " ")
 }
 
 /// Failures first since those are usually the root cause, then cancellations, then skips.
@@ -428,32 +491,59 @@ fn timeline(run: &Run, task_executions: &[TaskExecution]) -> Vec<String> {
     let mut output = vec![];
 
     for (task, times) in task_executions.iter().zip(times) {
-        let bar = match times {
-            None => " ".repeat(TIMELINE_WIDTH),
-            Some(_) => {
-                let run_from = column(task.started).min(TIMELINE_WIDTH - 1);
-                let wait_from = column(task.created.max(run_start)).min(run_from);
-                let end = if task.ended != 0 { task.ended } else { now };
-                let run_to = column(end).clamp(run_from + 1, TIMELINE_WIDTH);
+        // Each segment is when a stretch of the task began and how to draw it. It runs until the next segment
+        // begins, or until the task ended. Task executions from before timelines existed only have `started`.
+        let mut segments = vec![(task.created.max(run_start), Segment::Waiting)];
+        if task.timeline.is_empty() {
+            if task.started != 0 {
+                segments.push((task.started, Segment::Running));
+            }
+        } else {
+            segments.extend(task.timeline.iter().map(|entry| {
+                let segment = match entry.phase {
+                    TaskExecutionPhase::WaitingOnDependencies => Segment::Waiting,
+                    TaskExecutionPhase::Running => Segment::Running,
+                    _ => Segment::SettingUp,
+                };
+                (entry.started, segment)
+            }));
+        }
 
-                let running = "█".repeat(run_to - run_from);
-                let running = match (&task.state, &task.status) {
-                    (TaskExecutionState::Complete, TaskExecutionStatus::Successful) => {
-                        running.green()
-                    }
-                    (TaskExecutionState::Complete, TaskExecutionStatus::Failed) => running.red(),
-                    (TaskExecutionState::Complete, _) => running.dimmed(),
-                    _ => running.yellow(),
+        let bar = if segments.len() == 1 {
+            " ".repeat(TIMELINE_WIDTH)
+        } else {
+            let end = if task.ended != 0 { task.ended } else { now };
+            let mut cells = vec![" ".normal(); TIMELINE_WIDTH];
+
+            for (i, (from, segment)) in segments.iter().enumerate() {
+                let to = segments.get(i + 1).map_or(end, |(next, _)| *next);
+                let from = column(*from).min(TIMELINE_WIDTH - 1);
+                // The last segment always gets a column so very short tasks don't vanish.
+                let to = if i == segments.len() - 1 {
+                    column(to).clamp(from + 1, TIMELINE_WIDTH)
+                } else {
+                    column(to).clamp(from, TIMELINE_WIDTH)
                 };
 
-                format!(
-                    "{}{}{}{}",
-                    " ".repeat(wait_from),
-                    "░".repeat(run_from - wait_from).dimmed(),
-                    running,
-                    " ".repeat(TIMELINE_WIDTH - run_to)
-                )
+                let cell = match segment {
+                    Segment::Waiting => "░".dimmed(),
+                    Segment::SettingUp => "▒".normal(),
+                    Segment::Running => match (&task.state, &task.status) {
+                        (TaskExecutionState::Complete, TaskExecutionStatus::Successful) => {
+                            "█".green()
+                        }
+                        (TaskExecutionState::Complete, TaskExecutionStatus::Failed) => "█".red(),
+                        (TaskExecutionState::Complete, _) => "█".dimmed(),
+                        _ => "█".yellow(),
+                    },
+                };
+
+                for slot in &mut cells[from..to] {
+                    *slot = cell.clone();
+                }
             }
+
+            cells.iter().map(|cell| cell.to_string()).collect()
         };
 
         let times = match times {
@@ -473,14 +563,24 @@ fn timeline(run: &Run, task_executions: &[TaskExecution]) -> Vec<String> {
         ));
     }
 
+    // A blank rail line keeps the key from reading as another task's row.
+    output.push(format!("  {}", rail()));
     output.push(format!(
         "  {} {}  {}",
         rail(),
         " ".repeat(task_width),
-        format!("░ waiting  {} running", "█").dimmed()
+        "░ waiting  ▒ setting up  █ running".dimmed()
     ));
 
     output
+}
+
+/// How a stretch of a task execution is drawn on the timeline. Setting up covers everything between the task being
+/// ready to go and its container running, like pulling the image.
+enum Segment {
+    Waiting,
+    SettingUp,
+    Running,
 }
 
 /// A short offset from the start of the run, like "48s", "1m52s", or "1h05m".

@@ -1,6 +1,8 @@
 mod debug;
 mod object;
 
+pub(crate) use debug::{phase_duration_text, phase_durations, phase_text};
+
 use crate::cli::{
     Cli, colorize_status_text, colorize_status_text_comfy, dependencies, duration, rail, rail_table,
 };
@@ -207,7 +209,7 @@ impl Cli {
                 Cell::new(run.run_id).fg(Color::Green),
                 Cell::new(
                     self.format_time(run.started)
-                        .unwrap_or("Unknown".to_string()),
+                        .unwrap_or("Queued".to_string()),
                 ),
                 Cell::new(self.format_time(run.ended).unwrap_or("Unknown".to_string())),
                 Cell::new(duration(run.started as i64, run.ended as i64)),
@@ -285,7 +287,9 @@ impl Cli {
 
         const TEMPLATE: &str = r#"
   {{ vertical_line }} Initiated by {{ initiator_name }}
-  {{ vertical_line }} Started {{ started }} and {{ duration }}
+  {%- for line in timing %}
+  {{ vertical_line }} {{ line }}
+  {%- endfor %}
   {{ vertical_line }} Objects Expired: {{ objects_expired }}
   {%- if token_id %}
   {{ vertical_line }} Injected Token ID: {{ token_id }}
@@ -307,13 +311,7 @@ impl Cli {
         let mut context = tera::Context::new();
         context.insert("vertical_line", &rail());
         context.insert("initiator_name", &run.initiator.user.blue().to_string());
-        context.insert(
-            "started",
-            &self
-                .format_time(run.started)
-                .unwrap_or_else(|| "Not yet".to_string()),
-        );
-        context.insert("duration", &debug::run_duration(&run));
+        context.insert("timing", &self.run_timing(&run));
         context.insert("objects_expired", &run.store_objects_expired);
         context.insert("token_id", &run.token_id);
         context.insert(

@@ -198,7 +198,7 @@ function renderRecentRuns(allRuns) {
   }
 
   const runs = mine ? allRuns.filter((run) => run.initiator.id === session.id) : allRuns;
-  const recent = [...runs].sort((a, b) => b.started - a.started).slice(0, 10);
+  const recent = [...runs].sort((a, b) => b.created - a.created).slice(0, 10);
   setHtml(
     "run-list-body",
     recent.length === 0 && mine
@@ -218,11 +218,11 @@ function hourlyCounts(runs, now) {
   let previous = 0;
 
   for (const run of runs) {
-    if (!run.started) continue;
-    if (run.started >= windowStart) {
-      const index = Math.floor((run.started - windowStart) / HOUR_MS);
+    if (!run.created) continue;
+    if (run.created >= windowStart) {
+      const index = Math.floor((run.created - windowStart) / HOUR_MS);
       if (index < 24) counts[index]++;
-    } else if (run.started >= windowStart - 24 * HOUR_MS) {
+    } else if (run.created >= windowStart - 24 * HOUR_MS) {
       previous++;
     }
   }
@@ -280,7 +280,7 @@ function renderStats(allRuns, now) {
   const hourly = hourlyCounts(allRuns, now);
   const lastDay = hourly.counts.reduce((a, b) => a + b, 0);
 
-  const lastWeek = allRuns.filter((run) => run.started >= now - 7 * DAY_MS && runOutcome(run) !== "running");
+  const lastWeek = allRuns.filter((run) => run.created >= now - 7 * DAY_MS && runOutcome(run) !== "running");
   const judged = lastWeek.filter((run) => runOutcome(run) !== "cancelled");
   const succeeded = judged.filter((run) => runOutcome(run) === "successful").length;
   const rate = judged.length ? Math.round((succeeded / judged.length) * 100) : null;
@@ -322,8 +322,8 @@ function renderActivity(allRuns, since) {
   }
 
   for (const run of allRuns) {
-    if (!run.started || run.started < since) continue;
-    const index = Math.round((startOfDay(run.started) - since) / DAY_MS);
+    if (!run.created || run.created < since) continue;
+    const index = Math.round((startOfDay(run.created) - since) / DAY_MS);
     if (days[index]) days[index].counts[runOutcome(run)]++;
   }
 
@@ -390,7 +390,7 @@ function renderAttention(entries) {
           <div class="flex items-baseline justify-between gap-4">
             <p class="text-sm"><span class="mr-1">✗</span><span class="font-medium">${escapeHtml(name)}</span>
               <a href="${escapeHtml(runDetailsLink(lastFinished))}" class="text-emerald-600 dark:text-emerald-400 hover:underline">run #${lastFinished.run_id}</a> failed</p>
-            <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400" title="${formatTimestamp(lastFinished.ended)}">${relativeTime(lastFinished.ended || lastFinished.started)}</span>
+            <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400" title="${formatTimestamp(lastFinished.ended)}">${relativeTime(lastFinished.ended || lastFinished.created)}</span>
           </div>
           ${reason ? `<p class="text-sm text-gray-600 dark:text-gray-300">${reason}</p>` : ""}
           ${commandBlock(`gofer run debug ${lastFinished.pipeline_id} ${lastFinished.run_id}${namespaceFlag()}`)}
@@ -409,7 +409,7 @@ function renderHistory(runs) {
   const squares = recent
     .map((run) => {
       const outcome = runOutcome(run);
-      const title = `#${run.run_id} · ${OUTCOMES[outcome].label.toLowerCase()} · ${compactDuration(runDurationMs(run))} · ${relativeTime(run.started)}`;
+      const title = `#${run.run_id} · ${OUTCOMES[outcome].label.toLowerCase()} · ${compactDuration(runDurationMs(run))} · ${relativeTime(run.created)}`;
       return `<a href="${escapeHtml(runDetailsLink(run))}" title="${escapeHtml(title)}"
           class="h-6 flex-1 rounded-sm ${OUTCOMES[outcome].bar} ${outcome === "running" ? "animate-pulse" : ""} hover:opacity-70"></a>`;
     })
@@ -428,7 +428,7 @@ function renderPipelines(entries) {
 
   // Most recently active first; pipelines that have never run go last.
   const sorted = [...entries].sort(
-    (a, b) => (b.runs[0]?.started || 0) - (a.runs[0]?.started || 0) || a.pipeline.pipeline_id.localeCompare(b.pipeline.pipeline_id)
+    (a, b) => (b.runs[0]?.created || 0) - (a.runs[0]?.created || 0) || a.pipeline.pipeline_id.localeCompare(b.pipeline.pipeline_id)
   );
 
   return sorted
@@ -459,7 +459,7 @@ function renderPipelines(entries) {
           <div class="mt-4 flex-1 flex flex-col justify-end space-y-4">
             ${renderHistory(entry.runs)}
             <dl class="grid grid-cols-3 gap-2">
-              ${stat("Last run", latest ? `<a href="${escapeHtml(runDetailsLink(latest))}" class="hover:text-emerald-600">${relativeTime(latest.started)}</a>` : "Never", latest ? formatTimestamp(latest.started) : "")}
+              ${stat("Last run", latest ? `<a href="${escapeHtml(runDetailsLink(latest))}" class="hover:text-emerald-600">${relativeTime(latest.created)}</a>` : "Never", latest ? formatTimestamp(latest.created) : "")}
               ${stat("Success", rate, "Of finished runs shown, not counting cancelled")}
               ${stat("Typical", typical, "Median run time of finished runs shown")}
             </dl>
@@ -487,7 +487,7 @@ function renderRunTable(runs) {
             <span class="ml-1 text-gray-500 dark:text-gray-400">#${escapeHtml(run.run_id)}</span>
           </td>
           <td class="px-4 py-2.5" ${reason ? `title="${escapeHtml(reason)}"` : ""}>${badge}</td>
-          <td class="px-4 py-2.5 whitespace-nowrap" title="${formatTimestamp(run.started)}">${relativeTime(run.started)}</td>
+          <td class="px-4 py-2.5 whitespace-nowrap" title="${formatTimestamp(run.created)}">${relativeTime(run.created)}</td>
           <td class="px-4 py-2.5 whitespace-nowrap tabular-nums">${run.started ? compactDuration(runDurationMs(run)) : "-"}</td>
           <td class="px-4 py-2.5 whitespace-nowrap" title="Token ID: ${escapeHtml(run.initiator.id)}">${escapeHtml(run.initiator.user)}</td>
           <td class="px-4 py-2.5 text-right text-gray-400">›</td>

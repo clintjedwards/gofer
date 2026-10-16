@@ -31,7 +31,7 @@ Returns a list of all runs by pipeline id.
 | `limit` | integer | no |  |
 | `offset` | integer | no |  |
 | `reverse` | boolean | no |  |
-| `since` | integer | no | Only return runs started at or after this time, in epoch milliseconds. |
+| `since` | integer | no | Only return runs created at or after this time, in epoch milliseconds. |
 
 **Responses**
 

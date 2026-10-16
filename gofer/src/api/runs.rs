@@ -149,7 +149,11 @@ pub struct Run {
     /// Unique identifier of the target run.
     pub run_id: u64,
 
-    /// Time of run start in epoch milliseconds.
+    /// Time the run was created in epoch milliseconds. A run can sit queued behind the pipeline's parallelism limit
+    /// for a while, so this can be well before `started`.
+    pub created: u64,
+
+    /// Time the run left the queue and started launching tasks, in epoch milliseconds. 0 while still queued.
     pub started: u64,
 
     /// Time of run end in epoch milliseconds.
@@ -201,7 +205,8 @@ impl Run {
             pipeline_id: pipeline_id.into(),
             pipeline_config_version: version,
             run_id,
-            started: epoch_milli(),
+            created: epoch_milli(),
+            started: 0,
             ended: 0,
             state: State::Pending,
             status: Status::Unknown,
@@ -219,6 +224,13 @@ impl TryFrom<storage::runs::Run> for Run {
     type Error = anyhow::Error;
 
     fn try_from(value: storage::runs::Run) -> Result<Self> {
+        let created = value.created.parse::<u64>().with_context(|| {
+            format!(
+                "Could not parse field 'created' from storage value '{}'",
+                value.created
+            )
+        })?;
+
         let started = value.started.parse::<u64>().with_context(|| {
             format!(
                 "Could not parse field 'started' from storage value '{}'",
@@ -273,6 +285,7 @@ impl TryFrom<storage::runs::Run> for Run {
             pipeline_id: value.pipeline_id,
             pipeline_config_version: value.pipeline_config_version.try_into()?,
             run_id: value.run_id.try_into()?,
+            created,
             started,
             ended,
             state,
@@ -317,6 +330,7 @@ impl TryFrom<Run> for storage::runs::Run {
             pipeline_id: value.pipeline_id,
             pipeline_config_version: value.pipeline_config_version.try_into()?,
             run_id: value.run_id.try_into()?,
+            created: value.created.to_string(),
             started: value.started.to_string(),
             ended: value.ended.to_string(),
             state: value.state.to_string(),
@@ -343,7 +357,7 @@ pub struct ListRunsQueryArgs {
     pub offset: Option<u64>,
     pub reverse: Option<bool>,
 
-    /// Only return runs started at or after this time, in epoch milliseconds.
+    /// Only return runs created at or after this time, in epoch milliseconds.
     pub since: Option<u64>,
 }
 

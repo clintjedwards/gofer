@@ -331,6 +331,31 @@ const (
 	SubscriptionStatusReasonTypeUnknown  SubscriptionStatusReasonType = "unknown"
 )
 
+// Defines values for TaskExecutionPhase0.
+const (
+	WaitingOnDependencies TaskExecutionPhase0 = "waiting_on_dependencies"
+)
+
+// Defines values for TaskExecutionPhase1.
+const (
+	Preparing TaskExecutionPhase1 = "preparing"
+)
+
+// Defines values for TaskExecutionPhase2.
+const (
+	PullingImage TaskExecutionPhase2 = "pulling_image"
+)
+
+// Defines values for TaskExecutionPhase3.
+const (
+	StartingContainer TaskExecutionPhase3 = "starting_container"
+)
+
+// Defines values for TaskExecutionPhase4.
+const (
+	TaskExecutionPhase4Running TaskExecutionPhase4 = "running"
+)
+
 // Defines values for TaskExecutionState0.
 const (
 	TaskExecutionState0Complete TaskExecutionState0 = "complete"
@@ -353,7 +378,7 @@ const (
 
 // Defines values for TaskExecutionState4.
 const (
-	TaskExecutionState4Running TaskExecutionState4 = "running"
+	Running TaskExecutionState4 = "running"
 )
 
 // Defines values for TaskExecutionStatus0.
@@ -1449,6 +1474,9 @@ type Role struct {
 
 // Run A run is one or more tasks being executed on behalf of some extension. Run is a third level unit containing tasks and being contained in a pipeline.
 type Run struct {
+	// Created Time the run was created in epoch milliseconds. A run can sit queued behind the pipeline's parallelism limit for a while, so this can be well before `started`.
+	Created uint64 `json:"created"`
+
 	// Ended Time of run end in epoch milliseconds.
 	Ended uint64 `json:"ended"`
 
@@ -1472,7 +1500,7 @@ type Run struct {
 	// RunId Unique identifier of the target run.
 	RunId uint64 `json:"run_id"`
 
-	// Started Time of run start in epoch milliseconds.
+	// Started Time the run left the queue and started launching tasks, in epoch milliseconds. 0 while still queued.
 	Started uint64 `json:"started"`
 
 	// State The current state of the run within the Gofer execution model. Describes if the run is in progress or not.
@@ -1643,6 +1671,9 @@ type TaskExecution struct {
 
 	// TaskId Unique identifier of the current task being executed.
 	TaskId string `json:"task_id"`
+
+	// Timeline The phases the task execution went through in order, so you can tell where its time went.
+	Timeline []TaskExecutionTimelineEntry `json:"timeline"`
 
 	// Variables The environment variables injected during this particular task execution.
 	Variables []Variable `json:"variables"`
@@ -1921,6 +1952,26 @@ type SubscriptionStatusReason struct {
 // SubscriptionStatusReasonType defines model for subscription_status_reason_type.
 type SubscriptionStatusReasonType string
 
+// TaskExecutionPhase A step a task execution goes through on its way to finishing. Used to break down where a task execution spent its time, especially the time before its container actually started running.
+type TaskExecutionPhase struct {
+	union json.RawMessage
+}
+
+// TaskExecutionPhase0 Waiting for the tasks it depends on to finish.
+type TaskExecutionPhase0 string
+
+// TaskExecutionPhase1 Resolving variables, which includes reading from the secret and object stores.
+type TaskExecutionPhase1 string
+
+// TaskExecutionPhase2 The scheduler is pulling the container image.
+type TaskExecutionPhase2 string
+
+// TaskExecutionPhase3 The scheduler is creating and starting the container.
+type TaskExecutionPhase3 string
+
+// TaskExecutionPhase4 The container is running.
+type TaskExecutionPhase4 string
+
 // TaskExecutionState defines model for task_execution_state.
 type TaskExecutionState struct {
 	union json.RawMessage
@@ -1993,6 +2044,15 @@ type TaskExecutionStatusReasonType4 string
 // TaskExecutionStatusReasonType5 Task execution was lost due to extreme internal error.
 type TaskExecutionStatusReasonType5 string
 
+// TaskExecutionTimelineEntry defines model for task_execution_timeline_entry.
+type TaskExecutionTimelineEntry struct {
+	// Phase The phase the task execution entered.
+	Phase TaskExecutionPhase `json:"phase"`
+
+	// Started When the phase began in epoch milliseconds. A phase lasts until the next entry begins, or until the task execution ended if it's the last one.
+	Started uint64 `json:"started"`
+}
+
 // StreamEventsParams defines parameters for StreamEvents.
 type StreamEventsParams struct {
 	// History If set to true Gofer first exhausts events that have already passed before it starts to stream new events.
@@ -2032,7 +2092,7 @@ type ListRunsParams struct {
 	Offset  *uint64 `form:"offset,omitempty" json:"offset,omitempty"`
 	Reverse *bool   `form:"reverse,omitempty" json:"reverse,omitempty"`
 
-	// Since Only return runs started at or after this time, in epoch milliseconds.
+	// Since Only return runs created at or after this time, in epoch milliseconds.
 	Since *uint64 `form:"since,omitempty" json:"since,omitempty"`
 }
 
@@ -4051,6 +4111,146 @@ func (t RunStatusReasonType) MarshalJSON() ([]byte, error) {
 }
 
 func (t *RunStatusReasonType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsTaskExecutionPhase0 returns the union data inside the TaskExecutionPhase as a TaskExecutionPhase0
+func (t TaskExecutionPhase) AsTaskExecutionPhase0() (TaskExecutionPhase0, error) {
+	var body TaskExecutionPhase0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTaskExecutionPhase0 overwrites any union data inside the TaskExecutionPhase as the provided TaskExecutionPhase0
+func (t *TaskExecutionPhase) FromTaskExecutionPhase0(v TaskExecutionPhase0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTaskExecutionPhase0 performs a merge with any union data inside the TaskExecutionPhase, using the provided TaskExecutionPhase0
+func (t *TaskExecutionPhase) MergeTaskExecutionPhase0(v TaskExecutionPhase0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTaskExecutionPhase1 returns the union data inside the TaskExecutionPhase as a TaskExecutionPhase1
+func (t TaskExecutionPhase) AsTaskExecutionPhase1() (TaskExecutionPhase1, error) {
+	var body TaskExecutionPhase1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTaskExecutionPhase1 overwrites any union data inside the TaskExecutionPhase as the provided TaskExecutionPhase1
+func (t *TaskExecutionPhase) FromTaskExecutionPhase1(v TaskExecutionPhase1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTaskExecutionPhase1 performs a merge with any union data inside the TaskExecutionPhase, using the provided TaskExecutionPhase1
+func (t *TaskExecutionPhase) MergeTaskExecutionPhase1(v TaskExecutionPhase1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTaskExecutionPhase2 returns the union data inside the TaskExecutionPhase as a TaskExecutionPhase2
+func (t TaskExecutionPhase) AsTaskExecutionPhase2() (TaskExecutionPhase2, error) {
+	var body TaskExecutionPhase2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTaskExecutionPhase2 overwrites any union data inside the TaskExecutionPhase as the provided TaskExecutionPhase2
+func (t *TaskExecutionPhase) FromTaskExecutionPhase2(v TaskExecutionPhase2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTaskExecutionPhase2 performs a merge with any union data inside the TaskExecutionPhase, using the provided TaskExecutionPhase2
+func (t *TaskExecutionPhase) MergeTaskExecutionPhase2(v TaskExecutionPhase2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTaskExecutionPhase3 returns the union data inside the TaskExecutionPhase as a TaskExecutionPhase3
+func (t TaskExecutionPhase) AsTaskExecutionPhase3() (TaskExecutionPhase3, error) {
+	var body TaskExecutionPhase3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTaskExecutionPhase3 overwrites any union data inside the TaskExecutionPhase as the provided TaskExecutionPhase3
+func (t *TaskExecutionPhase) FromTaskExecutionPhase3(v TaskExecutionPhase3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTaskExecutionPhase3 performs a merge with any union data inside the TaskExecutionPhase, using the provided TaskExecutionPhase3
+func (t *TaskExecutionPhase) MergeTaskExecutionPhase3(v TaskExecutionPhase3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTaskExecutionPhase4 returns the union data inside the TaskExecutionPhase as a TaskExecutionPhase4
+func (t TaskExecutionPhase) AsTaskExecutionPhase4() (TaskExecutionPhase4, error) {
+	var body TaskExecutionPhase4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTaskExecutionPhase4 overwrites any union data inside the TaskExecutionPhase as the provided TaskExecutionPhase4
+func (t *TaskExecutionPhase) FromTaskExecutionPhase4(v TaskExecutionPhase4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTaskExecutionPhase4 performs a merge with any union data inside the TaskExecutionPhase, using the provided TaskExecutionPhase4
+func (t *TaskExecutionPhase) MergeTaskExecutionPhase4(v TaskExecutionPhase4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t TaskExecutionPhase) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *TaskExecutionPhase) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }

@@ -18,7 +18,7 @@ use std::sync::{Arc, atomic};
 use thiserror::Error;
 use tokio::{
     io::AsyncWriteExt,
-    sync::{Barrier, Mutex, OwnedSemaphorePermit, Semaphore},
+    sync::{Barrier, Mutex, OwnedSemaphorePermit, Semaphore, mpsc},
 };
 use tracing::{debug, error, info, trace};
 
@@ -530,7 +530,9 @@ impl Run {
                 run_id: self.run.run_id,
             });
 
+        // The run may have sat queued behind its pipeline's parallelism limit, so it only counts as started now.
         let fields = storage::runs::UpdatableFields {
+            started: Some(epoch_milli().to_string()),
             state: Some(runs::State::Running.to_string()),
             ..Default::default()
         };
@@ -1073,6 +1075,15 @@ impl Run {
         // We drop the write connection here to not hold onto it while we wait for events.
         drop(conn);
 
+        // On recovery the task execution starts over, so its timeline does too.
+        let timeline = self.spawn_timeline_recorder(&task.id);
+
+        if !new_task_execution.task.depends_on.is_empty() {
+            _ = timeline.send(task_executions::TimelineEntry::now(
+                task_executions::Phase::WaitingOnDependencies,
+            ));
+        }
+
         // <task_execution_id> => <status>
         let mut completed_tasks = HashMap::new();
 
@@ -1268,6 +1279,10 @@ impl Run {
         // After this point we're sure the task is in a state to be run. So we attempt to
         // contact the scheduler and start the container.
 
+        _ = timeline.send(task_executions::TimelineEntry::now(
+            task_executions::Phase::Preparing,
+        ));
+
         // First we attempt to find any object/secret store variables and replace them
         // with the correct var. At first glance this may seem like a task that can move upwards
         // but it's important that this run only after a task's parents have already run
@@ -1363,10 +1378,16 @@ impl Run {
                 networking: None,
                 entrypoint: new_task_execution.task.entrypoint.clone(),
                 command: new_task_execution.task.command.clone(),
+                timeline: Some(timeline.clone()),
             })
             .await
         {
-            Ok(response) => response,
+            Ok(response) => {
+                _ = timeline.send(task_executions::TimelineEntry::now(
+                    task_executions::Phase::Running,
+                ));
+                response
+            }
             Err(e) => {
                 let mut conn = match self.api_state.storage.write_conn().await {
                     Ok(conn) => conn,
@@ -1614,6 +1635,67 @@ impl Run {
         .context("Could not update task execution status in storage")?;
 
         Ok(())
+    }
+
+    /// Starts a writer that persists a task execution's timeline as phases come in. Phases go through a channel to a
+    /// single writer so they're saved in order without racing each other, and so the scheduler can report its own
+    /// phases (like pulling an image) while they happen rather than after. The writer stops once every sender is
+    /// dropped.
+    fn spawn_timeline_recorder(
+        &self,
+        task_id: &str,
+    ) -> mpsc::UnboundedSender<task_executions::TimelineEntry> {
+        let (sender, mut receiver) = mpsc::unbounded_channel::<task_executions::TimelineEntry>();
+        let api_state = self.api_state.clone();
+        let namespace_id = self.pipeline.metadata.namespace_id.clone();
+        let pipeline_id = self.pipeline.metadata.pipeline_id.clone();
+        let run_id = self.run.run_id;
+        let task_id = task_id.to_string();
+
+        tokio::spawn(async move {
+            let mut timeline = vec![];
+
+            while let Some(entry) = receiver.recv().await {
+                timeline.push(entry);
+
+                let timeline_json = match serde_json::to_string(&timeline) {
+                    Ok(json) => json,
+                    Err(e) => {
+                        error!(namespace_id, pipeline_id, run_id, task_id, error = %e,
+                            "Could not serialize task execution timeline");
+                        continue;
+                    }
+                };
+
+                let mut conn = match api_state.storage.write_conn().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        error!(namespace_id, pipeline_id, run_id, task_id, error = %e,
+                            "Could not establish connection to database");
+                        continue;
+                    }
+                };
+
+                if let Err(e) = storage::task_executions::update(
+                    &mut conn,
+                    &namespace_id,
+                    &pipeline_id,
+                    run_id as i64,
+                    &task_id,
+                    storage::task_executions::UpdatableFields {
+                        timeline: Some(timeline_json),
+                        ..Default::default()
+                    },
+                )
+                .await
+                {
+                    error!(namespace_id, pipeline_id, run_id, task_id, error = %e,
+                        "Could not update task execution timeline");
+                }
+            }
+        });
+
+        sender
     }
 
     pub async fn parallelism_limit_exceeded(&self) -> bool {

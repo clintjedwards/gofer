@@ -17,9 +17,22 @@ tasks that failed before starting show why (like a secret or object that doesn't
 From there:
 
 - `gofer task logs <pipeline_id> <run_id> <task_id>` shows a task's full output.
-- `gofer task get <pipeline_id> <run_id> <task_id>` shows the exact variables the task's container was given.
+- `gofer task get <pipeline_id> <run_id> <task_id>` shows the exact variables the task's container was given, and
+  how long the task spent in each phase.
 - `gofer task attach <pipeline_id> <run_id> <task_id>` opens a shell in a task's container while it's still running,
   if the server allows it (`api.allow_task_attach`).
+
+### Slow runs
+
+When a run takes longer than it should, the timeline in `gofer run debug` (and on the run's page in the web UI) splits
+each task into the time it spent waiting on its dependencies, setting up, and running. Setting up is everything
+between a task being ready to go and its container running: resolving secrets and objects, pulling the image, and
+starting the container. `gofer task get` breaks that down further, so a slow image pull stands out.
+
+If the run itself took a while to begin, it was probably queued behind the pipeline's parallelism limit; the run's
+start time shows how long it waited.
+
+## Debugging the CLI
 
 If the CLI is acting strangely, `gofer context` shows which server it's talking to and that server's version, who
 your token belongs to, which config file was read and where each setting came from. It still prints the local half

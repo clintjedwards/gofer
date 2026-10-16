@@ -3,6 +3,7 @@ use super::{
     GetStateRequest, GetStateResponse, Log, SchedulerError, StartContainerRequest,
     StartContainerResponse, StopContainerRequest,
 };
+use crate::api::task_executions::{Phase, TimelineEntry};
 use async_trait::async_trait;
 use bollard::exec::{CreateExecOptions, StartExecOptions};
 use futures::Stream;
@@ -107,7 +108,14 @@ impl super::Scheduler for Scheduler {
                     ..Default::default()
                 });
 
+        let report = |phase| {
+            if let Some(timeline) = &request.timeline {
+                _ = timeline.send(TimelineEntry::now(phase));
+            }
+        };
+
         if request.always_pull {
+            report(Phase::PullingImage);
             self.client
                 .create_image(
                     Some(bollard::query_parameters::CreateImageOptions {
@@ -135,6 +143,7 @@ impl super::Scheduler for Scheduler {
                 .unwrap();
 
             if images.is_empty() {
+                report(Phase::PullingImage);
                 self.client
                     .create_image(
                         Some(bollard::query_parameters::CreateImageOptions {
@@ -149,6 +158,8 @@ impl super::Scheduler for Scheduler {
                     .map_err(|e| SchedulerError::NoSuchImage(format!("{:?}", e)))?;
             }
         }
+
+        report(Phase::StartingContainer);
 
         // We attempt to remove the container as a first step to running it. This enables the functionality that
         // Gofer can start the same extension container without the error that a container with that name

@@ -205,7 +205,7 @@ impl Cli {
                 .runs;
 
             let last_run_time = match last_run.first() {
-                Some(last_run) => last_run.started,
+                Some(last_run) => last_run.created,
                 None => 0,
             };
 
@@ -266,7 +266,7 @@ impl Cli {
             .runs;
 
         let last_run_time = match recent_runs.first() {
-            Some(last_run) => last_run.started,
+            Some(last_run) => last_run.created,
             None => 0,
         };
 
@@ -284,7 +284,7 @@ impl Cli {
                 Cell::new(format!("#{}", run.run_id)).fg(Color::Blue),
                 Cell::new(format!(
                     "{} by {}",
-                    self.format_time(run.started).unwrap_or("Never".into()),
+                    self.format_time(run.created).unwrap_or("Never".into()),
                     run.initiator.user
                 )),
                 Cell::new(format!(

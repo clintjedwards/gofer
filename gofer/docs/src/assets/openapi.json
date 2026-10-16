@@ -1637,7 +1637,7 @@
           {
             "in": "query",
             "name": "since",
-            "description": "Only return runs started at or after this time, in epoch milliseconds.",
+            "description": "Only return runs created at or after this time, in epoch milliseconds.",
             "schema": {
               "nullable": true,
               "type": "integer",
@@ -6335,6 +6335,12 @@
         "description": "A run is one or more tasks being executed on behalf of some extension. Run is a third level unit containing tasks and being contained in a pipeline.",
         "type": "object",
         "properties": {
+          "created": {
+            "description": "Time the run was created in epoch milliseconds. A run can sit queued behind the pipeline's parallelism limit for a while, so this can be well before `started`.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
           "ended": {
             "description": "Time of run end in epoch milliseconds.",
             "type": "integer",
@@ -6375,7 +6381,7 @@
             "minimum": 0
           },
           "started": {
-            "description": "Time of run start in epoch milliseconds.",
+            "description": "Time the run left the queue and started launching tasks, in epoch milliseconds. 0 while still queued.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0
@@ -6423,6 +6429,7 @@
           }
         },
         "required": [
+          "created",
           "ended",
           "initiator",
           "namespace_id",
@@ -6777,6 +6784,13 @@
             "description": "Unique identifier of the current task being executed.",
             "type": "string"
           },
+          "timeline": {
+            "description": "The phases the task execution went through in order, so you can tell where its time went.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/task_execution_timeline_entry"
+            }
+          },
           "variables": {
             "description": "The environment variables injected during this particular task execution.",
             "type": "array",
@@ -6799,6 +6813,7 @@
           "status",
           "task",
           "task_id",
+          "timeline",
           "variables"
         ]
       },
@@ -7367,6 +7382,46 @@
           "failed"
         ]
       },
+      "task_execution_phase": {
+        "description": "A step a task execution goes through on its way to finishing. Used to break down where a task execution spent its time, especially the time before its container actually started running.",
+        "oneOf": [
+          {
+            "description": "Waiting for the tasks it depends on to finish.",
+            "type": "string",
+            "enum": [
+              "waiting_on_dependencies"
+            ]
+          },
+          {
+            "description": "Resolving variables, which includes reading from the secret and object stores.",
+            "type": "string",
+            "enum": [
+              "preparing"
+            ]
+          },
+          {
+            "description": "The scheduler is pulling the container image.",
+            "type": "string",
+            "enum": [
+              "pulling_image"
+            ]
+          },
+          {
+            "description": "The scheduler is creating and starting the container.",
+            "type": "string",
+            "enum": [
+              "starting_container"
+            ]
+          },
+          {
+            "description": "The container is running.",
+            "type": "string",
+            "enum": [
+              "running"
+            ]
+          }
+        ]
+      },
       "task_execution_state": {
         "oneOf": [
           {
@@ -7508,6 +7563,29 @@
               "orphaned"
             ]
           }
+        ]
+      },
+      "task_execution_timeline_entry": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "description": "The phase the task execution entered.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/task_execution_phase"
+              }
+            ]
+          },
+          "started": {
+            "description": "When the phase began in epoch milliseconds. A phase lasts until the next entry begins, or until the task execution ended if it's the last one.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "phase",
+          "started"
         ]
       }
     },

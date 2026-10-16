@@ -8,6 +8,7 @@ pub struct Run {
     pub pipeline_id: String,
     pub pipeline_config_version: i64,
     pub run_id: i64,
+    pub created: String,
     pub started: String,
     pub ended: String,
     pub state: String,
@@ -22,6 +23,7 @@ pub struct Run {
 
 #[derive(Clone, Debug, Default)]
 pub struct UpdatableFields {
+    pub started: Option<String>,
     pub ended: Option<String>,
     pub state: Option<String>,
     pub status: Option<String>,
@@ -33,14 +35,15 @@ pub struct UpdatableFields {
 
 pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), StorageError> {
     let sql = "INSERT INTO runs (namespace_id, pipeline_id, pipeline_config_version, run_id, \
-        started, ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id)\
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        created, started, ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id)\
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&run.namespace_id)
         .bind(&run.pipeline_id)
         .bind(run.pipeline_config_version)
         .bind(run.run_id)
+        .bind(&run.created)
         .bind(&run.started)
         .bind(&run.ended)
         .bind(&run.state)
@@ -61,7 +64,7 @@ pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), Storag
 }
 
 /// Sorted by run_id ascending by default.
-/// Lists a pipeline's runs. `since` only returns runs started at or after that epoch millisecond; pass 0 for all.
+/// Lists a pipeline's runs. `since` only returns runs created at or after that epoch millisecond; pass 0 for all.
 pub async fn list(
     conn: &mut SqliteConnection,
     namespace_id: &str,
@@ -71,17 +74,17 @@ pub async fn list(
     reverse: bool,
     since: i64,
 ) -> Result<Vec<Run>, StorageError> {
-    // `started` is stored as text, so it's cast before comparing; comparing the strings would only work while every
+    // `created` is stored as text, so it's cast before comparing; comparing the strings would only work while every
     // timestamp happens to have the same number of digits.
     let sql = if reverse {
-        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
+        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
-    runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(started AS INTEGER) >= ? \
+    runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(created AS INTEGER) >= ? \
     ORDER BY run_id DESC LIMIT ? OFFSET ?;"
     } else {
-        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
+        "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
-    runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(started AS INTEGER) >= ? \
+    runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(created AS INTEGER) >= ? \
     ORDER BY run_id ASC LIMIT ? OFFSET ?;"
     };
 
@@ -103,7 +106,7 @@ pub async fn list_unfinished(
     offset: i64,
     limit: i64,
 ) -> Result<Vec<Run>, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, ended, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
     runs WHERE state != 'complete' LIMIT ? OFFSET ?;";
 
@@ -121,7 +124,7 @@ pub async fn get(
     pipeline_id: &str,
     run_id: i64,
 ) -> Result<Run, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, \
     ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
     namespace_id = ? AND pipeline_id = ? AND run_id = ?;";
 
@@ -141,7 +144,7 @@ pub async fn get_latest(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Run, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, started, \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, \
     ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
     namespace_id = ? AND pipeline_id = ? Order By run_id DESC;";
 
@@ -164,6 +167,15 @@ pub async fn update(
 ) -> Result<(), StorageError> {
     let mut update_query: QueryBuilder<Sqlite> = QueryBuilder::new(r#"UPDATE runs SET "#);
     let mut updated_fields_total = 0;
+
+    if let Some(value) = &fields.started {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("started = ");
+        update_query.push_bind(value);
+        updated_fields_total += 1;
+    }
 
     if let Some(value) = &fields.ended {
         if updated_fields_total > 0 {
@@ -325,6 +337,7 @@ mod tests {
             pipeline_id: "some_pipeline_id".to_string(),
             pipeline_config_version: 1,
             run_id: 1,
+            created: "2021-01-01T00:00:00Z".to_string(),
             started: "2021-01-01T00:00:00Z".to_string(),
             ended: "2021-01-01T01:00:00Z".to_string(),
             state: "Running".to_string(),
@@ -342,6 +355,7 @@ mod tests {
             pipeline_id: "some_pipeline_id".to_string(),
             pipeline_config_version: 1,
             run_id: 2,
+            created: "2021-01-01T00:00:00Z".to_string(),
             started: "2021-01-01T00:00:00Z".to_string(),
             ended: "2021-01-01T01:00:00Z".to_string(),
             state: "Running".to_string(),
@@ -359,6 +373,7 @@ mod tests {
             pipeline_id: "some_pipeline_id".to_string(),
             pipeline_config_version: 1,
             run_id: 3,
+            created: "2021-01-01T00:00:00Z".to_string(),
             started: "2021-01-01T00:00:00Z".to_string(),
             ended: "2021-01-01T01:00:00Z".to_string(),
             state: "complete".to_string(),
@@ -419,13 +434,14 @@ mod tests {
         let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
 
         // Real runs store epoch milliseconds. Mixing digit counts makes sure the filter compares numbers, not text.
-        for (run_id, started) in [(4, "1000"), (5, "9000000000000")] {
+        for (run_id, created) in [(4, "1000"), (5, "9000000000000")] {
             let run = Run {
                 namespace_id: "some_id".to_string(),
                 pipeline_id: "some_pipeline_id".to_string(),
                 pipeline_config_version: 1,
                 run_id,
-                started: started.to_string(),
+                created: created.to_string(),
+                started: "0".to_string(),
                 ended: "0".to_string(),
                 state: "complete".to_string(),
                 status: "successful".to_string(),
@@ -446,7 +462,7 @@ mod tests {
         assert_eq!(
             runs.len(),
             1,
-            "Should only return runs started at or after 'since'"
+            "Should only return runs created at or after 'since'"
         );
         assert_eq!(runs[0].run_id, 5);
     }
@@ -493,6 +509,7 @@ mod tests {
         let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
 
         let fields_to_update = UpdatableFields {
+            started: Some("2021-01-01T01:00:00Z".to_string()),
             ended: Some("2021-01-01T02:00:00Z".to_string()),
             state: Some("Failed".to_string()),
             status: Some("Error".to_string()),

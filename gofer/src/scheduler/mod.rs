@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use std::{collections::HashMap, pin::Pin};
 use strum::{Display, EnumString};
 use tokio::io::AsyncWrite;
+use tokio::sync::mpsc::UnboundedSender;
 
 /// Represents different scheduler failure possibilities.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -86,6 +87,11 @@ pub struct StartContainerRequest {
 
     /// Replaces container's cmd instruction with a custom one.
     pub command: Option<Vec<String>>,
+
+    /// Where to report the phases of starting the container (pulling the image, starting the container) as they
+    /// begin. Lets task executions show where their time went before the container was running. Skips any phase
+    /// that doesn't happen, like pulling an image that's already present.
+    pub timeline: Option<UnboundedSender<crate::api::task_executions::TimelineEntry>>,
 }
 
 #[derive(Debug)]
