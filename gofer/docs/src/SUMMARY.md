@@ -3,9 +3,7 @@
 [Introduction](introduction.md)
 [How Does Gofer Work?](./how_does_gofer_work.md)
 [Glossary](./glossary.md)
-[FAQ](./faq.md)
 [Feature Guide](./features.md)
-[Best Practices](./best_practices.md)
 [Troubleshooting](./troubleshooting.md)
 [Philosophy](./philosophy.md)
 
@@ -18,6 +16,12 @@
   - [Register your pipeline](./guide/register_your_pipeline.md)
   - [Start a Run](./guide/start_a_run.md)
   - [What's Next?](./guide/whats_next.md)
+- [Common Patterns and Best Practices](./guide/patterns/README.md)
+  - [Writing Tasks](./guide/patterns/writing_tasks.md)
+  - [Designing Pipelines](./guide/patterns/designing_pipelines.md)
+  - [Passing Data Between Tasks](./guide/patterns/passing_data_between_tasks.md)
+  - [Working with Git Repositories](./guide/patterns/working_with_git_repositories.md)
+  - [Secrets and Access](./guide/patterns/secrets_and_access.md)
 
 # Reference
 

@@ -83,7 +83,7 @@ These are the system variables Gofer injects into every task:
 | `GOFER_RUN_ID`      | The run identification number.                                                                                                                                                               |
 | `GOFER_TASK_ID`     | The task execution identification string.                                                                                                                                                    |
 | `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                                           |
-| `GOFER_TOKEN`       | Optional. Only set when the task uses `InjectAPIToken`. It's the same variable the Gofer CLI reads its token from. See [passing data between tasks](../object_store/index.html#passing-data-between-tasks) for an example. |
+| `GOFER_TOKEN`       | Optional. Only set when the task uses `InjectAPIToken`. It's the same variable the Gofer CLI reads its token from. See [passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for an example. |
 
 ## Using Secrets and Objects in Variables
 
@@ -120,7 +120,7 @@ gofer pipeline object put logs_header ./header.txt --pipeline my-pipeline
 
 Gofer swaps in the real values right before each task starts, after its parents have finished. So a task can store
 a run object and any task that depends on it can read it as a variable; see
-[passing data between tasks](../object_store/index.html#passing-data-between-tasks) for a full example. Objects are
+[passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for a full example. Objects are
 converted to UTF-8 text when they're inserted; if you need the raw bytes, fetch the object through the API inside
 your task instead.
 

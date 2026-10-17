@@ -147,7 +147,7 @@ some point in your task.
 You can tell Gofer to do this by using the `InjectAPIToken` function for a particular task. The token shows up in the
 task as the `GOFER_TOKEN` environment variable, which is the same variable the Gofer CLI reads. Gofer also sets
 `GOFER_API_BASE_URL` and `GOFER_NAMESPACE` on every task, so the CLI needs no other setup. See
-[passing data between tasks](../object_store/index.html#passing-data-between-tasks) for a full example.
+[passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for a full example.
 
 The token is deleted when the run's objects expire (see `run_object_expiry` in the
 [configuration reference](../server_configuration/configuration_reference.md)).

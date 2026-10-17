@@ -88,6 +88,16 @@ try to register the same thing twice.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
   It should use task leasing to avoid any stuck processors.
+* Task `RegistryAuth` doesn't resolve secrets. The orchestrator hands `task.registry_auth` straight to the scheduler
+  (`orchestrator.rs`, the `start_container` call), so `pipeline_secret{{...}}` gets sent to the registry as the
+  literal password. The only way that works today is putting the real password in the pipeline config. Extensions
+  already resolve `registry_auth.pass` as a global secret reference (`extensions/reconcile.rs`), so tasks should do
+  the same, probably accepting pipeline and global secrets like variables do. Once it lands, document it in the tasks
+  reference and drop the old "registry auth is largely untested" note below if it's covered.
+* `Script()` in both SDKs runs `bash -c`, so it fails on images without bash, like `alpine`, which the docs use
+  everywhere. The doc comments also disagree with themselves (they say `bash -c` and then `sh -c`). Probably switch it
+  to `sh -c` since it's on almost every image, and fix the doc comments in `sdk/go/config/task.go` and
+  `sdk/rust/src/config.rs`.
 
 # Small things I'll probably never get around to.
 

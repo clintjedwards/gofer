@@ -5,6 +5,8 @@ It is common for one container to run, generate an artifact or values, and then 
 for the next container or next run. The object store can be accessed through the [Gofer CLI](../../cli/index.html) or
 through the normal Gofer API. Tasks can also receive objects directly as environment variables; see
 [Using Secrets and Objects in Variables](../pipeline_configuration/tasks.md#using-secrets-and-objects-in-variables).
+For examples of handing values and files from one task to the next, see
+[passing data between tasks](../../guide/patterns/passing_data_between_tasks.md).
 
 Gofer divides the objects stored into two different lifetime groups:
 
@@ -48,48 +50,6 @@ so you don't have to write your own tar commands:
 gofer run object put dist ./dist           # In the task that builds it.
 gofer run object get dist --extract ./dist # In a task that depends on it.
 ```
-
-## Passing data between tasks
-
-The most common use of run objects is one task handing a value to the tasks after it. The first task stores the
-object through Gofer's API, and the tasks that depend on it read it as an environment variable.
-
-```go
-const storeVersion = `
-VERSION="1.4.2" # Stand in for something your task works out, like a build number.
-curl -sf -X POST \
-  -H "Authorization: Bearer $GOFER_TOKEN" \
-  -H "gofer-api-version: v0" \
-  --data-binary "$VERSION" \
-  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/version"
-`
-
-err := sdk.NewPipeline("release", "Release").
-    Tasks(
-        sdk.NewTask("work-out-version", "curlimages/curl:latest").
-            InjectAPIToken(true). // Gives the task a GOFER_TOKEN that can write this pipeline's objects.
-            Command("sh", "-c", storeVersion),
-
-        sdk.NewTask("publish", "alpine:latest").
-            DependsOn("work-out-version", sdk.RequiredParentStatusSuccess).
-            Variables(map[string]string{"VERSION": sdk.RunObject("version")}).
-            Command("sh", "-c", "echo publishing version $VERSION"),
-    ).Finish()
-```
-
-A few things to note:
-
-- **Gofer tells each task where it is.** `GOFER_API_BASE_URL` and `GOFER_NAMESPACE` are set on every task.
-  The URL comes from the server's `server.extension_address`, since tasks and extensions sit on the same container
-  network. If tasks can't reach Gofer, that setting is the one to fix.
-- **The Gofer CLI works here too.** It reads `GOFER_API_BASE_URL`, `GOFER_NAMESPACE`, `GOFER_TOKEN`,
-  `GOFER_PIPELINE_ID` and `GOFER_RUN_ID`, so if your image has the `gofer` binary,
-  `echo "$VERSION" | gofer run object put version @` does the same thing as the curl call with no extra setup.
-- **The child has to depend on the parent.** Gofer reads `run_object{{version}}` right before `publish` starts, so
-  `publish` has to wait for `work-out-version` with `DependsOn`. Without it both tasks start at once and `publish`
-  fails because the object doesn't exist yet.
-- **Use pipeline objects for things that should outlast the run**, like a cache: the same request with
-  `/pipelines/$GOFER_PIPELINE_ID/objects/<key>` instead, and `sdk.PipelineObject` to read it.
 
 ## Supported Object Stores
 

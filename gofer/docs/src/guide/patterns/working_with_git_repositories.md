@@ -1,55 +1,9 @@
-# FAQ
-
-Most of these come from the same design choice: every task is its own container, possibly on a different machine,
-and Gofer doesn't tie pipelines to a git repository. That keeps Gofer simple and lets it run anything, but some things
-other CI/CD tools do for you implicitly you'll do explicitly here. The answers below are the patterns that work well.
-
-### > My tasks don't share a filesystem. How do I pass files between them?
-
-Use the [object store](./ref/object_store/index.html). It's Gofer's replacement for a shared workspace.
-
-- **Run objects** live for a single run (plus a few after it, see `run_object_expiry`). Use them for handing a value
-  or a file from one task to the tasks after it.
-- **Pipeline objects** last across runs until the pipeline hits `pipeline_object_limit`. Use them for caches.
-
-A task stores objects through Gofer's API, so give it `InjectAPIToken(true)`. Gofer sets `GOFER_API_BASE_URL`,
-`GOFER_NAMESPACE`, `GOFER_PIPELINE_ID` and `GOFER_RUN_ID` on every task, so the request needs no other setup:
-
-```bash
-# Upload a directory as a run object.
-tar -czf - ./dist | curl -sf -X POST \
-  -H "Authorization: Bearer $GOFER_TOKEN" -H "gofer-api-version: v0" --data-binary @- \
-  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/dist"
-
-# Download it in a later task.
-curl -sf -H "Authorization: Bearer $GOFER_TOKEN" -H "gofer-api-version: v0" \
-  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/dist" \
-  | tar -xzf -
-```
-
-If your image has the `gofer` binary, it'll do the tar work for you. Inside a task it picks up the pipeline and run
-from the environment, so all you need is the key and the directory:
-
-```bash
-gofer run object put dist ./dist           # Uploads the directory as a tarball.
-gofer run object get dist --extract ./dist # Downloads and unpacks it.
-```
-
-Two things trip people up:
-
-- **The reading task has to depend on the writing one** with `DependsOn`. Tasks run in parallel by default, so
-  without it the object might not exist yet.
-- **Download files through the API, not as variables.** `sdk.RunObject("key")` works well for small text values, but
-  it converts the object to text, so it'll mangle a tarball or any other binary file.
-
-For small values, see [passing data between tasks](./ref/object_store/index.html#passing-data-between-tasks).
-
-### > How do I work with a git repository? Other CI/CD tools clone it for me.
+# Working with Git Repositories
 
 Gofer doesn't know about your repository, so your tasks clone it themselves. That's two problems: getting access to
 the repo, and getting the code into each task that needs it.
 
-#### Getting access
+## Getting access
 
 **Use a read-only deploy key per repository, stored as a pipeline secret.** Deploy keys are scoped to a single repo,
 so a leaked key only exposes that repo.
@@ -89,28 +43,23 @@ into a pipeline object once, as above, or bake them into your image:
 gofer pipeline object put my-pipeline known_hosts ./github_known_hosts
 ```
 
-**To share a key across pipelines**, store it as a global secret and limit which namespaces can use it. This is the
-way to give one team's pipelines access without giving it to everyone:
-
-```bash
-gofer secret global put team_a_deploy_key -n "team-a-.*" < ./deploy_key
-```
-
-Then use `sdk.GlobalSecret("team_a_deploy_key")` in place of `sdk.PipelineSecret`. Keep shared keys read-only, since
-every pipeline in those namespaces can read them.
+**To share a key across pipelines**, store it as a global secret limited to the namespaces that need it, as in
+[prefer pipeline secrets over global ones](./secrets_and_access.md#prefer-pipeline-secrets-over-global-ones), and use
+`sdk.GlobalSecret("team_a_deploy_key")` in place of `sdk.PipelineSecret`. Keep shared keys read-only, since every
+pipeline in those namespaces can read them.
 
 **HTTPS with a token works too**, and skips the SSH setup:
 `git clone https://x-access-token:$GITHUB_TOKEN@github.com/my-org/my-repo.git`. The tradeoff is that personal access
 tokens are usually tied to someone's account, so they break when that person leaves and often reach more repos than
 the pipeline needs. Prefer fine-grained tokens limited to one repo.
 
-#### Getting the code
+## Getting the code
 
 Start with the first option and only move down the list when it's actually too slow.
 
 **1. Fetch just the commit you need.** This is fast enough for most repositories and it's the most correct option:
 you build exactly the commit that triggered the run, not whatever the branch points to by the time the task starts.
-The [Github extension](./ref/extensions/provided/github.md#events) passes that commit in as
+The [Github extension](../../ref/extensions/provided/github.md#events) passes that commit in as
 `GOFER_EXTENSION_GITHUB_PULLREQUEST_HEAD_SHA` for pull requests and `GOFER_EXTENSION_GITHUB_HEAD_COMMIT_ID` for pushes.
 
 ```bash
@@ -125,9 +74,9 @@ For large repos, add `--filter=blob:none` to download file contents only as they
 and Gitlab; some self-hosted git servers need `uploadpack.allowReachableSHA1InWant` turned on first.
 
 **2. Clone once per run and share it.** When several tasks need the code, have one task fetch it and upload it as a
-run object, then have the others depend on that task and download it, using the commands from the
-[file sharing answer](#my-tasks-dont-share-a-filesystem-how-do-i-pass-files-between-them) above. Every task sees
-the same tree and your git host only gets hit once per run.
+run object, then have the others depend on that task and download it, as shown in
+[files and directories](./passing_data_between_tasks.md#files-and-directories). Every task sees the same tree and your
+git host only gets hit once per run.
 
 **3. Cache the repository across runs.** Keep a tarball of the repo as a pipeline object. Each run downloads it,
 runs `git fetch` to pick up only what changed, then uploads it again. A few things to know:
@@ -135,6 +84,7 @@ runs `git fetch` to pick up only what changed, then uploads it again. A few thin
 - Upload over the old one by adding `?force=true` to the request URL, or `--force` with the CLI.
 - If two runs update the cache at the same time, the last one wins. That's fine for a cache, but don't keep anything
   there you can't rebuild.
+  [`Parallelism(1)`](./designing_pipelines.md#limit-pipelines-that-cant-overlap) avoids it entirely.
 - Pipeline objects past `pipeline_object_limit` get deleted, oldest first, so write the clone task to fall back to a
   fresh clone when the cache is missing.
 
