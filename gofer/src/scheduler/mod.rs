@@ -45,10 +45,19 @@ pub enum ContainerState {
 }
 
 /// Private repositories sometimes require authentication.
-#[derive(Debug)]
 pub struct RegistryAuth {
     pub user: String,
     pub pass: String,
+}
+
+// By the time it gets here the password is the real one, so keep it out of anything that debug prints a request.
+impl std::fmt::Debug for RegistryAuth {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RegistryAuth")
+            .field("user", &self.user)
+            .field("pass", &crate::api::REDACTED)
+            .finish()
+    }
 }
 
 impl From<crate::api::RegistryAuth> for RegistryAuth {

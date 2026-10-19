@@ -88,12 +88,6 @@ try to register the same thing twice.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
   It should use task leasing to avoid any stuck processors.
-* Task `RegistryAuth` doesn't resolve secrets. The orchestrator hands `task.registry_auth` straight to the scheduler
-  (`orchestrator.rs`, the `start_container` call), so `pipeline_secret{{...}}` gets sent to the registry as the
-  literal password. The only way that works today is putting the real password in the pipeline config. Extensions
-  already resolve `registry_auth.pass` as a global secret reference (`extensions/reconcile.rs`), so tasks should do
-  the same, probably accepting pipeline and global secrets like variables do. Once it lands, document it in the tasks
-  reference and drop the old "registry auth is largely untested" note below if it's covered.
 * `Script()` in both SDKs runs `bash -c`, so it fails on images without bash, like `alpine`, which the docs use
   everywhere. The doc comments also disagree with themselves (they say `bash -c` and then `sh -c`). Probably switch it
   to `sh -c` since it's on almost every image, and fix the doc comments in `sdk/go/config/task.go` and
@@ -111,7 +105,7 @@ try to register the same thing twice.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
 code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers
 in one very large file or split them up). https://github.com/oxidecomputer/dropshot/issues/1069 should fix this.
-* Registry auth is largely untested and possibly unsecured, don't use it for anything serious.
+* Registry auth (tasks and extensions) hasn't been tested against a real private registry yet.
 * Write/Design a way to clean up expired tokens after long enough.
 * Check that our websockets stuff makes sense we use joinset, make sure we're returning errors to the main thread and
 bubbling them up properly.

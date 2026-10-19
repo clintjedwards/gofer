@@ -3,7 +3,8 @@ use crate::{
         ApiState, GOFER_EOF, Variable, VariableSource, epoch_milli,
         event_utils::{self, EventListener},
         generate_inject_api_token_role_id, in_progress_runs_key, interpolate_vars, objects,
-        pipeline_configs, pipelines, runs, secrets, task_executions, tasks, tokens,
+        pipeline_configs, pipelines, resolve_registry_auth, runs, secrets, task_executions, tasks,
+        tokens,
     },
     conf, scheduler, secret_store, storage,
 };
@@ -1289,19 +1290,40 @@ impl Run {
         // this enables users to be sure that one task can pass variables to other downstream tasks.
 
         // We create a copy of variables so that we can substitute in secrets and objects.
-        // to eventually pass them into the start container function.
-        let env_vars = match interpolate_vars(
-            &self.api_state.storage,
-            self.api_state.secret_store.as_ref(),
-            self.api_state.object_store.as_ref(),
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-            Some(self.run.run_id),
-            &env_vars,
-        )
-        .await
-        {
-            Ok(env_vars) => env_vars,
+        // to eventually pass them into the start container function. Registry auth can reference secrets too, so it
+        // gets resolved here as well and fails the task the same way.
+        let resolved = async {
+            let env_vars = interpolate_vars(
+                &self.api_state.storage,
+                self.api_state.secret_store.as_ref(),
+                self.api_state.object_store.as_ref(),
+                &self.pipeline.metadata.namespace_id,
+                &self.pipeline.metadata.pipeline_id,
+                Some(self.run.run_id),
+                &env_vars,
+            )
+            .await?;
+
+            let registry_auth = match &new_task_execution.task.registry_auth {
+                Some(auth) => Some(
+                    resolve_registry_auth(
+                        &self.api_state.storage,
+                        self.api_state.secret_store.as_ref(),
+                        &self.pipeline.metadata.namespace_id,
+                        &self.pipeline.metadata.pipeline_id,
+                        auth,
+                    )
+                    .await?,
+                ),
+                None => None,
+            };
+
+            Ok::<_, anyhow::Error>((env_vars, registry_auth))
+        }
+        .await;
+
+        let (env_vars, registry_auth) = match resolved {
+            Ok(resolved) => resolved,
             Err(e) => {
                 let mut conn = match self.api_state.storage.write_conn().await {
                     Ok(conn) => conn,
@@ -1324,7 +1346,7 @@ impl Run {
                         Some(task_executions::StatusReason {
                             reason: task_executions::StatusReasonType::FailedPrecondition,
                             description: format!(
-                                "Task could not be run due to inability to retrieve interpolated variables; {}",
+                                "Task could not be run due to inability to retrieve interpolated variables or registry auth; {}",
                                 e
                             ),
                         }),
@@ -1369,11 +1391,7 @@ impl Run {
                     .into_iter()
                     .map(|var| (var.key, var.value))
                     .collect(),
-                registry_auth: new_task_execution
-                    .task
-                    .registry_auth
-                    .clone()
-                    .map(|auth| auth.into()),
+                registry_auth: registry_auth.map(|auth| auth.into()),
                 always_pull: new_task_execution.task.always_pull_newest_image,
                 networking: None,
                 entrypoint: new_task_execution.task.entrypoint.clone(),

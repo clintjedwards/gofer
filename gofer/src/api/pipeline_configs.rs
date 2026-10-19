@@ -6,7 +6,7 @@ use crate::{
     api::{
         ApiState, IncludeSecretQueryArgs, PreflightOptions, deployments, ensure_namespace_exists,
         ensure_pipeline_exists, epoch_milli, event_utils, generate_inject_api_token_role_id,
-        include_secrets, is_valid_identifier, pipelines, tasks,
+        include_secrets, is_valid_identifier, pipelines, tasks, validate_registry_auth_pass,
     },
     http_error,
     storage::{self, StorageError},
@@ -610,6 +610,15 @@ pub async fn register_config(
                 format!("'{}' is not a valid identifier for task id; {}", task.id, e),
             ));
         };
+
+        if let Some(auth) = &task.registry_auth
+            && let Err(e) = validate_registry_auth_pass(&auth.pass)
+        {
+            return Err(HttpError::for_bad_request(
+                None,
+                format!("task '{}' has invalid registry auth; {}", task.id, e),
+            ));
+        }
     }
 
     if path.pipeline_id != body.config.id {

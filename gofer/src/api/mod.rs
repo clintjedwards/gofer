@@ -1165,6 +1165,100 @@ pub async fn fetch_global_secret(
     Ok(String::from_utf8_lossy(&value.0).to_string())
 }
 
+/// Looks up the value of one of a pipeline's secrets.
+pub async fn fetch_pipeline_secret(
+    secret_store: &dyn secret_store::SecretStore,
+    namespace_id: &str,
+    pipeline_id: &str,
+    key: &str,
+) -> Result<String> {
+    match secret_store
+        .get(&secrets::pipeline_secret_store_key(
+            namespace_id,
+            pipeline_id,
+            key,
+        ))
+        .await
+    {
+        Ok(val) => Ok(String::from_utf8_lossy(&val.0).to_string()),
+        Err(secret_store::SecretStoreError::NotFound) => {
+            bail!("Could not find pipeline secret '{key}'")
+        }
+        Err(e) => bail!("Could not retrieve pipeline secret '{key}'; {:#?}", e),
+    }
+}
+
+/// Checks that a task's registry password is a pipeline or global secret reference. Passwords written straight into
+/// a pipeline config end up stored with it, so we refuse them. The user can be plain since usernames aren't secret.
+pub fn validate_registry_auth_pass(pass: &str) -> Result<()> {
+    match parse_interpolation_syntax(pass) {
+        Some((InterpolationKind::PipelineSecret | InterpolationKind::GlobalSecret, _)) => Ok(()),
+        _ => bail!(
+            "registry_auth.pass must be a pipeline or global secret reference like \
+            'pipeline_secret{{{{registry_pass}}}}'"
+        ),
+    }
+}
+
+/// Swaps secret references in a task's registry auth for their real values, right before the task's image is pulled.
+///
+/// Only secrets are accepted; objects are for passing data between tasks, and a credential coming from one would be
+/// surprising. The password has to be a secret, see [`validate_registry_auth_pass`]. It's checked here too so configs
+/// registered before that rule existed fail clearly instead of sending a plain password.
+pub async fn resolve_registry_auth(
+    storage: &storage::Db,
+    secret_store: &dyn secret_store::SecretStore,
+    namespace_id: &str,
+    pipeline_id: &str,
+    auth: &RegistryAuth,
+) -> Result<RegistryAuth> {
+    async fn resolve(
+        storage: &storage::Db,
+        secret_store: &dyn secret_store::SecretStore,
+        namespace_id: &str,
+        pipeline_id: &str,
+        field: &str,
+        value: &str,
+    ) -> Result<String> {
+        match parse_interpolation_syntax(value) {
+            None => Ok(value.to_string()),
+            Some((InterpolationKind::PipelineSecret, key)) => {
+                fetch_pipeline_secret(secret_store, namespace_id, pipeline_id, &key).await
+            }
+            Some((InterpolationKind::GlobalSecret, key)) => {
+                fetch_global_secret(storage, secret_store, &key, Some(namespace_id)).await
+            }
+            Some((kind, _)) => bail!(
+                "registry_auth.{field} uses {kind} interpolation, but registry auth only supports pipeline and \
+                global secrets"
+            ),
+        }
+    }
+
+    validate_registry_auth_pass(&auth.pass)?;
+
+    Ok(RegistryAuth {
+        user: resolve(
+            storage,
+            secret_store,
+            namespace_id,
+            pipeline_id,
+            "user",
+            &auth.user,
+        )
+        .await?,
+        pass: resolve(
+            storage,
+            secret_store,
+            namespace_id,
+            pipeline_id,
+            "pass",
+            &auth.pass,
+        )
+        .await?,
+    })
+}
+
 /// Gofer allows users to use secrets and objects from it's built-in sources. To facilitate this the user
 /// simply includes a special string in into special places within the Gofer pipeline manifest(for now this is only
 /// the "variables" field within a pipeline's tasks or a run). These special strings are decoded here.
@@ -1204,27 +1298,8 @@ pub async fn interpolate_vars(
                 bail!("Encountered error during variable interpolation; Interpolation kind unknown")
             }
             InterpolationKind::PipelineSecret => {
-                let value = match secret_store
-                    .get(&secrets::pipeline_secret_store_key(
-                        namespace_id,
-                        pipeline_id,
-                        &value,
-                    ))
-                    .await
-                {
-                    Ok(val) => String::from_utf8_lossy(&val.0).to_string(),
-                    Err(e) => match e {
-                        secret_store::SecretStoreError::NotFound => {
-                            bail!("Could not find pipeline secret '{}'", value);
-                        }
-                        _ => {
-                            bail!(
-                                "Encountered error while attempting to retrieve pipeline during interpolation {:#?}",
-                                e
-                            );
-                        }
-                    },
-                };
+                let value =
+                    fetch_pipeline_secret(secret_store, namespace_id, pipeline_id, &value).await?;
 
                 variable_list.push(Variable {
                     key: variable.key.clone(),
@@ -1717,5 +1792,116 @@ mod tests {
         .await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_resolve_registry_auth() {
+        use crate::secret_store::SecretStore;
+
+        let storage = storage::tests::TestHarness::new().await;
+        let secret_store = secret_store::sqlite::tests::TestHarness::new().await;
+
+        secret_store
+            .put(
+                &secrets::pipeline_secret_store_key("default", "simple", "registry_pass"),
+                b"pipeline secret value".to_vec(),
+                false,
+            )
+            .await
+            .unwrap();
+
+        let global_secret = secrets::Secret::new("registry_user", vec!["default".into()]);
+        let mut conn = storage.write_conn().await.unwrap();
+        storage::secret_store_global_keys::insert(&mut conn, &global_secret.try_into().unwrap())
+            .await
+            .unwrap();
+        drop(conn);
+        secret_store
+            .put(
+                &secrets::global_secret_store_key("registry_user"),
+                b"global secret value".to_vec(),
+                false,
+            )
+            .await
+            .unwrap();
+
+        let resolved = resolve_registry_auth(
+            &storage,
+            &secret_store.db,
+            "default",
+            "simple",
+            &RegistryAuth {
+                user: "global_secret{{registry_user}}".into(),
+                pass: "pipeline_secret{{registry_pass}}".into(),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resolved.user, "global secret value");
+        assert_eq!(resolved.pass, "pipeline secret value");
+
+        // A plain user is fine, but a plain password isn't since it would be stored with the config.
+        let resolved = resolve_registry_auth(
+            &storage,
+            &secret_store.db,
+            "default",
+            "simple",
+            &RegistryAuth {
+                user: "some_user".into(),
+                pass: "pipeline_secret{{registry_pass}}".into(),
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(resolved.user, "some_user");
+
+        let err = resolve_registry_auth(
+            &storage,
+            &secret_store.db,
+            "default",
+            "simple",
+            &RegistryAuth {
+                user: "some_user".into(),
+                pass: "some_pass".into(),
+            },
+        )
+        .await
+        .unwrap_err();
+        assert!(err.to_string().contains("registry_auth.pass"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn test_resolve_registry_auth_rejects_objects_and_missing_secrets() {
+        let storage = storage::tests::TestHarness::new().await;
+        let secret_store = secret_store::sqlite::tests::TestHarness::new().await;
+
+        let err = resolve_registry_auth(
+            &storage,
+            &secret_store.db,
+            "default",
+            "simple",
+            &RegistryAuth {
+                user: "some_user".into(),
+                pass: "pipeline_object{{registry_pass}}".into(),
+            },
+        )
+        .await
+        .unwrap_err();
+        assert!(err.to_string().contains("registry_auth.pass"), "{err}");
+
+        let err = resolve_registry_auth(
+            &storage,
+            &secret_store.db,
+            "default",
+            "simple",
+            &RegistryAuth {
+                user: "some_user".into(),
+                pass: "pipeline_secret{{registry_pass}}".into(),
+            },
+        )
+        .await
+        .unwrap_err();
+        assert!(err.to_string().contains("registry_pass"), "{err}");
     }
 }

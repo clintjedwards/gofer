@@ -140,7 +140,9 @@ impl super::Scheduler for Scheduler {
                     ..Default::default()
                 }))
                 .await
-                .unwrap();
+                .map_err(|e| {
+                    SchedulerError::Unknown(format!("could not list local images; {:?}", e))
+                })?;
 
             if images.is_empty() {
                 report(Phase::PullingImage);

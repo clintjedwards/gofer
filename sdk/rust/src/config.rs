@@ -279,6 +279,9 @@ impl Task {
         self
     }
 
+    /// Authentication details if your container repository requires them. The password has to be a secret reference
+    /// like `pipeline_secret("registry_pass")` or `global_secret("registry_pass")` so it stays out of your config. The
+    /// user can be plain or a secret.
     pub fn registry_auth(mut self, user: &str, pass: &str) -> Self {
         self.registry_auth = Some(RegistryAuth {
             user: user.to_string(),

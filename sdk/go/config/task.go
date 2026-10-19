@@ -104,7 +104,9 @@ func (t *TaskWrapper) Description(description string) *TaskWrapper {
 	return t
 }
 
-// Authentication details if your container repository requires them.
+// Authentication details if your container repository requires them. The password has to be a secret reference like
+// PipelineSecret("registry_pass") or GlobalSecret("registry_pass") so it stays out of your config. The user can be
+// plain or a secret.
 func (t *TaskWrapper) RegistryAuth(user, pass string) *TaskWrapper {
 	t.Task.RegistryAuth = &RegistryAuth{
 		User: user,
