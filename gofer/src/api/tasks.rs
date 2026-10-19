@@ -49,7 +49,8 @@ pub struct Task {
     /// Example: "ubuntu:latest"
     pub image: String,
 
-    /// Auth credentials for the image's registry. The password is redacted in API responses.
+    /// Auth credentials for the image's registry. The password is a secret reference like
+    /// `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses.
     pub registry_auth: Option<RegistryAuth>,
 
     /// Which other tasks (by id) this task depends on.

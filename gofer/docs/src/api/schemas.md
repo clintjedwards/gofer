@@ -828,7 +828,7 @@ A task represents a particular workload within a pipeline. Tasks are composable 
 | `id` | string | yes | Unique identifier for the task. |
 | `image` | string | yes | Which container image to run for this specific task. Example: "ubuntu:latest" |
 | `inject_api_token` | boolean | yes | Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container. |
-| `registry_auth` | [RegistryAuth](#registryauth) (nullable) | no | Auth credentials for the image's registry. The password is redacted in API responses. |
+| `registry_auth` | [RegistryAuth](#registryauth) (nullable) | no | Auth credentials for the image's registry. The password is a secret reference like `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses. |
 | `variables` | array of [Variable](#variable) | yes | Variables which will be passed in as env vars to the task. |
 
 ## Task2

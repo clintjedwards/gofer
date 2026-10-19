@@ -1,6 +1,7 @@
 use crate::api::extensions::reconcile::{Manifest, default_manifest, fetch_manifest};
 use crate::cli::{
-    Cli, api_error_message, colorize_status_text, colorize_status_text_comfy, rail, rail_table,
+    Cli, api_error_message, ask_yes_no, colorize_status_text, colorize_status_text_comfy, rail,
+    rail_table,
 };
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
@@ -199,11 +200,6 @@ fn ask(prompt: &str) -> Choice {
             _ => continue,
         }
     }
-}
-
-fn ask_yes_no(prompt: &str) -> bool {
-    let answer = question!("{prompt} [y/N]: ");
-    matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes")
 }
 
 /// A config value for the [[extensions.install]] block, quoted as a TOML string.

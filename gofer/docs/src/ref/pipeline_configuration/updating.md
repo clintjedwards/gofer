@@ -1,12 +1,26 @@
 # Updating Pipelines
 
-Every time you run `gofer up`, Gofer stores your pipeline config as a new **version** (`v1`, `v2`, and so on) instead
-of overwriting the old one. Then it **deploys** that version, which makes it the one new runs use.
+Every time you run `gofer up` with changes, Gofer stores your pipeline config as a new **version** (`v1`, `v2`, and so
+on) instead of overwriting the old one. Then it **deploys** that version, which makes it the one new runs use.
+
+Before it registers anything, `gofer up` shows what's different from the latest version and asks you to confirm:
 
 ```text
 $ gofer up ./my-pipeline
+ Changes since v2:
+   │ ~ tasks.build.command:
+   │       sh -c 'exec "$(command -v bash || echo sh)" -c "$1"' gofer-script 'echo one
+   │     - echo two
+   │     + echo 2
+   │       echo three'
+   │ ~ tasks.build.image: alpine:latest -> alpine:3.20
+   │ + tasks.notify: new task using alpine:latest
+ ? Register and deploy these changes? [y/N]: y
  ✓ Registered pipeline: [my-pipeline] 'My Pipeline' v3
 ```
+
+Pass `--yes` to skip the question. Gofer also skips it when it isn't run from a terminal, like in CI. If nothing
+changed, no new version is made; Gofer just deploys the latest version if it isn't live yet.
 
 Keeping every version means you can always see exactly what a past run ran with. Each run records its version, and
 `gofer run get <pipeline_id> <run_id>` shows it next to the run number.

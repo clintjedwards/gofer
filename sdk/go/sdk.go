@@ -1599,7 +1599,7 @@ type Task struct {
 	// InjectApiToken Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container.
 	InjectApiToken bool `json:"inject_api_token"`
 
-	// RegistryAuth Auth credentials for the image's registry. The password is redacted in API responses.
+	// RegistryAuth Auth credentials for the image's registry. The password is a secret reference like `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses.
 	RegistryAuth *RegistryAuth `json:"registry_auth"`
 
 	// Variables Variables which will be passed in as env vars to the task.

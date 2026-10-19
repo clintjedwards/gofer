@@ -95,6 +95,11 @@ enum Commands {
         /// only register it.
         #[arg(short, long, default_value_t = true, action = clap::ArgAction::Set)]
         deploy: bool,
+
+        /// Don't ask before registering changes to an existing pipeline. Gofer also skips asking when it isn't run
+        /// from a terminal.
+        #[arg(short, long)]
+        yes: bool,
     },
 
     /// Lookup pipeline specific information.
@@ -294,7 +299,8 @@ impl Cli {
                 namespace,
                 path,
                 deploy,
-            } => self.pipeline_create(namespace, path, deploy).await,
+                yes,
+            } => self.pipeline_create(namespace, path, deploy, yes).await,
             Commands::Fetch {
                 namespace,
                 pipeline_id,
@@ -662,6 +668,11 @@ fn colorize_status_text<T: ToString>(input: T) -> String {
         "cancel" | "cancelled" => input.dimmed().to_string(),
         _ => input,
     }
+}
+
+fn ask_yes_no(prompt: &str) -> bool {
+    let answer = polyfmt::question!("{prompt} [y/N]: ");
+    matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes")
 }
 
 /// The magenta bar that runs down the left side of each section in `get` output.

@@ -1037,10 +1037,20 @@ pub fn include_secrets(
 }
 
 impl RegistryAuth {
+    /// A secret reference like `pipeline_secret{{registry_pass}}` is only a name, so it's left visible; that lets
+    /// `gofer up` show whether it changed. Anything else is a real password, like one stored before passwords had to
+    /// be secrets, and gets hidden.
     pub fn redacted(self) -> Self {
+        let pass = match parse_interpolation_syntax(&self.pass) {
+            Some((InterpolationKind::PipelineSecret | InterpolationKind::GlobalSecret, _)) => {
+                self.pass
+            }
+            _ => REDACTED.into(),
+        };
+
         RegistryAuth {
             user: self.user,
-            pass: REDACTED.into(),
+            pass,
         }
     }
 }
