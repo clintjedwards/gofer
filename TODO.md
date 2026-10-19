@@ -4,6 +4,21 @@ None
 
 # Small things I want to keep track of that I definitely need to do.
 
+* The API trusts the SDKs for a lot of validation. Anyone hitting the API directly or using a third party SDK can get
+  past it. What's missing:
+  * Pipeline configs: duplicate task ids, `depends_on` naming a task that doesn't exist, and dependency cycles are
+    only checked by the SDKs. A task whose parent doesn't exist waits in the orchestrator's dependency loop forever,
+    and with no timeouts nothing ever ends the run. Two fixes, both small:
+    * Check the config when it's registered: task ids are unique, every `depends_on` names a task in the same config,
+      and there are no cycles. Return a 400 listing every problem at once, not just the first, so someone hitting the
+      API directly can fix them in one go. The Rust SDK's `dag.rs` already does the cycle check and is small enough to
+      copy. Keep the SDK checks too; they catch mistakes before anything is sent.
+    * Make the orchestrator not hang if a bad config gets through anyway (configs registered before the check
+      existed, or a bug). Before waiting on parents, check that each one is a task in this run; if one isn't, mark the
+      task failed with a reason naming the missing parent, so its children react the same way they would to any
+      other failed parent.
+  * Worth an audit of the rest: run variable names (they become env vars), subscription settings, empty image names,
+    parallelism bounds.
 * Let extension manifests declare the additional roles an extension needs, instead of operators having to know and
   list them in `additional_roles`. Could also be a way to permission extensions per pipeline or per purpose. Needs a
   design session.
@@ -77,25 +92,31 @@ None
     is already a run for that branch, cancel the ongoing one and trigger a new one.
 * We should allow the ops side to somehow set the GOFER_API_BASE_URL for the containers. This can change based on
 where the container is running.
-* When you insert a new pipeline it should show you a diff on what you're changing.
 * We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
   directory. Think more about how the UX should be handled here.
 * Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
 try to register the same thing twice.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
-* There should probably be a global timeout for all runs.
+* Timeouts. Tasks have no timeout and there's no global one for runs either; the only setting is the grace period for
+  stopping a task (`api.task_execution_stop_timeout`). A hung task holds its run, and a parallelism slot, open
+  forever. Add a per task timeout in the config and SDKs, plus an admin set global max that caps it and applies when
+  a task doesn't set one.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
-* The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
-  It should use task leasing to avoid any stuck processors.
+* Make run execution survive failures. This has to happen before a networked scheduler (Nomad, K8s) is realistic,
+  since those calls will fail sometimes and today one failure ends the run.
+  * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
+    It should use task leasing to avoid any stuck processors.
+  * In monitor_task_execution, calls to the scheduler to check on container status are expected to succeed. If one
+    fails the whole thing is aborted. It should retry with backoff and only give up after a while.
+  * The recover_run function needs to account for the fact that sometimes the event_ids mentioned within runs might
+    not exist anymore. It should also not return any errors but instead log them and move on, trying its best
+    despite any failures.
 
 # Small things I'll probably never get around to.
 
 * Change the poll interval for pruneing events to be based on the number of events processed rather than just a standard
   static prune time. Maybe we can just make it a big LRU.
-* The recover_run function needs to account for the fact that sometimes the event_id that are mentioned within runs
-  might not exist anymore. This function should also not return any errors but instead just log them and move on. It
-  should try its best despite any failures.
 * Change the sqlite write_pool to be guarded by a mutex. This would avoid very obvious errors in code that might lead
   to deadlocks during runtime.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
@@ -105,8 +126,6 @@ in one very large file or split them up). https://github.com/oxidecomputer/drops
 * Write/Design a way to clean up expired tokens after long enough.
 * Check that our websockets stuff makes sense we use joinset, make sure we're returning errors to the main thread and
 bubbling them up properly.
-* API needs validation for all endpoints.
-* User should be able to give their builds timeouts and we need to establish a global timeout.
 * When you schedule a job on a container orch, we should note where that job has run(which node).
 * Pass back custom errors via the API so that consumers can understand what has happened.
 * Pagination...everywhere.
@@ -115,9 +134,6 @@ from that pipeline in one place. Maybe this is a watch feature where each task r
 finishes at which time it reflects a summary about what it did.
 * The CLI could have a diff command so we know exactly what is about the change from the last pipeline version.
 * When using the SDK to build a pipeline, that pipeline should print to stdout the json that will be collected
-* In monitor_task_execution calls to the scheduler to check on container status are expected to succeed. If they fail
-the whole thing is aborted, which is obviously bad because when we implement networked schedulers network calls will fail
-sometimes.
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 
@@ -142,8 +158,19 @@ sometimes.
 - The interval extension should create jitter of about 2-5 mins. During that time it can choose when to start counting to extension an event. This is so that when we restart the server all events don't perfectly line up with each other and cause a storm. There might be other, smarter ways to handle this queue and api calling as well.
 - Extensions should be able to report details about their execution somehow. It would be nice when looking at my pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension that is taking overly long.
 - Github sometimes changes their payloads and this causes us to always have to be at the latest release or else casting payloads might break. Investigate payload casting and see if maybe we can get something even partial if not a better error for the user.
-- Extensions probably need a healthcheck endpoint, so we can try to self heal and if not we can at least inform the user. We
-  can also report things like latency and metrics from each extension via this endpoint.
+- Extensions have a health endpoint, but Gofer only calls it once, while starting the extension, to know it's ready.
+  After that nothing checks, so an extension that crashes later still shows as running.
+  - Poll each running extension's health endpoint once a minute. It's on the local Docker network, so the traffic is
+    tiny, and it catches extensions Gofer rarely talks to otherwise; cron and interval only hear from Gofer when a
+    pipeline subscribes, so one could be dead for weeks before anyone notices.
+  - On the first missed check, move it to a new `Degraded` state with the error in `state_reason`. A passing check
+    moves it back to `Running`. This is a new API enum value, so the OpenAPI spec and SDKs need regenerating.
+  - A call Gofer already makes (subscribe, unsubscribe, external events, debug) that can't connect counts as a missed
+    check, so we don't wait for the next poll to notice.
+  - Once missed checks in a row pass a threshold (a few minutes' worth), restart it once.
+  - If it keeps failing after the restart, mark it `Failed`, say in `state_reason` that the restart didn't help, and
+    stop polling and remediating. From there it's on an admin, who can fix it and bring it back with a reload. The
+    follow up about telling subscribed pipelines can build on `Degraded` and `Failed`.
 
 #### More extensions:
 

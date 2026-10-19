@@ -248,7 +248,8 @@ fn print_install_block(manifest: &Manifest, location: Option<&str>, id: &str) {
         lines.push(format!("# ({})", notes.join(", ")));
 
         let value = if param.secret {
-            // Secret keys only allow letters, numbers, and hyphens.
+            // Underscores would be fine in a secret key; this just keeps the suggested name in the same hyphenated
+            // style as the extension id.
             let secret_key = format!("{id}-{}", param.key).replace('_', "-");
             secret_commands.push(format!("gofer secret global put {secret_key} < <file>"));
             toml_string(&format!("global_secret{{{{{secret_key}}}}}"))

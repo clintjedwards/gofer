@@ -21,6 +21,8 @@ pipeline config. There are two kinds of secrets:
 - **Global secrets** are shared across pipelines and only admins can manage them. Each one has a list of
   namespaces (regexes) that are allowed to use it, set with `gofer secret global put <key> -n <namespace regex>`.
 
+Secret keys can be up to 128 characters of letters, numbers, `_`, `.`, and `-`.
+
 See [Using Secrets and Objects in Variables](../pipeline_configuration/tasks.md#using-secrets-and-objects-in-variables)
 for more detail.
 

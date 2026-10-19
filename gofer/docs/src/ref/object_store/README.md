@@ -41,6 +41,11 @@ gofer run object get my_key --pipeline my-pipeline --run 1
 Inside a task you can leave off `--pipeline` and `--run`. The CLI falls back to `GOFER_PIPELINE_ID` and
 `GOFER_RUN_ID`, which Gofer sets on every task.
 
+## Keys
+
+Object keys can be up to 128 characters of letters, numbers, `_`, `.`, and `-`, so file names like `build.tar.gz`
+work as keys. Keys only need to be unique within their pipeline or run.
+
 ## Storing directories
 
 If you `put` a directory, the CLI uploads it as a gzipped tarball. `get --extract <dir>` downloads and unpacks it,

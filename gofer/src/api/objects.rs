@@ -1,6 +1,9 @@
 use super::permissioning::{Action, ExtensionResource, NamespaceResource, Requirement};
 use crate::{
-    api::{ApiState, PreflightOptions, ensure_pipeline_exists, ensure_run_exists, epoch_milli},
+    api::{
+        ApiState, PreflightOptions, ensure_pipeline_exists, ensure_run_exists, epoch_milli,
+        is_valid_store_key,
+    },
     http_error, object_store, storage,
 };
 use anyhow::{Context, Result};
@@ -17,8 +20,11 @@ use tracing::error;
 
 const LARGE_REQUEST_BODY_MAX_BYTES: usize = 50 * 1_000_000_000; // 50GB
 
+// Every object type shares one store, so keys start with their type and use `/` as the separator. Ids and keys
+// can't contain `/`, so two different objects can never map to the same store key.
+
 pub fn pipeline_object_store_key(namespace_id: &str, pipeline_id: &str, key: &str) -> String {
-    format!("{namespace_id}_{pipeline_id}_{key}")
+    format!("pipeline/{namespace_id}/{pipeline_id}/{key}")
 }
 
 pub fn run_object_store_key(
@@ -27,11 +33,11 @@ pub fn run_object_store_key(
     run_id: u64,
     key: &str,
 ) -> String {
-    format!("{namespace_id}_{pipeline_id}_{run_id}_{key}")
+    format!("run/{namespace_id}/{pipeline_id}/{run_id}/{key}")
 }
 
 pub fn extension_object_store_key(extension_id: &str, key: &str) -> String {
-    format!("{extension_id}_{key}")
+    format!("extension/{extension_id}/{key}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -495,6 +501,14 @@ pub async fn put_run_object(
     }
 
     let key = path.key;
+
+    if let Err(e) = is_valid_store_key(&key) {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!("'{key}' is not a valid key; {e}"),
+        ));
+    };
+
     let force = query.force;
     let object_store_key =
         run_object_store_key(&path.namespace_id, &path.pipeline_id, path.run_id, &key);
@@ -998,6 +1012,14 @@ pub async fn put_pipeline_object(
     }
 
     let key = path.key;
+
+    if let Err(e) = is_valid_store_key(&key) {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!("'{key}' is not a valid key; {e}"),
+        ));
+    };
+
     let force = query.force;
     let object_store_key = pipeline_object_store_key(&path.namespace_id, &path.pipeline_id, &key);
 
@@ -1516,6 +1538,14 @@ pub async fn put_extension_object(
         .await?;
 
     let key = path.key;
+
+    if let Err(e) = is_valid_store_key(&key) {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!("'{key}' is not a valid key; {e}"),
+        ));
+    };
+
     let force = query.force;
     let object_store_key = extension_object_store_key(&path.extension_id, &key);
 

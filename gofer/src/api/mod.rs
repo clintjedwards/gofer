@@ -896,6 +896,32 @@ pub fn is_valid_identifier(id: &str) -> Result<()> {
     Ok(())
 }
 
+/// Secret and object keys end up as the last part of a `/` separated store key (see the `*_store_key` functions in
+/// secrets.rs and objects.rs). Keeping `/` out of them is what stops one owner's key from landing on another's.
+/// We allow underscores and dots on top of what ids allow since keys are often file or variable names. `.` and `..`
+/// are rejected since the filesystem object store would treat them as directories.
+pub fn is_valid_store_key(key: &str) -> Result<()> {
+    let allowed_chars = regex!("^[a-zA-Z0-9_.-]*$");
+
+    if key.len() > 128 {
+        bail!("length cannot be greater than 128");
+    }
+
+    if key.is_empty() {
+        bail!("cannot be empty");
+    }
+
+    if key == "." || key == ".." {
+        bail!("cannot be '.' or '..'");
+    }
+
+    if !allowed_chars.is_match(key) {
+        bail!("can only be made up of alphanumeric, underscore, dot, and hyphen characters");
+    }
+
+    Ok(())
+}
+
 /// Returns a 404 if the namespace doesn't exist.
 ///
 /// Routes that work on a resource's children call these first so that a mistyped parent gets a clear "doesn't
@@ -1587,6 +1613,40 @@ async fn websocket_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::simple("deploy_key", true)]
+    #[case::file_name("build.tar.gz", true)]
+    #[case::single_char("a", true)]
+    #[case::max_length(&"a".repeat(128), true)]
+    #[case::too_long(&"a".repeat(129), false)]
+    #[case::empty("", false)]
+    #[case::dot(".", false)]
+    #[case::dot_dot("..", false)]
+    #[case::slash("a/b", false)]
+    #[case::traversal("../a", false)]
+    #[case::space("a b", false)]
+    fn test_is_valid_store_key(#[case] key: &str, #[case] valid: bool) {
+        assert_eq!(is_valid_store_key(key).is_ok(), valid);
+    }
+
+    // The collisions that used to be possible when store keys were joined with `_`.
+    #[test]
+    fn test_store_keys_do_not_collide() {
+        assert_ne!(
+            secrets::pipeline_secret_store_key("global", "secret", "x"),
+            secrets::global_secret_store_key("x")
+        );
+        assert_ne!(
+            objects::pipeline_object_store_key("ns", "pipeline", "1_x"),
+            objects::run_object_store_key("ns", "pipeline", 1, "x")
+        );
+        assert_ne!(
+            objects::extension_object_store_key("ns", "pipeline_x"),
+            objects::pipeline_object_store_key("ns", "pipeline", "x")
+        );
+    }
 
     #[test]
     fn test_valid_pipeline_secret() {

@@ -32,7 +32,11 @@ impl Engine {
 
         std::fs::create_dir_all(&config.path).unwrap();
 
-        let store = LocalFileSystem::new_with_prefix(config.path).unwrap();
+        // Keys are `/` separated, so each pipeline, run, and extension gets its own directory. Cleanup removes them
+        // once they're empty, otherwise every expired run would leave an empty directory behind.
+        let store = LocalFileSystem::new_with_prefix(config.path)
+            .unwrap()
+            .with_automatic_cleanup(true);
 
         Engine(store)
     }

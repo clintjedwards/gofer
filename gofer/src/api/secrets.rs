@@ -2,7 +2,7 @@ use super::permissioning::{
     Action, GlobalResource, NamespaceResource, Requirement, anchored, validate_target,
 };
 use crate::{
-    api::{ApiState, PreflightOptions, ensure_pipeline_exists, epoch_milli},
+    api::{ApiState, PreflightOptions, ensure_pipeline_exists, epoch_milli, is_valid_store_key},
     http_error, secret_store, storage,
 };
 use anyhow::{Context, Result};
@@ -16,12 +16,15 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{debug, error};
 
+// Every secret type shares one store, so keys start with their type and use `/` as the separator. Ids and keys
+// can't contain `/`, so two different secrets can never map to the same store key.
+
 pub fn pipeline_secret_store_key(namespace_id: &str, pipeline_id: &str, key: &str) -> String {
-    format!("{namespace_id}_{pipeline_id}_{key}")
+    format!("pipeline/{namespace_id}/{pipeline_id}/{key}")
 }
 
 pub fn global_secret_store_key(key: &str) -> String {
-    format!("global_secret_{key}")
+    format!("global/{key}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -426,13 +429,20 @@ pub async fn put_global_secret(
         }
     }
 
-    let mut conn = match api_state.storage.write_conn().await {
+    if let Err(e) = is_valid_store_key(&body.key) {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!("'{}' is not a valid key; {e}", body.key),
+        ));
+    };
+
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
@@ -452,8 +462,7 @@ pub async fn put_global_secret(
         }
     };
 
-    if let Err(e) = storage::secret_store_global_keys::insert(&mut conn, &new_secret_storage).await
-    {
+    if let Err(e) = storage::secret_store_global_keys::insert(&mut tx, &new_secret_storage).await {
         match e {
             storage::StorageError::Exists => {
                 if !body.force {
@@ -466,7 +475,7 @@ pub async fn put_global_secret(
 
                 // The key already exists so we update its allowed namespaces, the value itself is overwritten below.
                 if let Err(e) = storage::secret_store_global_keys::update(
-                    &mut conn,
+                    &mut tx,
                     &body.key,
                     storage::secret_store_global_keys::UpdatableFields {
                         namespaces: Some(new_secret_storage.namespaces.clone()),
@@ -504,6 +513,17 @@ pub async fn put_global_secret(
     {
         return Err(http_error!(
             "Could not insert secret into store",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    };
+
+    // Only commit the key row once the value is in the store, so a failed store write doesn't leave a key behind
+    // that points at nothing.
+    if let Err(e) = tx.commit().await {
+        return Err(http_error!(
+            "Could not close database connection",
             hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
@@ -854,20 +874,27 @@ pub async fn put_pipeline_secret(
         )
         .await?;
 
-    let mut conn = match api_state.storage.write_conn().await {
+    if let Err(e) = is_valid_store_key(&body.key) {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!("'{}' is not a valid key; {e}", body.key),
+        ));
+    };
+
+    let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
     };
 
     ensure_pipeline_exists(
-        &mut conn,
+        &mut tx,
         &rqctx.request_id,
         &path.namespace_id,
         &path.pipeline_id,
@@ -889,8 +916,7 @@ pub async fn put_pipeline_secret(
             }
         };
 
-    if let Err(e) =
-        storage::secret_store_pipeline_keys::insert(&mut conn, &new_secret_storage).await
+    if let Err(e) = storage::secret_store_pipeline_keys::insert(&mut tx, &new_secret_storage).await
     {
         match e {
             storage::StorageError::Exists => {
@@ -926,7 +952,18 @@ pub async fn put_pipeline_secret(
         .await
     {
         return Err(http_error!(
-            "Could not insert objects from database",
+            "Could not insert secret into store",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    };
+
+    // Only commit the key row once the value is in the store, so a failed store write doesn't leave a key behind
+    // that points at nothing.
+    if let Err(e) = tx.commit().await {
+        return Err(http_error!(
+            "Could not close database connection",
             hyper::StatusCode::INTERNAL_SERVER_ERROR,
             rqctx.request_id.clone(),
             Some(e.into())
