@@ -88,10 +88,6 @@ try to register the same thing twice.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
   It should use task leasing to avoid any stuck processors.
-* `Script()` in both SDKs runs `bash -c`, so it fails on images without bash, like `alpine`, which the docs use
-  everywhere. The doc comments also disagree with themselves (they say `bash -c` and then `sh -c`). Probably switch it
-  to `sh -c` since it's on almost every image, and fix the doc comments in `sdk/go/config/task.go` and
-  `sdk/rust/src/config.rs`.
 
 # Small things I'll probably never get around to.
 

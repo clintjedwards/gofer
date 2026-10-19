@@ -189,6 +189,10 @@ impl Pipeline {
     }
 }
 
+/// Runs [`Task::script`]'s script with bash when the image has it and sh otherwise. The script is passed as `$1`
+/// rather than pasted into this string so it never needs quoting.
+const SCRIPT_LAUNCHER: &str = r#"exec "$(command -v bash || echo sh)" -c "$1""#;
+
 pub fn pipeline_secret(key: &str) -> String {
     format!("pipeline_secret{{{{{key}}}}}")
 }
@@ -387,14 +391,11 @@ impl Task {
         self
     }
 
-    /// Provide an inline multi-line shell script to be run in the container as `bash -c "<script>"`.
+    /// Provide an inline multi-line shell script to be run in the container.
     ///
-    /// The script will be trimmed of leading and trailing whitespace. Under the hood, it
-    /// becomes the equivalent of:
-    ///
-    /// ```bash
-    /// sh -c "<your multiline script here>"
-    /// ```
+    /// The script is run with `bash -c "<script>"` if the image has bash, and `sh -c "<script>"` if it doesn't, so
+    /// it works on small images like alpine. If you use bash features, make sure your image has bash. Leading and
+    /// trailing whitespace is trimmed.
     ///
     /// # Examples
     ///
@@ -413,11 +414,17 @@ impl Task {
     /// In this example, all three commands (cargo test, wget, and curl) will run
     /// sequentially inside a single container session.
     ///
-    /// Should not be used with ['command'].
+    /// Should not be used with [`Task::command`].
     pub fn script(mut self, script: impl AsRef<str>) -> Self {
         let trimmed_script = script.as_ref().trim();
 
-        self.command = Some(vec!["bash".into(), "-c".into(), trimmed_script.into()]);
+        self.command = Some(vec![
+            "sh".into(),
+            "-c".into(),
+            SCRIPT_LAUNCHER.into(),
+            "gofer-script".into(),
+            trimmed_script.into(),
+        ]);
         self
     }
 

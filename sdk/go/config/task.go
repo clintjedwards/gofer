@@ -151,39 +151,33 @@ func (t *TaskWrapper) Command(command ...string) *TaskWrapper {
 	return t
 }
 
-// Provide an inline multi-line shell script to be run in the container as `bash -c "<script>"`.
+// Runs Script's script with bash when the image has it and sh otherwise. The script is passed as $1 rather than
+// pasted into this string so it never needs quoting.
+const scriptLauncher = `exec "$(command -v bash || echo sh)" -c "$1"`
+
+// Provide an inline multi-line shell script to be run in the container.
 //
-// The script will be trimmed of leading and trailing whitespace. Under the hood, it
-// becomes the equivalent of:
+// The script is run with `bash -c "<script>"` if the image has bash, and `sh -c "<script>"` if it doesn't, so it
+// works on small images like alpine. If you use bash features, make sure your image has bash. Leading and trailing
+// whitespace is trimmed.
 //
-// ```bash
-// sh -c "<your multiline script here>"
-// ```
+// Example:
 //
-// # Examples
+//	sdk.NewTask("run-go-test", "golang:latest").
+//		Script(`
+//			go test ./...
+//			wget https://example.com/somefile
+//			curl https://google.com
+//		`)
 //
-// ```
-// # use gofer_sdk::config::Task;
-// let task = Task::new("run-cargo-test", "ghcr.io/clintjedwards/gofer/tools:rust")
-//
-//	.description("Run cargo test command for workspace")
-//	.always_pull_newest_image(true)
-//	.commands(r#"
-//	    cargo test
-//	    wget https://example.com/somefile
-//	    curl https://google.com
-//	"#);
-//
-// ```
-//
-// In this example, all three commands (cargo test, wget, and curl) will run
+// In this example, all three commands (go test, wget, and curl) will run
 // sequentially inside a single container session.
 //
-// Should not be used with ['Command'].
+// Should not be used with [TaskWrapper.Command].
 func (t *TaskWrapper) Script(script string) *TaskWrapper {
 	trimmedScript := strings.TrimSpace(script)
 
-	t.Task.Command = &[]string{"bash", "-c", trimmedScript}
+	t.Task.Command = &[]string{"sh", "-c", scriptLauncher, "gofer-script", trimmedScript}
 	return t
 }
 
