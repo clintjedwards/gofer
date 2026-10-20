@@ -588,6 +588,14 @@ pub async fn start_run(
         )
         .await?;
 
+    // Run variables can override anything, including the GOFER_ vars, but they still have to be usable as
+    // environment variable names.
+    for key in body.variables.keys() {
+        if let Err(e) = gofer_sdk::config::validate_variable_key("variable name", key) {
+            return Err(HttpError::for_bad_request(None, e.to_string()));
+        }
+    }
+
     let new_run = match api_state
         .orchestrator
         .launch_new_run(

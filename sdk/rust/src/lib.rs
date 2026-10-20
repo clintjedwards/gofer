@@ -1,6 +1,6 @@
 pub mod api;
 pub mod config;
-mod dag;
+pub mod dag;
 pub mod extension;
 
 use config::ConfigError;

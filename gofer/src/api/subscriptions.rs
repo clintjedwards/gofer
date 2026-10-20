@@ -1,8 +1,8 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
-        ApiState, PreflightOptions, Variable, VariableSource, ensure_pipeline_exists, event_utils,
-        extensions, interpolate_vars, is_valid_identifier,
+        ApiState, BadReference, PreflightOptions, Variable, VariableSource, ensure_pipeline_exists,
+        event_utils, extensions, interpolate_vars, is_valid_identifier,
     },
     http_error, storage,
 };
@@ -603,13 +603,31 @@ pub async fn create_subscription(
         }
     };
 
-    if let Err(e) = subscribe_extension(api_state, &new_subscription).await {
-        return Err(http_error!(
-            "Could not subscribe to extension",
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
-            rqctx.request_id.clone(),
-            Some(e.into())
-        ));
+    match subscribe_extension(api_state, &new_subscription).await {
+        Ok(()) => {}
+        Err(SubscribeError::Rejected(message)) => {
+            return Err(HttpError::for_bad_request(
+                None,
+                format!(
+                    "extension '{}' rejected the subscription; {message}",
+                    body.extension_id
+                ),
+            ));
+        }
+        Err(SubscribeError::BadSettings(message)) => {
+            return Err(HttpError::for_bad_request(
+                None,
+                format!("invalid subscription settings; {message}"),
+            ));
+        }
+        Err(SubscribeError::Internal(e)) => {
+            return Err(http_error!(
+                "Could not subscribe to extension",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
     };
 
     if let Err(e) =
@@ -797,7 +815,25 @@ async fn unsubscribe_extension(
 
 /// Communicates with the extension container in order to appropriately make sure the extension is aware of the
 /// pipeline.
-async fn subscribe_extension(api_state: &ApiState, subscription: &Subscription) -> Result<()> {
+#[derive(thiserror::Error, Debug)]
+enum SubscribeError {
+    /// The extension refused the subscription, usually because of its settings. The message is the extension's own
+    /// explanation, written for the user, so it gets passed back to them.
+    #[error("{0}")]
+    Rejected(String),
+
+    /// A setting references a secret or object that doesn't exist or isn't allowed in this namespace.
+    #[error("{0}")]
+    BadSettings(String),
+
+    #[error(transparent)]
+    Internal(#[from] anyhow::Error),
+}
+
+async fn subscribe_extension(
+    api_state: &ApiState,
+    subscription: &Subscription,
+) -> Result<(), SubscribeError> {
     let extension = api_state
         .running_extension(&subscription.extension_id)
         .ok_or(anyhow!(
@@ -812,7 +848,7 @@ async fn subscribe_extension(api_state: &ApiState, subscription: &Subscription) 
     )
     .context("Could not establish client while attempting to unsubscribe")?;
 
-    let settings = interpolate_vars(
+    let settings = match interpolate_vars(
         &api_state.storage,
         api_state.secret_store.as_ref(),
         api_state.object_store.as_ref(),
@@ -830,21 +866,43 @@ async fn subscribe_extension(api_state: &ApiState, subscription: &Subscription) 
             })
             .collect(),
     )
-    .await.context("Could not interpolate variables within pipeline config while attempting to subscribe to extension")?;
+    .await
+    {
+        Ok(settings) => settings,
+        Err(e) => {
+            if let Some(bad_reference) = e.downcast_ref::<BadReference>() {
+                return Err(SubscribeError::BadSettings(bad_reference.to_string()));
+            }
+
+            return Err(e
+                .context("Could not interpolate subscription settings while attempting to subscribe to extension")
+                .into());
+        }
+    };
 
     let settings = settings
         .into_iter()
         .map(|variable| (variable.key, variable.value))
         .collect();
 
-    client
+    if let Err(e) = client
         .subscribe(&gofer_sdk::extension::api::types::SubscriptionRequest {
             namespace_id: subscription.namespace_id.clone(),
             pipeline_id: subscription.pipeline_id.clone(),
             pipeline_subscription_id: subscription.subscription_id.clone(),
             pipeline_subscription_params: settings,
         })
-        .await?;
+        .await
+    {
+        // A 4xx means the extension looked at the request and said no, which is the user's to fix.
+        if let gofer_sdk::extension::api::Error::ErrorResponse(response) = &e
+            && response.status().is_client_error()
+        {
+            return Err(SubscribeError::Rejected(response.message.clone()));
+        }
+
+        return Err(anyhow::Error::from(e).into());
+    }
 
     debug!(
         namespace_id = subscription.namespace_id,

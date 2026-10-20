@@ -1151,6 +1151,13 @@ pub enum InterpolationKind {
     PipelineObject,
 }
 
+/// A secret or object reference the user can fix: it doesn't exist, or isn't allowed where it's used. Lookups return
+/// this inside their `anyhow::Error` so callers that care, like subscriptions, can downcast to it and tell the user
+/// what's wrong instead of reporting an internal error. Storage failures stay plain errors.
+#[derive(thiserror::Error, Debug)]
+#[error("{0}")]
+pub struct BadReference(pub String);
+
 /// Looks up the value of a global secret.
 ///
 /// Pipelines pass the namespace they're running in, and the secret has to allow that namespace. Extensions pass
@@ -1169,7 +1176,9 @@ pub async fn fetch_global_secret(
 
     let key_metadata = match storage::secret_store_global_keys::get(&mut conn, key).await {
         Ok(val) => val,
-        Err(storage::StorageError::NotFound) => bail!("Could not find global secret '{key}'"),
+        Err(storage::StorageError::NotFound) => {
+            return Err(BadReference(format!("Could not find global secret '{key}'")).into());
+        }
         Err(e) => bail!("Could not retrieve global secret '{key}'; {:#?}", e),
     };
 
@@ -1180,11 +1189,11 @@ pub async fn fetch_global_secret(
     if let Some(namespace_id) = namespace_id
         && !key_metadata.is_allowed_namespace(namespace_id)
     {
-        bail!(
+        return Err(BadReference(format!(
             "Global secret {} cannot be used in this current namespace. Valid namespaces: {:#?}",
-            key_metadata.key,
-            key_metadata.namespaces
-        )
+            key_metadata.key, key_metadata.namespaces
+        ))
+        .into());
     }
 
     let value = match secret_store
@@ -1193,7 +1202,11 @@ pub async fn fetch_global_secret(
     {
         Ok(val) => val,
         Err(secret_store::SecretStoreError::NotFound) => {
-            bail!("Could not find global secret '{}'", key_metadata.key)
+            return Err(BadReference(format!(
+                "Could not find global secret '{}'",
+                key_metadata.key
+            ))
+            .into());
         }
         Err(e) => bail!("Could not retrieve global secret: {:#?}", e),
     };
@@ -1218,7 +1231,7 @@ pub async fn fetch_pipeline_secret(
     {
         Ok(val) => Ok(String::from_utf8_lossy(&val.0).to_string()),
         Err(secret_store::SecretStoreError::NotFound) => {
-            bail!("Could not find pipeline secret '{key}'")
+            Err(BadReference(format!("Could not find pipeline secret '{key}'")).into())
         }
         Err(e) => bail!("Could not retrieve pipeline secret '{key}'; {:#?}", e),
     }
@@ -1365,7 +1378,10 @@ pub async fn interpolate_vars(
                     Ok(val) => val,
                     Err(e) => {
                         if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find pipeline object '{}'", value)
+                            return Err(BadReference(format!(
+                                "Could not find pipeline object '{value}'"
+                            ))
+                            .into());
                         };
 
                         bail!("Could not retrieve pipeline object: {:#?}", e)
@@ -1398,7 +1414,10 @@ pub async fn interpolate_vars(
                     Ok(val) => val,
                     Err(e) => {
                         if e == object_store::ObjectStoreError::NotFound {
-                            bail!("Could not find run object '{}'", value)
+                            return Err(BadReference(format!(
+                                "Could not find run object '{value}'"
+                            ))
+                            .into());
                         };
 
                         bail!("Could not retrieve run object: {:#?}", e)
@@ -1825,6 +1844,8 @@ mod tests {
         .unwrap_err();
 
         assert!(err.to_string().contains("logs_header"), "{err}");
+        // Subscriptions rely on this to report a missing key as the user's mistake rather than a 500.
+        assert!(err.downcast_ref::<BadReference>().is_some(), "{err}");
     }
 
     #[tokio::test]

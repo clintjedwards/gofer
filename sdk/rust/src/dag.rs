@@ -1,265 +1,189 @@
-use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
+use std::collections::{BTreeMap, HashMap};
 
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
-pub enum DAGError {
-    #[error("entity not found")]
-    EntityNotFound,
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+pub enum DagError {
+    #[error("task '{0}' is defined more than once")]
+    DuplicateNode(String),
 
-    #[error("entity already exists")]
-    EntityExists,
+    #[error("task '{node}' depends on '{dependency}', which doesn't exist")]
+    DependencyNotFound { node: String, dependency: String },
 
-    #[error("edges {0} and {1} would create a cycle")]
-    EdgeCreatesCycle(String, String),
+    /// The tasks in the cycle in order, each depending on the next, ending where it started.
+    #[error("tasks depend on each other in a cycle: {}", .0.join(" -> "))]
+    Cycle(Vec<String>),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Node {
-    pub id: String,
-    pub edges: Vec<Rc<RefCell<Node>>>,
-}
+/// Checks that tasks and their dependencies form a DAG. Takes each task's id along with the ids it depends on and
+/// returns every problem found rather than stopping at the first, so they can all be fixed in one go.
+///
+/// Each cycle is reported once with the path around it, so the user can see which dependency to remove. The output
+/// is sorted by task id so the same config always gives the same errors.
+pub fn validate<'a, D>(nodes: impl IntoIterator<Item = (&'a str, D)>) -> Vec<DagError>
+where
+    D: IntoIterator<Item = &'a str>,
+{
+    let mut errors = vec![];
+    let mut graph: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
 
-impl Display for Node {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {:?}", self.id, self.edges)
-    }
-}
-
-pub struct Dag(HashMap<String, Rc<RefCell<Node>>>);
-
-impl Dag {
-    pub fn new() -> Self {
-        Dag(HashMap::<String, Rc<RefCell<Node>>>::new())
-    }
-
-    pub fn add_node(&mut self, id: &str) -> Result<(), DAGError> {
-        if self.0.contains_key(id) {
-            return Err(DAGError::EntityExists);
+    for (id, dependencies) in nodes {
+        if graph.contains_key(id) {
+            errors.push(DagError::DuplicateNode(id.to_string()));
+            continue;
         }
 
-        self.0.insert(
-            id.to_string(),
-            Rc::new(RefCell::new(Node {
-                id: id.to_string(),
-                edges: vec![],
-            })),
-        );
-
-        Ok(())
+        let mut dependencies: Vec<&str> = dependencies.into_iter().collect();
+        dependencies.sort();
+        graph.insert(id, dependencies);
     }
 
-    pub fn add_edge(&mut self, from: &str, to: &str) -> Result<(), DAGError> {
-        if !self.0.contains_key(from) {
-            return Err(DAGError::EntityNotFound);
-        }
-
-        if !self.0.contains_key(to) {
-            return Err(DAGError::EntityNotFound);
-        }
-
-        if self.is_cyclic(from, to) {
-            return Err(DAGError::EdgeCreatesCycle(from.to_string(), to.to_string()));
-        }
-
-        let node1 = self.0.get(from).unwrap();
-        let node2 = self.0.get(to).unwrap();
-
-        node1.borrow_mut().edges.push(node2.clone());
-
-        Ok(())
-    }
-
-    #[allow(dead_code)]
-    pub fn exists(&self, id: &str) -> bool {
-        self.0.contains_key(id)
-    }
-
-    #[allow(dead_code)]
-    pub fn edges(&self, id: &str) -> Result<Vec<Rc<RefCell<Node>>>, DAGError> {
-        if !self.0.contains_key(id) {
-            return Err(DAGError::EntityNotFound);
-        }
-
-        Ok(self.0.get(id).unwrap().borrow().edges.clone())
-    }
-
-    /// Recursively look to see if a potential connection from node1 -> node2 will become cyclical.
-    /// Iterates through node2 to make sure that it and none of it's edges are the same as node1.
-    /// Once an edge is checked for sameness we recursively check all of its edges.
-    /// This allows us to check all potential paths for the starting node.
-    fn is_cyclic(&self, node1: &str, node2: &str) -> bool {
-        if !self.0.contains_key(node1) {
-            return false;
-        }
-
-        if !self.0.contains_key(node2) {
-            return false;
-        }
-
-        if node1 == node2 {
-            return true;
-        }
-
-        let node2_edges = &self.0.get(node2).unwrap().borrow().edges;
-
-        for edge in node2_edges {
-            let edge = edge.borrow();
-            if node1 == edge.id {
-                return true;
-            }
-
-            if self.is_cyclic(node1, &edge.id) {
-                return true;
+    for (id, dependencies) in &graph {
+        for dependency in dependencies {
+            if !graph.contains_key(dependency) {
+                errors.push(DagError::DependencyNotFound {
+                    node: id.to_string(),
+                    dependency: dependency.to_string(),
+                });
             }
         }
-
-        false
     }
+
+    let mut state = HashMap::new();
+    let mut path = vec![];
+    for id in graph.keys() {
+        find_cycles(&graph, id, &mut state, &mut path, &mut errors);
+    }
+
+    errors
 }
 
-impl Display for Dag {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (key, value) in &self.0 {
-            write!(f, "{}: {}", key, value.borrow_mut())?;
-        }
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Visit {
+    InProgress,
+    Done,
+}
 
-        Ok(())
+/// Depth first search that records a cycle whenever it reaches a node that's still on the current path.
+fn find_cycles<'a>(
+    graph: &BTreeMap<&'a str, Vec<&'a str>>,
+    node: &'a str,
+    state: &mut HashMap<&'a str, Visit>,
+    path: &mut Vec<&'a str>,
+    errors: &mut Vec<DagError>,
+) {
+    match state.get(node) {
+        Some(Visit::Done) => return,
+        Some(Visit::InProgress) => {
+            let start = path.iter().position(|id| *id == node).unwrap_or_default();
+            let mut cycle: Vec<String> = path[start..].iter().map(|id| id.to_string()).collect();
+            cycle.push(node.to_string());
+            errors.push(DagError::Cycle(cycle));
+            return;
+        }
+        None => {}
     }
+
+    state.insert(node, Visit::InProgress);
+    path.push(node);
+
+    // Missing dependencies are reported separately, so they're skipped here.
+    for dependency in graph.get(node).into_iter().flatten() {
+        if graph.contains_key(dependency) {
+            find_cycles(graph, dependency, state, path, errors);
+        }
+    }
+
+    path.pop();
+    state.insert(node, Visit::Done);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_create_dag() {
-        let mut dag = Dag::new();
-
-        dag.add_node("1").unwrap();
-        dag.add_node("2").unwrap();
-
-        dag.add_edge("1", "2").unwrap();
-
-        assert!(dag.exists("1"))
+    fn check(nodes: &[(&'static str, Vec<&'static str>)]) -> Vec<DagError> {
+        validate(nodes.iter().map(|(id, deps)| (*id, deps.iter().copied())))
     }
 
     #[test]
-    fn test_dag_is_cylic() {
-        let mut dag = Dag::new();
+    fn test_valid_dag() {
+        // A diamond with a tail, which shares paths but has no cycle.
+        let errors = check(&[
+            ("a", vec![]),
+            ("b", vec!["a"]),
+            ("c", vec!["a"]),
+            ("d", vec!["b", "c"]),
+            ("e", vec!["d", "a"]),
+        ]);
+        assert_eq!(errors, vec![]);
+    }
 
-        dag.add_node("1").unwrap();
-        dag.add_node("2").unwrap();
+    #[test]
+    fn test_duplicate_node() {
+        let errors = check(&[("a", vec![]), ("a", vec![])]);
+        assert_eq!(errors, vec![DagError::DuplicateNode("a".into())]);
+    }
 
-        dag.add_edge("1", "2").unwrap();
-
-        dag.add_node("3").unwrap();
-        dag.add_node("4").unwrap();
-
-        dag.add_edge("2", "3").unwrap();
-        dag.add_edge("2", "4").unwrap();
-
-        dag.add_node("5").unwrap();
-        dag.add_edge("4", "5").unwrap();
-
-        dag.add_node("6").unwrap();
-        dag.add_edge("5", "6").unwrap();
-        let err = dag.add_edge("6", "4").unwrap_err();
-
+    #[test]
+    fn test_dependency_not_found() {
+        let errors = check(&[("a", vec!["missing"])]);
         assert_eq!(
-            std::mem::discriminant(&err),
-            std::mem::discriminant(&DAGError::EdgeCreatesCycle("".to_string(), "".to_string()))
-        );
-
-        dag.add_edge("6", "3").unwrap();
-    }
-
-    #[test]
-    fn test_dag_is_acylic() {
-        let mut dag = Dag::new();
-
-        dag.add_node("1").unwrap();
-        dag.add_node("2").unwrap();
-
-        dag.add_edge("1", "2").unwrap();
-
-        dag.add_node("3").unwrap();
-        dag.add_node("4").unwrap();
-        dag.add_edge("2", "3").unwrap();
-        dag.add_edge("2", "4").unwrap();
-
-        dag.add_node("5").unwrap();
-        dag.add_edge("4", "5").unwrap();
-
-        dag.add_node("6").unwrap();
-        dag.add_edge("4", "6").unwrap();
-        dag.add_edge("5", "6").unwrap();
-        dag.add_edge("6", "3").unwrap();
-    }
-
-    #[test]
-    fn test_add_node() {
-        let mut dag = Dag::new();
-        assert_eq!(dag.add_node("A"), Ok(()));
-        assert!(dag.exists("A"));
-    }
-
-    #[test]
-    fn test_add_duplicate_node() {
-        let mut dag = Dag::new();
-        dag.add_node("A").unwrap();
-        assert_eq!(dag.add_node("A"), Err(DAGError::EntityExists));
-    }
-
-    #[test]
-    fn test_add_edge() {
-        let mut dag = Dag::new();
-        dag.add_node("A").unwrap();
-        dag.add_node("B").unwrap();
-        assert_eq!(dag.add_edge("A", "B"), Ok(()));
-    }
-
-    #[test]
-    fn test_add_edge_non_existent_node() {
-        let mut dag = Dag::new();
-        dag.add_node("A").unwrap();
-        assert_eq!(dag.add_edge("A", "B"), Err(DAGError::EntityNotFound));
-        assert_eq!(dag.add_edge("B", "A"), Err(DAGError::EntityNotFound));
-    }
-
-    #[test]
-    fn test_add_edge_creates_cycle() {
-        let mut dag = Dag::new();
-        dag.add_node("A").unwrap();
-        dag.add_node("B").unwrap();
-        dag.add_node("C").unwrap();
-        dag.add_edge("A", "B").unwrap();
-        dag.add_edge("B", "C").unwrap();
-        assert_eq!(
-            dag.add_edge("C", "A"),
-            Err(DAGError::EdgeCreatesCycle("C".to_string(), "A".to_string()))
+            errors,
+            vec![DagError::DependencyNotFound {
+                node: "a".into(),
+                dependency: "missing".into()
+            }]
         );
     }
 
     #[test]
-    fn test_cycle_detection() {
-        let mut dag = Dag::new();
-        dag.add_node("A").unwrap();
-        dag.add_node("B").unwrap();
-        dag.add_edge("A", "B").unwrap();
-        assert!(!dag.is_cyclic("A", "B"));
-        assert!(dag.is_cyclic("B", "A"));
-        dag.add_node("C").unwrap();
-        dag.add_edge("B", "C").unwrap();
-        assert!(dag.is_cyclic("C", "A"));
+    fn test_self_dependency_is_a_cycle() {
+        let errors = check(&[("a", vec!["a"])]);
+        assert_eq!(errors, vec![DagError::Cycle(vec!["a".into(), "a".into()])]);
     }
 
     #[test]
-    fn test_retrieve_edges() {
-        let mut dag = Dag::new();
-        dag.add_node("A").unwrap();
-        dag.add_node("B").unwrap();
-        dag.add_edge("A", "B").unwrap();
-        let edges = dag.edges("A").unwrap();
-        assert_eq!(edges.len(), 1);
-        assert_eq!(edges[0].borrow().id, "B");
+    fn test_cycle_reports_path() {
+        let errors = check(&[
+            ("a", vec!["c"]),
+            ("b", vec!["a"]),
+            ("c", vec!["b"]),
+            ("d", vec!["a"]),
+        ]);
+        assert_eq!(
+            errors,
+            vec![DagError::Cycle(vec![
+                "a".into(),
+                "c".into(),
+                "b".into(),
+                "a".into()
+            ])]
+        );
+        assert_eq!(
+            errors[0].to_string(),
+            "tasks depend on each other in a cycle: a -> c -> b -> a"
+        );
+    }
+
+    #[test]
+    fn test_reports_every_problem() {
+        let errors = check(&[
+            ("a", vec!["b"]),
+            ("b", vec!["a"]),
+            ("c", vec!["missing"]),
+            ("c", vec![]),
+            ("d", vec!["d"]),
+        ]);
+        assert_eq!(
+            errors,
+            vec![
+                DagError::DuplicateNode("c".into()),
+                DagError::DependencyNotFound {
+                    node: "c".into(),
+                    dependency: "missing".into()
+                },
+                DagError::Cycle(vec!["a".into(), "b".into(), "a".into()]),
+                DagError::Cycle(vec!["d".into(), "d".into()]),
+            ]
+        );
     }
 }

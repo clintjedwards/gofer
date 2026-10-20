@@ -4,21 +4,6 @@ None
 
 # Small things I want to keep track of that I definitely need to do.
 
-* The API trusts the SDKs for a lot of validation. Anyone hitting the API directly or using a third party SDK can get
-  past it. What's missing:
-  * Pipeline configs: duplicate task ids, `depends_on` naming a task that doesn't exist, and dependency cycles are
-    only checked by the SDKs. A task whose parent doesn't exist waits in the orchestrator's dependency loop forever,
-    and with no timeouts nothing ever ends the run. Two fixes, both small:
-    * Check the config when it's registered: task ids are unique, every `depends_on` names a task in the same config,
-      and there are no cycles. Return a 400 listing every problem at once, not just the first, so someone hitting the
-      API directly can fix them in one go. The Rust SDK's `dag.rs` already does the cycle check and is small enough to
-      copy. Keep the SDK checks too; they catch mistakes before anything is sent.
-    * Make the orchestrator not hang if a bad config gets through anyway (configs registered before the check
-      existed, or a bug). Before waiting on parents, check that each one is a task in this run; if one isn't, mark the
-      task failed with a reason naming the missing parent, so its children react the same way they would to any
-      other failed parent.
-  * Worth an audit of the rest: run variable names (they become env vars), subscription settings, empty image names,
-    parallelism bounds.
 * Let extension manifests declare the additional roles an extension needs, instead of operators having to know and
   list them in `additional_roles`. Could also be a way to permission extensions per pipeline or per purpose. Needs a
   design session.
@@ -256,3 +241,7 @@ There are several useful things we can do with the concept of extensions:
 - Extensions are meant to run in containers and we allow users to pass TLS to them. But that means that extension
   writers can take your certs and ship them somewhere else. Low priority since extensions in any form requires running
   external code.
+- Run variables are applied last, so anyone who can start a run can override the `GOFER_` vars. That is on purpose,
+  but it means they can point `GOFER_API_BASE_URL` at their own server and collect the `inject_api_token` token,
+  which can write the pipeline's configs and objects. Documented in the tasks reference. If it ever matters, one option
+  is to refuse overrides of the few vars that can be abused, like `GOFER_API_BASE_URL`, with a 400.

@@ -68,8 +68,13 @@ When a container is run by Gofer, its environment variables come from three plac
 If the same name comes from more than one place, the one higher on this list wins. So a run variable can override a
 value from your pipeline configuration for a single run, and either one can override a system variable.
 
+Be careful overriding the `GOFER_` variables. Gofer lets you, but the task then trusts whatever you set. For example,
+a task with `InjectAPIToken` sends its token to whatever `GOFER_API_BASE_URL` points at, so anyone who can start runs
+of a pipeline can point that somewhere else and collect the token. Only give run permissions to people you'd trust
+with the pipeline's token.
+
 Variable names are always uppercased, so `Variables(map[string]string{"log_level": "debug"})` shows up in the
-container as `LOG_LEVEL`.
+container as `LOG_LEVEL`. Names can't be empty or contain `=`, since they become environment variable names.
 
 You can see exactly what a task was given with `gofer task get <pipeline_id> <run_id> <task_id>`.
 

@@ -6,7 +6,7 @@ use crate::{
     api::{
         ApiState, IncludeSecretQueryArgs, PreflightOptions, deployments, ensure_namespace_exists,
         ensure_pipeline_exists, epoch_milli, event_utils, generate_inject_api_token_role_id,
-        include_secrets, is_valid_identifier, pipelines, tasks, validate_registry_auth_pass,
+        include_secrets, pipelines, tasks, validate_registry_auth_pass,
     },
     http_error,
     storage::{self, StorageError},
@@ -592,25 +592,13 @@ pub async fn register_config(
         )
         .await?;
 
-    if let Err(e) = is_valid_identifier(&body.config.id) {
-        return Err(HttpError::for_bad_request(
-            None,
-            format!(
-                "'{}' is not a valid identifier for pipeline id; {}",
-                body.config.id, e
-            ),
-        ));
+    // The SDKs run this same check before sending, but configs can come from anywhere, so we check again here. A bad
+    // dependency graph in particular would otherwise leave runs waiting forever.
+    if let Err(e) = body.config.validate() {
+        return Err(HttpError::for_bad_request(None, e.to_string()));
     };
 
-    // Task ids end up in container names, so we check them here rather than trusting the SDK to have done it.
     for task in &body.config.tasks {
-        if let Err(e) = is_valid_identifier(&task.id) {
-            return Err(HttpError::for_bad_request(
-                None,
-                format!("'{}' is not a valid identifier for task id; {}", task.id, e),
-            ));
-        };
-
         if let Some(auth) = &task.registry_auth
             && let Err(e) = validate_registry_auth_pass(&auth.pass)
         {

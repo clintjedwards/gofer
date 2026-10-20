@@ -60,12 +60,18 @@ type ErrorResponse struct {
 	RequestID string `json:"request_id"`
 }
 
+// The message goes back to Gofer, which shows 4xx messages to the user as is, so it should read as a sentence.
 func handleError(w http.ResponseWriter, _ *http.Request, message string, statusCode int, err error) {
-	w.WriteHeader(statusCode)
+	// Headers have to be set before WriteHeader or they're never sent.
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	if err != nil {
+		message = fmt.Sprintf("%s; %v", message, err)
+	}
 
 	response := ErrorResponse{
-		Message:   fmt.Sprintf("%s: %s; %+v", http.StatusText(statusCode), message, err),
+		Message:   message,
 		RequestID: "",
 	}
 	err = json.NewEncoder(w).Encode(response)
@@ -75,8 +81,8 @@ func handleError(w http.ResponseWriter, _ *http.Request, message string, statusC
 }
 
 func handleResponse(w http.ResponseWriter, _ *http.Request, data any, statusCode int) {
-	w.WriteHeader(statusCode)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
 
 	if data != nil {
 		err := json.NewEncoder(w).Encode(data)

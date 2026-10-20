@@ -563,6 +563,43 @@ impl Run {
             };
         }
 
+        // Configs are checked when they're registered, but a bad dependency graph that slipped through anyway (a bug,
+        // or a config from before the check existed) would leave tasks waiting on each other forever. Failing the
+        // whole run up front beats running part of it.
+        let dag_errors = gofer_sdk::dag::validate(
+            self.pipeline
+                .config
+                .tasks
+                .values()
+                .map(|task| (task.id.as_str(), task.depends_on.keys().map(String::as_str))),
+        );
+
+        if !dag_errors.is_empty() {
+            let problems: Vec<String> = dag_errors.iter().map(|e| e.to_string()).collect();
+
+            let mut conn = self
+                .api_state
+                .storage
+                .write_conn()
+                .await
+                .context("Could not open connection to database")?;
+
+            self.set_run_complete(
+                &mut conn,
+                runs::Status::Failed,
+                Some(runs::StatusReason {
+                    reason: runs::StatusReasonType::FailedPrecondition,
+                    description: format!(
+                        "Pipeline config has an invalid task graph; {}",
+                        problems.join("; ")
+                    ),
+                }),
+            )
+            .await?;
+
+            return Ok(());
+        }
+
         // Lastly start the run monitor and the launch the task executions. We use a barrier here to make sure
         // that all threads are able to grab event bus listeners at roughly the same point so that they don't
         // end up missing any messages from threads that might be faster.
@@ -1624,7 +1661,7 @@ impl Run {
                 namespace_id: self.pipeline.metadata.namespace_id.clone(),
                 pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
                 run_id: self.run.run_id,
-                status: self.run.status.clone(),
+                status,
             });
 
         Ok(())

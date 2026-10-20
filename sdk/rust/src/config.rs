@@ -1,4 +1,7 @@
-use crate::{dag::DAGError, dag::Dag, validate_identifier};
+use crate::{
+    dag::{self, DagError},
+    validate_identifier,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Write};
@@ -33,14 +36,32 @@ pub enum ConfigError {
     #[error("could not parse config; {0}")]
     Parsing(String),
 
-    #[error("duplicate task names found; {0} shares an identifier with a task already logged")]
-    IdenticalTaskNames(String),
+    #[error(transparent)]
+    Dag(#[from] DagError),
 
-    #[error("a cycle was detected created a dependency from task {0} to task {1}")]
-    TaskCycle(String, String),
+    /// Every problem found in a config, so they can all be fixed at once.
+    #[error("pipeline config has problems:\n{}", .0.iter().map(|e| format!("  - {e}")).collect::<Vec<_>>().join("\n"))]
+    Invalid(Vec<ConfigError>),
+}
 
-    #[error("task {0} is listed as a dependency within task {1} but does not exist")]
-    DependencyNotFound(String, String),
+/// Variable names become environment variable names in the task's container, which can't be empty or contain `=`
+/// or NUL. Anything else is allowed so users can name them however their program expects.
+pub fn validate_variable_key(arg: &str, key: &str) -> Result<(), ConfigError> {
+    let description = if key.is_empty() {
+        "cannot be empty"
+    } else if key.contains('=') {
+        "cannot contain '='"
+    } else if key.contains('\0') {
+        "cannot contain NUL characters"
+    } else {
+        return Ok(());
+    };
+
+    Err(ConfigError::InvalidArgument {
+        argument: arg.to_string(),
+        value: key.to_string(),
+        description: description.to_string(),
+    })
 }
 
 /// `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
@@ -107,49 +128,68 @@ impl Pipeline {
         }
     }
 
-    fn is_dag(&self) -> Result<(), ConfigError> {
-        let mut pipeline_dag = Dag::new();
+    /// Checks the whole config and returns [`ConfigError::Invalid`] listing every problem found. The Gofer API runs
+    /// this same check when a config is registered, so configs that skip the SDK are held to the same rules.
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        let mut problems = vec![];
 
-        // Add all nodes first.
-        for task in &self.tasks {
-            pipeline_dag
-                .add_node(&task.id)
-                .map_err(|_| ConfigError::IdenticalTaskNames(task.id.clone()))?
+        if let Err(e) = validate_identifier("id", &self.id) {
+            problems.push(e);
         }
 
-        // Then add all edges.
+        if self.parallelism < 0 {
+            problems.push(ConfigError::InvalidArgument {
+                argument: "parallelism".into(),
+                value: self.parallelism.to_string(),
+                description: "cannot be negative; use 0 for the server's default".into(),
+            });
+        }
+
         for task in &self.tasks {
-            for id in task.depends_on.keys() {
-                if let Err(e) = pipeline_dag.add_edge(id, &task.id) {
-                    match e {
-                        DAGError::EdgeCreatesCycle(node1, node2) => {
-                            return Err(ConfigError::TaskCycle(node1, node2));
-                        }
-                        DAGError::EntityNotFound => {
-                            return Err(ConfigError::DependencyNotFound(
-                                task.id.clone(),
-                                id.to_string(),
-                            ));
-                        }
-                        _ => return Err(ConfigError::Unknown(e.to_string())),
-                    }
+            if let Err(e) = validate_identifier("task id", &task.id) {
+                problems.push(e);
+            }
+
+            if task.image.trim().is_empty() {
+                problems.push(ConfigError::InvalidArgument {
+                    argument: format!("image for task '{}'", task.id),
+                    value: task.image.clone(),
+                    description: "cannot be empty".into(),
+                });
+            }
+
+            for (parent, status) in &task.depends_on {
+                if *status == RequiredParentStatus::Unknown {
+                    problems.push(ConfigError::InvalidArgument {
+                        argument: format!("depends_on for task '{}'", task.id),
+                        value: parent.clone(),
+                        description:
+                            "required status can't be Unknown; use Any, Success, or Failure".into(),
+                    });
+                }
+            }
+
+            for key in task.variables.keys() {
+                if let Err(e) =
+                    validate_variable_key(&format!("variable name for task '{}'", task.id), key)
+                {
+                    problems.push(e);
                 }
             }
         }
 
-        Ok(())
-    }
+        let dag_errors = dag::validate(
+            self.tasks
+                .iter()
+                .map(|task| (task.id.as_str(), task.depends_on.keys().map(String::as_str))),
+        );
+        problems.extend(dag_errors.into_iter().map(ConfigError::Dag));
 
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        validate_identifier("id", &self.id)?;
-
-        for task in &self.tasks {
-            validate_identifier("task id", &task.id)?;
+        if problems.is_empty() {
+            Ok(())
+        } else {
+            Err(ConfigError::Invalid(problems))
         }
-
-        self.is_dag()?;
-
-        Ok(())
     }
 
     pub fn description(mut self, description: &str) -> Self {
@@ -452,17 +492,43 @@ mod tests {
 
     #[test]
     fn test_invalid_pipeline_cyclical() {
-        let task_a = Task::new("task-a", "").depends_on("task-b", RequiredParentStatus::Any);
-        let task_b = Task::new("task-b", "").depends_on("task-c", RequiredParentStatus::Any);
-        let task_c = Task::new("task-c", "").depends_on("task-a", RequiredParentStatus::Any);
+        let task_a = Task::new("task-a", "ubuntu").depends_on("task-b", RequiredParentStatus::Any);
+        let task_b = Task::new("task-b", "ubuntu").depends_on("task-c", RequiredParentStatus::Any);
+        let task_c = Task::new("task-c", "ubuntu").depends_on("task-a", RequiredParentStatus::Any);
 
         let result = Pipeline::new("invalid-pipeline", "")
             .tasks(vec![task_a, task_b, task_c])
-            .finish();
+            .validate();
 
         assert_eq!(
-            std::mem::discriminant(&result.unwrap_err()),
-            std::mem::discriminant(&ConfigError::TaskCycle("".to_string(), "".to_string())),
+            result,
+            Err(ConfigError::Invalid(vec![ConfigError::Dag(
+                DagError::Cycle(vec![
+                    "task-a".into(),
+                    "task-b".into(),
+                    "task-c".into(),
+                    "task-a".into()
+                ])
+            )]))
         )
+    }
+
+    #[test]
+    fn test_invalid_pipeline_reports_every_problem() {
+        let task = Task::new("ok", "")
+            .depends_on("missing", RequiredParentStatus::Unknown)
+            .variables([("BAD=NAME", "value")]);
+
+        let result = Pipeline::new("x", "")
+            .parallelism(-1)
+            .tasks(vec![task])
+            .validate();
+
+        let Err(ConfigError::Invalid(problems)) = result else {
+            panic!("expected an invalid config, got {result:?}");
+        };
+
+        // Bad id, negative parallelism, bad task id, empty image, unknown status, bad variable, missing dependency.
+        assert_eq!(problems.len(), 7, "{problems:#?}");
     }
 }
