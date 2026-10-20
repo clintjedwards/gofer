@@ -1,12 +1,12 @@
 [api]
 pipeline_run_concurrency_limit = 200
 global_run_concurrency_limit = 2000
-event_log_retention = 15768000     # 6 months
-event_prune_interval = 604800      # 1 week
+event_log_retention_seconds = 15768000    # 6 months
+event_prune_interval_seconds = 604800     # 1 week
 log_level = "info"
-task_execution_log_retention = 50  # total runs
+task_execution_log_retention_runs = 50
 task_execution_logs_dir = "/tmp"
-task_execution_stop_timeout = 300  # 5 mins
+task_execution_stop_timeout_seconds = 300 # 5 mins
 allow_task_attach = true
 
 [server]
@@ -21,7 +21,7 @@ bypass_auth = true        # Turns off auth.
 use_included_certs = true # Automatically loads localhost certs for development.
 
 [extensions]
-stop_timeout = 300            # 5 mins
+stop_timeout_seconds = 300    # 5 mins
 use_tls = false
 verify_certs = false          # When attempting to communicate with an extension verify the cert is correct and known.
 health_check_interval_seconds = 60
@@ -39,13 +39,13 @@ engine = "docker"
 
 [scheduler.docker]
 prune = true
-prune_interval = 604800
-timeout = 300           # Should be the same or more than the task_execution_stop_timeout
+prune_interval_seconds = 604800 # 1 week
+timeout_seconds = 300           # Should be the same or more than task_execution_stop_timeout_seconds
 
 [object_store]
 engine = "filesystem"
 pipeline_object_limit = 50
-run_object_expiry = 2
+run_object_expiry_runs = 2
 
 [object_store.filesystem]
 path = "/tmp/gofer_objects"

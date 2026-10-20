@@ -321,8 +321,8 @@ async fn init_api(
         .context("Could not initialize secret store")?;
     let event_bus = event_utils::EventBus::new(
         storage.clone(),
-        conf.api.event_log_retention,
-        conf.api.event_prune_interval,
+        conf.api.event_log_retention_seconds,
+        conf.api.event_prune_interval_seconds,
     );
 
     // Load our current value for ignore_pipeline_run_events into memory.

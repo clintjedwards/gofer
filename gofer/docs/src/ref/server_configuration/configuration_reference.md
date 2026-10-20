@@ -15,32 +15,32 @@ the keys themselves are defined in
 [conf/api.rs](https://github.com/clintjedwards/gofer/blob/main/gofer/src/conf/api.rs). If this page and those files
 ever disagree, the files are right.
 
-Durations are all whole numbers of seconds.
+Keys that end in `_seconds` take a whole number of seconds, and keys that end in `_runs` take a number of runs.
 
 ## API
 
-| name                           | type   | default  | description                                                                                                                                                                                                           |
-| ------------------------------ | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| allow_task_attach              | bool   | true     | Lets users open a shell inside a running task's container with `gofer task attach`. Anyone with write access to a pipeline's task executions can run any command in its containers, so you may want to turn this off. |
-| event_log_retention            | int    | 15768000 | How long, in seconds, Gofer holds onto events before discarding them (6 months by default). This is an important factor in disk space; rough math on a 5,000 pipeline Gofer instance with 6 months of retention puts it at about 9GB. |
-| event_prune_interval           | int    | 604800   | How often, in seconds, Gofer checks for and removes events older than `event_log_retention`.                                                                                                                          |
-| global_run_concurrency_limit   | int    | 2000     | How many runs can be in progress across all of Gofer at once.                                                                                                                                                        |
-| log_level                      | string | info     | The log level for the service and its extensions.                                                                                                                                                                     |
-| pipeline_run_concurrency_limit | int    | 200      | How many runs a single pipeline can have in progress at once. Pipelines can set a lower limit with `Parallelism`, but not a higher one. 0 is unlimited. |
-| task_execution_log_retention   | int    | 50       | How many of each pipeline's runs keep their task logs. Once a pipeline has more runs than this, the logs of its oldest run are deleted. |
-| task_execution_logs_dir        | string | /tmp     | The directory task execution logs are stored in. Each one is a text file on the server.                                                                                                                              |
-| task_execution_stop_timeout    | int    | 300      | How long, in seconds, Gofer waits for a task's container to stop gracefully before killing it. 0 kills containers immediately.                                                                                        |
+| name                                | type   | default  | description                                                                                                                                                                                                           |
+| ----------------------------------- | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| allow_task_attach                   | bool   | true     | Lets users open a shell inside a running task's container with `gofer task attach`. Anyone with write access to a pipeline's task executions can run any command in its containers, so you may want to turn this off. |
+| event_log_retention_seconds         | int    | 15768000 | How long, in seconds, Gofer holds onto events before discarding them (6 months by default). This is an important factor in disk space; rough math on a 5,000 pipeline Gofer instance with 6 months of retention puts it at about 9GB. |
+| event_prune_interval_seconds        | int    | 604800   | How often, in seconds, Gofer checks for and removes events older than `event_log_retention_seconds`.                                                                                                                          |
+| global_run_concurrency_limit        | int    | 2000     | How many runs can be in progress across all of Gofer at once.                                                                                                                                                        |
+| log_level                           | string | info     | The log level for the service and its extensions.                                                                                                                                                                     |
+| pipeline_run_concurrency_limit      | int    | 200      | How many runs a single pipeline can have in progress at once. Pipelines can set a lower limit with `Parallelism`, but not a higher one. 0 is unlimited. |
+| task_execution_log_retention_runs   | int    | 50       | How many of each pipeline's runs keep their task logs. Once a pipeline has more runs than this, the logs of its oldest run are deleted. |
+| task_execution_logs_dir             | string | /tmp     | The directory task execution logs are stored in. Each one is a text file on the server.                                                                                                                              |
+| task_execution_stop_timeout_seconds | int    | 300      | How long, in seconds, Gofer waits for a task's container to stop gracefully before killing it. 0 kills containers immediately.                                                                                        |
 
 ```toml
 [api]
 pipeline_run_concurrency_limit = 200
 global_run_concurrency_limit = 2000
-event_log_retention = 15768000     # 6 months
-event_prune_interval = 604800      # 1 week
+event_log_retention_seconds = 15768000    # 6 months
+event_prune_interval_seconds = 604800     # 1 week
 log_level = "info"
-task_execution_log_retention = 50  # total runs
+task_execution_log_retention_runs = 50
 task_execution_logs_dir = "/tmp"
-task_execution_stop_timeout = 300  # 5 mins
+task_execution_stop_timeout_seconds = 300 # 5 mins
 allow_task_attach = true
 ```
 
@@ -107,11 +107,11 @@ use_tls = false
 The object store holds values that tasks share with each other or keep between runs.
 [More about the object store.](../object_store/index.html)
 
-| name                  | type   | default    | description                                                                                                                                                                                                                         |
-| --------------------- | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| engine                | string | filesystem | The engine Gofer uses to store objects. The only accepted value is `filesystem`.                                                                                                                                                     |
-| pipeline_object_limit | int    | 50         | How many objects each pipeline can store. Pipeline objects are kept until the limit is reached, then the oldest one is deleted to make room. Overwriting an object counts it as the newest. 0 is unlimited.                          |
-| run_object_expiry     | int    | 2          | How many runs keep their run objects. An object stored on run #5 with an expiry of 2 is deleted when run #7 starts, regardless of how the runs went. Tokens from `InjectAPIToken` are deleted at the same time.                     |
+| name                   | type   | default    | description                                                                                                                                                                                                                         |
+| ---------------------- | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| engine                 | string | filesystem | The engine Gofer uses to store objects. The only accepted value is `filesystem`.                                                                                                                                                     |
+| pipeline_object_limit  | int    | 50         | How many objects each pipeline can store. Pipeline objects are kept until the limit is reached, then the oldest one is deleted to make room. Overwriting an object counts it as the newest. 0 is unlimited.                          |
+| run_object_expiry_runs | int    | 2          | How many runs keep their run objects. An object stored on run #5 with an expiry of 2 is deleted when run #7 starts, regardless of how the runs went. Tokens from `InjectAPIToken` are deleted at the same time.                     |
 
 ### Filesystem
 
@@ -123,7 +123,7 @@ The object store holds values that tasks share with each other or keep between r
 [object_store]
 engine = "filesystem"
 pipeline_object_limit = 50
-run_object_expiry = 2
+run_object_expiry_runs = 2
 
 [object_store.filesystem]
 path = "/tmp/gofer_objects"
@@ -165,11 +165,11 @@ The scheduler is the container orchestrator Gofer runs tasks and extensions on.
 
 ### Docker
 
-| name           | type | default | description                                                                                                          |
-| -------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| prune          | bool | true    | Periodically remove stopped containers. Without this the host's disk eventually fills with old containers.            |
-| prune_interval | int  | 604800  | How often, in seconds, the prune job runs.                                                                           |
-| timeout        | int  | 300     | How long, in seconds, a request to docker can take. Should be at least as long as `api.task_execution_stop_timeout`. |
+| name                   | type | default | description                                                                                                          |
+| ---------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| prune                  | bool | true    | Periodically remove stopped containers. Without this the host's disk eventually fills with old containers.            |
+| prune_interval_seconds | int  | 604800  | How often, in seconds, the prune job runs.                                                                           |
+| timeout_seconds        | int  | 300     | How long, in seconds, a request to docker can take. Should be at least as long as `api.task_execution_stop_timeout_seconds`. |
 
 ```toml
 [scheduler]
@@ -177,22 +177,22 @@ engine = "docker"
 
 [scheduler.docker]
 prune = true
-prune_interval = 604800
-timeout = 300
+prune_interval_seconds = 604800
+timeout_seconds = 300
 ```
 
 ## Extensions
 
 Controls Gofer's extension system. [More about extensions.](../extensions/index.html)
 
-| name          | type   | default | description                                                                                                                                                                                                                                       |
-| ------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| install       | list   | empty   | The extensions Gofer should run, one `[[extensions.install]]` entry each. The `cron` and `interval` extensions are always included unless an entry with their id sets `enabled = false`. See [installing and configuring extensions](../extensions/index.html#installing-and-configuring-extensions) for every field. |
-| stop_timeout  | int    | 300     | How long, in seconds, Gofer waits for an extension container to stop before killing it.                                                                                                                                                          |
-| use_tls       | bool   | false   | Have extensions serve over TLS. Gofer hands each extension the certificate below, unless `development.use_included_certs` is on.                                                                                                                 |
-| tls_cert_path | string |         | Path to the TLS certificate Gofer gives extensions.                                                                                                                                                                                              |
-| tls_key_path  | string |         | Path to the TLS certificate's key.                                                                                                                                                                                                               |
-| verify_certs  | bool   | false   | Check the extension's certificate when Gofer talks to it. Only matters when `use_tls` is on.                                                                                                                                                     |
+| name                                | type   | default | description                                                                                                                                                                                                                                       |
+| ----------------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| install                             | list   | empty   | The extensions Gofer should run, one `[[extensions.install]]` entry each. The `cron` and `interval` extensions are always included unless an entry with their id sets `enabled = false`. See [installing and configuring extensions](../extensions/index.html#installing-and-configuring-extensions) for every field. |
+| stop_timeout_seconds                | int    | 300     | How long, in seconds, Gofer waits for an extension container to stop before killing it.                                                                                                                                                          |
+| use_tls                             | bool   | false   | Have extensions serve over TLS. Gofer hands each extension the certificate below, unless `development.use_included_certs` is on.                                                                                                                 |
+| tls_cert_path                       | string |         | Path to the TLS certificate Gofer gives extensions.                                                                                                                                                                                              |
+| tls_key_path                        | string |         | Path to the TLS certificate's key.                                                                                                                                                                                                               |
+| verify_certs                        | bool   | false   | Check the extension's certificate when Gofer talks to it. Only matters when `use_tls` is on.                                                                                                                                                     |
 | health_check_interval_seconds       | int  | 60   | How often Gofer checks that each running extension still answers. See [health checks](../extensions/index.html#health-checks). |
 | health_check_failures_before_action | int  | 3    | Failed checks in a row before Gofer restarts the extension or marks it failed. The first failed check already marks it `degraded`. |
 | health_check_auto_restart           | bool | true | Restart an extension that keeps failing health checks. When off, it's marked `failed` instead. |
@@ -203,7 +203,7 @@ block needs a restart.
 
 ```toml
 [extensions]
-stop_timeout = 300            # 5 mins
+stop_timeout_seconds = 300    # 5 mins
 use_tls = false
 verify_certs = false
 health_check_interval_seconds = 60

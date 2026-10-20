@@ -1071,7 +1071,10 @@ mod tests {
     #[test]
     fn lowercase_first_leaves_acronyms_alone() {
         assert_eq!(lowercase_first("Not installed"), "not installed");
-        assert_eq!(lowercase_first("HTTP 500 from extension"), "HTTP 500 from extension");
+        assert_eq!(
+            lowercase_first("HTTP 500 from extension"),
+            "HTTP 500 from extension"
+        );
         assert_eq!(lowercase_first("already lower"), "already lower");
         assert_eq!(lowercase_first("X"), "X");
         assert_eq!(lowercase_first(""), "");

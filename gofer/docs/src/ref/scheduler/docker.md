@@ -8,8 +8,8 @@ engine = "docker"
 
 [scheduler.docker]
 prune = true
-prune_interval = 604800
-timeout = 300
+prune_interval_seconds = 604800
+timeout_seconds = 300
 ```
 
 ## Configuration
@@ -18,8 +18,8 @@ Docker needs to be installed and the Gofer process needs to have the required pe
 
 Other than that the docker scheduler just needs to know how to clean up after itself.
 
-| Parameter      | Type | Default | Description                                                                                                                                                                                                     |
-| -------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| prune          | bool | true    | Whether or not to periodically clean up containers that are no longer in use. If prune is not turned on eventually the disk of the host machine will fill up with different containers that have run over time. |
-| prune_interval | int  | 604800  | How often to run the prune job. Depending on how many containers you run per day this value could easily be set to monthly.                                                                                     |
-| timeout        | int  | 300     | The timeout for the request to the docker service. Should be the same or more than the task_execution_stop_timeout                                                                                              |
+| Parameter              | Type | Default | Description                                                                                                                                                                                                     |
+| ---------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| prune                  | bool | true    | Whether or not to periodically clean up containers that are no longer in use. If prune is not turned on eventually the disk of the host machine will fill up with different containers that have run over time. |
+| prune_interval_seconds | int  | 604800  | How often to run the prune job. Depending on how many containers you run per day this value could easily be set to monthly.                                                                                     |
+| timeout_seconds        | int  | 300     | The timeout for the request to the docker service. Should be at least as long as `api.task_execution_stop_timeout_seconds`. |

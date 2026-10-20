@@ -80,7 +80,7 @@ try to register the same thing twice.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
 * Timeouts. Tasks have no timeout and there's no global one for runs either; the only setting is the grace period for
-  stopping a task (`api.task_execution_stop_timeout`). A hung task holds its run, and a parallelism slot, open
+  stopping a task (`api.task_execution_stop_timeout_seconds`). A hung task holds its run, and a parallelism slot, open
   forever. Add a per task timeout in the config and SDKs, plus an admin set global max that caps it and applies when
   a task doesn't set one.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.

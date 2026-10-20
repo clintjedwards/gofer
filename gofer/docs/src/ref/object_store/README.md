@@ -29,7 +29,7 @@ the newest object. Overwriting an existing object with `--force` counts it as th
 
 Gofer can also store objects on a per-run basis. Unlike the pipeline-level objects run-level do not have a limit to how
 many can be stored, but instead have a limit of how long they last. Only the most recent runs keep their objects
-(`run_object_expiry`, 2 by default); once a pipeline moves past that, the oldest run's objects are deleted.
+(`run_object_expiry_runs`, 2 by default); once a pipeline moves past that, the oldest run's objects are deleted.
 
 You can access the run-level store using the run level store CLI commands. Here is an example:
 

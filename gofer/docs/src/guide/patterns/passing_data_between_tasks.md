@@ -3,7 +3,7 @@
 Tasks don't share a filesystem, so use the [object store](../../ref/object_store/index.html) instead. It's Gofer's
 replacement for a shared workspace.
 
-- **Run objects** live for a single run (plus a few after it, see `run_object_expiry`). Use them for handing a value
+- **Run objects** live for a single run (plus a few after it, see `run_object_expiry_runs`). Use them for handing a value
   or a file from one task to the tasks after it.
 - **Pipeline objects** last across runs until the pipeline hits `pipeline_object_limit`. Use them for caches.
 

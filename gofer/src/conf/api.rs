@@ -32,16 +32,16 @@ pub struct Api {
     ///
     /// Example: Rough math on a 5,000 pipeline Gofer instance with a full 6 months of retention
     ///  puts the memory and storage footprint at about 9 GB.
-    pub event_log_retention: u64,
+    pub event_log_retention_seconds: u64,
 
     /// How often the background process for pruning events should run (in seconds).
-    pub event_prune_interval: u64,
+    pub event_prune_interval_seconds: u64,
 
     /// The entire service's log level including extensions.
     pub log_level: String,
 
     /// The total amount of runs before logs of the oldest run will be deleted.
-    pub task_execution_log_retention: u64,
+    pub task_execution_log_retention_runs: u64,
 
     /// Directory to store task execution log files.
     pub task_execution_logs_dir: String,
@@ -50,7 +50,7 @@ pub struct Api {
     /// to stop. When the timeout is reached the container will be forcefully terminated.
     /// You can you use a timeout of 0 to convey that no timeout should be specified and the
     /// scheduler should instantly kill all containers.
-    pub task_execution_stop_timeout: u64,
+    pub task_execution_stop_timeout_seconds: u64,
 
     /// Lets users open a shell inside a running task execution's container. Anyone with write access to a
     /// pipeline's task executions can run any command in its containers, so operators may want to turn this off.
@@ -78,7 +78,7 @@ pub struct Extensions {
 
     /// The time the scheduler will wait for an extension container to stop. After this period Gofer will attempt to
     /// force stop the container.
-    pub stop_timeout: u64,
+    pub stop_timeout_seconds: u64,
 
     /// These are the paths to the certificate pieces the server will pass to each extension such that it can use.
     pub use_tls: bool,
@@ -192,7 +192,7 @@ pub struct ObjectStore {
     /// The number below controls how many runs until the run objects for the oldest run will be deleted.
     /// Ex. an object stored on run number #5 with an expiry of 2(only the last two runs keep their objects) will be
     /// deleted on run #7 regardless of run health.
-    pub run_object_expiry: u64,
+    pub run_object_expiry_runs: u64,
 
     pub filesystem: Option<object_store::filesystem::Config>,
 }

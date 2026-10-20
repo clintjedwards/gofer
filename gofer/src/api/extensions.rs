@@ -694,7 +694,7 @@ async fn stop_extension(api_state: &ApiState, extension_id: &str) {
         .scheduler
         .stop_container(scheduler::StopContainerRequest {
             id: container_id.clone(),
-            timeout: api_state.config.extensions.stop_timeout as i64,
+            timeout: api_state.config.extensions.stop_timeout_seconds as i64,
         })
         .await
     {

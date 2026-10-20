@@ -149,7 +149,7 @@ task as the `GOFER_TOKEN` environment variable, which is the same variable the G
 `GOFER_API_BASE_URL` and `GOFER_NAMESPACE` on every task, so the CLI needs no other setup. See
 [passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for a full example.
 
-The token is deleted when the run's objects expire (see `run_object_expiry` in the
+The token is deleted when the run's objects expire (see `run_object_expiry_runs` in the
 [configuration reference](../server_configuration/configuration_reference.md)).
 
 ```go

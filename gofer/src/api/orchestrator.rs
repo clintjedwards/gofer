@@ -887,7 +887,11 @@ impl Run {
                                 pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
                                 run_id: self.run.run_id,
                                 task_execution_id: task.id.clone(),
-                                timeout: self.api_state.config.api.task_execution_stop_timeout,
+                                timeout: self
+                                    .api_state
+                                    .config
+                                    .api
+                                    .task_execution_stop_timeout_seconds,
                             },
                         );
                     }
@@ -2150,7 +2154,7 @@ impl Run {
 
     /// Removes run level objects(including tokens) from the object store once a run is past it's expiry threshold.
     async fn handle_run_object_expiry(self) {
-        let limit = self.api_state.config.object_store.run_object_expiry;
+        let limit = self.api_state.config.object_store.run_object_expiry_runs;
 
         let mut conn = match self.api_state.storage.read_conn().await {
             Ok(conn) => conn,
@@ -2452,7 +2456,7 @@ impl Run {
     }
 
     async fn handle_run_log_expiry(self) {
-        let limit = self.api_state.config.api.task_execution_log_retention;
+        let limit = self.api_state.config.api.task_execution_log_retention_runs;
 
         let mut conn = match self.api_state.storage.read_conn().await {
             Ok(conn) => conn,

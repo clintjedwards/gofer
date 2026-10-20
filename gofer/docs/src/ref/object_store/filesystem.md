@@ -7,7 +7,7 @@ small deployments.
 [object_store]
 engine = "filesystem"
 pipeline_object_limit = 50
-run_object_expiry = 2
+run_object_expiry_runs = 2
 
 [object_store.filesystem]
 path = "/tmp/gofer_objects"

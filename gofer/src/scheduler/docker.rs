@@ -20,9 +20,9 @@ fn format_env_var(key: &str, value: &str) -> String {
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Config {
     pub prune: bool,
-    pub prune_interval: u64, // in seconds
+    pub prune_interval_seconds: u64,
     /// The total amount of time any request is allowed to be pending for in seconds.
-    pub timeout: u64,
+    pub timeout_seconds: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ impl Scheduler {
                 e
             ))
         })?;
-        let client = client.with_timeout(tokio::time::Duration::from_secs(config.timeout));
+        let client = client.with_timeout(tokio::time::Duration::from_secs(config.timeout_seconds));
         let prune_client = client.clone();
 
         // Check that we can actually get a connection.
@@ -55,7 +55,10 @@ impl Scheduler {
         // We perform it very infrequently though, in order to give operators time to diagnose
         // any potential issues they might be having with a particular container.
         if config.prune {
-            tokio::spawn(prune_containers(prune_client, config.prune_interval));
+            tokio::spawn(prune_containers(
+                prune_client,
+                config.prune_interval_seconds,
+            ));
         }
 
         debug!(
