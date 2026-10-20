@@ -633,7 +633,7 @@ impl Cli {
     pub async fn extension_purge(&self, id: &str, yes: bool) -> Result<()> {
         let subscriptions = self
             .client
-            .list_extension_subscriptions(id)
+            .list_extension_subscriptions(id, Some(true))
             .await
             .map_err(|e| {
                 anyhow!(

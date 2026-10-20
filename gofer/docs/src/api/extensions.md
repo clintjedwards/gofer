@@ -12,7 +12,7 @@ An extension is a way to give pipelines more functionality. This might include a
 | <span class="api-method api-method-get">GET</span> | [`/api/extensions/{extension_id}/debug`](#dump-extension-debug-information) |
 | <span class="api-method api-method-ws">WS</span> | [`/api/extensions/{extension_id}/logs`](#retrieves-logs-from-the-extension-container) |
 | <span class="api-method api-method-post">POST</span> | [`/api/extensions/{extension_id}/revert`](#go-back-to-the-version-of-an-extension-that-was-running-before-the-last-apply) |
-| <span class="api-method api-method-get">GET</span> | [`/api/extensions/{extension_id}/subscriptions`](#list-all-extension-subscriptions) |
+| <span class="api-method api-method-get">GET</span> | [`/api/extensions/{extension_id}/subscriptions`](#list-an-extensions-subscriptions) |
 
 ---
 
@@ -184,15 +184,23 @@ Meant for when a new version won't start. The extension stays different from Gof
 
 ---
 
-## List all extension subscriptions
+## List an extension's subscriptions
 
 <div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/api/extensions/{extension_id}/subscriptions</code></div>
+
+Leaves out disabled subscriptions unless `include_disabled` is set.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
 | `extension_id` | string | yes | The unique identifier for the target extension. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `include_disabled` | boolean | no | Include subscriptions that were turned off. Extensions leave this off when they load their subscriptions on startup, so disabled ones never fire. |
 
 **Responses**
 

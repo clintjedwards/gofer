@@ -1543,10 +1543,10 @@ type Subscription struct {
 	// Settings The extension's pipeline configuration settings.
 	Settings map[string]string `json:"settings"`
 
-	// Status The state of the subscription.
+	// Status Whether the subscription can trigger runs. `error` means the extension behind it isn't installed or isn't running, so nothing will fire until it's back.
 	Status SubscriptionStatus `json:"status"`
 
-	// StatusReason A further description about the status.
+	// StatusReason Why the subscription is in `error`, including what's wrong with the extension.
 	StatusReason *SubscriptionStatusReason `json:"status_reason"`
 
 	// SubscriptionId A unique label differentiating this subscription from other subscriptions.
@@ -2051,6 +2051,12 @@ type StreamEventsParams struct {
 type PutExtensionObjectParams struct {
 	// Force Overwrite a value of a object if it already exists.
 	Force bool `form:"force" json:"force"`
+}
+
+// ListExtensionSubscriptionsParams defines parameters for ListExtensionSubscriptions.
+type ListExtensionSubscriptionsParams struct {
+	// IncludeDisabled Include subscriptions that were turned off. Extensions leave this off when they load their subscriptions on startup, so disabled ones never fire.
+	IncludeDisabled *bool `form:"include_disabled,omitempty" json:"include_disabled,omitempty"`
 }
 
 // ListConfigsParams defines parameters for ListConfigs.
@@ -4755,7 +4761,7 @@ type ClientInterface interface {
 	RevertExtension(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListExtensionSubscriptions request
-	ListExtensionSubscriptions(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListExtensionSubscriptions(ctx context.Context, extensionId string, params *ListExtensionSubscriptionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListNamespaces request
 	ListNamespaces(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5172,8 +5178,8 @@ func (c *Client) RevertExtension(ctx context.Context, extensionId string, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListExtensionSubscriptions(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListExtensionSubscriptionsRequest(c.Server, extensionId)
+func (c *Client) ListExtensionSubscriptions(ctx context.Context, extensionId string, params *ListExtensionSubscriptionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExtensionSubscriptionsRequest(c.Server, extensionId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -6714,7 +6720,7 @@ func NewRevertExtensionRequest(server string, extensionId string) (*http.Request
 }
 
 // NewListExtensionSubscriptionsRequest generates requests for ListExtensionSubscriptions
-func NewListExtensionSubscriptionsRequest(server string, extensionId string) (*http.Request, error) {
+func NewListExtensionSubscriptionsRequest(server string, extensionId string, params *ListExtensionSubscriptionsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6737,6 +6743,28 @@ func NewListExtensionSubscriptionsRequest(server string, extensionId string) (*h
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.IncludeDisabled != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_disabled", runtime.ParamLocationQuery, *params.IncludeDisabled); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -9886,7 +9914,7 @@ type ClientWithResponsesInterface interface {
 	RevertExtensionWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*RevertExtensionResp, error)
 
 	// ListExtensionSubscriptionsWithResponse request
-	ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error)
+	ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, params *ListExtensionSubscriptionsParams, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error)
 
 	// ListNamespacesWithResponse request
 	ListNamespacesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListNamespacesResp, error)
@@ -12149,8 +12177,8 @@ func (c *ClientWithResponses) RevertExtensionWithResponse(ctx context.Context, e
 }
 
 // ListExtensionSubscriptionsWithResponse request returning *ListExtensionSubscriptionsResp
-func (c *ClientWithResponses) ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error) {
-	rsp, err := c.ListExtensionSubscriptions(ctx, extensionId, reqEditors...)
+func (c *ClientWithResponses) ListExtensionSubscriptionsWithResponse(ctx context.Context, extensionId string, params *ListExtensionSubscriptionsParams, reqEditors ...RequestEditorFn) (*ListExtensionSubscriptionsResp, error) {
+	rsp, err := c.ListExtensionSubscriptions(ctx, extensionId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

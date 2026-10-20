@@ -38,10 +38,20 @@ extension.
 
 ## Seeing and removing subscriptions
 
-`gofer fetch <pipeline_id>` lists a pipeline's subscriptions. To remove one:
+`gofer fetch <pipeline_id>` lists a pipeline's subscriptions along with each one's status. `active` means it can
+trigger runs. `error` means the extension behind it isn't running, so nothing will fire until it's back; the reason
+column says what's wrong with the extension. To remove one:
 
 ```bash
 gofer pipeline unsubscribe simple interval every_five_mins
+```
+
+To stop one from triggering runs for a while without losing its settings, disable it, and enable it again when you
+want it back:
+
+```bash
+gofer pipeline disable-subscription simple interval every_five_mins
+gofer pipeline enable-subscription simple interval every_five_mins
 ```
 
 ## What the extension passes to your run
@@ -50,5 +60,6 @@ When an extension starts a run it can pass in run variables, which your tasks re
 github extension, for example, passes in details about the event that triggered it. Each extension's page lists what
 it passes, and `gofer task get <pipeline_id> <run_id> <task_id>` shows exactly what a task received.
 
-If an extension is stopped, disabled, or failed to start, its subscriptions stay in place but nothing triggers them.
-If a pipeline that should be running on its own isn't, check `gofer extension list`.
+If an extension is stopped, disabled, or has failed, its subscriptions stay in place but nothing triggers them. They
+show as `error` until the extension is running again. If a pipeline that should be running on its own isn't, start
+with `gofer fetch <pipeline_id>`.

@@ -586,7 +586,8 @@
         "tags": [
           "Extensions"
         ],
-        "summary": "List all extension subscriptions.",
+        "summary": "List an extension's subscriptions.",
+        "description": "Leaves out disabled subscriptions unless `include_disabled` is set.",
         "operationId": "list_extension_subscriptions",
         "parameters": [
           {
@@ -596,6 +597,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_disabled",
+            "description": "Include subscriptions that were turned off. Extensions leave this off when they load their subscriptions on startup, so disabled ones never fire.",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -6456,7 +6465,7 @@
             }
           },
           "status": {
-            "description": "The state of the subscription.",
+            "description": "Whether the subscription can trigger runs. `error` means the extension behind it isn't installed or isn't running, so nothing will fire until it's back.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/subscription_status"
@@ -6465,7 +6474,7 @@
           },
           "status_reason": {
             "nullable": true,
-            "description": "A further description about the status.",
+            "description": "Why the subscription is in `error`, including what's wrong with the extension.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/subscription_status_reason"

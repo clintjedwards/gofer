@@ -14,8 +14,8 @@ use crate::{
 };
 use anyhow::{Context, Result, anyhow, bail};
 use dropshot::{
-    HttpError, HttpResponseDeleted, HttpResponseOk, Path, RequestContext, WebsocketChannelResult,
-    WebsocketConnection, channel, endpoint,
+    HttpError, HttpResponseDeleted, HttpResponseOk, Path, Query, RequestContext,
+    WebsocketChannelResult, WebsocketConnection, channel, endpoint,
 };
 use futures::{SinkExt, StreamExt};
 use reqwest::{Client, header};
@@ -1114,7 +1114,17 @@ pub struct ListExtensionSubscriptionsResponse {
     pub subscriptions: Vec<subscriptions::Subscription>,
 }
 
-/// List all extension subscriptions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ListExtensionSubscriptionsParams {
+    /// Include subscriptions that were turned off. Extensions leave this off when they load their subscriptions on
+    /// startup, so disabled ones never fire.
+    #[serde(default)]
+    pub include_disabled: bool,
+}
+
+/// List an extension's subscriptions.
+///
+/// Leaves out disabled subscriptions unless `include_disabled` is set.
 #[endpoint(
     method = GET,
     path = "/api/extensions/{extension_id}/subscriptions",
@@ -1123,9 +1133,11 @@ pub struct ListExtensionSubscriptionsResponse {
 pub async fn list_extension_subscriptions(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<ExtensionPathArgs>,
+    query_params: Query<ListExtensionSubscriptionsParams>,
 ) -> Result<HttpResponseOk<ListExtensionSubscriptionsResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
+    let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
             &rqctx.request,
@@ -1181,6 +1193,10 @@ pub async fn list_extension_subscriptions(
                     Some(e.into())
                 )
             })?;
+
+        if subscription.status == subscriptions::Status::Disabled && !query.include_disabled {
+            continue;
+        }
 
         subscriptions.push(subscription);
     }

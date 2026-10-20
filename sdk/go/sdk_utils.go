@@ -44,14 +44,15 @@ func NewClientWithHeaders(host, token string, useTLS bool, apiVersion GoferAPIVe
 	return client, nil
 }
 
-// List extension specific subscriptions.
+// List an extension's subscriptions, leaving out ones that were turned off. Extensions call this on startup to load
+// what they should be watching for.
 func ListExtensionSubscriptions(extension_id, goferHost, secret string, useTLS bool, apiVersion GoferAPIVersion) ([]Subscription, error) {
 	client, err := NewClientWithHeaders(goferHost, secret, useTLS, apiVersion)
 	if err != nil {
 		return nil, fmt.Errorf("could not establish Gofer client: %w", err)
 	}
 
-	resp, err := client.ListExtensionSubscriptions(context.Background(), extension_id)
+	resp, err := client.ListExtensionSubscriptions(context.Background(), extension_id, &ListExtensionSubscriptionsParams{})
 	if err != nil {
 		return nil, fmt.Errorf("could not query Gofer for extension subscriptions: %w", err)
 	}

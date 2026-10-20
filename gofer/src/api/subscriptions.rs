@@ -79,14 +79,58 @@ pub struct Subscription {
     /// The extension's pipeline configuration settings.
     pub settings: HashMap<String, String>,
 
-    /// The state of the subscription.
+    /// Whether the subscription can trigger runs. `error` means the extension behind it isn't installed or isn't
+    /// running, so nothing will fire until it's back.
     pub status: Status,
 
-    /// A further description about the status.
+    /// Why the subscription is in `error`, including what's wrong with the extension.
     pub status_reason: Option<StatusReason>,
 }
 
 impl Subscription {
+    /// Fills in the status from the extension's current state. What's stored only records whether the subscription
+    /// was turned off; the extension can stop or fail without the subscription ever being touched, so whether it can
+    /// actually fire is worked out each time it's read.
+    pub fn with_extension_health(mut self, api_state: &ApiState) -> Self {
+        if self.status == Status::Disabled {
+            return self;
+        }
+
+        let Some(extension) = api_state
+            .extensions
+            .get(&self.extension_id)
+            .map(|extension| extension.value().clone())
+        else {
+            self.status = Status::Error;
+            self.status_reason = Some(StatusReason {
+                reason: StatusReasonType::NotFound,
+                description: format!("Extension '{}' isn't installed", self.extension_id),
+            });
+            return self;
+        };
+
+        if extension.state == extensions::State::Running {
+            self.status = Status::Active;
+            self.status_reason = None;
+            return self;
+        }
+
+        let mut description = match extension.state {
+            extensions::State::Failed => format!("Extension '{}' has failed", self.extension_id),
+            state => format!("Extension '{}' is {state}", self.extension_id),
+        };
+        if !extension.state_reason.is_empty() {
+            description = format!("{description}; {}", extension.state_reason);
+        }
+
+        self.status = Status::Error;
+        self.status_reason = Some(StatusReason {
+            reason: StatusReasonType::Failed,
+            description,
+        });
+        self
+    }
+
     fn from_create_request(
         namespace_id: &str,
         pipeline_id: &str,
@@ -282,7 +326,7 @@ pub async fn list_subscriptions(
             )
         })?;
 
-        subscriptions.push(subscription);
+        subscriptions.push(subscription.with_extension_health(api_state));
     }
 
     let resp = ListSubscriptionsResponse { subscriptions };
@@ -370,7 +414,9 @@ pub async fn get_subscription(
         )
     })?;
 
-    let resp = GetSubscriptionResponse { subscription };
+    let resp = GetSubscriptionResponse {
+        subscription: subscription.with_extension_health(api_state),
+    };
     Ok(HttpResponseOk(resp))
 }
 
@@ -419,29 +465,74 @@ pub async fn update_subscription(
         )
         .await?;
 
-    let mut conn = match api_state.storage.write_conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            return Err(http_error!(
-                "Could not open connection to database",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
-                Some(e.into())
-            ));
-        }
-    };
-
-    if body.status.is_none() {
+    let Some(requested) = body.status else {
         return Err(HttpError::for_bad_request(
             None,
             "Update request is missing any changes".into(),
         ));
     };
 
-    let status = match body.status.unwrap() {
+    let status = match requested {
         UpdateSubscriptionStatus::Active => Status::Active,
         UpdateSubscriptionStatus::Disabled => Status::Disabled,
     };
+
+    // The status change is only committed once the extension has been told, so a failure leaves both sides as they
+    // were.
+    let mut tx = match api_state.storage.open_tx().await {
+        Ok(tx) => tx,
+        Err(e) => {
+            return Err(http_error!(
+                "Could not open connection to database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
+    };
+
+    let current = match storage::extension_subscriptions::get(
+        &mut tx,
+        &path.namespace_id,
+        &path.pipeline_id,
+        &path.extension_id,
+        &path.subscription_id,
+    )
+    .await
+    {
+        Ok(subscription) => subscription,
+        Err(storage::StorageError::NotFound) => {
+            return Err(HttpError::for_client_error(
+                None,
+                ClientErrorStatusCode::NOT_FOUND,
+                format!(
+                    "pipeline '{}' has no subscription '{}' for extension '{}'",
+                    path.pipeline_id, path.subscription_id, path.extension_id
+                ),
+            ));
+        }
+        Err(e) => {
+            return Err(http_error!(
+                "Could not get subscription from database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            ));
+        }
+    };
+
+    let current = Subscription::try_from(current).map_err(|e| {
+        http_error!(
+            "Could not parse subscription from database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    if current.status == status {
+        return Ok(HttpResponseUpdatedNoContent());
+    }
 
     let updatable_fields = storage::extension_subscriptions::UpdatableFields {
         status: Some(status.to_string()),
@@ -449,7 +540,7 @@ pub async fn update_subscription(
     };
 
     if let Err(e) = storage::extension_subscriptions::update(
-        &mut conn,
+        &mut tx,
         &path.namespace_id,
         &path.pipeline_id,
         &path.extension_id,
@@ -458,22 +549,50 @@ pub async fn update_subscription(
     )
     .await
     {
-        match e {
-            storage::StorageError::NotFound => {
-                return Err(HttpError::for_not_found(
-                    None,
-                    "Subscription entry for id given does not exist".into(),
-                ));
+        return Err(http_error!(
+            "Could not update subscription in database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    };
+
+    // Extensions keep their own list of what they're subscribed to and fire from that, so changing the status here
+    // only matters once the extension hears about it. An extension that isn't running doesn't need telling; it skips
+    // disabled subscriptions when it loads them on startup.
+    if api_state.running_extension(&path.extension_id).is_some() {
+        match status {
+            Status::Disabled => {
+                if let Err(e) = unsubscribe_extension(
+                    api_state,
+                    &path.namespace_id,
+                    &path.pipeline_id,
+                    &path.extension_id,
+                    &path.subscription_id,
+                )
+                .await
+                {
+                    return Err(http_error!(
+                        "Could not unsubscribe from extension",
+                        hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        rqctx.request_id.clone(),
+                        Some(e.into())
+                    ));
+                }
             }
-            _ => {
-                return Err(http_error!(
-                    "Could insert object into database",
-                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                    rqctx.request_id,
-                    Some(e.into())
-                ));
-            }
+            _ => subscribe_extension(api_state, &current)
+                .await
+                .map_err(|e| e.into_http_error(&path.extension_id, &rqctx.request_id))?,
         }
+    }
+
+    if let Err(e) = tx.commit().await {
+        return Err(http_error!(
+            "Could not close database connection",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
     };
 
     Ok(HttpResponseUpdatedNoContent())
@@ -603,32 +722,9 @@ pub async fn create_subscription(
         }
     };
 
-    match subscribe_extension(api_state, &new_subscription).await {
-        Ok(()) => {}
-        Err(SubscribeError::Rejected(message)) => {
-            return Err(HttpError::for_bad_request(
-                None,
-                format!(
-                    "extension '{}' rejected the subscription; {message}",
-                    body.extension_id
-                ),
-            ));
-        }
-        Err(SubscribeError::BadSettings(message)) => {
-            return Err(HttpError::for_bad_request(
-                None,
-                format!("invalid subscription settings; {message}"),
-            ));
-        }
-        Err(SubscribeError::Internal(e)) => {
-            return Err(http_error!(
-                "Could not subscribe to extension",
-                hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id.clone(),
-                Some(e.into())
-            ));
-        }
-    };
+    subscribe_extension(api_state, &new_subscription)
+        .await
+        .map_err(|e| e.into_http_error(&body.extension_id, &rqctx.request_id))?;
 
     if let Err(e) =
         storage::extension_subscriptions::insert(&mut tx, &new_subscription_storage).await
@@ -801,8 +897,18 @@ async fn unsubscribe_extension(
         })
         .await
     {
-        extensions::health::record_failed_call(api_state, &extension, &e);
-        return Err(anyhow::Error::from(e).context("could not unsubscribe from extension"));
+        // Extensions built with older Go SDKs answer 201 instead of the 204 the spec says, which the client treats
+        // as an error even though the unsubscribe worked.
+        let succeeded = matches!(
+            &e,
+            gofer_sdk::extension::api::Error::UnexpectedResponse(response)
+                if response.status().is_success()
+        );
+
+        if !succeeded {
+            extensions::health::record_failed_call(api_state, &extension, &e);
+            return Err(anyhow::Error::from(e).context("could not unsubscribe from extension"));
+        }
     }
 
     debug!(
@@ -831,6 +937,28 @@ enum SubscribeError {
 
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
+}
+
+impl SubscribeError {
+    /// The user's mistakes become 400s with the reason; anything else is ours and stays a 500.
+    fn into_http_error(self, extension_id: &str, request_id: &str) -> HttpError {
+        match self {
+            SubscribeError::Rejected(message) => HttpError::for_bad_request(
+                None,
+                format!("extension '{extension_id}' rejected the subscription; {message}"),
+            ),
+            SubscribeError::BadSettings(message) => HttpError::for_bad_request(
+                None,
+                format!("invalid subscription settings; {message}"),
+            ),
+            SubscribeError::Internal(e) => http_error!(
+                "Could not subscribe to extension",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                request_id.to_string(),
+                Some(e.into())
+            ),
+        }
+    }
 }
 
 async fn subscribe_extension(

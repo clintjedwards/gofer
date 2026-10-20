@@ -5,7 +5,7 @@ mod object;
 use crate::cli::{
     Cli, colorize_status_text, colorize_status_text_comfy, duration, rail, rail_table, tasks_table,
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
@@ -101,6 +101,34 @@ pub enum PipelineCommands {
         label: String,
     },
 
+    /// Stop a subscription from triggering runs, without removing it.
+    ///
+    /// The subscription and its settings are kept, so 'gofer pipeline enable-subscription' turns it back on as it was.
+    ///
+    /// ex. gofer pipeline disable-subscription simple interval every_5_minutes
+    DisableSubscription {
+        /// Pipeline Identifier.
+        id: String,
+
+        /// The extension id the subscription is for.
+        extension_id: String,
+
+        /// The subscription's name.
+        label: String,
+    },
+
+    /// Turn a disabled subscription back on.
+    EnableSubscription {
+        /// Pipeline Identifier.
+        id: String,
+
+        /// The extension id the subscription is for.
+        extension_id: String,
+
+        /// The subscription's name.
+        label: String,
+    },
+
     /// Manage pipeline object store.
     Object(object::ObjectSubcommands),
 
@@ -139,6 +167,34 @@ impl Cli {
             } => {
                 self.pipeline_unsubscribe(command.namespace, &id, &extension_id, &label)
                     .await
+            }
+            PipelineCommands::DisableSubscription {
+                id,
+                extension_id,
+                label,
+            } => {
+                self.pipeline_set_subscription_status(
+                    command.namespace,
+                    &id,
+                    &extension_id,
+                    &label,
+                    false,
+                )
+                .await
+            }
+            PipelineCommands::EnableSubscription {
+                id,
+                extension_id,
+                label,
+            } => {
+                self.pipeline_set_subscription_status(
+                    command.namespace,
+                    &id,
+                    &extension_id,
+                    &label,
+                    true,
+                )
+                .await
             }
             PipelineCommands::Object(object) => {
                 self.handle_pipeline_object_subcommands(object).await
@@ -297,18 +353,26 @@ impl Cli {
             ]);
         }
 
-        let mut subscriptions: Vec<_> = subscriptions
-            .into_iter()
-            .map(|subscription| (subscription.subscription_id, subscription.extension_id))
-            .collect();
-        subscriptions.sort();
+        let mut subscriptions = subscriptions;
+        subscriptions.sort_by(|a, b| {
+            (&a.subscription_id, &a.extension_id).cmp(&(&b.subscription_id, &b.extension_id))
+        });
 
+        // A subscription in error never fires, so this is often the only sign of why a pipeline stopped running.
         let subscription_rows = subscriptions
             .into_iter()
-            .map(|(subscription_id, extension_id)| {
+            .map(|subscription| {
+                let reason = subscription
+                    .status_reason
+                    .map(|reason| reason.description)
+                    .unwrap_or_default();
+
                 vec![
-                    Cell::new(subscription_id).fg(Color::Blue),
-                    Cell::new(extension_id),
+                    Cell::new(subscription.subscription_id).fg(Color::Blue),
+                    Cell::new(subscription.extension_id),
+                    Cell::new(subscription.status)
+                        .fg(colorize_status_text_comfy(subscription.status)),
+                    Cell::new(reason),
                 ]
             })
             .collect();
@@ -346,7 +410,10 @@ impl Cli {
         context.insert("tasks", &tasks_table(&pipeline_config.tasks));
         context.insert(
             "subscriptions",
-            &rail_table(&["SUBSCRIPTION", "EXTENSION"], subscription_rows),
+            &rail_table(
+                &["SUBSCRIPTION", "EXTENSION", "STATUS", "REASON"],
+                subscription_rows,
+            ),
         );
         context.insert(
             "created",
@@ -495,6 +562,53 @@ impl Cli {
             "pipeline '{}' unsubscribed from extension '{}'!",
             id,
             extension_id
+        );
+        Ok(())
+    }
+
+    pub async fn pipeline_set_subscription_status(
+        &self,
+        namespace_id: Option<String>,
+        id: &str,
+        extension_id: &str,
+        label: &str,
+        enabled: bool,
+    ) -> Result<()> {
+        let namespace = match namespace_id {
+            Some(namespace) => namespace,
+            None => self.conf.namespace.clone(),
+        };
+
+        let status = if enabled {
+            gofer_sdk::api::types::UpdateSubscriptionStatus::Active
+        } else {
+            gofer_sdk::api::types::UpdateSubscriptionStatus::Disabled
+        };
+
+        // Turning a subscription back on resends it to the extension, which can reject it, so its message is shown.
+        self.client
+            .update_subscription(
+                &namespace,
+                id,
+                extension_id,
+                label,
+                &gofer_sdk::api::types::UpdateSubscriptionRequest {
+                    status: Some(status),
+                },
+            )
+            .await
+            .map_err(|e| {
+                anyhow!(
+                    "Could not update subscription '{label}'; {}",
+                    super::api_error_message(e)
+                )
+            })?;
+
+        success!(
+            "subscription '{}' on pipeline '{}' {}!",
+            label,
+            id,
+            if enabled { "enabled" } else { "disabled" }
         );
         Ok(())
     }

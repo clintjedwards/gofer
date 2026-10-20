@@ -182,7 +182,7 @@ func (e *extensionWrapper) unsubscribeHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	handleResponse(w, r, nil, http.StatusCreated)
+	handleResponse(w, r, nil, http.StatusNoContent)
 }
 
 func (e *extensionWrapper) shutdownHandler(w http.ResponseWriter, r *http.Request) {
