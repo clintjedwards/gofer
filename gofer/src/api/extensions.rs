@@ -333,6 +333,29 @@ impl ApiState {
             .filter(|extension| extension.state == State::Running)
             .map(|extension| extension.value().clone())
     }
+
+    /// Stores an extension's latest entry. Every state change should go through here so it gets published; anything
+    /// listening on the event bus, and `gofer event list`, can then see extensions come and go.
+    pub fn set_extension(&self, extension: Extension) {
+        let extension_id = extension.registration.extension_id.clone();
+        let state = extension.state.clone();
+        let reason = extension.state_reason.clone();
+
+        // insert hands back what it replaced, so the comparison can't race with another writer.
+        let previous = self.extensions.insert(extension_id.clone(), extension);
+        let changed = previous
+            .is_none_or(|previous| previous.state != state || previous.state_reason != reason);
+
+        if changed {
+            self.event_bus
+                .clone()
+                .publish(event_utils::Kind::ExtensionStateChanged {
+                    extension_id,
+                    state,
+                    reason,
+                });
+        }
+    }
 }
 
 /// Starts the extension's container and waits until it answers. `resolved` carries the registration's settings and

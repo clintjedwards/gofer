@@ -186,6 +186,9 @@ The **state** says what's actually happening:
 | `stopped` | Not running on purpose, because it's disabled or unconfigured.                           |
 | `failed`  | Gofer couldn't start it. The reason column says why; `gofer extension logs <id>` can help. |
 
+Every state change is published as an `extension_state_changed` event with the new state and reason, so
+`gofer event list` shows when an extension went up or down.
+
 ## Upgrading
 
 See [Upgrading Extensions](./upgrading.md).

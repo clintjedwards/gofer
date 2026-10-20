@@ -5185,98 +5185,31 @@
             "additionalProperties": false
           },
           {
+            "description": "An extension started, stopped, or failed to start. Reason says why, when there is one.",
             "type": "object",
             "properties": {
-              "installed_extension": {
+              "extension_state_changed": {
                 "type": "object",
                 "properties": {
-                  "id": {
+                  "extension_id": {
                     "type": "string"
                   },
-                  "image": {
+                  "reason": {
                     "type": "string"
+                  },
+                  "state": {
+                    "$ref": "#/components/schemas/extension_state"
                   }
                 },
                 "required": [
-                  "id",
-                  "image"
+                  "extension_id",
+                  "reason",
+                  "state"
                 ]
               }
             },
             "required": [
-              "installed_extension"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "uninstalled_extension": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "image": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "image"
-                ]
-              }
-            },
-            "required": [
-              "uninstalled_extension"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "enabled_extension": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "image": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "image"
-                ]
-              }
-            },
-            "required": [
-              "enabled_extension"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "disabled_extension": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "image": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "image"
-                ]
-              }
-            },
-            "required": [
-              "disabled_extension"
+              "extension_state_changed"
             ],
             "additionalProperties": false
           },

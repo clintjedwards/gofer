@@ -960,9 +960,7 @@ async fn apply_target(api_state: &Arc<ApiState>, extension_id: &str, target: Tar
             let registration = match current {
                 // Leave a running extension alone; it keeps working with its old config until the entry is fixed.
                 Some(current) if current.state == State::Running => {
-                    api_state
-                        .extensions
-                        .insert(extension_id.to_string(), current.clone());
+                    api_state.set_extension(current.clone());
                     return current;
                 }
                 Some(current) => current.registration,
@@ -976,9 +974,7 @@ async fn apply_target(api_state: &Arc<ApiState>, extension_id: &str, target: Tar
         }
     };
 
-    api_state
-        .extensions
-        .insert(extension_id.to_string(), extension.clone());
+    api_state.set_extension(extension.clone());
 
     extension
 }
@@ -1021,6 +1017,8 @@ pub async fn reconcile_on_boot(api_state: Arc<ApiState>) {
                             continue;
                         }
                     };
+                    // Not a real state change, just a starting point, so it skips set_extension and its event.
+                    // The targets below publish whatever each extension actually ends up as.
                     api_state.extensions.insert(
                         registration.extension_id.clone(),
                         Extension::not_running(registration, "", State::Stopped, ""),
@@ -1263,9 +1261,7 @@ pub async fn revert_extension(
 
     stop_extension(api_state, &path.extension_id).await;
     let extension = run_prepared(api_state, *previous, None).await;
-    api_state
-        .extensions
-        .insert(path.extension_id.clone(), extension.clone());
+    api_state.set_extension(extension.clone());
 
     Ok(HttpResponseOk(ApplyExtensionResponse {
         extension,

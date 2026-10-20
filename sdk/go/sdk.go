@@ -998,40 +998,17 @@ type Kind16 struct {
 	} `json:"started_task_execution_cancellation"`
 }
 
-// Kind17 defines model for .
+// Kind17 An extension started, stopped, or failed to start. Reason says why, when there is one.
 type Kind17 struct {
-	InstalledExtension struct {
-		Id    string `json:"id"`
-		Image string `json:"image"`
-	} `json:"installed_extension"`
+	ExtensionStateChanged struct {
+		ExtensionId string         `json:"extension_id"`
+		Reason      string         `json:"reason"`
+		State       ExtensionState `json:"state"`
+	} `json:"extension_state_changed"`
 }
 
 // Kind18 defines model for .
 type Kind18 struct {
-	UninstalledExtension struct {
-		Id    string `json:"id"`
-		Image string `json:"image"`
-	} `json:"uninstalled_extension"`
-}
-
-// Kind19 defines model for .
-type Kind19 struct {
-	EnabledExtension struct {
-		Id    string `json:"id"`
-		Image string `json:"image"`
-	} `json:"enabled_extension"`
-}
-
-// Kind20 defines model for .
-type Kind20 struct {
-	DisabledExtension struct {
-		Id    string `json:"id"`
-		Image string `json:"image"`
-	} `json:"disabled_extension"`
-}
-
-// Kind21 defines model for .
-type Kind21 struct {
 	PipelineExtensionSubscriptionRegistered struct {
 		ExtensionId    string `json:"extension_id"`
 		NamespaceId    string `json:"namespace_id"`
@@ -1040,8 +1017,8 @@ type Kind21 struct {
 	} `json:"pipeline_extension_subscription_registered"`
 }
 
-// Kind22 defines model for .
-type Kind22 struct {
+// Kind19 defines model for .
+type Kind19 struct {
 	PipelineExtensionSubscriptionUnregistered struct {
 		ExtensionId    string `json:"extension_id"`
 		NamespaceId    string `json:"namespace_id"`
@@ -1050,15 +1027,15 @@ type Kind22 struct {
 	} `json:"pipeline_extension_subscription_unregistered"`
 }
 
-// Kind23 defines model for .
-type Kind23 struct {
+// Kind20 defines model for .
+type Kind20 struct {
 	CreatedRole struct {
 		RoleId string `json:"role_id"`
 	} `json:"created_role"`
 }
 
-// Kind24 defines model for .
-type Kind24 struct {
+// Kind21 defines model for .
+type Kind21 struct {
 	DeletedRole struct {
 		RoleId string `json:"role_id"`
 	} `json:"deleted_role"`
@@ -2861,84 +2838,6 @@ func (t *Kind) FromKind21(v Kind21) error {
 
 // MergeKind21 performs a merge with any union data inside the Kind, using the provided Kind21
 func (t *Kind) MergeKind21(v Kind21) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsKind22 returns the union data inside the Kind as a Kind22
-func (t Kind) AsKind22() (Kind22, error) {
-	var body Kind22
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromKind22 overwrites any union data inside the Kind as the provided Kind22
-func (t *Kind) FromKind22(v Kind22) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeKind22 performs a merge with any union data inside the Kind, using the provided Kind22
-func (t *Kind) MergeKind22(v Kind22) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsKind23 returns the union data inside the Kind as a Kind23
-func (t Kind) AsKind23() (Kind23, error) {
-	var body Kind23
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromKind23 overwrites any union data inside the Kind as the provided Kind23
-func (t *Kind) FromKind23(v Kind23) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeKind23 performs a merge with any union data inside the Kind, using the provided Kind23
-func (t *Kind) MergeKind23(v Kind23) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsKind24 returns the union data inside the Kind as a Kind24
-func (t Kind) AsKind24() (Kind24, error) {
-	var body Kind24
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromKind24 overwrites any union data inside the Kind as the provided Kind24
-func (t *Kind) FromKind24(v Kind24) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeKind24 performs a merge with any union data inside the Kind, using the provided Kind24
-func (t *Kind) MergeKind24(v Kind24) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err

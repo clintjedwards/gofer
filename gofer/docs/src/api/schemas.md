@@ -389,10 +389,7 @@ One of the variants below. Variants without a payload are sent as a plain string
 | `started_task_execution` | `namespace_id`: string<br>`pipeline_id`: string<br>`run_id`: integer<br>`task_execution_id`: string |  |
 | `completed_task_execution` | `namespace_id`: string<br>`pipeline_id`: string<br>`run_id`: integer<br>`status`: [task_execution_status](#task_execution_status)<br>`task_execution_id`: string |  |
 | `started_task_execution_cancellation` | `namespace_id`: string<br>`pipeline_id`: string<br>`run_id`: integer<br>`task_execution_id`: string<br>`timeout`: integer |  |
-| `installed_extension` | `id`: string<br>`image`: string |  |
-| `uninstalled_extension` | `id`: string<br>`image`: string |  |
-| `enabled_extension` | `id`: string<br>`image`: string |  |
-| `disabled_extension` | `id`: string<br>`image`: string |  |
+| `extension_state_changed` | `extension_id`: string<br>`reason`: string<br>`state`: [extension_state](#extension_state) | An extension started, stopped, or failed to start. Reason says why, when there is one. |
 | `pipeline_extension_subscription_registered` | `extension_id`: string<br>`namespace_id`: string<br>`pipeline_id`: string<br>`subscription_id`: string |  |
 | `pipeline_extension_subscription_unregistered` | `extension_id`: string<br>`namespace_id`: string<br>`pipeline_id`: string<br>`subscription_id`: string |  |
 | `created_role` | `role_id`: string |  |

@@ -1,5 +1,5 @@
 use crate::{
-    api::{epoch_milli, runs, task_executions},
+    api::{epoch_milli, extensions, runs, task_executions},
     storage,
 };
 use anyhow::{Context, Result, bail};
@@ -128,21 +128,11 @@ pub enum Kind {
     },
 
     // Extension events
-    InstalledExtension {
-        id: String,
-        image: String,
-    },
-    UninstalledExtension {
-        id: String,
-        image: String,
-    },
-    EnabledExtension {
-        id: String,
-        image: String,
-    },
-    DisabledExtension {
-        id: String,
-        image: String,
+    /// An extension started, stopped, or failed to start. Reason says why, when there is one.
+    ExtensionStateChanged {
+        extension_id: String,
+        state: extensions::State,
+        reason: String,
     },
 
     // Subscriptions
