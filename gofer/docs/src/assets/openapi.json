@@ -5185,7 +5185,7 @@
             "additionalProperties": false
           },
           {
-            "description": "An extension started, stopped, or failed to start. Reason says why, when there is one.",
+            "description": "An extension started, stopped, failed, or stopped answering health checks. Reason says why, when there is one.",
             "type": "object",
             "properties": {
               "extension_state_changed": {
@@ -7088,6 +7088,13 @@
             "type": "string",
             "enum": [
               "running"
+            ]
+          },
+          {
+            "description": "Running, but it stopped answering health checks. Gofer keeps sending it work and restarts it if it doesn't recover. The extension's `state_reason` has the last error.",
+            "type": "string",
+            "enum": [
+              "degraded"
             ]
           },
           {

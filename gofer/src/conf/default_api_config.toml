@@ -24,6 +24,10 @@ use_included_certs = true # Automatically loads localhost certs for development.
 stop_timeout = 300            # 5 mins
 use_tls = false
 verify_certs = false          # When attempting to communicate with an extension verify the cert is correct and known.
+health_check_interval_seconds = 60
+health_check_failures_before_action = 3
+health_check_auto_restart = true
+health_check_max_restarts = 1
 
 [external_events]
 enable = true

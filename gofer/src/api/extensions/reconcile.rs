@@ -699,7 +699,7 @@ fn plan_one(
         }
     }
     let current = current.filter(|extension| !is_placeholder(&extension.registration));
-    let running = current.is_some_and(|extension| extension.state == State::Running);
+    let running = current.is_some_and(|extension| extension.is_up());
     let current_manifest = current
         .map(|extension| extension.manifest.clone())
         .unwrap_or_default();
@@ -833,7 +833,7 @@ async fn set_status(api_state: &ApiState, extension_id: &str, status: &Status) -
 
 /// Stores the registration and starts the extension from it. On failure the extension is recorded as failed with
 /// the reason, rather than the error being returned.
-async fn run_prepared(
+pub(super) async fn run_prepared(
     api_state: &Arc<ApiState>,
     prepared: Prepared,
     previous: Option<Box<Prepared>>,
@@ -894,9 +894,7 @@ async fn apply_target(api_state: &Arc<ApiState>, extension_id: &str, target: Tar
 
     let extension = match target {
         Target::Run(prepared) => {
-            let running = current
-                .as_ref()
-                .is_some_and(|extension| extension.state == State::Running);
+            let running = current.as_ref().is_some_and(|extension| extension.is_up());
             let previous = current
                 .as_ref()
                 .and_then(|extension| extension.applied.clone())
@@ -959,7 +957,7 @@ async fn apply_target(api_state: &Arc<ApiState>, extension_id: &str, target: Tar
         } => {
             let registration = match current {
                 // Leave a running extension alone; it keeps working with its old config until the entry is fixed.
-                Some(current) if current.state == State::Running => {
+                Some(current) if current.is_up() => {
                     api_state.set_extension(current.clone());
                     return current;
                 }

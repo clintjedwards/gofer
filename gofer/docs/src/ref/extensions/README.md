@@ -182,12 +182,27 @@ The **state** says what's actually happening:
 
 | state     | meaning                                                                                  |
 | --------- | ---------------------------------------------------------------------------------------- |
-| `running` | Up and answering Gofer.                                                                  |
-| `stopped` | Not running on purpose, because it's disabled or unconfigured.                           |
-| `failed`  | Gofer couldn't start it. The reason column says why; `gofer extension logs <id>` can help. |
+| `running`  | Up and answering Gofer.                                                                  |
+| `degraded` | Up, but not answering health checks. Gofer keeps sending it work and restarts it if it doesn't recover. |
+| `stopped`  | Not running on purpose, because it's disabled or unconfigured.                           |
+| `failed`   | Gofer couldn't start it, or it stopped answering and restarting didn't help. The reason column says why; `gofer extension logs <id>` can help. |
 
 Every state change is published as an `extension_state_changed` event with the new state and reason, so
 `gofer event list` shows when an extension went up or down.
+
+## Health checks
+
+Gofer checks each running extension's health endpoint once a minute. Any call Gofer makes to an extension that can't
+connect, like handing it a subscription or an external event, counts as a failed check too, so a dead extension is
+noticed as soon as something tries to use it.
+
+1. The first failed check marks the extension `degraded`. A passing check puts it back to `running`.
+2. After a few failed checks in a row, Gofer restarts it.
+3. If it keeps failing after that, Gofer marks it `failed`, stops its container, and stops checking it. Fix whatever
+   is wrong and run `gofer extension reload` to start it again.
+
+The interval, how many failures to allow, and whether and how often to restart are all set in the
+[extensions config](../server_configuration/configuration_reference.md#extensions).
 
 ## Upgrading
 

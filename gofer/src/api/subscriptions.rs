@@ -776,7 +776,7 @@ pub async fn delete_subscription(
 
 /// Contacts extension to remove pipeline subscription
 async fn unsubscribe_extension(
-    api_state: &ApiState,
+    api_state: &Arc<ApiState>,
     namespace_id: &str,
     pipeline_id: &str,
     extension_id: &str,
@@ -793,14 +793,17 @@ async fn unsubscribe_extension(
     )
     .context("Could not establish client while attempting to unsubscribe")?;
 
-    client
+    if let Err(e) = client
         .unsubscribe(&gofer_sdk::extension::api::types::UnsubscriptionRequest {
             namespace_id: namespace_id.into(),
             pipeline_id: pipeline_id.into(),
             pipeline_subscription_id: subscription_id.into(),
         })
         .await
-        .context("could not unsubscribe from extension")?;
+    {
+        extensions::health::record_failed_call(api_state, &extension, &e);
+        return Err(anyhow::Error::from(e).context("could not unsubscribe from extension"));
+    }
 
     debug!(
         namespace_id = namespace_id,
@@ -831,7 +834,7 @@ enum SubscribeError {
 }
 
 async fn subscribe_extension(
-    api_state: &ApiState,
+    api_state: &Arc<ApiState>,
     subscription: &Subscription,
 ) -> Result<(), SubscribeError> {
     let extension = api_state
@@ -894,6 +897,8 @@ async fn subscribe_extension(
         })
         .await
     {
+        extensions::health::record_failed_call(api_state, &extension, &e);
+
         // A 4xx means the extension looked at the request and said no, which is the user's to fix.
         if let gofer_sdk::extension::api::Error::ErrorResponse(response) = &e
             && response.status().is_client_error()

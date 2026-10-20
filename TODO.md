@@ -143,19 +143,6 @@ finishes at which time it reflects a summary about what it did.
 - The interval extension should create jitter of about 2-5 mins. During that time it can choose when to start counting to extension an event. This is so that when we restart the server all events don't perfectly line up with each other and cause a storm. There might be other, smarter ways to handle this queue and api calling as well.
 - Extensions should be able to report details about their execution somehow. It would be nice when looking at my pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension that is taking overly long.
 - Github sometimes changes their payloads and this causes us to always have to be at the latest release or else casting payloads might break. Investigate payload casting and see if maybe we can get something even partial if not a better error for the user.
-- Extensions have a health endpoint, but Gofer only calls it once, while starting the extension, to know it's ready.
-  After that nothing checks, so an extension that crashes later still shows as running.
-  - Poll each running extension's health endpoint once a minute. It's on the local Docker network, so the traffic is
-    tiny, and it catches extensions Gofer rarely talks to otherwise; cron and interval only hear from Gofer when a
-    pipeline subscribes, so one could be dead for weeks before anyone notices.
-  - On the first missed check, move it to a new `Degraded` state with the error in `state_reason`. A passing check
-    moves it back to `Running`. This is a new API enum value, so the OpenAPI spec and SDKs need regenerating.
-  - A call Gofer already makes (subscribe, unsubscribe, external events, debug) that can't connect counts as a missed
-    check, so we don't wait for the next poll to notice.
-  - Once missed checks in a row pass a threshold (a few minutes' worth), restart it once.
-  - If it keeps failing after the restart, mark it `Failed`, say in `state_reason` that the restart didn't help, and
-    stop polling and remediating. From there it's on an admin, who can fix it and bring it back with a reload. The
-    follow up about telling subscribed pipelines can build on `Degraded` and `Failed`.
 
 #### More extensions:
 

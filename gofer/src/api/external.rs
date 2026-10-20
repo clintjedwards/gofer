@@ -143,6 +143,7 @@ pub async fn external_event_handler(
         .await
     {
         error!(error = %err, extension_id = &path.extension_id, "Could not send external event to extension");
+        extensions::health::record_failed_call(api_state, &extension, &err);
 
         return Err(HttpError::for_internal_error(
             "Could not send external event to extension".into(),

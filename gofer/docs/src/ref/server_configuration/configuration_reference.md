@@ -193,6 +193,10 @@ Controls Gofer's extension system. [More about extensions.](../extensions/index.
 | tls_cert_path | string |         | Path to the TLS certificate Gofer gives extensions.                                                                                                                                                                                              |
 | tls_key_path  | string |         | Path to the TLS certificate's key.                                                                                                                                                                                                               |
 | verify_certs  | bool   | false   | Check the extension's certificate when Gofer talks to it. Only matters when `use_tls` is on.                                                                                                                                                     |
+| health_check_interval_seconds       | int  | 60   | How often Gofer checks that each running extension still answers. See [health checks](../extensions/index.html#health-checks). |
+| health_check_failures_before_action | int  | 3    | Failed checks in a row before Gofer restarts the extension or marks it failed. The first failed check already marks it `degraded`. |
+| health_check_auto_restart           | bool | true | Restart an extension that keeps failing health checks. When off, it's marked `failed` instead. |
+| health_check_max_restarts           | int  | 1    | Restarts to try before giving up and marking the extension `failed`. The count resets once the extension passes a check. |
 
 `gofer extension reload` applies changes to the `install` entries without restarting Gofer. Everything else in this
 block needs a restart.
@@ -202,6 +206,10 @@ block needs a restart.
 stop_timeout = 300            # 5 mins
 use_tls = false
 verify_certs = false
+health_check_interval_seconds = 60
+health_check_failures_before_action = 3
+health_check_auto_restart = true
+health_check_max_restarts = 1
 
 [[extensions.install]]
 id = "github"

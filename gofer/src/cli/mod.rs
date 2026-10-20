@@ -641,7 +641,7 @@ fn colorize_status_text_comfy<T: ToString>(input: T) -> comfy_table::Color {
         "active" | "complete" | "successful" | "success" | "live" | "true" => {
             comfy_table::Color::Green
         }
-        "disabled" | "pending" | "running" | "unreleased" => comfy_table::Color::Yellow,
+        "disabled" | "pending" | "running" | "degraded" | "unreleased" => comfy_table::Color::Yellow,
         "failed" | "fail" | "deprecated" | "false" => comfy_table::Color::Red,
         "cancel" | "cancelled" => comfy_table::Color::AnsiValue(245),
         _ => comfy_table::Color::Reset,
@@ -663,7 +663,7 @@ fn colorize_status_text<T: ToString>(input: T) -> String {
         "active" | "complete" | "successful" | "success" | "live" | "true" => {
             input.green().to_string()
         }
-        "disabled" | "pending" | "running" | "unreleased" => input.yellow().to_string(),
+        "disabled" | "pending" | "running" | "degraded" | "unreleased" => input.yellow().to_string(),
         "failed" | "fail" | "deprecated" | "false" => input.red().to_string(),
         "cancel" | "cancelled" => input.dimmed().to_string(),
         _ => input,

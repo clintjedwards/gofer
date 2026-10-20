@@ -27,6 +27,7 @@ use tracing::{debug, error, info};
 use tungstenite::Message;
 use tungstenite::protocol::{Role as WebsocketRole, frame::coding::CloseCode};
 
+pub mod health;
 pub mod reconcile;
 
 /// The address Gofer tells the extension it should bind to on startup.
@@ -63,6 +64,10 @@ pub enum State {
 
     /// Currently running as reported by scheduler.
     Running,
+
+    /// Running, but it stopped answering health checks. Gofer keeps sending it work and restarts it if it doesn't
+    /// recover. The extension's `state_reason` has the last error.
+    Degraded,
 
     /// Extension has exited; usually because of an error.
     Exited,
@@ -304,9 +309,22 @@ pub struct Extension {
     /// What was running before the last apply, kept so a bad upgrade can be reverted.
     #[serde(skip)]
     pub previous: Option<Box<reconcile::Prepared>>,
+
+    /// Health checks missed in a row. A passing check resets it.
+    #[serde(skip)]
+    pub missed_health_checks: u32,
+
+    /// Restarts Gofer has done because of missed health checks since the extension last passed one.
+    #[serde(skip)]
+    pub health_restarts: u32,
 }
 
 impl Extension {
+    /// Whether the extension's container is up, even if it isn't answering health checks right now.
+    pub fn is_up(&self) -> bool {
+        matches!(self.state, State::Running | State::Degraded)
+    }
+
     /// An entry for an extension that isn't running, so it still shows up in listings with the reason why.
     fn not_running(registration: Registration, manifest: &str, state: State, reason: &str) -> Self {
         Extension {
@@ -320,17 +338,20 @@ impl Extension {
             secret: String::new(),
             applied: None,
             previous: None,
+            missed_health_checks: 0,
+            health_restarts: 0,
         }
     }
 }
 
 impl ApiState {
-    /// The extension with the given id, but only if it's running. Anything that needs to talk to an extension's
-    /// container should go through this.
+    /// The extension with the given id, but only if its container is up. Degraded extensions are included since
+    /// they may well answer; if they don't, callers report it with [`health::record_failed_call`]. Anything that needs to
+    /// talk to an extension's container should go through this.
     pub fn running_extension(&self, extension_id: &str) -> Option<Extension> {
         self.extensions
             .get(extension_id)
-            .filter(|extension| extension.state == State::Running)
+            .filter(|extension| extension.is_up())
             .map(|extension| extension.value().clone())
     }
 
@@ -634,6 +655,8 @@ async fn start_extension(
         secret: token,
         applied: None,
         previous: None,
+        missed_health_checks: 0,
+        health_restarts: 0,
     };
 
     info!(
@@ -683,7 +706,7 @@ pub async fn stop_extensions(api_state: Arc<ApiState>) {
     let running: Vec<String> = api_state
         .extensions
         .iter()
-        .filter(|extension| extension.state == State::Running)
+        .filter(|extension| extension.is_up())
         .map(|extension| extension.key().clone())
         .collect();
 
@@ -1230,10 +1253,11 @@ pub async fn get_extension_debug_info(
         .debug()
         .await
         .map_err(|e| {
+            health::record_failed_call(api_state, &extension, &e);
             http_error!(
                 "Could not query extension's debug endpoint",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             )
         })?

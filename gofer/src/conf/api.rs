@@ -87,6 +87,20 @@ pub struct Extensions {
 
     /// When attempting to communicate from Gofer to an extension verify the cert is correct and known.
     pub verify_certs: bool,
+
+    /// How often, in seconds, Gofer checks that each running extension still answers.
+    pub health_check_interval_seconds: u64,
+
+    /// Failed health checks in a row before Gofer restarts the extension or marks it failed. The first failed check
+    /// already marks it degraded.
+    pub health_check_failures_before_action: u32,
+
+    /// Restart an extension that keeps failing health checks. When off, it's marked failed instead.
+    pub health_check_auto_restart: bool,
+
+    /// How many restarts to try before giving up and marking the extension failed. The count resets once the
+    /// extension passes a check.
+    pub health_check_max_restarts: u32,
 }
 
 /// One `[[extensions.install]]` entry.

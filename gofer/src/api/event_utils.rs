@@ -128,7 +128,7 @@ pub enum Kind {
     },
 
     // Extension events
-    /// An extension started, stopped, or failed to start. Reason says why, when there is one.
+    /// An extension started, stopped, failed, or stopped answering health checks. Reason says why, when there is one.
     ExtensionStateChanged {
         extension_id: String,
         state: extensions::State,

@@ -473,6 +473,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     // A broken extension shouldn't keep Gofer from starting, so failures here are recorded on the extension itself
     // and shown by `gofer extension list` rather than returned.
     extensions::reconcile::reconcile_on_boot(api_state.clone()).await;
+    tokio::spawn(extensions::health::poll(api_state.clone()));
 
     shutdown
         .await

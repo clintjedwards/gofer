@@ -213,17 +213,22 @@ const (
 
 // Defines values for ExtensionState3.
 const (
-	Exited ExtensionState3 = "exited"
+	Degraded ExtensionState3 = "degraded"
 )
 
 // Defines values for ExtensionState4.
 const (
-	Stopped ExtensionState4 = "stopped"
+	Exited ExtensionState4 = "exited"
 )
 
 // Defines values for ExtensionState5.
 const (
-	ExtensionState5Failed ExtensionState5 = "failed"
+	Stopped ExtensionState5 = "stopped"
+)
+
+// Defines values for ExtensionState6.
+const (
+	ExtensionState6Failed ExtensionState6 = "failed"
 )
 
 // Defines values for ExtensionStatus0.
@@ -998,7 +1003,7 @@ type Kind16 struct {
 	} `json:"started_task_execution_cancellation"`
 }
 
-// Kind17 An extension started, stopped, or failed to start. Reason says why, when there is one.
+// Kind17 An extension started, stopped, failed, or stopped answering health checks. Reason says why, when there is one.
 type Kind17 struct {
 	ExtensionStateChanged struct {
 		ExtensionId string         `json:"extension_id"`
@@ -1822,14 +1827,17 @@ type ExtensionState1 string
 // ExtensionState2 Currently running as reported by scheduler.
 type ExtensionState2 string
 
-// ExtensionState3 Extension has exited; usually because of an error.
+// ExtensionState3 Running, but it stopped answering health checks. Gofer keeps sending it work and restarts it if it doesn't recover. The extension's `state_reason` has the last error.
 type ExtensionState3 string
 
-// ExtensionState4 Not running on purpose, because it's disabled or no longer in the config.
+// ExtensionState4 Extension has exited; usually because of an error.
 type ExtensionState4 string
 
-// ExtensionState5 Gofer couldn't start the extension. The extension's `state_reason` says why.
+// ExtensionState5 Not running on purpose, because it's disabled or no longer in the config.
 type ExtensionState5 string
+
+// ExtensionState6 Gofer couldn't start the extension. The extension's `state_reason` says why.
+type ExtensionState6 string
 
 // ExtensionStatus defines model for extension_status.
 type ExtensionStatus struct {
@@ -3486,6 +3494,32 @@ func (t *ExtensionState) FromExtensionState5(v ExtensionState5) error {
 
 // MergeExtensionState5 performs a merge with any union data inside the ExtensionState, using the provided ExtensionState5
 func (t *ExtensionState) MergeExtensionState5(v ExtensionState5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsExtensionState6 returns the union data inside the ExtensionState as a ExtensionState6
+func (t ExtensionState) AsExtensionState6() (ExtensionState6, error) {
+	var body ExtensionState6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromExtensionState6 overwrites any union data inside the ExtensionState as the provided ExtensionState6
+func (t *ExtensionState) FromExtensionState6(v ExtensionState6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeExtensionState6 performs a merge with any union data inside the ExtensionState, using the provided ExtensionState6
+func (t *ExtensionState) MergeExtensionState6(v ExtensionState6) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
