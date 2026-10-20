@@ -132,7 +132,7 @@ async fn record(api_state: &Arc<ApiState>, checked: &Extension, result: Result<(
     let config = &api_state.config.extensions;
     if current.missed_health_checks < config.health_check_failures_before_action.max(1) {
         current.state = State::Degraded;
-        current.state_reason = format!("Not answering health checks; {error}");
+        current.state_reason = format!("Not answering health checks. Last error: {error}");
         api_state.set_extension(current);
         return;
     }

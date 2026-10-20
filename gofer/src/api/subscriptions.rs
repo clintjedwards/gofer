@@ -79,18 +79,31 @@ pub struct Subscription {
     /// The extension's pipeline configuration settings.
     pub settings: HashMap<String, String>,
 
-    /// Whether the subscription can trigger runs. `error` means the extension behind it isn't installed or isn't
-    /// running, so nothing will fire until it's back.
+    /// Whether the subscription is working. `error` means the extension behind it isn't installed or isn't running,
+    /// so the subscription does nothing until it's back.
     pub status: Status,
 
     /// Why the subscription is in `error`, including what's wrong with the extension.
     pub status_reason: Option<StatusReason>,
 }
 
+/// Lowercases the first letter so an extension's reason reads as the second half of a sentence, but leaves acronyms
+/// like "HTTP" alone.
+fn lowercase_first(text: &str) -> String {
+    let mut chars = text.chars();
+    match (chars.next(), chars.next()) {
+        (Some(first), Some(second)) if first.is_uppercase() && !second.is_uppercase() => first
+            .to_lowercase()
+            .chain(text[first.len_utf8()..].chars())
+            .collect(),
+        _ => text.to_string(),
+    }
+}
+
 impl Subscription {
     /// Fills in the status from the extension's current state. What's stored only records whether the subscription
-    /// was turned off; the extension can stop or fail without the subscription ever being touched, so whether it can
-    /// actually fire is worked out each time it's read.
+    /// was turned off; the extension can stop or fail without the subscription ever being touched, so whether it
+    /// actually works is worked out each time it's read.
     pub fn with_extension_health(mut self, api_state: &ApiState) -> Self {
         if self.status == Status::Disabled {
             return self;
@@ -120,7 +133,10 @@ impl Subscription {
             state => format!("Extension '{}' is {state}", self.extension_id),
         };
         if !extension.state_reason.is_empty() {
-            description = format!("{description}; {}", extension.state_reason);
+            description = format!(
+                "{description}: {}",
+                lowercase_first(&extension.state_reason)
+            );
         }
 
         self.status = Status::Error;
@@ -1046,4 +1062,18 @@ async fn subscribe_extension(
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::lowercase_first;
+
+    #[test]
+    fn lowercase_first_leaves_acronyms_alone() {
+        assert_eq!(lowercase_first("Not installed"), "not installed");
+        assert_eq!(lowercase_first("HTTP 500 from extension"), "HTTP 500 from extension");
+        assert_eq!(lowercase_first("already lower"), "already lower");
+        assert_eq!(lowercase_first("X"), "X");
+        assert_eq!(lowercase_first(""), "");
+    }
 }

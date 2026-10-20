@@ -38,7 +38,7 @@ It uses a stripped down version of the cron syntax to do so:
 ### Every year on Xmas
 
 ```bash
-gofer pipeline subscribe simple cron yearly_on_xmas -s expression="0 1 25 12 * *"
+gofer pipeline subscribe simple cron yearly-on-xmas -s expression="0 1 25 12 * *"
 ```
 
 ## Extension Configuration

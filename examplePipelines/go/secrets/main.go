@@ -9,8 +9,8 @@ import (
 func main() {
 	err := sdk.NewPipeline("secrets", "Secrets Pipeline").
 		Description(
-			"This pipeline displays how one might use Gofer's object/kv store to pass container results " +
-				"to other containers.").
+			"This pipeline shows how to pass pipeline and global secrets to a task. Gofer swaps in the real " +
+				"values when the task starts, so they never show up in the pipeline config.").
 		Tasks(
 			sdk.NewTask("simple-task", "ghcr.io/clintjedwards/gofer/debug/log:latest").
 				Description("This task has no dependencies so it will run immediately").

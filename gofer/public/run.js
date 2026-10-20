@@ -371,30 +371,9 @@ function taskDuration(task) {
   }
 }
 
-// Mirrors `dependencies()` in src/cli/mod.rs: "After task build has succeeded." and friends.
-function startsAfter(task) {
-  const groups = { any: [], success: [], failure: [] };
-  for (const [parentId, required] of sortedDependencies(task)) {
-    groups[lower(required)]?.push(parentId);
-  }
-
-  const phrase = (ids, verb) => {
-    if (ids.length === 0) return null;
-    const names = ids.map(taskName).join(", ");
-    return ids.length === 1 ? `After task ${names} has ${verb}.` : `After tasks ${names} have ${verb}.`;
-  };
-
-  const lines = [phrase(groups.any, "finished"), phrase(groups.success, "succeeded"), phrase(groups.failure, "failed")].filter(Boolean);
-  return lines.length ? lines.join("<br>") : `<span class="text-gray-500 dark:text-gray-400">Immediately</span>`;
-}
-
 // ---------------------------------------------------------------------------------------------------------------
 // Rendering helpers
 // ---------------------------------------------------------------------------------------------------------------
-
-function taskName(taskId) {
-  return `<span class="font-mono text-sky-700 dark:text-sky-300">${escapeHtml(taskId)}</span>`;
-}
 
 function namespaceFlag() {
   return target.namespace === "default" ? "" : ` --namespace ${target.namespace}`;
@@ -434,7 +413,7 @@ function renderTitle(run) {
       <span class="mx-1">/</span>
       <a href="${escapeHtml(namespaceOverview)}" class="hover:text-emerald-600">${escapeHtml(run.namespace_id)}</a>
       <span class="mx-1">/</span>
-      <span>${escapeHtml(run.pipeline_id)}</span>
+      <a href="${escapeHtml(pipelinePageLink(run.namespace_id, run.pipeline_id))}" class="hover:text-emerald-600">${escapeHtml(run.pipeline_id)}</a>
     </nav>
     <div class="mt-2 flex flex-wrap items-center gap-3">
       <h1 class="text-3xl font-semibold">Run <span class="text-emerald-500">#${escapeHtml(run.run_id)}</span></h1>
@@ -649,7 +628,7 @@ function renderTimeline(run, tasks) {
           // The last segment still gets a sliver so very short tasks don't vanish.
           const width = i === segments.length - 1 ? Math.max(percent(segment.ended) - from, 0.75) : Math.max(percent(segment.ended) - from, 0);
           const color = PHASES[segment.phase]?.bar ?? tone.bar;
-          const text = `${PHASES[segment.phase]?.label ?? segment.phase} · ${phaseDuration(segment.ended - segment.started)}`;
+          const text = `${PHASES[segment.phase]?.label ?? segment.phase} · ${compactDuration(segment.ended - segment.started)}`;
           const left = Math.min(from, 100 - width);
           // Keep the hover label on screen for segments near either end of the bar.
           const middle = left + width / 2;
@@ -813,11 +792,6 @@ function formatArgs(args) {
   return `<code class="font-mono text-xs whitespace-pre-wrap break-all">${escapeHtml(quoted)}</code>`;
 }
 
-// Short phases get tenths of a second so a quick image check doesn't read as "0s".
-function phaseDuration(millis) {
-  return millis < 10000 ? `${(millis / 1000).toFixed(1)}s` : offset(millis);
-}
-
 // Where the task's time went, phase by phase, so a slow image pull or a long dependency wait stands out.
 function renderTimeSpent(task) {
   const phases = taskPhases(task);
@@ -829,7 +803,7 @@ function renderTimeSpent(task) {
     .map(
       (phase) => `<div class="flex justify-between gap-4">
           <span>${escapeHtml(PHASES[phase.phase]?.label ?? phase.phase)}</span>
-          <span class="font-mono text-xs">${phaseDuration(phase.duration)}</span>
+          <span class="font-mono text-xs">${compactDuration(phase.duration)}</span>
         </div>`
     )
     .join("");
@@ -884,7 +858,7 @@ function renderTaskTable(tasks) {
           <td class="px-4 py-2.5 whitespace-nowrap">${taskDuration(task)}</td>
           <td class="px-4 py-2.5">${statusBadge(lower(task.state))}</td>
           <td class="px-4 py-2.5">${statusBadge(lower(task.status))}</td>
-          <td class="px-4 py-2.5 text-xs">${startsAfter(task)}</td>
+          <td class="px-4 py-2.5 text-xs">${startsAfter(task.task.depends_on)}</td>
         </tr>
         <tr class="${expanded ? "" : "hidden"} bg-gray-50/60 dark:bg-neutral-900/30">
           <td colspan="6" class="px-6 py-4">${renderTaskDetails(task)}</td>

@@ -807,7 +807,7 @@ A run is one or more tasks being executed on behalf of some extension. Run is a 
 | `namespace_id` | string | yes | Unique identifier of the target namespace. |
 | `pipeline_id` | string | yes | Unique identifier of the target pipeline. |
 | `settings` | map of string to string | yes | The extension's pipeline configuration settings. |
-| `status` | [subscription_status](#subscription_status) | yes | Whether the subscription can trigger runs. `error` means the extension behind it isn't installed or isn't running, so nothing will fire until it's back. |
+| `status` | [subscription_status](#subscription_status) | yes | Whether the subscription is working. `error` means the extension behind it isn't installed or isn't running, so the subscription does nothing until it's back. |
 | `status_reason` | [subscription_status_reason](#subscription_status_reason) (nullable) | no | Why the subscription is in `error`, including what's wrong with the extension. |
 | `subscription_id` | string | yes | A unique label differentiating this subscription from other subscriptions. |
 

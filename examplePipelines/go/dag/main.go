@@ -17,7 +17,7 @@ echo "    handlers_test.go:42: expected status 200, got 500"
 exit 1`
 
 func main() {
-	err := sdk.NewPipeline("dag", "Dag Test Pipeline").
+	err := sdk.NewPipeline("dag", "DAG Test Pipeline").
 		Description(
 			"This pipeline shows off how you might use Gofer's DAG(Directed Acyclic Graph) system to chain "+
 				"together containers that depend on other container's end states. This is obviously very useful if you want to perform "+

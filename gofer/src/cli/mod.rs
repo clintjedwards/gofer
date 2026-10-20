@@ -208,8 +208,8 @@ enum Commands {
 
     /// Open the web UI, already signed in with your CLI token.
     ///
-    /// With no arguments this opens the front page. Pass a pipeline to open its latest run, or a pipeline and run to
-    /// open that run's details page.
+    /// With no arguments this opens the front page. Pass a pipeline to open its page, or a pipeline and run to open
+    /// that run's details page.
     ///
     /// Ex. `gofer web dag 3`
     Web {

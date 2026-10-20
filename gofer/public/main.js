@@ -121,24 +121,11 @@ function runDurationMs(run) {
   return (run.ended || Date.now()) - run.started;
 }
 
-// "48s", "1m 52s", "1h 05m"; short enough for tiles and table cells.
-function compactDuration(ms) {
-  const secs = Math.floor(Math.max(ms, 0) / 1000);
-  if (secs < 60) return `${secs}s`;
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ${String(secs % 60).padStart(2, "0")}s`;
-  return `${Math.floor(secs / 3600)}h ${String(Math.floor((secs % 3600) / 60)).padStart(2, "0")}m`;
-}
-
 function median(values) {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function runDetailsLink(run) {
-  const params = new URLSearchParams({ namespace: run.namespace_id, pipeline: run.pipeline_id, run: run.run_id });
-  return `run.html?${params}`;
 }
 
 function namespaceFlag() {
@@ -388,7 +375,7 @@ function renderAttention(entries) {
 
       return `<div class="rounded-md border border-gray-200 dark:border-neutral-700 border-l-4 border-l-red-500 p-4 space-y-3">
           <div class="flex items-baseline justify-between gap-4">
-            <p class="text-sm"><span class="mr-1">✗</span><span class="font-medium">${escapeHtml(name)}</span>
+            <p class="text-sm"><span class="mr-1">✗</span><a href="${escapeHtml(pipelinePageLink(namespace, entry.pipeline.pipeline_id))}" class="font-medium hover:text-emerald-600">${escapeHtml(name)}</a>
               <a href="${escapeHtml(runDetailsLink(lastFinished))}" class="text-emerald-600 dark:text-emerald-400 hover:underline">run #${lastFinished.run_id}</a> failed</p>
             <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400" title="${formatTimestamp(lastFinished.ended)}">${relativeTime(lastFinished.ended || lastFinished.created)}</span>
           </div>
@@ -449,7 +436,7 @@ function renderPipelines(entries) {
       return `<article class="flex flex-col rounded-md ring-1 ring-gray-200 dark:ring-neutral-700 p-4 ${disabled ? "opacity-60" : ""}">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
-              <h3 class="truncate font-medium">${escapeHtml(name || id)}</h3>
+              <h3 class="truncate font-medium"><a href="${escapeHtml(pipelinePageLink(namespace, id))}" class="hover:text-emerald-600">${escapeHtml(name || id)}</a></h3>
               ${name && name !== id ? `<p class="truncate font-mono text-xs text-gray-500 dark:text-gray-400">${escapeHtml(id)}</p>` : ""}
             </div>
             ${disabled ? `<span class="shrink-0 rounded-full bg-gray-100 dark:bg-neutral-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-300">disabled</span>` : ""}

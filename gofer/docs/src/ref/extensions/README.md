@@ -8,7 +8,7 @@ of time has passed. Say you have a pipeline that needs to run every 5 minutes; y
 [interval](./provided/interval.md) extension with an interval of `5m`:
 
 ```bash
-gofer pipeline subscribe simple interval every_five_mins -s every="5m"
+gofer pipeline subscribe simple interval every-five-mins -s every="5m"
 ```
 
 On startup, Gofer launches the interval extension as a long-running container. When your pipeline subscribes to it,

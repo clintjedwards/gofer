@@ -12,7 +12,7 @@ To view the possible commands for the Gofer pipeline simply run `gofer --help`.
 
 ```sh
 gofer web                # the front page
-gofer web my-pipeline    # that pipeline's latest run
+gofer web my-pipeline    # that pipeline's page: recent runs, tasks, and subscriptions
 gofer web my-pipeline 3  # run 3 of that pipeline
 ```
 

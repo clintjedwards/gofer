@@ -22,6 +22,7 @@ pipeline configurations from becoming a mess.
                 Task::new("simple-task", "ubuntu:latest").
                     description("This task simply prints our hello-world message and exits!").
                     command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
+                    .variables(vec![("test", "sample")])
         ])
         .finish().unwrap();
 }

@@ -73,7 +73,7 @@ pub enum PipelineCommands {
     /// For example, the "interval" extension requires the subscribing pipeline to specify which time interval it would like to
     ///  be run on. The setting is called "every". So one might subscribe to the interval extension like so:
     ///
-    /// ex. gofer pipeline subscribe simple interval every_5_minutes -s every="5m"
+    /// ex. gofer pipeline subscribe simple interval every-5-minutes -s every="5m"
     Subscribe {
         /// Pipeline Identifier.
         id: String,
@@ -105,7 +105,7 @@ pub enum PipelineCommands {
     ///
     /// The subscription and its settings are kept, so 'gofer pipeline enable-subscription' turns it back on as it was.
     ///
-    /// ex. gofer pipeline disable-subscription simple interval every_5_minutes
+    /// ex. gofer pipeline disable-subscription simple interval every-5-minutes
     DisableSubscription {
         /// Pipeline Identifier.
         id: String,
@@ -358,7 +358,8 @@ impl Cli {
             (&a.subscription_id, &a.extension_id).cmp(&(&b.subscription_id, &b.extension_id))
         });
 
-        // A subscription in error never fires, so this is often the only sign of why a pipeline stopped running.
+        // A subscription in error does nothing at all, so this is often the only sign of why something a pipeline
+        // relied on, like scheduled runs, stopped happening.
         let subscription_rows = subscriptions
             .into_iter()
             .map(|subscription| {

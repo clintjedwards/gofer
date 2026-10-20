@@ -377,11 +377,14 @@ function generateStatusColor(status) {
       return "dark:ring-yellow-50/10 ring-yellow-600/20 dark:bg-yellow-800 bg-yellow-50 dark:text-yellow-50 text-yellow-700";
     case "complete":
     case "successful":
+    case "active":
       return "dark:ring-emerald-50/10 ring-emerald-600/20 dark:bg-emerald-800 bg-emerald-50 dark:text-emerald-50 text-emerald-700";
     case "failed":
+    case "error":
       return "dark:ring-red-50/10 ring-red-600/20 dark:bg-red-800 bg-red-50 dark:text-red-50 text-red-700";
     case "cancelled":
     case "skipped":
+    case "disabled":
       return "dark:ring-slate-50/10 ring-slate-600/20 dark:bg-slate-800 bg-slate-50 dark:text-slate-50 text-slate-700";
     default:
       return "dark:ring-purple-50/10 ring-purple-600/20 dark:bg-purple-800 bg-purple-50 dark:text-purple-50 text-purple-700";
@@ -437,4 +440,50 @@ document.addEventListener("click", (event) => {
 // A small colored pill for states and statuses, used in the run list and the details page.
 function statusBadge(status) {
   return `<span class="${generateStatusColor(status)} inline-block min-w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${escapeHtml(status)}</span>`;
+}
+
+// "2ms", "3.4s", "48s", "1m 52s", "1h 05m"; short enough for tiles and table cells. Picks the unit that fits so fast
+// things don't round down to zero. Timestamps are in milliseconds, so anything shorter than one reads as "<1ms".
+function compactDuration(ms) {
+  ms = Math.max(ms, 0);
+  if (ms < 1) return "<1ms";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 10000) return `${(Math.floor(ms / 100) / 10).toFixed(1)}s`;
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ${String(secs % 60).padStart(2, "0")}s`;
+  return `${Math.floor(secs / 3600)}h ${String(Math.floor((secs % 3600) / 60)).padStart(2, "0")}m`;
+}
+
+function runDetailsLink(run) {
+  const params = new URLSearchParams({ namespace: run.namespace_id, pipeline: run.pipeline_id, run: run.run_id });
+  return `run.html?${params}`;
+}
+
+function pipelinePageLink(namespaceId, pipelineId) {
+  const params = new URLSearchParams({ namespace: namespaceId, pipeline: pipelineId });
+  return `pipeline.html?${params}`;
+}
+
+function taskName(taskId) {
+  return `<span class="font-mono text-sky-700 dark:text-sky-300">${escapeHtml(taskId)}</span>`;
+}
+
+// Mirrors `dependencies()` in src/cli/mod.rs: "After task build has succeeded." and friends. Takes a task's
+// depends_on map, which is the same shape in a pipeline config and a task execution.
+function startsAfter(dependsOn) {
+  const groups = { any: [], success: [], failure: [] };
+  const sorted = Object.entries(dependsOn || {}).sort(([a], [b]) => a.localeCompare(b));
+  for (const [parentId, required] of sorted) {
+    groups[String(required).toLowerCase()]?.push(parentId);
+  }
+
+  const phrase = (ids, verb) => {
+    if (ids.length === 0) return null;
+    const names = ids.map(taskName).join(", ");
+    return ids.length === 1 ? `After task ${names} has ${verb}.` : `After tasks ${names} have ${verb}.`;
+  };
+
+  const lines = [phrase(groups.any, "finished"), phrase(groups.success, "succeeded"), phrase(groups.failure, "failed")].filter(Boolean);
+  return lines.length ? lines.join("<br>") : `<span class="text-gray-500 dark:text-gray-400">Immediately</span>`;
 }

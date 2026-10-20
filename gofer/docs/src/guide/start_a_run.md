@@ -22,7 +22,8 @@ The easiest way to follow a run is the web UI:
 gofer web simple
 ```
 
-This opens the pipeline's latest run, where you can see each task's state and logs as they happen.
+This opens the pipeline's page. Click the newest run to see each task's state and logs as they happen, or use
+`gofer web simple <run_id>` to go straight to a run.
 
 ## Or from the terminal
 

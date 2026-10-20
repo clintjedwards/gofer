@@ -1543,7 +1543,7 @@ type Subscription struct {
 	// Settings The extension's pipeline configuration settings.
 	Settings map[string]string `json:"settings"`
 
-	// Status Whether the subscription can trigger runs. `error` means the extension behind it isn't installed or isn't running, so nothing will fire until it's back.
+	// Status Whether the subscription is working. `error` means the extension behind it isn't installed or isn't running, so the subscription does nothing until it's back.
 	Status SubscriptionStatus `json:"status"`
 
 	// StatusReason Why the subscription is in `error`, including what's wrong with the extension.

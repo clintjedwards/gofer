@@ -30,10 +30,6 @@ None
     directives. Probably nobody does this.
   * champagne/run_tests has the same problem on the Rust side (`gofer_sdk` from git on `branch = "main"`); a path
     dependency would fix it.
-* Follow up: pipelines aren't told when an extension they're subscribed to stops (disabled, unconfigured, or failed to
-  start). The subscriptions stay but nothing triggers them, so a pipeline owner just sees runs that never happen.
-  Showing the extension's state next to a pipeline's subscriptions might be a quick fix; worth checking whether
-  there's more to it (events, notifying the pipeline, what the web UI shows).
 * Buffer external events (webhooks) for extensions that are down, e.g. while one restarts during a reload. Keep the
   last N requests per extension with the time they arrived and hand them over when the extension starts, letting the
   extension decide what to do with them. That covers webhook driven extensions like github. Time based extensions

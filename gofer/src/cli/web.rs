@@ -81,7 +81,7 @@ impl Cli {
         }
     }
 
-    /// Picks the page to open: a run's details page, a pipeline's latest run, or the front page.
+    /// Picks the page to open: a run's details page, a pipeline's page, or the front page.
     async fn web_page(
         &self,
         namespace: &str,
@@ -103,28 +103,13 @@ impl Cli {
             return Ok(front_page);
         };
 
-        let run_id = match run_id {
-            Some(run_id) => run_id,
-            None => {
-                let latest = self
-                    .client
-                    .list_runs(namespace, &pipeline_id, Some(1), None, Some(true), None)
-                    .await
-                    .context("Could not retrieve the latest run from Gofer api")?
-                    .into_inner()
-                    .runs;
-
-                match latest.first() {
-                    Some(run) => run.run_id,
-                    None => {
-                        println!(
-                            "Pipeline {} has no runs yet, so opening the front page",
-                            pipeline_id.cyan()
-                        );
-                        return Ok(front_page);
-                    }
-                }
-            }
+        let Some(run_id) = run_id else {
+            let mut pipeline_page = base.join("/pipeline.html")?;
+            pipeline_page
+                .query_pairs_mut()
+                .append_pair("namespace", namespace)
+                .append_pair("pipeline", &pipeline_id);
+            return Ok(pipeline_page);
         };
 
         let mut run_page = base.join("/run.html")?;

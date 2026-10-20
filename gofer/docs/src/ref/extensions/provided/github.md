@@ -56,7 +56,7 @@ pipeline.
 ### Example
 
 ```bash
-gofer pipeline subscribe simple github run_tests \
+gofer pipeline subscribe simple github run-tests \
     -s "repository=clintjedwards/experimental" \
     -s "event_filter=pull_request_with_check/opened,synchronize,reopened"
 ```

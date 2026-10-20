@@ -23,13 +23,13 @@ For example, to run the `simple` pipeline every five minutes with the [interval]
 extension:
 
 ```bash
-gofer pipeline subscribe simple interval every_five_mins -s every="5m"
+gofer pipeline subscribe simple interval every-five-mins -s every="5m"
 ```
 
 Or every Christmas at 1am with [cron](../extensions/provided/cron.md):
 
 ```bash
-gofer pipeline subscribe simple cron yearly_on_xmas -s expression="0 1 25 12 * *"
+gofer pipeline subscribe simple cron yearly-on-xmas -s expression="0 1 25 12 * *"
 ```
 
 Parameters can be [secrets](../secret_store/index.html) too, using the same `pipeline_secret{{key}}` or
@@ -38,20 +38,21 @@ extension.
 
 ## Seeing and removing subscriptions
 
-`gofer fetch <pipeline_id>` lists a pipeline's subscriptions along with each one's status. `active` means it can
-trigger runs. `error` means the extension behind it isn't running, so nothing will fire until it's back; the reason
-column says what's wrong with the extension. To remove one:
+`gofer fetch <pipeline_id>` lists a pipeline's subscriptions along with each one's status, and so does the
+pipeline's page in the web UI (`gofer web <pipeline_id>`). `active` means it can trigger runs. `error` means the
+extension behind it isn't running, so nothing will fire until it's back; the reason column says what's wrong with the
+extension. To remove one:
 
 ```bash
-gofer pipeline unsubscribe simple interval every_five_mins
+gofer pipeline unsubscribe simple interval every-five-mins
 ```
 
 To stop one from triggering runs for a while without losing its settings, disable it, and enable it again when you
 want it back:
 
 ```bash
-gofer pipeline disable-subscription simple interval every_five_mins
-gofer pipeline enable-subscription simple interval every_five_mins
+gofer pipeline disable-subscription simple interval every-five-mins
+gofer pipeline enable-subscription simple interval every-five-mins
 ```
 
 ## What the extension passes to your run
