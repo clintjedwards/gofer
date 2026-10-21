@@ -1,8 +1,11 @@
-use crate::cli::{Cli, colorize_status_text, colorize_status_text_comfy, rail, tasks_table};
-use anyhow::{Context, Result};
+use crate::cli::{
+    Cli, api_error_message, colorize_status_text, colorize_status_text_comfy, rail, tasks_table,
+};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
+use gofer_sdk::api::types::ConfigState;
 use polyfmt::{println, success};
 
 #[derive(Debug, Args, Clone)]
@@ -32,6 +35,18 @@ pub enum ConfigCommands {
         version: u64,
     },
 
+    /// Deploy an existing pipeline config version.
+    ///
+    /// Makes that version the one new runs use, replacing the live one. Mostly useful for rolling back to an
+    /// earlier version; `gofer up` already deploys new versions as it registers them.
+    Deploy {
+        /// Pipeline Identifier.
+        id: String,
+
+        /// Config version.
+        version: u64,
+    },
+
     /// Delete a pipeline config
     ///
     /// You cannot remove currently live versions or the last pipeline configuration.
@@ -54,6 +69,10 @@ impl Cli {
             ConfigCommands::List { id } => self.pipeline_config_list(command.namespace, &id).await,
             ConfigCommands::Get { id, version } => {
                 self.pipeline_config_get(command.namespace, &id, version)
+                    .await
+            }
+            ConfigCommands::Deploy { id, version } => {
+                self.pipeline_config_deploy(command.namespace, &id, version)
                     .await
             }
             ConfigCommands::Delete { id, version } => {
@@ -180,6 +199,69 @@ impl Cli {
             println!("  {}", config.config.description);
         }
         println!("{}", content.trim_end());
+        Ok(())
+    }
+
+    pub async fn pipeline_config_deploy(
+        &self,
+        namespace_id: Option<String>,
+        id: &str,
+        version: u64,
+    ) -> Result<()> {
+        let namespace = match namespace_id {
+            Some(namespace) => namespace,
+            None => self.conf.namespace.clone(),
+        };
+
+        // Version 0 means "latest" when getting a config, which isn't something you'd mean to deploy.
+        if version == 0 {
+            bail!("Config versions start at 1");
+        }
+
+        let config = self
+            .client
+            .get_config(&namespace, id, version as i64, None)
+            .await
+            .map_err(|e| anyhow!("Could not get config v{version}; {}", api_error_message(e)))?
+            .into_inner()
+            .config;
+
+        // Deploying the live version again would only add an empty deployment to the history.
+        if config.state == ConfigState::Live {
+            success!(
+                "{} is already live; nothing to deploy",
+                format!("v{version}").magenta()
+            );
+            return Ok(());
+        }
+
+        let deployment = self
+            .client
+            .deploy_config(&namespace, id, version as i64)
+            .await
+            .map_err(|e| {
+                anyhow!(
+                    "Could not deploy config v{version}; {}",
+                    api_error_message(e)
+                )
+            })?
+            .into_inner()
+            .deployment;
+
+        success!(
+            "Deployed {} -> {}",
+            format!("v{}", deployment.start_version).magenta(),
+            format!("v{}", deployment.end_version).magenta()
+        );
+        println!(
+            "  View the deployment: {}",
+            format!(
+                "gofer pipeline deployment get {id} {}",
+                deployment.deployment_id
+            )
+            .cyan()
+        );
+
         Ok(())
     }
 

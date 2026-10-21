@@ -31,6 +31,20 @@ Content-Type: application/json
 Authorization: Bearer {{secret}}
 HTTP 201
 
+# Deploying a version that doesn't exist is refused and leaves the live version alone
+POST http://localhost:8080/api/namespaces/default/pipelines/test/configs/99
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+HTTP 404
+
+GET http://localhost:8080/api/namespaces/default/pipelines/test/configs/1
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.config.state" == "live"
+
 # Start a run with a variable name that cannot be an environment variable
 POST http://localhost:8080/api/namespaces/default/pipelines/test/runs
 gofer-api-version: v0

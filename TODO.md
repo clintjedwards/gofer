@@ -2,6 +2,15 @@
 
 None
 
+# This release
+
+In this order:
+
+1. `gofer pipeline config deploy` (below).
+2. Timeouts (below). A run that hits one is marked failed, and the reason says which timeout it hit (the task's own
+   or the global one) so it's easy to tell what happened.
+3. Fix TLS (below). We're keeping it instead of dropping it; most of it is there, it just needs to work.
+
 # Small things I want to keep track of that I definitely need to do.
 
 * Let extension manifests declare the additional roles an extension needs, instead of operators having to know and
@@ -35,12 +44,12 @@ None
   extension decide what to do with them. That covers webhook driven extensions like github. Time based extensions
   (cron, interval) are harder since there's nothing for Gofer to store; they'd need their own way to notice and
   handle what they missed while down.
-* Consider dropping TLS support entirely and expecting a reverse proxy (like Caddy) in front of Gofer. What's there
+* Fix TLS. We decided to keep it rather than expect a reverse proxy (like Caddy) in front of Gofer. What's there
   now has been buggy (until recently turning on TLS always served the bundled localhost cert, and external events only
   used TLS when `server.use_tls` was set) and it's spread over three blocks (`server`, `external_events`,
-  `extensions`) plus `development.use_included_certs`. Things to check if we do: extensions talk to Gofer over the
-  docker network, so `extensions.use_tls`/`verify_certs` and the certs handed to extensions need their own decision;
-  update the production config in the server configuration docs and the configuration reference.
+  `extensions`) plus `development.use_included_certs`. Things to check: extensions talk to Gofer over the docker
+  network, so `extensions.use_tls`/`verify_certs` and the certs handed to extensions need their own decision; update
+  the production config in the server configuration docs and the configuration reference if anything changes.
 * Add `gofer pipeline config deploy <pipeline_id> <version>` so you can deploy an existing version, mainly for
   rolling back. The API already supports it (`POST .../pipelines/{id}/configs/{version}`), but from the CLI the only
   way today is to `gofer up` the old code again, and `gofer up --deploy false` leaves you with an unreleased version
@@ -75,8 +84,6 @@ None
 where the container is running.
 * We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
   directory. Think more about how the UX should be handled here.
-* Pipeline configs when they are registered need to be hashed, so that we can make sure the user didn't mistakenly
-try to register the same thing twice.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
 * Timeouts. Tasks have no timeout and there's no global one for runs either; the only setting is the grace period for

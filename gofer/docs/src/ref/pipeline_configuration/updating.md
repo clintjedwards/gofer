@@ -42,7 +42,8 @@ Each version is in one of three states:
 
 `gofer up --deploy false ./my-pipeline` stores the new version without making it live. Runs keep using the current
 live version until a new one is deployed. This is handy when you want the new version in Gofer, to look over or deploy
-later, without it taking effect yet.
+later, without it taking effect yet. When you're ready, `gofer pipeline config deploy <pipeline_id> <version>` makes
+it live.
 
 A brand new pipeline registered this way has no live version, so it can't run until one is deployed.
 
@@ -56,17 +57,16 @@ when a change went out. Only one deployment can happen at a time per pipeline.
 
 ## Rolling back
 
-The simplest way to roll back is to `gofer up` the old code again, for example from an earlier commit. That registers
-it as a new version and deploys it.
-
-You can also deploy any existing version directly through the API:
+To roll back, deploy the earlier version again. Find it with `gofer pipeline config list <pipeline_id>`, then:
 
 ```bash
-curl -X POST \
-  -H "Authorization: Bearer $GOFER_TOKEN" \
-  -H "gofer-api-version: v0" \
-  http://localhost:8080/api/namespaces/default/pipelines/my-pipeline/configs/2
+gofer pipeline config deploy my-pipeline 2
 ```
+
+That makes version 2 live and deprecates the current one, without registering anything new.
+
+You can also `gofer up` the old code again, for example from an earlier commit. That registers it as a new version
+and deploys it, which is the way to go if the version you want has been deleted.
 
 ## Cleaning up old versions
 

@@ -863,6 +863,34 @@ pub async fn deploy_config(
     )
     .await?;
 
+    // Without this a version that doesn't exist would still deprecate the live config below, leaving the pipeline
+    // with nothing live.
+    match storage::pipeline_configs::get(
+        &mut tx,
+        &path.namespace_id,
+        &path.pipeline_id,
+        path.version,
+    )
+    .await
+    {
+        Ok(_) => {}
+        Err(StorageError::NotFound) => {
+            return Err(HttpError::for_client_error(
+                None,
+                ClientErrorStatusCode::NOT_FOUND,
+                format!("Config version '{}' does not exist", path.version),
+            ));
+        }
+        Err(err) => {
+            return Err(http_error!(
+                "Could not get config from database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(err.into())
+            ));
+        }
+    };
+
     let end_version = path.version;
 
     // Step 1: Insert the new deployment

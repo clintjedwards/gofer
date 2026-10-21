@@ -26,6 +26,7 @@ wait for the current one to finish.
 ## Keep your pipeline config next to your code.
 
 Pipeline configs are code, so keep them in the repository they build and review them like any other change. Run
-`gofer up` from the commit you want live, and roll back by running it again from an older commit. If you want a new
-version stored in Gofer without it going live yet, use `gofer up --deploy false`. See
+`gofer up` from the commit you want live, and roll back with `gofer pipeline config deploy` or by running `gofer up`
+again from an older commit. If you want a new version stored in Gofer without it going live yet, use
+`gofer up --deploy false`. See
 [updating pipelines](../../ref/pipeline_configuration/updating.md) for how versions and deployments work.
