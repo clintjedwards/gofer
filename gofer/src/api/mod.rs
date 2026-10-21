@@ -520,34 +520,41 @@ async fn listen_for_terminate_signal() {
 
 /// Loads TLS files into memory so we can hand them over in a consistent format regardless of where they come from.
 /// Returns (cert, key) as bytes
+///
+/// Cert paths always win over the included certs. The default config turns `development.use_included_certs` on, so
+/// letting it win would mean a production config that sets real paths but doesn't also turn that off quietly serves
+/// the bundled localhost cert.
 fn load_tls(
     use_included_certs: bool,
     tls_cert_path: Option<String>,
     tls_key_path: Option<String>,
 ) -> Result<(Vec<u8>, Vec<u8>)> {
-    if use_included_certs {
-        warn!(
-            "Using included localhost certs due to config value 'development.use_included_certs'"
-        );
+    // An empty path, like from an env var set to "", counts as unset.
+    let tls_cert_path = tls_cert_path.filter(|path| !path.is_empty());
+    let tls_key_path = tls_key_path.filter(|path| !path.is_empty());
 
-        return Ok((LOCALHOST_CERT.to_vec(), LOCALHOST_KEY.to_vec()));
+    match (tls_cert_path, tls_key_path) {
+        (Some(cert_path), Some(key_path)) => {
+            let tls_cert = std::fs::read(&cert_path)
+                .with_context(|| format!("Could not read TLS cert file '{cert_path}'"))?;
+            let tls_key = std::fs::read(&key_path)
+                .with_context(|| format!("Could not read TLS key file '{key_path}'"))?;
+
+            Ok((tls_cert, tls_key))
+        }
+        (None, None) if use_included_certs => {
+            warn!(
+                "Using included localhost certs due to config value 'development.use_included_certs'; \
+                these are for development only"
+            );
+
+            Ok((LOCALHOST_CERT.to_vec(), LOCALHOST_KEY.to_vec()))
+        }
+        (None, None) => bail!(
+            "Could not load TLS certificates; TLS is turned on but no cert or key path is set"
+        ),
+        _ => bail!("Could not load TLS certificates; both a cert path and a key path are needed"),
     }
-
-    if tls_cert_path.is_none() || tls_key_path.is_none() {
-        bail!("Could not load TLS certificates; one or more paths are empty")
-    }
-
-    let tls_cert = std::fs::read(tls_cert_path.unwrap()).context(
-        "Error occurred while attempting to read TLS \
-          cert file from path",
-    )?;
-
-    let tls_key = std::fs::read(tls_key_path.unwrap()).context(
-        "Error occurred while attempting to read TLS \
-          key file from path",
-    )?;
-
-    Ok((tls_cert, tls_key))
 }
 
 /// Registers the handlers into the API harness. Can panic.
@@ -1634,6 +1641,26 @@ async fn websocket_error(
 mod tests {
     use super::*;
     use rstest::rstest;
+
+    #[test]
+    fn load_tls_prefers_cert_paths_over_included_certs() {
+        let dir = tempfile::tempdir().unwrap();
+        let cert_path = dir.path().join("cert.pem");
+        let key_path = dir.path().join("key.pem");
+        std::fs::write(&cert_path, "real cert").unwrap();
+        std::fs::write(&key_path, "real key").unwrap();
+        let path = |p: &std::path::Path| Some(p.to_string_lossy().to_string());
+
+        let (cert, key) = load_tls(true, path(&cert_path), path(&key_path)).unwrap();
+        assert_eq!(cert, b"real cert");
+        assert_eq!(key, b"real key");
+
+        let (cert, _) = load_tls(true, None, Some(String::new())).unwrap();
+        assert_eq!(cert, LOCALHOST_CERT);
+
+        assert!(load_tls(false, None, None).is_err());
+        assert!(load_tls(true, path(&cert_path), None).is_err());
+    }
 
     #[rstest]
     #[case::simple("deploy_key", true)]

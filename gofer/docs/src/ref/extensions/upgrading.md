@@ -44,3 +44,11 @@ The simplest way to stay compatible is to keep reading old formats rather than r
 store something, read both the old and new format and write the new one. An extension that converts old data the
 first time it starts works too, but then a revert to the previous version can't read the converted data, so prefer
 reading both whenever you can.
+
+#### After Gofer 0.12: `GOFER_EXTENSION_SYSTEM_GOFER_HOST` is a full URL
+
+Gofer used to pass a bare `host:port`, and extensions picked `http` or `https` from `GOFER_EXTENSION_SYSTEM_USE_TLS`.
+That setting is about whether the extension itself serves TLS, not Gofer, so extensions used the wrong scheme whenever
+the two differed. Gofer now passes the full URL, like `https://gofer.internal:8080`, and the Go SDK's
+`NewClientWithHeaders` and `ListExtensionSubscriptions` take it as is and no longer have a `useTLS` argument. Rebuild
+Go extensions against the new SDK. Rust extensions read `gofer_host` and should use it as is.

@@ -55,9 +55,10 @@ lead to loss of data on server restarts, and they turn off authentication.
 ```toml
 [server]
 bind_address = "0.0.0.0:8080"
-# The address extension containers use to reach Gofer. With the docker scheduler this is usually the docker
-# bridge's address on the host.
-extension_address = "172.17.0.1:8080"
+# The address extension and task containers use to reach Gofer. With the docker scheduler that's the docker
+# bridge's address on the host, but with TLS on, containers check Gofer's certificate against this address. So use
+# a name your certificate covers that resolves to the host from inside containers.
+extension_address = "https://gofer.internal:8080"
 storage_path = "/var/lib/gofer/gofer.db"
 use_tls = true
 tls_cert_path = "/etc/gofer/tls/cert.pem"

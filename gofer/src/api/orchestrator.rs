@@ -2928,9 +2928,10 @@ pub fn combine_variables(run: &runs::Run, task: &tasks::Task, api_base_url: &str
     task_execution_vars.into_values().collect()
 }
 
-/// The address tasks use to reach Gofer. Tasks run on the same container network as extensions, so they use the
-/// extension address; it's stored without a scheme so we add one here.
-fn task_api_base_url(server: &conf::api::Server) -> String {
+/// The URL tasks and extensions use to reach Gofer. They run on the same container network, so they use the
+/// extension address rather than the one users reach Gofer at. It is usually stored without a scheme, so we add one
+/// based on whether Gofer serves TLS.
+pub fn task_api_base_url(server: &conf::api::Server) -> String {
     if server.extension_address.contains("://") {
         return server.extension_address.clone();
     }

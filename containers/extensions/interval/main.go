@@ -128,7 +128,7 @@ func newExtension() *extension {
 		systemConfig:         config,
 	}
 
-	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not query subscriptions from Gofer host")
 	}
@@ -159,7 +159,7 @@ func (e *extension) startInterval(ctx context.Context,
 	log := log.With().Str("namespace_id", namespace).Str("pipeline_id", pipeline).
 		Str("pipeline_subscription_id", pipelineExtensionLabel).Logger()
 
-	client, err := sdk.NewClientWithHeaders(e.systemConfig.GoferHost, e.systemConfig.Secret, e.systemConfig.UseTLS, sdk.GoferAPIVersion0)
+	client, err := sdk.NewClientWithHeaders(e.systemConfig.GoferHost, e.systemConfig.Secret, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Error().Err(err).Msg("Could not establish Gofer client")
 	}

@@ -8,7 +8,7 @@ In this order:
 
 1. ~~`gofer pipeline config deploy`~~ (done).
 2. ~~Task timeouts~~ (done).
-3. Fix TLS (below). We're keeping it instead of dropping it; most of it is there, it just needs to work.
+3. ~~Fix TLS~~ (done).
 
 # Small things I want to keep track of that I definitely need to do.
 
@@ -43,12 +43,6 @@ In this order:
   extension decide what to do with them. That covers webhook driven extensions like github. Time based extensions
   (cron, interval) are harder since there's nothing for Gofer to store; they'd need their own way to notice and
   handle what they missed while down.
-* Fix TLS. We decided to keep it rather than expect a reverse proxy (like Caddy) in front of Gofer. What's there
-  now has been buggy (until recently turning on TLS always served the bundled localhost cert, and external events only
-  used TLS when `server.use_tls` was set) and it's spread over three blocks (`server`, `external_events`,
-  `extensions`) plus `development.use_included_certs`. Things to check: extensions talk to Gofer over the docker
-  network, so `extensions.use_tls`/`verify_certs` and the certs handed to extensions need their own decision; update
-  the production config in the server configuration docs and the configuration reference if anything changes.
 * Add `gofer service drain` for admins, for safely stopping Gofer before an upgrade or restart.
   * It sets `ignore_pipeline_run_events` (already supported through `PUT /api/system`) so new runs are refused, then
     streams the runs still in progress and how far along each one is (tasks done out of total, maybe the task

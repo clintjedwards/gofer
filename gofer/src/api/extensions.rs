@@ -502,11 +502,11 @@ async fn start_extension(
             value: token.clone(),
             source: VariableSource::System,
         },
-        // The Gofer host is the url where extensions can contact the Gofer server. This is used by the extension to simply
-        // communicate back to the original gofer host, in case it needs to execute any API calls.
+        // The full URL, scheme included, where extensions can reach Gofer's API. The scheme follows `server.use_tls`;
+        // `extensions.use_tls` is only about whether the extension itself serves TLS.
         Variable {
             key: "GOFER_EXTENSION_SYSTEM_GOFER_HOST".into(),
-            value: api_state.config.server.extension_address.clone(),
+            value: crate::api::orchestrator::task_api_base_url(&api_state.config.server),
             source: VariableSource::System,
         },
         Variable {

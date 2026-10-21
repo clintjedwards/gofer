@@ -30,6 +30,13 @@ secret = true
 default = ""
 documentation = "The webhook secret set on the Github app. Gofer uses it to verify that webhooks really came from Github. It should be a long, random string."
 
+[[config_params]]
+key = "gofer_url"
+required = false
+secret = false
+default = ""
+documentation = "Where people reach Gofer's web UI, like https://gofer.example.com. When set, each check run links to its run's page in Gofer. When not, check runs have no link."
+
 [[pipeline_subscription_params]]
 key = "event_filter"
 required = true

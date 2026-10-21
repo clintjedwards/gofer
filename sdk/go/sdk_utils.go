@@ -22,20 +22,15 @@ func (g GoferAPIVersion) goferAPIVersionInterceptor(_ context.Context, req *http
 	return nil
 }
 
-// Creates a new client for the main Gofer API with all the required headers.
-func NewClientWithHeaders(host, token string, useTLS bool, apiVersion GoferAPIVersion) (*Client, error) {
-	scheme := "http://"
-
-	if useTLS {
-		scheme = "https://"
-	}
-
+// Creates a new client for the main Gofer API with all the required headers. The url includes the scheme, like
+// "https://gofer.example.com:8080"; extensions get theirs from GoferHost in their system config.
+func NewClientWithHeaders(url, token string, apiVersion GoferAPIVersion) (*Client, error) {
 	auth, err := securityprovider.NewSecurityProviderBearerToken(token)
 	if err != nil {
 		return nil, fmt.Errorf("could not establish Gofer client while attempting to create auth header: %w", err)
 	}
 
-	client, err := NewClient(scheme+host, WithRequestEditorFn(auth.Intercept),
+	client, err := NewClient(url, WithRequestEditorFn(auth.Intercept),
 		WithRequestEditorFn(apiVersion.goferAPIVersionInterceptor))
 	if err != nil {
 		return nil, fmt.Errorf("could not establish Gofer client: %w", err)
@@ -46,8 +41,8 @@ func NewClientWithHeaders(host, token string, useTLS bool, apiVersion GoferAPIVe
 
 // List an extension's subscriptions, leaving out ones that were turned off. Extensions call this on startup to load
 // what they should be watching for.
-func ListExtensionSubscriptions(extension_id, goferHost, secret string, useTLS bool, apiVersion GoferAPIVersion) ([]Subscription, error) {
-	client, err := NewClientWithHeaders(goferHost, secret, useTLS, apiVersion)
+func ListExtensionSubscriptions(extension_id, goferURL, secret string, apiVersion GoferAPIVersion) ([]Subscription, error) {
+	client, err := NewClientWithHeaders(goferURL, secret, apiVersion)
 	if err != nil {
 		return nil, fmt.Errorf("could not establish Gofer client: %w", err)
 	}

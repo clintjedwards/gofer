@@ -389,13 +389,15 @@ type ExtensionSystemConfig struct {
 	// with the main application logs.
 	LogLevel string `split_words:"true" default:"info"`
 
-	// Contains the raw bytes for a TLS cert used by the extension to authenticate clients.
+	// Whether this extension serves TLS, with TLSCert and TLSKey holding the raw cert and key it should use.
 	UseTLS  bool   `split_words:"true" required:"true"`
 	TLSCert string `split_words:"true" json:"-"`
 	TLSKey  string `split_words:"true" json:"-"`
 
 	BindAddress string `default:"0.0.0.0:8082"`
-	GoferHost   string `split_words:"true" default:"localhost:8080"`
+	// The full URL, scheme included, for reaching Gofer's API, like "https://172.17.0.1:8080". UseTLS has nothing
+	// to do with it; that's only about whether this extension serves TLS.
+	GoferHost string `split_words:"true" default:"http://localhost:8080"`
 }
 
 // GetExtensionSystemConfig returns environment variables that all extensions require. aka "System variables"

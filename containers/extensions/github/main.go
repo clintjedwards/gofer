@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,7 @@ const (
 	configAppInstallation  = "app_installation"
 	configAppKey           = "app_key"
 	configAppWebhookSecret = "app_webhook_secret"
+	configGoferURL         = "gofer_url"
 )
 
 // Pipeline configuration parameters.
@@ -104,6 +106,9 @@ type pipelineSubscription struct {
 type extension struct {
 	webhookSecret string // Github app webhook secret
 
+	// Where people reach Gofer's web UI, for linking check runs to their run. Empty means check runs get no link.
+	goferURL string
+
 	client *github.Client
 
 	// A mapping of event type to pipeline subscription. A single subscription could possibly
@@ -149,12 +154,13 @@ func newExtension() extension {
 
 	extension := extension{
 		webhookSecret: webhookSecret,
+		goferURL:      strings.TrimRight(extsdk.GetConfigFromEnv(configGoferURL), "/"),
 		client:        client,
 		config:        config,
 		subscriptions: map[string]map[string][]pipelineSubscription{},
 	}
 
-	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not query subscriptions from Gofer host")
 	}
@@ -254,7 +260,7 @@ func (e *extension) reportRunToGithubAPI(sub pipelineSubscription, event *github
 		return
 	}
 
-	goferClient, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, e.config.UseTLS, sdk.GoferAPIVersion0)
+	goferClient, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Error().Err(err).Msg("Could not establish Gofer client")
 		return
@@ -323,13 +329,17 @@ func (e *extension) reportRunToGithubAPI(sub pipelineSubscription, event *github
 			conclusion = "cancelled"
 		}
 
-		scheme := "http://"
-
-		if e.config.UseTLS {
-			scheme = "https://"
+		// GoferHost is Gofer's address on the container network, which people on Github can't reach, so the link
+		// only exists when the operator tells us where the web UI lives.
+		var detailsURL *string
+		if e.goferURL != "" {
+			query := url.Values{
+				"namespace": {sub.namespace},
+				"pipeline":  {sub.pipeline},
+				"run":       {strconv.FormatInt(int64(runInfo.Run.RunId), 10)},
+			}
+			detailsURL = github.String(fmt.Sprintf("%s/run.html?%s", e.goferURL, query.Encode()))
 		}
-
-		detailsURL := fmt.Sprintf("%s/api/namespaces/%s/pipelines/%s/runs/%d", scheme+e.config.GoferHost, sub.namespace, sub.pipeline, runInfo.Run.RunId)
 
 		duration := formatDuration(int64(getRunResponse.Run.Started), int64(getRunResponse.Run.Ended))
 
@@ -353,7 +363,7 @@ func (e *extension) reportRunToGithubAPI(sub pipelineSubscription, event *github
 
 		_, _, err = e.client.Checks.UpdateCheckRun(context.Background(), owner, repo, checkRun.GetID(), github.UpdateCheckRunOptions{
 			Name:        fmt.Sprintf("%s", sub.extensionLabel),
-			DetailsURL:  &detailsURL,
+			DetailsURL:  detailsURL,
 			Status:      github.String("completed"),
 			CompletedAt: &github.Timestamp{Time: time.Now()},
 			Conclusion:  github.String(conclusion),
@@ -596,6 +606,12 @@ var documentation = extsdk.Documentation{
 			Required: true,
 			Secret:   true,
 		},
+		{
+			Key: configGoferURL,
+			Documentation: "Where people reach Gofer's web UI, like https://gofer.example.com. When set, each check" +
+				" run links to its run's page in Gofer. When not, check runs have no link.",
+			Required: false,
+		},
 	},
 }
 
@@ -688,7 +704,7 @@ func (e *extension) ExternalEvent(_ context.Context, request extsdk.ExternalEven
 		log := log.With().Str("namespace_id", sub.namespace).Str("pipeline_id", sub.pipeline).
 			Str("pipeline_subscription_id", sub.extensionLabel).Logger()
 
-		client, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, e.config.UseTLS, sdk.GoferAPIVersion0)
+		client, err := sdk.NewClientWithHeaders(e.config.GoferHost, e.config.Secret, sdk.GoferAPIVersion0)
 		if err != nil {
 			log.Error().Err(err).Msg("Could not establish Gofer client")
 			continue

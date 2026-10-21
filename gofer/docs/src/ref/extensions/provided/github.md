@@ -71,6 +71,7 @@ of your own; the [setup walkthrough below](#setting-it-up) covers creating one a
 | app_installation   | Required | no     | The ID of the app's installation on your account or organization. See [finding the installation ID](#2-find-the-installation-id) below.           |
 | app_key            | Required | yes    | The Github app's private key in PEM format, exactly as Github gives it to you.                                                                      |
 | app_webhook_secret | Required | yes    | The webhook secret set on the Github app. Gofer uses it to verify that webhooks really came from Github. It should be a long, random string.        |
+| gofer_url          |          | no     | Where people reach Gofer's web UI, like `https://gofer.example.com`. When set, each check run links to its run's page in Gofer. When not, check runs have no link. |
 
 Secret settings must be [global secret references](../index.html#secrets) like `global_secret{{github-app-key}}`.
 
@@ -85,6 +86,7 @@ app_id = "112348"
 app_installation = "99560091"
 app_key = "global_secret{{github-app-key}}"
 app_webhook_secret = "global_secret{{github-app-webhook-secret}}"
+gofer_url = "https://gofer.example.com"
 ```
 
 <div class="box note">

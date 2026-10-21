@@ -293,7 +293,7 @@ pub struct SystemConfig {
     /// with the main application logs.
     pub log_level: String,
 
-    /// If use_tls is false tls_key and tls_cert are allowed to be empty.
+    /// Whether this extension serves TLS. If use_tls is false tls_key and tls_cert are allowed to be empty.
     pub use_tls: bool,
     pub tls_key: String,
     pub tls_cert: String,
@@ -302,7 +302,8 @@ pub struct SystemConfig {
     /// contact the service and tell the scheduler how it should handle networking.
     pub bind_address: String,
 
-    /// The address to contact the main Gofer process.
+    /// The full URL, scheme included, for reaching Gofer's API, like `https://172.17.0.1:8080`. It has nothing to do
+    /// with `use_tls`, which is only about whether this extension serves TLS.
     pub gofer_host: String,
 }
 

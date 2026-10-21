@@ -57,7 +57,7 @@ func newExtension() *extension {
 		log.Fatal().Err(err).Msg("could not parse system configuration")
 	}
 
-	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	subscriptions, err := sdk.ListExtensionSubscriptions(config.ID, config.GoferHost, config.Secret, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not query subscriptions from Gofer host")
 	}
@@ -292,7 +292,7 @@ func (e *extension) checkTimeFrames(minute time.Time) {
 
 	config, _ := extsdk.GetExtensionSystemConfig()
 
-	client, err := sdk.NewClientWithHeaders(config.GoferHost, config.Secret, config.UseTLS, sdk.GoferAPIVersion0)
+	client, err := sdk.NewClientWithHeaders(config.GoferHost, config.Secret, sdk.GoferAPIVersion0)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not initialize client while attempting to check time frames")
 	}
