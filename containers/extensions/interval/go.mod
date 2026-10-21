@@ -3,7 +3,7 @@ module github.com/clintjedwards/gofer/containers/extensions/interval
 go 1.26.0
 
 require (
-	github.com/clintjedwards/gofer/sdk/go v0.0.0-20261011021859-2fa56e660d55
+	github.com/clintjedwards/gofer/sdk/go v0.0.0-20261021033920-6341ddc0e25f
 	github.com/rs/zerolog v1.35.1
 )
 
