@@ -70,6 +70,10 @@ pub struct Task {
 
     /// Always check for most recent version of the current image before running.
     pub always_pull_newest_image: bool,
+
+    /// How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the
+    /// server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here.
+    pub timeout_seconds: u64,
 }
 
 impl Task {
@@ -105,6 +109,7 @@ impl From<gofer_sdk::config::Task> for Task {
             command: value.command,
             inject_api_token: value.inject_api_token,
             always_pull_newest_image: value.always_pull_newest_image,
+            timeout_seconds: value.timeout_seconds,
         }
     }
 }
@@ -130,6 +135,7 @@ impl Task {
             command: serde_json::to_string(&self.command)?,
             inject_api_token: self.inject_api_token,
             always_pull_newest_image: self.always_pull_newest_image,
+            timeout_seconds: self.timeout_seconds.try_into()?,
         };
 
         Ok(task)
@@ -147,6 +153,7 @@ impl Task {
             command: serde_json::from_str(&storage_task.command)?,
             inject_api_token: storage_task.inject_api_token,
             always_pull_newest_image: storage_task.always_pull_newest_image,
+            timeout_seconds: storage_task.timeout_seconds.try_into()?,
         };
 
         Ok(task)
@@ -174,6 +181,7 @@ mod tests {
             command: Some(vec!["run".to_string(), "--option".to_string()]),
             inject_api_token: true,
             always_pull_newest_image: true,
+            timeout_seconds: 600,
         };
 
         let namespace_id = "ns1".to_string();

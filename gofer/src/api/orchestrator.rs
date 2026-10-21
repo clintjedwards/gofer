@@ -951,15 +951,23 @@ impl Run {
         }
 
         if is_failed {
+            // A timeout is easy to mistake for the task's own failure, so when one happened the run says so and
+            // which timeout it was, instead of the generic message.
+            let timed_out = self.timed_out_task_executions(&mut conn).await;
+            let reason = if timed_out.is_empty() {
+                runs::StatusReason {
+                    reason: runs::StatusReasonType::AbnormalExit,
+                    description: "One or more task executions failed during execution".into(),
+                }
+            } else {
+                runs::StatusReason {
+                    reason: runs::StatusReasonType::Timeout,
+                    description: timed_out.join("; "),
+                }
+            };
+
             let result = self
-                .set_run_complete(
-                    &mut conn,
-                    runs::Status::Failed,
-                    Some(runs::StatusReason {
-                        reason: runs::StatusReasonType::AbnormalExit,
-                        description: "One or more task executions failed during execution".into(),
-                    }),
-                )
+                .set_run_complete(&mut conn, runs::Status::Failed, Some(reason))
                 .await;
 
             if let Err(e) = result {
@@ -1569,6 +1577,39 @@ impl Run {
         });
     }
 
+    /// Describes each of this run's task executions that failed by hitting a timeout, like
+    /// "build: Task ran longer than its own timeout of 10m and was stopped".
+    async fn timed_out_task_executions(&self, conn: &mut SqliteConnection) -> Vec<String> {
+        let task_executions = match storage::task_executions::list(
+            conn,
+            &self.pipeline.metadata.namespace_id,
+            &self.pipeline.metadata.pipeline_id,
+            self.run.run_id.try_into().unwrap_or_default(),
+        )
+        .await
+        {
+            Ok(task_executions) => task_executions,
+            Err(e) => {
+                error!(namespace_id = &self.pipeline.metadata.namespace_id,
+                    pipeline_id = &self.pipeline.metadata.pipeline_id,
+                    run_id = self.run.run_id,
+                    error = %e, "Could not list task executions while checking for timeouts");
+                return vec![];
+            }
+        };
+
+        task_executions
+            .into_iter()
+            .filter_map(|task_execution| {
+                let task_execution: task_executions::TaskExecution =
+                    task_execution.try_into().ok()?;
+                let reason = task_execution.status_reason?;
+                (reason.reason == task_executions::StatusReasonType::Timeout)
+                    .then(|| format!("{}: {}", task_execution.task_id, reason.description))
+            })
+            .collect()
+    }
+
     async fn set_task_execution_complete(
         &self,
         conn: &mut SqliteConnection,
@@ -1858,8 +1899,68 @@ impl Run {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
         let task_id = task_execution.task_id.clone();
 
+        // The clock starts once the container is running, so a slow image pull doesn't count against the task.
+        let timeout = task_timeout(
+            task_execution.task.timeout_seconds,
+            self.api_state.config.api.task_execution_max_timeout_seconds,
+        );
+        let deadline = timeout.as_ref().map(|timeout| {
+            tokio::time::Instant::now() + tokio::time::Duration::from_secs(timeout.seconds)
+        });
+
         loop {
             tokio::select! {
+                _ = async {
+                    match deadline {
+                        Some(deadline) => tokio::time::sleep_until(deadline).await,
+                        None => std::future::pending().await,
+                    }
+                } => {
+                    // Only reachable when there's a deadline, so there's always a timeout here.
+                    let description = timeout.as_ref().map(|t| t.description.clone()).unwrap_or_default();
+
+                    _ = self.api_state
+                        .scheduler
+                        .cancel_task_execution(
+                            task_execution.clone(),
+                            self.api_state.config.api.task_execution_stop_timeout_seconds as i64,
+                        )
+                        .await
+                        .map_err(|err| {
+                            let all_errors = err
+                                .chain()
+                                .map(|e| e.to_string())
+                                .collect::<Vec<_>>()
+                                .join(" | ");
+
+                            error!(error = %all_errors,
+                                   namespace_id = self.pipeline.metadata.namespace_id.clone(),
+                                   pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
+                                   run_id = self.run.run_id,
+                                   task_execution_id = &task_id,
+                                   "Could not stop task execution after it timed out");
+                        });
+
+                    let mut conn = self.api_state.storage.write_conn().await?;
+
+                    if let Err(e) = self
+                        .set_task_execution_complete(
+                            &mut conn,
+                            &task_id,
+                            1,
+                            task_executions::Status::Failed,
+                            Some(task_executions::StatusReason {
+                                reason: task_executions::StatusReasonType::Timeout,
+                                description,
+                            }),
+                        )
+                        .await
+                    {
+                        bail!("Could not update task execution while attempting to set execution as complete; {:#?}", e)
+                    };
+
+                    return Ok(());
+                },
                 _ = interval.tick() => {
                     // TODO(): This should be more robust, if when we start implementing networked schedulers there is a chance
                     // that they can fail when we request a status update and we don't want to fail the entire thing just
@@ -2733,6 +2834,65 @@ impl Run {
 /// 3) Lastly we pass in the run specific defined envvars. These are usually provided by either a trigger
 ///    or the user when they attempt to start a new run manually. Since these are the most likely to be
 ///    edited adhoc they are treated as the most important.
+/// The timeout a task execution runs under, and what to tell the user if it hits it.
+#[derive(Debug, PartialEq, Eq)]
+struct TaskTimeout {
+    seconds: u64,
+    description: String,
+}
+
+/// Picks between the task's own timeout and the server's max, where 0 means unset for both. The description names
+/// the one that applies, since "the task's timeout" and "the server's cap" point at different people to fix it.
+fn task_timeout(task_seconds: u64, max_seconds: u64) -> Option<TaskTimeout> {
+    let server_max = format!(
+        "the server's max task execution timeout of {} (api.task_execution_max_timeout_seconds)",
+        humanize_seconds(max_seconds)
+    );
+
+    let own = |task: u64| format!("its own timeout of {}", humanize_seconds(task));
+
+    let (seconds, limit, note) = match (task_seconds, max_seconds) {
+        (0, 0) => return None,
+        (0, max) => (
+            max,
+            server_max,
+            "; the task doesn't set its own timeout".to_string(),
+        ),
+        (task, max) if max == 0 || task <= max => (task, own(task), String::new()),
+        (task, max) => (
+            max,
+            server_max,
+            format!(
+                "; the task asked for {} but the server caps it",
+                humanize_seconds(task)
+            ),
+        ),
+    };
+
+    Some(TaskTimeout {
+        seconds,
+        description: format!("Task ran longer than {limit} and was stopped{note}"),
+    })
+}
+
+/// Turns 5400 into "1h30m", which reads better than seconds in a status reason.
+fn humanize_seconds(seconds: u64) -> String {
+    let (hours, minutes, seconds) = (seconds / 3600, seconds % 3600 / 60, seconds % 60);
+    let mut out = String::new();
+
+    if hours > 0 {
+        out.push_str(&format!("{hours}h"));
+    }
+    if minutes > 0 {
+        out.push_str(&format!("{minutes}m"));
+    }
+    if seconds > 0 || out.is_empty() {
+        out.push_str(&format!("{seconds}s"));
+    }
+
+    out
+}
+
 pub fn combine_variables(run: &runs::Run, task: &tasks::Task, api_base_url: &str) -> Vec<Variable> {
     let system_injected_vars = system_injected_vars(run, task, api_base_url);
 
@@ -2873,5 +3033,43 @@ mod tests {
 
         server.extension_address = "http://gofer.internal:8080".into();
         assert_eq!(task_api_base_url(&server), "http://gofer.internal:8080");
+    }
+
+    #[test]
+    fn task_timeout_picks_and_explains_the_limit() {
+        assert_eq!(task_timeout(0, 0), None);
+
+        let own = task_timeout(600, 0).unwrap();
+        assert_eq!(own.seconds, 600);
+        assert_eq!(
+            own.description,
+            "Task ran longer than its own timeout of 10m and was stopped"
+        );
+
+        assert_eq!(task_timeout(600, 3600).unwrap().seconds, 600);
+
+        let default = task_timeout(0, 86400).unwrap();
+        assert_eq!(default.seconds, 86400);
+        assert_eq!(
+            default.description,
+            "Task ran longer than the server's max task execution timeout of 24h \
+             (api.task_execution_max_timeout_seconds) and was stopped; the task doesn't set its own timeout"
+        );
+
+        let capped = task_timeout(7200, 3600).unwrap();
+        assert_eq!(capped.seconds, 3600);
+        assert!(
+            capped
+                .description
+                .contains("the task asked for 2h but the server caps it")
+        );
+    }
+
+    #[test]
+    fn humanize_seconds_formats() {
+        assert_eq!(humanize_seconds(0), "0s");
+        assert_eq!(humanize_seconds(45), "45s");
+        assert_eq!(humanize_seconds(5400), "1h30m");
+        assert_eq!(humanize_seconds(3661), "1h1m1s");
     }
 }

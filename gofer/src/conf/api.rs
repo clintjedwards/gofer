@@ -52,6 +52,10 @@ pub struct Api {
     /// scheduler should instantly kill all containers.
     pub task_execution_stop_timeout_seconds: u64,
 
+    /// The longest, in seconds, a task's container can run before Gofer stops it and fails the task. Applies to
+    /// tasks that don't set their own timeout and caps the ones that do. 0 is unlimited.
+    pub task_execution_max_timeout_seconds: u64,
+
     /// Lets users open a shell inside a running task execution's container. Anyone with write access to a
     /// pipeline's task executions can run any command in its containers, so operators may want to turn this off.
     pub allow_task_attach: bool,

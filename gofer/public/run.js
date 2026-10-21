@@ -835,6 +835,7 @@ function renderTaskDetails(task) {
         ${labeled("Logs", logs)}
         ${labeled("API token", yesNo(task.task.inject_api_token))}
         ${labeled("Always pull", yesNo(task.task.always_pull_newest_image))}
+        ${labeled("Timeout", task.task.timeout_seconds ? `${task.task.timeout_seconds}s` : "Server max")}
       </dl>
       <div>
         <h3 class="mb-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">${started ? "Injected variables" : "Configured variables"}</h3>

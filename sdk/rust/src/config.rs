@@ -300,6 +300,11 @@ pub struct Task {
 
     /// Always attempt to pull the newest container image.
     pub always_pull_newest_image: bool,
+
+    /// How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max
+    /// task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse.
+    #[serde(default)]
+    pub timeout_seconds: u64,
 }
 
 impl Task {
@@ -315,6 +320,7 @@ impl Task {
             command: None,
             inject_api_token: false,
             always_pull_newest_image: true,
+            timeout_seconds: 0,
         }
     }
 
@@ -482,6 +488,16 @@ impl Task {
     /// Always attempt to pull the newest container image for a given tag.
     pub fn always_pull_newest_image(mut self, pull: bool) -> Self {
         self.always_pull_newest_image = pull;
+        self
+    }
+
+    /// How long the task's container can run before Gofer stops it and marks the task as failed. Time spent pulling
+    /// the image doesn't count. Without a timeout, or with one longer than the server allows, the server's max task
+    /// execution timeout applies instead.
+    ///
+    /// Timeouts are in whole seconds; anything shorter is rounded up.
+    pub fn timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.timeout_seconds = timeout.as_millis().div_ceil(1000) as u64;
         self
     }
 }

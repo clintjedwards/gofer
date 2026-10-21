@@ -826,6 +826,7 @@ A task represents a particular workload within a pipeline. Tasks are composable 
 | `image` | string | yes | Which container image to run for this specific task. Example: "ubuntu:latest" |
 | `inject_api_token` | boolean | yes | Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container. |
 | `registry_auth` | [RegistryAuth](#registryauth) (nullable) | no | Auth credentials for the image's registry. The password is a secret reference like `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses. |
+| `timeout_seconds` | integer | yes | How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here. |
 | `variables` | array of [Variable](#variable) | yes | Variables which will be passed in as env vars to the task. |
 
 ## Task2
@@ -845,6 +846,7 @@ Represents a single task within a `Pipeline`. A task is a unit of work that oper
 | `image` | string | yes |  |
 | `inject_api_token` | boolean | yes |  |
 | `registry_auth` | [RegistryAuth2](#registryauth2) (nullable) | no |  |
+| `timeout_seconds` | integer | no | How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse. |
 | `variables` | map of string to string | yes |  |
 
 ## TaskExecution
@@ -1083,6 +1085,7 @@ A string, one of:
 | `failed_precondition` | The run could not be executed as requested due to user defined attributes given. |
 | `user_cancelled` | One or more tasks could not be completed due to a user cancelling the run. |
 | `admin_cancelled` | One or more tasks could not be completed due to the system or admin cancelling the run. |
+| `timeout` | One or more tasks ran longer than their timeout and were stopped. |
 
 ## subscription_status
 
@@ -1169,6 +1172,7 @@ A string, one of:
 | `failed_precondition` | User error in task execution parameters. |
 | `cancelled` | User invoked cancellation.k |
 | `orphaned` | Task execution was lost due to extreme internal error. |
+| `timeout` | The container ran longer than its timeout and was stopped. The description says which timeout it hit. |
 
 ## task_execution_timeline_entry
 

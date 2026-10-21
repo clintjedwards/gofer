@@ -1,6 +1,10 @@
 package config
 
-import "strings"
+import (
+	"math"
+	"strings"
+	"time"
+)
 
 // TaskWrapper type simply exists so that we can make structs with fields like "id"
 // and we can still add functions called "id()". This makes it not only easier to
@@ -48,6 +52,9 @@ type Task struct {
 	// the Run's objects.
 	InjectAPIToken        bool `json:"inject_api_token"`
 	AlwaysPullNewestImage bool `json:"always_pull_newest_image"`
+	// How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task
+	// execution timeout applies.
+	TimeoutSeconds uint64 `json:"timeout_seconds"`
 }
 
 // Creates a new Gofer task. Tasks are simply containers you wish to run.
@@ -194,5 +201,19 @@ func (t *TaskWrapper) InjectAPIToken(injectToken bool) *TaskWrapper {
 // Always attempt to pull the newest container image for a given tag.
 func (t *TaskWrapper) AlwaysPullNewestImage(pull bool) *TaskWrapper {
 	t.Task.AlwaysPullNewestImage = pull
+	return t
+}
+
+// How long the task's container can run before Gofer stops it and marks the task as failed. Time spent pulling the
+// image doesn't count. Without a timeout, or with one longer than the server allows, the server's max task execution
+// timeout applies instead.
+//
+// Timeouts are in whole seconds; anything shorter is rounded up.
+func (t *TaskWrapper) Timeout(timeout time.Duration) *TaskWrapper {
+	// Converting a negative float to uint64 isn't defined in Go, so treat it as no timeout.
+	if timeout < 0 {
+		timeout = 0
+	}
+	t.Task.TimeoutSeconds = uint64(math.Ceil(timeout.Seconds()))
 	return t
 }

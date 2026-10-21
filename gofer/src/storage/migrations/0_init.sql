@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     command                  TEXT    NOT NULL,
     inject_api_token         INTEGER NOT NULL CHECK (inject_api_token IN (0, 1)),
     always_pull_newest_image INTEGER NOT NULL CHECK (always_pull_newest_image IN (0, 1)),
+    timeout_seconds          INTEGER NOT NULL,
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace_id, pipeline_id) REFERENCES pipeline_metadata(namespace_id, pipeline_id) ON DELETE CASCADE,
     FOREIGN KEY (namespace_id, pipeline_id, pipeline_config_version) REFERENCES pipeline_configs(namespace_id, pipeline_id, version) ON DELETE CASCADE,

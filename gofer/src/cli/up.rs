@@ -278,6 +278,7 @@ struct FlatTask {
     command: Option<Vec<String>>,
     inject_api_token: bool,
     always_pull_newest_image: bool,
+    timeout_seconds: u64,
 }
 
 impl FlatTask {
@@ -320,6 +321,10 @@ impl FlatTask {
             "always_pull_newest_image",
             self.always_pull_newest_image.to_string(),
         );
+        // 0 means unset, so it's left out like the other empty values.
+        if self.timeout_seconds > 0 {
+            insert("timeout_seconds", self.timeout_seconds.to_string());
+        }
     }
 }
 
@@ -356,6 +361,7 @@ fn new_fields(config: &gofer_sdk::api::types::Pipeline) -> Fields {
             command: task.command.clone(),
             inject_api_token: task.inject_api_token,
             always_pull_newest_image: task.always_pull_newest_image,
+            timeout_seconds: task.timeout_seconds,
         }
         .insert_into(&mut fields);
     }
@@ -393,6 +399,7 @@ fn current_fields(config: &gofer_sdk::api::types::Config) -> Fields {
             command: task.command.clone(),
             inject_api_token: task.inject_api_token,
             always_pull_newest_image: task.always_pull_newest_image,
+            timeout_seconds: task.timeout_seconds,
         }
         .insert_into(&mut fields);
     }
@@ -636,7 +643,8 @@ mod tests {
                 "variables": [{"key": "LOG_LEVEL", "value": "debug", "source": "pipeline_config"}],
                 "command": ["sh", "-c", "echo one\necho two\necho three"],
                 "inject_api_token": false,
-                "always_pull_newest_image": true
+                "always_pull_newest_image": true,
+                "timeout_seconds": 0
             }}
         }))
         .unwrap()

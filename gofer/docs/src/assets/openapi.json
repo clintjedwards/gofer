@@ -6551,6 +6551,12 @@
               }
             ]
           },
+          "timeout_seconds": {
+            "description": "How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
           "variables": {
             "description": "Variables which will be passed in as env vars to the task.",
             "type": "array",
@@ -6566,6 +6572,7 @@
           "id",
           "image",
           "inject_api_token",
+          "timeout_seconds",
           "variables"
         ]
       },
@@ -6617,6 +6624,13 @@
                 "$ref": "#/components/schemas/RegistryAuth2"
               }
             ]
+          },
+          "timeout_seconds": {
+            "description": "How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse.",
+            "default": 0,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
           },
           "variables": {
             "type": "object",
@@ -7290,6 +7304,13 @@
             "enum": [
               "admin_cancelled"
             ]
+          },
+          {
+            "description": "One or more tasks ran longer than their timeout and were stopped.",
+            "type": "string",
+            "enum": [
+              "timeout"
+            ]
           }
         ]
       },
@@ -7510,6 +7531,13 @@
             "type": "string",
             "enum": [
               "orphaned"
+            ]
+          },
+          {
+            "description": "The container ran longer than its timeout and was stopped. The description says which timeout it hit.",
+            "type": "string",
+            "enum": [
+              "timeout"
             ]
           }
         ]

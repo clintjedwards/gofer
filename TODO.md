@@ -6,9 +6,8 @@ None
 
 In this order:
 
-1. `gofer pipeline config deploy` (below).
-2. Timeouts (below). A run that hits one is marked failed, and the reason says which timeout it hit (the task's own
-   or the global one) so it's easy to tell what happened.
+1. ~~`gofer pipeline config deploy`~~ (done).
+2. ~~Task timeouts~~ (done).
 3. Fix TLS (below). We're keeping it instead of dropping it; most of it is there, it just needs to work.
 
 # Small things I want to keep track of that I definitely need to do.
@@ -50,10 +49,6 @@ In this order:
   `extensions`) plus `development.use_included_certs`. Things to check: extensions talk to Gofer over the docker
   network, so `extensions.use_tls`/`verify_certs` and the certs handed to extensions need their own decision; update
   the production config in the server configuration docs and the configuration reference if anything changes.
-* Add `gofer pipeline config deploy <pipeline_id> <version>` so you can deploy an existing version, mainly for
-  rolling back. The API already supports it (`POST .../pipelines/{id}/configs/{version}`), but from the CLI the only
-  way today is to `gofer up` the old code again, and `gofer up --deploy false` leaves you with an unreleased version
-  you can't deploy without curl. Update the "Rolling back" section in the Updating Pipelines docs when it lands.
 * Add `gofer service drain` for admins, for safely stopping Gofer before an upgrade or restart.
   * It sets `ignore_pipeline_run_events` (already supported through `PUT /api/system`) so new runs are refused, then
     streams the runs still in progress and how far along each one is (tasks done out of total, maybe the task
@@ -86,10 +81,6 @@ where the container is running.
   directory. Think more about how the UX should be handled here.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
-* Timeouts. Tasks have no timeout and there's no global one for runs either; the only setting is the grace period for
-  stopping a task (`api.task_execution_stop_timeout_seconds`). A hung task holds its run, and a parallelism slot, open
-  forever. Add a per task timeout in the config and SDKs, plus an admin set global max that caps it and applies when
-  a task doesn't set one.
 * Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * Make run execution survive failures. This has to happen before a networked scheduler (Nomad, K8s) is realistic,
   since those calls will fail sometimes and today one failure ends the run.

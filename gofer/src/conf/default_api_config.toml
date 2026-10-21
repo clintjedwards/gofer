@@ -7,6 +7,7 @@ log_level = "info"
 task_execution_log_retention_runs = 50
 task_execution_logs_dir = "/tmp"
 task_execution_stop_timeout_seconds = 300 # 5 mins
+task_execution_max_timeout_seconds = 86400 # 24 hours
 allow_task_attach = true
 
 [server]

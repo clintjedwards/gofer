@@ -157,6 +157,9 @@ pub enum StatusReasonType {
 
     /// Task execution was lost due to extreme internal error.
     Orphaned,
+
+    /// The container ran longer than its timeout and was stopped. The description says which timeout it hit.
+    Timeout,
 }
 
 /// A step a task execution goes through on its way to finishing. Used to break down where a task execution spent its

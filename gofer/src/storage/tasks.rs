@@ -17,12 +17,14 @@ pub struct Task {
     pub command: String,
     pub inject_api_token: bool,
     pub always_pull_newest_image: bool,
+    pub timeout_seconds: i64,
 }
 
 pub async fn insert(conn: &mut SqliteConnection, task: &Task) -> Result<(), StorageError> {
     let sql = "INSERT INTO tasks (namespace_id, pipeline_id, pipeline_config_version, task_id, \
         description, image, registry_auth, depends_on, variables, entrypoint, command, \
-        inject_api_token, always_pull_newest_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        inject_api_token, always_pull_newest_image, timeout_seconds) \
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&task.namespace_id)
@@ -37,7 +39,8 @@ pub async fn insert(conn: &mut SqliteConnection, task: &Task) -> Result<(), Stor
         .bind(&task.entrypoint)
         .bind(&task.command)
         .bind(task.inject_api_token)
-        .bind(task.always_pull_newest_image);
+        .bind(task.always_pull_newest_image)
+        .bind(task.timeout_seconds);
 
     query
         .execute(conn)
@@ -54,7 +57,8 @@ pub async fn list(
     version: i64,
 ) -> Result<Vec<Task>, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
-        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image FROM \
+        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image, \
+        timeout_seconds FROM \
         tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ?;";
 
     let query = sqlx::query_as::<_, Task>(sql)
@@ -79,7 +83,8 @@ pub async fn get(
     task_id: &str,
 ) -> Result<Task, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
-        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image FROM \
+        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image, \
+        timeout_seconds FROM \
         tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ? AND task_id = ?;";
 
     let query = sqlx::query_as::<_, Task>(sql)
@@ -161,6 +166,7 @@ mod tests {
             command: "cargo test".into(),
             inject_api_token: false,
             always_pull_newest_image: false,
+            timeout_seconds: 600,
         };
 
         insert(&mut conn, &task).await?;

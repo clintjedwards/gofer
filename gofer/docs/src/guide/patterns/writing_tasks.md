@@ -12,6 +12,18 @@ then kills it if it's still running after `task_execution_stop_timeout_seconds`,
 lock or is halfway through a write when that happens, catch the signal and clean up, or make sure the next run can
 pick up from a half finished state.
 
+## Give long tasks a timeout.
+
+A task that hangs holds its run open, and a slot in the pipeline's parallelism, until something stops it. Give tasks
+a timeout close to how long they should actually take, with `Timeout(10 * time.Minute)` in Go or
+`.timeout(Duration::from_secs(600))` in Rust. The clock starts when the container starts, so pulling the image doesn't
+count.
+
+When a task runs past its timeout, Gofer stops it the same way it does for a cancel, then marks the task and the run
+as failed with the reason `timeout`. The description says which limit was hit: the task's own, or the server's
+`task_execution_max_timeout_seconds` (24 hours by default). The server's limit also applies to tasks that don't set a
+timeout and caps any that ask for longer.
+
 ## Take configuration from environment variables.
 
 Gofer passes everything into a task as environment variables, so your code should read its input and configuration

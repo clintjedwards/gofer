@@ -321,6 +321,11 @@ const (
 	AdminCancelled RunStatusReasonType5 = "admin_cancelled"
 )
 
+// Defines values for RunStatusReasonType6.
+const (
+	RunStatusReasonType6Timeout RunStatusReasonType6 = "timeout"
+)
+
 // Defines values for SubscriptionStatus.
 const (
 	SubscriptionStatusActive   SubscriptionStatus = "active"
@@ -439,6 +444,11 @@ const (
 // Defines values for TaskExecutionStatusReasonType5.
 const (
 	Orphaned TaskExecutionStatusReasonType5 = "orphaned"
+)
+
+// Defines values for TaskExecutionStatusReasonType6.
+const (
+	TaskExecutionStatusReasonType6Timeout TaskExecutionStatusReasonType6 = "timeout"
 )
 
 // Action defines model for Action.
@@ -1584,6 +1594,9 @@ type Task struct {
 	// RegistryAuth Auth credentials for the image's registry. The password is a secret reference like `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses.
 	RegistryAuth *RegistryAuth `json:"registry_auth"`
 
+	// TimeoutSeconds How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here.
+	TimeoutSeconds uint64 `json:"timeout_seconds"`
+
 	// Variables Variables which will be passed in as env vars to the task.
 	Variables []Variable `json:"variables"`
 }
@@ -1604,7 +1617,10 @@ type Task2 struct {
 	Image                 string                           `json:"image"`
 	InjectApiToken        bool                             `json:"inject_api_token"`
 	RegistryAuth          *RegistryAuth2                   `json:"registry_auth"`
-	Variables             map[string]string                `json:"variables"`
+
+	// TimeoutSeconds How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse.
+	TimeoutSeconds *uint64           `json:"timeout_seconds,omitempty"`
+	Variables      map[string]string `json:"variables"`
 }
 
 // TaskExecution a task execution is a specific execution of a task/container. It represents a 4th level unit in the hierarchy. namespace -> pipeline -> run -> task execution. It is the last and most specific object in Gofer's execution model.
@@ -1922,6 +1938,9 @@ type RunStatusReasonType4 string
 // RunStatusReasonType5 One or more tasks could not be completed due to the system or admin cancelling the run.
 type RunStatusReasonType5 string
 
+// RunStatusReasonType6 One or more tasks ran longer than their timeout and were stopped.
+type RunStatusReasonType6 string
+
 // SubscriptionStatus defines model for subscription_status.
 type SubscriptionStatus string
 
@@ -2028,6 +2047,9 @@ type TaskExecutionStatusReasonType4 string
 
 // TaskExecutionStatusReasonType5 Task execution was lost due to extreme internal error.
 type TaskExecutionStatusReasonType5 string
+
+// TaskExecutionStatusReasonType6 The container ran longer than its timeout and was stopped. The description says which timeout it hit.
+type TaskExecutionStatusReasonType6 string
 
 // TaskExecutionTimelineEntry defines model for task_execution_timeline_entry.
 type TaskExecutionTimelineEntry struct {
@@ -4044,6 +4066,32 @@ func (t *RunStatusReasonType) MergeRunStatusReasonType5(v RunStatusReasonType5) 
 	return err
 }
 
+// AsRunStatusReasonType6 returns the union data inside the RunStatusReasonType as a RunStatusReasonType6
+func (t RunStatusReasonType) AsRunStatusReasonType6() (RunStatusReasonType6, error) {
+	var body RunStatusReasonType6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRunStatusReasonType6 overwrites any union data inside the RunStatusReasonType as the provided RunStatusReasonType6
+func (t *RunStatusReasonType) FromRunStatusReasonType6(v RunStatusReasonType6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRunStatusReasonType6 performs a merge with any union data inside the RunStatusReasonType, using the provided RunStatusReasonType6
+func (t *RunStatusReasonType) MergeRunStatusReasonType6(v RunStatusReasonType6) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t RunStatusReasonType) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -4620,6 +4668,32 @@ func (t *TaskExecutionStatusReasonType) FromTaskExecutionStatusReasonType5(v Tas
 
 // MergeTaskExecutionStatusReasonType5 performs a merge with any union data inside the TaskExecutionStatusReasonType, using the provided TaskExecutionStatusReasonType5
 func (t *TaskExecutionStatusReasonType) MergeTaskExecutionStatusReasonType5(v TaskExecutionStatusReasonType5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTaskExecutionStatusReasonType6 returns the union data inside the TaskExecutionStatusReasonType as a TaskExecutionStatusReasonType6
+func (t TaskExecutionStatusReasonType) AsTaskExecutionStatusReasonType6() (TaskExecutionStatusReasonType6, error) {
+	var body TaskExecutionStatusReasonType6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTaskExecutionStatusReasonType6 overwrites any union data inside the TaskExecutionStatusReasonType as the provided TaskExecutionStatusReasonType6
+func (t *TaskExecutionStatusReasonType) FromTaskExecutionStatusReasonType6(v TaskExecutionStatusReasonType6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTaskExecutionStatusReasonType6 performs a merge with any union data inside the TaskExecutionStatusReasonType, using the provided TaskExecutionStatusReasonType6
+func (t *TaskExecutionStatusReasonType) MergeTaskExecutionStatusReasonType6(v TaskExecutionStatusReasonType6) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err

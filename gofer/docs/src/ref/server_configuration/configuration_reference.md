@@ -29,6 +29,7 @@ Keys that end in `_seconds` take a whole number of seconds, and keys that end in
 | pipeline_run_concurrency_limit      | int    | 200      | How many runs a single pipeline can have in progress at once. Pipelines can set a lower limit with `Parallelism`, but not a higher one. 0 is unlimited. |
 | task_execution_log_retention_runs   | int    | 50       | How many of each pipeline's runs keep their task logs. Once a pipeline has more runs than this, the logs of its oldest run are deleted. |
 | task_execution_logs_dir             | string | /tmp     | The directory task execution logs are stored in. Each one is a text file on the server.                                                                                                                              |
+| task_execution_max_timeout_seconds  | int    | 86400    | The longest, in seconds, a task's container can run before Gofer stops it and fails the task (24 hours by default). Applies to tasks that don't set their own timeout and caps the ones that do. 0 is unlimited. |
 | task_execution_stop_timeout_seconds | int    | 300      | How long, in seconds, Gofer waits for a task's container to stop gracefully before killing it. 0 kills containers immediately.                                                                                        |
 
 ```toml
@@ -41,6 +42,7 @@ log_level = "info"
 task_execution_log_retention_runs = 50
 task_execution_logs_dir = "/tmp"
 task_execution_stop_timeout_seconds = 300 # 5 mins
+task_execution_max_timeout_seconds = 86400 # 24 hours
 allow_task_attach = true
 ```
 

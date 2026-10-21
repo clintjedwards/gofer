@@ -112,6 +112,9 @@ pub enum StatusReasonType {
 
     /// One or more tasks could not be completed due to the system or admin cancelling the run.
     AdminCancelled,
+
+    /// One or more tasks ran longer than their timeout and were stopped.
+    Timeout,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
