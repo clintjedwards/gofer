@@ -103,6 +103,10 @@ pub enum TaskCommands {
 
         /// Task Identifier.
         task_id: String,
+
+        /// Only show this many lines from the end of the log, then keep following it if the task is still running.
+        #[arg(short = 'n', long)]
+        tail: Option<u64>,
     },
 }
 
@@ -147,8 +151,9 @@ impl Cli {
                 pipeline_id,
                 run_id,
                 task_id,
+                tail,
             } => {
-                self.task_logs(command.namespace, &pipeline_id, run_id, &task_id)
+                self.task_logs(command.namespace, &pipeline_id, run_id, &task_id, tail)
                     .await
             }
         }
@@ -398,7 +403,7 @@ impl Cli {
 
         let conn = self
             .client
-            .get_logs(namespace, pipeline_id, run_id, task_id)
+            .get_logs(namespace, pipeline_id, run_id, task_id, Some(lines as u64))
             .await
             .map_err(|e| anyhow!("could not get logs; {:#?}", e))?
             .into_inner();
@@ -448,6 +453,7 @@ impl Cli {
         pipeline_id: &str,
         run_id: u64,
         task_id: &str,
+        tail: Option<u64>,
     ) -> Result<()> {
         let namespace = match namespace_id {
             Some(namespace) => namespace,
@@ -456,7 +462,7 @@ impl Cli {
 
         let task_logs_conn = self
             .client
-            .get_logs(&namespace, pipeline_id, run_id, task_id)
+            .get_logs(&namespace, pipeline_id, run_id, task_id, tail)
             .await
             .map_err(|e| anyhow!("could not get logs; {:#?}", e))?
             .into_inner();

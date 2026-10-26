@@ -2431,6 +2431,17 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "tail",
+            "description": "Only send this many lines from the end of the log, then keep following it if the task is still running. Leave it out to get the whole log.",
+            "schema": {
+              "nullable": true,
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
           }
         ],
         "responses": {

@@ -379,6 +379,23 @@ function namespaceFlag() {
   return target.namespace === "default" ? "" : ` --namespace ${target.namespace}`;
 }
 
+// Values longer than a line, like a whole script passed in as a variable, would otherwise take over the table, so they
+// collapse down to their first line until clicked.
+function variableValue(value) {
+  const text = String(value ?? "");
+  const firstLine = text.split("\n")[0];
+  if (!text.includes("\n") && text.length <= 80) {
+    return escapeHtml(text);
+  }
+
+  return `<details class="group">
+      <summary class="cursor-pointer list-none">
+        <span class="mr-1 inline-block text-gray-400 group-open:rotate-90">▸</span><span class="group-open:hidden">${escapeHtml(firstLine.slice(0, 80))}…</span><span class="hidden group-open:inline text-gray-500 dark:text-gray-400">${text.length} characters</span>
+      </summary>
+      <pre class="mt-1 max-h-96 overflow-auto rounded bg-gray-100 dark:bg-neutral-900 px-2 py-1.5 whitespace-pre-wrap break-all">${escapeHtml(text)}</pre>
+    </details>`;
+}
+
 function renderVariables(variables) {
   if (!variables || variables.length === 0) {
     return `<p class="text-sm text-gray-500 dark:text-gray-400">None</p>`;
@@ -388,7 +405,7 @@ function renderVariables(variables) {
     .map(
       (variable) => `<tr>
         <td class="py-1.5 pr-4 font-mono text-xs align-top">${escapeHtml(variable.key)}</td>
-        <td class="py-1.5 pr-4 font-mono text-xs break-all">${escapeHtml(variable.value)}</td>
+        <td class="py-1.5 pr-4 font-mono text-xs break-all">${variableValue(variable.value)}</td>
         <td class="py-1.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap align-top">${escapeHtml(variable.source)}</td>
       </tr>`
     )
@@ -829,8 +846,10 @@ function renderTimeSpent(task) {
 
   const rows = phases
     .map(
-      (phase) => `<div class="flex justify-between gap-4">
+      // The dotted leader lines each phase up with its duration, which can sit a long way off to the right.
+      (phase) => `<div class="flex items-baseline gap-2">
           <span>${escapeHtml(PHASES[phase.phase]?.label ?? phase.phase)}</span>
+          <span class="flex-1 border-b border-dotted border-gray-300 dark:border-neutral-600"></span>
           <span class="font-mono text-xs">${compactDuration(phase.duration)}</span>
         </div>`
     )

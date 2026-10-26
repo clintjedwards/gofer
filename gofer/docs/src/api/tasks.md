@@ -155,6 +155,12 @@ This endpoint upgrades the connection to a websocket: after the `101` response t
 | `run_id` | integer | yes | The unique identifier for the target run. |
 | `task_id` | string | yes | The unique identifier for the target task execution. |
 
+**Query parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `tail` | integer | no | Only send this many lines from the end of the log, then keep following it if the task is still running. Leave it out to get the whole log. |
+
 **Responses**
 
 | Status | Body | Description |

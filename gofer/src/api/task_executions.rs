@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt},
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
     sync::Mutex,
 };
 use tokio_tungstenite::tungstenite::{Message, protocol::Role};
@@ -793,6 +793,13 @@ pub async fn cancel_task_execution(
     Ok(HttpResponseDeleted())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct GetLogsQueryArgs {
+    /// Only send this many lines from the end of the log, then keep following it if the task is still running.
+    /// Leave it out to get the whole log.
+    pub tail: Option<u64>,
+}
+
 /// Retrieves logs from a task execution.
 #[channel(
     protocol = WEBSOCKETS,
@@ -802,10 +809,12 @@ pub async fn cancel_task_execution(
 pub async fn get_logs(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<TaskExecutionPathArgs>,
+    query_params: Query<GetLogsQueryArgs>,
     conn: WebsocketConnection,
 ) -> WebsocketChannelResult {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
+    let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
             &rqctx.request,
@@ -930,7 +939,7 @@ pub async fn get_logs(
         &path.task_id,
     );
 
-    let file = match tokio::fs::File::open(task_execution_log_path).await {
+    let mut file = match tokio::fs::File::open(task_execution_log_path).await {
         Ok(file) => file,
         Err(err) => {
             return Err(websocket_error(
@@ -944,6 +953,25 @@ pub async fn get_logs(
             .into());
         }
     };
+
+    if let Some(lines) = query.tail {
+        let result = match tail_offset(&mut file, lines).await {
+            Ok(offset) => file.seek(std::io::SeekFrom::Start(offset)).await,
+            Err(err) => Err(err),
+        };
+
+        if let Err(err) = result {
+            return Err(websocket_error(
+                "Could not find the tail of the task execution log file",
+                CloseCode::Error,
+                rqctx.request_id.clone(),
+                ws,
+                Some(err.to_string()),
+            )
+            .await
+            .into());
+        }
+    }
 
     // We need to launch two async functions to:
     // * Push logs to the user.
@@ -1052,6 +1080,36 @@ pub async fn get_logs(
     );
 
     Ok(())
+}
+
+/// Finds where the last `lines` lines of a log file start. Logs from long running tasks can be huge, so we walk
+/// backwards from the end in chunks instead of reading the whole thing. The GOFER_EOF marker at the end of a finished
+/// log has no newline after it, so it rides along with the last line rather than counting as one.
+async fn tail_offset(file: &mut tokio::fs::File, lines: u64) -> std::io::Result<u64> {
+    let mut end = file.metadata().await?.len();
+    let mut newlines = 0;
+    let mut buffer = vec![0; 64 * 1024];
+
+    while end > 0 {
+        let start = end.saturating_sub(buffer.len() as u64);
+        let chunk = &mut buffer[..(end - start) as usize];
+        file.seek(std::io::SeekFrom::Start(start)).await?;
+        file.read_exact(chunk).await?;
+
+        // The newline ending the last full line counts too, so the line we want starts after newline `lines + 1`.
+        for (i, byte) in chunk.iter().enumerate().rev() {
+            if *byte == b'\n' {
+                newlines += 1;
+                if newlines > lines {
+                    return Ok(start + i as u64 + 1);
+                }
+            }
+        }
+
+        end = start;
+    }
+
+    Ok(0)
 }
 
 /// Removes a task execution's associated log object.
@@ -1500,4 +1558,34 @@ pub async fn attach_task_execution(
     let _ = locked_write.close().await;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn tail(content: &str, lines: u64) -> String {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("log");
+        tokio::fs::write(&path, content).await.unwrap();
+
+        let mut file = tokio::fs::File::open(&path).await.unwrap();
+        let offset = tail_offset(&mut file, lines).await.unwrap() as usize;
+        content[offset..].to_string()
+    }
+
+    #[tokio::test]
+    async fn tail_offset_finds_last_lines() {
+        let finished = format!("one\ntwo\nthree\n{GOFER_EOF}");
+        assert_eq!(tail(&finished, 2).await, format!("two\nthree\n{GOFER_EOF}"));
+        assert_eq!(tail(&finished, 10).await, finished);
+
+        // A task still writing a line keeps that partial line on the end.
+        assert_eq!(tail("one\ntwo\npart", 1).await, "two\npart");
+
+        // Lines spread over more than one read chunk.
+        let long = format!("{}\nlast\n", "x".repeat(100 * 1024));
+        assert_eq!(tail(&long, 1).await, "last\n");
+        assert_eq!(tail(&long, 2).await, long);
+    }
 }

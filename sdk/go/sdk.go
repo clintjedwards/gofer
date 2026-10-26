@@ -2138,6 +2138,12 @@ type AttachTaskExecutionParams struct {
 	Command string `form:"command" json:"command"`
 }
 
+// GetLogsParams defines parameters for GetLogs.
+type GetLogsParams struct {
+	// Tail Only send this many lines from the end of the log, then keep following it if the task is still running. Leave it out to get the whole log.
+	Tail *uint64 `form:"tail,omitempty" json:"tail,omitempty"`
+}
+
 // GetPipelineSecretParams defines parameters for GetPipelineSecret.
 type GetPipelineSecretParams struct {
 	// IncludeSecret Includes the actual plaintext secret in the response.
@@ -4947,7 +4953,7 @@ type ClientInterface interface {
 	DeleteLogs(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetLogs request
-	GetLogs(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetLogs(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPipelineSecrets request
 	ListPipelineSecrets(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5720,8 +5726,8 @@ func (c *Client) DeleteLogs(ctx context.Context, namespaceId string, pipelineId 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetLogs(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetLogsRequest(c.Server, namespaceId, pipelineId, runId, taskId)
+func (c *Client) GetLogs(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLogsRequest(c.Server, namespaceId, pipelineId, runId, taskId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -8629,7 +8635,7 @@ func NewDeleteLogsRequest(server string, namespaceId string, pipelineId string, 
 }
 
 // NewGetLogsRequest generates requests for GetLogs
-func NewGetLogsRequest(server string, namespaceId string, pipelineId string, runId uint64, taskId string) (*http.Request, error) {
+func NewGetLogsRequest(server string, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetLogsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8673,6 +8679,28 @@ func NewGetLogsRequest(server string, namespaceId string, pipelineId string, run
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Tail != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tail", runtime.ParamLocationQuery, *params.Tail); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -10100,7 +10128,7 @@ type ClientWithResponsesInterface interface {
 	DeleteLogsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*DeleteLogsResp, error)
 
 	// GetLogsWithResponse request
-	GetLogsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*GetLogsResp, error)
+	GetLogsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetLogsParams, reqEditors ...RequestEditorFn) (*GetLogsResp, error)
 
 	// ListPipelineSecretsWithResponse request
 	ListPipelineSecretsWithResponse(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*ListPipelineSecretsResp, error)
@@ -12597,8 +12625,8 @@ func (c *ClientWithResponses) DeleteLogsWithResponse(ctx context.Context, namesp
 }
 
 // GetLogsWithResponse request returning *GetLogsResp
-func (c *ClientWithResponses) GetLogsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*GetLogsResp, error) {
-	rsp, err := c.GetLogs(ctx, namespaceId, pipelineId, runId, taskId, reqEditors...)
+func (c *ClientWithResponses) GetLogsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetLogsParams, reqEditors ...RequestEditorFn) (*GetLogsResp, error) {
+	rsp, err := c.GetLogs(ctx, namespaceId, pipelineId, runId, taskId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
