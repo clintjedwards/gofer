@@ -66,6 +66,9 @@ gofer fetch simple 1 simple-task
 gofer task logs simple 1 simple-task
 ```
 
+Add `--tail 50` to see only the end of a long log. [Reading task logs](../cli/index.html#reading-task-logs) has more,
+like searching through them.
+
 ## When something goes wrong
 
 If a run fails, `gofer run debug simple 1` shows what happened: every task's result, why any were skipped, and the

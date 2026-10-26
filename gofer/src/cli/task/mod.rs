@@ -476,9 +476,18 @@ impl Cli {
 
         let (_, mut read) = stream.split();
 
+        // Log lines go straight to stdout instead of through the formatter. They already end in a newline, and when
+        // they're piped into something like `head` that exits early we need to see the broken pipe and stop, rather
+        // than panic on the next write.
+        let mut stdout = std::io::stdout().lock();
+
         while let Some(message) = read.next().await {
             match message {
-                Ok(Message::Text(text)) => println!("{}", text),
+                Ok(Message::Text(text)) => match stdout.write_all(text.as_bytes()) {
+                    Ok(()) => {}
+                    Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => break,
+                    Err(e) => bail!("Could not write logs; {}", e),
+                },
                 Ok(Message::Binary(_)) => println!("Received binary data"),
                 Ok(Message::Close(frame)) => {
                     if let Some(frame) = frame {

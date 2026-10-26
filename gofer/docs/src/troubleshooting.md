@@ -17,7 +17,8 @@ tasks that failed before starting show why (like a secret or object that doesn't
 From there:
 
 - `gofer task logs <pipeline_id> <run_id> <task_id>` shows a task's full output. Add `--tail 50` to only see the end
-  of it, which is much faster for long running tasks.
+  of it, which is much faster for long running tasks. [Reading task logs](./cli/index.html#reading-task-logs) covers
+  searching and filtering them with `less`.
 - `gofer task get <pipeline_id> <run_id> <task_id>` shows the exact variables the task's container was given, and
   how long the task spent in each phase.
 - `gofer task attach <pipeline_id> <run_id> <task_id>` opens a shell in a task's container while it's still running,
