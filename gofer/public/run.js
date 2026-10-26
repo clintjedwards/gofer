@@ -77,7 +77,7 @@ function render(run, tasks, tasksStatus) {
 
   setHtml("run-title", renderTitle(run));
   setHtml("run-reason", renderRunReason(run));
-  setHtml("run-summary", renderSummary(run));
+  setHtml("run-summary", renderSummary(run, tasks));
   setHtml("run-cli-tips", renderRunCliTips(run, tasks));
 
   const variablesSection = document.getElementById("run-variables-section");
@@ -438,7 +438,16 @@ function renderRunReason(run) {
     </div>`;
 }
 
-function renderSummary(run) {
+// Log expiry happens for a whole run at once but is recorded on each task execution, so any task saying so is
+// enough. We can't tell without the tasks, which need a token.
+function logsExpired(tasks) {
+  if (tasks === null) {
+    return "-";
+  }
+  return tasks.some((task) => task.logs_expired) ? "Yes" : "No";
+}
+
+function renderSummary(run, tasks) {
   const cell = (label, value, title = "") =>
     `<div class="bg-white dark:bg-neutral-800 px-4 py-3" ${title ? `title="${escapeHtml(title)}"` : ""}>
       <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">${label}</dt>
@@ -450,7 +459,7 @@ function renderSummary(run) {
     cell("Started", runStarted(run)),
     cell("Ended", run.ended ? formatTimestamp(run.ended) : "-"),
     cell("Duration", escapeHtml(runDuration(run))),
-    cell("Objects expired", run.store_objects_expired ? "Yes" : "No"),
+    `<div class="grid grid-cols-2 gap-px">${cell("Objects expired", run.store_objects_expired ? "Yes" : "No")}${cell("Logs expired", logsExpired(tasks))}</div>`,
     cell("Injected token", run.token_id ? `<span class="font-mono text-xs break-all">${escapeHtml(run.token_id)}</span>` : "None"),
   ];
 
@@ -600,6 +609,9 @@ function renderGraph(tasks) {
     </svg>`;
 }
 
+// The narrowest a timeline segment is drawn, so it stays visible and hoverable.
+const MIN_SEGMENT_PERCENT = 1.5;
+
 function renderTimeline(run, tasks) {
   if (tasks.length === 0) {
     return `<p class="text-sm text-gray-500 dark:text-gray-400">None</p>`;
@@ -622,14 +634,30 @@ function renderTimeline(run, tasks) {
       // The time between being created and the first phase is just bookkeeping, so it's drawn as waiting too.
       const segments = [{ phase: "waiting_on_dependencies", started: Math.max(task.created, runStart), ended: phases[0].started }, ...phases];
 
+      // On a long run, short phases like pulling an image round down to nothing, so every phase that took any time
+      // gets a minimum width. Segments are placed in order so a widened one pushes the next along instead of
+      // covering it, then pulled back from the right edge if that pushed anything off the end. The last segment
+      // always gets a sliver so very short tasks don't vanish.
+      const layout = [];
+      let cursor = 0;
+      segments.forEach((segment, i) => {
+        const raw = percent(segment.ended) - percent(segment.started);
+        const width = segment.ended > segment.started || i === segments.length - 1 ? Math.max(raw, MIN_SEGMENT_PERCENT) : 0;
+        const left = Math.max(percent(segment.started), cursor);
+        layout.push({ left, width });
+        cursor = left + width;
+      });
+      let limit = 100;
+      for (let i = layout.length - 1; i >= 0; i--) {
+        layout[i].left = Math.max(Math.min(layout[i].left, limit - layout[i].width), 0);
+        limit = layout[i].left;
+      }
+
       bar = segments
         .map((segment, i) => {
-          const from = percent(segment.started);
-          // The last segment still gets a sliver so very short tasks don't vanish.
-          const width = i === segments.length - 1 ? Math.max(percent(segment.ended) - from, 0.75) : Math.max(percent(segment.ended) - from, 0);
+          const { left, width } = layout[i];
           const color = PHASES[segment.phase]?.bar ?? tone.bar;
           const text = `${PHASES[segment.phase]?.label ?? segment.phase} · ${compactDuration(segment.ended - segment.started)}`;
-          const left = Math.min(from, 100 - width);
           // Keep the hover label on screen for segments near either end of the bar.
           const middle = left + width / 2;
           const anchor = middle < 15 ? "left-0" : middle > 85 ? "right-0" : "left-1/2 -translate-x-1/2";

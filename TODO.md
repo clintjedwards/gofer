@@ -2,19 +2,12 @@
 
 None
 
-# This release
-
-In this order:
-
-1. ~~`gofer pipeline config deploy`~~ (done).
-2. ~~Task timeouts~~ (done).
-3. ~~Fix TLS~~ (done).
-
 # Small things I want to keep track of that I definitely need to do.
 
 * Let extension manifests declare the additional roles an extension needs, instead of operators having to know and
   list them in `additional_roles`. Could also be a way to permission extensions per pipeline or per purpose. Needs a
   design session.
+* [DEBUG] 2026-10-25T08:53:57.166878Z - websocket start_send error: Trying to work with closed connection
 * Pin extension images by digest in manifests (`image@sha256:...`) instead of by tag. Gofer pulls on every start, so
   if someone re-pushes a tag the extension's code changes without the manifest changing and without reload showing
   anything. With digests, "the manifest didn't change" really means "the code didn't change". The SDKs' manifest
@@ -151,6 +144,19 @@ There are several useful things we can do with the concept of extensions:
 - SuccessRate should be tracked, we also probably can run a background job that will sleep the majority of the time and
   then run once every day or so to calculate metrics.
 - On the first page a constantly updating event log would be really cool for the default namespace.
+- Cut down how much the UI polls. A pipeline page left open makes two requests every 5 seconds (`runs?limit=20` and
+  `runs?since=...&limit=500`), so one forgotten tab is about 1,440 requests an hour, almost all returning the same
+  thing. Roughly from cheapest to most work:
+  - Stop polling while the tab is hidden (Page Visibility API) and refresh once when it becomes visible again. A tab
+    left in the background then costs nothing, which is where most of the traffic comes from.
+  - Only poll fast while a run is in progress; back off to 30-60 seconds when nothing is running.
+  - Only ask for what changed. Either the client asks for runs newer than the last one it has, or the server returns
+    an ETag and the browser gets a small `304 Not Modified` when nothing changed. The `limit=500` request is the one
+    worth fixing first.
+  - Have the server push updates instead (SSE, websockets, or long polling) so the page only hears about real
+    changes. Most work, since the server has to track listeners and the client has to handle reconnects, but the event
+    stream (`/api/events`) already has `StartedRun`, `CompletedRun` and the task events, so it might be most of the way
+    there.
 
 ### General
 
