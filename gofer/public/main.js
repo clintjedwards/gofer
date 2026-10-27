@@ -300,7 +300,7 @@ function renderActivityLegend() {
     .join("");
 }
 
-// Stacked columns per day. Each column caps at 24px wide with a 2px gap between segments, and hovering a day
+// Stacked columns per day. Each column caps at 24px wide with a thin divider between segments, and hovering a day
 // shows its breakdown.
 function renderActivity(allRuns, since) {
   const days = [];
@@ -331,10 +331,11 @@ function renderActivity(allRuns, since) {
     const isToday = i === days.length - 1;
     const label = isToday ? "Today" : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-    // Draw bottom-up in a fixed order so a given outcome always sits in the same place.
+    // Draw bottom-up in a fixed order so a given outcome always sits in the same place. The column gets the total
+    // height and segments split it with flex-grow, so the dividers between segments don't push it past the scale.
     const segments = ["successful", "failed", "cancelled", "running"]
       .filter((key) => day.counts[key] > 0)
-      .map((key) => `<div class="${OUTCOMES[key].bar} w-full" style="height:${(day.counts[key] / scaleMax) * chartHeight}px"></div>`);
+      .map((key, j) => `<div class="${OUTCOMES[key].bar} w-full" style="flex:${day.counts[key]} 1 0;${j > 0 ? "border-bottom:1px solid rgb(0 0 0 / 0.5)" : ""}"></div>`);
 
     const breakdown = Object.entries(day.counts)
       .filter(([, count]) => count > 0)
@@ -343,7 +344,7 @@ function renderActivity(allRuns, since) {
 
     return `<div class="group relative flex flex-1 flex-col items-center">
         <div class="flex w-full justify-center rounded-sm group-hover:bg-gray-100 dark:group-hover:bg-neutral-700/50" style="height:${chartHeight}px">
-          <div class="flex w-full max-w-[24px] flex-col-reverse gap-[2px] self-end overflow-hidden rounded-t">${segments.join("")}</div>
+          <div class="flex w-full max-w-[24px] flex-col-reverse self-end overflow-hidden rounded-t" style="height:${(total / scaleMax) * chartHeight}px">${segments.join("")}</div>
         </div>
         <span class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 ${i % 2 === (days.length - 1) % 2 ? "" : "invisible"}">${label}</span>
         <div class="pointer-events-none absolute bottom-full z-10 mb-1 hidden w-40 ${i >= days.length - 3 ? "right-0" : "left-0"} rounded-md bg-white dark:bg-neutral-900 p-2 text-xs shadow-lg ring-1 ring-gray-200 dark:ring-neutral-700 group-hover:block">
