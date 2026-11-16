@@ -62,7 +62,7 @@ pub async fn stream_events(
     let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -290,7 +290,7 @@ pub async fn get_event(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -359,7 +359,7 @@ pub async fn delete_event(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,

@@ -1071,7 +1071,7 @@ pub async fn plan_extensions(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -1142,7 +1142,7 @@ pub async fn apply_extension(
     let body = body.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -1227,7 +1227,7 @@ pub async fn revert_extension(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,

@@ -199,7 +199,7 @@ pub async fn list_tokens(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -273,7 +273,7 @@ pub async fn get_token_by_id(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -344,7 +344,7 @@ pub async fn whoami(
     let api_state = rqctx.context();
     let req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -433,7 +433,7 @@ pub async fn create_web_login(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -490,7 +490,7 @@ pub async fn exchange_web_login(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 // The code is the credential here; the browser doesn't have a token yet.
                 bypass_auth: true,
@@ -560,7 +560,7 @@ pub async fn create_token(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -668,7 +668,7 @@ pub async fn delete_token(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -728,7 +728,7 @@ pub async fn create_bootstrap_token(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: true,
                 admin_only: false,
@@ -860,7 +860,7 @@ pub async fn update_token(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,

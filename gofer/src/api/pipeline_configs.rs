@@ -242,7 +242,7 @@ pub async fn list_configs(
     let query = query_params.into_inner();
     let req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -368,7 +368,7 @@ pub async fn get_config(
     let query = query_params.into_inner();
     let req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
@@ -577,7 +577,7 @@ pub async fn register_config(
     let body = body.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -828,7 +828,7 @@ pub async fn deploy_config(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
@@ -1206,7 +1206,7 @@ pub async fn delete_config(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,

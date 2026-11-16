@@ -188,7 +188,7 @@ pub async fn list_pipelines(
     let path = path_params.into_inner();
     let req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -306,7 +306,7 @@ pub async fn get_pipeline(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: true,
@@ -387,7 +387,7 @@ pub async fn update_pipeline(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -473,7 +473,7 @@ pub async fn delete_pipeline(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,

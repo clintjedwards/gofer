@@ -382,7 +382,7 @@ pub async fn list_runs(
     let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -483,7 +483,7 @@ pub async fn get_run(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: true,
@@ -576,7 +576,7 @@ pub async fn start_run(
     let body = body.into_inner();
     let req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -713,7 +713,7 @@ pub async fn cancel_run(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,

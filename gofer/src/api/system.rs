@@ -30,7 +30,7 @@ pub async fn get_system_metadata(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: true, // Anyone can query for the version/commit of the system.
                 admin_only: false,
@@ -74,7 +74,7 @@ pub async fn get_system_preferences(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -143,7 +143,7 @@ pub async fn update_system_preferences(
     let body = body.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,

@@ -13,6 +13,8 @@ production environment [here](https://gofer.clintjedwards.com/docs/ref/server_co
 This is really helpful for users and developers alike since it allows easy access to a runnable server to test pipelines
 against.
 
+Is this all I really need to do to edit this piece of shit for real
+
 ### You'll need to install the following first:
 
 To run Gofer dev mode:

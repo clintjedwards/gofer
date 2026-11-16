@@ -439,9 +439,10 @@ impl ApiState {
     /// [`RequestMetadata::allows`].
     pub async fn preflight_check(
         &self,
-        request: &RequestInfo,
+        rqctx: &RequestContext<Arc<ApiState>>,
         options: PreflightOptions,
     ) -> Result<RequestMetadata, HttpError> {
+        let request = &rqctx.request;
         let mut bypass_auth = options.bypass_auth;
 
         if self.config.development.bypass_auth {
@@ -473,6 +474,16 @@ impl ApiState {
         } else {
             self.get_auth_context(request).await?
         };
+
+        // Hand the caller back to the request logging middleware so it lands on the "request completed" line. We only
+        // fill a slot the middleware made, so a handler that outlives its request can't leave an entry behind.
+        if let Some(mut slot) = self.request_callers.get_mut(&rqctx.request_id) {
+            *slot = Some(super::Caller {
+                token_id: auth_ctx.token_id.clone(),
+                token_user: auth_ctx.token_user.clone(),
+            });
+        }
+
         let api_version = super::check_version_handler(request)?;
 
         let admin = auth_ctx.roles.contains(&SystemRoles::Admin.to_string())
@@ -754,7 +765,7 @@ pub async fn list_roles(
     let api_state = rqctx.context();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -834,7 +845,7 @@ pub async fn get_role(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: false,
@@ -921,7 +932,7 @@ pub async fn create_role(
     let body = body.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -1061,7 +1072,7 @@ pub async fn update_role(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,
@@ -1200,7 +1211,7 @@ pub async fn delete_role(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 admin_only: true,

@@ -512,7 +512,7 @@ pub async fn list_task_executions(
     let query = query_params.into_inner();
     let req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
@@ -621,7 +621,7 @@ pub async fn get_task_execution(
     let query = query_params.into_inner();
     let req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
@@ -721,7 +721,7 @@ pub async fn cancel_task_execution(
     let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
@@ -817,7 +817,7 @@ pub async fn get_logs(
     let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
@@ -1128,7 +1128,7 @@ pub async fn delete_logs(
     let path = path_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 bypass_auth: false,
                 allow_anonymous: false,
@@ -1276,7 +1276,7 @@ pub async fn attach_task_execution(
     let query = query_params.into_inner();
     let _req_metadata = api_state
         .preflight_check(
-            &rqctx.request,
+            &rqctx,
             PreflightOptions {
                 allow_anonymous: false,
                 bypass_auth: false,

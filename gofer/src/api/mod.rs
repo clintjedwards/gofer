@@ -26,8 +26,7 @@ use dashmap::DashMap;
 use dropshot::{
     ApiDescription, Body, ClientErrorStatusCode, CompressionConfig, ConfigDropshot, ConfigTls,
     DropshotState, EndpointTagPolicy, ErrorStatusCode, HandlerError, HandlerTaskMode, HttpError,
-    HttpServer, RequestInfo, ServerBuilder, ServerContext, TagConfig, TagDetails,
-    WebsocketConnectionRaw,
+    HttpServer, RequestInfo, ServerBuilder, TagConfig, TagDetails, WebsocketConnectionRaw,
 };
 use futures::Future;
 use lazy_regex::regex;
@@ -179,6 +178,10 @@ pub struct ApiState {
     /// Keyed by code. Kept in memory only, since a code that outlives a restart isn't worth keeping.
     web_logins: DashMap<String, tokens::WebLogin>,
 
+    /// Who made each in-flight request, keyed by request id. The "request completed" log line is written by
+    /// middleware that never sees the token, so preflight fills this in and the middleware reads it back.
+    request_callers: DashMap<String, Option<Caller>>,
+
     /// Held while an extension is being started, stopped, or swapped so two reloads can't fight over the same
     /// container.
     extension_lock: tokio::sync::Mutex<()>,
@@ -210,6 +213,7 @@ impl ApiState {
             secret_store,
             storage,
             web_logins: DashMap::new(),
+            request_callers: DashMap::new(),
             extension_lock: tokio::sync::Mutex::new(()),
         }
     }
@@ -1509,19 +1513,53 @@ fn format_duration(duration: std::time::Duration) -> String {
     }
 }
 
+/// The token behind a request, as far as the request log needs to know.
+#[derive(Debug, Clone)]
+struct Caller {
+    token_id: String,
+    token_user: String,
+}
+
+/// Removes a request's caller slot once the request is done. Doing it on drop means the slot is still cleaned up
+/// when the client disconnects and the middleware's future is dropped partway through.
+struct CallerSlot {
+    state: Arc<ApiState>,
+    request_id: String,
+}
+
+impl CallerSlot {
+    fn new(state: Arc<ApiState>, request_id: String) -> Self {
+        state.request_callers.insert(request_id.clone(), None);
+        Self { state, request_id }
+    }
+
+    fn take(&self) -> Option<Caller> {
+        self.state
+            .request_callers
+            .remove(&self.request_id)
+            .and_then(|(_, caller)| caller)
+    }
+}
+
+impl Drop for CallerSlot {
+    fn drop(&mut self) {
+        self.state.request_callers.remove(&self.request_id);
+    }
+}
+
 #[derive(Debug)]
 struct Middleware;
 
 #[async_trait::async_trait]
-impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
+impl dropshot::Middleware<Arc<ApiState>> for Middleware {
     async fn handle(
         &self,
-        server: Arc<DropshotState<C>>,
+        server: Arc<DropshotState<Arc<ApiState>>>,
         request: hyper::Request<hyper::body::Incoming>,
         request_id: String,
         remote_addr: SocketAddr,
         next: fn(
-            Arc<DropshotState<C>>,
+            Arc<DropshotState<Arc<ApiState>>>,
             hyper::Request<hyper::body::Incoming>,
             String,
             SocketAddr,
@@ -1544,7 +1582,24 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
             None => remote_addr.to_string(),
         };
 
+        // Callers control this header, so cap it to keep a junk value from bloating the logs.
+        let user_agent = request
+            .headers()
+            .get("User-Agent")
+            .and_then(|value| value.to_str().ok())
+            .map(|s| truncate_to_utf8_bytes(s, 256))
+            .unwrap_or_default();
+
+        let slot = CallerSlot::new(server.private.clone(), request_id.clone());
+
         let response = next(server.clone(), request, request_id.clone(), remote_addr).await;
+
+        // Empty when the route never checked auth (static files) or the token was rejected.
+        let caller = slot.take();
+        let (token_id, token_user) = match &caller {
+            Some(caller) => (caller.token_id.as_str(), caller.token_user.as_str()),
+            None => ("", ""),
+        };
 
         if let Ok(response) = &response {
             info!(
@@ -1552,6 +1607,9 @@ impl<C: ServerContext> dropshot::Middleware<C> for Middleware {
                 req_id = request_id,
                 method = method,
                 uri = uri,
+                user_agent = user_agent,
+                token_id = token_id,
+                token_user = token_user,
                 response_code = response.status().as_str(),
                 latency = format_duration(start_time.elapsed()),
                 "request completed"
