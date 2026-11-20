@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS pipeline_configs (
     pipeline_id  TEXT    NOT NULL,
     version      INTEGER NOT NULL,
     parallelism  INTEGER NOT NULL,
+    allow_runs_from TEXT NOT NULL,
     name         TEXT    NOT NULL,
     description  TEXT    NOT NULL,
     registered   TEXT    NOT NULL,

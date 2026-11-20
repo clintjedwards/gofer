@@ -1,8 +1,10 @@
-use super::permissioning::{Action, NamespaceResource, Requirement};
+use super::permissioning::{Action, AuthContext, NamespaceResource, Requirement, forbidden};
 use crate::{
     api::{
         ApiState, PreflightOptions, Variable, ensure_pipeline_exists, epoch_milli, event_utils,
-        orchestrator::OrchestratorError, tokens::TokenKind,
+        orchestrator::OrchestratorError,
+        pipeline_configs::{Config, ConfigState},
+        tokens::TokenKind,
     },
     http_error, storage,
 };
@@ -563,7 +565,98 @@ pub struct StartRunResponse {
     pub run: Run,
 }
 
+/// Whether a run token may start runs of the target pipeline because the target's live config lists the calling
+/// run's pipeline in `allow_runs_from`. The calling run's namespace, pipeline, and run id come from its token's
+/// metadata, which only Gofer writes for `run` tokens.
+///
+/// Run tokens outlive their runs by weeks, so the calling run also has to still be going. Otherwise a token copied
+/// out of an old run's logs could keep starting runs in other namespaces long after the run that earned it ended.
+async fn run_token_allowed(
+    api_state: &ApiState,
+    request_id: &str,
+    auth: &AuthContext,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<bool, HttpError> {
+    if auth.token_kind != TokenKind::Run {
+        return Ok(false);
+    }
+
+    let mut conn = match api_state.storage.read_conn().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            return Err(http_error!(
+                "Could not open connection to database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                request_id.into(),
+                Some(e.into())
+            ));
+        }
+    };
+
+    let metadata = &auth.token_metadata;
+    let (Some(caller_namespace), Some(caller_pipeline), Some(caller_run)) = (
+        metadata.get("namespace"),
+        metadata.get("pipeline"),
+        metadata.get("run").and_then(|run| run.parse::<i64>().ok()),
+    ) else {
+        return Ok(false);
+    };
+
+    let caller_run =
+        match storage::runs::get(&mut conn, caller_namespace, caller_pipeline, caller_run).await {
+            Ok(run) => run,
+            Err(storage::StorageError::NotFound) => return Ok(false),
+            Err(e) => {
+                return Err(http_error!(
+                    "Could not query database for run",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    request_id.into(),
+                    Some(e.into())
+                ));
+            }
+        };
+
+    if caller_run.state == State::Complete.to_string() {
+        return Ok(false);
+    }
+
+    let live_config = match storage::pipeline_configs::get_latest_w_state(
+        &mut conn,
+        namespace_id,
+        pipeline_id,
+        &ConfigState::Live.to_string(),
+    )
+    .await
+    {
+        Ok(config) => config,
+        Err(storage::StorageError::NotFound) => return Ok(false),
+        Err(e) => {
+            return Err(http_error!(
+                "Could not query database for pipeline config",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                request_id.into(),
+                Some(e.into())
+            ));
+        }
+    };
+
+    let live_config = Config::from_storage(live_config, vec![]).map_err(|e| {
+        http_error!(
+            "Could not parse pipeline config from database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            request_id.into(),
+            Some(e.into())
+        )
+    })?;
+
+    Ok(live_config.allows_runs_from(caller_namespace, caller_pipeline))
+}
+
 /// Start a run of a particular pipeline.
+///
+/// Besides tokens with a grant for the pipeline's runs, a run's injected token can start runs of any pipeline whose
+/// live config lists the calling pipeline in `allow_runs_from`.
 #[endpoint(
     method = POST,
     path = "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs",
@@ -577,6 +670,9 @@ pub async fn start_run(
     let api_state = rqctx.context();
     let path = path_params.into_inner();
     let body = body.into_inner();
+
+    // The grant check happens below instead of in preflight, since a run token without a matching grant can still
+    // be let in by the target pipeline's `allow_runs_from`.
     let req_metadata = api_state
         .preflight_check(
             &rqctx,
@@ -584,15 +680,30 @@ pub async fn start_run(
                 bypass_auth: false,
                 admin_only: false,
                 allow_anonymous: false,
-                requires: Requirement::pipeline(
-                    &path.namespace_id,
-                    &path.pipeline_id,
-                    NamespaceResource::Runs,
-                ),
+                requires: Requirement::Authenticated,
                 action: Action::Write,
             },
         )
         .await?;
+
+    let requires = Requirement::pipeline(
+        &path.namespace_id,
+        &path.pipeline_id,
+        NamespaceResource::Runs,
+    );
+
+    if !req_metadata.allows(&requires, &Action::Write)
+        && !run_token_allowed(
+            api_state,
+            &rqctx.request_id,
+            &req_metadata.auth,
+            &path.namespace_id,
+            &path.pipeline_id,
+        )
+        .await?
+    {
+        return Err(forbidden(&requires, &Action::Write));
+    }
 
     // Run variables can override anything, including the GOFER_ vars, but they still have to be usable as
     // environment variable names.

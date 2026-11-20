@@ -381,6 +381,9 @@ impl Cli {
         const TEMPLATE: &str = r#"
   {{ vertical_line }} Created {{ created }}
   {{ vertical_line }} Last run {{ last_run }}
+  {%- if allow_runs_from %}
+  {{ vertical_line }} Allows runs from: {{ allow_runs_from }}
+  {%- endif %}
 
   $ Recent Runs:
   {%- for line in recent_runs %}
@@ -404,6 +407,10 @@ impl Cli {
 
         let mut context = tera::Context::new();
         context.insert("vertical_line", &rail());
+        context.insert(
+            "allow_runs_from",
+            &pipeline_config.allow_runs_from.join(", "),
+        );
         context.insert(
             "recent_runs",
             &rail_table(&["RUN", "STARTED", "DURATION", "STATE", "STATUS"], run_rows),

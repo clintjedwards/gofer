@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
 )
@@ -40,11 +41,12 @@ type PipelineWrapper struct {
 // A pipeline is a representation of a Gofer pipeline, the structure in which users represent what they
 // want to run in Gofer.
 type Pipeline struct {
-	ID          string         `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                       // Unique Identifier for the pipeline.
-	Name        string         `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                        // Humanized name for the pipeline.
-	Description string         `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"` // A short description for the pipeline.
-	Parallelism int64          `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`    // How many runs are allowed to run at the same time.
-	Tasks       []*TaskWrapper `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                    // The task set of the pipeline. AKA which containers should be run.
+	ID            string         `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                                                                             // Unique Identifier for the pipeline.
+	Name          string         `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                                                                              // Humanized name for the pipeline.
+	Description   string         `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"`                                                       // A short description for the pipeline.
+	Parallelism   int64          `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`                                                          // How many runs are allowed to run at the same time.
+	AllowRunsFrom []string       `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"` // Other pipelines whose runs may start runs of this one.
+	Tasks         []*TaskWrapper `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                          // The task set of the pipeline. AKA which containers should be run.
 }
 
 type UserPipelineTaskConfig struct {
@@ -60,11 +62,12 @@ type UserPipelineTaskConfig struct {
 }
 
 type UserPipelineConfig struct {
-	ID          string                    `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                       // Unique Identifier for the pipeline.
-	Name        string                    `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                        // Humanized name for the pipeline.
-	Description string                    `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"` // A short description for the pipeline.
-	Parallelism int64                     `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`    // How many runs are allowed to run at the same time.
-	Tasks       []*UserPipelineTaskConfig `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                    // The task set of the pipeline. AKA which containers should be run.
+	ID            string                    `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                                                                             // Unique Identifier for the pipeline.
+	Name          string                    `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                                                                              // Humanized name for the pipeline.
+	Description   string                    `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"`                                                       // A short description for the pipeline.
+	Parallelism   int64                     `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`                                                          // How many runs are allowed to run at the same time.
+	AllowRunsFrom []string                  `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"` // Other pipelines whose runs may start runs of this one.
+	Tasks         []*UserPipelineTaskConfig `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                          // The task set of the pipeline. AKA which containers should be run.
 }
 
 // `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
@@ -104,11 +107,12 @@ type UserPipelineConfig struct {
 func NewPipeline(id, name string) *PipelineWrapper {
 	return &PipelineWrapper{
 		Pipeline{
-			ID:          id,
-			Name:        name,
-			Description: "",
-			Parallelism: 0,
-			Tasks:       []*TaskWrapper{},
+			ID:            id,
+			Name:          name,
+			Description:   "",
+			Parallelism:   0,
+			AllowRunsFrom: []string{},
+			Tasks:         []*TaskWrapper{},
 		},
 	}
 }
@@ -123,6 +127,13 @@ func (p *PipelineWrapper) Validate() error {
 	err = p.isDAG()
 	if err != nil {
 		return err
+	}
+
+	for _, pattern := range p.Pipeline.AllowRunsFrom {
+		err = validateRunSource(pattern)
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, task := range p.Pipeline.Tasks {
@@ -147,6 +158,34 @@ func (p *PipelineWrapper) Parallelism(parallelism int64) *PipelineWrapper {
 	return p
 }
 
+// AllowRunsFrom lets runs of other pipelines start runs of this one. Each entry is a "namespace/pipeline" pattern
+// where both halves are regexes matched against the whole id. For example "team-a-.*/.*" allows any pipeline in a
+// namespace starting with "team-a-", and "deploys/release" allows just that one pipeline.
+//
+// Anyone who can start runs of an allowed pipeline can use its injected token to start this one, so only list
+// pipelines whose users you'd trust to run this pipeline.
+func (p *PipelineWrapper) AllowRunsFrom(patterns ...string) *PipelineWrapper {
+	p.Pipeline.AllowRunsFrom = patterns
+	return p
+}
+
+// validateRunSource mirrors the Rust SDK's check; the Gofer API runs that one on registration either way.
+func validateRunSource(pattern string) error {
+	namespace, pipeline, found := strings.Cut(pattern, "/")
+	if !found || namespace == "" || pipeline == "" {
+		return fmt.Errorf("invalid allow_runs_from '%s'; must be 'namespace/pipeline' where both halves are "+
+			"non-empty regexes; use '.*' to match everything", pattern)
+	}
+
+	for _, half := range []string{namespace, pipeline} {
+		if _, err := regexp.Compile("^(?:" + half + ")$"); err != nil {
+			return fmt.Errorf("invalid allow_runs_from '%s'; '%s' is not a valid regex: %w", pattern, half, err)
+		}
+	}
+
+	return nil
+}
+
 // Tasks are containers that the pipeline runs.
 func (p *PipelineWrapper) Tasks(tasks ...*TaskWrapper) *PipelineWrapper {
 	p.Pipeline.Tasks = tasks
@@ -160,11 +199,12 @@ func (p *PipelineWrapper) ToUserPipelineConfig() *UserPipelineConfig {
 	}
 
 	return &UserPipelineConfig{
-		ID:          p.ID,
-		Name:        p.Name,
-		Description: p.Pipeline.Description,
-		Parallelism: p.Pipeline.Parallelism,
-		Tasks:       tasks,
+		ID:            p.ID,
+		Name:          p.Name,
+		Description:   p.Pipeline.Description,
+		Parallelism:   p.Pipeline.Parallelism,
+		AllowRunsFrom: p.Pipeline.AllowRunsFrom,
+		Tasks:         tasks,
 	}
 }
 

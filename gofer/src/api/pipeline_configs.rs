@@ -79,6 +79,10 @@ pub struct Config {
     /// The amount of runs allowed to happen at any given time.
     pub parallelism: u64,
 
+    /// Other pipelines whose runs may start runs of this one, as `namespace/pipeline` patterns. Each half is a regex
+    /// that has to match the whole id.
+    pub allow_runs_from: Vec<String>,
+
     /// Human readable name for pipeline.
     pub name: String,
 
@@ -111,6 +115,7 @@ impl Config {
             pipeline_id: pipeline_id.into(),
             version,
             parallelism: config.parallelism.try_into()?,
+            allow_runs_from: config.allow_runs_from,
             name: config.name,
             description: config.description.unwrap_or_default(),
             tasks: config
@@ -122,6 +127,13 @@ impl Config {
             registered: epoch_milli(),
             deprecated: 0,
         })
+    }
+
+    /// Whether runs of the given pipeline are allowed to start runs of this one.
+    pub fn allows_runs_from(&self, namespace_id: &str, pipeline_id: &str) -> bool {
+        self.allow_runs_from
+            .iter()
+            .any(|pattern| config::run_source_matches(pattern, namespace_id, pipeline_id))
     }
 
     /// The copy of a config that's safe to hand back to API callers. See [`crate::api::REDACTED`].
@@ -142,11 +154,19 @@ impl Config {
         storage::pipeline_configs::PipelineConfig,
         Vec<storage::tasks::Task>,
     )> {
+        let allow_runs_from = serde_json::to_string(&self.allow_runs_from).with_context(|| {
+            format!(
+                "Could not parse field 'allow_runs_from' to storage value; '{:#?}'",
+                self.allow_runs_from
+            )
+        })?;
+
         let config = storage::pipeline_configs::PipelineConfig {
             namespace_id: self.namespace_id.clone(),
             pipeline_id: self.pipeline_id.clone(),
             version: self.version.try_into()?,
             parallelism: self.parallelism.try_into()?,
+            allow_runs_from,
             name: self.name.clone(),
             description: self.description.clone(),
             registered: self.registered.to_string(),
@@ -195,11 +215,20 @@ impl Config {
             )
         })?;
 
+        let allow_runs_from: Vec<String> = serde_json::from_str(&config.allow_runs_from)
+            .with_context(|| {
+                format!(
+                    "Could not parse field 'allow_runs_from' from storage value '{}'",
+                    config.allow_runs_from
+                )
+            })?;
+
         Ok(Config {
             namespace_id: config.namespace_id,
             pipeline_id: config.pipeline_id,
             version: config.version.try_into()?,
             parallelism: config.parallelism.try_into()?,
+            allow_runs_from,
             name: config.name,
             description: config.description,
             tasks: tasks

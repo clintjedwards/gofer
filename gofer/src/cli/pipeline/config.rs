@@ -156,6 +156,9 @@ impl Cli {
         const TEMPLATE: &str = r#"
   {{ vertical_line }} Version: {{ version }}
   {{ vertical_line }} Parallelism: {{ parallelism }}
+  {%- if allow_runs_from %}
+  {{ vertical_line }} Allows runs from: {{ allow_runs_from }}
+  {%- endif %}
   {{ vertical_line }} Registered {{ registered }}
   {{ vertical_line }} Deprecated {{ deprecated }}
 
@@ -173,6 +176,7 @@ impl Cli {
         context.insert("vertical_line", &rail());
         context.insert("version", &format!("v{}", config.config.version));
         context.insert("parallelism", &config.config.parallelism);
+        context.insert("allow_runs_from", &config.config.allow_runs_from.join(", "));
         context.insert("tasks", &tasks_table(&config.config.tasks));
         context.insert(
             "registered",

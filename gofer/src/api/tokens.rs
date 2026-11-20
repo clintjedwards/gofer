@@ -1,6 +1,6 @@
 use super::permissioning::{Action, GlobalResource, Requirement, SystemRoles, bearer_token};
 use crate::{
-    api::{ApiState, PreflightOptions, epoch_milli},
+    api::{ApiState, PreflightOptions, epoch_milli, forwarded_for},
     http_error, storage,
 };
 use anyhow::{Context, Result};
@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, ops::Add, str::FromStr, sync::Arc};
 use strum::{Display, EnumString};
+use tracing::warn;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TokenPathArgs {
@@ -802,6 +803,13 @@ pub async fn create_bootstrap_token(
     };
 
     if system_parameters.bootstrap_token_created {
+        warn!(
+            remote_addr = %rqctx.request.remote_addr(),
+            forwarded_for = forwarded_for(rqctx.request.headers()),
+            request_id = rqctx.request_id,
+            "Refused request for bootstrap token; it has already been claimed"
+        );
+
         return Err(HttpError::for_client_error(
             None,
             ClientErrorStatusCode::CONFLICT,
@@ -869,6 +877,16 @@ pub async fn create_bootstrap_token(
             Some(e.into())
         ));
     };
+
+    // The bootstrap token can only be claimed once and has full access, so leave a clear record of who got it. The
+    // connection's address always gets logged since callers can put anything in X-Forwarded-For.
+    warn!(
+        remote_addr = %rqctx.request.remote_addr(),
+        forwarded_for = forwarded_for(rqctx.request.headers()),
+        token_id = new_token.id,
+        request_id = rqctx.request_id,
+        "Bootstrap token claimed"
+    );
 
     let resp = CreateTokenResponse {
         token_details: new_token,

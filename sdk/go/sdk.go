@@ -491,6 +491,9 @@ type ApplyExtensionResponse struct {
 
 // Config A representation of the user's configuration settings for a particular pipeline.
 type Config struct {
+	// AllowRunsFrom Other pipelines whose runs may start runs of this one, as `namespace/pipeline` patterns. Each half is a regex that has to match the whole id.
+	AllowRunsFrom []string `json:"allow_runs_from"`
+
 	// Deprecated Time in epoch milliseconds when this pipeline config was not longer used.
 	Deprecated uint64 `json:"deprecated"`
 
@@ -1257,6 +1260,9 @@ type Parameter struct {
 //
 // ```ignore // Create a new pipeline with a name and a descriptive label. Pipeline::new("simple", "Simple Pipeline") .description("This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \ This pattern will be familiar to those experienced with CI/CD tools. \ Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.") // Adding a single task to the pipeline. .tasks(vec![ Task::new("simple-task", "ubuntu:latest") .description("This task uses the Ubuntu container to print a 'Hello World' message.") .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()]) ]) .finish() // Finalize and validate the pipeline setup. .unwrap(); // Handle potential errors during pipeline creation. ```
 type Pipeline struct {
+	// AllowRunsFrom Other pipelines whose runs may start runs of this one, as `namespace/pipeline` patterns. Each half is a regex that has to match the whole id, so `team-a-.*/.*` allows every pipeline in namespaces starting with `team-a-`. Defaults to empty so configs built with older SDKs still parse.
+	AllowRunsFrom *[]string `json:"allow_runs_from,omitempty"`
+
 	// Description Short description of what the pipeline is used for.
 	Description *string `json:"description"`
 

@@ -267,6 +267,7 @@ mod tests {
             pipeline_id: "some_pipeline_id".to_string(),
             version: 1,
             parallelism: 4,
+            allow_runs_from: "[]".into(),
             name: "New Test Pipeline".to_string(),
             description: "A newly inserted test pipeline".to_string(),
             registered: "2023-01-01".to_string(),

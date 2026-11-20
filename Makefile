@@ -171,9 +171,10 @@ run-hurl-tests:
 > echo "--------------------------------"
 > hurl --color --test *.hurl --variable secret=$$SECRET --error-format long
 
-## cleanup-integration-tests: Clean up the background gofer process.
+## cleanup-integration-tests: Clean up the background gofer process and the data it left behind.
 cleanup-integration-tests:
 > @pkill -9 gofer
+> @rm -rf /tmp/gofer* || true
 
 ## run-tailwind: Run the tailwind compiler
 run-tailwind:

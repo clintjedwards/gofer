@@ -105,6 +105,39 @@ func TestSimpleConfigSerialization(t *testing.T) {
 	}
 }
 
+// AllowRunsFrom with no arguments leaves a nil slice, which would serialize as null and fail to parse in Gofer.
+func TestEmptyAllowRunsFromIsOmitted(t *testing.T) {
+	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").AllowRunsFrom()
+
+	pipelineJSON, err := json.Marshal(pipeline)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := map[string]any{}
+	if err := json.Unmarshal(pipelineJSON, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := got["allow_runs_from"]; ok {
+		t.Errorf("expected allow_runs_from to be left out, got %s", pipelineJSON)
+	}
+}
+
+func TestInvalidAllowRunsFrom(t *testing.T) {
+	for _, pattern := range []string{"no-slash", "/build", "team-a/", "team-a/("} {
+		err := NewPipeline("simple-test-pipeline", "Simple Test Pipeline").AllowRunsFrom(pattern).Validate()
+		if err == nil {
+			t.Errorf("expected '%s' to be rejected", pattern)
+		}
+	}
+
+	err := NewPipeline("simple-test-pipeline", "Simple Test Pipeline").AllowRunsFrom("team-a-.*/.*").Validate()
+	if err != nil {
+		t.Errorf("expected valid pattern to pass; %v", err)
+	}
+}
+
 func TestInjectAPITokens(t *testing.T) {
 	pipeline := NewPipeline("inject-test-pipeline", "").Tasks(NewTask("task-1", "").InjectAPIToken(true))
 	if pipeline.Pipeline.Tasks[0].Task.InjectAPIToken == false {

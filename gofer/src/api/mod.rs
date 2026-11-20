@@ -1547,6 +1547,17 @@ impl Drop for CallerSlot {
     }
 }
 
+/// The request's "X-Forwarded-For" header, or empty if there isn't one. Behind a reverse proxy it has the caller's
+/// external ip, but anyone talking to Gofer directly can set it to whatever they like, so it's capped and should be
+/// logged next to the connection's real address rather than in place of it when it matters who made the request.
+pub fn forwarded_for(headers: &hyper::HeaderMap) -> String {
+    headers
+        .get("X-Forwarded-For")
+        .and_then(|value| value.to_str().ok())
+        .map(|s| truncate_to_utf8_bytes(s, 256))
+        .unwrap_or_default()
+}
+
 #[derive(Debug)]
 struct Middleware;
 
@@ -1574,12 +1585,9 @@ impl dropshot::Middleware<Arc<ApiState>> for Middleware {
 
         // If we're behind a reverse proxy we want the "X-Forwarded-For" header since that gives us the caller's external
         // ip. If not just log whatever the default remote address is.
-        let remote_ip = match request.headers().get("X-Forwarded-For") {
-            Some(value) => value
-                .to_str()
-                .map(|s| s.to_string())
-                .unwrap_or_else(|_| remote_addr.to_string()),
-            None => remote_addr.to_string(),
+        let remote_ip = match forwarded_for(request.headers()) {
+            forwarded if forwarded.is_empty() => remote_addr.to_string(),
+            forwarded => forwarded,
         };
 
         // Callers control this header, so cap it to keep a junk value from bloating the logs.

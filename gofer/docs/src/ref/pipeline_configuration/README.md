@@ -177,6 +177,35 @@ err := sdk.NewPipeline("deploy", "Deploy").
 Runs started while the pipeline is at its limit wait until an earlier one finishes. A pipeline can't set a limit
 higher than the server's.
 
+### Letting Other Pipelines Start Runs
+
+A run's [injected token](#auto-inject-api-tokens) can only start runs of its own pipeline. To let runs of other
+pipelines start this one, list them with `AllowRunsFrom`. The pipeline being started decides who can start it, so
+nobody can start your pipeline from theirs without you agreeing to it.
+
+Each entry is a `namespace/pipeline` pattern. Both halves are regexes that have to match the whole id, the same as
+[role targets](../server_configuration/authz_n.md#targets):
+
+```go
+err := sdk.NewPipeline("deploy", "Deploy").
+    AllowRunsFrom(
+        "team-a-.*/.*",    // Any pipeline in a namespace starting with "team-a-".
+        "releases/build",  // Just the build pipeline in the releases namespace.
+    ).
+    Tasks(...).Finish()
+```
+
+The calling task needs `InjectAPIToken`, and then starts the run like any other API call, for example with
+`gofer pipeline run deploy --namespace <namespace>`. The new run shows the calling run as its initiator, like
+`releases/build#42 (run)`.
+
+Only the live config's list counts, so a change takes effect once it's deployed. The calling run also has to still be
+in progress; injected tokens stick around for a while after their run ends, but they can't be used to start other
+pipelines anymore. Keep in mind that anyone who can start
+runs of an allowed pipeline can get at its injected token (see the warning in
+[task environment variables](./tasks.md#task-environment-variables-and-configuration)), so only list
+pipelines whose users you'd also trust to run this one.
+
 ## Next Steps
 
 - [Tasks](./tasks.md) covers everything a task can do: dependencies, variables, secrets, and objects.

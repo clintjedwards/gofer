@@ -176,7 +176,8 @@ Gofer also creates a few roles automatically:
   subscriptions, start runs in any pipeline, read most pipeline information, and follow events.
 - `inject_api_token_<namespace_id>_<pipeline_id>`: given to tokens created by a pipeline's `inject_api_token` option.
   It can read and write its own pipeline's runs, objects, and configs, read pipelines in the `default` namespace and
-  its own namespace, and follow events.
+  its own namespace, and follow events. It can also start runs of other pipelines whose config lists it in
+  [`AllowRunsFrom`](../pipeline_configuration/index.html#letting-other-pipelines-start-runs).
 
 ### Errors
 

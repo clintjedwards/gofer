@@ -48,6 +48,8 @@ Returns a list of all runs by pipeline id.
 
 <div class="api-endpoint"><span class="api-method api-method-post">POST</span><code>/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs</code></div>
 
+Besides tokens with a grant for the pipeline's runs, a run's injected token can start runs of any pipeline whose live config lists the calling pipeline in `allow_runs_from`.
+
 **Path parameters**
 
 | Name | Type | Required | Description |

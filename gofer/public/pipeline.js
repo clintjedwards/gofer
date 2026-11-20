@@ -208,12 +208,28 @@ function renderSummary(pipeline, config, runs) {
   const latest = runs[0];
   const parallelism = config ? (config.parallelism === 0 ? "Server default" : `${config.parallelism} at a time`) : "-";
 
-  return [
+  const cells = [
     cell("Created", formatTimestamp(pipeline.created)),
     cell("Last run", latest ? relativeTime(latest.created) : "Never", latest ? formatTimestamp(latest.created) : ""),
     cell("Config registered", config ? formatTimestamp(config.registered) : "-"),
     cell("Parallelism", parallelism, "How many runs can be in progress at once"),
-  ].join("");
+  ];
+
+  // Most pipelines don't allow this, so the row only shows up when there's something to say.
+  if (config && config.allow_runs_from.length > 0) {
+    const patterns = config.allow_runs_from
+      .map((pattern) => `<span class="font-mono text-xs">${escapeHtml(pattern)}</span>`)
+      .join(", ");
+    cells.push(
+      `<div class="col-span-2 lg:col-span-4">${cell(
+        "Allows runs from",
+        patterns,
+        "Runs of pipelines matching these namespace/pipeline patterns can start runs of this pipeline",
+      )}</div>`,
+    );
+  }
+
+  return cells.join("");
 }
 
 function renderCliTips(pipeline) {

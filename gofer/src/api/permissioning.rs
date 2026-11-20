@@ -11,7 +11,7 @@ use dropshot::{
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use strum::{Display, EnumString};
 use tracing::error;
 
@@ -399,8 +399,23 @@ pub struct AuthContext {
     /// What the token was created for, so callers can tell people apart from extensions and runs.
     pub token_kind: tokens::TokenKind,
 
+    /// The token's metadata. For `run` tokens Gofer writes the namespace, pipeline, and run the token belongs to.
+    pub token_metadata: HashMap<String, String>,
+
     /// The role ids for the current token.
     pub roles: Vec<String>,
+}
+
+/// The error for a valid token that doesn't have a grant covering what the route needs.
+pub fn forbidden(requires: &Requirement, action: &Action) -> HttpError {
+    HttpError::for_client_error(
+        None,
+        ClientErrorStatusCode::FORBIDDEN,
+        format!(
+            "Token does not have permission to access this route. \
+            Route requires a single grant allowing '{action}' on {requires}"
+        ),
+    )
 }
 
 /// Pulls the raw token out of a request's `Authorization: Bearer <token>` header.
@@ -459,6 +474,7 @@ impl ApiState {
                 token_id: "0".into(),
                 token_user: "Anonymous".into(),
                 token_kind: tokens::TokenKind::User,
+                token_metadata: HashMap::new(),
                 // Allow access to all routes.
                 roles: vec![SystemRoles::Admin.to_string()],
             }
@@ -473,6 +489,7 @@ impl ApiState {
                     token_id: "0".into(),
                     token_user: "Anonymous".into(),
                     token_kind: tokens::TokenKind::User,
+                    token_metadata: HashMap::new(),
                     roles: vec![SystemRoles::Anonymous.to_string()],
                 },
             }
@@ -516,15 +533,7 @@ impl ApiState {
         };
 
         if !metadata.allows(&options.requires, &options.action) {
-            return Err(HttpError::for_client_error(
-                None,
-                ClientErrorStatusCode::FORBIDDEN,
-                format!(
-                    "Token does not have permission to access this route. \
-                    Route requires a single grant allowing '{}' on {}",
-                    options.action, options.requires
-                ),
-            ));
+            return Err(forbidden(&options.requires, &options.action));
         }
 
         Ok(metadata)
@@ -647,6 +656,7 @@ impl ApiState {
             token_id: token.id,
             token_user: token.user,
             token_kind: token.kind,
+            token_metadata: token.metadata,
             roles: token.roles,
         })
     }

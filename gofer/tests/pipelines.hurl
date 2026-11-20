@@ -67,6 +67,7 @@ Authorization: Bearer {{secret}}
     "id": "broken",
     "name": "Broken",
     "parallelism": -1,
+    "allow_runs_from": ["no-slash", "team-a/("],
     "tasks": [
         {"id": "task-a", "image": "ubuntu:latest", "depends_on": {"task-b": "Any"}, "variables": {}, "inject_api_token": false, "always_pull_newest_image": false},
         {"id": "task-b", "image": "ubuntu:latest", "depends_on": {"task-a": "Any"}, "variables": {}, "inject_api_token": false, "always_pull_newest_image": false},
@@ -80,6 +81,8 @@ jsonpath "$.message" contains "task-a -> task-b -> task-a"
 jsonpath "$.message" contains "depends on 'missing'"
 jsonpath "$.message" contains "image for task 'task-c'"
 jsonpath "$.message" contains "parallelism"
+jsonpath "$.message" contains "allow_runs_from: 'no-slash'"
+jsonpath "$.message" contains "allow_runs_from: 'team-a/('"
 
 # A task that runs past its own timeout is stopped, and both it and the run fail with a reason that says which
 # timeout it hit. The trap makes the container exit on the stop signal so we don't wait out the stop grace period.

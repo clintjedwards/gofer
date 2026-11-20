@@ -31,6 +31,7 @@ A representation of the user's configuration settings for a particular pipeline.
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
+| `allow_runs_from` | array of string | yes | Other pipelines whose runs may start runs of this one, as `namespace/pipeline` patterns. Each half is a regex that has to match the whole id. |
 | `deprecated` | integer | yes | Time in epoch milliseconds when this pipeline config was not longer used. |
 | `description` | string | yes | Description of pipeline's purpose and other details. |
 | `name` | string | yes | Human readable name for pipeline. |
@@ -567,6 +568,7 @@ A string, one of:
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
+| `allow_runs_from` | array of string | no | Other pipelines whose runs may start runs of this one, as `namespace/pipeline` patterns. Each half is a regex that has to match the whole id, so `team-a-.*/.*` allows every pipeline in namespaces starting with `team-a-`. Defaults to empty so configs built with older SDKs still parse. |
 | `description` | string (nullable) | no | Short description of what the pipeline is used for. |
 | `id` | string | yes | Unique user defined identifier. |
 | `name` | string | yes | Humanized name, meant for display. |

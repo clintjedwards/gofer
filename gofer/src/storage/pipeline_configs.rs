@@ -8,6 +8,7 @@ pub struct PipelineConfig {
     pub pipeline_id: String,
     pub version: i64,
     pub parallelism: i64,
+    pub allow_runs_from: String,
     pub name: String,
     pub description: String,
     pub registered: String,
@@ -25,14 +26,15 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     pipeline_config: &PipelineConfig,
 ) -> Result<(), StorageError> {
-    let sql = "INSERT INTO pipeline_configs (namespace_id, pipeline_id, version, parallelism, name, description, registered, \
-            deprecated, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    let sql = "INSERT INTO pipeline_configs (namespace_id, pipeline_id, version, parallelism, allow_runs_from, name, description, registered, \
+            deprecated, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&pipeline_config.namespace_id)
         .bind(&pipeline_config.pipeline_id)
         .bind(pipeline_config.version)
         .bind(pipeline_config.parallelism)
+        .bind(&pipeline_config.allow_runs_from)
         .bind(&pipeline_config.name)
         .bind(&pipeline_config.description)
         .bind(&pipeline_config.registered)
@@ -52,7 +54,7 @@ pub async fn list(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<Vec<PipelineConfig>, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, allow_runs_from, name, description, registered, deprecated, state \
         FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? ORDER BY version DESC;";
 
     let query = sqlx::query_as::<_, PipelineConfig>(sql)
@@ -71,7 +73,7 @@ pub async fn get(
     pipeline_id: &str,
     version: i64,
 ) -> Result<PipelineConfig, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, allow_runs_from, name, description, registered, deprecated, state \
         FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND version = ?;";
 
     let query = sqlx::query_as::<_, PipelineConfig>(sql)
@@ -91,7 +93,7 @@ pub async fn list_latest(
     conn: &mut SqliteConnection,
     namespace_id: &str,
 ) -> Result<Vec<PipelineConfig>, StorageError> {
-    let sql = "SELECT c.namespace_id, c.pipeline_id, c.version, c.parallelism, c.name, c.description, c.registered, \
+    let sql = "SELECT c.namespace_id, c.pipeline_id, c.version, c.parallelism, c.allow_runs_from, c.name, c.description, c.registered, \
         c.deprecated, c.state FROM pipeline_configs c \
         JOIN (SELECT pipeline_id, MAX(version) AS version FROM pipeline_configs WHERE namespace_id = ? \
         GROUP BY pipeline_id) latest ON c.pipeline_id = latest.pipeline_id AND c.version = latest.version \
@@ -112,7 +114,7 @@ pub async fn get_latest(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<PipelineConfig, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, allow_runs_from, name, description, registered, deprecated, state \
         FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? Order By version DESC;";
 
     let query = sqlx::query_as::<_, PipelineConfig>(sql)
@@ -131,7 +133,7 @@ pub async fn get_latest_w_state(
     pipeline_id: &str,
     state: &str,
 ) -> Result<PipelineConfig, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, name, description, registered, deprecated, state \
+    let sql = "SELECT namespace_id, pipeline_id, version, parallelism, allow_runs_from, name, description, registered, deprecated, state \
         FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND state = ?;";
 
     let query = sqlx::query_as::<_, PipelineConfig>(sql)
@@ -257,6 +259,7 @@ mod tests {
             pipeline_id: "some_pipeline_id".to_string(),
             version: 1,
             parallelism: 4,
+            allow_runs_from: "[]".into(),
             name: "New Test Pipeline".to_string(),
             description: "A newly inserted test pipeline".to_string(),
             registered: "2023-01-01".to_string(),
@@ -299,6 +302,7 @@ mod tests {
             pipeline_id: "some_pipeline_id".to_string(),
             version: 2,
             parallelism: 4,
+            allow_runs_from: "[]".into(),
             name: "Renamed Pipeline".to_string(),
             description: "The second version".to_string(),
             registered: "2023-01-02".to_string(),

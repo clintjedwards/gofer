@@ -64,6 +64,39 @@ pub fn validate_variable_key(arg: &str, key: &str) -> Result<(), ConfigError> {
     })
 }
 
+/// Splits an `allow_runs_from` pattern into its namespace and pipeline regexes, each anchored to match a whole id.
+fn parse_run_source(pattern: &str) -> Option<(lazy_regex::Regex, lazy_regex::Regex)> {
+    let (namespace, pipeline) = pattern.split_once('/')?;
+    if namespace.is_empty() || pipeline.is_empty() {
+        return None;
+    }
+
+    let namespace = lazy_regex::Regex::new(&format!("^(?:{namespace})$")).ok()?;
+    let pipeline = lazy_regex::Regex::new(&format!("^(?:{pipeline})$")).ok()?;
+    Some((namespace, pipeline))
+}
+
+fn validate_run_source(pattern: &str) -> Result<(), ConfigError> {
+    if parse_run_source(pattern).is_some() {
+        return Ok(());
+    }
+
+    Err(ConfigError::InvalidArgument {
+        argument: "allow_runs_from".into(),
+        value: pattern.into(),
+        description: "must be 'namespace/pipeline' where both halves are non-empty regexes; use '.*' to match \
+            everything"
+            .into(),
+    })
+}
+
+/// Whether an `allow_runs_from` pattern covers the given pipeline. Invalid patterns match nothing.
+pub fn run_source_matches(pattern: &str, namespace_id: &str, pipeline_id: &str) -> bool {
+    parse_run_source(pattern).is_some_and(|(namespace, pipeline)| {
+        namespace.is_match(namespace_id) && pipeline.is_match(pipeline_id)
+    })
+}
+
 /// `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
 /// This structure allows you to organize and define the workflow for the tasks you want to execute.
 ///   - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed
@@ -112,6 +145,12 @@ pub struct Pipeline {
     /// 0 defaults to whatever the global Gofer setting is.
     pub parallelism: i64,
 
+    /// Other pipelines whose runs may start runs of this one, as `namespace/pipeline` patterns. Each half is a regex
+    /// that has to match the whole id, so `team-a-.*/.*` allows every pipeline in namespaces starting with `team-a-`.
+    /// Defaults to empty so configs built with older SDKs still parse.
+    #[serde(default)]
+    pub allow_runs_from: Vec<String>,
+
     /// A mapping of pipeline owned tasks.
     pub tasks: Vec<Task>,
 }
@@ -124,6 +163,7 @@ impl Pipeline {
             name: name.to_string(),
             description: None,
             parallelism: 0,
+            allow_runs_from: Vec::new(),
             tasks: Vec::new(),
         }
     }
@@ -143,6 +183,12 @@ impl Pipeline {
                 value: self.parallelism.to_string(),
                 description: "cannot be negative; use 0 for the server's default".into(),
             });
+        }
+
+        for pattern in &self.allow_runs_from {
+            if let Err(e) = validate_run_source(pattern) {
+                problems.push(e);
+            }
         }
 
         for task in &self.tasks {
@@ -199,6 +245,21 @@ impl Pipeline {
 
     pub fn parallelism(mut self, parallelism: i64) -> Self {
         self.parallelism = parallelism;
+        self
+    }
+
+    /// Lets runs of other pipelines start runs of this one. Each entry is a `namespace/pipeline` pattern where both
+    /// halves are regexes matched against the whole id. For example `team-a-.*/.*` allows any pipeline in a namespace
+    /// starting with `team-a-`, and `deploys/release` allows just that one pipeline.
+    ///
+    /// Anyone who can start runs of an allowed pipeline can use its injected token to start this one, so only list
+    /// pipelines whose users you'd trust to run this pipeline.
+    pub fn allow_runs_from<I, S>(mut self, patterns: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.allow_runs_from = patterns.into_iter().map(Into::into).collect();
         self
     }
 
@@ -505,6 +566,40 @@ impl Task {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn run_source_patterns_match_whole_ids() {
+        assert!(run_source_matches(
+            "team-a-.*/.*",
+            "team-a-build",
+            "anything"
+        ));
+        assert!(run_source_matches("deploys/release", "deploys", "release"));
+        assert!(!run_source_matches(
+            "deploys/release",
+            "deploys",
+            "release-two"
+        ));
+        assert!(!run_source_matches("team-a/.*", "not-team-a", "build"));
+        assert!(!run_source_matches("team-a", "team-a", "build"));
+    }
+
+    #[test]
+    fn invalid_run_sources_are_rejected() {
+        for pattern in ["no-slash", "/build", "team-a/", "team-a/(", ""] {
+            let result = Pipeline::new("valid", "")
+                .allow_runs_from([pattern])
+                .validate();
+            assert!(result.is_err(), "expected '{pattern}' to be rejected");
+        }
+
+        assert!(
+            Pipeline::new("valid", "")
+                .allow_runs_from(["team-a-.*/.*"])
+                .validate()
+                .is_ok()
+        );
+    }
 
     #[test]
     fn test_invalid_pipeline_cyclical() {

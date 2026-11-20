@@ -112,6 +112,9 @@ More information about auth in general terms [can be found here.](./authz_n.md)
 
 To create your root/bootstrap token use the command: `gofer token bootstrap`
 
+The bootstrap token can only be claimed once. Gofer logs a warning with the caller's address when it's claimed and
+whenever someone asks for it afterwards, so you can check that the token went to you.
+
 <div class="box note">
   <div class="text">
   <strong>Note:</strong>
