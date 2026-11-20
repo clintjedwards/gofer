@@ -4707,6 +4707,14 @@
             "description": "The unique identifier for the token that initiated the request.",
             "type": "string"
           },
+          "kind": {
+            "description": "What kind of token started the run; a person, an extension, or another run.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/token_kind"
+              }
+            ]
+          },
           "user": {
             "description": "The plaintext username for of the token.",
             "type": "string"
@@ -4714,6 +4722,7 @@
         },
         "required": [
           "id",
+          "kind",
           "user"
         ]
       },
@@ -6808,6 +6817,14 @@
             "description": "Unique identifier for token.",
             "type": "string"
           },
+          "kind": {
+            "description": "What the token was created for.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/token_kind"
+              }
+            ]
+          },
           "metadata": {
             "description": "Extra information about this token in label form",
             "type": "object",
@@ -6832,6 +6849,7 @@
           "disabled",
           "expires",
           "id",
+          "kind",
           "metadata",
           "roles",
           "user"
@@ -7574,6 +7592,39 @@
         "required": [
           "phase",
           "started"
+        ]
+      },
+      "token_kind": {
+        "description": "What a token was created for. Gofer sets this itself and it can't be chosen through the API, so it can be trusted.",
+        "oneOf": [
+          {
+            "description": "A token created through the API, usually for a person.",
+            "type": "string",
+            "enum": [
+              "user"
+            ]
+          },
+          {
+            "description": "A token Gofer creates for a running extension.",
+            "type": "string",
+            "enum": [
+              "extension"
+            ]
+          },
+          {
+            "description": "A token Gofer creates for a run so its tasks can talk to the API (the `inject_api_token` feature).",
+            "type": "string",
+            "enum": [
+              "run"
+            ]
+          },
+          {
+            "description": "The one-time token used to set up a new Gofer instance.",
+            "type": "string",
+            "enum": [
+              "bootstrap"
+            ]
+          }
         ]
       }
     },

@@ -12,6 +12,7 @@ pub struct Token {
     pub disabled: bool,
     pub roles: String,
     pub user: String,
+    pub kind: String,
 }
 
 #[derive(Clone, Debug)]
@@ -20,8 +21,8 @@ pub struct UpdatableFields {
 }
 
 pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), StorageError> {
-    let sql = "INSERT INTO tokens (id, hash, created, metadata, expires, disabled, user, roles)\
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+    let sql = "INSERT INTO tokens (id, hash, created, metadata, expires, disabled, user, kind, roles)\
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&token.id)
@@ -31,6 +32,7 @@ pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), St
         .bind(&token.expires)
         .bind(token.disabled)
         .bind(&token.user)
+        .bind(&token.kind)
         .bind(&token.roles);
 
     query
@@ -42,7 +44,8 @@ pub async fn insert(conn: &mut SqliteConnection, token: &Token) -> Result<(), St
 }
 
 pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageError> {
-    let sql = "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens;";
+    let sql =
+        "SELECT id, hash, created, metadata, expires, disabled, user, kind, roles FROM tokens;";
 
     let query = sqlx::query_as::<_, Token>(sql);
 
@@ -54,7 +57,7 @@ pub async fn list(conn: &mut SqliteConnection) -> Result<Vec<Token>, StorageErro
 
 pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, StorageError> {
     let sql = "SELECT id, hash, created, metadata, expires, \
-        disabled, user, roles FROM tokens WHERE id = ?;";
+        disabled, user, kind, roles FROM tokens WHERE id = ?;";
 
     let query = sqlx::query_as::<_, Token>(sql).bind(id);
 
@@ -65,7 +68,7 @@ pub async fn get_by_id(conn: &mut SqliteConnection, id: &str) -> Result<Token, S
 }
 
 pub async fn get_by_hash(conn: &mut SqliteConnection, hash: &str) -> Result<Token, StorageError> {
-    let sql = "SELECT id, hash, created, metadata, expires, disabled, user, roles FROM tokens WHERE hash = ?;";
+    let sql = "SELECT id, hash, created, metadata, expires, disabled, user, kind, roles FROM tokens WHERE hash = ?;";
 
     let query = sqlx::query_as::<_, Token>(sql).bind(hash);
 
@@ -140,6 +143,7 @@ mod tests {
             metadata: "some_json_hashmap".into(),
             expires: "some_expiry".into(),
             user: "some_user".into(),
+            kind: "user".into(),
             roles: "{some_role_scheme}".into(),
             disabled: false,
         };

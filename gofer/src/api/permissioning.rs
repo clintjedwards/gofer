@@ -396,6 +396,9 @@ pub struct AuthContext {
     /// The plaintext username attached to the token.
     pub token_user: String,
 
+    /// What the token was created for, so callers can tell people apart from extensions and runs.
+    pub token_kind: tokens::TokenKind,
+
     /// The role ids for the current token.
     pub roles: Vec<String>,
 }
@@ -455,6 +458,7 @@ impl ApiState {
             AuthContext {
                 token_id: "0".into(),
                 token_user: "Anonymous".into(),
+                token_kind: tokens::TokenKind::User,
                 // Allow access to all routes.
                 roles: vec![SystemRoles::Admin.to_string()],
             }
@@ -468,6 +472,7 @@ impl ApiState {
                 Err(_) => AuthContext {
                     token_id: "0".into(),
                     token_user: "Anonymous".into(),
+                    token_kind: tokens::TokenKind::User,
                     roles: vec![SystemRoles::Anonymous.to_string()],
                 },
             }
@@ -641,6 +646,7 @@ impl ApiState {
         Ok(AuthContext {
             token_id: token.id,
             token_user: token.user,
+            token_kind: token.kind,
             roles: token.roles,
         })
     }

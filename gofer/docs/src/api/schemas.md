@@ -364,6 +364,7 @@ Everything a role allows. Each grant stands on its own; a request is allowed onl
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
 | `id` | string | yes | The unique identifier for the token that initiated the request. |
+| `kind` | [token_kind](#token_kind) | yes | What kind of token started the run; a person, an extension, or another run. |
 | `user` | string | yes | The plaintext username for of the token. |
 
 ## Kind
@@ -885,6 +886,7 @@ The hash field is skipped during serialization to prevent it from being exposed 
 | `disabled` | boolean | yes | If the token is inactive or not; disabled tokens cannot be used for requests. |
 | `expires` | integer | yes | Time in epoch milliseconds when token would expire. An expiry of 0 means that token does not expire. |
 | `id` | string | yes | Unique identifier for token. |
+| `kind` | [token_kind](#token_kind) | yes | What the token was created for. |
 | `metadata` | map of string to string | yes | Extra information about this token in label form |
 | `roles` | array of string | yes | The role ids for the current token. |
 | `user` | string | yes | The user of the token in plaintext. |
@@ -1180,4 +1182,17 @@ A string, one of:
 | ----- | ---- | -------- | ----------- |
 | `phase` | [task_execution_phase](#task_execution_phase) | yes | The phase the task execution entered. |
 | `started` | integer | yes | When the phase began in epoch milliseconds. A phase lasts until the next entry begins, or until the task execution ended if it's the last one. |
+
+## token_kind
+
+What a token was created for. Gofer sets this itself and it can't be chosen through the API, so it can be trusted.
+
+A string, one of:
+
+| Value | Description |
+| ----- | ----------- |
+| `user` | A token created through the API, usually for a person. |
+| `extension` | A token Gofer creates for a running extension. |
+| `run` | A token Gofer creates for a run so its tasks can talk to the API (the `inject_api_token` feature). |
+| `bootstrap` | The one-time token used to set up a new Gofer instance. |
 

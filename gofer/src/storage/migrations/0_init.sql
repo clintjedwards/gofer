@@ -219,7 +219,8 @@ CREATE TABLE IF NOT EXISTS tokens (
     expires     TEXT    NOT NULL,
     disabled    INTEGER NOT NULL CHECK (disabled IN (0, 1)),
     roles       TEXT    NOT NULL,
-    user        TEXT    NOT NULL
+    user        TEXT    NOT NULL,
+    kind        TEXT    NOT NULL
 ) STRICT;
 
 CREATE INDEX idx_tokens_hash ON tokens (hash);

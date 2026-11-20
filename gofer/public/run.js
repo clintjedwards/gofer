@@ -472,7 +472,7 @@ function renderSummary(run, tasks) {
     </div>`;
 
   const cells = [
-    cell("Initiated by", escapeHtml(run.initiator.user), `Token ID: ${run.initiator.id}`),
+    cell("Initiated by", initiatorText(run.initiator), `Token ID: ${run.initiator.id}`),
     cell("Started", runStarted(run)),
     cell("Ended", run.ended ? formatTimestamp(run.ended) : "-"),
     cell("Duration", escapeHtml(runDuration(run))),

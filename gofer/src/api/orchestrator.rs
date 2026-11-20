@@ -199,13 +199,13 @@ impl Orchestrator {
             let new_token = tokens::Token::new(
                 &hash,
                 HashMap::from([
-                    ("system_generated_run_token".into(), "true".into()),
                     ("namespace".into(), namespace_id.to_string()),
                     ("pipeline".into(), pipeline_id.to_string()),
                     ("run".into(), format!("{}", new_run_id)),
                 ]),
                 1_814_400, // 3 weeks in seconds.
-                "system_generated_run_token".into(),
+                format!("{namespace_id}/{pipeline_id}#{new_run_id}"),
+                tokens::TokenKind::Run,
                 vec![generate_inject_api_token_role_id(namespace_id, pipeline_id)],
             );
 

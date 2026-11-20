@@ -2,7 +2,7 @@ use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
         ApiState, PreflightOptions, Variable, ensure_pipeline_exists, epoch_milli, event_utils,
-        orchestrator::OrchestratorError,
+        orchestrator::OrchestratorError, tokens::TokenKind,
     },
     http_error, storage,
 };
@@ -134,6 +134,9 @@ pub struct Initiator {
 
     /// The plaintext username for of the token.
     pub user: String,
+
+    /// What kind of token started the run; a person, an extension, or another run.
+    pub kind: TokenKind,
 }
 
 /// A run is one or more tasks being executed on behalf of some extension.
@@ -608,6 +611,7 @@ pub async fn start_run(
             Initiator {
                 id: req_metadata.auth.token_id,
                 user: req_metadata.auth.token_user,
+                kind: req_metadata.auth.token_kind,
             },
             body.variables,
         )

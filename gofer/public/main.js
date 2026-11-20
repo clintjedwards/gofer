@@ -477,7 +477,7 @@ function renderRunTable(runs) {
           <td class="px-4 py-2.5" ${reason ? `title="${escapeHtml(reason)}"` : ""}>${badge}</td>
           <td class="px-4 py-2.5 whitespace-nowrap" title="${formatTimestamp(run.created)}">${relativeTime(run.created)}</td>
           <td class="px-4 py-2.5 whitespace-nowrap tabular-nums">${run.started ? compactDuration(runDurationMs(run)) : "-"}</td>
-          <td class="px-4 py-2.5 whitespace-nowrap" title="Token ID: ${escapeHtml(run.initiator.id)}">${escapeHtml(run.initiator.user)}</td>
+          <td class="px-4 py-2.5 whitespace-nowrap" title="Token ID: ${escapeHtml(run.initiator.id)}">${initiatorText(run.initiator)}</td>
           <td class="px-4 py-2.5 text-right text-gray-400">›</td>
         </tr>`;
     })

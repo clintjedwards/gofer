@@ -110,6 +110,9 @@ impl Cli {
                 Cell::new("user")
                     .set_alignment(CellAlignment::Center)
                     .fg(Color::Blue),
+                Cell::new("kind")
+                    .set_alignment(CellAlignment::Center)
+                    .fg(Color::Blue),
                 Cell::new("roles")
                     .set_alignment(CellAlignment::Center)
                     .fg(Color::Blue),
@@ -130,6 +133,7 @@ impl Cli {
             table.add_row(vec![
                 Cell::new(token.id).fg(Color::Green),
                 Cell::new(token.user),
+                Cell::new(token.kind),
                 Cell::new(format!("{:?}", token.roles)),
                 Cell::new(
                     self.format_time(token.created)
@@ -158,6 +162,7 @@ impl Cli {
 
         const TEMPLATE: &str = r#"
   {{ vertical_line }} User: {{ user }}
+  {{ vertical_line }} Kind: {{ kind }}
   {{ vertical_line }} Created {{ created }}
   {{ vertical_line }} Expires {{ expires }}
 
@@ -182,6 +187,7 @@ impl Cli {
         let mut context = tera::Context::new();
         context.insert("vertical_line", &rail());
         context.insert("user", &token.user.blue().to_string());
+        context.insert("kind", &token.kind.to_string());
         context.insert(
             "roles",
             &rail_table(

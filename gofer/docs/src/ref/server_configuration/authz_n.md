@@ -191,6 +191,22 @@ bootstrap token using the `gofer token bootstrap` command or by making a request
 
 Once a bootstrap token is collected it can no longer be collected.
 
+### Token kinds
+
+Every token has a `kind` that says what it was created for. Gofer sets it when it creates the token, and it can't be
+chosen through the API, so it's a reliable way to tell a person's token from one Gofer made for itself. Runs record
+the kind of the token that started them as `initiator.kind`; the CLI and web UI use it to tag runs started by an
+extension or by another run.
+
+| Kind        | Created by                                       | User                         | Roles                                     | Expires                    |
+| ----------- | ------------------------------------------------ | ---------------------------- | ----------------------------------------- | -------------------------- |
+| `user`      | `gofer token create` or the `/api/tokens` route. | Whatever the creator chose.  | Whatever the creator chose.               | Whatever the creator chose. |
+| `bootstrap` | `gofer token bootstrap`, once per install.       | `bootstrap`                  | `bootstrap`                               | Never.                     |
+| `extension` | Gofer, each time an extension starts.            | The extension id.            | `extension_<extension_id>` plus the extension's additional roles. | Never; replaced on restart. |
+| `run`       | Gofer, for runs of pipelines using `inject_api_token`. | `<namespace>/<pipeline>#<run>` | `inject_api_token_<namespace_id>_<pipeline_id>` | 3 weeks.             |
+
+You can see a token's kind with `gofer token get <id>` or `gofer token list`.
+
 ### How to auth via the API
 
 Gofer requires two headers for successful authentication:

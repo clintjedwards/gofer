@@ -341,7 +341,7 @@ impl Cli {
                 Cell::new(format!(
                     "{} by {}",
                     self.format_time(run.created).unwrap_or("Never".into()),
-                    run.initiator.user
+                    super::run::initiator_text(&run.initiator)
                 )),
                 Cell::new(format!(
                     "{} {}",

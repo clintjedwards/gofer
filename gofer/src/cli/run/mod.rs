@@ -145,6 +145,16 @@ fn run_title(run: &gofer_sdk::api::types::Run) -> String {
     )
 }
 
+/// Who started a run, with the token kind tacked on when it wasn't a person.
+pub(crate) fn initiator_text(initiator: &gofer_sdk::api::types::Initiator) -> String {
+    use gofer_sdk::api::types::TokenKind;
+
+    match initiator.kind {
+        TokenKind::User | TokenKind::Bootstrap => initiator.user.clone(),
+        kind => format!("{} ({kind})", initiator.user),
+    }
+}
+
 impl Cli {
     pub async fn run_list(
         &self,
@@ -215,7 +225,7 @@ impl Cli {
                 Cell::new(duration(run.started as i64, run.ended as i64)),
                 Cell::new(run.state).fg(colorize_status_text_comfy(run.state)),
                 Cell::new(run.status).fg(colorize_status_text_comfy(run.status)),
-                Cell::new(run.initiator.user),
+                Cell::new(initiator_text(&run.initiator)),
             ]);
         }
 
@@ -310,7 +320,10 @@ impl Cli {
 
         let mut context = tera::Context::new();
         context.insert("vertical_line", &rail());
-        context.insert("initiator_name", &run.initiator.user.blue().to_string());
+        context.insert(
+            "initiator_name",
+            &initiator_text(&run.initiator).blue().to_string(),
+        );
         context.insert("timing", &self.run_timing(&run));
         context.insert("objects_expired", &run.store_objects_expired);
         context.insert("token_id", &run.token_id);

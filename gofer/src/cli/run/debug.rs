@@ -50,7 +50,7 @@ impl Cli {
         output.push(format!(
             "  {} Initiated by {}",
             rail(),
-            run.initiator.user.blue()
+            super::initiator_text(&run.initiator).blue()
         ));
 
         for line in self.run_timing(&run) {

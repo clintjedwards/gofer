@@ -451,6 +451,26 @@ const (
 	TaskExecutionStatusReasonType6Timeout TaskExecutionStatusReasonType6 = "timeout"
 )
 
+// Defines values for TokenKind0.
+const (
+	User TokenKind0 = "user"
+)
+
+// Defines values for TokenKind1.
+const (
+	TokenKind1Extension TokenKind1 = "extension"
+)
+
+// Defines values for TokenKind2.
+const (
+	TokenKind2Run TokenKind2 = "run"
+)
+
+// Defines values for TokenKind3.
+const (
+	Bootstrap TokenKind3 = "bootstrap"
+)
+
 // Action defines model for Action.
 type Action string
 
@@ -853,6 +873,9 @@ type Grants struct {
 type Initiator struct {
 	// Id The unique identifier for the token that initiated the request.
 	Id string `json:"id"`
+
+	// Kind What kind of token started the run; a person, an extension, or another run.
+	Kind TokenKind `json:"kind"`
 
 	// User The plaintext username for of the token.
 	User string `json:"user"`
@@ -1693,6 +1716,9 @@ type Token struct {
 	// Id Unique identifier for token.
 	Id string `json:"id"`
 
+	// Kind What the token was created for.
+	Kind TokenKind `json:"kind"`
+
 	// Metadata Extra information about this token in label form
 	Metadata map[string]string `json:"metadata"`
 
@@ -2059,6 +2085,23 @@ type TaskExecutionTimelineEntry struct {
 	// Started When the phase began in epoch milliseconds. A phase lasts until the next entry begins, or until the task execution ended if it's the last one.
 	Started uint64 `json:"started"`
 }
+
+// TokenKind What a token was created for. Gofer sets this itself and it can't be chosen through the API, so it can be trusted.
+type TokenKind struct {
+	union json.RawMessage
+}
+
+// TokenKind0 A token created through the API, usually for a person.
+type TokenKind0 string
+
+// TokenKind1 A token Gofer creates for a running extension.
+type TokenKind1 string
+
+// TokenKind2 A token Gofer creates for a run so its tasks can talk to the API (the `inject_api_token` feature).
+type TokenKind2 string
+
+// TokenKind3 The one-time token used to set up a new Gofer instance.
+type TokenKind3 string
 
 // StreamEventsParams defines parameters for StreamEvents.
 type StreamEventsParams struct {
@@ -4716,6 +4759,120 @@ func (t TaskExecutionStatusReasonType) MarshalJSON() ([]byte, error) {
 }
 
 func (t *TaskExecutionStatusReasonType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsTokenKind0 returns the union data inside the TokenKind as a TokenKind0
+func (t TokenKind) AsTokenKind0() (TokenKind0, error) {
+	var body TokenKind0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTokenKind0 overwrites any union data inside the TokenKind as the provided TokenKind0
+func (t *TokenKind) FromTokenKind0(v TokenKind0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTokenKind0 performs a merge with any union data inside the TokenKind, using the provided TokenKind0
+func (t *TokenKind) MergeTokenKind0(v TokenKind0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTokenKind1 returns the union data inside the TokenKind as a TokenKind1
+func (t TokenKind) AsTokenKind1() (TokenKind1, error) {
+	var body TokenKind1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTokenKind1 overwrites any union data inside the TokenKind as the provided TokenKind1
+func (t *TokenKind) FromTokenKind1(v TokenKind1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTokenKind1 performs a merge with any union data inside the TokenKind, using the provided TokenKind1
+func (t *TokenKind) MergeTokenKind1(v TokenKind1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTokenKind2 returns the union data inside the TokenKind as a TokenKind2
+func (t TokenKind) AsTokenKind2() (TokenKind2, error) {
+	var body TokenKind2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTokenKind2 overwrites any union data inside the TokenKind as the provided TokenKind2
+func (t *TokenKind) FromTokenKind2(v TokenKind2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTokenKind2 performs a merge with any union data inside the TokenKind, using the provided TokenKind2
+func (t *TokenKind) MergeTokenKind2(v TokenKind2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsTokenKind3 returns the union data inside the TokenKind as a TokenKind3
+func (t TokenKind) AsTokenKind3() (TokenKind3, error) {
+	var body TokenKind3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTokenKind3 overwrites any union data inside the TokenKind as the provided TokenKind3
+func (t *TokenKind) FromTokenKind3(v TokenKind3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTokenKind3 performs a merge with any union data inside the TokenKind, using the provided TokenKind3
+func (t *TokenKind) MergeTokenKind3(v TokenKind3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t TokenKind) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *TokenKind) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }

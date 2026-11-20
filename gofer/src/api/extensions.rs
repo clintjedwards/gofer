@@ -400,7 +400,8 @@ async fn start_extension(
         &hash.to_string(),
         HashMap::from([("extension_id".into(), registration.extension_id.clone())]),
         0, // Do not expire token.
-        format!("{} (extension)", registration.extension_id.clone()),
+        registration.extension_id.clone(),
+        tokens::TokenKind::Extension,
         token_roles,
     );
 

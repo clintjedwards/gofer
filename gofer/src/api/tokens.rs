@@ -12,12 +12,35 @@ use rand::{RngExt, distr::Alphanumeric};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, ops::Add, sync::Arc};
+use std::{collections::HashMap, ops::Add, str::FromStr, sync::Arc};
+use strum::{Display, EnumString};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TokenPathArgs {
     /// The unique identifier for the target namespace.
     pub id: String,
+}
+
+/// What a token was created for. Gofer sets this itself and it can't be chosen through the API, so it can be trusted.
+#[derive(
+    Debug, Clone, Copy, Display, PartialEq, EnumString, Eq, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+#[schemars(rename = "token_kind")]
+#[strum(serialize_all = "snake_case")]
+#[strum(ascii_case_insensitive)]
+pub enum TokenKind {
+    /// A token created through the API, usually for a person.
+    User,
+
+    /// A token Gofer creates for a running extension.
+    Extension,
+
+    /// A token Gofer creates for a run so its tasks can talk to the API (the `inject_api_token` feature).
+    Run,
+
+    /// The one-time token used to set up a new Gofer instance.
+    Bootstrap,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
@@ -48,6 +71,9 @@ pub struct Token {
 
     /// The user of the token in plaintext.
     pub user: String,
+
+    /// What the token was created for.
+    pub kind: TokenKind,
 
     /// The role ids for the current token.
     pub roles: Vec<String>,
@@ -80,6 +106,7 @@ impl Token {
         metadata: HashMap<String, String>,
         valid_for_secs: u64, // Seconds from creation that token should expire. 0 means that token does not expire.
         user: String,
+        kind: TokenKind,
         roles: Vec<String>,
     ) -> Self {
         let now = epoch_milli();
@@ -97,6 +124,7 @@ impl Token {
             expires,
             disabled: false,
             user,
+            kind,
             roles,
         }
     }
@@ -135,6 +163,13 @@ impl TryFrom<storage::tokens::Token> for Token {
             )
         })?;
 
+        let kind = TokenKind::from_str(&value.kind).with_context(|| {
+            format!(
+                "Could not parse field 'kind' from storage value '{}'",
+                value.kind
+            )
+        })?;
+
         Ok(Token {
             id: value.id,
             hash: value.hash,
@@ -143,6 +178,7 @@ impl TryFrom<storage::tokens::Token> for Token {
             expires,
             disabled: value.disabled,
             user: value.user,
+            kind,
             roles,
         })
     }
@@ -175,6 +211,7 @@ impl TryFrom<Token> for storage::tokens::Token {
             disabled: value.disabled,
             roles,
             user: value.user,
+            kind: value.kind.to_string(),
         })
     }
 }
@@ -603,6 +640,7 @@ pub async fn create_token(
         body.metadata.unwrap_or_default(),
         body.expires,
         body.user,
+        TokenKind::User,
         body.roles,
     );
 
@@ -775,9 +813,10 @@ pub async fn create_bootstrap_token(
 
     let new_token = Token::new(
         &hash,
-        HashMap::from([("bootstrap_token".into(), "true".into())]),
+        HashMap::new(),
         0, // Make token last forever
         "bootstrap".into(),
+        TokenKind::Bootstrap,
         vec![SystemRoles::Bootstrap.to_string()],
     );
 

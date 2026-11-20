@@ -442,6 +442,13 @@ function statusBadge(status) {
   return `<span class="${generateStatusColor(status)} inline-block min-w-[12ch] ring-1 ring-inset rounded-sm text-xs text-center px-2 py-1">${escapeHtml(status)}</span>`;
 }
 
+// Who started a run, with a small tag for the token kind when it wasn't a person.
+function initiatorText(initiator) {
+  const name = escapeHtml(initiator.user);
+  if (initiator.kind !== "extension" && initiator.kind !== "run") return name;
+  return `${name} <span class="ml-1 rounded-full bg-gray-100 dark:bg-neutral-700 px-2 py-0.5 text-[11px] text-gray-500 dark:text-gray-400">${escapeHtml(initiator.kind)}</span>`;
+}
+
 // "2ms", "3.4s", "48s", "1m 52s", "1h 05m"; short enough for tiles and table cells. Picks the unit that fits so fast
 // things don't round down to zero. Timestamps are in milliseconds, so anything shorter than one reads as "<1ms".
 function compactDuration(ms) {
