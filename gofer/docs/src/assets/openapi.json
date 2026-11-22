@@ -6453,6 +6453,7 @@
         "type": "object",
         "properties": {
           "variables": {
+            "description": "Environment variables for the run's tasks. They override variables of the same name from the pipeline config and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set.",
             "type": "object",
             "additionalProperties": {
               "type": "string"

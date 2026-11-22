@@ -80,6 +80,29 @@ HTTP 400
 [Asserts]
 jsonpath "$.message" contains "cannot contain '='"
 
+# Runs can't point a task's injected token somewhere else, in any letter case
+POST http://localhost:8080/api/namespaces/default/pipelines/test/runs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "variables": {"gofer_api_base_url": "http://example.com"}
+}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "can't be overridden"
+
+POST http://localhost:8080/api/namespaces/default/pipelines/test/runs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "variables": {"GOFER_TOKEN": "some-other-token"}
+}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "can't be overridden"
+
 # Configs with a bad task graph are rejected, with every problem listed
 POST http://localhost:8080/api/namespaces/default/pipelines/broken/configs
 gofer-api-version: v0

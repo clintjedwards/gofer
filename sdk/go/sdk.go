@@ -1564,6 +1564,7 @@ type Secret struct {
 
 // StartRunRequest defines model for StartRunRequest.
 type StartRunRequest struct {
+	// Variables Environment variables for the run's tasks. They override variables of the same name from the pipeline config and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set.
 	Variables map[string]string `json:"variables"`
 }
 

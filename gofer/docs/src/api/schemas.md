@@ -794,7 +794,7 @@ A run is one or more tasks being executed on behalf of some extension. Run is a 
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
-| `variables` | map of string to string | yes |  |
+| `variables` | map of string to string | yes | Environment variables for the run's tasks. They override variables of the same name from the pipeline config and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set. |
 
 ## StartRunResponse
 

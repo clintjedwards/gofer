@@ -220,7 +220,3 @@ There are several useful things we can do with the concept of extensions:
 - Extensions are meant to run in containers and we allow users to pass TLS to them. But that means that extension
   writers can take your certs and ship them somewhere else. Low priority since extensions in any form requires running
   external code.
-- Run variables are applied last, so anyone who can start a run can override the `GOFER_` vars. That is on purpose,
-  but it means they can point `GOFER_API_BASE_URL` at their own server and collect the `inject_api_token` token,
-  which can write the pipeline's configs and objects. Documented in the tasks reference. If it ever matters, one option
-  is to refuse overrides of the few vars that can be abused, like `GOFER_API_BASE_URL`, with a 400.

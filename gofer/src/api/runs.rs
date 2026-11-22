@@ -557,6 +557,8 @@ pub async fn get_run(
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct StartRunRequest {
+    /// Environment variables for the run's tasks. They override variables of the same name from the pipeline config
+    /// and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set.
     pub variables: HashMap<String, String>,
 }
 
@@ -564,6 +566,16 @@ pub struct StartRunRequest {
 pub struct StartRunResponse {
     /// Information about the run started.
     pub run: Run,
+}
+
+/// The system variables a run can't override. A task with `inject_api_token` sends its token to `GOFER_API_BASE_URL`,
+/// so letting whoever starts a run point it somewhere else hands them a token that can rewrite the pipeline's config.
+/// Through `allow_runs_from`, that would let one pipeline take over another.
+const PROTECTED_RUN_VARIABLES: [&str; 2] = ["GOFER_API_BASE_URL", "GOFER_TOKEN"];
+
+/// Variable names are uppercased before they reach a task, so the check ignores case.
+fn is_protected_run_variable(key: &str) -> bool {
+    PROTECTED_RUN_VARIABLES.contains(&key.to_uppercase().as_str())
 }
 
 /// Whether a run token may start runs of the target pipeline because the target's live config lists the calling
@@ -706,11 +718,20 @@ pub async fn start_run(
         return Err(forbidden(&requires, &Action::Write));
     }
 
-    // Run variables can override anything, including the GOFER_ vars, but they still have to be usable as
-    // environment variable names.
+    // Run variables can override most of the GOFER_ vars, but they still have to be usable as environment variable
+    // names.
     for key in body.variables.keys() {
         if let Err(e) = gofer_sdk::config::validate_variable_key("variable name", key) {
             return Err(HttpError::for_bad_request(None, e.to_string()));
+        }
+
+        if is_protected_run_variable(key) {
+            return Err(HttpError::for_bad_request(
+                None,
+                format!(
+                    "variable '{key}' is set by Gofer and can't be overridden when starting a run"
+                ),
+            ));
         }
     }
 
@@ -918,4 +939,18 @@ pub async fn cancel_run(
         });
 
     Ok(HttpResponseDeleted())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn protected_run_variables_ignore_case() {
+        assert!(is_protected_run_variable("GOFER_API_BASE_URL"));
+        assert!(is_protected_run_variable("gofer_api_base_url"));
+        assert!(is_protected_run_variable("Gofer_Token"));
+        assert!(!is_protected_run_variable("GOFER_NAMESPACE"));
+        assert!(!is_protected_run_variable("LOG_LEVEL"));
+    }
 }
