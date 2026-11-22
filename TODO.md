@@ -72,22 +72,6 @@ None
   * The recover_run function needs to account for the fact that sometimes the event_ids mentioned within runs might
     not exist anymore. It should also not return any errors but instead log them and move on, trying its best
     despite any failures.
-* Clean up `orchestrator.rs` (~3300 lines) so it's easier to read. One commit per step, and run the hurl suite after
-  each one since this is the most delicate code in Gofer.
-  * First, split it into an `orchestrator/` module along the lines the file already has: `mod.rs` (Orchestrator,
-    `launch_new_run`, `recover_runs`), `dispatcher.rs`, `run.rs` (the run shepherd), `task_execution.rs`,
-    `expiry.rs`, and `variables.rs`. A pure move with no logic changes; `impl Run` can be split across files. While
-    there, reattach `combine_variables`' doc comment, which currently sits on `TaskTimeout` and causes the clippy
-    `doc_lazy_continuation` warning.
-  * Then simplify the long functions, one per commit:
-    * The two expiry jobs (`handle_run_object_expiry`, `handle_run_log_expiry`, ~300 lines each) share most of their
-      shape. Pull out a "wait for this run to finish" helper, and have them return a `Result` and log once instead of
-      repeating `error!(namespace_id = …, pipeline_id = …, run_id = …)` at every step.
-    * `launch_task_execution` (~580 lines) does everything in one function: create the execution, wait on parents,
-      check dependency statuses, substitute secrets and objects, schedule the container, then hand off to monitoring.
-      Each of those is a natural helper.
-    * `start_run_recovery` is a near-copy of `start_run`; they differ only in which tasks launch and where the event
-      stream starts, so they could share one path.
 
 # Small things I'll probably never get around to.
 
@@ -108,7 +92,6 @@ bubbling them up properly.
 * The CLI should have a feature where you can start a pipeline and follow all logs and status updates
 from that pipeline in one place. Maybe this is a watch feature where each task reports the task 5 log lines until it
 finishes at which time it reflects a summary about what it did.
-* The CLI could have a diff command so we know exactly what is about the change from the last pipeline version.
 * When using the SDK to build a pipeline, that pipeline should print to stdout the json that will be collected
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
