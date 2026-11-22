@@ -6439,6 +6439,7 @@ func NewStreamEventsRequest(server string, params *StreamEventsParams) (*http.Re
 		queryValues := queryURL.Query()
 
 		if params.History != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "history", runtime.ParamLocationQuery, *params.History); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -6450,9 +6451,11 @@ func NewStreamEventsRequest(server string, params *StreamEventsParams) (*http.Re
 					}
 				}
 			}
+
 		}
 
 		if params.Reverse != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "reverse", runtime.ParamLocationQuery, *params.Reverse); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -6464,6 +6467,7 @@ func NewStreamEventsRequest(server string, params *StreamEventsParams) (*http.Re
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7023,6 +7027,7 @@ func NewListExtensionSubscriptionsRequest(server string, extensionId string, par
 		queryValues := queryURL.Query()
 
 		if params.IncludeDisabled != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_disabled", runtime.ParamLocationQuery, *params.IncludeDisabled); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7034,6 +7039,7 @@ func NewListExtensionSubscriptionsRequest(server string, extensionId string, par
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7436,6 +7442,7 @@ func NewListConfigsRequest(server string, namespaceId string, pipelineId string,
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7447,6 +7454,7 @@ func NewListConfigsRequest(server string, namespaceId string, pipelineId string,
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7606,6 +7614,7 @@ func NewGetConfigRequest(server string, namespaceId string, pipelineId string, v
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7617,6 +7626,7 @@ func NewGetConfigRequest(server string, namespaceId string, pipelineId string, v
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7948,6 +7958,7 @@ func NewPutPipelineObjectRequestWithBody(server string, namespaceId string, pipe
 		queryValues := queryURL.Query()
 
 		if params.Force != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7959,6 +7970,7 @@ func NewPutPipelineObjectRequestWithBody(server string, namespaceId string, pipe
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8011,6 +8023,7 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 		queryValues := queryURL.Query()
 
 		if params.Limit != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8022,9 +8035,11 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
+
 		}
 
 		if params.Offset != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8036,9 +8051,11 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
+
 		}
 
 		if params.Reverse != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "reverse", runtime.ParamLocationQuery, *params.Reverse); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8050,9 +8067,11 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
+
 		}
 
 		if params.Since != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8064,6 +8083,7 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8436,6 +8456,7 @@ func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineI
 		queryValues := queryURL.Query()
 
 		if params.Force != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8447,6 +8468,7 @@ func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineI
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8506,6 +8528,7 @@ func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId 
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8517,6 +8540,7 @@ func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId 
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8654,6 +8678,7 @@ func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId st
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8665,6 +8690,7 @@ func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId st
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8857,6 +8883,7 @@ func NewGetLogsRequest(server string, namespaceId string, pipelineId string, run
 		queryValues := queryURL.Query()
 
 		if params.Tail != nil {
+
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tail", runtime.ParamLocationQuery, *params.Tail); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8868,6 +8895,7 @@ func NewGetLogsRequest(server string, namespaceId string, pipelineId string, run
 					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
