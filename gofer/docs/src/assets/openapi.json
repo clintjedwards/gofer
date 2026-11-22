@@ -4717,7 +4717,7 @@
             "type": "string"
           },
           "kind": {
-            "description": "What kind of token started the run; a person, an extension, or another run.",
+            "description": "What kind of token started the run; a person, an extension, another run, or `anonymous` when no token was used (only possible with `bypass_auth` on).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/token_kind"
@@ -7640,6 +7640,13 @@
             "type": "string",
             "enum": [
               "bootstrap"
+            ]
+          },
+          {
+            "description": "Not a real token. Gofer uses it for requests that came in without one, either because `bypass_auth` is on or because the route allows anonymous reads. No stored token ever has this kind.",
+            "type": "string",
+            "enum": [
+              "anonymous"
             ]
           }
         ]

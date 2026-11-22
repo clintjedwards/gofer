@@ -137,6 +137,31 @@ jsonpath "$.run.state" == "complete"
 jsonpath "$.run.status" == "failed"
 jsonpath "$.run.status_reason.reason" == "timeout"
 jsonpath "$.run.status_reason.description" contains "sleepy: Task ran longer than its own timeout of 2s"
+jsonpath "$.run.initiator.kind" == "bootstrap"
+jsonpath "$.run.initiator.user" == "bootstrap"
+
+# Anonymous users can read runs in the default namespace, and an anonymous read doesn't change who started the run.
+GET http://localhost:8080/api/namespaces/default/pipelines/timeout/runs/1
+gofer-api-version: v0
+HTTP 200
+[Asserts]
+jsonpath "$.run.initiator.kind" == "bootstrap"
+
+# Anonymous users can list runs in the default namespace.
+GET http://localhost:8080/api/namespaces/default/pipelines/timeout/runs
+gofer-api-version: v0
+HTTP 200
+[Asserts]
+jsonpath "$.runs" count >= 1
+
+# Anonymous users cannot start runs.
+POST http://localhost:8080/api/namespaces/default/pipelines/timeout/runs
+gofer-api-version: v0
+Content-Type: application/json
+{
+  "variables": {}
+}
+HTTP 401
 
 GET http://localhost:8080/api/namespaces/default/pipelines/timeout/runs/1/tasks/sleepy
 gofer-api-version: v0

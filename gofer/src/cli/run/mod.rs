@@ -145,12 +145,12 @@ fn run_title(run: &gofer_sdk::api::types::Run) -> String {
     )
 }
 
-/// Who started a run, with the token kind tacked on when it wasn't a person.
+/// Who started a run, with the token kind tacked on when Gofer made the token itself (an extension or a run).
 pub(crate) fn initiator_text(initiator: &gofer_sdk::api::types::Initiator) -> String {
     use gofer_sdk::api::types::TokenKind;
 
     match initiator.kind {
-        TokenKind::User | TokenKind::Bootstrap => initiator.user.clone(),
+        TokenKind::User | TokenKind::Bootstrap | TokenKind::Anonymous => initiator.user.clone(),
         kind => format!("{} ({kind})", initiator.user),
     }
 }

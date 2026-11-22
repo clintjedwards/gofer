@@ -199,12 +199,13 @@ chosen through the API, so it's a reliable way to tell a person's token from one
 the kind of the token that started them as `initiator.kind`; the CLI and web UI use it to tag runs started by an
 extension or by another run.
 
-| Kind        | Created by                                       | User                         | Roles                                     | Expires                    |
-| ----------- | ------------------------------------------------ | ---------------------------- | ----------------------------------------- | -------------------------- |
-| `user`      | `gofer token create` or the `/api/tokens` route. | Whatever the creator chose.  | Whatever the creator chose.               | Whatever the creator chose. |
-| `bootstrap` | `gofer token bootstrap`, once per install.       | `bootstrap`                  | `bootstrap`                               | Never.                     |
-| `extension` | Gofer, each time an extension starts.            | The extension id.            | `extension_<extension_id>` plus the extension's additional roles. | Never; replaced on restart. |
+| Kind        | Created by                                             | User                           | Roles                                     | Expires                    |
+| ----------- | ------------------------------------------------------ | ------------------------------ | ----------------------------------------- | -------------------------- |
+| `user`      | `gofer token create` or the `/api/tokens` route.       | Whatever the creator chose.    | Whatever the creator chose.               | Whatever the creator chose. |
+| `bootstrap` | `gofer token bootstrap`, once per install.             | `bootstrap`                    | `bootstrap`                               | Never.                     |
+| `extension` | Gofer, each time an extension starts.                  | The extension id.              | `extension_<extension_id>` plus the extension's additional roles. | Never; replaced on restart. |
 | `run`       | Gofer, for runs of pipelines using `inject_api_token`. | `<namespace>/<pipeline>#<run>` | `inject_api_token_<namespace_id>_<pipeline_id>` | 3 weeks.             |
+| `anonymous` | Nothing; it marks requests made without a token.       | `Anonymous`                    | `admin` when `development.bypass_auth` is on, otherwise `anonymous` on routes that allow it. | Not a stored token. |
 
 You can see a token's kind with `gofer token get <id>` or `gofer token list`.
 

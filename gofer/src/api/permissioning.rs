@@ -406,6 +406,20 @@ pub struct AuthContext {
     pub roles: Vec<String>,
 }
 
+impl AuthContext {
+    /// The context for a request that came in without a token. The role decides what it can do: `bypass_auth` hands
+    /// out admin, while routes that allow anonymous reads hand out the read-only anonymous role.
+    pub fn anonymous(role: SystemRoles) -> Self {
+        Self {
+            token_id: "0".into(),
+            token_user: "Anonymous".into(),
+            token_kind: tokens::TokenKind::Anonymous,
+            token_metadata: HashMap::new(),
+            roles: vec![role.to_string()],
+        }
+    }
+}
+
 /// The error for a valid token that doesn't have a grant covering what the route needs.
 pub fn forbidden(requires: &Requirement, action: &Action) -> HttpError {
     HttpError::for_client_error(
@@ -470,14 +484,8 @@ impl ApiState {
         // This is somewhat dangerous since we just assume the user is global admin, but since you cannot auth to
         // a different endpoint from this point on I think it's okay.
         let auth_ctx = if bypass_auth {
-            AuthContext {
-                token_id: "0".into(),
-                token_user: "Anonymous".into(),
-                token_kind: tokens::TokenKind::User,
-                token_metadata: HashMap::new(),
-                // Allow access to all routes.
-                roles: vec![SystemRoles::Admin.to_string()],
-            }
+            // Allow access to all routes.
+            AuthContext::anonymous(SystemRoles::Admin)
             // Allow anonymous allows read-only access to the default namespace for a subset of routes.
             // It's only used to easily display the frontend for non-logged in users.
         } else if options.allow_anonymous {
@@ -485,13 +493,7 @@ impl ApiState {
                 // If the user is actually logged in we still want to enable a login. If they are actually not logged
                 // in then we want to use the anon user.
                 Ok(auth) => auth,
-                Err(_) => AuthContext {
-                    token_id: "0".into(),
-                    token_user: "Anonymous".into(),
-                    token_kind: tokens::TokenKind::User,
-                    token_metadata: HashMap::new(),
-                    roles: vec![SystemRoles::Anonymous.to_string()],
-                },
+                Err(_) => AuthContext::anonymous(SystemRoles::Anonymous),
             }
         } else {
             self.get_auth_context(request).await?
@@ -1571,6 +1573,21 @@ mod tests {
             },
             &Action::Read
         ));
+    }
+
+    #[test]
+    fn anonymous_auth_context() {
+        // bypass_auth has to stay all powerful even though there's no real token behind it.
+        let bypass = AuthContext::anonymous(SystemRoles::Admin);
+        assert_eq!(bypass.token_kind, crate::api::tokens::TokenKind::Anonymous);
+        assert_eq!(bypass.roles, vec![SystemRoles::Admin.to_string()]);
+
+        let anonymous = AuthContext::anonymous(SystemRoles::Anonymous);
+        assert_eq!(
+            anonymous.token_kind,
+            crate::api::tokens::TokenKind::Anonymous
+        );
+        assert_eq!(anonymous.roles, vec![SystemRoles::Anonymous.to_string()]);
     }
 
     #[test]

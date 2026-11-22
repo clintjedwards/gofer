@@ -365,7 +365,7 @@ Everything a role allows. Each grant stands on its own; a request is allowed onl
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
 | `id` | string | yes | The unique identifier for the token that initiated the request. |
-| `kind` | [token_kind](#token_kind) | yes | What kind of token started the run; a person, an extension, or another run. |
+| `kind` | [token_kind](#token_kind) | yes | What kind of token started the run; a person, an extension, another run, or `anonymous` when no token was used (only possible with `bypass_auth` on). |
 | `user` | string | yes | The plaintext username for of the token. |
 
 ## Kind
@@ -1197,4 +1197,5 @@ A string, one of:
 | `extension` | A token Gofer creates for a running extension. |
 | `run` | A token Gofer creates for a run so its tasks can talk to the API (the `inject_api_token` feature). |
 | `bootstrap` | The one-time token used to set up a new Gofer instance. |
+| `anonymous` | Not a real token. Gofer uses it for requests that came in without one, either because `bypass_auth` is on or because the route allows anonymous reads. No stored token ever has this kind. |
 

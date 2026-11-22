@@ -137,7 +137,8 @@ pub struct Initiator {
     /// The plaintext username for of the token.
     pub user: String,
 
-    /// What kind of token started the run; a person, an extension, or another run.
+    /// What kind of token started the run; a person, an extension, another run, or `anonymous` when no token was
+    /// used (only possible with `bypass_auth` on).
     pub kind: TokenKind,
 }
 

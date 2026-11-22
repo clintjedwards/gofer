@@ -42,6 +42,10 @@ pub enum TokenKind {
 
     /// The one-time token used to set up a new Gofer instance.
     Bootstrap,
+
+    /// Not a real token. Gofer uses it for requests that came in without one, either because `bypass_auth` is on or
+    /// because the route allows anonymous reads. No stored token ever has this kind.
+    Anonymous,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]

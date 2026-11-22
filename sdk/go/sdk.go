@@ -471,6 +471,11 @@ const (
 	Bootstrap TokenKind3 = "bootstrap"
 )
 
+// Defines values for TokenKind4.
+const (
+	Anonymous TokenKind4 = "anonymous"
+)
+
 // Action defines model for Action.
 type Action string
 
@@ -877,7 +882,7 @@ type Initiator struct {
 	// Id The unique identifier for the token that initiated the request.
 	Id string `json:"id"`
 
-	// Kind What kind of token started the run; a person, an extension, or another run.
+	// Kind What kind of token started the run; a person, an extension, another run, or `anonymous` when no token was used (only possible with `bypass_auth` on).
 	Kind TokenKind `json:"kind"`
 
 	// User The plaintext username for of the token.
@@ -2108,6 +2113,9 @@ type TokenKind2 string
 
 // TokenKind3 The one-time token used to set up a new Gofer instance.
 type TokenKind3 string
+
+// TokenKind4 Not a real token. Gofer uses it for requests that came in without one, either because `bypass_auth` is on or because the route allows anonymous reads. No stored token ever has this kind.
+type TokenKind4 string
 
 // StreamEventsParams defines parameters for StreamEvents.
 type StreamEventsParams struct {
@@ -4873,6 +4881,32 @@ func (t *TokenKind) MergeTokenKind3(v TokenKind3) error {
 	return err
 }
 
+// AsTokenKind4 returns the union data inside the TokenKind as a TokenKind4
+func (t TokenKind) AsTokenKind4() (TokenKind4, error) {
+	var body TokenKind4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromTokenKind4 overwrites any union data inside the TokenKind as the provided TokenKind4
+func (t *TokenKind) FromTokenKind4(v TokenKind4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeTokenKind4 performs a merge with any union data inside the TokenKind, using the provided TokenKind4
+func (t *TokenKind) MergeTokenKind4(v TokenKind4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t TokenKind) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -6404,7 +6438,6 @@ func NewStreamEventsRequest(server string, params *StreamEventsParams) (*http.Re
 		queryValues := queryURL.Query()
 
 		if params.History != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "history", runtime.ParamLocationQuery, *params.History); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -6416,11 +6449,9 @@ func NewStreamEventsRequest(server string, params *StreamEventsParams) (*http.Re
 					}
 				}
 			}
-
 		}
 
 		if params.Reverse != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "reverse", runtime.ParamLocationQuery, *params.Reverse); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -6432,7 +6463,6 @@ func NewStreamEventsRequest(server string, params *StreamEventsParams) (*http.Re
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -6992,7 +7022,6 @@ func NewListExtensionSubscriptionsRequest(server string, extensionId string, par
 		queryValues := queryURL.Query()
 
 		if params.IncludeDisabled != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_disabled", runtime.ParamLocationQuery, *params.IncludeDisabled); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7004,7 +7033,6 @@ func NewListExtensionSubscriptionsRequest(server string, extensionId string, par
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7407,7 +7435,6 @@ func NewListConfigsRequest(server string, namespaceId string, pipelineId string,
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7419,7 +7446,6 @@ func NewListConfigsRequest(server string, namespaceId string, pipelineId string,
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7579,7 +7605,6 @@ func NewGetConfigRequest(server string, namespaceId string, pipelineId string, v
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7591,7 +7616,6 @@ func NewGetConfigRequest(server string, namespaceId string, pipelineId string, v
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7923,7 +7947,6 @@ func NewPutPipelineObjectRequestWithBody(server string, namespaceId string, pipe
 		queryValues := queryURL.Query()
 
 		if params.Force != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -7935,7 +7958,6 @@ func NewPutPipelineObjectRequestWithBody(server string, namespaceId string, pipe
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -7988,7 +8010,6 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 		queryValues := queryURL.Query()
 
 		if params.Limit != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8000,11 +8021,9 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
-
 		}
 
 		if params.Offset != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "offset", runtime.ParamLocationQuery, *params.Offset); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8016,11 +8035,9 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
-
 		}
 
 		if params.Reverse != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "reverse", runtime.ParamLocationQuery, *params.Reverse); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8032,11 +8049,9 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
-
 		}
 
 		if params.Since != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8048,7 +8063,6 @@ func NewListRunsRequest(server string, namespaceId string, pipelineId string, pa
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8421,7 +8435,6 @@ func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineI
 		queryValues := queryURL.Query()
 
 		if params.Force != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8433,7 +8446,6 @@ func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineI
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8493,7 +8505,6 @@ func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId 
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8505,7 +8516,6 @@ func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId 
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8643,7 +8653,6 @@ func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId st
 		queryValues := queryURL.Query()
 
 		if params.IncludeSecret != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8655,7 +8664,6 @@ func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId st
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -8848,7 +8856,6 @@ func NewGetLogsRequest(server string, namespaceId string, pipelineId string, run
 		queryValues := queryURL.Query()
 
 		if params.Tail != nil {
-
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "tail", runtime.ParamLocationQuery, *params.Tail); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -8860,7 +8867,6 @@ func NewGetLogsRequest(server string, namespaceId string, pipelineId string, run
 					}
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
