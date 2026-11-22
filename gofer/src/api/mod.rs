@@ -28,7 +28,7 @@ use dropshot::{
     DropshotState, EndpointTagPolicy, ErrorStatusCode, HandlerError, HandlerTaskMode, HttpError,
     HttpServer, RequestInfo, ServerBuilder, TagConfig, TagDetails, WebsocketConnectionRaw,
 };
-use futures::Future;
+use futures::{Future, SinkExt};
 use lazy_regex::regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -1695,6 +1695,43 @@ async fn websocket_error(
         .await;
 
     message.to_string()
+}
+
+/// What ended a streaming websocket handler, which decides how the server closes the connection.
+enum StreamEnd {
+    /// The server has nothing more to send.
+    Finished,
+
+    /// The client closed the connection or dropped it.
+    ClientClosed,
+}
+
+/// Closes a streaming websocket once one of its tasks has ended it. The server only sends a close of its own when it's
+/// the one ending the stream. When the client closed first, tungstenite has already answered, and sending anything
+/// more fails with "Trying to work with closed connection".
+async fn close_websocket_stream<S>(
+    writer: &tokio::sync::Mutex<S>,
+    end: &std::result::Result<StreamEnd, String>,
+    finished_reason: &str,
+) where
+    S: futures::Sink<tungstenite::Message> + Unpin,
+{
+    let frame = match end {
+        Ok(StreamEnd::ClientClosed) => return,
+        Ok(StreamEnd::Finished) => CloseFrame {
+            code: CloseCode::Normal,
+            reason: finished_reason.into(),
+        },
+        Err(err) => CloseFrame {
+            code: CloseCode::Error,
+            // Control frames can only be 125 bytes long (-2 for code)
+            reason: truncate_to_utf8_bytes(err, 123).into(),
+        },
+    };
+
+    let mut writer = writer.lock().await;
+    let _ = writer.send(tungstenite::Message::Close(Some(frame))).await;
+    let _ = writer.close().await;
 }
 
 #[cfg(test)]

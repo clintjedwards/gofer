@@ -1,8 +1,8 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
-        ApiState, GOFER_EOF, IncludeSecretQueryArgs, PreflightOptions, Variable, ensure_run_exists,
-        epoch_milli,
+        ApiState, GOFER_EOF, IncludeSecretQueryArgs, PreflightOptions, StreamEnd, Variable,
+        close_websocket_stream, ensure_run_exists, epoch_milli,
         event_utils::{self, EventListener},
         format_duration, include_secrets, listen_for_terminate_signal, tasks, websocket_error,
     },
@@ -983,7 +983,7 @@ pub async fn get_logs(
     // or they are all basically useless, we wait for any one of them to finish
     // and then we simply abort the others and then close the stream.
 
-    let mut set: tokio::task::JoinSet<std::result::Result<(), String>> =
+    let mut set: tokio::task::JoinSet<std::result::Result<StreamEnd, String>> =
         tokio::task::JoinSet::new();
 
     let (client_write, mut client_read) = ws.split();
@@ -1031,9 +1031,10 @@ pub async fn get_logs(
             }
         }
 
-        Ok(())
+        Ok(StreamEnd::Finished)
     });
 
+    // Listen for the client closing the connection.
     set.spawn(async move {
         while let Some(output) = client_read.next().await {
             match output {
@@ -1042,36 +1043,16 @@ pub async fn get_logs(
             }
         }
 
-        Ok(())
+        Ok(StreamEnd::ClientClosed)
     });
 
     // The first one to finish will return here. We can unwrap the option safely because it only returns a None if there
     // was nothing in the set.
     let result = set.join_next().await.unwrap()?;
-    if let Err(err) = result {
-        let mut locked_writer = client_writer.lock().await;
-
-        let close_message = Message::Close(Some(tungstenite::protocol::CloseFrame {
-            code: tungstenite::protocol::frame::coding::CloseCode::Error,
-            reason: err.clone().into(),
-        }));
-
-        let _ = locked_writer.send(close_message).await;
-        let _ = locked_writer.close().await;
-        return Err(err.into());
-    }
-
     set.shutdown().await; // When one finishes we no longer have use for the others, make sure they all shutdown.
 
-    let mut locked_writer = client_writer.lock().await;
-
-    let close_message = Message::Close(Some(tungstenite::protocol::CloseFrame {
-        code: tungstenite::protocol::frame::coding::CloseCode::Normal,
-        reason: "out of events".into(),
-    }));
-
-    let _ = locked_writer.send(close_message).await;
-    let _ = locked_writer.close().await;
+    close_websocket_stream(&client_writer, &result, "out of events").await;
+    result?;
 
     debug!(
         duration = format_duration(start_time.elapsed()),

@@ -7,7 +7,6 @@ None
 * Let extension manifests declare the additional roles an extension needs, instead of operators having to know and
   list them in `additional_roles`. Could also be a way to permission extensions per pipeline or per purpose. Needs a
   design session.
-* [DEBUG] 2026-10-25T08:53:57.166878Z - websocket start_send error: Trying to work with closed connection
 * Pin extension images by digest in manifests (`image@sha256:...`) instead of by tag. Gofer pulls on every start, so
   if someone re-pushes a tag the extension's code changes without the manifest changing and without reload showing
   anything. With digests, "the manifest didn't change" really means "the code didn't change". The SDKs' manifest
