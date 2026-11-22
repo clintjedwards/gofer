@@ -174,8 +174,9 @@ err := sdk.NewPipeline("deploy", "Deploy").
     Tasks(...).Finish()
 ```
 
-Runs started while the pipeline is at its limit wait until an earlier one finishes. A pipeline can't set a limit
-higher than the server's.
+A run started while the pipeline is at its limit is queued as `pending` and starts once an earlier one finishes;
+queued runs start oldest first. Cancelling a run that's still queued finishes it without it ever starting.
+A pipeline can't set a limit higher than the server's.
 
 ### Letting Other Pipelines Start Runs
 

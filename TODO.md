@@ -50,11 +50,12 @@ None
     last run finishes.
     * The stream only covers what happens after you connect, so drain also needs the runs that were already going
       when it started. Replaying `history` would mean walking up to 6 months of events, so instead have the server
-      hand over the current list. It already keeps an in-memory count per pipeline (`in_progress_runs`); that could
-      become a list of run ids and be returned from `GET /api/system` or the drain call itself.
+      hand over the current list. The runs table already has it (`state = 'running'`, which the run dispatcher
+      counts), so it could be returned from `GET /api/system` or the drain call itself.
     * Subscribe to the stream before fetching that list, or a run that finishes in between gets missed and drain
       waits forever.
-    * Runs that were queued (waiting on parallelism) before the drain still start, so count them as in progress.
+    * `ignore_pipeline_run_events` also holds queued (`pending`) runs, so drain only has to wait on running ones. Show
+      how many are queued, since they all start as soon as Gofer is undrained.
   * `gofer context` (and the web UI) should show when Gofer is drained, since a drained server looks a lot like a
     broken one from a pipeline owner's point of view. `gofer context` already shows "not accepting new runs", but
     only to admins since `GET /api/system` is admin only; non-admins need some way to see it too.
@@ -62,21 +63,31 @@ None
 * Allow a parallelism mode where when parallelism is at it's max the oldest run, if still running gets, cancelled.
   * Also make it so that the github extension can do this as well, if a new run for a branch gets kicked off, if there
     is already a run for that branch, cancel the ongoing one and trigger a new one.
-* We should allow the ops side to somehow set the GOFER_API_BASE_URL for the containers. This can change based on
-where the container is running.
-* We need to productionalize and offer the container that builds repo containers. The test for this is build_repo_container
-  directory. Think more about how the UX should be handled here.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
 * Make run execution survive failures. This has to happen before a networked scheduler (Nomad, K8s) is realistic,
   since those calls will fail sometimes and today one failure ends the run.
-  * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.
-    It should use task leasing to avoid any stuck processors.
   * In monitor_task_execution, calls to the scheduler to check on container status are expected to succeed. If one
     fails the whole thing is aborted. It should retry with backoff and only give up after a while.
   * The recover_run function needs to account for the fact that sometimes the event_ids mentioned within runs might
     not exist anymore. It should also not return any errors but instead log them and move on, trying its best
     despite any failures.
+* Clean up `orchestrator.rs` (~3300 lines) so it's easier to read. One commit per step, and run the hurl suite after
+  each one since this is the most delicate code in Gofer.
+  * First, split it into an `orchestrator/` module along the lines the file already has: `mod.rs` (Orchestrator,
+    `launch_new_run`, `recover_runs`), `dispatcher.rs`, `run.rs` (the run shepherd), `task_execution.rs`,
+    `expiry.rs`, and `variables.rs`. A pure move with no logic changes; `impl Run` can be split across files. While
+    there, reattach `combine_variables`' doc comment, which currently sits on `TaskTimeout` and causes the clippy
+    `doc_lazy_continuation` warning.
+  * Then simplify the long functions, one per commit:
+    * The two expiry jobs (`handle_run_object_expiry`, `handle_run_log_expiry`, ~300 lines each) share most of their
+      shape. Pull out a "wait for this run to finish" helper, and have them return a `Result` and log once instead of
+      repeating `error!(namespace_id = …, pipeline_id = …, run_id = …)` at every step.
+    * `launch_task_execution` (~580 lines) does everything in one function: create the execution, wait on parents,
+      check dependency statuses, substitute secrets and objects, schedule the container, then hand off to monitoring.
+      Each of those is a natural helper.
+    * `start_run_recovery` is a near-copy of `start_run`; they differ only in which tasks launch and where the event
+      stream starts, so they could share one path.
 
 # Small things I'll probably never get around to.
 

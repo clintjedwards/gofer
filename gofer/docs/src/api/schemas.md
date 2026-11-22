@@ -1053,7 +1053,7 @@ A string, one of:
 | Value | Description |
 | ----- | ----------- |
 | `unknown` |  |
-| `pending` | Before the tasks in a run are sent to the scheduler it must complete various steps like validation checking. This state represents that step where the run and task executions are pre-checked. |
+| `pending` | Queued and waiting to start. A run stays pending until its pipeline is under its parallelism limit and Gofer is under its global limit, and while run events are paused. |
 | `running` | Currently running. |
 | `complete` | All tasks have been resolved and the run is no longer being executed. |
 

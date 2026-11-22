@@ -53,8 +53,8 @@ pub enum State {
     #[default]
     Unknown,
 
-    /// Before the tasks in a run are sent to the scheduler it must complete various steps like validation checking.
-    /// This state represents that step where the run and task executions are pre-checked.
+    /// Queued and waiting to start. A run stays pending until its pipeline is under its parallelism limit and Gofer is
+    /// under its global limit, and while run events are paused.
     Pending,
 
     /// Currently running.
@@ -878,6 +878,34 @@ pub async fn cancel_run(
             }
         }
     };
+
+    // A run that's still queued has nothing running to stop, so it's finished right here. If the dispatcher started it
+    // first, this changes nothing and the run is cancelled below like any other running run.
+    let cancelled_while_queued = super::orchestrator::complete_queued_run(
+        api_state,
+        &mut conn,
+        &path.namespace_id,
+        &path.pipeline_id,
+        path.run_id,
+        Status::Cancelled,
+        StatusReason {
+            reason: StatusReasonType::UserCancelled,
+            description: "Cancelled before it started".into(),
+        },
+    )
+    .await
+    .map_err(|e| {
+        http_error!(
+            "Could not cancel queued run",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        )
+    })?;
+
+    if cancelled_while_queued {
+        return Ok(HttpResponseDeleted());
+    }
 
     // Send an event to the run monitor so it can start the process of cancellations.
     api_state

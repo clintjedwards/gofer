@@ -149,11 +149,8 @@ pub struct ApiState {
     /// parts.
     event_bus: event_utils::EventBus,
 
-    /// An in-memory count of how many runs each pipeline currently has in-progress.
-    in_progress_runs: DashMap<String, atomic::AtomicU64>,
-
-    /// Controls if the pipelines are allowed to run globally. If this is set to false the entire Gofer service will
-    /// not schedule new runs.
+    /// Controls if the pipelines are allowed to run globally. While it's true Gofer rejects new runs and holds queued
+    /// ones instead of starting them.
     ignore_pipeline_run_events: atomic::AtomicBool,
 
     /// `Storage` represents the main backend storage implementation. Gofer stores most of its critical state information
@@ -206,7 +203,6 @@ impl ApiState {
             event_bus,
             extensions: DashMap::new(),
             ignore_pipeline_run_events,
-            in_progress_runs: DashMap::new(),
             object_store,
             orchestrator,
             scheduler,
@@ -319,7 +315,7 @@ async fn init_api(
     let object_store = object_store::new(&conf.object_store)
         .await
         .context("Could not initialize object store")?;
-    let orchestrator = orchestrator::Orchestrator::new(conf.api.global_run_concurrency_limit);
+    let orchestrator = orchestrator::Orchestrator::new();
     let secret_store = secret_store::new(&conf.secret_store)
         .await
         .context("Could not initialize secret store")?;
@@ -375,6 +371,9 @@ async fn init_api(
         .orchestrator
         .recover_runs(api_state.clone())
         .await?;
+
+    // Recovery runs first so the dispatcher counts recovered runs against their pipelines' limits.
+    api_state.orchestrator.start_dispatcher(api_state.clone());
 
     Ok(api_state)
 }
@@ -1125,11 +1124,6 @@ pub struct Variable {
     pub key: String,
     pub value: String,
     pub source: VariableSource,
-}
-
-/// Convenience function for the composite key for the in_progress_run mapping in [`ApiState`].
-fn in_progress_runs_key(namespace_id: &str, pipeline_id: &str) -> String {
-    format!("{}_{}", namespace_id, pipeline_id)
 }
 
 /// Return the current epoch time in milliseconds.

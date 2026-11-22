@@ -193,6 +193,11 @@ pub async fn update_system_preferences(
         api_state
             .ignore_pipeline_run_events
             .swap(value, std::sync::atomic::Ordering::Relaxed);
+
+        // Queued runs were held while runs were paused, so they can start now.
+        if !value {
+            api_state.orchestrator.notify_dispatcher();
+        }
     }
 
     Ok(HttpResponseOk(UpdateSystemPreferencesResponse {}))

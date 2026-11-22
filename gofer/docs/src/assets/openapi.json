@@ -7231,7 +7231,7 @@
             ]
           },
           {
-            "description": "Before the tasks in a run are sent to the scheduler it must complete various steps like validation checking. This state represents that step where the run and task executions are pre-checked.",
+            "description": "Queued and waiting to start. A run stays pending until its pipeline is under its parallelism limit and Gofer is under its global limit, and while run events are paused.",
             "type": "string",
             "enum": [
               "pending"

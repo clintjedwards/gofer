@@ -1,10 +1,34 @@
+//! Everything that happens to a run between someone asking for it and it finishing. Three layers share the work, and
+//! each one only hands work down to the next:
+//!
+//! - **[`Orchestrator`]** is the front door, owned by [`ApiState`]. [`Orchestrator::launch_new_run`] checks the
+//!   request, writes the run as `pending`, and wakes the dispatcher. It never starts anything itself, which is why
+//!   starting a run returns right away. At boot, [`Orchestrator::recover_runs`] picks back up the runs that were
+//!   `running` when Gofer stopped.
+//!
+//! - **The dispatcher** ([`dispatch_queued_runs`]) is a single loop and the only place a run gets started. Each pass
+//!   reads the queue and the running counts from the database, picks the runs that fit under their pipeline's limit
+//!   and the global one ([`select_runs_to_start`]), and claims each with a conditional update so a run can't be both
+//!   started and cancelled. There's only one, so two runs can never take the same slot. It wakes whenever a run is
+//!   queued or finishes, plus a periodic check in case a wake-up goes missing.
+//!
+//! - **The run shepherd** ([`Run`]) is one per running run. It starts a task per task execution, plus
+//!   `monitor_run`, which watches the event bus until every task is done. Then it marks the run complete, which frees
+//!   the slot and wakes the dispatcher again.
+//!
+//! A run's state follows those layers:
+//!
+//! ```text
+//! pending --(dispatcher claims it)--> running --(shepherd finishes it)--> complete
+//! pending --(cancelled, or its pipeline was disabled, before it started)--> complete
+//! ```
+
 use crate::{
     api::{
         ApiState, GOFER_EOF, Variable, VariableSource, epoch_milli,
         event_utils::{self, EventListener},
-        generate_inject_api_token_role_id, in_progress_runs_key, interpolate_vars, objects,
-        pipeline_configs, pipelines, resolve_registry_auth, runs, secrets, task_executions, tasks,
-        tokens,
+        generate_inject_api_token_role_id, interpolate_vars, objects, pipeline_configs, pipelines,
+        resolve_registry_auth, runs, secrets, task_executions, tasks, tokens,
     },
     conf, scheduler, secret_store, storage,
 };
@@ -19,7 +43,7 @@ use std::sync::{Arc, atomic};
 use thiserror::Error;
 use tokio::{
     io::AsyncWriteExt,
-    sync::{Barrier, Mutex, OwnedSemaphorePermit, Semaphore, mpsc},
+    sync::{Barrier, Mutex, Notify, mpsc},
 };
 use tracing::{debug, error, info, trace};
 
@@ -58,18 +82,45 @@ pub enum OrchestratorError {
     SecretStoreGeneralError(#[source] secret_store::SecretStoreError),
 }
 
-#[derive(Debug)]
+/// How often the dispatcher checks the queue even when nothing woke it. It's only a safety net; queuing or finishing
+/// a run wakes it straight away.
+const DISPATCH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
+
+#[derive(Debug, Default)]
 pub struct Orchestrator {
-    pub global_run_concurrency_limiter: Arc<Semaphore>,
+    /// Wakes the dispatcher when something it cares about changes: a run was queued or finished, or runs were
+    /// unpaused.
+    dispatch_notify: Arc<Notify>,
 }
 
 impl Orchestrator {
-    pub fn new(max_concurrent_global_runs: u64) -> Self {
-        Self {
-            global_run_concurrency_limiter: Arc::new(Semaphore::new(
-                max_concurrent_global_runs as usize,
-            )),
-        }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Asks the dispatcher to look at the queue. If it's busy, it looks again once it's done, so a wake-up is never
+    /// lost.
+    pub fn notify_dispatcher(&self) {
+        self.dispatch_notify.notify_one();
+    }
+
+    /// Starts the dispatcher, the one place runs are started from. New runs only get queued; the dispatcher decides
+    /// when each one has a free slot. Having a single dispatcher is what keeps two runs from taking the same slot.
+    pub fn start_dispatcher(&self, api_state: Arc<ApiState>) {
+        let notify = self.dispatch_notify.clone();
+
+        tokio::spawn(async move {
+            loop {
+                if let Err(e) = dispatch_queued_runs(&api_state).await {
+                    error!(error = %e, "Could not dispatch queued runs");
+                }
+
+                tokio::select! {
+                    _ = notify.notified() => {}
+                    _ = tokio::time::sleep(DISPATCH_INTERVAL) => {}
+                }
+            }
+        });
     }
 
     pub async fn launch_new_run(
@@ -89,16 +140,6 @@ impl Orchestrator {
             );
             return Err(OrchestratorError::PipelineRunIgnored);
         }
-
-        let permit = match self
-            .global_run_concurrency_limiter
-            .clone()
-            .acquire_owned()
-            .await
-        {
-            Ok(semaphore) => semaphore,
-            Err(e) => return Err(OrchestratorError::UnrecoverableError(e.to_string())),
-        };
 
         let mut tx = match api_state.storage.open_tx().await {
             Ok(conn) => conn,
@@ -162,14 +203,7 @@ impl Orchestrator {
             }
         };
 
-        // This is only here to avoid cloning since pipeline_tasks gets consumed by pipeline_config.
         let token_required = pipeline_tasks.iter().any(|task| task.inject_api_token);
-
-        let pipeline_config = pipeline_configs::Config::from_storage(
-            latest_pipeline_config_storage.clone(),
-            pipeline_tasks,
-        )
-        .map_err(OrchestratorError::DatabaseSerializationError)?;
 
         let latest_run_id =
             match storage::runs::get_latest(&mut tx, namespace_id, pipeline_id).await {
@@ -346,23 +380,8 @@ impl Orchestrator {
             ));
         };
 
-        // Now that the run has been inserted into the database we start it's tracking and execution.
-        let new_run_shepard = Run::new(
-            api_state.clone(),
-            pipelines::Pipeline {
-                metadata: pipeline_metadata,
-                config: pipeline_config,
-            },
-            new_run.clone(),
-        );
-
-        // Make sure the pipeline is ready for a new run.
-        while new_run_shepard.parallelism_limit_exceeded().await {
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        }
-
-        // Finally, launch the thread that will launch all the task executions for the run.
-        tokio::spawn(new_run_shepard.start_run(permit));
+        // The run is queued as pending; the dispatcher starts it once its pipeline has a free slot.
+        self.notify_dispatcher();
 
         Ok(new_run)
     }
@@ -378,14 +397,30 @@ impl Orchestrator {
             }
         };
 
-        let unfinished_runs = match storage::runs::list_unfinished(&mut conn, 0, 100).await {
-            Ok(val) => val,
-            Err(e) => {
-                return Err(OrchestratorError::DatabaseGeneralError(e));
-            }
-        };
+        // Only runs that were already running need recovering. Pending runs never started, so the dispatcher just
+        // picks them up like any other queued run.
+        let mut running_runs = vec![];
+        let page_size = 100;
+        loop {
+            let page =
+                match storage::runs::list_running(&mut conn, running_runs.len() as i64, page_size)
+                    .await
+                {
+                    Ok(val) => val,
+                    Err(e) => {
+                        return Err(OrchestratorError::DatabaseGeneralError(e));
+                    }
+                };
 
-        for stored_run in unfinished_runs {
+            let last_page = (page.len() as i64) < page_size;
+            running_runs.extend(page);
+
+            if last_page {
+                break;
+            }
+        }
+
+        for stored_run in running_runs {
             info!(
                 namespace_id = stored_run.namespace_id.clone(),
                 pipeline_id = stored_run.pipeline_id.clone(),
@@ -393,87 +428,242 @@ impl Orchestrator {
                 "Recovering unfinished run"
             );
 
-            let permit = match self
-                .global_run_concurrency_limiter
-                .clone()
-                .acquire_owned()
-                .await
-            {
-                Ok(semaphore) => semaphore,
-                Err(e) => return Err(OrchestratorError::UnrecoverableError(e.to_string())),
-            };
-
             let run: runs::Run = stored_run
                 .try_into()
                 .map_err(|err: anyhow::Error| OrchestratorError::DatabaseSerializationError(err))?;
 
             let run_event_id = run.event_id.clone().unwrap_or_default();
 
-            let storage_pipeline_metadata = match storage::pipeline_metadata::get(
-                &mut conn,
-                &run.namespace_id,
-                &run.pipeline_id,
-            )
-            .await
-            {
-                Ok(pipeline) => pipeline,
-                Err(e) => match e {
-                    storage::StorageError::NotFound => {
-                        return Err(OrchestratorError::PipelineMetadataNotFound);
-                    }
-                    _ => {
-                        return Err(OrchestratorError::DatabaseGeneralError(e));
-                    }
-                },
-            };
+            let new_run_shepard = Run::load(api_state.clone(), &mut conn, run).await?;
 
-            let pipeline_metadata = pipelines::Metadata::try_from(storage_pipeline_metadata)
-                .map_err(OrchestratorError::DatabaseSerializationError)?;
-
-            let pipeline_config_storage = match storage::pipeline_configs::get(
-                &mut conn,
-                &run.namespace_id,
-                &run.pipeline_id,
-                run.pipeline_config_version as i64,
-            )
-            .await
-            {
-                Ok(config) => config,
-                Err(e) => return Err(OrchestratorError::DatabaseGeneralError(e)),
-            };
-
-            let pipeline_tasks = match storage::tasks::list(
-                &mut conn,
-                &run.namespace_id,
-                &run.pipeline_id,
-                run.pipeline_config_version as i64,
-            )
-            .await
-            {
-                Ok(tasks) => tasks,
-                Err(e) => return Err(OrchestratorError::DatabaseGeneralError(e)),
-            };
-
-            let pipeline_config = pipeline_configs::Config::from_storage(
-                pipeline_config_storage.clone(),
-                pipeline_tasks,
-            )
-            .map_err(OrchestratorError::DatabaseSerializationError)?;
-
-            let new_run_shepard = Run::new(
-                api_state.clone(),
-                pipelines::Pipeline {
-                    metadata: pipeline_metadata,
-                    config: pipeline_config,
-                },
-                run,
-            );
-
-            tokio::spawn(new_run_shepard.start_run_recovery(run_event_id, permit));
+            tokio::spawn(new_run_shepard.start_run_recovery(run_event_id));
         }
 
         Ok(())
     }
+}
+
+/// The most runs a pipeline can have going at once: its own `parallelism`, capped by the server's per-pipeline limit.
+/// 0 means unlimited, both for the inputs and the result.
+fn pipeline_run_limit(pipeline_parallelism: u64, server_pipeline_limit: u64) -> u64 {
+    match (pipeline_parallelism, server_pipeline_limit) {
+        (0, server) => server,
+        (pipeline, 0) => pipeline,
+        (pipeline, server) => pipeline.min(server),
+    }
+}
+
+/// Picks which queued runs can start right now. `queued` must be oldest first; runs are taken in that order, so the
+/// queue is first come first served across all of Gofer. A pipeline that's at its limit is skipped instead of holding
+/// up runs of other pipelines behind it. `global_limit` of 0 means unlimited.
+fn select_runs_to_start(
+    queued: &[storage::runs::QueuedRun],
+    running: &HashMap<(String, String), u64>,
+    server_pipeline_limit: u64,
+    global_limit: u64,
+) -> Vec<storage::runs::QueuedRun> {
+    let mut running = running.clone();
+    let mut total_running: u64 = running.values().sum();
+    let mut selected = vec![];
+
+    for run in queued {
+        if global_limit != 0 && total_running >= global_limit {
+            break;
+        }
+
+        let limit = pipeline_run_limit(
+            run.parallelism.try_into().unwrap_or_default(),
+            server_pipeline_limit,
+        );
+
+        let pipeline_running = running
+            .entry((run.namespace_id.clone(), run.pipeline_id.clone()))
+            .or_default();
+
+        if limit != 0 && *pipeline_running >= limit {
+            continue;
+        }
+
+        *pipeline_running += 1;
+        total_running += 1;
+        selected.push(run.clone());
+    }
+
+    selected
+}
+
+/// Finishes a run that never started, as long as it's still pending. Returns false if the dispatcher started it in the
+/// meantime, in which case it has to be cancelled like any other running run.
+pub async fn complete_queued_run(
+    api_state: &ApiState,
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: u64,
+    status: runs::Status,
+    reason: runs::StatusReason,
+) -> Result<bool> {
+    let reason = serde_json::to_string(&reason).context("Could not serialize run status reason")?;
+
+    let completed = storage::runs::complete_pending(
+        conn,
+        namespace_id,
+        pipeline_id,
+        run_id.try_into()?,
+        &epoch_milli().to_string(),
+        &status.to_string(),
+        &reason,
+    )
+    .await
+    .context("Could not update run in database")?;
+
+    if completed {
+        api_state
+            .event_bus
+            .clone()
+            .publish(event_utils::Kind::CompletedRun {
+                namespace_id: namespace_id.into(),
+                pipeline_id: pipeline_id.into(),
+                run_id,
+                status,
+            });
+    }
+
+    Ok(completed)
+}
+
+/// Starts every queued run that has a free slot. Only the dispatcher calls this, one call at a time.
+async fn dispatch_queued_runs(api_state: &Arc<ApiState>) -> Result<()> {
+    // Pausing run events holds queued runs too, so the switch can quiet Gofer down before maintenance.
+    if api_state
+        .ignore_pipeline_run_events
+        .load(atomic::Ordering::SeqCst)
+    {
+        return Ok(());
+    }
+
+    let mut conn = api_state
+        .storage
+        .write_conn()
+        .await
+        .context("Could not open connection to database")?;
+
+    let queued = storage::runs::list_queued(&mut conn)
+        .await
+        .context("Could not list queued runs")?;
+
+    if queued.is_empty() {
+        return Ok(());
+    }
+
+    let running: HashMap<(String, String), u64> = storage::runs::count_running(&mut conn)
+        .await
+        .context("Could not count running runs")?
+        .into_iter()
+        .map(|count| {
+            (
+                (count.namespace_id, count.pipeline_id),
+                count.count.try_into().unwrap_or_default(),
+            )
+        })
+        .collect();
+
+    // A run waiting on a pipeline that has since been disabled would never start, so it's cancelled instead.
+    let active = pipelines::PipelineState::Active.to_string();
+    let mut startable = vec![];
+
+    for run in queued {
+        if run.pipeline_state == active {
+            startable.push(run);
+            continue;
+        }
+
+        complete_queued_run(
+            api_state,
+            &mut conn,
+            &run.namespace_id,
+            &run.pipeline_id,
+            run.run_id.try_into()?,
+            runs::Status::Cancelled,
+            runs::StatusReason {
+                reason: runs::StatusReasonType::AdminCancelled,
+                description: "Pipeline was disabled before the run started".into(),
+            },
+        )
+        .await?;
+    }
+
+    let selected = select_runs_to_start(
+        &startable,
+        &running,
+        api_state.config.api.pipeline_run_concurrency_limit,
+        api_state.config.api.global_run_concurrency_limit,
+    );
+
+    for queued_run in selected {
+        let run_id: u64 = queued_run.run_id.try_into()?;
+
+        let stored_run = storage::runs::get(
+            &mut conn,
+            &queued_run.namespace_id,
+            &queued_run.pipeline_id,
+            queued_run.run_id,
+        )
+        .await
+        .context("Could not get queued run from database")?;
+
+        let run: runs::Run = stored_run.try_into()?;
+
+        // A run whose pipeline can't be loaded would fail the same way every time, so it's failed instead of being
+        // left in the queue.
+        let mut shepard = match Run::load(api_state.clone(), &mut conn, run).await {
+            Ok(shepard) => shepard,
+            Err(e) => {
+                error!(namespace_id = queued_run.namespace_id, pipeline_id = queued_run.pipeline_id,
+                    run_id, error = %e, "Could not load queued run");
+
+                complete_queued_run(
+                    api_state,
+                    &mut conn,
+                    &queued_run.namespace_id,
+                    &queued_run.pipeline_id,
+                    run_id,
+                    runs::Status::Failed,
+                    runs::StatusReason {
+                        reason: runs::StatusReasonType::FailedPrecondition,
+                        description: format!("Could not load the run's pipeline; {e}"),
+                    },
+                )
+                .await?;
+
+                continue;
+            }
+        };
+
+        let started = epoch_milli();
+
+        let claimed = storage::runs::claim(
+            &mut conn,
+            &queued_run.namespace_id,
+            &queued_run.pipeline_id,
+            queued_run.run_id,
+            &started.to_string(),
+        )
+        .await
+        .context("Could not claim queued run")?;
+
+        // It was cancelled while it waited.
+        if !claimed {
+            continue;
+        }
+
+        shepard.run.state = runs::State::Running;
+        shepard.run.started = started;
+
+        tokio::spawn(shepard.start_run());
+    }
+
+    Ok(())
 }
 
 /// A run specific object that guides Gofer runs and tasks through their execution.
@@ -494,10 +684,78 @@ impl Run {
         }
     }
 
+    /// Builds the shepherd for a run that's already in the database, using the config version it was created with
+    /// so a config deployed later doesn't change a run that's already queued or running.
+    pub async fn load(
+        api_state: Arc<ApiState>,
+        conn: &mut SqliteConnection,
+        run: runs::Run,
+    ) -> std::result::Result<Self, OrchestratorError> {
+        let storage_pipeline_metadata = match storage::pipeline_metadata::get(
+            conn,
+            &run.namespace_id,
+            &run.pipeline_id,
+        )
+        .await
+        {
+            Ok(pipeline) => pipeline,
+            Err(e) => match e {
+                storage::StorageError::NotFound => {
+                    return Err(OrchestratorError::PipelineMetadataNotFound);
+                }
+                _ => {
+                    return Err(OrchestratorError::DatabaseGeneralError(e));
+                }
+            },
+        };
+
+        let pipeline_metadata = pipelines::Metadata::try_from(storage_pipeline_metadata)
+            .map_err(OrchestratorError::DatabaseSerializationError)?;
+
+        let pipeline_config_storage = match storage::pipeline_configs::get(
+            conn,
+            &run.namespace_id,
+            &run.pipeline_id,
+            run.pipeline_config_version as i64,
+        )
+        .await
+        {
+            Ok(config) => config,
+            Err(e) => return Err(OrchestratorError::DatabaseGeneralError(e)),
+        };
+
+        let pipeline_tasks = match storage::tasks::list(
+            conn,
+            &run.namespace_id,
+            &run.pipeline_id,
+            run.pipeline_config_version as i64,
+        )
+        .await
+        {
+            Ok(tasks) => tasks,
+            Err(e) => return Err(OrchestratorError::DatabaseGeneralError(e)),
+        };
+
+        let pipeline_config =
+            pipeline_configs::Config::from_storage(pipeline_config_storage, pipeline_tasks)
+                .map_err(OrchestratorError::DatabaseSerializationError)?;
+
+        Ok(Self::new(
+            api_state,
+            pipelines::Pipeline {
+                metadata: pipeline_metadata,
+                config: pipeline_config,
+            },
+            run,
+        ))
+    }
+
     /// Start run launches the run and its tasks and then listens to the event bus for related run events and task events.
     /// Upon receiving one of these events it then appropriately updates the run entry in the database with the
     /// correct data.
-    pub async fn start_run(self, permit: OwnedSemaphorePermit) -> Result<()> {
+    ///
+    /// Only the dispatcher calls this, after it has claimed the run, so the run is already marked as running.
+    pub async fn start_run(self) -> Result<()> {
         trace!(
             namespace_id = self.pipeline.metadata.namespace_id.clone(),
             pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
@@ -512,17 +770,6 @@ impl Run {
 
         // Then make sure people who need to know that this run is starting are informed.
         self.api_state
-            .in_progress_runs
-            .entry(in_progress_runs_key(
-                &self.pipeline.metadata.namespace_id,
-                &self.pipeline.metadata.pipeline_id,
-            ))
-            .and_modify(|value| {
-                value.fetch_add(1, atomic::Ordering::SeqCst);
-            })
-            .or_insert(atomic::AtomicU64::from(1));
-
-        self.api_state
             .event_bus
             .clone()
             .publish(event_utils::Kind::StartedRun {
@@ -530,38 +777,6 @@ impl Run {
                 pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
                 run_id: self.run.run_id,
             });
-
-        // The run may have sat queued behind its pipeline's parallelism limit, so it only counts as started now.
-        let fields = storage::runs::UpdatableFields {
-            started: Some(epoch_milli().to_string()),
-            state: Some(runs::State::Running.to_string()),
-            ..Default::default()
-        };
-
-        // Create inner scope here to drop the conn once we're done with it.
-        {
-            let mut conn = self
-                .api_state
-                .storage
-                .write_conn()
-                .await
-                .context("Could not open connection to database")?;
-
-            if let Err(e) = storage::runs::update(
-                &mut conn,
-                &self.pipeline.metadata.namespace_id,
-                &self.pipeline.metadata.pipeline_id,
-                self.run.run_id.try_into().unwrap_or_default(),
-                fields,
-            )
-            .await
-            {
-                bail!(
-                    "Could not update run while attempting to start run; {:#?}",
-                    e
-                )
-            };
-        }
 
         // Configs are checked when they're registered, but a bad dependency graph that slipped through anyway (a bug,
         // or a config from before the check existed) would leave tasks waiting on each other forever. Failing the
@@ -627,7 +842,7 @@ impl Run {
         let event_stream = self.api_state.event_bus.subscribe_live();
         tokio::spawn(async move {
             self_clone
-                .monitor_run(thread_barrier, Box::new(event_stream), permit)
+                .monitor_run(thread_barrier, Box::new(event_stream))
                 .await
         });
 
@@ -639,11 +854,7 @@ impl Run {
     /// stream starts from a historical point rather than the most up to date.
     ///
     /// run_event_id is the UUID of the "Started_Run" event for the run being recovered.
-    pub async fn start_run_recovery(
-        self,
-        run_event_id: String,
-        permit: OwnedSemaphorePermit,
-    ) -> Result<()> {
+    pub async fn start_run_recovery(self, run_event_id: String) -> Result<()> {
         trace!(
             namespace_id = self.pipeline.metadata.namespace_id.clone(),
             pipeline_id = self.pipeline.metadata.pipeline_id.clone(),
@@ -659,17 +870,6 @@ impl Run {
 
         // Then make sure people who need to know that this run is starting are informed.
         self.api_state
-            .in_progress_runs
-            .entry(in_progress_runs_key(
-                &self.pipeline.metadata.namespace_id,
-                &self.pipeline.metadata.pipeline_id,
-            ))
-            .and_modify(|value| {
-                value.fetch_add(1, atomic::Ordering::SeqCst);
-            })
-            .or_insert(atomic::AtomicU64::from(1));
-
-        self.api_state
             .event_bus
             .clone()
             .publish(event_utils::Kind::StartedRun {
@@ -677,36 +877,6 @@ impl Run {
                 pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
                 run_id: self.run.run_id,
             });
-
-        let fields = storage::runs::UpdatableFields {
-            state: Some(runs::State::Running.to_string()),
-            ..Default::default()
-        };
-
-        // Create inner scope here to drop the conn once we're done with it.
-        {
-            let mut conn = self
-                .api_state
-                .storage
-                .write_conn()
-                .await
-                .context("Could not open connection to database")?;
-
-            if let Err(e) = storage::runs::update(
-                &mut conn,
-                &self.pipeline.metadata.namespace_id,
-                &self.pipeline.metadata.pipeline_id,
-                self.run.run_id.try_into().unwrap_or_default(),
-                fields,
-            )
-            .await
-            {
-                bail!(
-                    "Could not update run while attempting to recover run; {:#?}",
-                    e
-                )
-            };
-        }
 
         // Lastly start the run monitor and the launch the task executions. We use a barrier here to make sure
         // that all threads are able to grab event bus listeners at roughly the same point so that they don't
@@ -793,7 +963,7 @@ impl Run {
 
         tokio::spawn(async move {
             self_clone
-                .monitor_run(thread_barrier, Box::new(event_stream), permit)
+                .monitor_run(thread_barrier, Box::new(event_stream))
                 .await
         });
 
@@ -805,7 +975,6 @@ impl Run {
         &self,
         barrier: Arc<tokio::sync::Barrier>,
         mut event_stream: Box<dyn EventListener>,
-        permit: OwnedSemaphorePermit,
     ) {
         // wait for all the other threads to get to this point so everyone starts out at the same point in the event bus.
         barrier.wait().await;
@@ -991,7 +1160,6 @@ impl Run {
                 error = %e,
                 "Could not set run finished while attempting to wait for finish");
         }
-        drop(permit);
     }
 
     /// Launches a brand new task execution as part of a larger run for a specific task.
@@ -1664,17 +1832,6 @@ impl Run {
         status: runs::Status,
         reason: Option<runs::StatusReason>,
     ) -> Result<()> {
-        self.api_state.in_progress_runs.alter(
-            &in_progress_runs_key(
-                &self.pipeline.metadata.namespace_id,
-                &self.pipeline.metadata.pipeline_id,
-            ),
-            |_, value| {
-                value.fetch_sub(1, atomic::Ordering::SeqCst);
-                value
-            },
-        );
-
         let status_reason = reason.map(|value| {
             serde_json::to_string(&value)
                 .context("Could not parse field 'reason' into storage value")
@@ -1698,6 +1855,9 @@ impl Run {
         )
         .await
         .context("Could not update run status in storage")?;
+
+        // This run's slot is free now, so a queued run might be able to start.
+        self.api_state.orchestrator.notify_dispatcher();
 
         self.api_state
             .event_bus
@@ -1796,33 +1956,6 @@ impl Run {
         });
 
         sender
-    }
-
-    pub async fn parallelism_limit_exceeded(&self) -> bool {
-        let pipeline_run_limit = self.pipeline.config.parallelism;
-        let global_run_limit = self.api_state.config.api.pipeline_run_concurrency_limit;
-
-        // A pipeline without its own limit gets the global one, and a pipeline can't set a limit above it.
-        let limit = match (pipeline_run_limit, global_run_limit) {
-            (0, global) => global,
-            (pipeline, 0) => pipeline,
-            (pipeline, global) => pipeline.min(global),
-        };
-
-        if limit == 0 {
-            return false;
-        }
-
-        let runs_key = in_progress_runs_key(
-            &self.pipeline.metadata.namespace_id,
-            &self.pipeline.metadata.pipeline_id,
-        );
-        let runs_in_progress: u64 = match self.api_state.in_progress_runs.get(&runs_key) {
-            Some(runs_in_progress) => runs_in_progress.value().load(atomic::Ordering::SeqCst),
-            None => 0,
-        };
-
-        runs_in_progress >= limit
     }
 
     /// Check a dependency tree to see if all parent tasks are in the correct states.
@@ -3072,5 +3205,93 @@ mod tests {
         assert_eq!(humanize_seconds(45), "45s");
         assert_eq!(humanize_seconds(5400), "1h30m");
         assert_eq!(humanize_seconds(3661), "1h1m1s");
+    }
+
+    fn queued(pipeline_id: &str, run_id: i64, parallelism: i64) -> storage::runs::QueuedRun {
+        storage::runs::QueuedRun {
+            namespace_id: "default".into(),
+            pipeline_id: pipeline_id.into(),
+            run_id,
+            parallelism,
+            pipeline_state: "active".into(),
+        }
+    }
+
+    fn selected_ids(selected: &[storage::runs::QueuedRun]) -> Vec<(String, i64)> {
+        selected
+            .iter()
+            .map(|run| (run.pipeline_id.clone(), run.run_id))
+            .collect()
+    }
+
+    #[test]
+    fn pipeline_run_limit_combines_pipeline_and_server_limits() {
+        assert_eq!(pipeline_run_limit(0, 200), 200);
+        assert_eq!(pipeline_run_limit(3, 0), 3);
+        assert_eq!(pipeline_run_limit(3, 200), 3);
+        assert_eq!(pipeline_run_limit(500, 200), 200);
+        assert_eq!(pipeline_run_limit(0, 0), 0);
+    }
+
+    #[test]
+    fn select_runs_takes_queue_in_order() {
+        let queue = [queued("a", 1, 0), queued("b", 1, 0), queued("a", 2, 0)];
+
+        let selected = select_runs_to_start(&queue, &HashMap::new(), 0, 2);
+
+        assert_eq!(
+            selected_ids(&selected),
+            vec![("a".to_string(), 1), ("b".to_string(), 1)]
+        );
+    }
+
+    #[test]
+    fn select_runs_skips_pipeline_at_its_limit_without_blocking_others() {
+        let queue = [queued("a", 2, 1), queued("a", 3, 1), queued("b", 1, 1)];
+        let running = HashMap::from([(("default".to_string(), "a".to_string()), 1)]);
+
+        let selected = select_runs_to_start(&queue, &running, 0, 0);
+
+        assert_eq!(selected_ids(&selected), vec![("b".to_string(), 1)]);
+    }
+
+    #[test]
+    fn select_runs_fills_free_slots_of_one_pipeline() {
+        let queue = [queued("a", 1, 2), queued("a", 2, 2), queued("a", 3, 2)];
+
+        let selected = select_runs_to_start(&queue, &HashMap::new(), 0, 0);
+
+        assert_eq!(
+            selected_ids(&selected),
+            vec![("a".to_string(), 1), ("a".to_string(), 2)]
+        );
+    }
+
+    #[test]
+    fn select_runs_counts_running_runs_against_the_global_limit() {
+        let queue = [queued("a", 1, 0), queued("b", 1, 0)];
+        let running = HashMap::from([(("default".to_string(), "c".to_string()), 2)]);
+
+        let selected = select_runs_to_start(&queue, &running, 0, 3);
+
+        assert_eq!(selected_ids(&selected), vec![("a".to_string(), 1)]);
+    }
+
+    #[test]
+    fn select_runs_uses_server_limit_when_pipeline_has_none() {
+        let queue = [queued("a", 1, 0), queued("a", 2, 0)];
+
+        let selected = select_runs_to_start(&queue, &HashMap::new(), 1, 0);
+
+        assert_eq!(selected_ids(&selected), vec![("a".to_string(), 1)]);
+    }
+
+    #[test]
+    fn select_runs_caps_pipeline_limit_at_server_limit() {
+        let queue = [queued("a", 1, 5), queued("a", 2, 5)];
+
+        let selected = select_runs_to_start(&queue, &HashMap::new(), 1, 0);
+
+        assert_eq!(selected_ids(&selected), vec![("a".to_string(), 1)]);
     }
 }

@@ -1917,7 +1917,7 @@ type RunState struct {
 // RunState0 defines model for RunState.0.
 type RunState0 string
 
-// RunState1 Before the tasks in a run are sent to the scheduler it must complete various steps like validation checking. This state represents that step where the run and task executions are pre-checked.
+// RunState1 Queued and waiting to start. A run stays pending until its pipeline is under its parallelism limit and Gofer is under its global limit, and while run events are paused.
 type RunState1 string
 
 // RunState2 Currently running.

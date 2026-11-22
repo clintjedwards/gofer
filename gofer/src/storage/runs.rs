@@ -101,19 +101,127 @@ pub async fn list(
         .await
 }
 
-pub async fn list_unfinished(
+/// Runs that were started and haven't finished; these are what need recovering after a restart.
+pub async fn list_running(
     conn: &mut SqliteConnection,
     offset: i64,
     limit: i64,
 ) -> Result<Vec<Run>, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
     state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
-    runs WHERE state != 'complete' LIMIT ? OFFSET ?;";
+    runs WHERE state = 'running' ORDER BY namespace_id, pipeline_id, run_id LIMIT ? OFFSET ?;";
 
     let query = sqlx::query_as::<_, Run>(sql).bind(limit).bind(offset);
 
     query
         .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// A run waiting for a free slot, along with what the dispatcher needs to decide whether it can start.
+#[derive(Clone, Debug, Default, FromRow)]
+pub struct QueuedRun {
+    pub namespace_id: String,
+    pub pipeline_id: String,
+    pub run_id: i64,
+
+    /// The parallelism limit from the config version the run was created with.
+    pub parallelism: i64,
+
+    /// The pipeline's current state, so runs of a pipeline that was disabled while they waited can be dropped.
+    pub pipeline_state: String,
+}
+
+/// Every pending run across Gofer, oldest first.
+pub async fn list_queued(conn: &mut SqliteConnection) -> Result<Vec<QueuedRun>, StorageError> {
+    let sql = "SELECT r.namespace_id, r.pipeline_id, r.run_id, c.parallelism, m.state AS pipeline_state \
+    FROM runs r \
+    JOIN pipeline_configs c ON c.namespace_id = r.namespace_id AND c.pipeline_id = r.pipeline_id \
+        AND c.version = r.pipeline_config_version \
+    JOIN pipeline_metadata m ON m.namespace_id = r.namespace_id AND m.pipeline_id = r.pipeline_id \
+    WHERE r.state = 'pending' \
+    ORDER BY CAST(r.created AS INTEGER), r.namespace_id, r.pipeline_id, r.run_id;";
+
+    let query = sqlx::query_as::<_, QueuedRun>(sql);
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+#[derive(Clone, Debug, Default, FromRow)]
+pub struct RunningCount {
+    pub namespace_id: String,
+    pub pipeline_id: String,
+    pub count: i64,
+}
+
+/// How many runs each pipeline has running. Pipelines with none are left out.
+pub async fn count_running(conn: &mut SqliteConnection) -> Result<Vec<RunningCount>, StorageError> {
+    let sql = "SELECT namespace_id, pipeline_id, COUNT(*) AS count FROM runs WHERE state = 'running' \
+    GROUP BY namespace_id, pipeline_id;";
+
+    let query = sqlx::query_as::<_, RunningCount>(sql);
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// Moves a pending run to running. Returns false if the run wasn't pending anymore (it was cancelled while it
+/// waited), in which case nothing changes. Doing the check and the write in one statement is what keeps a claim and
+/// a cancel from both winning.
+pub async fn claim(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: i64,
+    started: &str,
+) -> Result<bool, StorageError> {
+    let sql = "UPDATE runs SET state = 'running', started = ? \
+    WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND state = 'pending';";
+
+    let query = sqlx::query(sql)
+        .bind(started)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(run_id);
+
+    query
+        .execute(conn)
+        .map_ok(|result| result.rows_affected() > 0)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// Finishes a run that never started. Returns false if the run wasn't pending anymore (the dispatcher already
+/// started it), in which case nothing changes.
+pub async fn complete_pending(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    run_id: i64,
+    ended: &str,
+    status: &str,
+    status_reason: &str,
+) -> Result<bool, StorageError> {
+    let sql = "UPDATE runs SET state = 'complete', ended = ?, status = ?, status_reason = ? \
+    WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND state = 'pending';";
+
+    let query = sqlx::query(sql)
+        .bind(ended)
+        .bind(status)
+        .bind(status_reason)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(run_id);
+
+    query
+        .execute(conn)
+        .map_ok(|result| result.rows_affected() > 0)
         .map_err(|e| map_sqlx_error(e, sql))
         .await
 }
@@ -341,7 +449,7 @@ mod tests {
             created: "2021-01-01T00:00:00Z".to_string(),
             started: "2021-01-01T00:00:00Z".to_string(),
             ended: "2021-01-01T01:00:00Z".to_string(),
-            state: "Running".to_string(),
+            state: "running".to_string(),
             status: "Active".to_string(),
             status_reason: "No issues".to_string(),
             initiator: "UserA".to_string(),
@@ -359,7 +467,7 @@ mod tests {
             created: "2021-01-01T00:00:00Z".to_string(),
             started: "2021-01-01T00:00:00Z".to_string(),
             ended: "2021-01-01T01:00:00Z".to_string(),
-            state: "Running".to_string(),
+            state: "running".to_string(),
             status: "Active".to_string(),
             status_reason: "No issues".to_string(),
             initiator: "UserA".to_string(),
@@ -468,17 +576,136 @@ mod tests {
         assert_eq!(runs[0].run_id, 5);
     }
 
+    async fn insert_pending(conn: &mut SqliteConnection, run_id: i64, created: &str) {
+        let run = Run {
+            namespace_id: "some_id".to_string(),
+            pipeline_id: "some_pipeline_id".to_string(),
+            pipeline_config_version: 1,
+            run_id,
+            created: created.to_string(),
+            started: "0".to_string(),
+            ended: "0".to_string(),
+            state: "pending".to_string(),
+            status: "unknown".to_string(),
+            status_reason: "".to_string(),
+            initiator: "UserA".to_string(),
+            variables: "".to_string(),
+            token_id: None,
+            store_objects_expired: false,
+            event_id: None,
+        };
+        insert(conn, &run).await.expect("Failed to insert run");
+    }
+
     #[tokio::test]
-    async fn test_list_unfinished_runs() {
+    async fn test_list_running_runs() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        insert_pending(&mut conn, 4, "1000").await;
+
+        let runs = list_running(&mut conn, 0, 10)
+            .await
+            .expect("Failed to list running runs");
+
+        assert_eq!(runs.len(), 2, "Should only return running runs");
+        assert_eq!(runs[0].run_id, 1, "First run should have run_id 1");
+        assert_eq!(runs[1].run_id, 2, "Second run should have run_id 2");
+    }
+
+    #[tokio::test]
+    async fn test_list_queued_runs() {
         let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
 
-        let runs_asc = list_unfinished(&mut conn, 0, 10)
-            .await
-            .expect("Failed to list runs in ascending order");
+        // Inserted out of order with mixed digit counts, so this checks the order is by numeric creation time.
+        insert_pending(&mut conn, 4, "9000000000000").await;
+        insert_pending(&mut conn, 5, "1000").await;
 
-        assert_eq!(runs_asc.len(), 2, "Should return two runs");
-        assert_eq!(runs_asc[0].run_id, 1, "First run should have run_id 1");
-        assert_eq!(runs_asc[1].run_id, 2, "Second run should have run_id 2");
+        let queued = list_queued(&mut conn)
+            .await
+            .expect("Failed to list queued runs");
+
+        assert_eq!(queued.len(), 2, "Should only return pending runs");
+        assert_eq!(queued[0].run_id, 5, "Oldest run should come first");
+        assert_eq!(queued[1].run_id, 4);
+        assert_eq!(
+            queued[0].parallelism, 4,
+            "Should carry the config's parallelism"
+        );
+        assert_eq!(queued[0].pipeline_state, "some_state");
+    }
+
+    #[tokio::test]
+    async fn test_count_running_runs() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        let counts = count_running(&mut conn)
+            .await
+            .expect("Failed to count running runs");
+
+        assert_eq!(counts.len(), 1);
+        assert_eq!(counts[0].pipeline_id, "some_pipeline_id");
+        assert_eq!(counts[0].count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_claim_run() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        insert_pending(&mut conn, 4, "1000").await;
+
+        let claimed = claim(&mut conn, "some_id", "some_pipeline_id", 4, "2000")
+            .await
+            .expect("Failed to claim run");
+        assert!(claimed, "A pending run should be claimed");
+
+        let run = get(&mut conn, "some_id", "some_pipeline_id", 4)
+            .await
+            .expect("Failed to get run");
+        assert_eq!(run.state, "running");
+        assert_eq!(run.started, "2000");
+
+        let claimed_again = claim(&mut conn, "some_id", "some_pipeline_id", 4, "3000")
+            .await
+            .expect("Failed to claim run");
+        assert!(!claimed_again, "A run that isn't pending can't be claimed");
+    }
+
+    #[tokio::test]
+    async fn test_complete_pending_run() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        insert_pending(&mut conn, 4, "1000").await;
+
+        let completed = complete_pending(
+            &mut conn,
+            "some_id",
+            "some_pipeline_id",
+            4,
+            "2000",
+            "cancelled",
+            "some_reason",
+        )
+        .await
+        .expect("Failed to complete pending run");
+        assert!(completed, "A pending run should be completed");
+
+        let run = get(&mut conn, "some_id", "some_pipeline_id", 4)
+            .await
+            .expect("Failed to get run");
+        assert_eq!(run.state, "complete");
+        assert_eq!(run.status, "cancelled");
+        assert_eq!(run.ended, "2000");
+
+        // Run 1 is running, so it's left alone.
+        let completed_running = complete_pending(
+            &mut conn,
+            "some_id",
+            "some_pipeline_id",
+            1,
+            "2000",
+            "cancelled",
+            "some_reason",
+        )
+        .await
+        .expect("Failed to complete pending run");
+        assert!(!completed_running, "A running run isn't completed");
     }
 
     #[tokio::test]
@@ -502,7 +729,7 @@ mod tests {
             .expect("Failed to get run");
 
         assert_eq!(run.pipeline_id, "some_pipeline_id");
-        assert_eq!(run.state, "Running");
+        assert_eq!(run.state, "running");
     }
 
     #[tokio::test]

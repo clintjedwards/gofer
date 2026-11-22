@@ -24,7 +24,7 @@ pub struct Api {
     /// The limit automatically imposed if the pipeline does not define a limit. 0 is unlimited.
     pub pipeline_run_concurrency_limit: u64,
 
-    /// The limit of how many runs can be in progress at a single time.
+    /// The limit of how many runs can be in progress at a single time across all of Gofer. 0 is unlimited.
     pub global_run_concurrency_limit: u64,
 
     /// Controls how long Gofer will hold onto events before discarding them (in seconds).
