@@ -68,7 +68,6 @@ where the container is running.
   directory. Think more about how the UX should be handled here.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
-* Update requests that don't actually change anything return errors instead of simply telling the user nothing changed.
 * Make run execution survive failures. This has to happen before a networked scheduler (Nomad, K8s) is realistic,
   since those calls will fail sometimes and today one failure ends the run.
   * The final piece of the run shepard needs to implement a run queue to fully transition over to event driven.

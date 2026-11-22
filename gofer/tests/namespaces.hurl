@@ -53,6 +53,25 @@ jsonpath "$.namespace.id" == "testing"
 jsonpath "$.namespace.name" == "Integration Testing"
 jsonpath "$.namespace.description" == "The integration testing namespace"
 
+# An update with nothing in it succeeds and returns the namespace as it was.
+PATCH http://localhost:8080/api/namespaces/testing
+gofer-api-version: v0
+content-type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 200
+[Asserts]
+jsonpath "$.namespace.name" == "Integration Testing"
+jsonpath "$.namespace.description" == "The integration testing namespace"
+
+# An empty update to a namespace that doesn't exist is still a 404.
+PATCH http://localhost:8080/api/namespaces/not-a-namespace
+gofer-api-version: v0
+content-type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 404
+
 # Delete newly created namespace
 DELETE http://localhost:8080/api/namespaces/testing
 gofer-api-version: v0

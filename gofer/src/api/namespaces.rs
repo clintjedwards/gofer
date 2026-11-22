@@ -425,6 +425,7 @@ pub async fn update_namespace(
                     "Namespace entry for id given does not exist".into(),
                 ));
             }
+            storage::StorageError::NoFieldsUpdated => {}
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",

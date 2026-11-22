@@ -472,6 +472,56 @@ Authorization: Bearer {{secret}}
 }
 HTTP 400
 
+# An update with nothing in it succeeds and leaves the role as it was.
+PATCH http://localhost:8080/api/roles/perm-devops
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 200
+[Asserts]
+jsonpath "$.role.grants.namespaces[0].namespace" == "perm-devops"
+
+# An empty update to a role that doesn't exist is still a 404.
+PATCH http://localhost:8080/api/roles/not-a-role
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 404
+
+# An update with nothing in it succeeds and leaves the token as it was.
+PATCH http://localhost:8080/api/tokens/{{devops_token_id}}
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 204
+
+GET http://localhost:8080/api/tokens/{{devops_token_id}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.token.disabled" == false
+
+# Updating a token that doesn't exist is a 404, with or without changes.
+PATCH http://localhost:8080/api/tokens/not-a-token
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 404
+
+PATCH http://localhost:8080/api/tokens/not-a-token
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "disabled": true
+}
+HTTP 404
+
 ## Each grant stands on its own
 
 # Create a role with two separate grants.

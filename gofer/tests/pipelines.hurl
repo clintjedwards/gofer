@@ -45,6 +45,29 @@ HTTP 200
 [Asserts]
 jsonpath "$.config.state" == "live"
 
+# An update with nothing in it succeeds and leaves the pipeline as it was.
+PATCH http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 204
+
+GET http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.pipeline.state" == "active"
+
+# An empty update to a pipeline that doesn't exist is still a 404.
+PATCH http://localhost:8080/api/namespaces/default/pipelines/not-a-pipeline
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{}
+HTTP 404
+
 # Start a run with a variable name that cannot be an environment variable
 POST http://localhost:8080/api/namespaces/default/pipelines/test/runs
 gofer-api-version: v0

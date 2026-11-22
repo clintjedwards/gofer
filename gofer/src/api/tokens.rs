@@ -953,6 +953,26 @@ pub async fn update_token(
         }
     };
 
+    // Updating a missing token doesn't fail in storage, so we check it exists first.
+    if let Err(e) = storage::tokens::get_by_id(&mut conn, &path.id).await {
+        match e {
+            storage::StorageError::NotFound => {
+                return Err(HttpError::for_not_found(
+                    None,
+                    "Token entry for id given does not exist".into(),
+                ));
+            }
+            _ => {
+                return Err(http_error!(
+                    "Could not get object from database",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        }
+    };
+
     let updatable_fields = storage::tokens::UpdatableFields {
         disabled: body.disabled,
     };
@@ -965,6 +985,7 @@ pub async fn update_token(
                     "Token entry for id given does not exist".into(),
                 ));
             }
+            storage::StorageError::NoFieldsUpdated => {}
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",

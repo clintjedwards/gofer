@@ -481,17 +481,10 @@ pub async fn update_subscription(
         )
         .await?;
 
-    let Some(requested) = body.status else {
-        return Err(HttpError::for_bad_request(
-            None,
-            "Update request is missing any changes".into(),
-        ));
-    };
-
-    let status = match requested {
+    let status = body.status.map(|requested| match requested {
         UpdateSubscriptionStatus::Active => Status::Active,
         UpdateSubscriptionStatus::Disabled => Status::Disabled,
-    };
+    });
 
     // The status change is only committed once the extension has been told, so a failure leaves both sides as they
     // were.
@@ -546,9 +539,10 @@ pub async fn update_subscription(
         )
     })?;
 
-    if current.status == status {
+    // Nothing to change, either because no status was given or because it's already the one asked for.
+    let Some(status) = status.filter(|status| *status != current.status) else {
         return Ok(HttpResponseUpdatedNoContent());
-    }
+    };
 
     let updatable_fields = storage::extension_subscriptions::UpdatableFields {
         status: Some(status.to_string()),

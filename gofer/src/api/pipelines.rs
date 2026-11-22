@@ -442,6 +442,7 @@ pub async fn update_pipeline(
                     "Pipeline entry for id given does not exist".into(),
                 ));
             }
+            storage::StorageError::NoFieldsUpdated => {}
             _ => {
                 return Err(http_error!(
                     "Could not update object in database",
