@@ -210,7 +210,7 @@
         "tags": [
           "Extensions"
         ],
-        "summary": "Permanently delete an extension along with its pipeline subscriptions and stored objects.",
+        "summary": "Permanently delete an extension along with its API token, pipeline subscriptions, and stored objects.",
         "description": "Only extensions that have already been removed from Gofer's config can be purged; Gofer would just install a configured one again. This route is only accessible for admin tokens.",
         "operationId": "purge_extension",
         "parameters": [

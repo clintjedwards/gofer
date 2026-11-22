@@ -7,7 +7,7 @@ An extension is a way to give pipelines more functionality. This might include a
 | <span class="api-method api-method-get">GET</span> | [`/api/extensions`](#list-all-extensions-currently-registered) |
 | <span class="api-method api-method-post">POST</span> | [`/api/extensions/plan`](#compare-gofers-config-with-the-extensions-currently-running) |
 | <span class="api-method api-method-get">GET</span> | [`/api/extensions/{extension_id}`](#returns-details-about-a-specific-extension) |
-| <span class="api-method api-method-delete">DELETE</span> | [`/api/extensions/{extension_id}`](#permanently-delete-an-extension-along-with-its-pipeline-subscriptions-and-stored-objects) |
+| <span class="api-method api-method-delete">DELETE</span> | [`/api/extensions/{extension_id}`](#permanently-delete-an-extension-along-with-its-api-token-pipeline-subscriptions-and-stored-objects) |
 | <span class="api-method api-method-post">POST</span> | [`/api/extensions/{extension_id}/apply`](#bring-one-extension-in-line-with-gofers-config) |
 | <span class="api-method api-method-get">GET</span> | [`/api/extensions/{extension_id}/debug`](#dump-extension-debug-information) |
 | <span class="api-method api-method-ws">WS</span> | [`/api/extensions/{extension_id}/logs`](#retrieves-logs-from-the-extension-container) |
@@ -69,7 +69,7 @@ Rereads Gofer's config file and reports, for each extension, what applying the c
 
 ---
 
-## Permanently delete an extension along with its pipeline subscriptions and stored objects
+## Permanently delete an extension along with its API token, pipeline subscriptions, and stored objects
 
 <div class="api-endpoint"><span class="api-method api-method-delete">DELETE</span><code>/api/extensions/{extension_id}</code></div>
 

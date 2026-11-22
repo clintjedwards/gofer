@@ -78,12 +78,6 @@ where the container is running.
   * The recover_run function needs to account for the fact that sometimes the event_ids mentioned within runs might
     not exist anymore. It should also not return any errors but instead log them and move on, trying its best
     despite any failures.
-* Purging an extension (`purge_extension`) deletes its registration and `extension_<id>` role but not its token
-  (`registration.key_id`). The token never expires and keeps any `additional_roles`, so it should be deleted in the
-  same transaction.
-* Give bypass_auth and anonymous requests their own `anonymous` token kind instead of pretending to be a `user`. Runs
-  started under bypass_auth currently record `kind: user` with token id `0`. The bypass_auth context needs to stay all
-  powerful (admin roles) like it is today.
 
 # Small things I'll probably never get around to.
 

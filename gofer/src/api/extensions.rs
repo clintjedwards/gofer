@@ -816,7 +816,7 @@ pub async fn get_extension(
     Ok(HttpResponseOk(resp))
 }
 
-/// Permanently delete an extension along with its pipeline subscriptions and stored objects.
+/// Permanently delete an extension along with its API token, pipeline subscriptions, and stored objects.
 ///
 /// Only extensions that have already been removed from Gofer's config can be purged; Gofer would just install a
 /// configured one again. This route is only accessible for admin tokens.
@@ -873,10 +873,8 @@ pub async fn purge_extension(
     // Unconfigured extensions are already stopped, but make sure nothing is left behind.
     stop_extension(api_state, &path.extension_id).await;
 
-    let _ = api_state.extensions.remove(&path.extension_id);
-
-    let mut conn = match api_state.storage.write_conn().await {
-        Ok(conn) => conn,
+    let mut tx = match api_state.storage.open_tx().await {
+        Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
@@ -887,27 +885,64 @@ pub async fn purge_extension(
         }
     };
 
-    storage::extension_registrations::delete(&mut conn, &path.extension_id)
+    // The extension's token never expires, so it has to go with the registration or it would keep working. We read
+    // its id from storage because the in-memory registration can hold an older one.
+    let key_id = storage::extension_registrations::get(&mut tx, &path.extension_id)
         .await
         .map_err(|err| {
             http_error!(
-                "Could not delete object from database",
+                "Could not get extension registration from database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(err.into())
+            )
+        })?
+        .key_id;
+
+    storage::extension_registrations::delete(&mut tx, &path.extension_id)
+        .await
+        .map_err(|err| {
+            http_error!(
+                "Could not delete extension registration from database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
         })?;
 
-    storage::roles::delete(&mut conn, &extension_role_id(&path.extension_id))
+    storage::roles::delete(&mut tx, &extension_role_id(&path.extension_id))
         .await
         .map_err(|err| {
             http_error!(
-                "Could not delete object from database",
+                "Could not delete extension role from database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
                 rqctx.request_id.clone(),
                 Some(err.into())
             )
         })?;
+
+    storage::tokens::delete(&mut tx, &key_id)
+        .await
+        .map_err(|err| {
+            http_error!(
+                "Could not delete extension token from database",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(err.into())
+            )
+        })?;
+
+    if let Err(e) = tx.commit().await {
+        return Err(http_error!(
+            "Could not close transaction from database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    };
+
+    // Only forget the extension once the database agrees it's gone, so a failed purge can be retried.
+    let _ = api_state.extensions.remove(&path.extension_id);
 
     Ok(HttpResponseDeleted())
 }
