@@ -34,7 +34,7 @@ pub mod task_executions;
 pub mod tasks;
 pub mod tokens;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use sqlx::{
     Pool, Sqlite, Transaction, migrate, pool::PoolConnection, sqlite::SqliteConnectOptions,
     sqlite::SqlitePoolOptions,
@@ -121,14 +121,15 @@ fn touch_file(path: &Path) -> io::Result<()> {
 
 impl Db {
     pub async fn new(path: &str) -> Result<Self> {
-        touch_file(Path::new(path)).unwrap();
+        touch_file(Path::new(path))
+            .with_context(|| format!("Could not create database file at '{path}'"))?;
 
         // We create two different pools of connections. The read pool has many connections and is high concurrency.
         // The write pool is essentially a single connection in which only one write can be made at a time.
         // Not using this paradigm may result in sqlite "database is locked(error: 5)" errors because of the
         // manner in which sqlite handles transactions.
         let connect_options = SqliteConnectOptions::from_str(&format!("sqlite://{}", path))
-            .unwrap()
+            .with_context(|| format!("Could not parse database path '{path}'"))?
             // * journal_mode: Turns on WAL mode which increases concurrency and reliability.
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
             // * synchronous: Tells sqlite to not sync to disk as often and specifically only focus on syncing at critcal
@@ -142,16 +143,18 @@ impl Db {
         let read_pool = SqlitePoolOptions::new()
             .max_connections(10)
             .connect_with(connect_options.clone())
-            .await?;
+            .await
+            .with_context(|| format!("Could not open database at '{path}'"))?;
         let write_pool = SqlitePoolOptions::new()
             .max_connections(1)
             .connect_with(connect_options)
-            .await?;
+            .await
+            .with_context(|| format!("Could not open database at '{path}'"))?;
 
         migrate!("src/storage/migrations")
             .run(&write_pool)
             .await
-            .unwrap();
+            .context("Could not apply database migrations")?;
 
         Ok(Db {
             write_pool,

@@ -85,6 +85,25 @@ pub async fn delete(conn: &mut SqliteConnection, id: &str) -> Result<(), Storage
         .await
 }
 
+/// Deletes up to `limit` of the oldest events whose id sorts before `id`, and returns how many it deleted. Event ids
+/// are UUIDv7, which sort by when they were created, so this removes events created before the time `id` holds.
+pub async fn delete_before(
+    conn: &mut SqliteConnection,
+    id: &str,
+    limit: i64,
+) -> Result<u64, StorageError> {
+    let sql =
+        "DELETE FROM events WHERE id IN (SELECT id FROM events WHERE id < ? ORDER BY id LIMIT ?);";
+
+    let query = sqlx::query(sql).bind(id).bind(limit);
+
+    query
+        .execute(conn)
+        .map_ok(|result| result.rows_affected())
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,5 +213,30 @@ mod tests {
             get(&mut conn, "some_id").await.is_err(),
             "Event should have been deleted"
         );
+    }
+
+    #[tokio::test]
+    async fn test_delete_events_before() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        // "some_id" sorts before "some_id_2", which sorts before "some_id_3".
+        let deleted = delete_before(&mut conn, "some_id_3", 1)
+            .await
+            .expect("Failed to delete events");
+        assert_eq!(deleted, 1, "Should stop at the limit");
+        assert!(
+            get(&mut conn, "some_id").await.is_err(),
+            "The oldest event should go first"
+        );
+
+        let deleted = delete_before(&mut conn, "some_id_3", 10)
+            .await
+            .expect("Failed to delete events");
+        assert_eq!(deleted, 1);
+
+        let deleted = delete_before(&mut conn, "some_id_3", 10)
+            .await
+            .expect("Failed to delete events");
+        assert_eq!(deleted, 0, "Nothing should be left before the cutoff");
     }
 }

@@ -87,6 +87,9 @@ CREATE TABLE IF NOT EXISTS runs (
     PRIMARY KEY (namespace_id, pipeline_id, run_id)
 ) STRICT;
 
+-- The run dispatcher looks up pending and running runs on every pass, and runs are kept forever.
+CREATE INDEX idx_runs_state ON runs (state);
+
 CREATE TABLE IF NOT EXISTS tasks (
     namespace_id             TEXT    NOT NULL,
     pipeline_id              TEXT    NOT NULL,

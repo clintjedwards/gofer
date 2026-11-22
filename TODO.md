@@ -37,25 +37,24 @@ None
   (cron, interval) are harder since there's nothing for Gofer to store; they'd need their own way to notice and
   handle what they missed while down.
 * Add `gofer service drain` for admins, for safely stopping Gofer before an upgrade or restart.
-  * It sets `ignore_pipeline_run_events` (already supported through `PUT /api/system`) so new runs are refused, then
-    streams the runs still in progress and how far along each one is (tasks done out of total, maybe the task
-    currently running), until there are none left and it's safe to stop Gofer.
+  * It turns on `ignore_pipeline_run_events` through `PATCH /api/system`, which refuses new runs and holds queued
+    ones, then polls until no runs are left running and it's safe to stop Gofer.
   * `--no-wait` turns on draining and returns right away, for scripts or when you just want to stop new work.
   * Ctrl-C while it's watching should only stop the watching; the server stays drained. Say so when it exits.
   * Needs a way to turn it back off; `gofer service undrain` is the obvious name. Since the setting is stored in the
     database it survives a restart, so after an upgrade Gofer comes back up still refusing runs until someone undrains
     it. Print that clearly at the end of `drain`, and probably log a warning at startup when Gofer starts drained.
-  * Watch progress through the event stream (`/api/events`). It already has `StartedRun`, `CompletedRun`,
-    `QueuedRun` and the task execution events, which is everything drain needs to show progress and know when the
-    last run finishes.
-    * The stream only covers what happens after you connect, so drain also needs the runs that were already going
-      when it started. Replaying `history` would mean walking up to 6 months of events, so instead have the server
-      hand over the current list. The runs table already has it (`state = 'running'`, which the run dispatcher
-      counts), so it could be returned from `GET /api/system` or the drain call itself.
-    * Subscribe to the stream before fetching that list, or a run that finishes in between gets missed and drain
-      waits forever.
-    * `ignore_pipeline_run_events` also holds queued (`pending`) runs, so drain only has to wait on running ones. Show
-      how many are queued, since they all start as soon as Gofer is undrained.
+  * The missing piece is a list of running runs across all pipelines. The only run list today is per pipeline and
+    can't filter by state, so polling it means walking every namespace and pipeline. Add an admin-only endpoint that
+    returns the running runs and how many are queued; the `list_running` storage query already exists.
+    * Poll it every couple of seconds. For each running run, the existing `/runs/{run_id}/tasks` endpoint gives its
+      progress (tasks done out of total, and the task currently running). Print a line when something changes
+      rather than redrawing a table, so it reads the same in a terminal or a CI log.
+    * Drain only has to wait on running runs, but show how many are queued, since they all start as soon as Gofer is
+      undrained.
+    * Watching the event stream (`/api/events`) instead would show progress the moment it happens, but it still
+      needs the running-runs list to start from, has to subscribe before fetching that list or drain can wait
+      forever, and has to resync if the connection drops. A couple of seconds of delay isn't worth that.
   * `gofer context` (and the web UI) should show when Gofer is drained, since a drained server looks a lot like a
     broken one from a pipeline owner's point of view. `gofer context` already shows "not accepting new runs", but
     only to admins since `GET /api/system` is admin only; non-admins need some way to see it too.
@@ -77,8 +76,15 @@ None
 
 * Change the poll interval for pruneing events to be based on the number of events processed rather than just a standard
   static prune time. Maybe we can just make it a big LRU.
-* Change the sqlite write_pool to be guarded by a mutex. This would avoid very obvious errors in code that might lead
-  to deadlocks during runtime.
+* Events can be lost when the single sqlite write connection is busy. `EventBus::publish` only broadcasts an event after
+  it's saved, and saving waits on the same write connection everything else uses. If that wait passes sqlx's 30 second
+  acquire timeout the event is logged and dropped, and a dropped `CompletedTaskExecution` leaves its run stuck in
+  `running` forever. Since everything depends on events we don't want to just broadcast unsaved ones; giving the event
+  log its own sqlite database, so it never waits behind other writes, is probably the fix.
+* Stop holding the sqlite write connection across slow work. There's only one, so anything slow done while holding it
+  stalls every write in Gofer, event publishing included. For example `remove_run_objects` (orchestrator/expiry.rs)
+  holds it while deleting each object from the object store, and `launch_new_run` keeps its `BEGIN IMMEDIATE`
+  transaction open across `secret_store.put`. Worth going through the other `write_conn()` callers for the same thing.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
 code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers
 in one very large file or split them up). https://github.com/oxidecomputer/dropshot/issues/1069 should fix this.

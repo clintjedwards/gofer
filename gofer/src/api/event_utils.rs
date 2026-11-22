@@ -6,7 +6,6 @@ use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use strum::{Display, EnumDiscriminants, EnumIter, EnumString};
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, trace};
@@ -512,61 +511,70 @@ impl EventBus {
     }
 }
 
+/// How many events pruning deletes before handing the write connection back.
+const PRUNE_BATCH_SIZE: i64 = 1000;
+
+/// Deletes events older than the retention period. Every write in Gofer shares one connection, publishing events
+/// included, so this works in batches and gives the connection back between them instead of holding it for the whole
+/// prune.
 async fn prune_events(storage: &storage::Db, retention: u64) -> Result<(), storage::StorageError> {
-    let mut offset = 0;
+    let cutoff = epoch_milli().saturating_sub(retention.saturating_mul(1000));
+    let cutoff_id = earliest_event_id_at(cutoff);
     let mut total_pruned = 0;
 
-    let mut conn = match storage.write_conn().await {
-        Ok(conn) => conn,
-        Err(e) => {
-            error!("could not prune events; connection error");
-            return Err(e);
-        }
-    };
-
     loop {
-        let events = storage::events::list(&mut conn, offset, 50, false).await?;
+        let mut conn = storage.write_conn().await?;
+        let pruned =
+            storage::events::delete_before(&mut conn, &cutoff_id, PRUNE_BATCH_SIZE).await?;
+        drop(conn);
 
-        for event in &events {
-            if is_past_cut_date(event, retention) {
-                debug!(
-                    emitted = event.emitted,
-                    retention = retention,
-                    current_time = epoch_milli(),
-                    "removed event past retention period"
-                );
+        total_pruned += pruned;
 
-                total_pruned += 1;
-
-                storage::events::delete(&mut conn, &event.id).await?;
-            }
+        if pruned < PRUNE_BATCH_SIZE as u64 {
+            break;
         }
-
-        if events.len() != 50 {
-            if total_pruned > 0 {
-                info!(
-                    retention = retention,
-                    total_pruned = total_pruned,
-                    "pruned old events"
-                );
-            }
-
-            return Ok(());
-        }
-
-        offset += events.len() as i64;
     }
+
+    if total_pruned > 0 {
+        info!(retention, total_pruned, "pruned old events");
+    }
+
+    Ok(())
 }
 
-fn is_past_cut_date(event: &storage::events::Event, limit: u64) -> bool {
-    let now = epoch_milli();
-    let limit = Duration::from_secs(limit).as_millis() as u64;
-    let expiry_time = now - limit;
+/// The lowest event id that can be created at the given epoch millisecond. Event ids are UUIDv7, which begin with the
+/// millisecond they were created in, so every event created before then has an id that sorts lower than this one.
+fn earliest_event_id_at(millis: u64) -> String {
+    uuid::Builder::from_unix_timestamp_millis(millis, &[0; 10])
+        .into_uuid()
+        .to_string()
+}
 
-    let emitted = match event.emitted.parse::<u64>() {
-        Ok(emitted) => emitted,
-        Err(_) => return false,
-    };
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    emitted < expiry_time
+    #[test]
+    fn earliest_event_id_sorts_between_neighboring_milliseconds() {
+        let cutoff = 1_795_000_000_000;
+        let cutoff_id = earliest_event_id_at(cutoff);
+
+        let just_before = uuid::Builder::from_unix_timestamp_millis(cutoff - 1, &[0xff; 10])
+            .into_uuid()
+            .to_string();
+        let at_cutoff = uuid::Builder::from_unix_timestamp_millis(cutoff, &[0x01; 10])
+            .into_uuid()
+            .to_string();
+
+        assert!(just_before < cutoff_id);
+        assert!(cutoff_id < at_cutoff);
+    }
+
+    #[test]
+    fn new_event_ids_sort_after_an_earlier_cutoff() {
+        let cutoff_id = earliest_event_id_at(epoch_milli() - 1);
+        let event = Event::new(Kind::Any);
+
+        assert!(cutoff_id < event.id);
+    }
 }
