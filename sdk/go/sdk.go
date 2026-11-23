@@ -291,6 +291,11 @@ const (
 	RunStatus3Cancelled RunStatus3 = "cancelled"
 )
 
+// Defines values for RunStatus4.
+const (
+	RunStatus4Skipped RunStatus4 = "skipped"
+)
+
 // Defines values for RunStatusReasonType0.
 const (
 	RunStatusReasonType0Unknown RunStatusReasonType0 = "unknown"
@@ -324,6 +329,11 @@ const (
 // Defines values for RunStatusReasonType6.
 const (
 	RunStatusReasonType6Timeout RunStatusReasonType6 = "timeout"
+)
+
+// Defines values for RunStatusReasonType7.
+const (
+	SkipDate RunStatusReasonType7 = "skip_date"
 )
 
 // Defines values for SubscriptionStatus.
@@ -413,7 +423,7 @@ const (
 
 // Defines values for TaskExecutionStatus4.
 const (
-	Skipped TaskExecutionStatus4 = "skipped"
+	TaskExecutionStatus4Skipped TaskExecutionStatus4 = "skipped"
 )
 
 // Defines values for TaskExecutionStatusReasonType0.
@@ -519,6 +529,9 @@ type Config struct {
 
 	// Registered Time in epoch milliseconds when this pipeline config was registered.
 	Registered uint64 `json:"registered"`
+
+	// SkipDates Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD` with an optional weekday like `:thu`. Dates repeat every year and are in UTC.
+	SkipDates []string `json:"skip_dates"`
 
 	// State The deployment state of the config. This is used to determine the state of this particular config and if it is currently being used or not.
 	State ConfigState `json:"state"`
@@ -1283,6 +1296,9 @@ type Pipeline struct {
 	// Parallelism Controls how many runs can be active at any single time. 0 defaults to whatever the global Gofer setting is.
 	Parallelism int64 `json:"parallelism"`
 
+	// SkipDates Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD`. Either can be limited to a weekday, so `11/22-11/28:thu` is Thanksgiving. Dates repeat every year and are in UTC. Defaults to empty so configs built with older SDKs still parse.
+	SkipDates *[]string `json:"skip_dates,omitempty"`
+
 	// Tasks A mapping of pipeline owned tasks.
 	Tasks []Task2 `json:"tasks"`
 }
@@ -1570,6 +1586,9 @@ type Secret struct {
 
 // StartRunRequest defines model for StartRunRequest.
 type StartRunRequest struct {
+	// Force Start the run even if today is one of the pipeline's skip dates. It doesn't start runs of a disabled pipeline.
+	Force *bool `json:"force,omitempty"`
+
 	// Variables Environment variables for the run's tasks. They override variables of the same name from the pipeline config and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set.
 	Variables map[string]string `json:"variables"`
 }
@@ -1952,6 +1971,9 @@ type RunStatus2 string
 // RunStatus3 One or more tasks in a run have been cancelled.
 type RunStatus3 string
 
+// RunStatus4 The run was never started since it was asked for on one of the pipeline's skip dates.
+type RunStatus4 string
+
 // RunStatusReason defines model for run_status_reason.
 type RunStatusReason struct {
 	// Description A description of why the run might have failed and what was going on at the time.
@@ -1986,6 +2008,9 @@ type RunStatusReasonType5 string
 
 // RunStatusReasonType6 One or more tasks ran longer than their timeout and were stopped.
 type RunStatusReasonType6 string
+
+// RunStatusReasonType7 The run was asked for on one of the pipeline's skip dates.
+type RunStatusReasonType7 string
 
 // SubscriptionStatus defines model for subscription_status.
 type SubscriptionStatus string
@@ -3972,6 +3997,32 @@ func (t *RunStatus) MergeRunStatus3(v RunStatus3) error {
 	return err
 }
 
+// AsRunStatus4 returns the union data inside the RunStatus as a RunStatus4
+func (t RunStatus) AsRunStatus4() (RunStatus4, error) {
+	var body RunStatus4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRunStatus4 overwrites any union data inside the RunStatus as the provided RunStatus4
+func (t *RunStatus) FromRunStatus4(v RunStatus4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRunStatus4 performs a merge with any union data inside the RunStatus, using the provided RunStatus4
+func (t *RunStatus) MergeRunStatus4(v RunStatus4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t RunStatus) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -4154,6 +4205,32 @@ func (t *RunStatusReasonType) FromRunStatusReasonType6(v RunStatusReasonType6) e
 
 // MergeRunStatusReasonType6 performs a merge with any union data inside the RunStatusReasonType, using the provided RunStatusReasonType6
 func (t *RunStatusReasonType) MergeRunStatusReasonType6(v RunStatusReasonType6) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsRunStatusReasonType7 returns the union data inside the RunStatusReasonType as a RunStatusReasonType7
+func (t RunStatusReasonType) AsRunStatusReasonType7() (RunStatusReasonType7, error) {
+	var body RunStatusReasonType7
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRunStatusReasonType7 overwrites any union data inside the RunStatusReasonType as the provided RunStatusReasonType7
+func (t *RunStatusReasonType) FromRunStatusReasonType7(v RunStatusReasonType7) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRunStatusReasonType7 performs a merge with any union data inside the RunStatusReasonType, using the provided RunStatusReasonType7
+func (t *RunStatusReasonType) MergeRunStatusReasonType7(v RunStatusReasonType7) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err

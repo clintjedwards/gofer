@@ -39,6 +39,7 @@ A representation of the user's configuration settings for a particular pipeline.
 | `parallelism` | integer | yes | The amount of runs allowed to happen at any given time. |
 | `pipeline_id` | string | yes | Unique identifier of the target pipeline. |
 | `registered` | integer | yes | Time in epoch milliseconds when this pipeline config was registered. |
+| `skip_dates` | array of string | yes | Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD` with an optional weekday like `:thu`. Dates repeat every year and are in UTC. |
 | `state` | [ConfigState](#configstate) | yes | The deployment state of the config. This is used to determine the state of this particular config and if it is currently being used or not. |
 | `tasks` | map of string to [Task](#task) | yes | Tasks associated with this pipeline. |
 | `version` | integer | yes | The iteration number for this pipeline's configs. |
@@ -574,6 +575,7 @@ A string, one of:
 | `id` | string | yes | Unique user defined identifier. |
 | `name` | string | yes | Humanized name, meant for display. |
 | `parallelism` | integer | yes | Controls how many runs can be active at any single time. 0 defaults to whatever the global Gofer setting is. |
+| `skip_dates` | array of string | no | Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD`. Either can be limited to a weekday, so `11/22-11/28:thu` is Thanksgiving. Dates repeat every year and are in UTC. Defaults to empty so configs built with older SDKs still parse. |
 | `tasks` | array of [Task2](#task2) | yes | A mapping of pipeline owned tasks. |
 
 ## Pipeline2
@@ -796,6 +798,7 @@ A run is one or more tasks being executed on behalf of some extension. Run is a 
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
+| `force` | boolean | no | Start the run even if today is one of the pipeline's skip dates. It doesn't start runs of a disabled pipeline. |
 | `variables` | map of string to string | yes | Environment variables for the run's tasks. They override variables of the same name from the pipeline config and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set. |
 
 ## StartRunResponse
@@ -1072,6 +1075,7 @@ A string, one of:
 | `failed` | One or more tasks in run have failed. |
 | `successful` | All tasks in a run have completed with a non-failure state. |
 | `cancelled` | One or more tasks in a run have been cancelled. |
+| `skipped` | The run was never started since it was asked for on one of the pipeline's skip dates. |
 
 ## run_status_reason
 
@@ -1093,6 +1097,7 @@ A string, one of:
 | `user_cancelled` | One or more tasks could not be completed due to a user cancelling the run. |
 | `admin_cancelled` | One or more tasks could not be completed due to the system or admin cancelling the run. |
 | `timeout` | One or more tasks ran longer than their timeout and were stopped. |
+| `skip_date` | The run was asked for on one of the pipeline's skip dates. |
 
 ## subscription_status
 

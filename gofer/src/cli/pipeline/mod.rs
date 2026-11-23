@@ -41,6 +41,10 @@ pub enum PipelineCommands {
         /// Optional environment variables to pass to your run. Format: Key=Value
         #[arg(short, long)]
         variable: Vec<String>,
+
+        /// Start the run even if today is one of the pipeline's skip dates.
+        #[arg(short, long)]
+        force: bool,
     },
 
     /// Move a pipeline from a disabled state to a enabled.
@@ -189,8 +193,13 @@ impl Cli {
         match cmds {
             PipelineCommands::List => self.pipeline_list(command.namespace).await,
             PipelineCommands::Get { id } => self.pipeline_get(command.namespace, &id).await,
-            PipelineCommands::Run { id, variable } => {
-                self.pipeline_run(command.namespace, &id, variable).await
+            PipelineCommands::Run {
+                id,
+                variable,
+                force,
+            } => {
+                self.pipeline_run(command.namespace, &id, variable, force)
+                    .await
             }
             PipelineCommands::Enable { id } => self.pipeline_enable(command.namespace, &id).await,
             PipelineCommands::Disable {
@@ -438,6 +447,9 @@ impl Cli {
   {%- if allow_runs_from %}
   {{ vertical_line }} Allows runs from: {{ allow_runs_from }}
   {%- endif %}
+  {%- if skip_dates %}
+  {{ vertical_line }} Skips dates: {{ skip_dates }}
+  {%- endif %}
 
   $ Recent Runs:
   {%- for line in recent_runs %}
@@ -465,6 +477,7 @@ impl Cli {
             "allow_runs_from",
             &pipeline_config.allow_runs_from.join(", "),
         );
+        context.insert("skip_dates", &pipeline_config.skip_dates.join(", "));
         context.insert(
             "recent_runs",
             &rail_table(&["RUN", "STARTED", "DURATION", "STATE", "STATUS"], run_rows),
@@ -513,8 +526,9 @@ impl Cli {
         namespace_id: Option<String>,
         id: &str,
         variables: Vec<String>,
+        force: bool,
     ) -> Result<()> {
-        self.run_start(namespace_id, id, variables).await
+        self.run_start(namespace_id, id, variables, force).await
     }
 
     pub async fn pipeline_enable(&self, namespace_id: Option<String>, id: &str) -> Result<()> {

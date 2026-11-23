@@ -22,6 +22,9 @@
 //! pending --(dispatcher claims it)--> running --(shepherd finishes it)--> complete
 //! pending --(cancelled, or its pipeline was disabled, before it started)--> complete
 //! ```
+//!
+//! A run asked for on one of its pipeline's skip dates is the exception. It's written as `complete` right away, so it
+//! never reaches the dispatcher.
 
 mod dispatcher;
 mod expiry;
@@ -132,6 +135,7 @@ impl Orchestrator {
         pipeline_id: &str,
         initiator: runs::Initiator,
         variables: HashMap<String, String>,
+        force: bool,
     ) -> std::result::Result<runs::Run, OrchestratorError> {
         if api_state
             .ignore_pipeline_run_events
@@ -206,6 +210,17 @@ impl Orchestrator {
             }
         };
 
+        let live_config =
+            pipeline_configs::Config::from_storage(latest_pipeline_config_storage.clone(), vec![])
+                .map_err(OrchestratorError::DatabaseSerializationError)?;
+
+        let today = chrono::Utc::now().date_naive();
+        let skip_date = if force {
+            None
+        } else {
+            live_config.skip_date_on(today)
+        };
+
         let pipeline_tasks = match storage::tasks::list(
             &mut tx,
             namespace_id,
@@ -220,7 +235,9 @@ impl Orchestrator {
             }
         };
 
-        let token_required = pipeline_tasks.iter().any(|task| task.inject_api_token);
+        // A skipped run never starts, so it has no use for a token.
+        let token_required =
+            skip_date.is_none() && pipeline_tasks.iter().any(|task| task.inject_api_token);
 
         let latest_run_id =
             match storage::runs::get_latest(&mut tx, namespace_id, pipeline_id).await {
@@ -327,7 +344,7 @@ impl Orchestrator {
             token_id = Some(new_token.id);
         }
 
-        let new_run = runs::Run::new(
+        let mut new_run = runs::Run::new(
             namespace_id,
             pipeline_id,
             latest_pipeline_config_storage.version.try_into().unwrap(),
@@ -343,6 +360,19 @@ impl Orchestrator {
                 .collect(),
             token_id,
         );
+
+        // A skipped run is still recorded, so it's clear why nothing ran that day.
+        if let Some(skip_date) = skip_date {
+            new_run.state = runs::State::Complete;
+            new_run.status = runs::Status::Skipped;
+            new_run.status_reason = Some(runs::StatusReason {
+                reason: runs::StatusReasonType::SkipDate,
+                description: format!(
+                    "{today} (UTC) is covered by the pipeline's skip date '{skip_date}'"
+                ),
+            });
+            new_run.ended = new_run.created;
+        }
 
         let new_run_storage = new_run
             .clone()
@@ -361,6 +391,27 @@ impl Orchestrator {
                 }
             }
         };
+
+        // It was never queued, so there's nothing to recover and nothing for the dispatcher to start.
+        if skip_date.is_some() {
+            if let Err(e) = tx.commit().await {
+                return Err(OrchestratorError::DatabaseGeneralError(
+                    storage::StorageError::Connection(e.to_string()),
+                ));
+            };
+
+            api_state
+                .event_bus
+                .clone()
+                .publish(event_utils::Kind::CompletedRun {
+                    namespace_id: namespace_id.to_string(),
+                    pipeline_id: pipeline_id.to_string(),
+                    run_id: new_run.run_id,
+                    status: new_run.status.clone(),
+                });
+
+            return Ok(new_run);
+        }
 
         // We emit the QueuedRun event so that the event stream is aware of the impending run. Then we insert that event_id
         // into the database for the associated run. This helps us with detecting which runs are incomplete due to

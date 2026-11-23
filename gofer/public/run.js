@@ -310,6 +310,10 @@ function taskTone(task) {
 // "ran for 2 minutes" once the run is done, "has been running for 2 minutes" while it's still going.
 function runDuration(run) {
   if (run.started === 0) {
+    // Skipped, or cancelled while it was queued.
+    if (lower(run.state) === "complete") {
+      return "never started";
+    }
     return `has been queued for ${humanizeDuration(run.created, Date.now())}`;
   }
   const elapsed = humanizeDuration(run.started, run.ended || Date.now());
@@ -320,7 +324,7 @@ function runDuration(run) {
 // mentioning. Anything under a second is just setup, not real queueing.
 function runStarted(run) {
   if (run.started === 0) {
-    return "Queued";
+    return lower(run.state) === "complete" ? "Never" : "Queued";
   }
   const queued = run.started - run.created;
   if (!run.created || queued < 1000) {
@@ -444,14 +448,16 @@ function renderRunReason(run) {
     return "";
   }
 
-  const cancelled = lower(run.status) === "cancelled";
-  const colors = cancelled
+  const status = lower(run.status);
+  const label = { cancelled: "Cancelled", skipped: "Skipped" }[status] || "Failure";
+  const colors = label !== "Failure"
     ? "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 text-slate-800 dark:text-slate-200"
     : "border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200";
 
   return `<div class="rounded-md border ${colors} p-4 text-sm">
-      <span class="font-semibold">${cancelled ? "Cancelled" : "Failure"}: ${escapeHtml(run.status_reason.reason)}</span>
+      <span class="font-semibold">${label}: ${escapeHtml(run.status_reason.reason)}</span>
       <p class="mt-1">${escapeHtml(run.status_reason.description)}</p>
+      ${status === "skipped" ? `<div class="mt-3">${commandBlock(`gofer pipeline run ${run.pipeline_id} --force${namespaceFlag()}`)}</div>` : ""}
     </div>`;
 }
 

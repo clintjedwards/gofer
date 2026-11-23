@@ -1679,7 +1679,7 @@
           "Runs"
         ],
         "summary": "Start a run of a particular pipeline.",
-        "description": "Besides tokens with a grant for the pipeline's runs, a run's injected token can start runs of any pipeline whose live config lists the calling pipeline in `allow_runs_from`.",
+        "description": "Besides tokens with a grant for the pipeline's runs, a run's injected token can start runs of any pipeline whose live config lists the calling pipeline in `allow_runs_from`.\n\nOn one of the pipeline's skip dates the run is recorded as `skipped` and never starts, unless `force` is set.",
         "operationId": "start_run",
         "parameters": [
           {
@@ -3812,6 +3812,13 @@
             "format": "uint64",
             "minimum": 0
           },
+          "skip_dates": {
+            "description": "Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD` with an optional weekday like `:thu`. Dates repeat every year and are in UTC.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "state": {
             "description": "The deployment state of the config. This is used to determine the state of this particular config and if it is currently being used or not.",
             "allOf": [
@@ -3843,6 +3850,7 @@
           "parallelism",
           "pipeline_id",
           "registered",
+          "skip_dates",
           "state",
           "tasks",
           "version"
@@ -5807,6 +5815,14 @@
             "type": "integer",
             "format": "int64"
           },
+          "skip_dates": {
+            "description": "Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD`. Either can be limited to a weekday, so `11/22-11/28:thu` is Thanksgiving. Dates repeat every year and are in UTC. Defaults to empty so configs built with older SDKs still parse.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "tasks": {
             "description": "A mapping of pipeline owned tasks.",
             "type": "array",
@@ -6466,6 +6482,11 @@
       "StartRunRequest": {
         "type": "object",
         "properties": {
+          "force": {
+            "description": "Start the run even if today is one of the pipeline's skip dates. It doesn't start runs of a disabled pipeline.",
+            "default": false,
+            "type": "boolean"
+          },
           "variables": {
             "description": "Environment variables for the run's tasks. They override variables of the same name from the pipeline config and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set.",
             "type": "object",
@@ -7305,6 +7326,13 @@
             "enum": [
               "cancelled"
             ]
+          },
+          {
+            "description": "The run was never started since it was asked for on one of the pipeline's skip dates.",
+            "type": "string",
+            "enum": [
+              "skipped"
+            ]
           }
         ]
       },
@@ -7378,6 +7406,13 @@
             "type": "string",
             "enum": [
               "timeout"
+            ]
+          },
+          {
+            "description": "The run was asked for on one of the pipeline's skip dates.",
+            "type": "string",
+            "enum": [
+              "skip_date"
             ]
           }
         ]

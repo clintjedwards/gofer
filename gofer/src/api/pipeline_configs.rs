@@ -12,6 +12,7 @@ use crate::{
     storage::{self, StorageError},
 };
 use anyhow::{Context, Result};
+use chrono::{Datelike, NaiveDate};
 use dropshot::{
     ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
     Path, Query, RequestContext, TypedBody, endpoint,
@@ -83,6 +84,10 @@ pub struct Config {
     /// that has to match the whole id.
     pub allow_runs_from: Vec<String>,
 
+    /// Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD` with an optional weekday like `:thu`. Dates repeat
+    /// every year and are in UTC.
+    pub skip_dates: Vec<String>,
+
     /// Human readable name for pipeline.
     pub name: String,
 
@@ -116,6 +121,7 @@ impl Config {
             version,
             parallelism: config.parallelism.try_into()?,
             allow_runs_from: config.allow_runs_from,
+            skip_dates: config.skip_dates,
             name: config.name,
             description: config.description.unwrap_or_default(),
             tasks: config
@@ -134,6 +140,21 @@ impl Config {
         self.allow_runs_from
             .iter()
             .any(|pattern| config::run_source_matches(pattern, namespace_id, pipeline_id))
+    }
+
+    /// The first of the config's skip dates that covers the given day, if any do.
+    pub fn skip_date_on(&self, day: NaiveDate) -> Option<&str> {
+        self.skip_dates
+            .iter()
+            .find(|skip_date| {
+                config::skip_date_matches(
+                    skip_date,
+                    day.month(),
+                    day.day(),
+                    day.weekday().num_days_from_sunday(),
+                )
+            })
+            .map(String::as_str)
     }
 
     /// The copy of a config that's safe to hand back to API callers. See [`crate::api::REDACTED`].
@@ -161,12 +182,20 @@ impl Config {
             )
         })?;
 
+        let skip_dates = serde_json::to_string(&self.skip_dates).with_context(|| {
+            format!(
+                "Could not parse field 'skip_dates' to storage value; '{:#?}'",
+                self.skip_dates
+            )
+        })?;
+
         let config = storage::pipeline_configs::PipelineConfig {
             namespace_id: self.namespace_id.clone(),
             pipeline_id: self.pipeline_id.clone(),
             version: self.version.try_into()?,
             parallelism: self.parallelism.try_into()?,
             allow_runs_from,
+            skip_dates,
             name: self.name.clone(),
             description: self.description.clone(),
             registered: self.registered.to_string(),
@@ -223,12 +252,21 @@ impl Config {
                 )
             })?;
 
+        let skip_dates: Vec<String> =
+            serde_json::from_str(&config.skip_dates).with_context(|| {
+                format!(
+                    "Could not parse field 'skip_dates' from storage value '{}'",
+                    config.skip_dates
+                )
+            })?;
+
         Ok(Config {
             namespace_id: config.namespace_id,
             pipeline_id: config.pipeline_id,
             version: config.version.try_into()?,
             parallelism: config.parallelism.try_into()?,
             allow_runs_from,
+            skip_dates,
             name: config.name,
             description: config.description,
             tasks: tasks
@@ -1369,4 +1407,107 @@ pub async fn delete_config(
         });
 
     Ok(HttpResponseDeleted())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(skip_dates: &[&str]) -> Config {
+        let pipeline =
+            gofer_sdk::config::Pipeline::new("test", "Test").skip_dates(skip_dates.iter().copied());
+        pipeline.validate().unwrap();
+        Config::new("default", "test", 1, pipeline).unwrap()
+    }
+
+    #[test]
+    fn skip_date_on_returns_the_entry_that_covers_the_day() {
+        let config = config(&["12/25", "11/22-11/28:thu"]);
+        let on =
+            |month, day| config.skip_date_on(NaiveDate::from_ymd_opt(2026, month, day).unwrap());
+
+        assert_eq!(on(12, 25), Some("12/25"));
+        assert_eq!(on(11, 26), Some("11/22-11/28:thu"));
+        assert_eq!(on(11, 25), None);
+    }
+
+    // The lists from the "Skipping Runs" docs page, checked against the real holidays. Keep them the same as the page.
+    #[test]
+    fn documented_federal_holidays_are_right() {
+        let config = config(&[
+            "01/01",
+            "01/15-01/21:mon",
+            "02/15-02/21:mon",
+            "05/25-05/31:mon",
+            "06/19",
+            "07/04",
+            "09/01-09/07:mon",
+            "10/08-10/14:mon",
+            "11/11",
+            "11/22-11/28:thu",
+            "12/25",
+            // Observed days.
+            "12/31:fri",
+            "01/02:mon",
+            "06/18:fri",
+            "06/20:mon",
+            "07/03:fri",
+            "07/05:mon",
+            "11/10:fri",
+            "11/12:mon",
+            "12/24:fri",
+            "12/26:mon",
+        ]);
+
+        let skipped = |year| -> Vec<(u32, u32)> {
+            NaiveDate::from_ymd_opt(year, 1, 1)
+                .unwrap()
+                .iter_days()
+                .take_while(|day| day.year() == year)
+                .filter(|day| config.skip_date_on(*day).is_some())
+                .map(|day| (day.month(), day.day()))
+                .collect()
+        };
+
+        // July 4th is a Saturday.
+        assert_eq!(
+            skipped(2026),
+            [
+                (1, 1),
+                (1, 19),
+                (2, 16),
+                (5, 25),
+                (6, 19),
+                (7, 3),
+                (7, 4),
+                (9, 7),
+                (10, 12),
+                (11, 11),
+                (11, 26),
+                (12, 25)
+            ]
+        );
+
+        // Juneteenth and Christmas are Saturdays, July 4th is a Sunday, and so New Year's Day 2028 is a Saturday.
+        assert_eq!(
+            skipped(2027),
+            [
+                (1, 1),
+                (1, 18),
+                (2, 15),
+                (5, 31),
+                (6, 18),
+                (6, 19),
+                (7, 4),
+                (7, 5),
+                (9, 6),
+                (10, 11),
+                (11, 11),
+                (11, 25),
+                (12, 24),
+                (12, 25),
+                (12, 31)
+            ]
+        );
+    }
 }

@@ -143,6 +143,7 @@ mod tests {
             version: 1,
             parallelism: 4,
             allow_runs_from: "[]".into(),
+            skip_dates: "[]".into(),
             name: "New Test Pipeline".to_string(),
             description: "A newly inserted test pipeline".to_string(),
             registered: "2023-01-01".to_string(),

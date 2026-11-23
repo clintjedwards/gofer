@@ -61,7 +61,7 @@ impl Cli {
             output.push(format!(
                 "  {} {}: {}: {}",
                 rail(),
-                "Failure".red(),
+                super::reason_label(&run),
                 reason.reason,
                 reason.description
             ));
@@ -252,11 +252,16 @@ impl Cli {
     /// parallelism limit when that's worth mentioning.
     pub(super) fn run_timing(&self, run: &Run) -> Vec<String> {
         if run.started == 0 {
-            return vec![format!(
-                "Queued {} and hasn't started yet",
-                self.format_time(run.created)
-                    .unwrap_or_else(|| "at an unknown time".to_string())
-            )];
+            let created = self
+                .format_time(run.created)
+                .unwrap_or_else(|| "at an unknown time".to_string());
+
+            // A run can finish without ever starting if it was skipped, or cancelled while it was queued.
+            return vec![if run.state == RunState::Complete {
+                format!("Created {created} and never started")
+            } else {
+                format!("Queued {created} and hasn't started yet")
+            }];
         }
 
         let mut lines = vec![format!(

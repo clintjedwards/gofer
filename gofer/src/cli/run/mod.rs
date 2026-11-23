@@ -76,6 +76,10 @@ pub enum RunCommands {
         /// Optional environment variables to pass to your run. Format: Key=Value
         #[arg(short, long)]
         variable: Vec<String>,
+
+        /// Start the run even if today is one of the pipeline's skip dates.
+        #[arg(short, long)]
+        force: bool,
     },
     Cancel {
         /// Pipeline Identifier.
@@ -117,8 +121,9 @@ impl Cli {
             RunCommands::Start {
                 pipeline_id,
                 variable,
+                force,
             } => {
-                self.run_start(command.namespace, &pipeline_id, variable)
+                self.run_start(command.namespace, &pipeline_id, variable, force)
                     .await
             }
             RunCommands::Cancel {
@@ -143,6 +148,15 @@ fn run_title(run: &gofer_sdk::api::types::Run) -> String {
         colorize_status_text(run.state),
         colorize_status_text(run.status)
     )
+}
+
+/// What goes in front of a run's status reason. Being skipped isn't a failure, so it shouldn't look like one.
+fn reason_label(run: &gofer_sdk::api::types::Run) -> String {
+    if run.status == gofer_sdk::api::types::RunStatus::Skipped {
+        "Skipped".dimmed().to_string()
+    } else {
+        "Failure".red().to_string()
+    }
 }
 
 /// Who started a run, with the token kind tacked on when Gofer made the token itself (an extension or a run).
@@ -217,10 +231,14 @@ impl Cli {
         for run in runs {
             table.add_row(vec![
                 Cell::new(run.run_id).fg(Color::Green),
-                Cell::new(
-                    self.format_time(run.started)
-                        .unwrap_or("Queued".to_string()),
-                ),
+                Cell::new(self.format_time(run.started).unwrap_or_else(|| {
+                    // A run can finish without ever starting if it was skipped, or cancelled while it was queued.
+                    if run.state == gofer_sdk::api::types::RunState::Complete {
+                        "Never".to_string()
+                    } else {
+                        "Queued".to_string()
+                    }
+                })),
                 Cell::new(self.format_time(run.ended).unwrap_or("Unknown".to_string())),
                 Cell::new(duration(run.started as i64, run.ended as i64)),
                 Cell::new(run.state).fg(colorize_status_text_comfy(run.state)),
@@ -335,7 +353,7 @@ impl Cli {
             ),
         );
         context.insert("status_reason", &run.status_reason);
-        context.insert("status_message", &"Failure".red().to_string());
+        context.insert("status_message", &reason_label(&run));
 
         let content = tera.render("main", &context)?;
         println!("{}", run_title(&run));
@@ -396,6 +414,7 @@ impl Cli {
         namespace_id: Option<String>,
         pipeline_id: &str,
         variables: Vec<String>,
+        force: bool,
     ) -> Result<()> {
         let namespace = match namespace_id {
             Some(namespace) => namespace,
@@ -426,10 +445,28 @@ impl Cli {
                 pipeline_id,
                 &gofer_sdk::api::types::StartRunRequest {
                     variables: variable_map,
+                    force,
                 },
             )
             .await
             .context("Could not successfully start the pipeline run")?;
+
+        if response.run.status == gofer_sdk::api::types::RunStatus::Skipped {
+            let reason = response
+                .run
+                .status_reason
+                .as_ref()
+                .map(|reason| reason.description.as_str())
+                .unwrap_or("Unknown reason");
+
+            println!(
+                "Run {} was skipped: {}",
+                format!("#{}", response.run.run_id).blue(),
+                reason
+            );
+            println!("\n  Use {} to start a run anyway.", "--force".yellow());
+            return Ok(());
+        }
 
         success!(
             "Started new run {}",

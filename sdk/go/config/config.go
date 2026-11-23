@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
 )
@@ -41,12 +43,13 @@ type PipelineWrapper struct {
 // A pipeline is a representation of a Gofer pipeline, the structure in which users represent what they
 // want to run in Gofer.
 type Pipeline struct {
-	ID            string         `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                                                                             // Unique Identifier for the pipeline.
-	Name          string         `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                                                                              // Humanized name for the pipeline.
-	Description   string         `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"`                                                       // A short description for the pipeline.
-	Parallelism   int64          `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`                                                          // How many runs are allowed to run at the same time.
-	AllowRunsFrom []string       `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"` // Other pipelines whose runs may start runs of this one.
-	Tasks         []*TaskWrapper `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                          // The task set of the pipeline. AKA which containers should be run.
+	ID            string         `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                                                                                 // Unique Identifier for the pipeline.
+	Name          string         `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                                                                                  // Humanized name for the pipeline.
+	Description   string         `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"`                                                           // A short description for the pipeline.
+	Parallelism   int64          `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`                                                              // How many runs are allowed to run at the same time.
+	AllowRunsFrom []string       `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"`     // Other pipelines whose runs may start runs of this one.
+	SkipDates     []string       `json:"skip_dates,omitempty" example:"[\"12/25\", \"11/22-11/28:thu\"]" doc:"Days the pipeline does not run, as MM/DD or MM/DD-MM/DD with an optional weekday"` // Days the pipeline does not run.
+	Tasks         []*TaskWrapper `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                              // The task set of the pipeline. AKA which containers should be run.
 }
 
 type UserPipelineTaskConfig struct {
@@ -62,12 +65,13 @@ type UserPipelineTaskConfig struct {
 }
 
 type UserPipelineConfig struct {
-	ID            string                    `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                                                                             // Unique Identifier for the pipeline.
-	Name          string                    `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                                                                              // Humanized name for the pipeline.
-	Description   string                    `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"`                                                       // A short description for the pipeline.
-	Parallelism   int64                     `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`                                                          // How many runs are allowed to run at the same time.
-	AllowRunsFrom []string                  `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"` // Other pipelines whose runs may start runs of this one.
-	Tasks         []*UserPipelineTaskConfig `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                          // The task set of the pipeline. AKA which containers should be run.
+	ID            string                    `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                                                                                 // Unique Identifier for the pipeline.
+	Name          string                    `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                                                                                  // Humanized name for the pipeline.
+	Description   string                    `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"`                                                           // A short description for the pipeline.
+	Parallelism   int64                     `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`                                                              // How many runs are allowed to run at the same time.
+	AllowRunsFrom []string                  `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"`     // Other pipelines whose runs may start runs of this one.
+	SkipDates     []string                  `json:"skip_dates,omitempty" example:"[\"12/25\", \"11/22-11/28:thu\"]" doc:"Days the pipeline does not run, as MM/DD or MM/DD-MM/DD with an optional weekday"` // Days the pipeline does not run.
+	Tasks         []*UserPipelineTaskConfig `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                              // The task set of the pipeline. AKA which containers should be run.
 }
 
 // `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
@@ -112,6 +116,7 @@ func NewPipeline(id, name string) *PipelineWrapper {
 			Description:   "",
 			Parallelism:   0,
 			AllowRunsFrom: []string{},
+			SkipDates:     []string{},
 			Tasks:         []*TaskWrapper{},
 		},
 	}
@@ -131,6 +136,13 @@ func (p *PipelineWrapper) Validate() error {
 
 	for _, pattern := range p.Pipeline.AllowRunsFrom {
 		err = validateRunSource(pattern)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, skipDate := range p.Pipeline.SkipDates {
+		err = validateSkipDate(skipDate)
 		if err != nil {
 			return err
 		}
@@ -186,6 +198,37 @@ func validateRunSource(pattern string) error {
 	return nil
 }
 
+// SkipDates lists days the pipeline shouldn't run, as "MM/DD" or "MM/DD-MM/DD". Ranges include both ends and can go over
+// the new year. Add a weekday ("sun" to "sat") to only skip that day of the range, so "11/22-11/28:thu" is Thanksgiving.
+//
+// Dates repeat every year and are in UTC. A run started on one of them is recorded as skipped, unless it's forced.
+func (p *PipelineWrapper) SkipDates(dates ...string) *PipelineWrapper {
+	p.Pipeline.SkipDates = dates
+	return p
+}
+
+// validateSkipDate mirrors the Rust SDK's check; the Gofer API runs that one on registration either way.
+func validateSkipDate(skipDate string) error {
+	dates, weekday, hasWeekday := strings.Cut(skipDate, ":")
+	first, last, isRange := strings.Cut(dates, "-")
+	if !isRange {
+		last = first
+	}
+
+	// Without a year Go parses dates as if they're in year 0, which is a leap year, so 02/29 is allowed.
+	_, firstErr := time.Parse("01/02", first)
+	_, lastErr := time.Parse("01/02", last)
+
+	weekdays := []string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}
+
+	if firstErr != nil || lastErr != nil || (hasWeekday && !slices.Contains(weekdays, weekday)) {
+		return fmt.Errorf("invalid skip_dates '%s'; must be 'MM/DD' or 'MM/DD-MM/DD', optionally followed by a weekday "+
+			"like ':thu'", skipDate)
+	}
+
+	return nil
+}
+
 // Tasks are containers that the pipeline runs.
 func (p *PipelineWrapper) Tasks(tasks ...*TaskWrapper) *PipelineWrapper {
 	p.Pipeline.Tasks = tasks
@@ -204,6 +247,7 @@ func (p *PipelineWrapper) ToUserPipelineConfig() *UserPipelineConfig {
 		Description:   p.Pipeline.Description,
 		Parallelism:   p.Pipeline.Parallelism,
 		AllowRunsFrom: p.Pipeline.AllowRunsFrom,
+		SkipDates:     p.Pipeline.SkipDates,
 		Tasks:         tasks,
 	}
 }

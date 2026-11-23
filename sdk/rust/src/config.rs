@@ -97,6 +97,75 @@ pub fn run_source_matches(pattern: &str, namespace_id: &str, pipeline_id: &str) 
     })
 }
 
+/// In the same order as cron's day of week field.
+const WEEKDAYS: [&str; 7] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+/// Reads a `MM/DD` date. There's no year, so 02/29 is always allowed.
+fn parse_month_day(text: &str) -> Option<(u32, u32)> {
+    let (month, day) = text.split_once('/')?;
+    let two_digits = |text: &str| text.len() == 2 && text.bytes().all(|b| b.is_ascii_digit());
+    if !two_digits(month) || !two_digits(day) {
+        return None;
+    }
+
+    let month = month.parse().ok()?;
+    let day = day.parse().ok()?;
+    let days_in_month = match month {
+        2 => 29,
+        4 | 6 | 9 | 11 => 30,
+        1..=12 => 31,
+        _ => return None,
+    };
+
+    (1..=days_in_month).contains(&day).then_some((month, day))
+}
+
+/// Splits a `skip_dates` entry into its first date, last date, and weekday. A single date is its own first and last.
+#[allow(clippy::type_complexity)]
+fn parse_skip_date(skip_date: &str) -> Option<((u32, u32), (u32, u32), Option<u32>)> {
+    let (dates, weekday) = match skip_date.split_once(':') {
+        Some((dates, weekday)) => {
+            let weekday = WEEKDAYS.iter().position(|name| *name == weekday)?;
+            (dates, Some(weekday as u32))
+        }
+        None => (skip_date, None),
+    };
+
+    let (first, last) = dates.split_once('-').unwrap_or((dates, dates));
+    Some((parse_month_day(first)?, parse_month_day(last)?, weekday))
+}
+
+fn validate_skip_date(skip_date: &str) -> Result<(), ConfigError> {
+    if parse_skip_date(skip_date).is_some() {
+        return Ok(());
+    }
+
+    Err(ConfigError::InvalidArgument {
+        argument: "skip_dates".into(),
+        value: skip_date.into(),
+        description:
+            "must be 'MM/DD' or 'MM/DD-MM/DD', optionally followed by a weekday like ':thu'".into(),
+    })
+}
+
+/// Whether a `skip_dates` entry covers the given day. `weekday` counts from Sunday, which is 0. Invalid entries match
+/// nothing.
+pub fn skip_date_matches(skip_date: &str, month: u32, day: u32, weekday: u32) -> bool {
+    let Some((first, last, only_weekday)) = parse_skip_date(skip_date) else {
+        return false;
+    };
+
+    let date = (month, day);
+    let in_range = if first <= last {
+        (first..=last).contains(&date)
+    } else {
+        // The range goes over the new year.
+        date >= first || date <= last
+    };
+
+    in_range && only_weekday.is_none_or(|only| only == weekday)
+}
+
 /// `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
 /// This structure allows you to organize and define the workflow for the tasks you want to execute.
 ///   - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed
@@ -151,6 +220,12 @@ pub struct Pipeline {
     #[serde(default)]
     pub allow_runs_from: Vec<String>,
 
+    /// Days the pipeline doesn't run, as `MM/DD` or `MM/DD-MM/DD`. Either can be limited to a weekday, so
+    /// `11/22-11/28:thu` is Thanksgiving. Dates repeat every year and are in UTC. Defaults to empty so configs built with
+    /// older SDKs still parse.
+    #[serde(default)]
+    pub skip_dates: Vec<String>,
+
     /// A mapping of pipeline owned tasks.
     pub tasks: Vec<Task>,
 }
@@ -164,6 +239,7 @@ impl Pipeline {
             description: None,
             parallelism: 0,
             allow_runs_from: Vec::new(),
+            skip_dates: Vec::new(),
             tasks: Vec::new(),
         }
     }
@@ -187,6 +263,12 @@ impl Pipeline {
 
         for pattern in &self.allow_runs_from {
             if let Err(e) = validate_run_source(pattern) {
+                problems.push(e);
+            }
+        }
+
+        for skip_date in &self.skip_dates {
+            if let Err(e) = validate_skip_date(skip_date) {
                 problems.push(e);
             }
         }
@@ -260,6 +342,19 @@ impl Pipeline {
         S: Into<String>,
     {
         self.allow_runs_from = patterns.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Days the pipeline shouldn't run, as `MM/DD` or `MM/DD-MM/DD`. Ranges include both ends and can go over the new
+    /// year. Add a weekday (`sun` to `sat`) to only skip that day of the range, so `11/22-11/28:thu` is Thanksgiving.
+    ///
+    /// Dates repeat every year and are in UTC. A run started on one of them is recorded as skipped, unless it's forced.
+    pub fn skip_dates<I, S>(mut self, dates: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.skip_dates = dates.into_iter().map(Into::into).collect();
         self
     }
 
@@ -596,6 +691,74 @@ mod tests {
         assert!(
             Pipeline::new("valid", "")
                 .allow_runs_from(["team-a-.*/.*"])
+                .validate()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn skip_dates_cover_the_right_days() {
+        // Weekday 3 is a Wednesday.
+        assert!(skip_date_matches("12/25", 12, 25, 3));
+        assert!(!skip_date_matches("12/25", 12, 26, 3));
+        assert!(skip_date_matches("02/29", 2, 29, 3));
+
+        // Ranges include both ends.
+        assert!(skip_date_matches("03/30-04/02", 3, 30, 3));
+        assert!(skip_date_matches("03/30-04/02", 4, 1, 3));
+        assert!(skip_date_matches("03/30-04/02", 4, 2, 3));
+        assert!(!skip_date_matches("03/30-04/02", 3, 29, 3));
+        assert!(!skip_date_matches("03/30-04/02", 4, 3, 3));
+
+        // Ranges can go over the new year.
+        assert!(skip_date_matches("12/24-01/02", 12, 24, 3));
+        assert!(skip_date_matches("12/24-01/02", 12, 31, 3));
+        assert!(skip_date_matches("12/24-01/02", 1, 2, 3));
+        assert!(!skip_date_matches("12/24-01/02", 1, 3, 3));
+        assert!(!skip_date_matches("12/24-01/02", 12, 23, 3));
+
+        // Both the date and the weekday have to match.
+        assert!(skip_date_matches("11/22-11/28:thu", 11, 26, 4));
+        assert!(!skip_date_matches("11/22-11/28:thu", 11, 25, 3));
+        assert!(!skip_date_matches("11/22-11/28:thu", 11, 19, 4));
+        assert!(skip_date_matches("07/05:mon", 7, 5, 1));
+        assert!(!skip_date_matches("07/05:mon", 7, 5, 2));
+        assert!(skip_date_matches("01/01-12/31:sun", 6, 7, 0));
+    }
+
+    #[test]
+    fn invalid_skip_dates_are_rejected() {
+        for skip_date in [
+            "",
+            "12",
+            "12/",
+            "1/1",
+            "13/01",
+            "00/10",
+            "12/00",
+            "12/32",
+            "02/30",
+            "04/31",
+            "+1/01",
+            "2026/12/25",
+            "12/25-",
+            "12/25-13/01",
+            "12/24-12/25-12/26",
+            "12/25:",
+            "12/25:thursday",
+            "12/25:thu:fri",
+            "12/25 ",
+        ] {
+            let result = Pipeline::new("valid", "")
+                .skip_dates([skip_date])
+                .validate();
+            assert!(result.is_err(), "expected '{skip_date}' to be rejected");
+            assert!(!skip_date_matches(skip_date, 12, 25, 4));
+        }
+
+        assert!(
+            Pipeline::new("valid", "")
+                .skip_dates(["12/25", "02/29", "12/24-01/02", "11/22-11/28:thu"])
                 .validate()
                 .is_ok()
         );

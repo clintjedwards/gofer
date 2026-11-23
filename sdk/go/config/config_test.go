@@ -105,9 +105,9 @@ func TestSimpleConfigSerialization(t *testing.T) {
 	}
 }
 
-// AllowRunsFrom with no arguments leaves a nil slice, which would serialize as null and fail to parse in Gofer.
-func TestEmptyAllowRunsFromIsOmitted(t *testing.T) {
-	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").AllowRunsFrom()
+// List options with no arguments leave a nil slice, which would serialize as null and fail to parse in Gofer.
+func TestEmptyListsAreOmitted(t *testing.T) {
+	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").AllowRunsFrom().SkipDates()
 
 	pipelineJSON, err := json.Marshal(pipeline)
 	if err != nil {
@@ -119,8 +119,10 @@ func TestEmptyAllowRunsFromIsOmitted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, ok := got["allow_runs_from"]; ok {
-		t.Errorf("expected allow_runs_from to be left out, got %s", pipelineJSON)
+	for _, key := range []string{"allow_runs_from", "skip_dates"} {
+		if _, ok := got[key]; ok {
+			t.Errorf("expected %s to be left out, got %s", key, pipelineJSON)
+		}
 	}
 }
 
@@ -135,6 +137,24 @@ func TestInvalidAllowRunsFrom(t *testing.T) {
 	err := NewPipeline("simple-test-pipeline", "Simple Test Pipeline").AllowRunsFrom("team-a-.*/.*").Validate()
 	if err != nil {
 		t.Errorf("expected valid pattern to pass; %v", err)
+	}
+}
+
+func TestInvalidSkipDates(t *testing.T) {
+	for _, skipDate := range []string{
+		"", "12", "12/", "1/1", "13/01", "00/10", "12/00", "12/32", "02/30", "04/31", "+1/01", "2026/12/25", "12/25-",
+		"12/25-13/01", "12/24-12/25-12/26", "12/25:", "12/25:thursday", "12/25:thu:fri", "12/25 ",
+	} {
+		err := NewPipeline("simple-test-pipeline", "Simple Test Pipeline").SkipDates(skipDate).Validate()
+		if err == nil {
+			t.Errorf("expected '%s' to be rejected", skipDate)
+		}
+	}
+
+	err := NewPipeline("simple-test-pipeline", "Simple Test Pipeline").
+		SkipDates("12/25", "02/29", "12/24-01/02", "11/22-11/28:thu").Validate()
+	if err != nil {
+		t.Errorf("expected valid dates to pass; %v", err)
 	}
 }
 

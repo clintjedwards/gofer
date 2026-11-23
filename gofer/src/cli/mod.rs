@@ -645,7 +645,7 @@ fn colorize_status_text_comfy<T: ToString>(input: T) -> comfy_table::Color {
             comfy_table::Color::Yellow
         }
         "failed" | "fail" | "error" | "deprecated" | "false" => comfy_table::Color::Red,
-        "cancel" | "cancelled" => comfy_table::Color::AnsiValue(245),
+        "cancel" | "cancelled" | "skipped" => comfy_table::Color::AnsiValue(245),
         _ => comfy_table::Color::Reset,
     }
 }
@@ -669,7 +669,7 @@ fn colorize_status_text<T: ToString>(input: T) -> String {
             input.yellow().to_string()
         }
         "failed" | "fail" | "error" | "deprecated" | "false" => input.red().to_string(),
-        "cancel" | "cancelled" => input.dimmed().to_string(),
+        "cancel" | "cancelled" | "skipped" => input.dimmed().to_string(),
         _ => input,
     }
 }

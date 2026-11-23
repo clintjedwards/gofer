@@ -41,14 +41,11 @@ impl RunShepherd {
             .await
             .context("Could not establish connection to database")?;
 
-        let runs = storage::runs::list(
+        let runs = storage::runs::list_newest_unskipped(
             &mut conn,
             &self.pipeline.metadata.namespace_id,
             &self.pipeline.metadata.pipeline_id,
-            0,
             limit as i64 + 1,
-            true,
-            0,
         )
         .await
         .context("Could not retrieve runs")?;

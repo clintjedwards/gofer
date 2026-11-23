@@ -86,6 +86,9 @@ pub enum Status {
 
     /// One or more tasks in a run have been cancelled.
     Cancelled,
+
+    /// The run was never started since it was asked for on one of the pipeline's skip dates.
+    Skipped,
 }
 
 #[derive(
@@ -117,6 +120,9 @@ pub enum StatusReasonType {
 
     /// One or more tasks ran longer than their timeout and were stopped.
     Timeout,
+
+    /// The run was asked for on one of the pipeline's skip dates.
+    SkipDate,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
@@ -560,6 +566,10 @@ pub struct StartRunRequest {
     /// Environment variables for the run's tasks. They override variables of the same name from the pipeline config
     /// and from Gofer itself, except `GOFER_API_BASE_URL` and `GOFER_TOKEN`, which a run can't set.
     pub variables: HashMap<String, String>,
+
+    /// Start the run even if today is one of the pipeline's skip dates. It doesn't start runs of a disabled pipeline.
+    #[serde(default)]
+    pub force: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -670,6 +680,8 @@ async fn run_token_allowed(
 ///
 /// Besides tokens with a grant for the pipeline's runs, a run's injected token can start runs of any pipeline whose
 /// live config lists the calling pipeline in `allow_runs_from`.
+///
+/// On one of the pipeline's skip dates the run is recorded as `skipped` and never starts, unless `force` is set.
 #[endpoint(
     method = POST,
     path = "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs",
@@ -747,6 +759,7 @@ pub async fn start_run(
                 kind: req_metadata.auth.token_kind,
             },
             body.variables,
+            body.force,
         )
         .await
     {

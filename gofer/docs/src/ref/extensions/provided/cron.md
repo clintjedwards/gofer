@@ -41,6 +41,11 @@ It uses a stripped down version of the cron syntax to do so:
 gofer pipeline subscribe simple cron yearly-on-xmas -s expression="0 1 25 12 * *"
 ```
 
+### Leaving out holidays
+
+A cron expression can't leave out particular days. List them in the pipeline's
+[skip dates](../../pipeline_configuration/index.html#skipping-dates) instead.
+
 ## Extension Configuration
 
 Cron takes no settings. It's installed by default; to turn it off, add this to Gofer's config and run

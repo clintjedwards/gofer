@@ -95,7 +95,7 @@ async function loadNamespaces() {
 // Helpers
 // ---------------------------------------------------------------------------------------------------------------
 
-// Collapses a run's state and status into the four outcomes the page charts.
+// Collapses a run's state and status into the five outcomes the page charts.
 function runOutcome(run) {
   if (String(run.state).toLowerCase() !== "complete") return "running";
   switch (String(run.status).toLowerCase()) {
@@ -103,6 +103,8 @@ function runOutcome(run) {
       return "successful";
     case "cancelled":
       return "cancelled";
+    case "skipped":
+      return "skipped";
     default:
       return "failed";
   }
@@ -113,6 +115,7 @@ const OUTCOMES = {
   successful: { label: "Successful", bar: "bg-emerald-500" },
   failed: { label: "Failed", bar: "bg-red-500" },
   cancelled: { label: "Cancelled", bar: "bg-slate-400" },
+  skipped: { label: "Skipped", bar: "bg-slate-200 dark:bg-slate-600" },
   running: { label: "In progress", bar: "bg-yellow-400" },
 };
 
@@ -264,10 +267,13 @@ function renderStats(allRuns, now) {
       </div>
     </div>`;
 
-  const hourly = hourlyCounts(allRuns, now);
+  // Skipped runs never ran, so none of these numbers count them.
+  const notSkipped = allRuns.filter((run) => runOutcome(run) !== "skipped");
+
+  const hourly = hourlyCounts(notSkipped, now);
   const lastDay = hourly.counts.reduce((a, b) => a + b, 0);
 
-  const lastWeek = allRuns.filter((run) => run.created >= now - 7 * DAY_MS && runOutcome(run) !== "running");
+  const lastWeek = notSkipped.filter((run) => run.created >= now - 7 * DAY_MS && runOutcome(run) !== "running");
   const judged = lastWeek.filter((run) => runOutcome(run) !== "cancelled");
   const succeeded = judged.filter((run) => runOutcome(run) === "successful").length;
   const rate = judged.length ? Math.round((succeeded / judged.length) * 100) : null;
@@ -283,7 +289,7 @@ function renderStats(allRuns, now) {
     tile(
       "Success rate, last 7 days",
       rate === null ? "-" : `${rate}%`,
-      rate === null ? "No finished runs yet" : `${rateIcon}${succeeded} of ${judged.length} finished runs, not counting cancelled`
+      rate === null ? "No finished runs yet" : `${rateIcon}${succeeded} of ${judged.length} finished runs, not counting cancelled or skipped`
     ),
     tile(
       "Running now",
@@ -305,7 +311,7 @@ function renderActivityLegend() {
 function renderActivity(allRuns, since) {
   const days = [];
   for (let i = 0; i < ACTIVITY_DAYS; i++) {
-    days.push({ start: since + i * DAY_MS, counts: { successful: 0, failed: 0, cancelled: 0, running: 0 } });
+    days.push({ start: since + i * DAY_MS, counts: { successful: 0, failed: 0, cancelled: 0, skipped: 0, running: 0 } });
   }
 
   for (const run of allRuns) {
@@ -333,7 +339,7 @@ function renderActivity(allRuns, since) {
 
     // Draw bottom-up in a fixed order so a given outcome always sits in the same place. The column gets the total
     // height and segments split it with flex-grow, so the dividers between segments don't push it past the scale.
-    const segments = ["successful", "failed", "cancelled", "running"]
+    const segments = ["successful", "failed", "cancelled", "skipped", "running"]
       .filter((key) => day.counts[key] > 0)
       .map((key, j) => `<div class="${OUTCOMES[key].bar} w-full" style="flex:${day.counts[key]} 1 0;${j > 0 ? "border-bottom:1px solid rgb(0 0 0 / 0.5)" : ""}"></div>`);
 
@@ -364,11 +370,12 @@ function renderActivity(allRuns, since) {
     </div>`;
 }
 
-// Pipelines whose most recent finished run failed, with the CLI command to dig in.
+// Pipelines whose most recent finished run failed, with the CLI command to dig in. Skipped runs don't count, or a
+// skip date would hide a failure.
 function renderAttention(entries) {
   return entries
     .map((entry) => {
-      const lastFinished = entry.runs.find((run) => runOutcome(run) !== "running");
+      const lastFinished = entry.runs.find((run) => !["running", "skipped"].includes(runOutcome(run)));
       if (!lastFinished || runOutcome(lastFinished) !== "failed") return "";
 
       const name = entry.pipeline.name || entry.pipeline.pipeline_id;
@@ -426,7 +433,7 @@ function renderPipelines(entries) {
       const disabled = String(entry.pipeline.state).toLowerCase() === "disabled";
       const latest = entry.runs[0];
 
-      const finished = entry.runs.filter((run) => !["running", "cancelled"].includes(runOutcome(run)));
+      const finished = entry.runs.filter((run) => !["running", "cancelled", "skipped"].includes(runOutcome(run)));
       const succeeded = finished.filter((run) => runOutcome(run) === "successful").length;
       const rate = finished.length ? `${Math.round((succeeded / finished.length) * 100)}%` : "-";
       const typical = finished.length ? compactDuration(median(finished.map(runDurationMs))) : "-";
@@ -448,7 +455,7 @@ function renderPipelines(entries) {
             ${renderHistory(entry.runs)}
             <dl class="grid grid-cols-3 gap-2">
               ${stat("Last run", latest ? `<a href="${escapeHtml(runDetailsLink(latest))}" class="hover:text-emerald-600">${relativeTime(latest.created)}</a>` : "Never", latest ? formatTimestamp(latest.created) : "")}
-              ${stat("Success", rate, "Of finished runs shown, not counting cancelled")}
+              ${stat("Success", rate, "Of finished runs shown, not counting cancelled or skipped")}
               ${stat("Typical", typical, "Median run time of finished runs shown")}
             </dl>
             ${commandBlock(`gofer run list ${id}${namespaceFlag()}`)}

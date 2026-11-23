@@ -25,6 +25,12 @@ Here's everything at a glance:
 
 - [Give a pause an end date.](./skipping_runs.md#give-a-pause-an-end-date)
 - [Skip just the next run.](./skipping_runs.md#skip-just-the-next-run)
+- [Skip US federal holidays.](./skipping_runs.md#skip-us-federal-holidays)
+- [Skip dates that move each year.](./skipping_runs.md#skip-dates-that-move-each-year)
+- [Skip weekends or a whole season.](./skipping_runs.md#skip-weekends-or-a-whole-season)
+- [Check your dates against UTC.](./skipping_runs.md#check-your-dates-against-utc)
+- [Share one list between pipelines.](./skipping_runs.md#share-one-list-between-pipelines)
+- [Know what else gets skipped.](./skipping_runs.md#know-what-else-gets-skipped)
 
 **[Passing Data Between Tasks](./passing_data_between_tasks.md)**
 

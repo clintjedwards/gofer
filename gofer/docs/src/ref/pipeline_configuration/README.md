@@ -178,6 +178,33 @@ A run started while the pipeline is at its limit is queued as `pending` and star
 queued runs start oldest first. Cancelling a run that's still queued finishes it without it ever starting.
 A pipeline can't set a limit higher than the server's.
 
+### Skipping Dates
+
+Use `SkipDates` to list days a pipeline shouldn't run, like holidays:
+
+```go
+err := sdk.NewPipeline("simple", "Simple").
+    SkipDates(
+        "12/25",            // Christmas.
+        "12/24-01/02",      // A range. Both ends are included, and it can go over the new year.
+        "11/22-11/28:thu",  // Just the Thursday in that range, which is Thanksgiving.
+    ).
+    Tasks(...).Finish()
+```
+
+Each entry is `MM/DD` or `MM/DD-MM/DD`, optionally followed by a weekday (`sun`, `mon`, `tue`, `wed`, `thu`, `fri`, or
+`sat`). There are no years, so dates repeat every year. Days are in UTC.
+
+Gofer checks the live config's dates whenever something asks for a run, whether that's a subscription, another
+pipeline, or a person. On one of those days the run is recorded with the status `skipped` and never starts. Runs that
+were already queued when the day began still start, and skipped runs don't count towards how many runs' logs and
+objects are kept.
+
+To start a run anyway, use `gofer pipeline run <pipeline> --force`. Forcing a run doesn't get around the pipeline being
+[disabled](../../guide/patterns/skipping_runs.md#give-a-pause-an-end-date).
+
+[Skipping Runs](../../guide/patterns/skipping_runs.md) has ready made lists, such as US federal holidays.
+
 ### Letting Other Pipelines Start Runs
 
 A run's [injected token](#auto-inject-api-tokens) can only start runs of its own pipeline. To let runs of other

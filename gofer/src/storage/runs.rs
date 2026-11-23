@@ -101,6 +101,29 @@ pub async fn list(
         .await
 }
 
+/// A pipeline's newest runs, leaving out skipped ones. Retention counts with this, since a skipped run has nothing to
+/// clean up and shouldn't push out a run that does.
+pub async fn list_newest_unskipped(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    limit: i64,
+) -> Result<Vec<Run>, StorageError> {
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
+    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
+    runs WHERE namespace_id = ? AND pipeline_id = ? AND status != 'skipped' ORDER BY run_id DESC LIMIT ?;";
+
+    let query = sqlx::query_as::<_, Run>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(limit);
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 /// Runs that were started and haven't finished; these are what need recovering after a restart.
 pub async fn list_running(
     conn: &mut SqliteConnection,
@@ -435,6 +458,7 @@ mod tests {
             version: 1,
             parallelism: 4,
             allow_runs_from: "[]".into(),
+            skip_dates: "[]".into(),
             name: "New Test Pipeline".to_string(),
             description: "A newly inserted test pipeline".to_string(),
             registered: "2023-01-01".to_string(),
@@ -614,6 +638,33 @@ mod tests {
         assert_eq!(runs.len(), 2, "Should only return running runs");
         assert_eq!(runs[0].run_id, 1, "First run should have run_id 1");
         assert_eq!(runs[1].run_id, 2, "Second run should have run_id 2");
+    }
+
+    #[tokio::test]
+    async fn test_list_newest_unskipped_runs() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+        insert_pending(&mut conn, 4, "1000").await;
+        insert_pending(&mut conn, 5, "1001").await;
+        insert_pending(&mut conn, 6, "1002").await;
+
+        complete_pending(
+            &mut conn,
+            "some_id",
+            "some_pipeline_id",
+            5,
+            "2000",
+            "skipped",
+            "some_reason",
+        )
+        .await
+        .expect("Failed to complete pending run");
+
+        let runs = list_newest_unskipped(&mut conn, "some_id", "some_pipeline_id", 3)
+            .await
+            .expect("Failed to list runs");
+
+        let ids: Vec<i64> = runs.iter().map(|run| run.run_id).collect();
+        assert_eq!(ids, vec![6, 4, 3]);
     }
 
     #[tokio::test]

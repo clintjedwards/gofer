@@ -158,8 +158,8 @@ function renderAttention(pipeline, subscriptions, runs) {
   const problems = [];
 
   // Same rule as the overview: only the most recent finished run counts, so a failure that's since been fixed by a
-  // passing run doesn't linger here.
-  const lastFinished = runs.find((run) => lower(run.state) === "complete");
+  // passing run doesn't linger here. Skipped runs don't count, or a skip date would hide a failure.
+  const lastFinished = runs.find((run) => lower(run.state) === "complete" && lower(run.status) !== "skipped");
   if (lastFinished && !["successful", "cancelled"].includes(lower(lastFinished.status))) {
     const reason = lastFinished.status_reason
       ? `<span class="mt-1 block text-red-700 dark:text-red-300">${escapeHtml(lastFinished.status_reason.description)}</span>`
@@ -226,6 +226,19 @@ function renderSummary(pipeline, config, runs) {
         "Allows runs from",
         patterns,
         "Runs of pipelines matching these namespace/pipeline patterns can start runs of this pipeline",
+      )}</div>`,
+    );
+  }
+
+  if (config && config.skip_dates.length > 0) {
+    const dates = config.skip_dates
+      .map((date) => `<span class="font-mono text-xs">${escapeHtml(date)}</span>`)
+      .join(", ");
+    cells.push(
+      `<div class="col-span-2 lg:col-span-4">${cell(
+        "Skips dates",
+        dates,
+        "Runs started on these days (UTC) are skipped unless they're forced",
       )}</div>`,
     );
   }

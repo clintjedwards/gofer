@@ -192,6 +192,7 @@ Authorization: Bearer {{secret}}
     "name": "Broken",
     "parallelism": -1,
     "allow_runs_from": ["no-slash", "team-a/("],
+    "skip_dates": ["12/25", "13/01", "12/25:someday"],
     "tasks": [
         {"id": "task-a", "image": "ubuntu:latest", "depends_on": {"task-b": "Any"}, "variables": {}, "inject_api_token": false, "always_pull_newest_image": false},
         {"id": "task-b", "image": "ubuntu:latest", "depends_on": {"task-a": "Any"}, "variables": {}, "inject_api_token": false, "always_pull_newest_image": false},
@@ -207,6 +208,119 @@ jsonpath "$.message" contains "image for task 'task-c'"
 jsonpath "$.message" contains "parallelism"
 jsonpath "$.message" contains "allow_runs_from: 'no-slash'"
 jsonpath "$.message" contains "allow_runs_from: 'team-a/('"
+jsonpath "$.message" contains "skip_dates: '13/01'"
+jsonpath "$.message" contains "skip_dates: '12/25:someday'"
+jsonpath "$.message" not contains "skip_dates: '12/25';"
+
+# A run started on a skip date is recorded, but never starts and doesn't get a token.
+POST http://localhost:8080/api/namespaces/default/pipelines/skips/configs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "config": {
+    "id": "skips",
+    "name": "Skips",
+    "parallelism": 0,
+    "skip_dates": ["01/01-12/31"],
+    "tasks": [
+        {
+            "id": "task-one",
+            "image": "ubuntu:latest",
+            "command": ["true"],
+            "depends_on": {},
+            "variables": {},
+            "inject_api_token": true,
+            "always_pull_newest_image": false
+        }
+    ]
+  }
+}
+HTTP 201
+
+POST http://localhost:8080/api/namespaces/default/pipelines/skips/configs/1
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 201
+
+POST http://localhost:8080/api/namespaces/default/pipelines/skips/runs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "variables": {}
+}
+HTTP 201
+[Asserts]
+jsonpath "$.run.run_id" == 1
+jsonpath "$.run.state" == "complete"
+jsonpath "$.run.status" == "skipped"
+jsonpath "$.run.status_reason.reason" == "skip_date"
+jsonpath "$.run.status_reason.description" contains "'01/01-12/31'"
+jsonpath "$.run.started" == 0
+jsonpath "$.run.token_id" == null
+
+# It's stored that way too, and has no task executions.
+GET http://localhost:8080/api/namespaces/default/pipelines/skips/runs/1
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.run.state" == "complete"
+jsonpath "$.run.status" == "skipped"
+
+GET http://localhost:8080/api/namespaces/default/pipelines/skips/runs/1/tasks
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.task_executions" count == 0
+
+# Forcing it starts the run like any other day.
+POST http://localhost:8080/api/namespaces/default/pipelines/skips/runs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "variables": {},
+  "force": true
+}
+HTTP 201
+[Asserts]
+jsonpath "$.run.run_id" == 2
+jsonpath "$.run.state" == "pending"
+jsonpath "$.run.token_id" != null
+
+GET http://localhost:8080/api/namespaces/default/pipelines/skips/runs/2
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+[Options]
+retry: 30
+retry-interval: 500
+HTTP 200
+[Asserts]
+jsonpath "$.run.state" == "complete"
+jsonpath "$.run.status" == "successful"
+
+# Forcing a run doesn't get around the pipeline being disabled.
+PATCH http://localhost:8080/api/namespaces/default/pipelines/skips
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "state": "disabled"
+}
+HTTP 204
+
+POST http://localhost:8080/api/namespaces/default/pipelines/skips/runs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "variables": {},
+  "force": true
+}
+HTTP 503
 
 # A task that runs past its own timeout is stopped, and both it and the run fail with a reason that says which
 # timeout it hit. The trap makes the container exit on the stop signal so we don't wait out the stop grace period.

@@ -50,6 +50,8 @@ Returns a list of all runs by pipeline id.
 
 Besides tokens with a grant for the pipeline's runs, a run's injected token can start runs of any pipeline whose live config lists the calling pipeline in `allow_runs_from`.
 
+On one of the pipeline's skip dates the run is recorded as `skipped` and never starts, unless `force` is set.
+
 **Path parameters**
 
 | Name | Type | Required | Description |

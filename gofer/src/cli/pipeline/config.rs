@@ -159,6 +159,9 @@ impl Cli {
   {%- if allow_runs_from %}
   {{ vertical_line }} Allows runs from: {{ allow_runs_from }}
   {%- endif %}
+  {%- if skip_dates %}
+  {{ vertical_line }} Skips dates: {{ skip_dates }}
+  {%- endif %}
   {{ vertical_line }} Registered {{ registered }}
   {{ vertical_line }} Deprecated {{ deprecated }}
 
@@ -177,6 +180,7 @@ impl Cli {
         context.insert("version", &format!("v{}", config.config.version));
         context.insert("parallelism", &config.config.parallelism);
         context.insert("allow_runs_from", &config.config.allow_runs_from.join(", "));
+        context.insert("skip_dates", &config.config.skip_dates.join(", "));
         context.insert("tasks", &tasks_table(&config.config.tasks));
         context.insert(
             "registered",

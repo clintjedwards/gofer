@@ -327,6 +327,10 @@ func (e *extension) reportRunToGithubAPI(sub pipelineSubscription, event *github
 			conclusion = "success"
 		case fmt.Sprint(sdk.RunStatus3Cancelled):
 			conclusion = "cancelled"
+		case "skipped":
+			// Github treats its own "skipped" and "neutral" as passing, which would let a pull request merge without
+			// its required checks ever running.
+			conclusion = "cancelled"
 		}
 
 		// GoferHost is Gofer's address on the container network, which people on Github can't reach, so the link
@@ -341,7 +345,13 @@ func (e *extension) reportRunToGithubAPI(sub pipelineSubscription, event *github
 			detailsURL = github.String(fmt.Sprintf("%s/run.html?%s", e.goferURL, query.Encode()))
 		}
 
-		duration := formatDuration(int64(getRunResponse.Run.Started), int64(getRunResponse.Run.Ended))
+		// A run that was skipped, or cancelled while it was queued, never started.
+		started := getRunResponse.Run.Started
+		if started == 0 {
+			started = getRunResponse.Run.Ended
+		}
+
+		duration := formatDuration(int64(started), int64(getRunResponse.Run.Ended))
 
 		summary := github.String(fmt.Sprintf(
 			"Gofer has automatically run a pipeline in response to an event within this pull request:\n\n"+

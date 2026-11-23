@@ -342,6 +342,7 @@ fn new_fields(config: &gofer_sdk::api::types::Pipeline) -> Fields {
     );
     fields.insert("parallelism".into(), config.parallelism.to_string());
     fields.insert("allow_runs_from".into(), config.allow_runs_from.join(", "));
+    fields.insert("skip_dates".into(), config.skip_dates.join(", "));
 
     for task in &config.tasks {
         FlatTask {
@@ -377,6 +378,7 @@ fn current_fields(config: &gofer_sdk::api::types::Config) -> Fields {
     fields.insert("description".into(), config.description.clone());
     fields.insert("parallelism".into(), config.parallelism.to_string());
     fields.insert("allow_runs_from".into(), config.allow_runs_from.join(", "));
+    fields.insert("skip_dates".into(), config.skip_dates.join(", "));
 
     for task in config.tasks.values() {
         FlatTask {
@@ -611,6 +613,7 @@ mod tests {
             "name": "Simple",
             "parallelism": 0,
             "allow_runs_from": [],
+            "skip_dates": [],
             "tasks": [{
                 "id": "build",
                 "image": "alpine:latest",
@@ -633,6 +636,7 @@ mod tests {
             "version": 1,
             "parallelism": 0,
             "allow_runs_from": [],
+            "skip_dates": [],
             "name": "Simple",
             "description": "",
             "state": "live",
