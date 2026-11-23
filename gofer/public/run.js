@@ -629,6 +629,38 @@ function renderGraph(tasks) {
 // The narrowest a timeline segment is drawn, so it stays visible and hoverable.
 const MIN_SEGMENT_PERCENT = 1.5;
 
+// Places a task's timeline segments on its bar, as a left and width in percent for each. A segment lasts until the
+// next one starts, so they're drawn side by side and never overlap.
+//
+// On a long run, short phases like pulling an image round down to nothing, so every phase that took any time gets a
+// minimum width, and the last segment always gets one so very short tasks don't vanish. The room for that comes out
+// of the longer phases, so the task still ends where it really did. A task too short to fit its segments even then
+// starts a little early instead of running off the end of the bar.
+function layoutSegments(segments, percent) {
+  const start = percent(segments[0].started);
+  const end = percent(segments[segments.length - 1].ended);
+
+  let widths = segments.map((segment, i) => {
+    const raw = percent(segment.ended) - percent(segment.started);
+    return segment.ended > segment.started || i === segments.length - 1 ? Math.max(raw, MIN_SEGMENT_PERCENT) : 0;
+  });
+
+  const sum = (values) => values.reduce((total, value) => total + value, 0);
+  const overflow = sum(widths) - (end - start);
+  const spare = sum(widths.map((width) => Math.max(width - MIN_SEGMENT_PERCENT, 0)));
+  if (overflow > 0 && spare > 0) {
+    const shrink = Math.min(overflow / spare, 1);
+    widths = widths.map((width) => width - Math.max(width - MIN_SEGMENT_PERCENT, 0) * shrink);
+  }
+
+  let left = Math.max(Math.min(start, 100 - sum(widths)), 0);
+  return widths.map((width) => {
+    const box = { left, width };
+    left += width;
+    return box;
+  });
+}
+
 function renderTimeline(run, tasks) {
   if (tasks.length === 0) {
     return `<p class="text-sm text-gray-500 dark:text-gray-400">None</p>`;
@@ -648,27 +680,15 @@ function renderTimeline(run, tasks) {
 
     if (phases.length > 0) {
       const tone = TONES[taskTone(task)];
-      // The time between being created and the first phase is just bookkeeping, so it's drawn as waiting too.
-      const segments = [{ phase: "waiting_on_dependencies", started: Math.max(task.created, runStart), ended: phases[0].started }, ...phases];
-
-      // On a long run, short phases like pulling an image round down to nothing, so every phase that took any time
-      // gets a minimum width. Segments are placed in order so a widened one pushes the next along instead of
-      // covering it, then pulled back from the right edge if that pushed anything off the end. The last segment
-      // always gets a sliver so very short tasks don't vanish.
-      const layout = [];
-      let cursor = 0;
-      segments.forEach((segment, i) => {
-        const raw = percent(segment.ended) - percent(segment.started);
-        const width = segment.ended > segment.started || i === segments.length - 1 ? Math.max(raw, MIN_SEGMENT_PERCENT) : 0;
-        const left = Math.max(percent(segment.started), cursor);
-        layout.push({ left, width });
-        cursor = left + width;
-      });
-      let limit = 100;
-      for (let i = layout.length - 1; i >= 0; i--) {
-        layout[i].left = Math.max(Math.min(layout[i].left, limit - layout[i].width), 0);
-        limit = layout[i].left;
-      }
+      // The time between being created and the first phase is just bookkeeping, so it's drawn as waiting too. A task
+      // with dependencies already starts out waiting, so that time joins its waiting phase instead of becoming a
+      // second waiting segment.
+      const createdAt = Math.max(task.created, runStart);
+      const segments =
+        phases[0].phase === "waiting_on_dependencies"
+          ? [{ ...phases[0], started: Math.min(createdAt, phases[0].started) }, ...phases.slice(1)]
+          : [{ phase: "waiting_on_dependencies", started: createdAt, ended: phases[0].started }, ...phases];
+      const layout = layoutSegments(segments, percent);
 
       bar = segments
         .map((segment, i) => {
