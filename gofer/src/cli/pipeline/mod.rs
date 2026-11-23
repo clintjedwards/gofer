@@ -6,6 +6,7 @@ use crate::cli::{
     Cli, colorize_status_text, colorize_status_text_comfy, duration, rail, rail_table, tasks_table,
 };
 use anyhow::{Context, Result, anyhow, bail};
+use chrono::{DateTime, Local, NaiveDate, NaiveTime};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use comfy_table::{Cell, CellAlignment, Color, ContentArrangement};
@@ -49,9 +50,25 @@ pub enum PipelineCommands {
     },
 
     /// Stop a pipeline from being able to run.
+    ///
+    /// Runs that are already going finish normally; runs still waiting in the queue are cancelled. By default the pipeline
+    /// stays disabled until 'gofer pipeline enable'. Use '--for' or '--until' to have it turn itself back on.
+    ///
+    /// Disabling a pipeline that's already disabled replaces when it turns back on.
+    ///
+    /// ex. gofer pipeline disable simple --for 7d
+    /// ex. gofer pipeline disable simple --until 2026-12-01
     Disable {
         /// Pipeline Identifier.
         id: String,
+
+        /// How long to disable the pipeline for. ex. 12h, 7d, "1d 6h"
+        #[arg(long = "for", value_name = "DURATION", value_parser = humantime::parse_duration, conflicts_with = "until")]
+        duration: Option<std::time::Duration>,
+
+        /// The day the pipeline turns back on, as YYYY-MM-DD. It turns on at the start of that day in your local time.
+        #[arg(long, value_name = "DATE")]
+        until: Option<NaiveDate>,
     },
 
     /// Delete a pipeline permanently.
@@ -139,6 +156,33 @@ pub enum PipelineCommands {
     Deployment(deployment::DeploymentSubcommands),
 }
 
+/// When a disabled pipeline should turn back on, or None if it should stay disabled.
+fn disable_end(
+    duration: Option<std::time::Duration>,
+    until: Option<NaiveDate>,
+    now: DateTime<Local>,
+) -> Result<Option<DateTime<Local>>> {
+    let end = match (duration, until) {
+        (Some(duration), _) => chrono::Duration::from_std(duration)
+            .ok()
+            .and_then(|duration| now.checked_add_signed(duration))
+            .context("Duration is too long")?,
+        // A clock change can skip midnight in some timezones.
+        (None, Some(until)) => until
+            .and_time(NaiveTime::MIN)
+            .and_local_timezone(Local)
+            .earliest()
+            .with_context(|| format!("{until} doesn't have a midnight in your timezone"))?,
+        (None, None) => return Ok(None),
+    };
+
+    if end <= now {
+        bail!("The pipeline has to be disabled until some time in the future");
+    }
+
+    Ok(Some(end))
+}
+
 impl Cli {
     pub async fn handle_pipeline_subcommands(&self, command: PipelineSubcommands) -> Result<()> {
         let cmds = command.command;
@@ -149,7 +193,14 @@ impl Cli {
                 self.pipeline_run(command.namespace, &id, variable).await
             }
             PipelineCommands::Enable { id } => self.pipeline_enable(command.namespace, &id).await,
-            PipelineCommands::Disable { id } => self.pipeline_disable(command.namespace, &id).await,
+            PipelineCommands::Disable {
+                id,
+                duration,
+                until,
+            } => {
+                self.pipeline_disable(command.namespace, &id, duration, until)
+                    .await
+            }
             PipelineCommands::Delete { id } => self.pipeline_delete(command.namespace, &id).await,
             PipelineCommands::Subscribe {
                 id,
@@ -381,6 +432,9 @@ impl Cli {
         const TEMPLATE: &str = r#"
   {{ vertical_line }} Created {{ created }}
   {{ vertical_line }} Last run {{ last_run }}
+  {%- if enables %}
+  {{ vertical_line }} Turns back on {{ enables }}
+  {%- endif %}
   {%- if allow_runs_from %}
   {{ vertical_line }} Allows runs from: {{ allow_runs_from }}
   {%- endif %}
@@ -434,6 +488,11 @@ impl Cli {
             &self.format_time(last_run_time).unwrap_or("Never".into()),
         );
 
+        context.insert(
+            "enables",
+            &self.format_time(pipeline_metadata.disabled_until),
+        );
+
         let content = tera.render("main", &context)?;
         println!(
             "  Pipeline {} ({}) :: {}",
@@ -470,6 +529,7 @@ impl Cli {
                 id,
                 &gofer_sdk::api::types::UpdatePipelineRequest {
                     state: Some(gofer_sdk::api::types::PipelineState::Active),
+                    disabled_until: None,
                 },
             )
             .await
@@ -479,11 +539,19 @@ impl Cli {
         Ok(())
     }
 
-    pub async fn pipeline_disable(&self, namespace_id: Option<String>, id: &str) -> Result<()> {
+    pub async fn pipeline_disable(
+        &self,
+        namespace_id: Option<String>,
+        id: &str,
+        duration: Option<std::time::Duration>,
+        until: Option<NaiveDate>,
+    ) -> Result<()> {
         let namespace = match namespace_id {
             Some(namespace) => namespace,
             None => self.conf.namespace.clone(),
         };
+
+        let disabled_until = disable_end(duration, until, Local::now())?;
 
         self.client
             .update_pipeline(
@@ -491,12 +559,20 @@ impl Cli {
                 id,
                 &gofer_sdk::api::types::UpdatePipelineRequest {
                     state: Some(gofer_sdk::api::types::PipelineState::Disabled),
+                    disabled_until: disabled_until.map(|end| end.timestamp_millis() as u64),
                 },
             )
             .await
-            .context("Could not successfully enable pipeline from Gofer api")?;
+            .context("Could not successfully disable pipeline from Gofer api")?;
 
-        success!("pipeline '{}' disabled!", id);
+        match disabled_until {
+            Some(end) => success!(
+                "pipeline '{}' disabled until {}!",
+                id,
+                end.format("%a %Y-%m-%d %H:%M %:z")
+            ),
+            None => success!("pipeline '{}' disabled!", id),
+        }
         Ok(())
     }
 
@@ -634,5 +710,51 @@ impl Cli {
 
         success!("pipeline '{}' deleted!", id);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn local_midnight(year: i32, month: u32, day: u32) -> DateTime<Local> {
+        NaiveDate::from_ymd_opt(year, month, day)
+            .unwrap()
+            .and_time(NaiveTime::MIN)
+            .and_local_timezone(Local)
+            .earliest()
+            .unwrap()
+    }
+
+    #[test]
+    fn disable_end_handles_each_flag() {
+        let now = local_midnight(2026, 11, 24);
+        let week = std::time::Duration::from_secs(7 * 24 * 60 * 60);
+        let date = NaiveDate::from_ymd_opt(2026, 12, 1).unwrap();
+
+        assert_eq!(disable_end(None, None, now).unwrap(), None);
+        assert_eq!(
+            disable_end(Some(week), None, now).unwrap(),
+            Some(now + chrono::Duration::days(7))
+        );
+        assert_eq!(
+            disable_end(None, Some(date), now)
+                .unwrap()
+                .unwrap()
+                .naive_local(),
+            date.and_time(NaiveTime::MIN)
+        );
+    }
+
+    #[test]
+    fn disable_end_rejects_bad_ends() {
+        let now = local_midnight(2026, 11, 24);
+        let long_ago = NaiveDate::from_ymd_opt(1960, 1, 1).unwrap();
+        let today = now.date_naive();
+
+        assert!(disable_end(Some(std::time::Duration::MAX), None, now).is_err());
+        assert!(disable_end(Some(std::time::Duration::ZERO), None, now).is_err());
+        assert!(disable_end(None, Some(long_ago), now).is_err());
+        assert!(disable_end(None, Some(today), now).is_err());
     }
 }

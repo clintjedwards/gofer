@@ -7,6 +7,10 @@ pub struct PipelineMetadata {
     pub namespace_id: String,
     pub pipeline_id: String,
     pub state: String,
+
+    /// When a disabled pipeline becomes active again, in epoch milliseconds. "0" means it stays disabled.
+    pub disabled_until: String,
+
     pub created: String,
     pub modified: String,
 }
@@ -14,6 +18,7 @@ pub struct PipelineMetadata {
 #[derive(Clone, Debug)]
 pub struct UpdatableFields {
     pub state: Option<String>,
+    pub disabled_until: Option<String>,
     pub modified: String,
 }
 
@@ -21,6 +26,7 @@ impl Default for UpdatableFields {
     fn default() -> Self {
         Self {
             state: Default::default(),
+            disabled_until: Default::default(),
             modified: epoch_milli().to_string(),
         }
     }
@@ -30,12 +36,14 @@ pub async fn insert(
     conn: &mut SqliteConnection,
     pipeline_metadata: &PipelineMetadata,
 ) -> Result<(), StorageError> {
-    let sql = "INSERT INTO pipeline_metadata (namespace_id, pipeline_id, state, created, modified) VALUES (?, ?, ?, ?, ?);";
+    let sql = "INSERT INTO pipeline_metadata (namespace_id, pipeline_id, state, disabled_until, created, modified) \
+    VALUES (?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&pipeline_metadata.namespace_id)
         .bind(&pipeline_metadata.pipeline_id)
         .bind(&pipeline_metadata.state)
+        .bind(&pipeline_metadata.disabled_until)
         .bind(&pipeline_metadata.created)
         .bind(&pipeline_metadata.modified);
 
@@ -51,7 +59,8 @@ pub async fn list(
     conn: &mut SqliteConnection,
     namespace_id: &str,
 ) -> Result<Vec<PipelineMetadata>, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ?;";
+    let sql = "SELECT namespace_id, pipeline_id, state, disabled_until, created, modified FROM pipeline_metadata \
+    WHERE namespace_id = ?;";
 
     let query = sqlx::query_as::<_, PipelineMetadata>(sql).bind(namespace_id);
 
@@ -66,7 +75,8 @@ pub async fn get(
     namespace_id: &str,
     pipeline_id: &str,
 ) -> Result<PipelineMetadata, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, state, created, modified FROM pipeline_metadata WHERE namespace_id = ? AND pipeline_id = ?;";
+    let sql = "SELECT namespace_id, pipeline_id, state, disabled_until, created, modified FROM pipeline_metadata \
+    WHERE namespace_id = ? AND pipeline_id = ?;";
 
     let query = sqlx::query_as(sql).bind(namespace_id).bind(pipeline_id);
 
@@ -95,6 +105,15 @@ pub async fn update(
         updated_fields_total += 1;
     }
 
+    if let Some(value) = &fields.disabled_until {
+        if updated_fields_total > 0 {
+            update_query.push(", ");
+        }
+        update_query.push("disabled_until = ");
+        update_query.push_bind(value);
+        updated_fields_total += 1;
+    }
+
     // If no fields were updated, return an error
     if updated_fields_total == 0 {
         return Err(StorageError::NoFieldsUpdated);
@@ -118,6 +137,25 @@ pub async fn update(
         .await
         .map(|_| ())
         .map_err(|e| map_sqlx_error(e, sql))
+}
+
+/// Resets a pipeline whose timed disable has run out. Nobody changed the pipeline, so unlike `update` this leaves
+/// `modified` alone.
+pub async fn clear_expired_disable(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<(), StorageError> {
+    let sql = "UPDATE pipeline_metadata SET state = 'active', disabled_until = '0' \
+    WHERE namespace_id = ? AND pipeline_id = ?;";
+
+    let query = sqlx::query(sql).bind(namespace_id).bind(pipeline_id);
+
+    query
+        .execute(conn)
+        .map_ok(|_| ())
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
 }
 
 pub async fn delete(
@@ -160,6 +198,7 @@ mod tests {
             namespace_id: "some_id".into(),
             pipeline_id: "some_pipeline_id".into(),
             state: "some_state".into(),
+            disabled_until: "0".into(),
             created: "some_time".into(),
             modified: "some_time_mod".into(),
         };
@@ -200,6 +239,7 @@ mod tests {
             namespace_id: "some_id".into(),
             pipeline_id: "new_pipeline_id".into(),
             state: "new_state".into(),
+            disabled_until: "0".into(),
             created: "some_time".into(),
             modified: "some_time_mod".into(),
         };
@@ -235,6 +275,7 @@ mod tests {
 
         let fields_to_update = UpdatableFields {
             state: Some("updated_state".into()),
+            disabled_until: Some("2000".into()),
             modified: "updated_time".into(),
         };
 
@@ -247,6 +288,37 @@ mod tests {
             .expect("Failed to retrieve updated pipeline_metadata");
 
         assert_eq!(updated_pipeline_metadata.state, "updated_state");
+        assert_eq!(updated_pipeline_metadata.disabled_until, "2000");
+    }
+
+    #[tokio::test]
+    async fn test_clear_expired_disable() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        let fields = UpdatableFields {
+            state: Some("disabled".into()),
+            disabled_until: Some("2000".into()),
+            modified: "updated_time".into(),
+        };
+
+        update(&mut conn, "some_id", "some_pipeline_id", fields)
+            .await
+            .expect("Failed to update pipeline_metadata");
+
+        clear_expired_disable(&mut conn, "some_id", "some_pipeline_id")
+            .await
+            .expect("Failed to clear expired disable");
+
+        let metadata = get(&mut conn, "some_id", "some_pipeline_id")
+            .await
+            .expect("Failed to retrieve pipeline_metadata");
+
+        assert_eq!(metadata.state, "active");
+        assert_eq!(metadata.disabled_until, "0");
+        assert_eq!(
+            metadata.modified, "updated_time",
+            "Nobody changed the pipeline, so modified stays the same"
+        );
     }
 
     #[tokio::test]

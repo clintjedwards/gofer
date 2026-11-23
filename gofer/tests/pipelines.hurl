@@ -68,6 +68,84 @@ Authorization: Bearer {{secret}}
 {}
 HTTP 404
 
+# A disable can only be given an end time that's in the future, and only together with the disabled state.
+PATCH http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "state": "disabled",
+  "disabled_until": 1000
+}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "must be in the future"
+
+PATCH http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "disabled_until": 4102444800000
+}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "can only be set when state is 'disabled'"
+
+GET http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.pipeline.state" == "active"
+jsonpath "$.pipeline.disabled_until" == 0
+
+# Until the end time, the pipeline is disabled like any other.
+PATCH http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "state": "disabled",
+  "disabled_until": 4102444800000
+}
+HTTP 204
+
+GET http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.pipeline.state" == "disabled"
+jsonpath "$.pipeline.disabled_until" == 4102444800000
+
+POST http://localhost:8080/api/namespaces/default/pipelines/test/runs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "variables": {}
+}
+HTTP 503
+
+# Enabling the pipeline early clears the end time.
+PATCH http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "state": "active"
+}
+HTTP 204
+
+GET http://localhost:8080/api/namespaces/default/pipelines/test
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+HTTP 200
+[Asserts]
+jsonpath "$.pipeline.state" == "active"
+jsonpath "$.pipeline.disabled_until" == 0
+
 # Start a run with a variable name that cannot be an environment variable
 POST http://localhost:8080/api/namespaces/default/pipelines/test/runs
 gofer-api-version: v0

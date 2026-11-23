@@ -1188,6 +1188,9 @@ type Metadata struct {
 	// Created Time of pipeline creation in epoch milliseconds.
 	Created uint64 `json:"created"`
 
+	// DisabledUntil When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that way until someone enables it.
+	DisabledUntil uint64 `json:"disabled_until"`
+
 	// Modified Time pipeline was updated to a new version in epoch milliseconds.
 	Modified uint64 `json:"modified"`
 
@@ -1303,6 +1306,9 @@ type PipelineSummary struct {
 
 	// Description Description from the newest registered config.
 	Description string `json:"description"`
+
+	// DisabledUntil When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that way until someone enables it.
+	DisabledUntil uint64 `json:"disabled_until"`
 
 	// Modified Time pipeline was updated to a new version in epoch milliseconds.
 	Modified uint64 `json:"modified"`
@@ -1758,7 +1764,9 @@ type UpdateNamespaceResponse struct {
 
 // UpdatePipelineRequest defines model for UpdatePipelineRequest.
 type UpdatePipelineRequest struct {
-	State *PipelineState `json:"state"`
+	// DisabledUntil When the pipeline becomes active again by itself, in epoch milliseconds. Can only be set along with the state `disabled`, and has to be in the future. Leave it out to keep the pipeline disabled until it's enabled again.
+	DisabledUntil *uint64        `json:"disabled_until"`
+	State         *PipelineState `json:"state"`
 }
 
 // UpdateRoleRequest defines model for UpdateRoleRequest.

@@ -500,6 +500,7 @@ Details about the pipeline itself, not including the configuration that the user
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
 | `created` | integer | yes | Time of pipeline creation in epoch milliseconds. |
+| `disabled_until` | integer | yes | When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that way until someone enables it. |
 | `modified` | integer | yes | Time pipeline was updated to a new version in epoch milliseconds. |
 | `namespace_id` | string | yes | Unique identifier of the target namespace. |
 | `pipeline_id` | string | yes | Unique identifier of the target pipeline. |
@@ -602,6 +603,7 @@ A pipeline as it shows up in a listing: its metadata plus the name and descripti
 | ----- | ---- | -------- | ----------- |
 | `created` | integer | yes | Time of pipeline creation in epoch milliseconds. |
 | `description` | string | yes | Description from the newest registered config. |
+| `disabled_until` | integer | yes | When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that way until someone enables it. |
 | `modified` | integer | yes | Time pipeline was updated to a new version in epoch milliseconds. |
 | `name` | string | yes | Humanized name from the newest registered config. |
 | `namespace_id` | string | yes | Unique identifier of the target namespace. |
@@ -910,6 +912,7 @@ The hash field is skipped during serialization to prevent it from being exposed 
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
+| `disabled_until` | integer (nullable) | no | When the pipeline becomes active again by itself, in epoch milliseconds. Can only be set along with the state `disabled`, and has to be in the future. Leave it out to keep the pipeline disabled until it's enabled again. |
 | `state` | [PipelineState](#pipelinestate) (nullable) | no |  |
 
 ## UpdateRoleRequest

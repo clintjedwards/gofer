@@ -165,8 +165,23 @@ impl Orchestrator {
                 },
             };
 
+        let stored_state = storage_pipeline_metadata.state.clone();
+
         let pipeline_metadata = pipelines::Metadata::try_from(storage_pipeline_metadata)
             .map_err(OrchestratorError::DatabaseSerializationError)?;
+
+        // The pipeline's timed disable has run out. Reads already treat it as active; this just tidies up what's stored.
+        // It happens here since this transaction holds the write lock, so it can't undo someone disabling it again.
+        if pipeline_metadata.state.to_string() != stored_state
+            && let Err(e) = storage::pipeline_metadata::clear_expired_disable(
+                &mut tx,
+                namespace_id,
+                pipeline_id,
+            )
+            .await
+        {
+            return Err(OrchestratorError::DatabaseGeneralError(e));
+        }
 
         if pipeline_metadata.state != pipelines::PipelineState::Active {
             return Err(OrchestratorError::PipelineInactive);

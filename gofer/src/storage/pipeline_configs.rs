@@ -248,6 +248,7 @@ mod tests {
             namespace_id: "some_id".into(),
             pipeline_id: "some_pipeline_id".into(),
             state: "some_state".into(),
+            disabled_until: "0".into(),
             created: "some_time".into(),
             modified: "some_time_mod".into(),
         };

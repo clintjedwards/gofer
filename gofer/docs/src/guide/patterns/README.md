@@ -21,6 +21,11 @@ Here's everything at a glance:
 - [Limit pipelines that can't overlap.](./designing_pipelines.md#limit-pipelines-that-cant-overlap)
 - [Keep your pipeline config next to your code.](./designing_pipelines.md#keep-your-pipeline-config-next-to-your-code)
 
+**[Skipping Runs](./skipping_runs.md)**
+
+- [Give a pause an end date.](./skipping_runs.md#give-a-pause-an-end-date)
+- [Skip just the next run.](./skipping_runs.md#skip-just-the-next-run)
+
 **[Passing Data Between Tasks](./passing_data_between_tasks.md)**
 
 - [Small values](./passing_data_between_tasks.md#small-values)

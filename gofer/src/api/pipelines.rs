@@ -48,6 +48,23 @@ pub enum PipelineState {
     Disabled,
 }
 
+/// Works out a pipeline's state from what's stored. Nothing flips a pipeline back to active the moment its timed disable
+/// runs out, so anything reading the stored state has to go through this. Returns the state along with when the disable
+/// ends, which is 0 unless the pipeline is disabled with an end time.
+pub fn state_in_effect(
+    state: PipelineState,
+    disabled_until: u64,
+    now: u64,
+) -> (PipelineState, u64) {
+    match state {
+        PipelineState::Disabled if disabled_until != 0 && disabled_until <= now => {
+            (PipelineState::Active, 0)
+        }
+        PipelineState::Disabled => (state, disabled_until),
+        _ => (state, 0),
+    }
+}
+
 /// Details about the pipeline itself, not including the configuration that the user can change.
 /// All these values are changed by the system or never changed at all. This sits in contrast to
 /// the config which the user can change freely.
@@ -67,6 +84,10 @@ pub struct Metadata {
 
     /// The current running state of the pipeline. This is used to determine if the pipeline should run or not.
     pub state: PipelineState,
+
+    /// When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that
+    /// way until someone enables it.
+    pub disabled_until: u64,
 }
 
 impl Metadata {
@@ -77,6 +98,7 @@ impl Metadata {
             created: epoch_milli(),
             modified: 0,
             state: PipelineState::Active,
+            disabled_until: 0,
         }
     }
 }
@@ -106,12 +128,22 @@ impl TryFrom<storage::pipeline_metadata::PipelineMetadata> for Metadata {
             )
         })?;
 
+        let disabled_until = value.disabled_until.parse::<u64>().with_context(|| {
+            format!(
+                "Could not parse field 'disabled_until' from storage value '{}'",
+                value.disabled_until
+            )
+        })?;
+
+        let (state, disabled_until) = state_in_effect(state, disabled_until, epoch_milli());
+
         Ok(Metadata {
             namespace_id: value.namespace_id,
             pipeline_id: value.pipeline_id,
             created,
             modified,
             state,
+            disabled_until,
         })
     }
 }
@@ -124,6 +156,7 @@ impl From<Metadata> for storage::pipeline_metadata::PipelineMetadata {
             created: value.created.to_string(),
             modified: value.modified.to_string(),
             state: value.state.to_string(),
+            disabled_until: value.disabled_until.to_string(),
         }
     }
 }
@@ -157,6 +190,10 @@ pub struct PipelineSummary {
 
     /// The current running state of the pipeline. This is used to determine if the pipeline should run or not.
     pub state: PipelineState,
+
+    /// When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that
+    /// way until someone enables it.
+    pub disabled_until: u64,
 
     /// Humanized name from the newest registered config.
     pub name: String,
@@ -276,6 +313,7 @@ pub async fn list_pipelines(
                 created: pipeline.created,
                 modified: pipeline.modified,
                 state: pipeline.state,
+                disabled_until: pipeline.disabled_until,
                 name,
                 description,
             });
@@ -369,6 +407,10 @@ pub async fn get_pipeline(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct UpdatePipelineRequest {
     pub state: Option<PipelineState>,
+
+    /// When the pipeline becomes active again by itself, in epoch milliseconds. Can only be set along with the state
+    /// `disabled`, and has to be in the future. Leave it out to keep the pipeline disabled until it's enabled again.
+    pub disabled_until: Option<u64>,
 }
 
 /// Update a pipeline's state.
@@ -422,7 +464,30 @@ pub async fn update_pipeline(
     )
     .await?;
 
+    if let Some(disabled_until) = body.disabled_until {
+        if body.state != Some(PipelineState::Disabled) {
+            return Err(HttpError::for_bad_request(
+                None,
+                "disabled_until can only be set when state is 'disabled'".into(),
+            ));
+        }
+
+        if disabled_until <= epoch_milli() {
+            return Err(HttpError::for_bad_request(
+                None,
+                "disabled_until must be in the future".into(),
+            ));
+        }
+    }
+
+    // Any change of state replaces the old end time, so enabling a pipeline or disabling it for good also clears it.
+    let disabled_until = body
+        .state
+        .as_ref()
+        .map(|_| body.disabled_until.unwrap_or_default().to_string());
+
     let updatable_fields = storage::pipeline_metadata::UpdatableFields {
+        disabled_until,
         state: body.state.map(|state| state.to_string()),
         ..Default::default()
     };
@@ -523,4 +588,25 @@ pub async fn delete_pipeline(
     };
 
     Ok(HttpResponseDeleted())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::active(PipelineState::Active, 0, (PipelineState::Active, 0))]
+    #[case::disabled_for_good(PipelineState::Disabled, 0, (PipelineState::Disabled, 0))]
+    #[case::before_end(PipelineState::Disabled, 1001, (PipelineState::Disabled, 1001))]
+    #[case::at_end(PipelineState::Disabled, 1000, (PipelineState::Active, 0))]
+    #[case::after_end(PipelineState::Disabled, 999, (PipelineState::Active, 0))]
+    #[case::unknown(PipelineState::Unknown, 999, (PipelineState::Unknown, 0))]
+    fn state_in_effect_ends_timed_disables(
+        #[case] state: PipelineState,
+        #[case] disabled_until: u64,
+        #[case] expected: (PipelineState, u64),
+    ) {
+        assert_eq!(state_in_effect(state, disabled_until, 1000), expected);
+    }
 }

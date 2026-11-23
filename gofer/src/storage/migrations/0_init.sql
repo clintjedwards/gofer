@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS pipeline_metadata (
     created      TEXT    NOT NULL,
     modified     TEXT    NOT NULL,
     state        TEXT    NOT NULL,
+    disabled_until TEXT NOT NULL,
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE,
     PRIMARY KEY (namespace_id, pipeline_id)
 ) STRICT;

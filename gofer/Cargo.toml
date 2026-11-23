@@ -27,6 +27,7 @@ futures = "0.3"
 gofer_sdk = { path = "../sdk/rust" }
 http = "1.5"
 human-panic = "2.0"
+humantime = "2.4"
 hyper = { version = "1.11", features = ["server", "full"] }
 lazy-regex = "3.6"
 mime_guess = "2.0"

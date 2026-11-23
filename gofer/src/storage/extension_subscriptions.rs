@@ -225,6 +225,7 @@ mod tests {
             namespace_id: "namespace1".into(),
             pipeline_id: "pipeline1".into(),
             state: "some_state".into(),
+            disabled_until: "0".into(),
             created: "some_time".into(),
             modified: "some_time_mod".into(),
         };

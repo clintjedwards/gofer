@@ -131,11 +131,15 @@ pub struct QueuedRun {
 
     /// The pipeline's current state, so runs of a pipeline that was disabled while they waited can be dropped.
     pub pipeline_state: String,
+
+    /// When a disabled pipeline becomes active again, in epoch milliseconds. "0" means it stays disabled.
+    pub pipeline_disabled_until: String,
 }
 
 /// Every pending run across Gofer, oldest first.
 pub async fn list_queued(conn: &mut SqliteConnection) -> Result<Vec<QueuedRun>, StorageError> {
-    let sql = "SELECT r.namespace_id, r.pipeline_id, r.run_id, c.parallelism, m.state AS pipeline_state \
+    let sql = "SELECT r.namespace_id, r.pipeline_id, r.run_id, c.parallelism, m.state AS pipeline_state, \
+    m.disabled_until AS pipeline_disabled_until \
     FROM runs r \
     JOIN pipeline_configs c ON c.namespace_id = r.namespace_id AND c.pipeline_id = r.pipeline_id \
         AND c.version = r.pipeline_config_version \
@@ -418,6 +422,7 @@ mod tests {
             namespace_id: "some_id".into(),
             pipeline_id: "some_pipeline_id".into(),
             state: "some_state".into(),
+            disabled_until: "0".into(),
             created: "some_time".into(),
             modified: "some_time_mod".into(),
         };
@@ -631,6 +636,7 @@ mod tests {
             "Should carry the config's parallelism"
         );
         assert_eq!(queued[0].pipeline_state, "some_state");
+        assert_eq!(queued[0].pipeline_disabled_until, "0");
     }
 
     #[tokio::test]

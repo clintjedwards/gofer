@@ -174,9 +174,10 @@ function renderAttention(pipeline, subscriptions, runs) {
   }
 
   if (lower(pipeline.state) === "disabled") {
+    const until = pipeline.disabled_until ? ` until ${formatTimestamp(pipeline.disabled_until)}` : "";
     problems.push(
       warning(
-        "This pipeline is disabled, so nothing can start a run, including its subscriptions.",
+        `This pipeline is disabled${until}, so nothing can start a run, including its subscriptions.`,
         `gofer pipeline enable ${pipeline.pipeline_id}${namespaceFlag()}`
       )
     );
@@ -242,6 +243,7 @@ function renderCliTips(pipeline) {
   return [
     tip("See this pipeline from your terminal:", `gofer pipeline get ${pipeline.pipeline_id}${namespaceFlag()}`),
     tip("Start a run:", `gofer pipeline run ${pipeline.pipeline_id}${namespaceFlag()}`),
+    tip("Pause it for a week:", `gofer pipeline disable ${pipeline.pipeline_id} --for 7d${namespaceFlag()}`),
   ].join("");
 }
 

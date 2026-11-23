@@ -5607,6 +5607,12 @@
             "format": "uint64",
             "minimum": 0
           },
+          "disabled_until": {
+            "description": "When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that way until someone enables it.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
           "modified": {
             "description": "Time pipeline was updated to a new version in epoch milliseconds.",
             "type": "integer",
@@ -5632,6 +5638,7 @@
         },
         "required": [
           "created",
+          "disabled_until",
           "modified",
           "namespace_id",
           "pipeline_id",
@@ -5863,6 +5870,12 @@
             "description": "Description from the newest registered config.",
             "type": "string"
           },
+          "disabled_until": {
+            "description": "When a disabled pipeline becomes active again, in epoch milliseconds. 0 if it isn't disabled or if it stays that way until someone enables it.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
           "modified": {
             "description": "Time pipeline was updated to a new version in epoch milliseconds.",
             "type": "integer",
@@ -5893,6 +5906,7 @@
         "required": [
           "created",
           "description",
+          "disabled_until",
           "modified",
           "name",
           "namespace_id",
@@ -6907,6 +6921,13 @@
       "UpdatePipelineRequest": {
         "type": "object",
         "properties": {
+          "disabled_until": {
+            "nullable": true,
+            "description": "When the pipeline becomes active again by itself, in epoch milliseconds. Can only be set along with the state `disabled`, and has to be in the future. Leave it out to keep the pipeline disabled until it's enabled again.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
           "state": {
             "nullable": true,
             "allOf": [

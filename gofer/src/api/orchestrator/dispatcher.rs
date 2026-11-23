@@ -7,6 +7,7 @@ use crate::{
 use anyhow::{Context, Result};
 use sqlx::SqliteConnection;
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::{Arc, atomic};
 use tracing::error;
 
@@ -136,11 +137,17 @@ pub(super) async fn dispatch_queued_runs(api_state: &Arc<ApiState>) -> Result<()
         .collect();
 
     // A run waiting on a pipeline that has since been disabled would never start, so it's cancelled instead.
-    let active = pipelines::PipelineState::Active.to_string();
+    let now = epoch_milli();
     let mut startable = vec![];
 
     for run in queued {
-        if run.pipeline_state == active {
+        let (pipeline_state, _) = pipelines::state_in_effect(
+            pipelines::PipelineState::from_str(&run.pipeline_state).unwrap_or_default(),
+            run.pipeline_disabled_until.parse().unwrap_or_default(),
+            now,
+        );
+
+        if pipeline_state == pipelines::PipelineState::Active {
             startable.push(run);
             continue;
         }
@@ -244,6 +251,7 @@ mod tests {
             run_id,
             parallelism,
             pipeline_state: "active".into(),
+            pipeline_disabled_until: "0".into(),
         }
     }
 

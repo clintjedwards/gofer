@@ -128,6 +128,7 @@ mod tests {
             namespace_id: "default".into(),
             pipeline_id: "test".into(),
             state: String::new(),
+            disabled_until: "0".into(),
             created: String::new(),
             modified: String::new(),
         };

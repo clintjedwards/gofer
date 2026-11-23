@@ -19,6 +19,7 @@
 - [Common Patterns and Best Practices](./guide/patterns/README.md)
   - [Writing Tasks](./guide/patterns/writing_tasks.md)
   - [Designing Pipelines](./guide/patterns/designing_pipelines.md)
+  - [Skipping Runs](./guide/patterns/skipping_runs.md)
   - [Passing Data Between Tasks](./guide/patterns/passing_data_between_tasks.md)
   - [Working with Git Repositories](./guide/patterns/working_with_git_repositories.md)
   - [Secrets and Access](./guide/patterns/secrets_and_access.md)
