@@ -12,7 +12,7 @@ const target = {
   pipeline: params.get("pipeline") || "",
 };
 
-let pollTimer = null;
+const poller = createPoller(loadPipeline);
 
 // ---------------------------------------------------------------------------------------------------------------
 // Loading
@@ -21,8 +21,7 @@ let pollTimer = null;
 async function loadPipeline() {
   if (!target.pipeline) {
     showError("This link is missing a pipeline id.");
-    stopPolling();
-    return;
+    return null;
   }
 
   const base = `/api/namespaces/${encodeURIComponent(target.namespace)}/pipelines/${encodeURIComponent(target.pipeline)}`;
@@ -36,14 +35,16 @@ async function loadPipeline() {
   if (!pipelineResp.ok) {
     if (pipelineResp.status === 404) {
       showError(`Pipeline ${target.pipeline} in namespace ${target.namespace} doesn't exist.`);
-      stopPolling();
+      return null;
     } else if (pipelineResp.status === 401 || pipelineResp.status === 403) {
       showError("You need a token with access to this pipeline to view it. Use Sign in at the top right.");
     } else {
       showError(`Could not load this pipeline (status ${pipelineResp.status || "network error"}). Retrying.`);
     }
-    return;
+    return POLL_IDLE_MS;
   }
+
+  const runs = runsResp.ok ? runsResp.data.runs : [];
 
   render({
     pipeline: pipelineResp.data.pipeline,
@@ -51,20 +52,10 @@ async function loadPipeline() {
     configStatus: configResp.status,
     subscriptions: subscriptionsResp.ok ? subscriptionsResp.data.subscriptions : null,
     subscriptionsStatus: subscriptionsResp.status,
-    runs: runsResp.ok ? runsResp.data.runs : [],
+    runs,
   });
-}
 
-function startPolling() {
-  stopPolling();
-  pollTimer = setInterval(loadPipeline, 5000);
-}
-
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
+  return pollDelay(runs);
 }
 
 function showError(message) {
@@ -366,13 +357,6 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("DOMContentLoaded", async function () {
   // A new token can unlock the tasks and subscriptions, and polling may have stopped, so reload and restart it.
-  await setupHeader({
-    onSessionChange: () => {
-      loadPipeline();
-      startPolling();
-    },
-  });
-
-  startPolling();
-  await loadPipeline();
+  await setupHeader({ onSessionChange: poller.refresh });
+  await poller.refresh();
 });

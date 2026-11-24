@@ -11,7 +11,7 @@ const target = {
 // Which task rows the user has expanded, so a refresh doesn't collapse them.
 const expandedTasks = new Set();
 
-let pollTimer = null;
+const poller = createPoller(loadRun);
 
 // ---------------------------------------------------------------------------------------------------------------
 // Loading
@@ -20,8 +20,7 @@ let pollTimer = null;
 async function loadRun() {
   if (!target.pipeline || !/^[1-9]\d*$/.test(target.run)) {
     showError("This link is missing a pipeline or run id.");
-    stopPolling();
-    return;
+    return null;
   }
 
   const base = `/api/namespaces/${encodeURIComponent(target.namespace)}/pipelines/${encodeURIComponent(target.pipeline)}/runs/${target.run}`;
@@ -30,13 +29,13 @@ async function loadRun() {
   if (!runResp.ok) {
     if (runResp.status === 404) {
       showError(`Run #${target.run} for pipeline ${target.pipeline} in namespace ${target.namespace} doesn't exist.`);
-      stopPolling();
+      return null;
     } else if (runResp.status === 401 || runResp.status === 403) {
       showError("You need a token with access to this pipeline to view this run. Use Sign in at the top right.");
     } else {
       showError(`Could not load this run (status ${runResp.status || "network error"}). Retrying.`);
     }
-    return;
+    return POLL_IDLE_MS;
   }
 
   const run = runResp.data.run;
@@ -46,21 +45,11 @@ async function loadRun() {
 
   // Once the run is complete nothing on the page can change anymore. We keep polling if we couldn't read the tasks
   // so that entering a token fills them in.
-  if (lower(run.state) === "complete" && tasks !== null) {
-    stopPolling();
+  if (!runInProgress(run) && tasks !== null) {
+    return null;
   }
-}
 
-function startPolling() {
-  stopPolling();
-  pollTimer = setInterval(loadRun, 5000);
-}
-
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
+  return pollDelay([run]);
 }
 
 function showError(message) {
@@ -996,13 +985,6 @@ document.addEventListener("keydown", (event) => {
 document.addEventListener("DOMContentLoaded", async function () {
   // A new token can unlock this run's tasks, and polling may have stopped, so reload and restart it. Awaited so a
   // sign in from `gofer web` finishes before the first fetch.
-  await setupHeader({
-    onSessionChange: () => {
-      loadRun();
-      startPolling();
-    },
-  });
-
-  startPolling();
-  await loadRun();
+  await setupHeader({ onSessionChange: poller.refresh });
+  await poller.refresh();
 });

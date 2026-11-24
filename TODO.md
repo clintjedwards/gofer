@@ -139,15 +139,9 @@ There are several useful things we can do with the concept of extensions:
 
 ### Frontend
 
-- SuccessRate should be tracked, we also probably can run a background job that will sleep the majority of the time and
-  then run once every day or so to calculate metrics.
-- On the first page a constantly updating event log would be really cool for the default namespace.
-- Cut down how much the UI polls. A pipeline page left open makes two requests every 5 seconds (`runs?limit=20` and
-  `runs?since=...&limit=500`), so one forgotten tab is about 1,440 requests an hour, almost all returning the same
-  thing. Roughly from cheapest to most work:
-  - Stop polling while the tab is hidden (Page Visibility API) and refresh once when it becomes visible again. A tab
-    left in the background then costs nothing, which is where most of the traffic comes from.
-  - Only poll fast while a run is in progress; back off to 30-60 seconds when nothing is running.
+- Cut down how much each UI refresh asks for. The overview page makes up to two requests per pipeline
+  (`runs?since=...&limit=500` and, for quiet pipelines, `runs?limit=20`) every 5 seconds while a run is in progress and
+  every 30 seconds otherwise, almost all returning the same thing. Roughly from cheapest to most work:
   - Only ask for what changed. Either the client asks for runs newer than the last one it has, or the server returns
     an ETag and the browser gets a small `304 Not Modified` when nothing changed. The `limit=500` request is the one
     worth fixing first.
@@ -170,7 +164,6 @@ There are several useful things we can do with the concept of extensions:
 
 - It currently runs as a singleton, not distributed. There are a lot of things to figure out here for a full distributed system.
 - The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
-- Write some documentation on the Domain model design. Sometimes it can be hard to wrap your head around going from Config -> SDK -> Proto -> Models and they are all named fairly similarly.
 
 ### Public Gofer ideas
 

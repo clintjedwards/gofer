@@ -17,6 +17,8 @@ let runFilter = "all";
 // The last data we rendered, so flipping the run filter doesn't have to wait on the network.
 let lastEntries = [];
 
+const poller = createPoller(loadDashboard);
+
 // ---------------------------------------------------------------------------------------------------------------
 // Loading
 // ---------------------------------------------------------------------------------------------------------------
@@ -37,7 +39,7 @@ async function loadDashboard() {
     const el = document.getElementById("dashboard-error");
     el.textContent = message;
     el.classList.remove("hidden");
-    return;
+    return POLL_IDLE_MS;
   }
   document.getElementById("dashboard-error").classList.add("hidden");
 
@@ -49,6 +51,8 @@ async function loadDashboard() {
 
   lastEntries = entries;
   render(entries);
+
+  return pollDelay(entries.flatMap((entry) => entry.runs));
 }
 
 // Everything a pipeline started in the activity window, newest first. Quiet pipelines may not have enough runs in the
@@ -97,7 +101,7 @@ async function loadNamespaces() {
 
 // Collapses a run's state and status into the five outcomes the page charts.
 function runOutcome(run) {
-  if (String(run.state).toLowerCase() !== "complete") return "running";
+  if (runInProgress(run)) return "running";
   switch (String(run.status).toLowerCase()) {
     case "successful":
       return "successful";
@@ -521,13 +525,11 @@ document.addEventListener("DOMContentLoaded", async function () {
   const reload = () => {
     if (!session) runFilter = "all";
     loadNamespaces();
-    loadDashboard();
+    poller.refresh();
   };
 
   // The session decides whether "Started by me" is offered, so the header goes first.
   await setupHeader({ active: "overview", onSessionChange: reload });
   loadNamespaces();
-  await loadDashboard();
-
-  setInterval(loadDashboard, 5000);
+  await poller.refresh();
 });

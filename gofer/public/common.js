@@ -14,7 +14,9 @@ async function apiFetch(path) {
   }
 
   try {
-    const response = await fetch(path, { method: "GET", headers });
+    // Pollers wait for a refresh to finish before starting another, so a request that never answers would leave the
+    // page stale for good.
+    const response = await fetch(path, { method: "GET", headers, signal: AbortSignal.timeout(30000) });
     let data = null;
     try {
       data = await response.json();
@@ -37,6 +39,72 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Polling
+// ---------------------------------------------------------------------------------------------------------------
+
+const POLL_ACTIVE_MS = 5000;
+const POLL_IDLE_MS = 30000;
+
+// Queued runs count, since they can start at any moment.
+function runInProgress(run) {
+  return String(run.state).toLowerCase() !== "complete";
+}
+
+function pollDelay(runs) {
+  return runs.some(runInProgress) ? POLL_ACTIVE_MS : POLL_IDLE_MS;
+}
+
+// Keeps a page up to date by calling `load` over and over. `load` returns how many milliseconds to wait before the next
+// call, or null to stop. Nothing is requested while the tab is hidden; coming back to it refreshes straight away.
+//
+// Call `refresh` to start it, and again whenever the page should reload right now or polling should start back up.
+function createPoller(load) {
+  let timer = null;
+  let loading = false;
+  let refreshQueued = false;
+  let stopped = true;
+
+  async function refresh() {
+    clearTimeout(timer);
+    stopped = false;
+
+    // Two loads at once could finish out of order and leave the older data on screen, so wait our turn.
+    if (loading) {
+      refreshQueued = true;
+      return;
+    }
+
+    loading = true;
+    let delay;
+    do {
+      refreshQueued = false;
+      try {
+        delay = await load();
+      } catch (error) {
+        console.error("Error refreshing page:", error);
+        delay = POLL_IDLE_MS;
+      }
+    } while (refreshQueued);
+    loading = false;
+
+    stopped = delay === null;
+    if (!stopped && !document.hidden) {
+      timer = setTimeout(refresh, delay);
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      clearTimeout(timer);
+    } else if (!stopped) {
+      refresh();
+    }
+  });
+
+  return { refresh };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
