@@ -1,5 +1,5 @@
 use crate::conf::ConfigType;
-use crate::{containers, object_store, secret_store};
+use crate::{containers, images, object_store, secret_store};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -14,6 +14,7 @@ pub struct ApiConfig {
     pub docker: containers::Config,
     pub extensions: Extensions,
     pub external_events: ExternalEvents,
+    pub images: images::Config,
     pub server: Server,
     pub object_store: ObjectStore,
     pub secret_store: SecretStore,

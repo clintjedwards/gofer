@@ -69,6 +69,7 @@ similar = "3.2"
 termion = "4.0"
 tar = "0.4.46"
 flate2 = "1.1.10"
+zstd = { version = "0.14.5", default-features = false }
 
 [dev-dependencies]
 figment = { version = "0.10", features = ["test"] }

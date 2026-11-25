@@ -1367,6 +1367,125 @@
         }
       }
     },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/missing": {
+      "post": {
+        "tags": [
+          "Configs"
+        ],
+        "summary": "List which image blobs need to be uploaded.",
+        "description": "Given the digests of the blobs that make up a pipeline's images, returns the ones Gofer doesn't have yet. A pipeline can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too.",
+        "operationId": "list_missing_image_blobs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListMissingImageBlobsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMissingImageBlobsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/{digest}": {
+      "put": {
+        "tags": [
+          "Configs"
+        ],
+        "summary": "Upload an image blob.",
+        "description": "Uploads one part of an image: its manifest, its config, or one of its layers. The contents must match the digest in the path. Uploading the same blob again is fine.",
+        "operationId": "put_image_blob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "digest",
+            "description": "The sha256 digest of the blob's contents. Ex: `sha256:2cf24dba5fb0...`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace_id",
+            "description": "The unique identifier for the target namespace.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pipeline_id",
+            "description": "The unique identifier for the target pipeline.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/objects": {
       "get": {
         "tags": [
@@ -5438,6 +5557,36 @@
         },
         "required": [
           "secrets"
+        ]
+      },
+      "ListMissingImageBlobsRequest": {
+        "type": "object",
+        "properties": {
+          "digests": {
+            "description": "The digests of every blob the images are made of.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "digests"
+        ]
+      },
+      "ListMissingImageBlobsResponse": {
+        "type": "object",
+        "properties": {
+          "digests": {
+            "description": "The digests of the blobs that still need to be uploaded.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "digests"
         ]
       },
       "ListNamespacesResponse": {

@@ -13,7 +13,12 @@ use sqlx::{
     sqlite::SqlitePoolOptions,
 };
 use std::str::FromStr;
-use std::{fs::File, io, ops::Deref, path::Path};
+use std::{
+    fs::{File, create_dir_all},
+    io,
+    ops::Deref,
+    path::Path,
+};
 use tracing::{error, instrument};
 
 const NONCE_SIZE: usize = 12; // Standard nonce size for AES-GCM
@@ -62,8 +67,12 @@ fn map_sqlx_error(e: sqlx::Error, query: impl AsRef<str>) -> SecretStoreError {
     }
 }
 
-// Create file if not exists.
+// Create file, and the directory it's in, if not exists.
 fn touch_file(path: &Path) -> io::Result<()> {
+    if let Some(dir) = path.parent() {
+        create_dir_all(dir)?;
+    }
+
     if !path.exists() {
         File::create(path)?;
     }
@@ -83,7 +92,8 @@ impl Engine {
             );
         }
 
-        touch_file(Path::new(&config.path)).unwrap();
+        touch_file(Path::new(&config.path))
+            .map_err(|e| anyhow!("Could not create database file at '{}'; {e}", config.path))?;
 
         // We create two different pools of connections. The read pool has many connections and is high concurrency.
         // The write pool is essentially a single connection in which only one write can be made at a time.

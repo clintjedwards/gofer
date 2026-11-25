@@ -19,6 +19,7 @@ pub mod deployments;
 pub mod events;
 pub mod extension_registrations;
 pub mod extension_subscriptions;
+pub mod image_blobs;
 pub mod namespaces;
 pub mod object_store_extension_keys;
 pub mod object_store_pipeline_keys;
@@ -41,7 +42,12 @@ use sqlx::{
 };
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{fs::File, io, ops::Deref, path::Path};
+use std::{
+    fs::{File, create_dir_all},
+    io,
+    ops::Deref,
+    path::Path,
+};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum StorageError {
@@ -110,8 +116,12 @@ pub struct Db {
     read_pool: Pool<Sqlite>,
 }
 
-// Create file if not exists.
+// Create file, and the directory it's in, if not exists.
 fn touch_file(path: &Path) -> io::Result<()> {
+    if let Some(dir) = path.parent() {
+        create_dir_all(dir)?;
+    }
+
     if !path.exists() {
         File::create(path)?;
     }
@@ -224,6 +234,16 @@ pub(crate) mod tests {
         fn deref(&self) -> &Self::Target {
             &self.db
         }
+    }
+
+    #[tokio::test]
+    async fn creates_missing_directories() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("some/dir/gofer.db");
+
+        Db::new(&path.to_string_lossy()).await.unwrap();
+
+        assert!(path.exists());
     }
 
     impl Drop for TestHarness {

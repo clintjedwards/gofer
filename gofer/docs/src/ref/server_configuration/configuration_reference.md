@@ -28,7 +28,7 @@ Keys that end in `_seconds` take a whole number of seconds, and keys that end in
 | log_level                           | string | info     | The log level for the service and its extensions.                                                                                                                                                                     |
 | pipeline_run_concurrency_limit      | int    | 200      | How many runs a single pipeline can have in progress at once. Pipelines can set a lower limit with `Parallelism`, but not a higher one. 0 is unlimited. |
 | task_execution_log_retention_runs   | int    | 50       | How many of each pipeline's runs keep their task logs. Once a pipeline has more runs than this, the logs of its oldest run are deleted. |
-| task_execution_logs_dir             | string | /tmp     | The directory task execution logs are stored in. Each one is a text file on the server.                                                                                                                              |
+| task_execution_logs_dir             | string | /tmp     | The directory task execution logs are stored in. Each one is a text file on the server. Gofer creates it if it doesn't exist.                                                                                        |
 | task_execution_max_timeout_seconds  | int    | 86400    | The longest, in seconds, a task's container can run before Gofer stops it and fails the task (24 hours by default). Applies to tasks that don't set their own timeout and caps the ones that do. 0 is unlimited. |
 | task_execution_stop_timeout_seconds | int    | 300      | How long, in seconds, Gofer waits for a task's container to stop gracefully before killing it. 0 kills containers immediately.                                                                                        |
 
@@ -52,7 +52,7 @@ allow_task_attach = true
 | ----------------- | ------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | bind_address      | string | 0.0.0.0:8080     | The address and port the API and web UI listen on.                                                                                                                                                             |
 | extension_address | string | 172.17.0.1:8080  | The address extension and task containers use to reach Gofer. Containers usually sit on a different network than your users, like the docker bridge network, so they need their own address. The default is the docker bridge's host address. Tasks get it as `GOFER_API_BASE_URL` and extensions as `GOFER_EXTENSION_SYSTEM_GOFER_HOST`, with `http://` or `https://` added to match `use_tls` if you leave the scheme off. With `use_tls` on, containers check Gofer's certificate against this address, so use a name your certificate covers, like `https://gofer.internal:8080`, rather than the bridge IP. |
-| storage_path      | string | /tmp/gofer.db    | Where Gofer keeps its sqlite database.                                                                                                                                                                         |
+| storage_path      | string | /tmp/gofer.db    | Where Gofer keeps its sqlite database. Gofer creates it if it doesn't exist.                                                                                                                                   |
 | use_tls           | bool   | false            | Serve the API over TLS. Requires `tls_cert_path` and `tls_key_path`; see `development.use_included_certs` for testing without them.                                                                                        |
 | tls_cert_path     | string |                  | Path to the TLS certificate.                                                                                                                                                                                   |
 | tls_key_path      | string |                  | Path to the TLS certificate's key.                                                                                                                                                                             |
@@ -102,6 +102,19 @@ on its own port so you can expose it to services like Github without exposing th
 enable = true
 bind_address = "0.0.0.0:8081"
 use_tls = false
+```
+
+## Images
+
+The images that tasks run as.
+
+| name | type   | default           | description                                                                              |
+| ---- | ------ | ----------------- | ---------------------------------------------------------------------------------------- |
+| path | string | /tmp/gofer_images | The directory that image files are stored in. Gofer creates it if it doesn't exist.       |
+
+```toml
+[images]
+path = "/tmp/gofer_images"
 ```
 
 ## Object Store

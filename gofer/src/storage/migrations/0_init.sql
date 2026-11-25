@@ -113,6 +113,19 @@ CREATE TABLE IF NOT EXISTS tasks (
     PRIMARY KEY (namespace_id, pipeline_id, pipeline_config_version, task_id)
 ) STRICT;
 
+-- The image blobs each pipeline has uploaded. A new pipeline's blobs are uploaded before the pipeline exists, so
+-- there's no foreign key to it.
+CREATE TABLE IF NOT EXISTS image_blobs (
+    namespace_id TEXT    NOT NULL,
+    pipeline_id  TEXT    NOT NULL,
+    digest       TEXT    NOT NULL,
+    diff_id      TEXT    NOT NULL,
+    size         INTEGER NOT NULL,
+    last_seen    TEXT    NOT NULL,
+    FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE,
+    PRIMARY KEY (namespace_id, pipeline_id, digest)
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS extension_registrations (
     extension_id     TEXT NOT NULL,
     image            TEXT NOT NULL,

@@ -40,6 +40,9 @@ prune = true
 prune_interval_seconds = 604800 # 1 week
 timeout_seconds = 300           # Should be the same or more than task_execution_stop_timeout_seconds
 
+[images]
+path = "/tmp/gofer_images"
+
 [object_store]
 engine = "filesystem"
 pipeline_object_limit = 50

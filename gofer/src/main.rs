@@ -2,6 +2,7 @@ mod api;
 mod cli;
 mod conf;
 mod containers;
+mod images;
 mod object_store;
 mod secret_store;
 mod storage;

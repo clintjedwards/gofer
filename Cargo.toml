@@ -21,3 +21,11 @@ resolver = "3"
 # Disabling debug info speeds up builds a bunch,
 # and we don't rely on it for debugging that much.
 debug = 0
+
+# Image layers get hashed and decompressed, which is over ten times slower without optimizations.
+[profile.dev.package]
+crc32fast = { opt-level = 3 }
+flate2 = { opt-level = 3 }
+miniz_oxide = { opt-level = 3 }
+sha2 = { opt-level = 3 }
+zstd-sys = { opt-level = 3 }

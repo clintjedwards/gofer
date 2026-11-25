@@ -75,6 +75,9 @@ use_tls = true
 tls_cert_path = "/etc/gofer/tls/cert.pem"
 tls_key_path = "/etc/gofer/tls/key.pem"
 
+[images]
+path = "/var/lib/gofer/images"
+
 [object_store.filesystem]
 path = "/var/lib/gofer/objects"
 
@@ -87,8 +90,8 @@ encryption_key = "<your key here>"
 If you don't use external events (for example the Github extension), set `external_events.enable = false` instead
 of configuring TLS for it.
 
-Gofer creates the object store directory itself, but not the others, so create `/var/lib/gofer` and
-`/var/lib/gofer/logs` and make sure the user Gofer runs as can write to them.
+Gofer creates any of these files and directories that don't exist. If it doesn't run as root it can't create
+`/var/lib/gofer` though, so make that one yourself and give it to the user Gofer runs as.
 
 ### 2) Running the binary
 

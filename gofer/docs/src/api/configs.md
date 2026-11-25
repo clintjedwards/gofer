@@ -9,6 +9,8 @@ Pipeline configs are versioned configurations for a particular pipeline.
 | <span class="api-method api-method-get">GET</span> | [`/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/configs/{version}`](#get-a-specific-version-of-a-pipeline-configuration) |
 | <span class="api-method api-method-post">POST</span> | [`/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/configs/{version}`](#deploy-pipeline-config) |
 | <span class="api-method api-method-delete">DELETE</span> | [`/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/configs/{version}`](#delete-pipeline-config-by-version) |
+| <span class="api-method api-method-post">POST</span> | [`/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/missing`](#list-which-image-blobs-need-to-be-uploaded) |
+| <span class="api-method api-method-put">PUT</span> | [`/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/{digest}`](#upload-an-image-blob) |
 
 ---
 
@@ -139,6 +141,59 @@ A version of 0 indicates to return the latest pipeline config.
 | Status | Body | Description |
 | ------ | ---- | ----------- |
 | `204` | none | successful deletion |
+| `4XX` | [Error](./schemas.md#error) | Error |
+| `5XX` | [Error](./schemas.md#error) | Error |
+
+
+---
+
+## List which image blobs need to be uploaded
+
+<div class="api-endpoint"><span class="api-method api-method-post">POST</span><code>/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/missing</code></div>
+
+Given the digests of the blobs that make up a pipeline's images, returns the ones Gofer doesn't have yet. A pipeline can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `namespace_id` | string | yes | The unique identifier for the target namespace. |
+| `pipeline_id` | string | yes | The unique identifier for the target pipeline. |
+
+**Request body** (required): [ListMissingImageBlobsRequest](./schemas.md#listmissingimageblobsrequest)
+
+**Responses**
+
+| Status | Body | Description |
+| ------ | ---- | ----------- |
+| `200` | [ListMissingImageBlobsResponse](./schemas.md#listmissingimageblobsresponse) | successful operation |
+| `4XX` | [Error](./schemas.md#error) | Error |
+| `5XX` | [Error](./schemas.md#error) | Error |
+
+
+---
+
+## Upload an image blob
+
+<div class="api-endpoint"><span class="api-method api-method-put">PUT</span><code>/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/{digest}</code></div>
+
+Uploads one part of an image: its manifest, its config, or one of its layers. The contents must match the digest in the path. Uploading the same blob again is fine.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `digest` | string | yes | The sha256 digest of the blob's contents. Ex: `sha256:2cf24dba5fb0...` |
+| `namespace_id` | string | yes | The unique identifier for the target namespace. |
+| `pipeline_id` | string | yes | The unique identifier for the target pipeline. |
+
+**Request body** (required): raw bytes (`application/octet-stream`)
+
+**Responses**
+
+| Status | Body | Description |
+| ------ | ---- | ----------- |
+| `204` | none | resource updated |
 | `4XX` | [Error](./schemas.md#error) | Error |
 | `5XX` | [Error](./schemas.md#error) | Error |
 

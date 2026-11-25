@@ -428,6 +428,18 @@ One of the variants below. Variants without a payload are sent as a plain string
 | ----- | ---- | -------- | ----------- |
 | `secrets` | array of [Secret](#secret) | yes | A list of all global secrets. |
 
+## ListMissingImageBlobsRequest
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `digests` | array of string | yes | The digests of every blob the images are made of. |
+
+## ListMissingImageBlobsResponse
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `digests` | array of string | yes | The digests of the blobs that still need to be uploaded. |
+
 ## ListNamespacesResponse
 
 | Field | Type | Required | Description |

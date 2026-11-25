@@ -5,6 +5,7 @@ mod event_utils;
 mod events;
 pub mod extensions;
 mod external;
+mod image_blobs;
 mod namespaces;
 mod objects;
 mod orchestrator;
@@ -20,7 +21,7 @@ pub mod task_executions;
 mod tasks;
 mod tokens;
 
-use crate::{conf, containers, object_store, secret_store, storage};
+use crate::{conf, containers, images, object_store, secret_store, storage};
 use anyhow::{Context, Result, anyhow, bail};
 use dashmap::DashMap;
 use dropshot::{
@@ -161,6 +162,9 @@ pub struct ApiState {
     /// connection to Docker.
     containers: containers::Containers,
 
+    /// `Images` is where Gofer keeps the images that tasks run as.
+    images: images::Images,
+
     /// `Orchestrator` is responsible for launching, monitoring, and recovery of runs that are started.
     orchestrator: orchestrator::Orchestrator,
 
@@ -192,6 +196,7 @@ impl ApiState {
         containers: containers::Containers,
         event_bus: event_utils::EventBus,
         ignore_pipeline_run_events: atomic::AtomicBool,
+        images: images::Images,
         object_store: Box<dyn object_store::ObjectStore>,
         orchestrator: orchestrator::Orchestrator,
         secret_store: Box<dyn secret_store::SecretStore>,
@@ -204,6 +209,7 @@ impl ApiState {
             event_bus,
             extensions: DashMap::new(),
             ignore_pipeline_run_events,
+            images,
             object_store,
             orchestrator,
             secret_store,
@@ -312,6 +318,9 @@ async fn init_api(
     let containers = containers::Containers::new(&conf.docker)
         .await
         .context("Could not initialize containers")?;
+    let images = images::Images::new(&conf.images)
+        .await
+        .context("Could not initialize image store")?;
     let object_store = object_store::new(&conf.object_store)
         .await
         .context("Could not initialize object store")?;
@@ -350,6 +359,7 @@ async fn init_api(
         containers,
         event_bus,
         ignore_pipeline_runs,
+        images,
         object_store,
         orchestrator,
         secret_store,
@@ -357,6 +367,15 @@ async fn init_api(
     ));
 
     // Then we perform additional housekeeping.
+
+    tokio::fs::create_dir_all(&conf.api.task_execution_logs_dir)
+        .await
+        .with_context(|| {
+            format!(
+                "Could not create task execution logs directory at '{}'",
+                conf.api.task_execution_logs_dir
+            )
+        })?;
 
     namespaces::create_default_namespace(api_state.clone())
         .await
@@ -591,6 +610,12 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
     api.register(pipeline_configs::get_config).unwrap();
     api.register(pipeline_configs::deploy_config).unwrap();
     api.register(pipeline_configs::delete_config).unwrap();
+
+    /* /api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/missing */
+    api.register(image_blobs::list_missing_image_blobs).unwrap();
+
+    /* /api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/{digest} */
+    api.register(image_blobs::put_image_blob).unwrap();
 
     /* /api/namespaces/{namespace_id}/pipelines/{pipeline_id}/deployments */
     api.register(deployments::list_deployments).unwrap();

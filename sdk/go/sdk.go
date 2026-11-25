@@ -1130,6 +1130,18 @@ type ListGlobalSecretsResponse struct {
 	Secrets []Secret `json:"secrets"`
 }
 
+// ListMissingImageBlobsRequest defines model for ListMissingImageBlobsRequest.
+type ListMissingImageBlobsRequest struct {
+	// Digests The digests of every blob the images are made of.
+	Digests []string `json:"digests"`
+}
+
+// ListMissingImageBlobsResponse defines model for ListMissingImageBlobsResponse.
+type ListMissingImageBlobsResponse struct {
+	// Digests The digests of the blobs that still need to be uploaded.
+	Digests []string `json:"digests"`
+}
+
 // ListNamespacesResponse defines model for ListNamespacesResponse.
 type ListNamespacesResponse struct {
 	// Namespaces A list of all namespaces.
@@ -2261,6 +2273,9 @@ type UpdatePipelineJSONRequestBody = UpdatePipelineRequest
 
 // RegisterConfigJSONRequestBody defines body for RegisterConfig for application/json ContentType.
 type RegisterConfigJSONRequestBody = RegisterPipelineConfigRequest
+
+// ListMissingImageBlobsJSONRequestBody defines body for ListMissingImageBlobs for application/json ContentType.
+type ListMissingImageBlobsJSONRequestBody = ListMissingImageBlobsRequest
 
 // StartRunJSONRequestBody defines body for StartRun for application/json ContentType.
 type StartRunJSONRequestBody = StartRunRequest
@@ -5182,6 +5197,14 @@ type ClientInterface interface {
 	// GetDeployment request
 	GetDeployment(ctx context.Context, namespaceId string, pipelineId string, deploymentId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListMissingImageBlobsWithBody request with any body
+	ListMissingImageBlobsWithBody(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ListMissingImageBlobs(ctx context.Context, namespaceId string, pipelineId string, body ListMissingImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutImageBlobWithBody request with any body
+	PutImageBlobWithBody(ctx context.Context, namespaceId string, pipelineId string, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListPipelineObjects request
 	ListPipelineObjects(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5783,6 +5806,42 @@ func (c *Client) ListDeployments(ctx context.Context, namespaceId string, pipeli
 
 func (c *Client) GetDeployment(ctx context.Context, namespaceId string, pipelineId string, deploymentId uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDeploymentRequest(c.Server, namespaceId, pipelineId, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListMissingImageBlobsWithBody(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMissingImageBlobsRequestWithBody(c.Server, namespaceId, pipelineId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListMissingImageBlobs(ctx context.Context, namespaceId string, pipelineId string, body ListMissingImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMissingImageBlobsRequest(c.Server, namespaceId, pipelineId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutImageBlobWithBody(ctx context.Context, namespaceId string, pipelineId string, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutImageBlobRequestWithBody(c.Server, namespaceId, pipelineId, digest, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7858,6 +7917,110 @@ func NewGetDeploymentRequest(server string, namespaceId string, pipelineId strin
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListMissingImageBlobsRequest calls the generic ListMissingImageBlobs builder with application/json body
+func NewListMissingImageBlobsRequest(server string, namespaceId string, pipelineId string, body ListMissingImageBlobsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewListMissingImageBlobsRequestWithBody(server, namespaceId, pipelineId, "application/json", bodyReader)
+}
+
+// NewListMissingImageBlobsRequestWithBody generates requests for ListMissingImageBlobs with any type of body
+func NewListMissingImageBlobsRequestWithBody(server string, namespaceId string, pipelineId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/image-blobs/missing", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPutImageBlobRequestWithBody generates requests for PutImageBlob with any type of body
+func NewPutImageBlobRequestWithBody(server string, namespaceId string, pipelineId string, digest string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "digest", runtime.ParamLocationPath, digest)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/image-blobs/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10357,6 +10520,14 @@ type ClientWithResponsesInterface interface {
 	// GetDeploymentWithResponse request
 	GetDeploymentWithResponse(ctx context.Context, namespaceId string, pipelineId string, deploymentId uint64, reqEditors ...RequestEditorFn) (*GetDeploymentResp, error)
 
+	// ListMissingImageBlobsWithBodyWithResponse request with any body
+	ListMissingImageBlobsWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListMissingImageBlobsResp, error)
+
+	ListMissingImageBlobsWithResponse(ctx context.Context, namespaceId string, pipelineId string, body ListMissingImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListMissingImageBlobsResp, error)
+
+	// PutImageBlobWithBodyWithResponse request with any body
+	PutImageBlobWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutImageBlobResp, error)
+
 	// ListPipelineObjectsWithResponse request
 	ListPipelineObjectsWithResponse(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*ListPipelineObjectsResp, error)
 
@@ -11276,6 +11447,53 @@ func (r GetDeploymentResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetDeploymentResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListMissingImageBlobsResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListMissingImageBlobsResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMissingImageBlobsResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMissingImageBlobsResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutImageBlobResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PutImageBlobResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutImageBlobResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12744,6 +12962,32 @@ func (c *ClientWithResponses) GetDeploymentWithResponse(ctx context.Context, nam
 		return nil, err
 	}
 	return ParseGetDeploymentResp(rsp)
+}
+
+// ListMissingImageBlobsWithBodyWithResponse request with arbitrary body returning *ListMissingImageBlobsResp
+func (c *ClientWithResponses) ListMissingImageBlobsWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListMissingImageBlobsResp, error) {
+	rsp, err := c.ListMissingImageBlobsWithBody(ctx, namespaceId, pipelineId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMissingImageBlobsResp(rsp)
+}
+
+func (c *ClientWithResponses) ListMissingImageBlobsWithResponse(ctx context.Context, namespaceId string, pipelineId string, body ListMissingImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListMissingImageBlobsResp, error) {
+	rsp, err := c.ListMissingImageBlobs(ctx, namespaceId, pipelineId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMissingImageBlobsResp(rsp)
+}
+
+// PutImageBlobWithBodyWithResponse request with arbitrary body returning *PutImageBlobResp
+func (c *ClientWithResponses) PutImageBlobWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutImageBlobResp, error) {
+	rsp, err := c.PutImageBlobWithBody(ctx, namespaceId, pipelineId, digest, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutImageBlobResp(rsp)
 }
 
 // ListPipelineObjectsWithResponse request returning *ListPipelineObjectsResp
@@ -14457,6 +14701,79 @@ func ParseGetDeploymentResp(rsp *http.Response) (*GetDeploymentResp, error) {
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMissingImageBlobsResp parses an HTTP response from a ListMissingImageBlobsWithResponse call
+func ParseListMissingImageBlobsResp(rsp *http.Response) (*ListMissingImageBlobsResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMissingImageBlobsResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListMissingImageBlobsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutImageBlobResp parses an HTTP response from a PutImageBlobWithResponse call
+func ParsePutImageBlobResp(rsp *http.Response) (*PutImageBlobResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutImageBlobResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
