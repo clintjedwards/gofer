@@ -1,17 +1,168 @@
-use super::{
-    AttachContainerRequest, AttachContainerResponse, ContainerState, GetLogsRequest,
-    GetStateRequest, GetStateResponse, Log, SchedulerError, StartContainerRequest,
-    StartContainerResponse, StopContainerRequest,
+//! Starts, stops, and watches the Docker containers that tasks and extensions run in.
+
+use crate::api::task_executions::{
+    Phase, TaskExecution, TimelineEntry, task_execution_container_id,
 };
-use crate::api::task_executions::{Phase, TimelineEntry};
-use async_trait::async_trait;
+use anyhow::Context;
 use bollard::exec::{CreateExecOptions, StartExecOptions};
 use futures::Stream;
 use futures::stream::TryStreamExt;
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::pin::Pin;
+use std::{collections::HashMap, pin::Pin};
+use strum::{Display, EnumString};
+use tokio::io::AsyncWrite;
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, error, info, instrument, trace};
+
+/// Represents different container failure possibilities.
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum ContainerError {
+    /// Failed to communicate with Docker due to network error or other.
+    #[error("could not connect to Docker; {0}")]
+    Connection(String),
+
+    /// Container requested by name could not be found.
+    #[error("container not found; {0}")]
+    NoSuchContainer(String),
+
+    /// Image requested by name could not be found.
+    #[error("image not found; {0}")]
+    NoSuchImage(String),
+
+    /// An expected and unknown error has occurred.
+    #[error("unexpected Docker error occurred; {0}")]
+    Unknown(String),
+}
+
+#[derive(Debug, Clone, Display, PartialEq, EnumString, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ContainerState {
+    Unknown,
+    Running,
+    Paused,
+    Restarting,
+    Exited,
+}
+
+/// Private repositories sometimes require authentication.
+pub struct RegistryAuth {
+    pub user: String,
+    pub pass: String,
+}
+
+// By the time it gets here the password is the real one, so keep it out of anything that debug prints a request.
+impl std::fmt::Debug for RegistryAuth {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RegistryAuth")
+            .field("user", &self.user)
+            .field("pass", &crate::api::REDACTED)
+            .finish()
+    }
+}
+
+impl From<crate::api::RegistryAuth> for RegistryAuth {
+    fn from(ra: crate::api::RegistryAuth) -> Self {
+        Self {
+            user: ra.user,
+            pass: ra.pass,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct StartContainerRequest {
+    /// A unique identifier to identify the container with.
+    pub id: String,
+
+    /// The docker image repository and docker image name; tag can be included.
+    pub image: String,
+
+    /// Environment variables to be passed to the container.
+    pub variables: HashMap<String, String>,
+
+    /// Registry authentication details.
+    pub registry_auth: Option<RegistryAuth>,
+
+    /// Attempt to pull the container from the upstream repository even if it exists already locally.
+    /// This is useful if your containers don't use proper tagging or versioning.
+    pub always_pull: bool,
+
+    /// Only needed by extensions; spin the container up with appropriate networking settings such that Gofer can
+    /// connect to it.
+    pub networking: Option<u16>,
+
+    /// Replaces container's entrypoint with a custom one.
+    pub entrypoint: Option<Vec<String>>,
+
+    /// Replaces container's cmd instruction with a custom one.
+    pub command: Option<Vec<String>>,
+
+    /// Where to report the phases of starting the container (pulling the image, starting the container) as they
+    /// begin. Lets task executions show where their time went before the container was running. Skips any phase
+    /// that doesn't happen, like pulling an image that's already present.
+    pub timeline: Option<UnboundedSender<TimelineEntry>>,
+}
+
+#[derive(Debug)]
+pub struct StartContainerResponse {
+    /// An endpoint that only is returned for containers with networking set to on.
+    pub url: Option<String>,
+
+    /// The exact image the container was started with. Usually the repo digest, or the image ID for local images.
+    pub image_digest: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct StopContainerRequest {
+    /// A unique identifier to identify the container with.
+    pub id: String,
+
+    /// The total time Docker should wait for a graceful stop before issuing a SIGKILL in seconds.
+    /// 0 means send SIGKILL immediately.
+    pub timeout: i64,
+}
+
+#[derive(Debug)]
+pub struct GetStateRequest {
+    /// Unique identifier for container to stop.
+    pub id: String,
+}
+
+#[derive(Debug)]
+pub struct GetStateResponse {
+    /// In the event that the container is in a "complete" state; the exit code of that container.
+    pub exit_code: Option<u8>,
+
+    /// The current state of the container, state referencing how complete the container process of running is.
+    pub state: ContainerState,
+}
+
+#[derive(Debug)]
+pub struct GetLogsRequest {
+    /// Unique identifier for container to get logs of.
+    pub id: String,
+}
+
+pub struct AttachContainerRequest {
+    pub id: String,
+    pub command: Vec<String>,
+}
+
+pub struct AttachContainerResponse {
+    pub output: Pin<Box<dyn Stream<Item = Result<Log, ContainerError>> + Send>>,
+    pub input: Pin<Box<dyn AsyncWrite + Send>>,
+}
+
+/// Represents a single log line/entry from a particular container.
+#[derive(Debug)]
+pub enum Log {
+    Unknown,
+    Stdout(Vec<u8>),
+    Stderr(Vec<u8>),
+    #[allow(dead_code)]
+    Stdin(Vec<u8>),
+    Console(Vec<u8>),
+}
 
 fn format_env_var(key: &str, value: &str) -> String {
     format!("{key}={value}")
@@ -26,16 +177,16 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone)]
-pub struct Scheduler {
+pub struct Containers {
     client: bollard::Docker,
 }
 
-impl Scheduler {
-    #[instrument(fields(origin = "scheduler::docker"))]
-    pub async fn new(config: &Config) -> Result<Self, SchedulerError> {
+impl Containers {
+    #[instrument(fields(origin = "containers"))]
+    pub async fn new(config: &Config) -> Result<Self, ContainerError> {
         let config = config.clone();
         let client = bollard::Docker::connect_with_socket_defaults().map_err(|e| {
-            SchedulerError::Connection(format!(
+            ContainerError::Connection(format!(
                 "{}; Make sure the Docker daemon is installed and running.",
                 e
             ))
@@ -45,7 +196,7 @@ impl Scheduler {
 
         // Check that we can actually get a connection.
         let version = client.version().await.map_err(|e| {
-            SchedulerError::Connection(format!(
+            ContainerError::Connection(format!(
                 "{}; Make sure the Docker daemon is installed and running.",
                 e
             ))
@@ -63,44 +214,17 @@ impl Scheduler {
 
         debug!(
             version = version.version.unwrap_or_default(),
-            "Local docker scheduler successfully connected"
+            "Successfully connected to Docker"
         );
 
         Ok(Self { client })
     }
-}
 
-// We periodically need to clean up docker assets so we don't run out of disk space.
-// We perform it very infrequently though, in order to give operators time to diagnose
-// any potential issues they might be having with a particular container.
-#[instrument(fields(origin = "scheduler::docker"))]
-async fn prune_containers(client: bollard::Docker, interval: u64) {
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(interval)).await;
-        debug!(interval = interval, "Started docker pruning");
-
-        let result = match client.prune_containers(None).await {
-            Ok(result) => result,
-            Err(e) => {
-                error!(err = ?e, "could not successfully prune containers");
-                continue;
-            }
-        };
-
-        info!(
-            containers_deleted = ?result.containers_deleted,
-            space_reclaimed = result.space_reclaimed,
-            "Pruned containers"
-        );
-    }
-}
-
-#[async_trait]
-impl super::Scheduler for Scheduler {
-    async fn start_container(
+    /// Start a container based on details passed. Pulls the container's image first if it needs to.
+    pub async fn start_container(
         &self,
         request: StartContainerRequest,
-    ) -> Result<StartContainerResponse, SchedulerError> {
+    ) -> Result<StartContainerResponse, ContainerError> {
         let credentials =
             request
                 .registry_auth
@@ -130,7 +254,7 @@ impl super::Scheduler for Scheduler {
                 )
                 .try_collect::<Vec<_>>()
                 .await
-                .map_err(|e| SchedulerError::NoSuchImage(format!("{:?}", e)))?;
+                .map_err(|e| ContainerError::NoSuchImage(format!("{:?}", e)))?;
         } else {
             let mut filters = HashMap::new();
             filters.insert("reference".to_string(), vec![request.image.clone()]);
@@ -144,7 +268,7 @@ impl super::Scheduler for Scheduler {
                 }))
                 .await
                 .map_err(|e| {
-                    SchedulerError::Unknown(format!("could not list local images; {:?}", e))
+                    ContainerError::Unknown(format!("could not list local images; {:?}", e))
                 })?;
 
             if images.is_empty() {
@@ -160,7 +284,7 @@ impl super::Scheduler for Scheduler {
                     )
                     .try_collect::<Vec<_>>()
                     .await
-                    .map_err(|e| SchedulerError::NoSuchImage(format!("{:?}", e)))?;
+                    .map_err(|e| ContainerError::NoSuchImage(format!("{:?}", e)))?;
             }
         }
 
@@ -229,8 +353,7 @@ impl super::Scheduler for Scheduler {
             })
         }
 
-        let created_container = self
-            .client
+        self.client
             .create_container(
                 Some(bollard::query_parameters::CreateContainerOptions {
                     name: Some(request.id.clone()),
@@ -239,18 +362,18 @@ impl super::Scheduler for Scheduler {
                 container_config,
             )
             .await
-            .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
+            .map_err(|e| ContainerError::Unknown(e.to_string()))?;
 
         self.client
             .start_container(&request.id, None)
             .await
-            .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
+            .map_err(|e| ContainerError::Unknown(e.to_string()))?;
 
         let container_info = self
             .client
             .inspect_container(&request.id, None)
             .await
-            .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
+            .map_err(|e| ContainerError::Unknown(e.to_string()))?;
 
         // A tag like 'latest' can point at a different image from one run to the next, so we record the exact image
         // the container started with. Locally built images have no repo digest, so we fall back to the image ID.
@@ -269,18 +392,17 @@ impl super::Scheduler for Scheduler {
         };
 
         let mut response = StartContainerResponse {
-            scheduler_id: Some(created_container.id),
             url: None,
             image_digest,
         };
 
         if let Some(port) = request.networking {
             let network_settings = container_info.network_settings.ok_or_else(|| {
-                SchedulerError::Unknown("could not get networking settings".to_string())
+                ContainerError::Unknown("could not get networking settings".to_string())
             })?;
 
             let ports = network_settings.ports.ok_or_else(|| {
-                SchedulerError::Unknown(
+                ContainerError::Unknown(
                     "could not get networking settings (ports struct)".to_string(),
                 )
             })?;
@@ -289,7 +411,7 @@ impl super::Scheduler for Scheduler {
             let ports = match ports {
                 Some(ports) => ports,
                 None => {
-                    return Err(SchedulerError::Unknown(format!(
+                    return Err(ContainerError::Unknown(format!(
                         "could not get network settings (ports binding); {:#?}",
                         ports
                     )));
@@ -298,7 +420,7 @@ impl super::Scheduler for Scheduler {
             let ports = match ports {
                 Some(ports) => ports,
                 None => {
-                    return Err(SchedulerError::Unknown(format!(
+                    return Err(ContainerError::Unknown(format!(
                         "could not get network settings (ports binding); {:#?}",
                         ports
                     )));
@@ -306,7 +428,7 @@ impl super::Scheduler for Scheduler {
             };
 
             let port = ports.first().ok_or_else(|| {
-                SchedulerError::Unknown("could not get networking settings (port)".to_string())
+                ContainerError::Unknown("could not get networking settings (port)".to_string())
             })?;
 
             response.url = Some(format!(
@@ -319,7 +441,8 @@ impl super::Scheduler for Scheduler {
         Ok(response)
     }
 
-    async fn stop_container(&self, req: StopContainerRequest) -> Result<(), SchedulerError> {
+    /// Kill a container with an associated timeout if the container does not respond to graceful shutdown.
+    pub async fn stop_container(&self, req: StopContainerRequest) -> Result<(), ContainerError> {
         self.client
             .stop_container(
                 &req.id,
@@ -329,15 +452,39 @@ impl super::Scheduler for Scheduler {
                 }),
             )
             .await
-            .map_err(|e| SchedulerError::Unknown(e.to_string()))?;
+            .map_err(|e| ContainerError::Unknown(e.to_string()))?;
 
         Ok(())
     }
 
-    fn get_logs(
+    pub async fn cancel_task_execution(
+        &self,
+        execution: TaskExecution,
+        timeout: i64,
+    ) -> anyhow::Result<()> {
+        let container_id = task_execution_container_id(
+            &execution.namespace_id,
+            &execution.pipeline_id,
+            execution.run_id,
+            &execution.task_id,
+        );
+
+        self.stop_container(StopContainerRequest {
+            id: container_id.clone(),
+            timeout,
+        })
+        .await
+        .with_context(|| format!("Could not stop container while attempting to cancel task execution; container_id = {}",
+                container_id))?;
+
+        Ok(())
+    }
+
+    /// Returns a stream of logs from the container.
+    pub fn get_logs(
         &self,
         req: GetLogsRequest,
-    ) -> Pin<Box<dyn Stream<Item = Result<Log, SchedulerError>> + Send>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<Log, ContainerError>> + Send>> {
         let logs_options = bollard::query_parameters::LogsOptions {
             follow: true,
             stdout: true,
@@ -353,45 +500,44 @@ impl super::Scheduler for Scheduler {
                 bollard::container::LogOutput::StdErr { message } => Log::Stderr(message.to_vec()),
                 _ => Log::Unknown,
             })
-            .map_err(|e| SchedulerError::NoSuchContainer(e.to_string()));
+            .map_err(|e| ContainerError::NoSuchContainer(e.to_string()));
 
         Box::pin(logs)
     }
 
-    async fn get_state(&self, req: GetStateRequest) -> Result<GetStateResponse, SchedulerError> {
+    /// Get the current state of container and potential exit code.
+    pub async fn get_state(
+        &self,
+        req: GetStateRequest,
+    ) -> Result<GetStateResponse, ContainerError> {
         let container_info = self
             .client
             .inspect_container(&req.id, None)
             .await
-            .map_err(|e| SchedulerError::NoSuchContainer(e.to_string()))?;
+            .map_err(|e| ContainerError::NoSuchContainer(e.to_string()))?;
 
         match container_info.state.as_ref().unwrap().status.unwrap() {
             bollard::models::ContainerStateStatusEnum::CREATED
-            | bollard::models::ContainerStateStatusEnum::RUNNING => {
-                return Ok(GetStateResponse {
-                    exit_code: None,
-                    state: ContainerState::Running,
-                });
-            }
-            bollard::models::ContainerStateStatusEnum::EXITED => {
-                return Ok(GetStateResponse {
-                    exit_code: Some(container_info.state.unwrap().exit_code.unwrap() as u8),
-                    state: ContainerState::Exited,
-                });
-            }
-            _ => {
-                return Ok(GetStateResponse {
-                    exit_code: None,
-                    state: ContainerState::Unknown,
-                });
-            }
+            | bollard::models::ContainerStateStatusEnum::RUNNING => Ok(GetStateResponse {
+                exit_code: None,
+                state: ContainerState::Running,
+            }),
+            bollard::models::ContainerStateStatusEnum::EXITED => Ok(GetStateResponse {
+                exit_code: Some(container_info.state.unwrap().exit_code.unwrap() as u8),
+                state: ContainerState::Exited,
+            }),
+            _ => Ok(GetStateResponse {
+                exit_code: None,
+                state: ContainerState::Unknown,
+            }),
         }
     }
 
-    async fn attach_container(
+    /// Attach to a running container for debugging or other purposes.
+    pub async fn attach_container(
         &self,
         req: AttachContainerRequest,
-    ) -> Result<AttachContainerResponse, SchedulerError> {
+    ) -> Result<AttachContainerResponse, ContainerError> {
         let create_exec_options = CreateExecOptions::<String> {
             attach_stdin: Some(true),
             attach_stdout: Some(true),
@@ -410,7 +556,7 @@ impl super::Scheduler for Scheduler {
             .create_exec(&req.id, create_exec_options)
             .await
             .map_err(|err| {
-                SchedulerError::Unknown(format!(
+                ContainerError::Unknown(format!(
                     "Could not execute command to container: {:#?}",
                     err
                 ))
@@ -427,7 +573,7 @@ impl super::Scheduler for Scheduler {
             .start_exec(&create_results.id, Some(start_exec_options))
             .await
             .map_err(|err| {
-                SchedulerError::Unknown(format!(
+                ContainerError::Unknown(format!(
                     "Could not attach to exec for container: {:#?}",
                     err
                 ))
@@ -450,16 +596,41 @@ impl super::Scheduler for Scheduler {
                             Log::Console(message.to_vec())
                         }
                     })
-                    .map_err(|e| SchedulerError::Unknown(e.to_string()));
+                    .map_err(|e| ContainerError::Unknown(e.to_string()));
 
                 Ok(AttachContainerResponse {
                     input,
                     output: Box::pin(output),
                 })
             }
-            bollard::exec::StartExecResults::Detached => Err(SchedulerError::Unknown(
+            bollard::exec::StartExecResults::Detached => Err(ContainerError::Unknown(
                 "Could not properly attach to container".into(),
             )),
         }
+    }
+}
+
+// We periodically need to clean up docker assets so we don't run out of disk space.
+// We perform it very infrequently though, in order to give operators time to diagnose
+// any potential issues they might be having with a particular container.
+#[instrument(fields(origin = "containers"))]
+async fn prune_containers(client: bollard::Docker, interval: u64) {
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(interval)).await;
+        debug!(interval = interval, "Started docker pruning");
+
+        let result = match client.prune_containers(None).await {
+            Ok(result) => result,
+            Err(e) => {
+                error!(err = ?e, "could not successfully prune containers");
+                continue;
+            }
+        };
+
+        info!(
+            containers_deleted = ?result.containers_deleted,
+            space_reclaimed = result.space_reclaimed,
+            "Pruned containers"
+        );
     }
 }

@@ -9,9 +9,8 @@ use crate::{
         },
         subscriptions, tokens, websocket_error,
     },
-    http_error,
-    scheduler::{self, GetLogsRequest},
-    storage,
+    containers::{self, GetLogsRequest},
+    http_error, storage,
 };
 use anyhow::{Context, Result, anyhow, bail};
 use dropshot::{
@@ -536,7 +535,7 @@ async fn start_extension(
 
     let ext_container_id = extension_container_id(&registration.extension_id);
 
-    let start_container_request = scheduler::StartContainerRequest {
+    let start_container_request = containers::StartContainerRequest {
         id: ext_container_id.clone(),
         image: registration.image.clone(),
         variables: extension_vars
@@ -546,7 +545,7 @@ async fn start_extension(
         registry_auth: resolved
             .registry_auth
             .clone()
-            .map(|auth| scheduler::RegistryAuth {
+            .map(|auth| containers::RegistryAuth {
                 user: auth.user,
                 pass: auth.pass,
             }),
@@ -558,34 +557,34 @@ async fn start_extension(
     };
 
     let start_response = api_state
-        .scheduler
+        .containers
         .start_container(start_container_request)
         .await
         .map_err(|err| anyhow!("Could not launch extension container; {:#?}", err))?;
 
-    // Wait for scheduler to say that container is running.
+    // Wait for Docker to say that container is running.
     loop {
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         let extension_container_state = api_state
-            .scheduler
-            .get_state(scheduler::GetStateRequest {
+            .containers
+            .get_state(containers::GetStateRequest {
                 id: ext_container_id.clone(),
             })
             .await
             .map_err(|err| {
                 anyhow!(
-                    "Could not verify container '{}' due to error with scheduler; {:#?}",
+                    "Could not verify container '{}' due to error with Docker; {:#?}",
                     ext_container_id.clone(),
                     err
                 )
             })?;
 
         match extension_container_state.state {
-            scheduler::ContainerState::Running => break,
-            scheduler::ContainerState::Unknown
-            | scheduler::ContainerState::Paused
-            | scheduler::ContainerState::Restarting => continue,
-            scheduler::ContainerState::Exited => {
+            containers::ContainerState::Running => break,
+            containers::ContainerState::Unknown
+            | containers::ContainerState::Paused
+            | containers::ContainerState::Restarting => continue,
+            containers::ContainerState::Exited => {
                 error!(
                     extension_container_id = ext_container_id,
                     state = extension_container_state.state.to_string(),
@@ -593,7 +592,7 @@ async fn start_extension(
                     "Could not start extension container"
                 );
                 bail!(
-                    "Could not start extension container '{}'; Scheduler reported failed state; \
+                    "Could not start extension container '{}'; Docker reported failed state; \
                 please check container logs for more info.",
                     ext_container_id
                 );
@@ -693,8 +692,8 @@ async fn stop_extension(api_state: &ApiState, extension_id: &str) {
     let container_id = extension_container_id(extension_id);
 
     if let Err(e) = api_state
-        .scheduler
-        .stop_container(scheduler::StopContainerRequest {
+        .containers
+        .stop_container(containers::StopContainerRequest {
             id: container_id.clone(),
             timeout: api_state.config.extensions.stop_timeout_seconds as i64,
         })
@@ -1001,7 +1000,7 @@ pub async fn get_extension_logs(
     let container_id = extension_container_id(&path.extension_id);
 
     let mut logs_stream = api_state
-        .scheduler
+        .containers
         .get_logs(GetLogsRequest { id: container_id });
 
     // We need to launch two async functions to:
@@ -1035,7 +1034,7 @@ pub async fn get_extension_logs(
                     let mut locked_writer = client_writer_handle.lock().await;
 
                     if let Err(err) = locked_writer
-                        .send(Message::text("Could not read log from scheduler"))
+                        .send(Message::text("Could not read log from container"))
                         .await
                     {
                         error!(error = %err,"Could not process log line");
@@ -1048,7 +1047,7 @@ pub async fn get_extension_logs(
             };
 
             match log {
-                scheduler::Log::Unknown => {
+                containers::Log::Unknown => {
                     let mut locked_writer = client_writer_handle.lock().await;
 
                     if let Err(err) = locked_writer
@@ -1061,7 +1060,7 @@ pub async fn get_extension_logs(
 
                     break;
                 }
-                scheduler::Log::Stdout(log_bytes) => {
+                containers::Log::Stdout(log_bytes) => {
                     let mut locked_writer = client_writer_handle.lock().await;
 
                     if let Err(err) = locked_writer.send(Message::text(String::from_utf8(log_bytes).unwrap())).await {
@@ -1069,7 +1068,7 @@ pub async fn get_extension_logs(
                         return Err("Could not process log line".into());
                     }
                 }
-                scheduler::Log::Stderr(log_bytes) => {
+                containers::Log::Stderr(log_bytes) => {
                     let mut locked_writer = client_writer_handle.lock().await;
 
                     if let Err(err) = locked_writer.send(Message::text(String::from_utf8(log_bytes).unwrap())).await {

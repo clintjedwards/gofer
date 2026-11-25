@@ -11,5 +11,4 @@ Anything!
    your repository, handling secrets, and more.
 5. Keep playing with Gofer locally; `gofer --help` lists every command.
 6. Learn more about Gofer [terminology](../glossary.md).
-7. [Deploy Gofer for real](../ref/server_configuration/index.html). Pair it with your favorite scheduler and start
-   using it to automate your jobs.
+7. [Deploy Gofer for real](../ref/server_configuration/index.html) and start using it to automate your jobs.

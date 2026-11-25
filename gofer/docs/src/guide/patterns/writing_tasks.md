@@ -38,7 +38,7 @@ Gofer keeps every version of your pipeline config and records which version each
 back at what ran. That only holds if the images are pinned too. With `:latest`, the config says the same thing on
 Monday and Friday while the code inside the image changed in between.
 
-The Docker scheduler also only pulls an image when the host doesn't have it yet. So without
+Gofer also only pulls an image when the host doesn't have it yet. So without
 `AlwaysPullNewestImage(true)`, a `:latest` task runs whatever version that host happened to pull last, and two hosts
 can run different code for the same task. Prefer a version tag (`my-org/deployer:1.4.2`) or a digest
 (`my-org/deployer@sha256:...`). Save `AlwaysPullNewestImage` for images where you really do want the newest build every

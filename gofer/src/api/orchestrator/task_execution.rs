@@ -8,7 +8,7 @@ use crate::{
         event_utils::{self, EventListener},
         interpolate_vars, resolve_registry_auth, task_executions, tasks,
     },
-    scheduler, storage,
+    containers, storage,
 };
 
 use anyhow::{Context, Result, bail};
@@ -104,7 +104,7 @@ impl RunShepherd {
         }
 
         // After this point we're sure the task is in a state to be run. So we attempt to
-        // contact the scheduler and start the container.
+        // start its container.
 
         _ = timeline.send(task_executions::TimelineEntry::now(
             task_executions::Phase::Preparing,
@@ -156,13 +156,13 @@ impl RunShepherd {
                     Some(task_executions::StatusReason {
                         reason: task_executions::StatusReasonType::SchedulerError,
                         description: format!(
-                            "Task could not be run due to inability to be scheduled; {}",
+                            "Task could not be run because its container could not be started; {}",
                             e
                         ),
                     }),
                 )
                 .await
-                .context("Could not mark task execution as failed during scheduling of task")?;
+                .context("Could not mark task execution as failed after its container could not be started")?;
 
                 return Ok(());
             }
@@ -421,7 +421,7 @@ impl RunShepherd {
         Ok((env_vars, registry_auth))
     }
 
-    /// Asks the scheduler to start the task execution's container.
+    /// Starts the task execution's container.
     async fn start_container(
         &self,
         task: &tasks::Task,
@@ -429,11 +429,11 @@ impl RunShepherd {
         env_vars: Vec<Variable>,
         registry_auth: Option<RegistryAuth>,
         timeline: &mpsc::UnboundedSender<task_executions::TimelineEntry>,
-    ) -> Result<scheduler::StartContainerResponse> {
+    ) -> Result<containers::StartContainerResponse> {
         let response = self
             .api_state
-            .scheduler
-            .start_container(scheduler::StartContainerRequest {
+            .containers
+            .start_container(containers::StartContainerRequest {
                 id: container_id.to_string(),
                 image: task.image.clone(),
                 variables: env_vars
@@ -582,8 +582,8 @@ impl RunShepherd {
     }
 
     /// Starts a writer that persists a task execution's timeline as phases come in. Phases go through a channel to a
-    /// single writer so they're saved in order without racing each other, and so the scheduler can report its own
-    /// phases (like pulling an image) while they happen rather than after. The writer stops once every sender is
+    /// single writer so they're saved in order without racing each other, and so starting a container can report its
+    /// own phases (like pulling an image) while they happen rather than after. The writer stops once every sender is
     /// dropped.
     fn spawn_timeline_recorder(
         &self,
@@ -697,7 +697,7 @@ impl RunShepherd {
         Ok(())
     }
 
-    /// Monitors the container status from the scheduler and listens for any relevant events.
+    /// Monitors the container status from Docker and listens for any relevant events.
     /// Update the status of the task accordingly.
     async fn monitor_task_execution(
         &self,
@@ -737,7 +737,7 @@ impl RunShepherd {
                     let description = timeout.as_ref().map(|t| t.description.clone()).unwrap_or_default();
 
                     _ = self.api_state
-                        .scheduler
+                        .containers
                         .cancel_task_execution(
                             task_execution.clone(),
                             self.api_state.config.api.task_execution_stop_timeout_seconds as i64,
@@ -779,13 +779,12 @@ impl RunShepherd {
                     return Ok(());
                 },
                 _ = interval.tick() => {
-                    // TODO(): This should be more robust, if when we start implementing networked schedulers there is a chance
-                    // that they can fail when we request a status update and we don't want to fail the entire thing just
-                    // because they didn't return an update once.
+                    // TODO(): This should be more robust. Docker can fail a single status request, and we don't want to
+                    // fail the entire thing just because it didn't return an update once.
                     let response = match self
                         .api_state
-                        .scheduler
-                        .get_state(scheduler::GetStateRequest {
+                        .containers
+                        .get_state(containers::GetStateRequest {
                             id: container_id.clone(),
                         })
                         .await
@@ -804,7 +803,7 @@ impl RunShepherd {
                                     Some(task_executions::StatusReason {
                                         reason: task_executions::StatusReasonType::SchedulerError,
                                         description:
-                                            "Could not query the scheduler for the task execution state"
+                                            "Could not query Docker for the task execution state"
                                                 .into(),
                                     }),
                                 )
@@ -817,7 +816,7 @@ impl RunShepherd {
                     };
 
                     match response.state {
-                        scheduler::ContainerState::Unknown => {
+                        containers::ContainerState::Unknown => {
                             let mut conn = self.api_state.storage.write_conn().await?;
 
                             if let Err(e) = self
@@ -829,7 +828,7 @@ impl RunShepherd {
                                     Some(task_executions::StatusReason {
                                         reason: task_executions::StatusReasonType::SchedulerError,
                                         description:
-                                            "An unknown error has occurred on the scheduler level; This should (ideally) never happen. Please contact support or file a bug."
+                                            "An unknown error has occurred on the container level; This should (ideally) never happen. Please contact support or file a bug."
                                                 .into(),
                                     }),
                                 )
@@ -839,10 +838,10 @@ impl RunShepherd {
                             };
                             return Ok(());
                         }
-                        scheduler::ContainerState::Running
-                        | scheduler::ContainerState::Paused
-                        | scheduler::ContainerState::Restarting => {}
-                        scheduler::ContainerState::Exited => {
+                        containers::ContainerState::Running
+                        | containers::ContainerState::Paused
+                        | containers::ContainerState::Restarting => {}
+                        containers::ContainerState::Exited => {
                             // We determine if something worked based on the exit code of the container.
                             let mut exit_code = 1;
 
@@ -920,7 +919,7 @@ impl RunShepherd {
 
                         // TODO(): We should probably log the result of this, but for now best effort is fine.
                         _ = self.api_state
-                            .scheduler
+                            .containers
                             .cancel_task_execution(task_execution.clone(), timeout as i64)
                             .await
                             .map_err(|err| {
@@ -970,8 +969,8 @@ impl RunShepherd {
     async fn handle_log_updates(&self, container_id: String, task_id: String) {
         let log_stream = self
             .api_state
-            .scheduler
-            .get_logs(scheduler::GetLogsRequest {
+            .containers
+            .get_logs(containers::GetLogsRequest {
                 id: container_id.to_string(),
             });
 
@@ -1012,7 +1011,7 @@ impl RunShepherd {
                                 pipeline_id = &self.pipeline.metadata.pipeline_id,
                                 run_id = self.run.run_id,
                                 task_id = &task_id,
-                                error = %e, "Failed to parse log stream; scheduler error encountered.");
+                                error = %e, "Failed to parse log stream; container error encountered.");
                             return;
                         },
                     };
@@ -1020,14 +1019,14 @@ impl RunShepherd {
                     let mut file = file.lock().await;
 
                     match log_object {
-                        scheduler::Log::Unknown => {
+                        containers::Log::Unknown => {
                             error!(namespace_id = &self.pipeline.metadata.namespace_id,
                                 pipeline_id = &self.pipeline.metadata.pipeline_id,
                                 run_id = self.run.run_id,
                                 task_id = &task_id,
-                                "Received malformed log from scheduler (Unknown Log type); aborting");
+                                "Received malformed log from container (Unknown Log type); aborting");
                         },
-                        scheduler::Log::Stdout(log) => {
+                        containers::Log::Stdout(log) => {
                             if let Err(e) = file.write_all(&log).await {
                                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
                                     pipeline_id = &self.pipeline.metadata.pipeline_id,
@@ -1037,7 +1036,7 @@ impl RunShepherd {
                                     "Failed to write stdout log for container");
                             }
                         },
-                        scheduler::Log::Stderr(log) => {
+                        containers::Log::Stderr(log) => {
                             if let Err(e) = file.write_all(&log).await {
                                 error!(namespace_id = &self.pipeline.metadata.namespace_id,
                                     pipeline_id = &self.pipeline.metadata.pipeline_id,

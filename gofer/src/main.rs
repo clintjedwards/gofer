@@ -1,8 +1,8 @@
 mod api;
 mod cli;
 mod conf;
+mod containers;
 mod object_store;
-mod scheduler;
 mod secret_store;
 mod storage;
 

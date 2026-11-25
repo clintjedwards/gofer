@@ -10,7 +10,8 @@ gofer pipeline run simple
 
 ## What happens now?
 
-When you start a run Gofer will attempt to schedule all your tasks according to their dependencies onto your chosen scheduler. In this case that scheduler is your local instance of Docker.
+When you start a run Gofer will start all your tasks according to their dependencies, each one as a container on your
+local instance of Docker.
 
 Your run should be chugging along now!
 

@@ -1,5 +1,5 @@
 use crate::conf::ConfigType;
-use crate::{object_store, scheduler, secret_store};
+use crate::{containers, object_store, secret_store};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -11,9 +11,9 @@ const DEFAULT_API_CONFIG: &str = include_str!("./default_api_config.toml");
 pub struct ApiConfig {
     pub api: Api,
     pub development: Development,
+    pub docker: containers::Config,
     pub extensions: Extensions,
     pub external_events: ExternalEvents,
-    pub scheduler: Scheduler,
     pub server: Server,
     pub object_store: ObjectStore,
     pub secret_store: SecretStore,
@@ -46,10 +46,10 @@ pub struct Api {
     /// Directory to store task execution log files.
     pub task_execution_logs_dir: String,
 
-    /// Time in seconds the scheduler will wait for a normal user container(not-trigger containers)
+    /// Time in seconds Docker will wait for a normal user container(not-trigger containers)
     /// to stop. When the timeout is reached the container will be forcefully terminated.
     /// You can you use a timeout of 0 to convey that no timeout should be specified and the
-    /// scheduler should instantly kill all containers.
+    /// containers should instantly be killed.
     pub task_execution_stop_timeout_seconds: u64,
 
     /// The longest, in seconds, a task's container can run before Gofer stops it and fails the task. Applies to
@@ -80,7 +80,7 @@ pub struct Extensions {
     #[serde(default)]
     pub install: Vec<ExtensionInstall>,
 
-    /// The time the scheduler will wait for an extension container to stop. After this period Gofer will attempt to
+    /// The time Docker will wait for an extension container to stop. After this period Gofer will attempt to
     /// force stop the container.
     pub stop_timeout_seconds: u64,
 
@@ -154,12 +154,6 @@ pub struct ExternalEvents {
     pub use_tls: bool,
     pub tls_cert_path: Option<String>,
     pub tls_key_path: Option<String>,
-}
-
-#[derive(Deserialize, Default, Debug, Clone)]
-pub struct Scheduler {
-    pub engine: scheduler::Engine,
-    pub docker: Option<scheduler::docker::Config>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone)]

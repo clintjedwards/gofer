@@ -54,8 +54,8 @@ pub enum TaskCommands {
     ///
     /// It should be also noted that this feature is a bit of an anti-pattern. In theory
     /// testing your containers locally + good logging + the information Gofer provides
-    /// should be good enough to debug most issues. That being said there are always scheduler
-    /// specific infrastructure issues that it is just helpful to have a shell within.
+    /// should be good enough to debug most issues. That being said there are always
+    /// infrastructure issues that it is just helpful to have a shell within.
     Attach {
         /// Pipeline Identifier.
         pipeline_id: String,
@@ -73,9 +73,9 @@ pub enum TaskCommands {
 
     /// Cancel a specific task execution.
     ///
-    /// Cancels a task execution by requesting that the scheduler gracefully stops it. Usually this means the
-    /// scheduler will pass a SIGTERM to the container. If the container does not shut down within the API
-    /// defined timeout or the user has passed the force flag the scheduler will then kill the container immediately.
+    /// Cancels a task execution by requesting that Docker gracefully stops it. Usually this means Docker will pass
+    /// a SIGTERM to the container. If the container does not shut down within the API defined timeout or the user
+    /// has passed the force flag Docker will then kill the container immediately.
     ///
     /// Cancelling a task execution might mean that downstream/dependent task executions are skipped.
     Cancel {

@@ -6,7 +6,7 @@ use crate::{
         event_utils::{self, EventListener},
         format_duration, include_secrets, listen_for_terminate_signal, tasks, websocket_error,
     },
-    http_error, scheduler, storage,
+    containers, http_error, storage,
 };
 use anyhow::{Context, Result};
 use dropshot::{
@@ -460,31 +460,6 @@ impl TryFrom<TaskExecution> for storage::task_executions::TaskExecution {
             image_digest: value.image_digest,
             timeline,
         })
-    }
-}
-
-impl dyn scheduler::Scheduler {
-    pub async fn cancel_task_execution(
-        &self,
-        execution: TaskExecution,
-        timeout: i64,
-    ) -> Result<()> {
-        let container_id = task_execution_container_id(
-            &execution.namespace_id,
-            &execution.pipeline_id,
-            execution.run_id,
-            &execution.task_id,
-        );
-
-        self.stop_container(scheduler::StopContainerRequest {
-            id: container_id.clone(),
-            timeout,
-        })
-        .await
-        .with_context(|| format!("Could not stop container while attempting to cancel task execution; container_id = {}",
-                container_id))?;
-
-        Ok(())
     }
 }
 
@@ -1411,8 +1386,8 @@ pub async fn attach_task_execution(
     };
 
     let attach_response = match api_state
-        .scheduler
-        .attach_container(scheduler::AttachContainerRequest {
+        .containers
+        .attach_container(containers::AttachContainerRequest {
             id: container_id,
             command,
         })
@@ -1421,7 +1396,7 @@ pub async fn attach_task_execution(
         Ok(resp) => resp,
         Err(err) => {
             return Err(websocket_error(
-                "Could not attach to container; scheduler error",
+                "Could not attach to container; Docker error",
                 CloseCode::Error,
                 rqctx.request_id.clone(),
                 ws,
@@ -1492,10 +1467,10 @@ pub async fn attach_task_execution(
     set.spawn(async move {
         while let Some(output) = container_output.next().await {
             let text = match output {
-                Ok(scheduler::Log::Stdout(text))
-                | Ok(scheduler::Log::Stderr(text))
-                | Ok(scheduler::Log::Console(text)) => text,
-                Ok(scheduler::Log::Stdin(_)) | Ok(scheduler::Log::Unknown) => continue,
+                Ok(containers::Log::Stdout(text))
+                | Ok(containers::Log::Stderr(text))
+                | Ok(containers::Log::Console(text)) => text,
+                Ok(containers::Log::Stdin(_)) | Ok(containers::Log::Unknown) => continue,
                 Err(e) => {
                     debug!(error = %e, "Error occurred while attempting to unpack message from container to client");
                     break;

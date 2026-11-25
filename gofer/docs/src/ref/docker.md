@@ -1,12 +1,9 @@
-# Docker <small>scheduler</small>
+# Docker
 
-The docker scheduler uses the machine's local docker engine to run containers. This is great for small or development workloads and very simple to implement. Simply download docker and go!
+Gofer runs every task and extension as a container on the machine's local Docker engine. Simply download docker and go!
 
 ```toml
-[scheduler]
-engine = "docker"
-
-[scheduler.docker]
+[docker]
 prune = true
 prune_interval_seconds = 604800
 timeout_seconds = 300
@@ -16,7 +13,7 @@ timeout_seconds = 300
 
 Docker needs to be installed and the Gofer process needs to have the required permissions to run containers upon it.
 
-Other than that the docker scheduler just needs to know how to clean up after itself.
+Other than that Gofer just needs to know how to clean up after itself.
 
 | Parameter              | Type | Default | Description                                                                                                                                                                                                     |
 | ---------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

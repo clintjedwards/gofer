@@ -161,6 +161,6 @@ The high level flow is:
 2. Gofer waits for the task's parents to finish and checks they ended in the states the task requires.
 3. Gofer parses the task configuration's variables list and registry auth. It replaces any secret or object strings
    with their actual values from the object or secret store.
-4. Gofer then passes the details of your task to the configured scheduler, variables are passed in as environment variables.
-5. Usually this means the scheduler will take the configuration and attempt to pull the `image` mentioned in the configuration.
+4. Gofer then passes the details of your task to Docker, variables are passed in as environment variables.
+5. Docker pulls the `image` mentioned in the configuration if the host doesn't already have it.
 6. Once the image is successfully pulled the container is then run with the settings passed.

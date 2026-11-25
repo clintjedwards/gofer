@@ -156,16 +156,10 @@ path = "/tmp/gofer_secrets.db"
 encryption_key = "changemechangemechangemechangeme"
 ```
 
-## Scheduler
+## Docker
 
-The scheduler is the container orchestrator Gofer runs tasks and extensions on.
-[More about schedulers.](../scheduler/index.html)
-
-| name   | type   | default | description                                                              |
-| ------ | ------ | ------- | ------------------------------------------------------------------------ |
-| engine | string | docker  | The scheduler Gofer uses. The only accepted value is `docker`.           |
-
-### Docker
+Gofer runs tasks and extensions as containers on the machine's Docker engine.
+[More about Docker.](../docker.md)
 
 | name                   | type | default | description                                                                                                          |
 | ---------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -174,10 +168,7 @@ The scheduler is the container orchestrator Gofer runs tasks and extensions on.
 | timeout_seconds        | int  | 300     | How long, in seconds, a request to docker can take. Should be at least as long as `api.task_execution_stop_timeout_seconds`. |
 
 ```toml
-[scheduler]
-engine = "docker"
-
-[scheduler.docker]
+[docker]
 prune = true
 prune_interval_seconds = 604800
 timeout_seconds = 300

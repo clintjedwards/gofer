@@ -20,7 +20,7 @@ pub mod task_executions;
 mod tasks;
 mod tokens;
 
-use crate::{conf, object_store, scheduler, secret_store, storage};
+use crate::{conf, containers, object_store, secret_store, storage};
 use anyhow::{Context, Result, anyhow, bail};
 use dashmap::DashMap;
 use dropshot::{
@@ -140,7 +140,7 @@ pub struct ApiState {
     config_path: Option<PathBuf>,
 
     /// An in-memory mapping of currently registered and started extensions. These extensions are registered on startup
-    /// and launched as long running containers via the scheduler. Gofer refers to this cache as a way to communicate
+    /// and launched as long running containers. Gofer refers to this cache as a way to communicate
     /// quickly with the containers and their potentially changing endpoints.
     extensions: DashMap<String, extensions::Extension>,
 
@@ -157,9 +157,9 @@ pub struct ApiState {
     /// using this storage mechanism.
     storage: storage::Db,
 
-    /// `Scheduler` is the mechanism in which Gofer uses to run its containers(tasks). This is the connection to
-    /// the scheduler backend that we're using.
-    scheduler: Box<dyn scheduler::Scheduler>,
+    /// `Containers` is the mechanism in which Gofer uses to run its containers(tasks and extensions). This is the
+    /// connection to Docker.
+    containers: containers::Containers,
 
     /// `Orchestrator` is responsible for launching, monitoring, and recovery of runs that are started.
     orchestrator: orchestrator::Orchestrator,
@@ -189,23 +189,23 @@ impl ApiState {
     fn new(
         conf: conf::api::ApiConfig,
         config_path: Option<PathBuf>,
+        containers: containers::Containers,
         event_bus: event_utils::EventBus,
         ignore_pipeline_run_events: atomic::AtomicBool,
         object_store: Box<dyn object_store::ObjectStore>,
         orchestrator: orchestrator::Orchestrator,
-        scheduler: Box<dyn scheduler::Scheduler>,
         secret_store: Box<dyn secret_store::SecretStore>,
         storage: storage::Db,
     ) -> Self {
         Self {
             config: conf.clone(),
             config_path,
+            containers,
             event_bus,
             extensions: DashMap::new(),
             ignore_pipeline_run_events,
             object_store,
             orchestrator,
-            scheduler,
             secret_store,
             storage,
             web_logins: DashMap::new(),
@@ -309,9 +309,9 @@ async fn init_api(
     let storage = storage::Db::new(&conf.server.storage_path)
         .await
         .context("Could not initialize storage")?;
-    let scheduler = scheduler::new(&conf.scheduler)
+    let containers = containers::Containers::new(&conf.docker)
         .await
-        .context("Could not initialize scheduler")?;
+        .context("Could not initialize containers")?;
     let object_store = object_store::new(&conf.object_store)
         .await
         .context("Could not initialize object store")?;
@@ -347,11 +347,11 @@ async fn init_api(
     let api_state = Arc::new(ApiState::new(
         conf.clone(),
         config_path,
+        containers,
         event_bus,
         ignore_pipeline_runs,
         object_store,
         orchestrator,
-        scheduler,
         secret_store,
         storage,
     ));
@@ -1326,7 +1326,7 @@ pub async fn resolve_registry_auth(
 /// The second is during pipeline subscriptions in which case you might want to pass a secret, but we aren't in the
 /// context of a run and don't require it.
 ///
-/// This takes the stores it reads from instead of [`ApiState`] so it can be tested without a scheduler.
+/// This takes the stores it reads from instead of [`ApiState`] so it can be tested without Docker.
 pub async fn interpolate_vars(
     storage: &storage::Db,
     secret_store: &dyn secret_store::SecretStore,
