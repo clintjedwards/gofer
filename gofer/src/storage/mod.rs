@@ -208,7 +208,6 @@ pub fn epoch_milli() -> u64 {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use rand::prelude::*;
     use std::ops::Deref;
 
     pub struct TestHarness {
@@ -218,9 +217,11 @@ pub(crate) mod tests {
 
     impl TestHarness {
         pub async fn new() -> Self {
-            let mut rng = rand::rng();
-            let append_num: u16 = rng.random();
-            let storage_path = format!("/tmp/gofer_tests_storage{}.db", append_num);
+            // Tests run at the same time, so each one needs a name that no other test will pick.
+            let storage_path = format!(
+                "/tmp/gofer_tests_storage{}.db",
+                uuid::Uuid::now_v7().simple()
+            );
 
             let db = Db::new(&storage_path).await.unwrap();
 

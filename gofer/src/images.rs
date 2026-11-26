@@ -74,11 +74,11 @@ fn internal(e: impl Display) -> ImageError {
 pub struct Digest(String);
 
 impl Digest {
-    fn from_hasher(hasher: Sha256) -> Self {
+    pub fn from_hasher(hasher: Sha256) -> Self {
         Self(format!("sha256:{}", hex::encode(hasher.finalize())))
     }
 
-    fn hex(&self) -> &str {
+    pub fn hex(&self) -> &str {
         &self.0["sha256:".len()..]
     }
 }

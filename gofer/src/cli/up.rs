@@ -97,7 +97,9 @@ impl Cli {
                 last_lines = vec!["No output found for this pipeline build".to_string()];
             }
 
-            let last_few_lines: Vec<String> = last_lines.into_iter().rev().take(15).collect();
+            // Oldest first, the way they were printed.
+            let skip = last_lines.len().saturating_sub(15);
+            let last_few_lines: Vec<String> = last_lines.into_iter().skip(skip).collect();
 
             error!(
                 "Could not successfully build target pipeline; Examine partial error output below:\n..."

@@ -25,6 +25,12 @@ pub struct CliConfig {
     /// The URL of the Gofer API.
     pub api_base_url: String,
 
+    /// How large the builder's cache can get, in GiB.
+    pub builder_cache_max_gb: u64,
+
+    /// Print advice after a build, like how to make it faster.
+    pub build_tips: bool,
+
     /// Provides extra debug output.
     pub debug: bool,
 

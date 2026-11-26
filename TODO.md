@@ -1,6 +1,22 @@
 # Large Projects on the docket
 
-None
+These come after the built images refactor is done.
+
+* A folder that a run's tasks share, so passing files from one task to the next feels like a local filesystem.
+  * A Docker volume per run, mounted into each task at the same path and removed when the run expires.
+  * It could replace run objects. Not pipeline objects though: those outlive runs, and two runs at once could write
+    the same folder and step on each other, which the object store's keys prevent.
+  * With more than one Gofer machine, a run's tasks would have to run on the same one. Tekton does this for tasks
+    that share a workspace, with what it calls an affinity assistant. The cost is that a run can only use one
+    machine, and if that machine dies the run's files go with it.
+* The `gofer` CLI inside every task, so together with the injected token and the shared folder a task can work with
+  Gofer without any setup.
+  * The server mounts its own binary into each task's container when it starts it, the way Docker's `--init` does,
+    instead of building it into images. That way it always matches the server, works with every image, old ones and
+    extensions included, and doesn't change anyone's image.
+  * It needs a static build. The current binary needs glibc, so it won't start on Alpine or distroless images.
+  * Nothing can require it, so task code still doesn't need to know about Gofer.
+  * This would cover the idea under General of a container that has the CLI packed in.
 
 # Small things I want to keep track of that I definitely need to do.
 

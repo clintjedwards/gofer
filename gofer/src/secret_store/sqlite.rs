@@ -304,7 +304,6 @@ impl SecretStore for Engine {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use rand::prelude::*;
     use std::ops::Deref;
 
     pub struct TestHarness {
@@ -314,9 +313,11 @@ pub(crate) mod tests {
 
     impl TestHarness {
         pub async fn new() -> Self {
-            let mut rng = rand::rng();
-            let append_num: u16 = rng.random();
-            let storage_path = format!("/tmp/gofer_tests_secret_store{}.db", append_num);
+            // Tests run at the same time, so each one needs a name that no other test will pick.
+            let storage_path = format!(
+                "/tmp/gofer_tests_secret_store{}.db",
+                uuid::Uuid::now_v7().simple()
+            );
 
             let db = Engine::new(&Config {
                 path: storage_path.clone(),

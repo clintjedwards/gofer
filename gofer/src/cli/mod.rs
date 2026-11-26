@@ -1,4 +1,6 @@
 mod archive;
+#[allow(dead_code)] // `gofer up` will use this once tasks say how their images are built.
+mod builder;
 mod event;
 mod extension;
 mod fetch;
@@ -149,6 +151,12 @@ enum Commands {
 
     /// Manage the Gofer api service.
     Service(service::ServiceSubcommands),
+
+    /// Manage the builder that makes task images.
+    ///
+    /// The builder is BuildKit, running in a Docker container called gofer-buildkit. Its cache is in the
+    /// gofer-buildkit-cache volume.
+    Builder(builder::BuilderSubcommands),
 
     /// Manage namespaces.
     ///
@@ -323,6 +331,7 @@ impl Cli {
             }
             Commands::Context { include_secrets } => self.get_context(include_secrets).await,
             Commands::Service(service) => self.handle_service_subcommands(service).await,
+            Commands::Builder(builder) => self.handle_builder_subcommands(builder).await,
             Commands::Namespace(namespace) => self.handle_namespace_subcommands(namespace).await,
             Commands::Pipeline(pipeline) => self.handle_pipeline_subcommands(pipeline).await,
             Commands::Run(run) => self.handle_run_subcommands(run).await,
@@ -484,6 +493,11 @@ impl Cli {
             ),
             ("detail", self.conf.detail.to_string()),
             ("debug", self.conf.debug.to_string()),
+            (
+                "builder_cache_max_gb",
+                self.conf.builder_cache_max_gb.to_string(),
+            ),
+            ("build_tips", self.conf.build_tips.to_string()),
         ];
 
         let settings = rail_table(
