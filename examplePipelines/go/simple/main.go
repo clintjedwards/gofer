@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	err := sdk.NewPipeline("simple", "Simple Pipeline").
+	pipeline := sdk.NewPipeline("simple", "Simple Pipeline").
 		Description("This pipeline shows off a very simple Gofer pipeline that simply pulls in " +
 			"a container and runs a command. Veterans of CI/CD tooling should be familiar with this pattern.\n\n" +
 
@@ -21,13 +21,13 @@ func main() {
 
 			"Ideally, these tasks are custom containers built with the purpose of being run within Gofer for a " +
 			"particular workflow. Allowing you to keep the logic code closer to the actual object that uses it " +
-			"and keeping the Gofer pipeline configurations from becoming a mess.\n").
-		Tasks(
-			sdk.NewTask("simple-task", "ubuntu:latest").
-				Description("This task simply prints our hello-world message and exits!").
-				Command("echo", "Hello from Gofer!").Variables(map[string]string{"test": "sample"}),
-		).Finish()
-	if err != nil {
+			"and keeping the Gofer pipeline configurations from becoming a mess.\n")
+
+	pipeline.Task(sdk.NewTask("simple-task", "ubuntu:latest").
+		Description("This task simply prints our hello-world message and exits!").
+		Command("echo", "Hello from Gofer!").Variables(map[string]string{"test": "sample"}))
+
+	if err := pipeline.Finish(); err != nil {
 		log.Fatal(err)
 	}
 }

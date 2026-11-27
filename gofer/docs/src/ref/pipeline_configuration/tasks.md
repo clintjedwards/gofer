@@ -7,11 +7,9 @@ In the [Getting Started](../../guide/create_your_first_pipeline_configuration.md
 `ubuntu:latest` and runs a single command:
 
 ```go
-Tasks(
-    sdk.NewTask("simple-task", "ubuntu:latest").
-        Description("This task simply prints our hello-world message and exits!").
-        Command("echo", "Hello from Gofer!"),
-)
+pipeline.Task(sdk.NewTask("simple-task", "ubuntu:latest").
+    Description("This task simply prints our hello-world message and exits!").
+    Command("echo", "Hello from Gofer!"))
 ```
 
 ## The Task's Image
@@ -149,20 +147,18 @@ If the parent doesn't end in the required state, the child is skipped. Skipped t
 failure, so whole branches below a skipped task get skipped too, except for tasks that depend on it with `Any`.
 
 ```go
-Tasks(
-    sdk.NewTask("run-tests", "alpine:latest").
-        Command("sh", "-c", "./run_tests.sh"),
+pipeline.Task(sdk.NewTask("run-tests", "alpine:latest").
+    Command("sh", "-c", "./run_tests.sh"))
 
-    // Only publish if the tests pass.
-    sdk.NewTask("publish-release", "alpine:latest").
-        DependsOn("run-tests", sdk.RequiredParentStatusSuccess).
-        Command("echo", "publishing release"),
+// Only publish if the tests pass.
+pipeline.Task(sdk.NewTask("publish-release", "alpine:latest").
+    DependsOn("run-tests", sdk.RequiredParentStatusSuccess).
+    Command("echo", "publishing release"))
 
-    // Tell someone the tests broke.
-    sdk.NewTask("alert", "alpine:latest").
-        DependsOn("run-tests", sdk.RequiredParentStatusFailure).
-        Command("echo", "the tests failed"),
-)
+// Tell someone the tests broke.
+pipeline.Task(sdk.NewTask("alert", "alpine:latest").
+    DependsOn("run-tests", sdk.RequiredParentStatusFailure).
+    Command("echo", "the tests failed"))
 ```
 
 A task can depend on several parents with `DependsOnMany`; it runs once all of them have finished in their required

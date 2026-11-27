@@ -12,16 +12,15 @@ packages what was built as another user, and keeps a summary after the run.
 For something like a version number, have the first task write it to a file and the tasks after it read it back:
 
 ```go
-err := sdk.NewPipeline("release", "Release").
-    Tasks(
-        sdk.NewTask("work-out-version", "alpine:3.22").
-            // Stand in for something your task works out, like a build number.
-            Script(`echo "1.4.2" > /gofer/run/version`),
+pipeline := sdk.NewPipeline("release", "Release")
 
-        sdk.NewTask("publish", "alpine:3.22").
-            DependsOn("work-out-version", sdk.RequiredParentStatusSuccess).
-            Script(`echo "publishing version $(cat /gofer/run/version)"`),
-    ).Finish()
+pipeline.Task(sdk.NewTask("work-out-version", "alpine:3.22").
+    // Stand in for something your task works out, like a build number.
+    Script(`echo "1.4.2" > /gofer/run/version`))
+
+pipeline.Task(sdk.NewTask("publish", "alpine:3.22").
+    DependsOn("work-out-version", sdk.RequiredParentStatusSuccess).
+    Script(`echo "publishing version $(cat /gofer/run/version)"`))
 ```
 
 ## Files and directories

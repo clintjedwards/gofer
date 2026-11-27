@@ -11,15 +11,14 @@ import (
 )
 
 func ExampleNewPipeline_simple() {
-	err := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
-		Description("Simple Test Pipeline").
-		Tasks(
-			NewTask("simple-task", "ubuntu:latest").
-				Description("This task simply prints our hello-world message and exits!").
-				Command("echo", `Hello from Gofer!`),
-		).
-		Finish()
-	if err != nil {
+	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
+		Description("Simple Test Pipeline")
+
+	pipeline.Task(NewTask("simple-task", "ubuntu:latest").
+		Description("This task simply prints our hello-world message and exits!").
+		Command("echo", `Hello from Gofer!`))
+
+	if err := pipeline.Finish(); err != nil {
 		panic(err)
 	}
 }
@@ -39,14 +38,17 @@ func ExampleNewPipeline_dag() {
 		Description("This task depends on the second task, but will run after its finished regardless of the result.").
 		DependsOn(dependsOnOne.ID, RequiredParentStatusAny)
 
-	err := NewPipeline("dag_test_pipeline", "DAG Test Pipeline").
+	pipeline := NewPipeline("dag_test_pipeline", "DAG Test Pipeline").
 		Description(`This pipeline shows off how you might use Gofer's DAG(Directed Acyclic Graph) system to chain
 together containers that depend on other container's end states. This is obviously very useful if you want to
 perform certain trees of actions depending on what happens in earlier containers.`).
-		Parallelism(10).
-		Tasks(taskOne, dependsOnOne, dependsOnTwo).
-		Finish()
-	if err != nil {
+		Parallelism(10)
+
+	pipeline.Task(taskOne)
+	pipeline.Task(dependsOnOne)
+	pipeline.Task(dependsOnTwo)
+
+	if err := pipeline.Finish(); err != nil {
 		panic(err)
 	}
 }
@@ -56,10 +58,24 @@ func TestInvalidPipelineCyclical(t *testing.T) {
 	taskB := NewTask("task-b", "").DependsOn("task-c", RequiredParentStatusAny)
 	taskC := NewTask("task-c", "").DependsOn("task-a", RequiredParentStatusAny)
 
-	err := NewPipeline("invalid-pipeline", "").Tasks(taskA, taskB, taskC).Finish()
+	err := NewPipeline("invalid-pipeline", "").Task(taskA).Task(taskB).Task(taskC).Finish()
 
 	if !errors.Is(err, dag.ErrEdgeCreatesCycle) {
 		t.Fatalf("expected cyclic graph error; found %v", err)
+	}
+}
+
+func TestTasksAreAddedOneAtATime(t *testing.T) {
+	pipeline := NewPipeline("pipeline", "").Task(NewTask("first", "alpine:3.22"))
+	pipeline.Task(NewTask("second", "alpine:3.22"))
+
+	if len(pipeline.Pipeline.Tasks) != 2 {
+		t.Fatalf("expected both tasks; found %d", len(pipeline.Pipeline.Tasks))
+	}
+
+	err := pipeline.Task(NewTask("first", "alpine:3.22")).Validate()
+	if err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("expected an error about the task added twice; found %v", err)
 	}
 }
 
@@ -118,7 +134,7 @@ func TestBuildsSerializeLikeTheRustSDK(t *testing.T) {
 func TestStepsCantBeUsedOnDockerfileTasks(t *testing.T) {
 	task := NewDockerfileTask("scan", "Dockerfile", ".").Copy("./app", "/app")
 
-	err := NewPipeline("pipeline", "").Tasks(task).Validate()
+	err := NewPipeline("pipeline", "").Task(task).Validate()
 	if err == nil || !strings.Contains(err.Error(), "built from a Dockerfile") {
 		t.Fatalf("expected an error about Dockerfile tasks; found %v", err)
 	}
@@ -127,7 +143,7 @@ func TestStepsCantBeUsedOnDockerfileTasks(t *testing.T) {
 func TestKeptPathsHaveToBeFullPaths(t *testing.T) {
 	task := NewTask("report", "rust:1").Keep([]string{"target/release/report"}, "debian:13-slim")
 
-	err := NewPipeline("pipeline", "").Tasks(task).Validate()
+	err := NewPipeline("pipeline", "").Task(task).Validate()
 	if err == nil || !strings.Contains(err.Error(), "full path") {
 		t.Fatalf("expected an error about full paths; found %v", err)
 	}
@@ -187,7 +203,7 @@ func TestInvalidSkipDates(t *testing.T) {
 }
 
 func TestInjectAPITokens(t *testing.T) {
-	pipeline := NewPipeline("inject-test-pipeline", "").Tasks(NewTask("task-1", "").InjectAPIToken(true))
+	pipeline := NewPipeline("inject-test-pipeline", "").Task(NewTask("task-1", "").InjectAPIToken(true))
 	if pipeline.Pipeline.Tasks[0].Task.InjectAPIToken == false {
 		t.Fatal("pipeline is not in correct state")
 	}

@@ -54,8 +54,7 @@ type Task struct {
 
 	// Allows users to tell gofer to auto-create and inject API Token into task. If this setting is found, Gofer creates
 	// an API key for the run (stored in the user's secret store) and then injects it for this run under the
-	// environment variable "GOFER_TOKEN". This key is automatically cleaned up when Gofer attempts to clean up
-	// the Run's objects.
+	// environment variable "GOFER_TOKEN". Gofer deletes the key when the run ends.
 	InjectAPIToken bool `json:"inject_api_token"`
 	// How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task
 	// execution timeout applies.

@@ -1,7 +1,7 @@
 use gofer_sdk::config::{Pipeline, Task};
 
 fn main() {
-    Pipeline::new("simple", "Simple Pipeline")
+    let mut pipeline = Pipeline::new("simple", "Simple Pipeline")
     .description("This pipeline shows off a very simple Gofer pipeline that simply pulls in a container and runs \
 a command. Veterans of CI/CD tooling should be familiar with this pattern.
 
@@ -17,12 +17,14 @@ Ideally, these tasks are custom containers built with the purpose of being run w
 workflow. Allowing you to keep the logic code closer to the actual object that uses it and keeping the Gofer \
 pipeline configurations from becoming a mess.
 
-    ")
-        .tasks(vec![
-                Task::new("simple-task", "ubuntu:latest").
-                    description("This task simply prints our hello-world message and exits!").
-                    command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
-                    .variables(vec![("test", "sample")])
-        ])
-        .finish().unwrap();
+    ");
+
+    pipeline.task(
+        Task::new("simple-task", "ubuntu:latest")
+            .description("This task simply prints our hello-world message and exits!")
+            .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
+            .variables(vec![("test", "sample")]),
+    );
+
+    pipeline.finish().unwrap();
 }

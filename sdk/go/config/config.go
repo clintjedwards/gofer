@@ -63,23 +63,16 @@ type Pipeline struct {
 // In practice, you would create custom containers designed specifically for the tasks in your Gofer workflows,
 // keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.
 //
-// ```ignore
+//	pipeline := sdk.NewPipeline("simple", "Simple Pipeline").
+//		Description("This pipeline runs a single command in an Ubuntu container.")
 //
-//	// Create a new pipeline with a name and a descriptive label.
-//	Pipeline::new("simple", "Simple Pipeline")
-//	    .description("This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \
-//	                  This pattern will be familiar to those experienced with CI/CD tools. \
-//	                  Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.")
-//	    // Adding a single task to the pipeline.
-//	    .tasks(vec![
-//	        Task::new("simple-task", "ubuntu:latest")
-//	            .description("This task uses the Ubuntu container to print a 'Hello World' message.")
-//	            .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
-//	    ])
-//	    .finish() // Finalize and validate the pipeline setup.
-//	    .unwrap(); // Handle potential errors during pipeline creation.
+//	pipeline.Task(sdk.NewTask("simple-task", "ubuntu:latest").
+//		Description("Prints a message").
+//		Command("echo", "Hello from Gofer!"))
 //
-// ```
+//	if err := pipeline.Finish(); err != nil {
+//		log.Fatal(err)
+//	}
 func NewPipeline(id, name string) *PipelineWrapper {
 	return &PipelineWrapper{
 		Pipeline{
@@ -201,9 +194,11 @@ func validateSkipDate(skipDate string) error {
 	return nil
 }
 
-// Tasks are containers that the pipeline runs.
-func (p *PipelineWrapper) Tasks(tasks ...*TaskWrapper) *PipelineWrapper {
-	p.Pipeline.Tasks = tasks
+// Task adds a task to the pipeline. A task can be made anywhere, like in a variable or a function of its own, and
+// added here once it's ready. The pipeline keeps the task itself, so anything changed on it afterward changes the
+// pipeline too.
+func (p *PipelineWrapper) Task(task *TaskWrapper) *PipelineWrapper {
+	p.Pipeline.Tasks = append(p.Pipeline.Tasks, task)
 	return p
 }
 

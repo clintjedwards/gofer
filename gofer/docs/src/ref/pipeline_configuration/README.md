@@ -66,8 +66,8 @@ safe.
 Next we'll add a simple description to remind us what this pipeline is used for.
 
 ```go
-err := sdk.NewPipeline("simple", "My Simple Pipeline").
-        Description("This pipeline is purely for testing purposes.")
+pipeline := sdk.NewPipeline("simple", "My Simple Pipeline").
+    Description("This pipeline is purely for testing purposes.")
 ```
 
 The SDK uses a builder pattern, which allows us to simply add another function onto our Pipeline object
@@ -79,15 +79,13 @@ Lastly let's add a task(container) to our pipeline. We'll start its image from u
 run on container start to just say "Hello from Gofer!".
 
 ```go
-err := sdk.NewPipeline("simple", "My Simple Pipeline").
-        Description("This pipeline is purely for testing purposes.").
-        Tasks(sdk.NewTask("simple-task", "ubuntu:latest").
-			Description("This task simply prints our hello-world message and exits!").
-			Command("echo", "Hello from Gofer!"),
-    )
+pipeline.Task(sdk.NewTask("simple-task", "ubuntu:latest").
+    Description("This task simply prints our hello-world message and exits!").
+    Command("echo", "Hello from Gofer!"))
 ```
 
-We used the `Tasks` function to add multiple tasks and then we use the SDK's `NewTask` function to create a task.
+The SDK's `NewTask` function creates a task, and the pipeline's `Task` function adds it. Call `Task` once for each
+task. A task can be made anywhere first, like in a variable or a function of its own, and added when it's ready.
 You can see we:
 
 - Give the task an ID, much like our pipeline earlier.
@@ -96,15 +94,18 @@ You can see we:
 - Tack on a description.
 - And then finally specify the command.
 
-To tie a bow on it, we add the `.Finish()` function to specify that our pipeline is in its final form.
+To tie a bow on it, we call `Finish()` once every task is added. It checks the pipeline for mistakes and prints it for
+Gofer.
 
 ```go
-err := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
-    Description("This pipeline is purely for testing purposes.").
-    Tasks(sdk.NewTask("simple-task", "ubuntu:latest").
-			Description("This task simply prints our hello-world message and exits!").
-			Command("echo", "Hello from Gofer!"),
-    ).Finish()
+pipeline := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
+    Description("This pipeline is purely for testing purposes.")
+
+pipeline.Task(sdk.NewTask("simple-task", "ubuntu:latest").
+    Description("This task simply prints our hello-world message and exits!").
+    Command("echo", "Hello from Gofer!"))
+
+err := pipeline.Finish()
 ```
 
 That's it! This is a fully functioning pipeline.
@@ -124,15 +125,16 @@ this:
 use gofer_sdk::config::{Pipeline, Task};
 
 fn main() {
-    Pipeline::new("my-pipeline", "My Simple Pipeline")
-        .description("This pipeline is purely for testing purposes.")
-        .tasks(vec![
-            Task::new("simple-task", "ubuntu:latest")
-                .description("This task simply prints our hello-world message and exits!")
-                .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()]),
-        ])
-        .finish()
-        .unwrap();
+    let mut pipeline = Pipeline::new("my-pipeline", "My Simple Pipeline")
+        .description("This pipeline is purely for testing purposes.");
+
+    pipeline.task(
+        Task::new("simple-task", "ubuntu:latest")
+            .description("This task simply prints our hello-world message and exits!")
+            .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()]),
+    );
+
+    pipeline.finish().unwrap();
 }
 ```
 
@@ -155,13 +157,10 @@ task as the `GOFER_TOKEN` environment variable, which is the same variable the G
 The token is deleted when the run ends, since only the run's own tasks use it.
 
 ```go
-err := sdk.NewPipeline("my-pipeline", "My Simple Pipeline").
-    Description("This pipeline is purely for testing purposes.").
-    Tasks(
-		sdk.NewTask("simple-task", "ubuntu:latest").
-			Description("This task simply prints our hello-world message and exits!").
-			Command("echo", "Hello from Gofer!").InjectAPIToken(true),
-    ).Finish()
+pipeline.Task(sdk.NewTask("simple-task", "ubuntu:latest").
+    Description("This task simply prints our hello-world message and exits!").
+    Command("echo", "Hello from Gofer!").
+    InjectAPIToken(true))
 ```
 
 ### Limiting Concurrent Runs
@@ -171,9 +170,8 @@ By default a pipeline can have up to 200 runs going at once (the server's `pipel
 same time:
 
 ```go
-err := sdk.NewPipeline("deploy", "Deploy").
-    Parallelism(1).
-    Tasks(...).Finish()
+pipeline := sdk.NewPipeline("deploy", "Deploy").
+    Parallelism(1)
 ```
 
 A run started while the pipeline is at its limit is queued as `pending` and starts once an earlier one finishes;
@@ -185,13 +183,12 @@ A pipeline can't set a limit higher than the server's.
 Use `SkipDates` to list days a pipeline shouldn't run, like holidays:
 
 ```go
-err := sdk.NewPipeline("simple", "Simple").
+pipeline := sdk.NewPipeline("simple", "Simple").
     SkipDates(
         "12/25",            // Christmas.
         "12/24-01/02",      // A range. Both ends are included, and it can go over the new year.
         "11/22-11/28:thu",  // Just the Thursday in that range, which is Thanksgiving.
-    ).
-    Tasks(...).Finish()
+    )
 ```
 
 Each entry is `MM/DD` or `MM/DD-MM/DD`, optionally followed by a weekday (`sun`, `mon`, `tue`, `wed`, `thu`, `fri`, or
@@ -199,8 +196,8 @@ Each entry is `MM/DD` or `MM/DD-MM/DD`, optionally followed by a weekday (`sun`,
 
 Gofer checks the live config's dates whenever something asks for a run, whether that's a subscription, another
 pipeline, or a person. On one of those days the run is recorded with the status `skipped` and never starts. Runs that
-were already queued when the day began still start, and skipped runs don't count towards how many runs' logs and
-objects are kept.
+were already queued when the day began still start, and skipped runs don't count towards how many runs' logs are
+kept.
 
 To start a run anyway, use `gofer pipeline run <pipeline> --force`. Forcing a run doesn't get around the pipeline being
 [disabled](../../guide/patterns/skipping_runs.md#give-a-pause-an-end-date).
@@ -217,12 +214,11 @@ Each entry is a `namespace/pipeline` pattern. Both halves are regexes that have 
 [role targets](../server_configuration/authz_n.md#targets):
 
 ```go
-err := sdk.NewPipeline("deploy", "Deploy").
+pipeline := sdk.NewPipeline("deploy", "Deploy").
     AllowRunsFrom(
         "team-a-.*/.*",    // Any pipeline in a namespace starting with "team-a-".
         "releases/build",  // Just the build pipeline in the releases namespace.
-    ).
-    Tasks(...).Finish()
+    )
 ```
 
 The calling task needs `InjectAPIToken`, and then starts the run like any other API call, for example with
@@ -230,8 +226,7 @@ The calling task needs `InjectAPIToken`, and then starts the run like any other 
 `releases/build#42 (run)`.
 
 Only the live config's list counts, so a change takes effect once it's deployed. The calling run also has to still be
-in progress; injected tokens stick around for a while after their run ends, but they can't be used to start other
-pipelines anymore. Keep in mind that anyone who can start
+in progress, since its injected token is deleted when it ends. Keep in mind that anyone who can start
 runs of an allowed pipeline can get at its injected token (see the warning in
 [task environment variables](./tasks.md#task-environment-variables-and-configuration)), so only list
 pipelines whose users you'd also trust to run this one.

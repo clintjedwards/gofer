@@ -1322,7 +1322,11 @@ type Parameter struct {
 //
 // This simple example serves as a foundation, illustrating the pattern of defining tasks as building blocks of a pipeline. In practice, you would create custom containers designed specifically for the tasks in your Gofer workflows, keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.
 //
-// ```ignore // Create a new pipeline with a name and a descriptive label. Pipeline::new("simple", "Simple Pipeline") .description("This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \ This pattern will be familiar to those experienced with CI/CD tools. \ Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.") // Adding a single task to the pipeline. .tasks(vec![ Task::new("simple-task", "ubuntu:latest") .description("This task uses the Ubuntu container to print a 'Hello World' message.") .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()]) ]) .finish() // Finalize and validate the pipeline setup. .unwrap(); // Handle potential errors during pipeline creation. ```
+// ```ignore let mut pipeline = Pipeline::new("simple", "Simple Pipeline") .description("This pipeline runs a single command in an Ubuntu container.");
+//
+// pipeline.task( Task::new("simple-task", "ubuntu:latest") .description("Prints a message") .command(vec!["echo".into(), "Hello from Gofer!".into()]), );
+//
+// pipeline.finish().unwrap(); ```
 type Pipeline struct {
 	// AllowRunsFrom Other pipelines whose runs may start runs of this one, as `namespace/pipeline` patterns. Each half is a regex that has to match the whole id, so `team-a-.*/.*` allows every pipeline in namespaces starting with `team-a-`. Defaults to empty so configs built with older SDKs still parse.
 	AllowRunsFrom *[]string `json:"allow_runs_from,omitempty"`

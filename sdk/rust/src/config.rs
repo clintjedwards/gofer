@@ -238,19 +238,16 @@ pub fn skip_date_matches(skip_date: &str, month: u32, day: u32, weekday: u32) ->
 /// keeping your pipeline configuration clean and focused on orchestration rather than embedding complex logic.
 ///
 /// ```ignore
-///  // Create a new pipeline with a name and a descriptive label.
-///  Pipeline::new("simple", "Simple Pipeline")
-///      .description("This pipeline demonstrates a simple Gofer pipeline that pulls in a container and runs a command. \
-///                    This pattern will be familiar to those experienced with CI/CD tools. \
-///                    Tasks in this pipeline are individual containers that can depend on other tasks, illustrating the modular nature of Gofer.")
-///      // Adding a single task to the pipeline.
-///      .tasks(vec![
-///          Task::new("simple-task", "ubuntu:latest")
-///              .description("This task uses the Ubuntu container to print a 'Hello World' message.")
-///              .command(vec!["echo".to_string(), "Hello from Gofer!".to_string()])
-///      ])
-///      .finish() // Finalize and validate the pipeline setup.
-///      .unwrap(); // Handle potential errors during pipeline creation.
+/// let mut pipeline = Pipeline::new("simple", "Simple Pipeline")
+///     .description("This pipeline runs a single command in an Ubuntu container.");
+///
+/// pipeline.task(
+///     Task::new("simple-task", "ubuntu:latest")
+///         .description("Prints a message")
+///         .command(vec!["echo".into(), "Hello from Gofer!".into()]),
+/// );
+///
+/// pipeline.finish().unwrap();
 /// ```
 #[must_use = "complete pipeline config with the .finish() method"]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -407,8 +404,10 @@ impl Pipeline {
         self
     }
 
-    pub fn tasks(mut self, tasks: Vec<Task>) -> Self {
-        self.tasks = tasks;
+    /// Adds a task to the pipeline. A task can be made anywhere, like in a variable or a function of its own, and
+    /// added here once it's ready.
+    pub fn task(&mut self, task: Task) -> &mut Self {
+        self.tasks.push(task);
         self
     }
 
@@ -964,7 +963,9 @@ mod tests {
         let task_c = Task::new("task-c", "ubuntu").depends_on("task-a", RequiredParentStatus::Any);
 
         let result = Pipeline::new("invalid-pipeline", "")
-            .tasks(vec![task_a, task_b, task_c])
+            .task(task_a)
+            .task(task_b)
+            .task(task_c)
             .validate();
 
         assert_eq!(
@@ -978,6 +979,22 @@ mod tests {
                 ])
             )]))
         )
+    }
+
+    #[test]
+    fn test_tasks_are_added_one_at_a_time() {
+        let mut pipeline = Pipeline::new("pipeline", "");
+        pipeline.task(Task::new("first", "alpine:3.22"));
+        pipeline.task(Task::new("second", "alpine:3.22"));
+        assert_eq!(pipeline.tasks.len(), 2);
+
+        pipeline.task(Task::new("first", "alpine:3.22"));
+        assert_eq!(
+            pipeline.validate(),
+            Err(ConfigError::Invalid(vec![ConfigError::Dag(
+                DagError::DuplicateNode("first".into())
+            )]))
+        );
     }
 
     /// The Go SDK writes the same JSON, and the server reads both, so the shape can't change by accident.
@@ -1019,7 +1036,7 @@ mod tests {
             .run("make")
             .keep(["/app"], "alpine:3");
 
-        let result = Pipeline::new("pipeline", "").tasks(vec![task]).validate();
+        let result = Pipeline::new("pipeline", "").task(task).validate();
         let Err(ConfigError::Invalid(problems)) = result else {
             panic!("expected an invalid config, got {result:?}");
         };
@@ -1031,7 +1048,7 @@ mod tests {
     fn test_kept_paths_have_to_be_full_paths() {
         let task = Task::new("report", "rust:1").keep(["target/release/report"], "debian:13-slim");
 
-        let result = Pipeline::new("pipeline", "").tasks(vec![task]).validate();
+        let result = Pipeline::new("pipeline", "").task(task).validate();
         let Err(ConfigError::Invalid(problems)) = result else {
             panic!("expected an invalid config, got {result:?}");
         };
@@ -1045,10 +1062,7 @@ mod tests {
             .depends_on("missing", RequiredParentStatus::Unknown)
             .variables([("BAD=NAME", "value")]);
 
-        let result = Pipeline::new("x", "")
-            .parallelism(-1)
-            .tasks(vec![task])
-            .validate();
+        let result = Pipeline::new("x", "").parallelism(-1).task(task).validate();
 
         let Err(ConfigError::Invalid(problems)) = result else {
             panic!("expected an invalid config, got {result:?}");
