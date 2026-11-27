@@ -441,21 +441,48 @@ fn base_image_error(image: &str, error: &str) -> String {
         "TLS handshake timeout",
     ];
 
-    if error.ends_with(": not found") {
-        format!("The base image {image} doesn't exist. Check its name and tag.")
+    let why = if error.ends_with(": not found") {
+        BaseError::NotFound
     } else if NO_LOGIN.iter().any(|text| error.contains(text)) {
-        format!("The base image {image} doesn't exist, or it needs a login to download.")
+        BaseError::NeedsLogin
     } else if NO_NETWORK.iter().any(|text| error.contains(text)) {
-        let registry = match image.split_once('/') {
-            Some((host, _)) if host.contains(['.', ':']) || host == "localhost" => host,
-            _ => "Docker Hub",
-        };
-        format!(
-            "Could not reach {registry} to look up the base image {image}. Builds look up their base images \
-             every time, so they need the network even when everything is cached.\n{error}"
-        )
+        BaseError::NoNetwork
     } else {
-        format!("Could not look up the base image {image}; {error}")
+        BaseError::Other
+    };
+
+    base_error_message(image, why, error)
+}
+
+/// Why a base image couldn't be looked up, as far as we can tell.
+pub enum BaseError {
+    NotFound,
+    NeedsLogin,
+    NoNetwork,
+    Other,
+}
+
+/// What to tell the user when a base image couldn't be looked up, so it's said the same way whether BuildKit was
+/// looking or [`super::direct`] was. `error` is what went wrong, in the words of whichever one it was.
+pub fn base_error_message(image: &str, why: BaseError, error: &str) -> String {
+    match why {
+        BaseError::NotFound => {
+            format!("The base image {image} doesn't exist. Check its name and tag.")
+        }
+        BaseError::NeedsLogin => {
+            format!("The base image {image} doesn't exist, or it needs a login to download.")
+        }
+        BaseError::NoNetwork => {
+            let registry = match image.split_once('/') {
+                Some((host, _)) if host.contains(['.', ':']) || host == "localhost" => host,
+                _ => "Docker Hub",
+            };
+            format!(
+                "Could not reach {registry} to look up the base image {image}. Builds look up their base images \
+                 every time, so they need the network even when everything is cached.\n{error}"
+            )
+        }
+        BaseError::Other => format!("Could not look up the base image {image}; {error}"),
     }
 }
 

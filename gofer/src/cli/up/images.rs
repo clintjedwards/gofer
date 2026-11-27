@@ -4,9 +4,10 @@
 use crate::{
     cli::{
         Cli, api_error_message,
-        builder::{self, Builder, Built, Source, report, tips},
+        builder::{self, Builder, Built, Image, Source, report, tips},
     },
     conf::cli::OutputFormat,
+    images::Digest,
 };
 use anyhow::{Context, Result, anyhow, bail};
 use futures::StreamExt;
@@ -14,7 +15,7 @@ use gofer_sdk::api::types;
 use polyfmt::{Format, print};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
-    path::{Path, PathBuf},
+    path::Path,
     sync::Mutex,
     time::{Duration, Instant},
 };
@@ -147,11 +148,26 @@ impl Cli {
             groups.entry(key).or_default().push(task);
         }
 
-        let ids: Vec<&str> = tasks.iter().map(|task| task.id.as_str()).collect();
-        let builder = Builder::new(self.conf.builder_cache_max_gb)
-            .with_context(|| format!("Building the images for {} needs Docker", ids.join(", ")))?;
+        // A task that's only a base image is made without Docker, so a pipeline of those doesn't need it at all.
+        let needs_docker: Vec<&str> = (tasks.iter())
+            .filter(|task| builder::needs_docker(&prepared[&task.id].build))
+            .map(|task| task.id.as_str())
+            .collect();
+        let builder = match needs_docker.is_empty() {
+            true => None,
+            false => Some(
+                Builder::new(self.conf.builder_cache_max_gb).with_context(|| {
+                    format!(
+                        "Building the images for {} needs Docker",
+                        needs_docker.join(", ")
+                    )
+                })?,
+            ),
+        };
 
-        if builder.emulated().await.unwrap_or(false) {
+        if let Some(builder) = &builder
+            && builder.emulated().await.unwrap_or(false)
+        {
             report::emulated();
         }
 
@@ -160,7 +176,7 @@ impl Cli {
 
         let builds = futures::stream::iter(groups.into_values())
             .map(|tasks| {
-                let (builder, running) = (&builder, &running);
+                let (builder, running) = (builder.as_ref(), &running);
                 async move {
                     let first = tasks[0];
                     let files = &prepared[&first.id];
@@ -264,20 +280,23 @@ impl Cli {
         pipeline_id: &str,
         built: &[(Vec<String>, Built)],
     ) -> Result<()> {
-        let mut blobs: BTreeMap<String, PathBuf> = BTreeMap::new();
+        // Images on the same base share its layers. One that has them on this machine saves downloading them.
+        let mut blobs: BTreeMap<String, (&Image, &Digest, u64)> = BTreeMap::new();
         for (_, built) in built {
-            for blob in &built.image.blobs {
-                blobs.insert(blob.to_string(), built.image.blob_path(blob));
+            for (digest, size) in &built.image.blobs {
+                let blob = blobs
+                    .entry(digest.to_string())
+                    .or_insert((&built.image, digest, *size));
+                if built.image.has(digest) {
+                    *blob = (&built.image, digest, *size);
+                }
             }
         }
 
         let missing = self
             .missing_blobs(namespace, pipeline_id, blobs.keys().cloned().collect())
             .await?;
-        let total: u64 = (missing.iter())
-            .filter_map(|digest| std::fs::metadata(&blobs[digest]).ok())
-            .map(|metadata| metadata.len())
-            .sum();
+        let total: u64 = missing.iter().map(|digest| blobs[digest].2).sum();
         let mut sent = 0;
 
         for (number, digest) in missing.iter().enumerate() {
@@ -290,12 +309,9 @@ impl Cli {
                 vec![Format::Spinner]
             );
 
-            let path = &blobs[digest];
-            let file = tokio::fs::File::open(path)
-                .await
-                .with_context(|| format!("Could not read '{}'", path.display()))?;
-            let size = file.metadata().await?.len();
-            let body = reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::new(file));
+            // A base layer that isn't on this machine goes straight from its registry into the upload.
+            let (image, blob, size) = blobs[digest];
+            let body = reqwest::Body::wrap_stream(image.open(blob).await?);
 
             self.client
                 .put_image_blob(namespace, pipeline_id, digest, body)

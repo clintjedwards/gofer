@@ -4,6 +4,9 @@
 //! a Dockerfile. `gofer up` turns that into an image and uploads it to the server, so a version of a pipeline always
 //! runs exactly the image it was registered with. Getting from one to the other goes like this.
 //!
+//! A task that's only a base image and a command has nothing to build, so it skips all of this: [`direct`] makes its
+//! image from the base's registry, without Docker.
+//!
 //! # 1. Find the files and hash them
 //!
 //! [`source`] walks every path the task copies. It leaves out what `.dockerignore` says to, matched the way Docker does
@@ -63,6 +66,7 @@
 
 mod buildkit;
 mod context;
+mod direct;
 mod dockerfile;
 mod dockerignore;
 mod image;
@@ -78,7 +82,7 @@ pub use buildkit::Builder;
 use buildkit::NoDocker;
 use clap::{Args, Subcommand};
 use context::Contents;
-use image::Image;
+pub use image::Image;
 use polyfmt::{Format, print, success};
 use progress::{Failure, Progress};
 pub use source::{Source, hash as source_hash};
@@ -168,13 +172,18 @@ pub struct Built {
 const IGNORE_FILE: &str = "Dockerfile.dockerignore";
 const IGNORE_FILE_CONTENT: &str = "# Gofer has already left out what .dockerignore says to.\n";
 
+/// Whether building this image needs Docker, which is for anything more than a base and a command.
+pub fn needs_docker(build: &Build) -> bool {
+    !direct::takes(build)
+}
+
 /// Builds a task's image. The sources have to be the ones from [`sources`], and `source_hash` their hash. With
 /// `no_cache`, nothing is reused from earlier builds. `on_step` hears about each step as it starts, by what the user
-/// calls it.
+/// calls it. `builder` is only used for an image that [`needs_docker`].
 ///
 /// When the build itself fails, the error is a [`Failure`], which says why and where the log is.
 pub async fn build(
-    builder: &Builder,
+    builder: Option<&Builder>,
     task: &Task<'_>,
     sources: &[Source],
     source_hash: &str,
@@ -197,6 +206,23 @@ pub async fn build(
                 argument.len() / 1024
             );
         }
+    }
+
+    if let Build::Steps(steps) = task.build
+        && direct::takes(task.build)
+    {
+        // The same name BuildKit's step for this gets.
+        on_step(&format!("look up {}", steps.base));
+        let image = direct::build(&steps.base, task.entrypoint, task.command).await?;
+
+        let tips = tips::find(&tips::Seen {
+            task,
+            sources,
+            uncached_rust: &[],
+            old_cargo: None,
+            image_size: image.size(),
+        });
+        return Ok(Built { image, tips });
     }
 
     let mut files = vec![(IGNORE_FILE.to_string(), IGNORE_FILE_CONTENT.into())];
@@ -246,6 +272,13 @@ pub async fn build(
         }
     };
 
+    let Some(builder) = builder else {
+        bail!(
+            "Building '{}' needs Docker, because {}",
+            task.id(),
+            needs_docker_because(task.build)
+        );
+    };
     if let Err(e) = builder.start().await {
         return match e.downcast_ref::<NoDocker>() {
             Some(_) => Err(e.context(format!(

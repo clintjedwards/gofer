@@ -29,7 +29,7 @@ use bollard::{
 use bytes::Bytes;
 use futures::{StreamExt, TryStreamExt};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, io, path::PathBuf, time::Duration};
+use std::{collections::HashMap, io, time::Duration};
 use tokio::{io::AsyncWriteExt, sync::mpsc};
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::io::{StreamReader, SyncIoBridge};
@@ -336,7 +336,7 @@ impl Builder {
         // build.sh stops the build once stdin closes. Dropping this doesn't close it though, only shutting it down does.
         let mut unpack_failed = false;
 
-        let image_folder = image_folder()?;
+        let image_folder = image::folder()?;
         let (sender, receiver) = mpsc::channel::<io::Result<Bytes>>(16);
         let mut sender = Some(sender);
         let unpack = {
@@ -408,7 +408,7 @@ impl Builder {
         }
 
         let manifest = unpacked.context("Could not read the image BuildKit made")?;
-        image::finish(image_folder, manifest, entrypoint, command)
+        image::finish(image_folder, manifest, entrypoint, command, None)
     }
 
     /// Copies a build's files into the builder, writing the tar on another thread as it uploads.
@@ -504,29 +504,4 @@ fn status(e: &DockerError) -> Option<u16> {
         DockerError::DockerResponseServerError { status_code, .. } => Some(*status_code),
         _ => None,
     }
-}
-
-/// Makes a folder to unpack an image into, which removes itself when it's dropped.
-fn image_folder() -> Result<tempfile::TempDir> {
-    // Not /tmp, which is often in memory, and images can be large.
-    let parent: PathBuf = dirs::cache_dir()
-        .context("Could not find a cache folder to unpack images in")?
-        .join("gofer")
-        .join("images");
-    std::fs::create_dir_all(&parent)
-        .with_context(|| format!("Could not create '{}'", parent.display()))?;
-
-    // A CLI that was killed never got to remove its folder.
-    let day_ago = std::time::SystemTime::now() - Duration::from_secs(24 * 60 * 60);
-    for old in std::fs::read_dir(&parent)?.flatten() {
-        let modified = old.metadata().and_then(|metadata| metadata.modified());
-        if modified.is_ok_and(|modified| modified < day_ago) {
-            _ = std::fs::remove_dir_all(old.path());
-        }
-    }
-
-    tempfile::Builder::new()
-        .prefix("build-")
-        .tempdir_in(&parent)
-        .with_context(|| format!("Could not create a folder in '{}'", parent.display()))
 }

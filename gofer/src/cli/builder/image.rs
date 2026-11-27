@@ -3,19 +3,23 @@
 //! BuildKit sends a tar in Docker's format. Under `blobs/sha256/` it has every blob of the image, named by its digest,
 //! and `index.json` says which of them is the manifest. We only keep the blobs, which are what the server takes.
 
+use super::direct::Registry;
 use crate::images::Digest;
 use anyhow::{Context, Result, bail};
+use bytes::Bytes;
+use futures::{StreamExt, stream::BoxStream};
 use serde::Deserialize;
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 use std::{
     fs::File,
-    io::{Read, Write},
+    io::{self, Read, Write},
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 /// The largest the index, manifest or config can be. They're read into memory and normally only a few KB.
-const MAX_JSON_BYTES: u64 = 4 * 1024 * 1024;
+pub const MAX_JSON_BYTES: u64 = 4 * 1024 * 1024;
 
 /// A built image, as a folder with a file per blob.
 pub struct Image {
@@ -23,8 +27,12 @@ pub struct Image {
 
     pub manifest: Digest,
 
-    /// Every blob the image is made of: its layers, config and manifest.
-    pub blobs: Vec<Digest>,
+    /// Every blob the image is made of, with its size: its layers, config and manifest.
+    pub blobs: Vec<(Digest, u64)>,
+
+    /// For an image made without BuildKit, where its base's layers are. They're only downloaded if Gofer doesn't have
+    /// them already, so they aren't in the folder.
+    registry: Option<Registry>,
 }
 
 impl Image {
@@ -32,13 +40,56 @@ impl Image {
         blob_path(self.folder.path(), digest)
     }
 
+    /// Whether the blob is on this machine, rather than still in the base's registry.
+    pub fn has(&self, digest: &Digest) -> bool {
+        self.blob_path(digest).exists()
+    }
+
+    /// A blob's contents, read from this machine or downloaded from the base's registry.
+    pub async fn open(&self, digest: &Digest) -> Result<BoxStream<'static, io::Result<Bytes>>> {
+        if self.has(digest) {
+            let path = self.blob_path(digest);
+            let file = tokio::fs::File::open(&path)
+                .await
+                .with_context(|| format!("Could not read '{}'", path.display()))?;
+            return Ok(tokio_util::io::ReaderStream::new(file).boxed());
+        }
+
+        match &self.registry {
+            Some(registry) => registry.blob(digest).await,
+            None => bail!("The image has no blob {digest}"),
+        }
+    }
+
     /// How many bytes it takes up, compressed, which is how it's uploaded.
     pub fn size(&self) -> u64 {
-        (self.blobs.iter())
-            .filter_map(|blob| std::fs::metadata(self.blob_path(blob)).ok())
-            .map(|metadata| metadata.len())
-            .sum()
+        self.blobs.iter().map(|(_, size)| size).sum()
     }
+}
+
+/// Makes a folder to unpack an image into, which removes itself when it's dropped.
+pub fn folder() -> Result<tempfile::TempDir> {
+    // Not /tmp, which is often in memory, and images can be large.
+    let parent: PathBuf = dirs::cache_dir()
+        .context("Could not find a cache folder to unpack images in")?
+        .join("gofer")
+        .join("images");
+    std::fs::create_dir_all(&parent)
+        .with_context(|| format!("Could not create '{}'", parent.display()))?;
+
+    // A CLI that was killed never got to remove its folder.
+    let day_ago = std::time::SystemTime::now() - Duration::from_secs(24 * 60 * 60);
+    for old in std::fs::read_dir(&parent)?.flatten() {
+        let modified = old.metadata().and_then(|metadata| metadata.modified());
+        if modified.is_ok_and(|modified| modified < day_ago) {
+            _ = std::fs::remove_dir_all(old.path());
+        }
+    }
+
+    tempfile::Builder::new()
+        .prefix("build-")
+        .tempdir_in(&parent)
+        .with_context(|| format!("Could not create a folder in '{}'", parent.display()))
 }
 
 #[derive(Deserialize)]
@@ -93,12 +144,14 @@ pub fn unpack(tar: impl Read, folder: &Path) -> Result<Digest> {
     Ok(manifest)
 }
 
-/// Finishes an unpacked image: bakes in how it's run, and lists its blobs.
+/// Finishes an image whose manifest and config are in `folder`: bakes in how it's run, and lists its blobs. Its layers
+/// have to be in `folder` too, unless they're still in the base's `registry`.
 pub fn finish(
     folder: tempfile::TempDir,
     manifest: Digest,
     entrypoint: Option<&[String]>,
     command: Option<&[String]>,
+    registry: Option<Registry>,
 ) -> Result<Image> {
     let path = folder.path();
     let mut manifest_json: Value = read_blob(path, &manifest)?;
@@ -111,7 +164,7 @@ pub fn finish(
     );
     if platform != ("linux", "amd64") {
         bail!(
-            "BuildKit made an image for {}/{} instead of linux/amd64",
+            "The image is for {}/{}, but tasks run on linux/amd64",
             platform.0,
             platform.1
         );
@@ -121,6 +174,7 @@ pub fn finish(
         folder,
         manifest: manifest.clone(),
         blobs: vec![],
+        registry,
     };
 
     if entrypoint.is_some() || command.is_some() {
@@ -148,17 +202,20 @@ pub fn finish(
 
     for descriptor in descriptors {
         let digest: Digest = json_str(&descriptor["digest"])?.parse()?;
-        let size = descriptor["size"].as_u64();
-        let actual = std::fs::metadata(image.blob_path(&digest)).map(|file| file.len());
+        let size = (descriptor["size"].as_u64())
+            .with_context(|| format!("The image's manifest has no size for {digest}"))?;
 
-        if actual.as_ref().ok() != size.as_ref() {
-            bail!("The image BuildKit sent is missing {digest}, or it's the wrong size");
+        match std::fs::metadata(image.blob_path(&digest)) {
+            Ok(file) if file.len() == size => {}
+            Err(_) if image.registry.is_some() => {}
+            _ => bail!("The image is missing {digest}, or it's the wrong size"),
         }
 
-        image.blobs.push(digest);
+        image.blobs.push((digest, size));
     }
 
-    image.blobs.push(image.manifest.clone());
+    let manifest_size = std::fs::metadata(image.blob_path(&image.manifest))?.len();
+    image.blobs.push((image.manifest.clone(), manifest_size));
     Ok(image)
 }
 
@@ -211,7 +268,7 @@ fn read_blob<T: serde::de::DeserializeOwned>(folder: &Path, digest: &Digest) -> 
 }
 
 /// Saves a blob and returns its digest and size.
-fn write_blob(folder: &Path, content: &[u8]) -> Result<(Digest, u64)> {
+pub fn write_blob(folder: &Path, content: &[u8]) -> Result<(Digest, u64)> {
     let digest = Digest::from_hasher(Sha256::new_with_prefix(content));
     std::fs::write(blob_path(folder, &digest), content)?;
     Ok((digest, content.len() as u64))
@@ -314,12 +371,13 @@ mod tests {
 
         assert_eq!(unpack(tar.as_slice(), folder.path()).unwrap(), manifest);
 
-        let image = finish(folder, manifest.clone(), None, None).unwrap();
+        let image = finish(folder, manifest.clone(), None, None, None).unwrap();
         assert_eq!(image.manifest, manifest);
         assert_eq!(image.blobs.len(), 3);
-        for blob in &image.blobs {
+        for (blob, size) in &image.blobs {
             let content = std::fs::read(image.blob_path(blob)).unwrap();
             assert_eq!(digest(&content), *blob);
+            assert_eq!(content.len() as u64, *size);
         }
     }
 
@@ -330,7 +388,7 @@ mod tests {
         unpack(tar.as_slice(), folder.path()).unwrap();
 
         let command = ["python".to_string(), "/cleanup.py".to_string()];
-        let image = finish(folder, manifest.clone(), None, Some(&command)).unwrap();
+        let image = finish(folder, manifest.clone(), None, Some(&command), None).unwrap();
         assert_ne!(image.manifest, manifest);
 
         // The old config and manifest are gone, and the new ones point at each other.
@@ -352,8 +410,8 @@ mod tests {
         let folder = tempfile::tempdir().unwrap();
         unpack(tar.as_slice(), folder.path()).unwrap();
         let old = ["old".to_string()];
-        let image = finish(folder, manifest.clone(), None, Some(&old)).unwrap();
-        for blob in &image.blobs {
+        let image = finish(folder, manifest.clone(), None, Some(&old), None).unwrap();
+        for (blob, _) in &image.blobs {
             assert!(image.blob_path(blob).exists());
         }
     }
@@ -430,7 +488,7 @@ mod tests {
         let folder = tempfile::tempdir().unwrap();
         unpack(tar.as_slice(), folder.path()).unwrap();
 
-        let error = finish(folder, manifest, None, None)
+        let error = finish(folder, manifest, None, None, None)
             .err()
             .unwrap()
             .to_string();
