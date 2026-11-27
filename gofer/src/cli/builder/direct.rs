@@ -14,6 +14,7 @@
 use super::{
     Build, Steps,
     image::{self, Image, MAX_JSON_BYTES},
+    login::{self, Logins},
     progress::{BaseError, base_error_message},
 };
 use crate::images::Digest;
@@ -52,7 +53,8 @@ pub async fn build(
     entrypoint: Option<&[String]>,
     command: Option<&[String]>,
 ) -> Result<Image> {
-    let registry = Registry::new(base)?;
+    let logins = login::find(&[base]).await.without_identity_tokens();
+    let registry = Registry::new(base, logins)?;
     let folder = image::folder()?;
 
     let manifest = registry.manifest().await?;
@@ -80,12 +82,18 @@ pub struct Registry {
     client: Client,
     reference: Reference,
 
+    /// The user's login for it. oci-client keeps using it for the blobs once the manifest is downloaded.
+    auth: RegistryAuth,
+
+    /// Where `auth` came from, to explain a registry that wants a login.
+    logins: Logins,
+
     /// The base as the task names it, for messages.
     base: String,
 }
 
 impl Registry {
-    fn new(base: &str) -> Result<Self> {
+    fn new(base: &str, logins: Logins) -> Result<Self> {
         let reference =
             (base.parse()).with_context(|| format!("'{base}' isn't a name an image can have"))?;
 
@@ -100,6 +108,8 @@ impl Registry {
         Ok(Self {
             client,
             reference,
+            auth: logins.registry_auth(base),
+            logins,
             base: base.into(),
         })
     }
@@ -107,9 +117,9 @@ impl Registry {
     /// The base's manifest for linux/amd64, which is where tasks run.
     async fn manifest(&self) -> Result<Vec<u8>> {
         let (body, _) = (self.client)
-            .pull_manifest_raw(&self.reference, &RegistryAuth::Anonymous, &MANIFEST_TYPES)
+            .pull_manifest_raw(&self.reference, &self.auth, &MANIFEST_TYPES)
             .await
-            .map_err(|e| lookup_error(&self.base, e))?;
+            .map_err(|e| lookup_error(&self.base, e, &self.logins))?;
 
         let manifest: Value = serde_json::from_slice(&body).with_context(|| {
             format!(
@@ -131,9 +141,9 @@ impl Registry {
         // oci-client checks that what comes back matches the digest.
         let reference = self.reference.clone_with_digest(digest.into());
         let (body, _) = (self.client)
-            .pull_manifest_raw(&reference, &RegistryAuth::Anonymous, &IMAGE_MANIFEST_TYPES)
+            .pull_manifest_raw(&reference, &self.auth, &IMAGE_MANIFEST_TYPES)
             .await
-            .map_err(|e| lookup_error(&self.base, e))?;
+            .map_err(|e| lookup_error(&self.base, e, &self.logins))?;
 
         Ok(body.to_vec())
     }
@@ -189,7 +199,7 @@ fn amd64_manifest(manifests: &[Value]) -> Option<&str> {
 }
 
 /// Says why the base couldn't be looked up, in the same words as when BuildKit can't.
-fn lookup_error(base: &str, e: OciDistributionError) -> anyhow::Error {
+fn lookup_error(base: &str, e: OciDistributionError, logins: &Logins) -> anyhow::Error {
     let codes: Vec<&OciErrorCode> = match &e {
         OciDistributionError::RegistryError { envelope, .. } => {
             envelope.errors.iter().map(|error| &error.code).collect()
@@ -226,7 +236,12 @@ fn lookup_error(base: &str, e: OciDistributionError) -> anyhow::Error {
         _ => BaseError::Other,
     };
 
-    anyhow!(base_error_message(base, why, &format!("{:#}", anyhow!(e))))
+    anyhow!(base_error_message(
+        base,
+        why,
+        &format!("{:#}", anyhow!(e)),
+        logins
+    ))
 }
 
 #[cfg(test)]
@@ -306,7 +321,7 @@ mod tests {
         "Could not look up the base image thing:1; "
     )]
     fn test_lookup_errors_are_explained(#[case] error: OciDistributionError, #[case] says: &str) {
-        let message = lookup_error("thing:1", error).to_string();
+        let message = lookup_error("thing:1", error, &Logins::default()).to_string();
         assert!(message.contains(says), "{message}");
     }
 }

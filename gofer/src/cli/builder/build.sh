@@ -11,6 +11,10 @@
 dir=$1
 no_cache=$2
 
+# The user's logins for the registries this build downloads from, since buildctl can't see the ones on their machine.
+# They're removed along with everything else in the folder.
+export DOCKER_CONFIG="$dir/docker"
+
 # A task that copies nothing in has nothing to put in its context, but buildctl won't start without the folder.
 mkdir -p "$dir/context"
 

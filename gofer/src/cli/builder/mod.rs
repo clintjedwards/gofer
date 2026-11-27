@@ -43,6 +43,9 @@
 //! [`context`] writes the Dockerfile and the files into a tar while it's being uploaded into the container, so memory
 //! stays flat however big they are. Every file is owned by root and keeps only its executable bit, to match the hash.
 //!
+//! BuildKit can't see the user's Docker logins from inside its container, so [`login`] finds the ones for the
+//! registries this build downloads from, and those go in too.
+//!
 //! # 5. Build
 //!
 //! `buildctl`, BuildKit's own client, runs inside the container through `docker exec`, wrapped in `build.sh`. Docker
@@ -70,6 +73,7 @@ mod direct;
 mod dockerfile;
 mod dockerignore;
 mod image;
+mod login;
 mod logs;
 mod progress;
 pub mod report;
@@ -83,6 +87,7 @@ use buildkit::NoDocker;
 use clap::{Args, Subcommand};
 use context::Contents;
 pub use image::Image;
+use login::Logins;
 use polyfmt::{Format, print, success};
 use progress::{Failure, Progress};
 pub use source::{Source, hash as source_hash};
@@ -229,8 +234,14 @@ pub async fn build(
     let mut made_dockerfile = None;
     let mut uncached_rust = vec![];
 
-    let contents = match task.build {
+    // Every image the build downloads, so it can have the user's logins for their registries.
+    let mut images = vec![];
+
+    let mut contents = match task.build {
         Build::Steps(steps) => {
+            images.push(steps.base.clone());
+            images.extend(steps.keep.as_ref().map(|keep| keep.base.clone()));
+
             let rendered = dockerfile::render(task.name, steps, sources, no_cache)?;
             made_dockerfile = Some(rendered.dockerfile.clone());
             uncached_rust = rendered.uncached_rust;
@@ -249,6 +260,7 @@ pub async fn build(
 
             Contents {
                 files,
+                private_files: vec![],
                 sources: copies.collect(),
             }
         }
@@ -263,10 +275,13 @@ pub async fn build(
 
             let content = std::fs::read(dockerfile.path_of(&dockerfile.entries[0]))
                 .with_context(|| format!("Could not read '{path}'"))?;
+            images = dockerfile::images(&String::from_utf8_lossy(&content))
+                .with_context(|| format!("Could not read the Dockerfile '{path}'"))?;
             files.push(("Dockerfile".into(), content));
 
             Contents {
                 files,
+                private_files: vec![],
                 sources: vec![("context/".into(), context.clone())],
             }
         }
@@ -289,6 +304,13 @@ pub async fn build(
             None => Err(e),
         };
     }
+
+    // BuildKit can't see the user's logins from inside its container, so the ones for this build's registries go in
+    // with its files, and build.sh points it at them. BuildKit only reads the Dockerfile and its ignore file from this
+    // folder, so the logins can't end up in the image.
+    let images: Vec<&str> = images.iter().map(String::as_str).collect();
+    let logins = login::find(&images).await;
+    (contents.private_files).push(("docker/config.json".into(), logins.docker_config()));
 
     let (log_path, mut log) = logs::create(task.name)?;
     _ = writeln!(
@@ -328,7 +350,7 @@ pub async fn build(
     let image = match built {
         Ok(image) => image,
         Err(e) => {
-            let error = explain(e, &progress, &log_path);
+            let error = explain(e, &progress, &log_path, &logins);
             let message = match error.downcast_ref::<Failure>() {
                 Some(failure) => failure.message.clone(),
                 None => format!("{error:#}"),
@@ -369,10 +391,15 @@ pub async fn build(
 }
 
 /// Says what went wrong in the user's terms, where we can tell.
-fn explain(e: anyhow::Error, progress: &Progress<impl Write>, log: &Path) -> anyhow::Error {
+fn explain(
+    e: anyhow::Error,
+    progress: &Progress<impl Write>,
+    log: &Path,
+    logins: &Logins,
+) -> anyhow::Error {
     if let Some(failed) = e.downcast_ref::<buildkit::Failed>() {
         // Something like a Dockerfile that can't be read doesn't fail a step, and BuildKit's message says it best.
-        return match progress.failure(log.to_path_buf()) {
+        return match progress.failure(log.to_path_buf(), logins) {
             Some(failure) => failure.into(),
             None => Failure {
                 message: failed.to_string(),

@@ -19,6 +19,9 @@ pub struct Contents {
     /// Files we made, like the Dockerfile, by where they go and what's in them.
     pub files: Vec<(String, Vec<u8>)>,
 
+    /// Like `files`, but only root can read them. They're for the user's registry logins.
+    pub private_files: Vec<(String, Vec<u8>)>,
+
     /// The user's files, by the folder they go in.
     pub sources: Vec<(String, Source)>,
 }
@@ -39,11 +42,14 @@ pub fn write(out: impl Write, folder: &str, contents: &Contents) -> io::Result<(
 
     add_folder(&mut tar, folder, 0)?;
 
-    for (path, content) in &contents.files {
+    let files = (contents.files.iter().map(|file| (file, 0o644)))
+        .chain(contents.private_files.iter().map(|file| (file, 0o600)));
+
+    for ((path, content), mode) in files {
         let path = folder.join(path);
         add_parents(&mut tar, folder, &path, &mut add_folder)?;
 
-        let mut header = header(tar::EntryType::Regular, 0o644, 0);
+        let mut header = header(tar::EntryType::Regular, mode, 0);
         header.set_size(content.len() as u64);
         tar.append_data(&mut header, path, content.as_slice())?;
     }
@@ -258,6 +264,7 @@ mod tests {
                 ("Dockerfile".into(), b"FROM scratch".to_vec()),
                 ("context/runs/0/run.sh".into(), b"true".to_vec()),
             ],
+            private_files: vec![("docker/config.json".into(), b"{}".to_vec())],
             sources: vec![
                 ("context/copies/0/".into(), copy),
                 ("context/copies/1/".into(), file),
@@ -279,6 +286,8 @@ mod tests {
                     Regular,
                     0o644
                 ),
+                ("gofer-builds/1/docker".into(), Directory, 0o755),
+                ("gofer-builds/1/docker/config.json".into(), Regular, 0o600),
                 ("gofer-builds/1/context".into(), Directory, 0o755),
                 ("gofer-builds/1/context/copies".into(), Directory, 0o755),
                 ("gofer-builds/1/context/copies/0".into(), Directory, 0o755),
@@ -338,6 +347,7 @@ mod tests {
         let copy = Source::copy(dir.path()).unwrap();
         let tar = tar_of(&Contents {
             files: vec![],
+            private_files: vec![],
             sources: vec![("context/".into(), copy)],
         });
 
@@ -373,6 +383,7 @@ mod tests {
         let mut out = vec![];
         let contents = Contents {
             files: vec![],
+            private_files: vec![],
             sources: vec![("context/".into(), copy)],
         };
         let error = write(&mut out, "build", &contents).unwrap_err().to_string();

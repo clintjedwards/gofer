@@ -1,7 +1,11 @@
 //! Follows a build as BuildKit reports it. The status line, the build's log and the explanation of a failed build all
 //! come from here.
 
-use super::{Build, Step, logs};
+use super::{
+    Build, Step,
+    login::{Logins, registry_name},
+    logs,
+};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Utc};
 use lazy_regex::regex;
@@ -254,8 +258,9 @@ impl<'a, W: Write> Progress<'a, W> {
     }
 
     /// Explains why the build failed, from the step that failed first. `None` if no step did, which means it was
-    /// something like a Dockerfile that couldn't be read, and BuildKit's own message says that best.
-    pub fn failure(&self, log: PathBuf) -> Option<Failure> {
+    /// something like a Dockerfile that couldn't be read, and BuildKit's own message says that best. `logins` are the
+    /// ones the build had, which say what to do about a base image that needs one.
+    pub fn failure(&self, log: PathBuf, logins: &Logins) -> Option<Failure> {
         // When one step fails BuildKit stops the others, and those say they were canceled.
         let failed = self
             .vertexes
@@ -278,7 +283,7 @@ impl<'a, W: Write> Progress<'a, W> {
              builder_cache_max_gb keeps it smaller."
                 .to_string()
         } else if let Some(image) = failed.name.strip_prefix("[internal] load metadata for ") {
-            base_image_error(&short_image(image), error)
+            base_image_error(&short_image(image), error, logins)
         } else if failed.lines.iter().any(|line| line.contains(NO_SHELL)) {
             let image = match base {
                 Some(base) => format!("The base image, {base},"),
@@ -425,12 +430,15 @@ fn short_image(image: &str) -> String {
 
 /// BuildKit looks up each base image before it starts, so this is where a wrong name, a private image or no network
 /// shows up.
-fn base_image_error(image: &str, error: &str) -> String {
-    const NO_LOGIN: [&str; 4] = [
+fn base_image_error(image: &str, error: &str, logins: &Logins) -> String {
+    // Registries that hand out tokens, like Docker Hub, say it in words. One that takes a password, like a registry of
+    // your own, only answers with `401 Unauthorized`.
+    const NO_LOGIN: [&str; 5] = [
         "pull access denied",
         "authorization failed",
         "unauthorized",
         "authentication required",
+        "403 forbidden",
     ];
     const NO_NETWORK: [&str; 6] = [
         "dial tcp",
@@ -438,20 +446,21 @@ fn base_image_error(image: &str, error: &str) -> String {
         "i/o timeout",
         "connection refused",
         "network is unreachable",
-        "TLS handshake timeout",
+        "tls handshake timeout",
     ];
 
+    let lowercase = error.to_lowercase();
     let why = if error.ends_with(": not found") {
         BaseError::NotFound
-    } else if NO_LOGIN.iter().any(|text| error.contains(text)) {
+    } else if NO_LOGIN.iter().any(|text| lowercase.contains(text)) {
         BaseError::NeedsLogin
-    } else if NO_NETWORK.iter().any(|text| error.contains(text)) {
+    } else if NO_NETWORK.iter().any(|text| lowercase.contains(text)) {
         BaseError::NoNetwork
     } else {
         BaseError::Other
     };
 
-    base_error_message(image, why, error)
+    base_error_message(image, why, error, logins)
 }
 
 /// Why a base image couldn't be looked up, as far as we can tell.
@@ -464,19 +473,14 @@ pub enum BaseError {
 
 /// What to tell the user when a base image couldn't be looked up, so it's said the same way whether BuildKit was
 /// looking or [`super::direct`] was. `error` is what went wrong, in the words of whichever one it was.
-pub fn base_error_message(image: &str, why: BaseError, error: &str) -> String {
+pub fn base_error_message(image: &str, why: BaseError, error: &str, logins: &Logins) -> String {
     match why {
         BaseError::NotFound => {
             format!("The base image {image} doesn't exist. Check its name and tag.")
         }
-        BaseError::NeedsLogin => {
-            format!("The base image {image} doesn't exist, or it needs a login to download.")
-        }
+        BaseError::NeedsLogin => logins.needs_login(image),
         BaseError::NoNetwork => {
-            let registry = match image.split_once('/') {
-                Some((host, _)) if host.contains(['.', ':']) || host == "localhost" => host,
-                _ => "Docker Hub",
-            };
+            let registry = registry_name(image);
             format!(
                 "Could not reach {registry} to look up the base image {image}. Builds look up their base images \
                  every time, so they need the network even when everything is cached.\n{error}"
@@ -710,7 +714,7 @@ mod tests {
         ));
 
         let failure = feed(&build, &lines)
-            .failure("/logs/build.log".into())
+            .failure("/logs/build.log".into(), &Logins::default())
             .unwrap();
         assert_eq!(
             failure.message,
@@ -739,6 +743,13 @@ mod tests {
         "",
         "pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed",
         "The base image someone/private:1 doesn't exist, or it needs a login to download."
+    )]
+    #[case::private_password_registry(
+        "[internal] load metadata for localhost:5000/private/base:1",
+        "",
+        "unexpected status from HEAD request to http://localhost:5000/v2/private/base/manifests/1: 401 Unauthorized",
+        "The base image localhost:5000/private/base:1 doesn't exist, or it needs a login to download. To log in, run \
+         `docker login localhost:5000`"
     )]
     #[case::no_network(
         "[internal] load metadata for registry.example.invalid/thing:1",
@@ -780,7 +791,9 @@ mod tests {
             ],
         );
 
-        let failure = progress.failure("/logs/build.log".into()).unwrap();
+        let failure = progress
+            .failure("/logs/build.log".into(), &Logins::default())
+            .unwrap();
         assert!(failure.message.starts_with(expected), "{}", failure.message);
     }
 

@@ -134,24 +134,24 @@ your task instead.
 If a secret or object doesn't exist, or a global secret doesn't allow your namespace, the task fails before its
 container starts and the reason says which key was missing.
 
-## Private Registries
+## Private Base Images
 
-If a task's image lives in a registry that needs a login, give the task credentials with `RegistryAuth`. The password
-has to be a pipeline or global secret so it never ends up stored in your pipeline config; Gofer rejects the config
-otherwise. The user can be written in as is, or be a secret too:
+If a task's base image is in a registry that needs a login, log in with Docker the way you usually would, then run
+`gofer up`:
 
-```go
-sdk.NewTask("build", "registry.example.com/my-org/builder:latest").
-    RegistryAuth("my-user", sdk.PipelineSecret("registry_pass"))
+```bash
+docker login registry.example.com
 ```
 
-```rust
-Task::new("build", "registry.example.com/my-org/builder:latest")
-    .registry_auth("my-user", &pipeline_secret("registry_pass"))
-```
+`gofer up` builds the image on your machine with the same logins Docker uses, including credential helpers and
+`DOCKER_AUTH_CONFIG`. A build only gets the logins for the registries it downloads from, and they never end up in the
+image. The Gofer server never needs them, since it runs the image `gofer up` uploaded instead of downloading one.
 
-The secrets are looked up right before the image is pulled, just like variables. Objects aren't allowed here, and if
-a secret is missing the task fails before its container starts.
+In a Dockerfile, a `FROM` can use a variable from an `ARG`, like `FROM ${BASE}`. Gofer doesn't pass build arguments,
+so each one is its `ARG`'s default, and that's how Gofer works out which registry the image is in.
+
+Some registries hand out an identity token in place of a password. Gofer can use one of those for a task it builds with
+Docker, but not yet for a task that's only a base image and a command, since that's downloaded without Docker.
 
 ## What happens when a task is run?
 
@@ -159,8 +159,8 @@ The high level flow is:
 
 1. Gofer checks to make sure your task configuration is valid.
 2. Gofer waits for the task's parents to finish and checks they ended in the states the task requires.
-3. Gofer parses the task configuration's variables list and registry auth. It replaces any secret or object strings
+3. Gofer parses the task configuration's variables list. It replaces any secret or object strings
    with their actual values from the object or secret store.
 4. Gofer then passes the details of your task to Docker, variables are passed in as environment variables.
-5. Docker pulls the `image` mentioned in the configuration if the host doesn't already have it.
-6. Once the image is successfully pulled the container is then run with the settings passed.
+5. Gofer loads the task's image into Docker from what `gofer up` uploaded, if Docker doesn't have it already.
+6. The container is then run with the settings passed.

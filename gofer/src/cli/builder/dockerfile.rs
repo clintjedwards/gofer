@@ -1,4 +1,4 @@
-//! Turns the steps of a build into a Dockerfile.
+//! Turns the steps of a build into a Dockerfile, and finds which images a Dockerfile downloads.
 
 use super::{
     Step, Steps,
@@ -7,12 +7,31 @@ use super::{
 use anyhow::{Context, Result, bail};
 use lazy_regex::regex;
 use sha2::{Digest, Sha256};
-use std::os::unix::ffi::OsStrExt;
+use std::{
+    collections::{HashMap, VecDeque},
+    os::unix::ffi::OsStrExt,
+};
 
 /// The longest line BuildKit accepts in a Dockerfile.
 ///
 /// <https://github.com/moby/buildkit/blob/v0.35.1/frontend/dockerfile/parser/parser.go#L590>
 const MAX_LINE_BYTES: usize = 65535;
+
+/// The variables BuildKit sets itself, which a `FROM` can use without an `ARG`. Tasks are built for linux/amd64. The
+/// `BUILD` ones are really whatever the builder runs on, but here they only help find which registry an image is in,
+/// and a registry's name doesn't change with the machine.
+///
+/// <https://github.com/moby/buildkit/blob/v0.35.1/frontend/dockerfile/dockerfile2llb/platform.go#L39-L57>
+const PLATFORM_ARGS: [(&str, &str); 8] = [
+    ("BUILDPLATFORM", "linux/amd64"),
+    ("BUILDOS", "linux"),
+    ("BUILDARCH", "amd64"),
+    ("BUILDVARIANT", ""),
+    ("TARGETPLATFORM", "linux/amd64"),
+    ("TARGETOS", "linux"),
+    ("TARGETARCH", "amd64"),
+    ("TARGETVARIANT", ""),
+];
 
 /// Every run step goes through this script, which sets up the compiler caches and then runs the user's command.
 ///
@@ -279,6 +298,275 @@ fn rust_cache_id(task: &str, base: &str, earlier_runs: &[&str]) -> String {
     }
 
     format!("gofer-rust-{}", hex::encode(hasher.finalize()))
+}
+
+/// Finds every image a Dockerfile downloads: its bases, the images it copies or mounts files from, and the frontend a
+/// `# syntax` line asks for. A build gets the user's logins for only these images' registries.
+///
+/// Gofer doesn't pass build arguments, so a variable in a `FROM` always has the default its `ARG` gives it, and this
+/// works it out the way BuildKit does. BuildKit doesn't allow variables in the other places.
+pub fn images(dockerfile: &str) -> Result<Vec<String>> {
+    let mut lines = dockerfile.lines().enumerate().peekable();
+    let mut images = vec![];
+    let mut escape = '\\';
+
+    // Parser directives can only be the very first lines.
+    //
+    // <https://docs.docker.com/reference/dockerfile/#parser-directives>
+    while let Some(directive) = (lines.peek().copied())
+        .and_then(|(_, line)| regex!(r"^\s*#\s*([a-zA-Z]+)\s*=\s*(\S+)\s*$").captures(line))
+    {
+        match directive[1].to_lowercase().as_str() {
+            "syntax" => images.push(directive[2].to_string()),
+            "escape" if &directive[2] == "`" => escape = '`',
+            _ => {}
+        }
+        lines.next();
+    }
+
+    let instructions = instructions(lines, escape);
+
+    // A name that's a stage's refers to that stage, wherever in the file it is, and so does a stage's number.
+    let stages: Vec<String> = (instructions.iter())
+        .filter_map(|(_, text)| match words(text).as_slice() {
+            [from, .., keyword, name]
+                if from.eq_ignore_ascii_case("FROM") && keyword.eq_ignore_ascii_case("AS") =>
+            {
+                Some(name.to_lowercase())
+            }
+            _ => None,
+        })
+        .collect();
+    let is_image = |name: &&str| {
+        !name.eq_ignore_ascii_case("scratch")
+            && name.parse::<usize>().is_err()
+            && !stages.contains(&name.to_lowercase())
+    };
+
+    let mut args: HashMap<String, String> = (PLATFORM_ARGS.iter())
+        .map(|(name, value)| (name.to_string(), value.to_string()))
+        .collect();
+    let mut in_stage = false;
+
+    for (number, text) in &instructions {
+        let words = words(text);
+        let Some((instruction, words)) = words.split_first() else {
+            continue;
+        };
+        let cant_follow = || {
+            format!(
+                "Gofer can't tell which image line {number} uses, since it can't follow the variable in it. It \
+                 needs to know which registry to use your login for. In a FROM, variables can be $NAME, ${{NAME}}, \
+                 ${{NAME:-default}} or ${{NAME:+value}}."
+            )
+        };
+
+        match instruction.to_uppercase().as_str() {
+            // Only the ones before the first FROM can be used in a FROM.
+            "ARG" if !in_stage => {
+                for (name, value) in words.iter().filter_map(|arg| arg.split_once('=')) {
+                    let value = expand(unquote(value), &args).with_context(cant_follow)?;
+                    args.insert(name.to_string(), value);
+                }
+            }
+            "FROM" => {
+                in_stage = true;
+                if let Some(image) = words.iter().find(|word| !word.starts_with("--")) {
+                    let image = expand(image, &args).with_context(cant_follow)?;
+                    images.extend(Some(image.as_str()).filter(is_image).map(String::from));
+                }
+            }
+            "COPY" | "ADD" => {
+                let from = (words.iter()).filter_map(|word| word.strip_prefix("--from="));
+                images.extend(from.map(unquote).filter(is_image).map(String::from));
+            }
+            "RUN" => {
+                let from = (words.iter())
+                    .filter_map(|word| word.strip_prefix("--mount="))
+                    .flat_map(|mount| unquote(mount).split(','))
+                    .filter_map(|option| option.strip_prefix("from="));
+                images.extend(from.filter(is_image).map(String::from));
+            }
+            _ => {}
+        }
+    }
+
+    images.sort();
+    images.dedup();
+    Ok(images)
+}
+
+/// Joins a Dockerfile's lines into instructions, each with the number of the line it starts on. Comments and what's
+/// in heredocs are left out, since a line in either can look like an instruction.
+///
+/// <https://github.com/moby/buildkit/blob/v0.35.1/frontend/dockerfile/parser/parser.go#L305-L434>
+fn instructions<'a>(
+    lines: impl Iterator<Item = (usize, &'a str)>,
+    escape: char,
+) -> Vec<(usize, String)> {
+    let mut instructions = vec![];
+    let mut current: Option<(usize, String)> = None;
+
+    // The words that end each heredoc, and whether tabs before them are left out.
+    let mut heredocs: VecDeque<(String, bool)> = VecDeque::new();
+
+    for (index, line) in lines {
+        if let Some((end, strip_tabs)) = heredocs.front() {
+            let line = if *strip_tabs {
+                line.trim_start_matches('\t')
+            } else {
+                line
+            };
+            if line == end {
+                heredocs.pop_front();
+            }
+            continue;
+        }
+
+        // These can even be in the middle of an instruction that goes over more than one line.
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        let (number, mut text) = current.take().unwrap_or((index + 1, String::new()));
+        if let Some(start) = line.trim_end().strip_suffix(escape) {
+            text.push_str(start);
+            current = Some((number, text));
+            continue;
+        }
+        text.push_str(line);
+
+        // A word like `<<EOF` starts a heredoc, which goes on until a line that's only `EOF`.
+        //
+        // <https://github.com/moby/buildkit/blob/v0.35.1/frontend/dockerfile/parser/parser.go#L503-L521>
+        if regex!(r"(?i)^\s*(ONBUILD\s+)?(RUN|COPY|ADD)\s").is_match(&text) {
+            for word in words(&text) {
+                if let Some(heredoc) = regex!(r"^\d*<<(-?)\s*([^<]+)$").captures(word) {
+                    let end = heredoc[2].replace(['"', '\''], "");
+                    heredocs.push_back((end, &heredoc[1] == "-"));
+                }
+            }
+        }
+
+        instructions.push((number, text));
+    }
+
+    instructions.extend(current);
+    instructions
+}
+
+/// Splits an instruction into words at the spaces that aren't in quotes. The quotes stay.
+fn words(text: &str) -> Vec<&str> {
+    let mut words = vec![];
+    let mut start = None;
+    let mut quote = None;
+
+    for (index, c) in text.char_indices() {
+        match quote {
+            Some(open) if c == open => quote = None,
+            Some(_) => {}
+            None if c.is_whitespace() => {
+                if let Some(start) = start.take() {
+                    words.push(&text[start..index]);
+                }
+            }
+            None => {
+                start.get_or_insert(index);
+                if c == '"' || c == '\'' {
+                    quote = Some(c);
+                }
+            }
+        }
+    }
+
+    words.extend(start.map(|start| &text[start..]));
+    words
+}
+
+fn unquote(word: &str) -> &str {
+    for quote in ['"', '\''] {
+        if let Some(inside) = word
+            .strip_prefix(quote)
+            .and_then(|word| word.strip_suffix(quote))
+        {
+            return inside;
+        }
+    }
+
+    word
+}
+
+/// Puts the values of variables into a word, the way BuildKit does. One that isn't set is empty. `None` when it uses a
+/// variable in a way this doesn't follow, like `${NAME#prefix}`.
+///
+/// <https://github.com/moby/buildkit/blob/v0.35.1/frontend/dockerfile/shell/lex.go#L353-L500>
+fn expand(word: &str, args: &HashMap<String, String>) -> Option<String> {
+    let name_length = |text: &str| {
+        text.find(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .unwrap_or(text.len())
+    };
+
+    let mut expanded = String::new();
+    let mut rest = word;
+
+    while let Some(dollar) = rest.find('$') {
+        expanded.push_str(&rest[..dollar]);
+        rest = &rest[dollar + 1..];
+
+        let Some(braced) = rest.strip_prefix('{') else {
+            let (name, after) = rest.split_at(name_length(rest));
+            match name {
+                "" => expanded.push('$'),
+                name => expanded.push_str(args.get(name).map_or("", String::as_str)),
+            }
+            rest = after;
+            continue;
+        };
+
+        // The `}` that ends this one, after any that are inside it.
+        let mut depth = 0;
+        let end = braced.find(|c| {
+            match c {
+                '{' => depth += 1,
+                '}' if depth == 0 => return true,
+                '}' => depth -= 1,
+                _ => {}
+            }
+            false
+        })?;
+        let inside = &braced[..end];
+        rest = &braced[end + 1..];
+
+        let (name, modifier) = inside.split_at(name_length(inside));
+        let value = args.get(name);
+
+        // With a colon, empty counts the same as not set.
+        let (empty_is_unset, modifier) = match modifier.strip_prefix(':') {
+            Some(modifier) => (true, modifier),
+            None => (false, modifier),
+        };
+        let set = value.filter(|value| !empty_is_unset || !value.is_empty());
+
+        let mut modifier = modifier.chars();
+        let operator = modifier.next();
+        let word = modifier.as_str();
+
+        expanded.push_str(&match (operator, set) {
+            (None, _) if name.is_empty() || empty_is_unset => return None,
+            (None, _) => value.cloned().unwrap_or_default(),
+            (Some('-'), Some(value)) => value.clone(),
+            (Some('-'), None) => expand(word, args)?,
+            (Some('+'), Some(_)) => expand(word, args)?,
+            (Some('+'), None) => String::new(),
+            // When it isn't set, BuildKit stops with the message in `word`, which says it better than we could.
+            (Some('?'), _) => value.cloned().unwrap_or_default(),
+            _ => return None,
+        });
+    }
+
+    expanded.push_str(rest);
+    Some(expanded)
 }
 
 #[cfg(test)]
@@ -607,5 +895,116 @@ mod tests {
         });
         let error = try_render(&steps).unwrap_err().to_string();
         assert!(error.contains("target/release/report"), "{error}");
+    }
+
+    #[test]
+    fn test_every_image_a_dockerfile_downloads_is_found() {
+        let dockerfile = r#"# syntax=docker/dockerfile:1
+ARG GO_VERSION=1.25
+ARG REGISTRY=ghcr.io/acme
+ARG RUNTIME=${REGISTRY}/runtime
+from --platform=$BUILDPLATFORM golang:${GO_VERSION} AS Build
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /bin/
+RUN --mount=type=cache,target=/root/.cache \
+    --mount=type=bind,from=quay.io/acme/tools:1,source=/,target=/tools go build
+FROM build AS test
+FROM ${RUNTIME}:${TARGETARCH}
+COPY --from=Build /app /app
+COPY --from=0 /a /a
+RUN --mount=type=bind,from=test,target=/test true
+FROM scratch
+"#;
+
+        assert_eq!(
+            images(dockerfile).unwrap(),
+            vec![
+                "docker/dockerfile:1",
+                "ghcr.io/acme/runtime:amd64",
+                "ghcr.io/astral-sh/uv:0.9",
+                "golang:1.25",
+                "quay.io/acme/tools:1",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_only_instructions_can_name_images() {
+        let dockerfile = "FROM alpine:3.22
+RUN <<EOF
+FROM in-a-heredoc
+EOF
+RUN cat <<-\"END\" > /a && cat <<'MORE' > /b
+\tFROM in-a-heredoc-with-tabs
+\tEND
+FROM in-a-second-heredoc
+MORE
+# FROM in-a-comment
+FROM \\
+  # A comment can be in the middle of an instruction.
+
+  debian:13
+RUN echo \"not <<a heredoc\" 'nor <<this'
+FROM python:3
+";
+
+        assert_eq!(
+            images(dockerfile).unwrap(),
+            vec!["alpine:3.22", "debian:13", "python:3"]
+        );
+    }
+
+    #[test]
+    fn test_from_uses_only_args_from_before_the_first_stage() {
+        let dockerfile = "ARG VERSION=1
+FROM alpine:${VERSION}
+ARG VERSION=2
+FROM debian:${VERSION}
+";
+        assert_eq!(images(dockerfile).unwrap(), vec!["alpine:1", "debian:1"]);
+
+        // The escape directive changes what continues a line.
+        let dockerfile = "# escape=`
+FROM `
+  mcr.microsoft.com/windows/servercore:ltsc2022
+";
+        assert_eq!(
+            images(dockerfile).unwrap(),
+            vec!["mcr.microsoft.com/windows/servercore:ltsc2022"]
+        );
+    }
+
+    #[rstest]
+    #[case("$A", Some("a"))]
+    #[case("${A}-x", Some("a-x"))]
+    #[case("x${UNSET}y", Some("xy"))]
+    #[case("${EMPTY:-default}", Some("default"))]
+    #[case("${EMPTY-default}", Some(""))]
+    #[case("${UNSET-default}", Some("default"))]
+    #[case("${A:+other}", Some("other"))]
+    #[case("${EMPTY:+other}", Some(""))]
+    #[case("${EMPTY+other}", Some("other"))]
+    #[case("${UNSET:-${A}b}", Some("ab"))]
+    #[case("${A:?must be set}", Some("a"))]
+    #[case("cost$", Some("cost$"))]
+    #[case("$-x", Some("$-x"))]
+    #[case("${A#a}", None)]
+    #[case("${A%a}", None)]
+    #[case("${A/a/b}", None)]
+    #[case("${A:}", None)]
+    #[case("${}", None)]
+    #[case("${A", None)]
+    fn test_variables_are_expanded_like_buildkit_does(
+        #[case] word: &str,
+        #[case] expected: Option<&str>,
+    ) {
+        let args = HashMap::from([("A".into(), "a".into()), ("EMPTY".into(), String::new())]);
+        assert_eq!(expand(word, &args).as_deref(), expected);
+    }
+
+    #[test]
+    fn test_a_variable_that_cant_be_followed_says_where() {
+        let dockerfile = "ARG TAG=v1\n\nFROM alpine:${TAG#v}\n";
+        let error = images(dockerfile).unwrap_err().to_string();
+        assert!(error.contains("line 3"), "{error}");
     }
 }
