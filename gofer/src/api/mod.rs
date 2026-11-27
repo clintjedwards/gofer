@@ -498,6 +498,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     extensions::reconcile::reconcile_on_boot(api_state.clone()).await;
     tokio::spawn(extensions::health::poll(api_state.clone()));
     tokio::spawn(image_retention::run(api_state.clone()));
+    tokio::spawn(orchestrator::sweep_finished_runs(api_state.clone()));
 
     shutdown
         .await
@@ -656,14 +657,6 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
     /* /api/namespaces/{namespace_id}/pipelines/{pipeline_id}/objects/{key} */
     api.register(objects::get_pipeline_object).unwrap();
     api.register(objects::delete_pipeline_object).unwrap();
-
-    /* /api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects */
-    api.register(objects::list_run_objects).unwrap();
-    api.register(objects::put_run_object).unwrap();
-
-    /* /api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects/{key} */
-    api.register(objects::get_run_object).unwrap();
-    api.register(objects::delete_run_object).unwrap();
 
     /* /api/namespaces/{namespace_id}/pipelines/{pipeline_id}/subscriptions */
     api.register(subscriptions::list_subscriptions).unwrap();
@@ -1111,9 +1104,6 @@ pub enum InterpolationKind {
     /// global_secret{{\<key\>]}}
     GlobalSecret,
 
-    /// run_object{{\<key\>}}
-    RunObject,
-
     /// pipeline_object{{\<key\>}}
     PipelineObject,
 }
@@ -1211,11 +1201,6 @@ pub async fn fetch_pipeline_secret(
 /// Takes in a map of mixed plaintext and raw secret/store strings and populates it with
 /// the fetched strings for each type.
 ///
-/// The 'run_id' is optional here since we mainly use interpolate_vars in two separate contexts. The first context
-/// is when we process a new run, in which case there might be some run specific vars that need to be interpolated.
-/// The second is during pipeline subscriptions in which case you might want to pass a secret, but we aren't in the
-/// context of a run and don't require it.
-///
 /// This takes the stores it reads from instead of [`ApiState`] so it can be tested without Docker.
 pub async fn interpolate_vars(
     storage: &storage::Db,
@@ -1223,7 +1208,6 @@ pub async fn interpolate_vars(
     object_store: &dyn object_store::ObjectStore,
     namespace_id: &str,
     pipeline_id: &str,
-    run_id: Option<u64>,
     variables: &Vec<Variable>,
 ) -> Result<Vec<Variable>> {
     let mut variable_list = vec![];
@@ -1293,42 +1277,6 @@ pub async fn interpolate_vars(
                     source: variable.source.clone(),
                 });
             }
-            InterpolationKind::RunObject => {
-                if run_id.is_none() {
-                    continue;
-                }
-
-                let retrieved_value = match object_store
-                    .get(&objects::run_object_store_key(
-                        namespace_id,
-                        pipeline_id,
-                        run_id.unwrap(),
-                        &value,
-                    ))
-                    .await
-                {
-                    Ok(val) => val,
-                    Err(e) => {
-                        if e == object_store::ObjectStoreError::NotFound {
-                            return Err(BadReference(format!(
-                                "Could not find run object '{value}'"
-                            ))
-                            .into());
-                        };
-
-                        bail!("Could not retrieve run object: {:#?}", e)
-                    }
-                };
-
-                // We attempt to stringify the object to insert it into the environment variables.
-                let stringified_object = String::from_utf8_lossy(&retrieved_value);
-
-                variable_list.push(Variable {
-                    key: variable.key.clone(),
-                    value: stringified_object.to_string(),
-                    source: variable.source.clone(),
-                });
-            }
         };
     }
 
@@ -1344,7 +1292,6 @@ pub async fn interpolate_vars(
 ///   - `pipeline_secret{{ example }}` for inserting from the pipeline secret store.
 ///   - `global_secret{{ example }}` for inserting from the global secret store.
 ///   - `pipeline_object{{ example }}` for inserting from the pipeline object store.
-///   - `run_object{{ example }}` for inserting from the run object store.
 pub fn parse_interpolation_syntax(raw_input: &str) -> Option<(InterpolationKind, String)> {
     let raw_input = raw_input.trim();
 
@@ -1673,10 +1620,6 @@ mod tests {
             secrets::global_secret_store_key("x")
         );
         assert_ne!(
-            objects::pipeline_object_store_key("ns", "pipeline", "1_x"),
-            objects::run_object_store_key("ns", "pipeline", 1, "x")
-        );
-        assert_ne!(
             objects::extension_object_store_key("ns", "pipeline_x"),
             objects::pipeline_object_store_key("ns", "pipeline", "x")
         );
@@ -1700,13 +1643,6 @@ mod tests {
     fn test_valid_pipeline_object_nested_whitespace() {
         let input = "pipeline_object{{  nested   }}";
         let expected = Some((InterpolationKind::PipelineObject, "nested".to_string()));
-        assert_eq!(parse_interpolation_syntax(input), expected);
-    }
-
-    #[test]
-    fn test_valid_run_object() {
-        let input = "run_object{{run123}}";
-        let expected = Some((InterpolationKind::RunObject, "run123".to_string()));
         assert_eq!(parse_interpolation_syntax(input), expected);
     }
 
@@ -1801,21 +1737,12 @@ mod tests {
             )
             .await
             .unwrap();
-        object_store
-            .put(
-                &objects::run_object_store_key("default", "simple", 1, "build_number"),
-                bytes::Bytes::from("run object value"),
-                false,
-            )
-            .await
-            .unwrap();
 
         let variables = vec![
             variable("PLAIN", "plain value"),
             variable("DEPLOY_KEY", "pipeline_secret{{deploy_key}}"),
             variable("SLACK", "global_secret{{slack_token}}"),
             variable("HEADER", "pipeline_object{{logs_header}}"),
-            variable("BUILD", "run_object{{build_number}}"),
         ];
 
         let result = interpolate_vars(
@@ -1824,7 +1751,6 @@ mod tests {
             &object_store.db,
             "default",
             "simple",
-            Some(1),
             &variables,
         )
         .await
@@ -1837,7 +1763,6 @@ mod tests {
         assert_eq!(result["DEPLOY_KEY"], "pipeline secret value");
         assert_eq!(result["SLACK"], "global secret value");
         assert_eq!(result["HEADER"], "pipeline object value");
-        assert_eq!(result["BUILD"], "run object value");
     }
 
     #[tokio::test]
@@ -1852,7 +1777,6 @@ mod tests {
             &object_store.db,
             "default",
             "simple",
-            Some(1),
             &vec![variable("HEADER", "pipeline_object{{logs_header}}")],
         )
         .await
@@ -1892,7 +1816,6 @@ mod tests {
             &object_store.db,
             "default",
             "simple",
-            Some(1),
             &vec![variable("SLACK", "global_secret{{slack_token}}")],
         )
         .await;

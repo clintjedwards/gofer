@@ -404,7 +404,6 @@ impl RunShepherd {
             self.api_state.object_store.as_ref(),
             &self.pipeline.metadata.namespace_id,
             &self.pipeline.metadata.pipeline_id,
-            Some(self.run.run_id),
             &env_vars,
         )
         .await
@@ -504,6 +503,7 @@ impl RunShepherd {
                 // How the task runs is built into its image.
                 entrypoint: None,
                 command: None,
+                run_folder: Some(self.run_folder()),
                 timeline: Some(timeline.clone()),
             })
             .await?;
@@ -523,10 +523,11 @@ impl RunShepherd {
         container_id: String,
         task_execution: task_executions::TaskExecution,
     ) {
+        // Tracked so the run can wait for every task's logs to be written before it removes their containers.
         let self_clone = self.clone();
         let container_id_clone = container_id.clone();
         let task_id = task_execution.task_id.clone();
-        tokio::spawn(async move {
+        self.log_streams.spawn(async move {
             self_clone
                 .handle_log_updates(container_id_clone, task_id)
                 .await;

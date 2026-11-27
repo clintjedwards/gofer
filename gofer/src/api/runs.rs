@@ -193,11 +193,8 @@ pub struct Run {
     /// with a ready injected token into the run just-in-time. If this is None this run had no tasks with the
     /// `inject_api_token` setting enabled.
     ///
-    /// These tokens automatically expire after a pre-determined time.
+    /// The token is deleted when the run ends, since only the run's own tasks use it.
     pub token_id: Option<String>,
-
-    /// Whether run level objects are deleted.
-    pub store_objects_expired: bool,
 
     /// The UUID of the QueuedRun event for this run. Essentially pointing to the start of the run in the event stream.
     ///
@@ -229,7 +226,6 @@ impl Run {
             initiator,
             variables,
             token_id,
-            store_objects_expired: false,
             event_id: None,
         }
     }
@@ -309,7 +305,6 @@ impl TryFrom<storage::runs::Run> for Run {
             initiator,
             variables,
             token_id: value.token_id,
-            store_objects_expired: value.store_objects_expired,
             event_id: value.event_id,
         })
     }
@@ -354,7 +349,6 @@ impl TryFrom<Run> for storage::runs::Run {
             initiator,
             variables,
             token_id: value.token_id,
-            store_objects_expired: value.store_objects_expired,
             event_id: value.event_id,
         })
     }

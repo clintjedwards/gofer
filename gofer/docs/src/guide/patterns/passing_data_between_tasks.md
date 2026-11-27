@@ -1,80 +1,78 @@
 # Passing Data Between Tasks
 
-Tasks don't share a filesystem, so use the [object store](../../ref/object_store/index.html) instead. It's Gofer's
-replacement for a shared workspace.
+Every task in a run gets the same folder, at `/gofer/run`. Whatever one task leaves there, the tasks after it can read,
+the same as files on one machine. Each run starts with an empty one, and it's deleted when the run ends.
 
-- **Run objects** live for a single run (plus a few after it, see `run_object_expiry_runs`). Use them for handing a
-  value or a file from one task to the tasks after it.
-- **Pipeline objects** last across runs until the pipeline hits `pipeline_object_limit`. Use them for caches.
-
-A task stores objects through Gofer's API, so give it `InjectAPIToken(true)`. Gofer sets `GOFER_API_BASE_URL`,
-`GOFER_NAMESPACE`, `GOFER_PIPELINE_ID` and `GOFER_RUN_ID` on every task, so the request needs no other setup. The Gofer
-CLI reads the same variables, along with `GOFER_TOKEN`, so if your image has the `gofer` binary it works with no
-setup either.
+The [run folder example pipeline](https://github.com/clintjedwards/gofer/tree/main/examplePipelines/go/run_folder)
+puts this together: it clones a repository once, shares a dependency cache between tasks that run at the same time,
+packages what was built as another user, and keeps a summary after the run.
 
 ## Small values
 
-For something like a version number, have the first task store it as a run object and have the tasks after it read
-it as an environment variable:
+For something like a version number, have the first task write it to a file and the tasks after it read it back:
 
 ```go
-const storeVersion = `
-VERSION="1.4.2" # Stand in for something your task works out, like a build number.
-curl -sf -X POST \
-  -H "Authorization: Bearer $GOFER_TOKEN" \
-  -H "gofer-api-version: v0" \
-  --data-binary "$VERSION" \
-  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/version"
-`
-
 err := sdk.NewPipeline("release", "Release").
     Tasks(
-        sdk.NewTask("work-out-version", "curlimages/curl:latest").
-            InjectAPIToken(true). // Gives the task a GOFER_TOKEN that can write this pipeline's objects.
-            Command("sh", "-c", storeVersion),
+        sdk.NewTask("work-out-version", "alpine:3.22").
+            // Stand in for something your task works out, like a build number.
+            Script(`echo "1.4.2" > /gofer/run/version`),
 
-        sdk.NewTask("publish", "alpine:latest").
+        sdk.NewTask("publish", "alpine:3.22").
             DependsOn("work-out-version", sdk.RequiredParentStatusSuccess).
-            Variables(map[string]string{"VERSION": sdk.RunObject("version")}).
-            Command("sh", "-c", "echo publishing version $VERSION"),
+            Script(`echo "publishing version $(cat /gofer/run/version)"`),
     ).Finish()
 ```
 
-With the `gofer` binary, `echo "$VERSION" | gofer run object put version @` does the same thing as the curl call.
-
 ## Files and directories
 
-For anything bigger, or anything binary, upload it in one task and download it in the next:
+Anything bigger works the same way. Write it into the folder, and read it from there:
 
-```bash
-# Upload a directory as a run object.
-tar -czf - ./dist | curl -sf -X POST \
-  -H "Authorization: Bearer $GOFER_TOKEN" -H "gofer-api-version: v0" --data-binary @- \
-  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/dist"
+```go
+sdk.NewTask("build", "golang:1.25").
+    Copy("./app", "/src").
+    Script("cd /src && go build -o /gofer/run/app ."),
 
-# Download it in a later task.
-curl -sf -H "Authorization: Bearer $GOFER_TOKEN" -H "gofer-api-version: v0" \
-  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/runs/$GOFER_RUN_ID/objects/dist" \
-  | tar -xzf -
+sdk.NewTask("smoke-test", "debian:13-slim").
+    DependsOn("build", sdk.RequiredParentStatusSuccess).
+    Script("/gofer/run/app --version"),
 ```
 
-The `gofer` binary does the tar work for you. Inside a task it picks up the pipeline and run from the environment, so
-all you need is the key and the directory:
+## Keeping something after the run
+
+The folder goes when the run ends, so nothing in it can be fetched afterward. To keep something, like a build artifact
+or a report, have a task put it somewhere that lasts: a registry, a bucket, or a
+[pipeline object](../../ref/object_store/index.html).
+
+A task stores a pipeline object through Gofer's API, so give it `InjectAPIToken(true)`. Gofer sets `GOFER_TOKEN`,
+`GOFER_API_BASE_URL`, `GOFER_NAMESPACE` and `GOFER_PIPELINE_ID` on the task, so the request needs no other setup:
 
 ```bash
-gofer run object put dist ./dist           # Uploads the directory as a tarball.
-gofer run object get dist --extract ./dist # Downloads and unpacks it.
+curl -sf -X POST \
+  -H "Authorization: Bearer $GOFER_TOKEN" -H "gofer-api-version: v0" \
+  --data-binary @/gofer/run/report.html \
+  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/objects/report?force=true"
 ```
+
+If your image has the `gofer` binary, `gofer pipeline object put report /gofer/run/report.html --force` does the same
+thing; it picks up the pipeline from the environment. Pipeline objects last across runs, but the oldest ones are
+deleted once a pipeline has `pipeline_object_limit` of them, and every run writes to the same keys.
+
+If tasks can't reach Gofer, check `server.extension_address`. That's where `GOFER_API_BASE_URL` comes from, since
+tasks and extensions sit on the same container network.
 
 ## Things that trip people up
 
 - **The reading task has to depend on the writing one** with `DependsOn`. Tasks run in parallel by default, so
-  without it the object might not exist yet. For variables, Gofer reads the object right before the task starts, so
-  the task fails before its container even runs.
-- **Download files through the API, not as variables.** `sdk.RunObject("key")` works well for small text values, but
-  it converts the object to text, so it'll mangle a tarball or any other binary file.
-- **Pipeline objects can disappear.** The oldest ones get deleted once the pipeline hits `pipeline_object_limit`, so
-  write tasks that read them to still work when they're missing. To store one, use the same requests with
-  `/pipelines/$GOFER_PIPELINE_ID/objects/<key>` in place of the run path, and `sdk.PipelineObject` to read it.
-- **If tasks can't reach Gofer, check `server.extension_address`.** That's where `GOFER_API_BASE_URL` comes from,
-  since tasks and extensions sit on the same container network.
+  without it the file might not be there yet.
+- **Tasks that run at the same time share the folder too.** Two of them writing the same file overwrite each other,
+  so give each one a folder of its own inside `/gofer/run`.
+- **What a task makes belongs to the user it ran as.** Any user can write to `/gofer/run` itself, but if a task whose
+  image runs as another user needs to change something an earlier task made, have the earlier task open it up, like
+  `chmod -R a+w /gofer/run/dist`.
+- **Don't put anything at `/gofer` in your images.** Gofer mounts the folder there, which hides whatever the image
+  had.
+- **It takes disk space while the run is going.** The folder is a Docker volume, so it lives with the rest of
+  Docker's data, usually under `/var/lib/docker`, and not in Gofer's own paths. Docker can't limit its size. Only runs
+  that are going have one, and a pipeline's
+  [`Parallelism`](./designing_pipelines.md#limit-pipelines-that-cant-overlap) caps how many of those it has at once.

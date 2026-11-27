@@ -1,6 +1,6 @@
-use super::{RunShepherd, run_specific_api_key_id};
+use super::RunShepherd;
 use crate::{
-    api::{objects, runs, secrets, task_executions},
+    api::{runs, task_executions},
     storage,
 };
 
@@ -10,16 +10,6 @@ use std::str::FromStr;
 use tracing::{debug, error};
 
 impl RunShepherd {
-    /// Removes run level objects(including tokens) from the object store once a run is past it's expiry threshold.
-    pub(super) async fn handle_run_object_expiry(self) {
-        if let Err(e) = self.expire_run_objects().await {
-            error!(namespace_id = &self.pipeline.metadata.namespace_id,
-                pipeline_id = &self.pipeline.metadata.pipeline_id,
-                run_id = self.run.run_id,
-                error = %format!("{e:#}"), "Could not process run object expiry");
-        }
-    }
-
     /// Removes task execution logs once a run is past the log retention threshold.
     pub(super) async fn handle_run_log_expiry(self) {
         if let Err(e) = self.expire_run_logs().await {
@@ -92,146 +82,6 @@ impl RunShepherd {
         }
 
         Ok(Some(expired_run))
-    }
-
-    async fn expire_run_objects(&self) -> Result<()> {
-        let limit = self.api_state.config.object_store.run_object_expiry_runs;
-
-        let Some(expired_run) = self.wait_for_expired_run(limit).await? else {
-            return Ok(());
-        };
-
-        self.remove_run_objects(&expired_run)
-            .await
-            .with_context(|| {
-                format!(
-                    "Could not remove objects for expired run {}",
-                    expired_run.run_id
-                )
-            })
-    }
-
-    async fn remove_run_objects(&self, expired_run: &runs::Run) -> Result<()> {
-        let namespace_id = &self.pipeline.metadata.namespace_id;
-        let pipeline_id = &self.pipeline.metadata.pipeline_id;
-        let expired_run_id =
-            i64::try_from(expired_run.run_id).context("Could not serialize run id")?;
-
-        let mut conn = self
-            .api_state
-            .storage
-            .write_conn()
-            .await
-            .context("Could not establish connection to database")?;
-
-        // We also need to delete automatically generated (inject_api_token) pipeline secret keys. A key or token
-        // that's already gone is worth noting but doesn't stop the rest of the cleanup.
-        if let Some(token_id) = &expired_run.token_id {
-            let key_id = run_specific_api_key_id(expired_run.run_id);
-
-            // The first step here is to delete the pipeline secret reference.
-            match storage::secret_store_pipeline_keys::delete(
-                &mut conn,
-                namespace_id,
-                pipeline_id,
-                &key_id,
-            )
-            .await
-            {
-                Ok(()) => {}
-                Err(storage::StorageError::NotFound) => {
-                    error!(
-                        namespace_id,
-                        pipeline_id,
-                        run_id = expired_run.run_id,
-                        key_id,
-                        "Could not find pipeline secret key while attempting to remove inject_api_token"
-                    );
-                }
-                Err(e) => {
-                    return Err(e).context("Could not remove inject_api_token pipeline secret key");
-                }
-            }
-
-            // The second step is to delete the key itself.
-            match storage::tokens::delete(&mut conn, token_id).await {
-                Ok(()) => {}
-                Err(storage::StorageError::NotFound) => {
-                    error!(
-                        namespace_id,
-                        pipeline_id,
-                        run_id = expired_run.run_id,
-                        token_id,
-                        "Could not find token while attempting to remove inject_api_token"
-                    );
-                }
-                Err(e) => return Err(e).context("Could not remove inject_api_token"),
-            }
-
-            // The last step is to delete the token object.
-            self.api_state
-                .secret_store
-                .delete(&secrets::pipeline_secret_store_key(
-                    namespace_id,
-                    pipeline_id,
-                    &key_id,
-                ))
-                .await
-                .context("Could not remove inject_api_token object from secret_store")?;
-        }
-
-        if expired_run.store_objects_expired {
-            return Ok(());
-        }
-
-        let objects = storage::object_store_run_keys::list(
-            &mut conn,
-            namespace_id,
-            pipeline_id,
-            expired_run_id,
-        )
-        .await
-        .context("Could not list run objects")?;
-
-        for object in objects {
-            // Delete it from the object store
-            self.api_state
-                .object_store
-                .delete(&objects::run_object_store_key(
-                    namespace_id,
-                    pipeline_id,
-                    expired_run.run_id,
-                    &object.key,
-                ))
-                .await
-                .context("Could not delete object from store")?;
-
-            // Delete it from the run's records
-            storage::object_store_run_keys::delete(
-                &mut conn,
-                namespace_id,
-                pipeline_id,
-                expired_run_id,
-                &object.key,
-            )
-            .await
-            .context("Could not remove object store reference in run")?;
-        }
-
-        storage::runs::update(
-            &mut conn,
-            namespace_id,
-            pipeline_id,
-            expired_run_id,
-            storage::runs::UpdatableFields {
-                store_objects_expired: Some(true),
-                ..Default::default()
-            },
-        )
-        .await
-        .context("Could not update run")?;
-
-        Ok(())
     }
 
     async fn expire_run_logs(&self) -> Result<()> {

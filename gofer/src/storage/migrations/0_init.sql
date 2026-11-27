@@ -81,7 +81,6 @@ CREATE TABLE IF NOT EXISTS runs (
     initiator               TEXT    NOT NULL,
     variables               TEXT    NOT NULL,
     token_id                TEXT,
-    store_objects_expired   INTEGER NOT NULL CHECK (store_objects_expired IN (0, 1)),
     event_id                TEXT,
     FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE,
     FOREIGN KEY (namespace_id, pipeline_id) REFERENCES pipeline_metadata(namespace_id, pipeline_id) ON DELETE CASCADE,
@@ -153,20 +152,6 @@ CREATE TABLE IF NOT EXISTS object_store_pipeline_keys(
 ) STRICT;
 
 CREATE INDEX idx_object_pipeline_keys_created ON object_store_pipeline_keys (created);
-
-CREATE TABLE IF NOT EXISTS object_store_run_keys(
-    namespace_id  TEXT    NOT NULL,
-    pipeline_id   TEXT    NOT NULL,
-    run_id        INTEGER NOT NULL,
-    key           TEXT    NOT NULL,
-    created       TEXT    NOT NULL,
-    FOREIGN KEY (namespace_id) REFERENCES namespaces(id) ON DELETE CASCADE,
-    FOREIGN KEY (namespace_id, pipeline_id) REFERENCES pipeline_metadata(namespace_id, pipeline_id) ON DELETE CASCADE,
-    FOREIGN KEY (namespace_id, pipeline_id, run_id) REFERENCES runs(namespace_id, pipeline_id, run_id) ON DELETE CASCADE,
-    PRIMARY KEY (namespace_id, pipeline_id, run_id, key)
-) STRICT;
-
-CREATE INDEX idx_object_run_keys_created ON object_store_run_keys (created);
 
 CREATE TABLE IF NOT EXISTS object_store_extension_keys(
     extension_id  TEXT    NOT NULL,

@@ -328,7 +328,6 @@ mod tests {
             initiator: "UserA".to_string(),
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
-            store_objects_expired: false,
             event_id: None,
         };
 

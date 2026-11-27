@@ -131,6 +131,25 @@ pub async fn list_kept_images(
         .await
 }
 
+/// Whether any version of the pipeline has a task that runs this image, by the digest of its manifest.
+pub async fn is_registered_image(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    manifest: &str,
+) -> Result<bool, StorageError> {
+    let sql = "SELECT EXISTS (SELECT 1 FROM tasks \
+        WHERE namespace_id = ? AND pipeline_id = ? AND image_digest = ?);";
+
+    sqlx::query_scalar::<_, bool>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(manifest)
+        .fetch_one(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 /// The blobs a pipeline was last told about, or uploaded, before `before`, in epoch milliseconds.
 pub async fn list_seen_before(
     conn: &mut SqliteConnection,

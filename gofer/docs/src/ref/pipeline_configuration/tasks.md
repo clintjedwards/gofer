@@ -215,7 +215,7 @@ These are the system variables Gofer injects into every task:
 
 A variable's value can pull from Gofer's [secret store](../secret_store/index.html) or
 [object store](../object_store/index.html) instead of being written into the pipeline config. That keeps secrets out
-of your code and lets one task hand a value to the next.
+of your code.
 
 You do this with a special string as the value. The SDK has a helper function for each kind, or you can write the
 string yourself:
@@ -225,14 +225,13 @@ string yourself:
 | `sdk.PipelineSecret(key)` | `pipeline_secret(key)` | `pipeline_secret{{key}}` | This pipeline's secrets.                                           |
 | `sdk.GlobalSecret(key)`   | `global_secret(key)`   | `global_secret{{key}}`   | Global secrets. The secret has to allow your pipeline's namespace. |
 | `sdk.PipelineObject(key)` | `pipeline_object(key)` | `pipeline_object{{key}}` | This pipeline's objects.                                           |
-| `sdk.RunObject(key)`      | `run_object(key)`      | `run_object{{key}}`      | Objects stored on the current run.                                 |
 
 ```go
 sdk.NewTask("deploy", "my-org/deployer:1.4").
     Variables(map[string]string{
-        "ENVIRONMENT":  "production",                    // Passed in as is.
-        "DEPLOY_KEY":   sdk.PipelineSecret("deploy_key"), // Becomes the value of the pipeline secret "deploy_key".
-        "BUILD_NUMBER": sdk.RunObject("build_number"),    // Becomes the value of the run object "build_number".
+        "ENVIRONMENT": "production",                     // Passed in as is.
+        "DEPLOY_KEY":  sdk.PipelineSecret("deploy_key"),  // Becomes the value of the pipeline secret "deploy_key".
+        "HEADER":      sdk.PipelineObject("logs_header"), // Becomes the value of the pipeline object "logs_header".
     })
 ```
 
@@ -244,11 +243,10 @@ gofer secret global put slack_token -n "ops-.*"          # Admins only; usable f
 gofer pipeline object put logs_header ./header.txt --pipeline my-pipeline
 ```
 
-Gofer swaps in the real values right before each task starts, after its parents have finished. So a task can store
-a run object and any task that depends on it can read it as a variable; see
-[passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for a full example. Objects are
-converted to UTF-8 text when they're inserted; if you need the raw bytes, fetch the object through the API inside
-your task instead.
+Gofer swaps in the real values right before each task starts, after its parents have finished. Objects are converted
+to UTF-8 text when they're inserted; if you need the raw bytes, fetch the object through the API inside your task
+instead. To hand a value from one task to the next within a run, write it to the folder every task in the run shares;
+see [passing data between tasks](../../guide/patterns/passing_data_between_tasks.md).
 
 If a secret or object doesn't exist, or a global secret doesn't allow your namespace, the task fails before its
 container starts and the reason says which key was missing.

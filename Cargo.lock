@@ -2935,6 +2935,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "run_folder"
+version = "0.1.0"
+dependencies = [
+ "gofer_sdk",
+]
+
+[[package]]
 name = "rust-embed"
 version = "8.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3971,6 +3978,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "libc",
  "pin-project-lite",
  "tokio",

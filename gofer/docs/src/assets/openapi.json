@@ -1355,7 +1355,7 @@
           "Configs"
         ],
         "summary": "List which image blobs need to be uploaded.",
-        "description": "Given the digests of the blobs that make up a pipeline's images, returns the ones Gofer doesn't have yet. A pipeline can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too.",
+        "description": "Given the digests of the blobs that make up a pipeline's images, returns the ones Gofer doesn't have yet. A pipeline can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too. The manifest of an image the pipeline already runs is only left out when every part of that image is still stored, so asking about a manifest is enough to tell whether its image can be used again.",
         "operationId": "list_missing_image_blobs",
         "parameters": [
           {
@@ -1896,272 +1896,6 @@
         "summary": "Cancel a run by id.",
         "operationId": "cancel_run",
         "parameters": [
-          {
-            "in": "path",
-            "name": "namespace_id",
-            "description": "The unique identifier for the target namespace.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "pipeline_id",
-            "description": "The unique identifier for the target pipeline.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "run_id",
-            "description": "The unique identifier for the target run.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "successful deletion"
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects": {
-      "get": {
-        "tags": [
-          "Objects"
-        ],
-        "summary": "List all run objects.",
-        "operationId": "list_run_objects",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "namespace_id",
-            "description": "The unique identifier for the target namespace.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "pipeline_id",
-            "description": "The unique identifier for the target pipeline.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "run_id",
-            "description": "The unique identifier for the target run.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListRunObjectsResponse"
-                }
-              }
-            }
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/runs/{run_id}/objects/{key}": {
-      "get": {
-        "tags": [
-          "Objects"
-        ],
-        "summary": "Get run object by key.",
-        "operationId": "get_run_object",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "key",
-            "description": "The unique identifier for the target object.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "namespace_id",
-            "description": "The unique identifier for the target namespace.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "pipeline_id",
-            "description": "The unique identifier for the target pipeline.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "run_id",
-            "description": "The unique identifier for the target run.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "successful operation",
-            "content": {
-              "*/*": {
-                "schema": {}
-              }
-            }
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Objects"
-        ],
-        "summary": "Insert a new object into the run object store.",
-        "description": "Overwrites can be performed by passing the `force` query param.",
-        "operationId": "put_run_object",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "key",
-            "description": "The unique identifier for the target object.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "namespace_id",
-            "description": "The unique identifier for the target namespace.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "pipeline_id",
-            "description": "The unique identifier for the target pipeline.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "run_id",
-            "description": "The unique identifier for the target run.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
-            }
-          },
-          {
-            "in": "query",
-            "name": "force",
-            "description": "Overwrite a value of a object if it already exists.",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/octet-stream": {
-              "schema": {
-                "type": "string",
-                "format": "binary"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "successful creation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PutRunObjectResponse"
-                }
-              }
-            }
-          },
-          "4XX": {
-            "$ref": "#/components/responses/Error"
-          },
-          "5XX": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Objects"
-        ],
-        "summary": "Delete run object by key.",
-        "operationId": "delete_run_object",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "key",
-            "description": "The unique identifier for the target object.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "in": "path",
             "name": "namespace_id",
@@ -5725,21 +5459,6 @@
           "roles"
         ]
       },
-      "ListRunObjectsResponse": {
-        "type": "object",
-        "properties": {
-          "objects": {
-            "description": "A list of all run objects.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Object"
-            }
-          }
-        },
-        "required": [
-          "objects"
-        ]
-      },
       "ListRunsResponse": {
         "type": "object",
         "properties": {
@@ -6347,22 +6066,6 @@
           "secret"
         ]
       },
-      "PutRunObjectResponse": {
-        "type": "object",
-        "properties": {
-          "object": {
-            "description": "Information about the object created.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Object"
-              }
-            ]
-          }
-        },
-        "required": [
-          "object"
-        ]
-      },
       "RegisterPipelineConfigRequest": {
         "type": "object",
         "properties": {
@@ -6600,13 +6303,9 @@
               }
             ]
           },
-          "store_objects_expired": {
-            "description": "Whether run level objects are deleted.",
-            "type": "boolean"
-          },
           "token_id": {
             "nullable": true,
-            "description": "The unique identifier for Gofer's auto-inject token. This feature is so that users can easily use Gofer's API with a ready injected token into the run just-in-time. If this is None this run had no tasks with the `inject_api_token` setting enabled.\n\nThese tokens automatically expire after a pre-determined time.",
+            "description": "The unique identifier for Gofer's auto-inject token. This feature is so that users can easily use Gofer's API with a ready injected token into the run just-in-time. If this is None this run had no tasks with the `inject_api_token` setting enabled.\n\nThe token is deleted when the run ends, since only the run's own tasks use it.",
             "type": "string"
           },
           "variables": {
@@ -6628,7 +6327,6 @@
           "started",
           "state",
           "status",
-          "store_objects_expired",
           "variables"
         ]
       },

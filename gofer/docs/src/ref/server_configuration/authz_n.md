@@ -87,7 +87,7 @@ Namespace grants cover everything that lives under a pipeline.
 | `deployments`     | Pipeline deployments.                                     |
 | `runs`            | Starting, reading and cancelling runs.                    |
 | `task_executions` | Task executions, their logs, and attaching to them.       |
-| `objects`         | The pipeline and run object stores.                       |
+| `objects`         | The pipeline object store.                                |
 | `secrets`         | The pipeline secret store.                                |
 | `subscriptions`   | The pipeline's extension subscriptions.                   |
 

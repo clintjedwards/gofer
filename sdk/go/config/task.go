@@ -346,8 +346,7 @@ func (t *TaskWrapper) Script(script string) *TaskWrapper {
 // Gofer will auto-generate and inject a Gofer API token as `GOFER_TOKEN`. This allows you to easily have tasks
 // communicate with Gofer by either embedding Gofer's CLI or just simply using the token to authenticate to the API.
 //
-// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
-// objects get cleaned up.
+// The token belongs to the run, and Gofer deletes it when the run ends.
 func (t *TaskWrapper) InjectAPIToken(injectToken bool) *TaskWrapper {
 	t.Task.InjectAPIToken = injectToken
 	return t

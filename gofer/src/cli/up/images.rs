@@ -105,7 +105,7 @@ impl Cli {
             return Ok(reusable);
         }
 
-        // An image's manifest goes with the rest of it, so asking about the manifest is enough.
+        // Gofer only says it has one of these manifests when it has the rest of that image too.
         let manifests: BTreeSet<String> = (reusable.images.values())
             .map(|image| image.digest.clone())
             .collect();

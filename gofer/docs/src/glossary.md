@@ -40,6 +40,9 @@
   to use. Pipeline secrets belong to one pipeline. Global secrets are managed by admins and can be shared with any
   namespaces they allow.
 
-- **Pipeline object / Run object:** Values kept in Gofer's [object store](./ref/object_store/index.html). Pipeline
-  objects stay until the pipeline hits its object limit; run objects belong to one run and are deleted after a few
-  more runs. Run objects are how tasks pass values to each other.
+- **Pipeline object:** A value or file kept in Gofer's [object store](./ref/object_store/index.html) for a pipeline.
+  Pipeline objects last across runs, until the pipeline hits its object limit.
+
+- **Run folder:** The folder every task in a run shares, at `/gofer/run`. It's how tasks pass files and values to each
+  other, and it's deleted when the run ends. See
+  [passing data between tasks](./guide/patterns/passing_data_between_tasks.md).

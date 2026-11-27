@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 fn main() {
     Pipeline::new("objects", "Objects Pipeline").
-        description("This pipeline displays how one might use Gofer's object/kv store to pass container results to other containers.").
+        description("This pipeline shows how a task can read values from Gofer's object store, which keeps them across runs.").
         tasks(vec![
                 Task::new("simple-task", "ghcr.io/clintjedwards/gofer/debug/log:latest").
                     description("This task has no dependencies so it will run immediately").

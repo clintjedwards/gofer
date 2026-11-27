@@ -8,7 +8,7 @@ import (
 
 func main() {
 	err := sdk.NewPipeline("objects", "Objects Pipeline").
-		Description(`This pipeline displays how one might use Gofer's object/kv store to pass container results to other containers.`).
+		Description(`This pipeline shows how a task can read values from Gofer's object store, which keeps them across runs.`).
 		Tasks(
 			sdk.NewTask("simple-task", "ghcr.io/clintjedwards/gofer/debug/log:latest").
 				Description("This task has no dependencies so it will run immediately").

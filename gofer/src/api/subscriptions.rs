@@ -995,7 +995,6 @@ async fn subscribe_extension(
         api_state.object_store.as_ref(),
         &subscription.namespace_id,
         &subscription.pipeline_id,
-        None,
         &subscription
             .settings
             .clone()

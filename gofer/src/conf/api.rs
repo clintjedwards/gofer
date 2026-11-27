@@ -187,12 +187,6 @@ pub struct ObjectStore {
     /// per pipeline before gofer starts deleting objects operating in a ring buffer fashion.
     pub pipeline_object_limit: u64,
 
-    /// Objects stored at the run level are unlimited in number, but only last for a certain number of runs.
-    /// The number below controls how many runs until the run objects for the oldest run will be deleted.
-    /// Ex. an object stored on run number #5 with an expiry of 2(only the last two runs keep their objects) will be
-    /// deleted on run #7 regardless of run health.
-    pub run_object_expiry_runs: u64,
-
     pub filesystem: Option<object_store::filesystem::Config>,
 }
 

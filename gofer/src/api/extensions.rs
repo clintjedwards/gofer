@@ -556,6 +556,7 @@ async fn start_extension(
         networking: Some(8082), //TODO(Replace this with port listed in the conf package)
         entrypoint: None,
         command: None,
+        run_folder: None,
         timeline: None,
     };
 

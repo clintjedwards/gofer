@@ -20,6 +20,51 @@ use tracing::{debug, error, info, instrument, trace, warn};
 /// that isn't amd64 runs it under emulation instead of failing.
 const TASK_PLATFORM: &str = "linux/amd64";
 
+/// Where the run folder's volume is mounted, and the name of the folder in it that tasks use, which makes the folder
+/// `/gofer/run`. See [`Containers::open_run_folder`] for why they're not the same.
+const RUN_VOLUME_PATH: &str = "/gofer";
+const RUN_FOLDER_NAME: &str = "run";
+
+/// The labels on a run folder's volume, which say whose run it belongs to.
+const NAMESPACE_LABEL: &str = "gofer.namespace";
+const PIPELINE_LABEL: &str = "gofer.pipeline";
+const RUN_LABEL: &str = "gofer.run";
+
+/// A folder that every task in a run shares, at `/gofer/run`, so one task can leave files for the tasks after it. It's
+/// a Docker volume of its own, created by the run's first task and removed when the run ends.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunFolder {
+    pub namespace_id: String,
+    pub pipeline_id: String,
+    pub run_id: u64,
+}
+
+impl RunFolder {
+    /// The volume's name. Ids can't have underscores in them, so two runs never get the same one.
+    pub fn volume(&self) -> String {
+        format!(
+            "gofer_{}_{}_{}",
+            self.namespace_id, self.pipeline_id, self.run_id
+        )
+    }
+
+    fn labels(&self) -> HashMap<String, String> {
+        HashMap::from([
+            (NAMESPACE_LABEL.into(), self.namespace_id.clone()),
+            (PIPELINE_LABEL.into(), self.pipeline_id.clone()),
+            (RUN_LABEL.into(), self.run_id.to_string()),
+        ])
+    }
+
+    fn from_labels(labels: &HashMap<String, String>) -> Option<Self> {
+        Some(Self {
+            namespace_id: labels.get(NAMESPACE_LABEL)?.clone(),
+            pipeline_id: labels.get(PIPELINE_LABEL)?.clone(),
+            run_id: labels.get(RUN_LABEL)?.parse().ok()?,
+        })
+    }
+}
+
 /// Represents different container failure possibilities.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum ContainerError {
@@ -113,6 +158,9 @@ pub struct StartContainerRequest {
 
     /// Replaces container's cmd instruction with a custom one.
     pub command: Option<Vec<String>>,
+
+    /// Only for tasks; the run's folder to mount, which is created if this is the run's first task.
+    pub run_folder: Option<RunFolder>,
 
     /// Where to report the phases of starting the container as they begin. Lets task executions show where their time
     /// went before the container was running.
@@ -368,6 +416,121 @@ impl Containers {
         }
     }
 
+    /// Creates a run's folder. Every task does this before its container is made, and Docker leaves a volume that's
+    /// already there alone, so whichever task starts first is the one that makes it.
+    async fn create_run_folder(&self, folder: &RunFolder) -> Result<(), ContainerError> {
+        self.client
+            .create_volume(bollard::models::VolumeCreateRequest {
+                name: Some(folder.volume()),
+                labels: Some(folder.labels()),
+                ..Default::default()
+            })
+            .await
+            .map_err(|e| {
+                ContainerError::Unknown(format!("could not create the run's folder; {e}"))
+            })?;
+
+        Ok(())
+    }
+
+    /// Makes the run's folder writable by every user, in a container that's been created but not started.
+    ///
+    /// A new volume is owned by root and only root can write to it, so a task whose image runs as another user, like a
+    /// distroless `nonroot` image, couldn't leave anything in it. Docker sets a folder's permissions to what a tar
+    /// says when the tar is copied into a container, but not for the folder the tar goes into. That's why the volume
+    /// is mounted one level up and the folder tasks use is one inside it, which this tar makes.
+    ///
+    /// Every task does this, so the folder is open again even if an earlier task changed its permissions.
+    async fn open_run_folder(&self, container_id: &str) -> Result<(), ContainerError> {
+        let tar = open_folder_tar().map_err(|e| {
+            ContainerError::Unknown(format!("could not open the run's folder; {e}"))
+        })?;
+
+        self.client
+            .upload_to_container(
+                container_id,
+                Some(bollard::query_parameters::UploadToContainerOptions {
+                    path: RUN_VOLUME_PATH.into(),
+                    ..Default::default()
+                }),
+                bollard::body_full(tar.into()),
+            )
+            .await
+            .map_err(|e| ContainerError::Unknown(format!("could not open the run's folder; {e}")))
+    }
+
+    /// Every run folder Docker has.
+    pub async fn list_run_folders(&self) -> Result<Vec<RunFolder>, ContainerError> {
+        let options = bollard::query_parameters::ListVolumesOptions {
+            filters: Some(HashMap::from([(
+                "label".to_string(),
+                vec![RUN_LABEL.to_string()],
+            )])),
+        };
+
+        let response = (self.client.list_volumes(Some(options)).await)
+            .map_err(|e| ContainerError::Unknown(format!("could not list volumes; {e}")))?;
+
+        Ok((response.volumes.unwrap_or_default().iter())
+            .filter_map(|volume| RunFolder::from_labels(&volume.labels))
+            .collect())
+    }
+
+    /// Removes a run's folder, along with the containers of the run's tasks. Docker won't remove a volume that any
+    /// container has mounted, even one that's stopped. A folder that's already gone is fine.
+    pub async fn remove_run_folder(&self, folder: &RunFolder) -> Result<(), ContainerError> {
+        let volume = folder.volume();
+
+        let options = bollard::query_parameters::ListContainersOptions {
+            all: true,
+            filters: Some(HashMap::from([(
+                "volume".to_string(),
+                vec![volume.clone()],
+            )])),
+            ..Default::default()
+        };
+        let containers = (self.client.list_containers(Some(options)).await)
+            .map_err(|e| ContainerError::Unknown(format!("could not list containers; {e}")))?;
+
+        for container in containers {
+            let Some(id) = container.id else {
+                continue;
+            };
+
+            let options = bollard::query_parameters::RemoveContainerOptions {
+                force: true,
+                ..Default::default()
+            };
+            match self.client.remove_container(&id, Some(options)).await {
+                Ok(())
+                | Err(bollard::errors::Error::DockerResponseServerError {
+                    status_code: 404, ..
+                }) => {}
+                Err(e) => {
+                    return Err(ContainerError::Unknown(format!(
+                        "could not remove container '{id}'; {e}"
+                    )));
+                }
+            }
+        }
+
+        match (self.client)
+            .remove_volume(
+                &volume,
+                None::<bollard::query_parameters::RemoveVolumeOptions>,
+            )
+            .await
+        {
+            Ok(())
+            | Err(bollard::errors::Error::DockerResponseServerError {
+                status_code: 404, ..
+            }) => Ok(()),
+            Err(e) => Err(ContainerError::Unknown(format!(
+                "could not remove volume '{volume}'; {e}"
+            ))),
+        }
+    }
+
     /// Start a container based on details passed. Pulls the container's image first if it's from a registry and needs
     /// to be.
     pub async fn start_container(
@@ -415,6 +578,24 @@ impl Containers {
                 This is not an actual error unless there was a failure because of container names");
         }
 
+        let mut host_config = bollard::models::HostConfig::default();
+
+        if let Some(folder) = &request.run_folder {
+            self.create_run_folder(folder).await?;
+
+            host_config.mounts = Some(vec![bollard::models::Mount {
+                target: Some(RUN_VOLUME_PATH.into()),
+                source: Some(folder.volume()),
+                typ: Some(bollard::models::MountType::VOLUME),
+                // Otherwise Docker fills an empty volume with whatever the first task's image has at that path.
+                volume_options: Some(bollard::models::MountVolumeOptions {
+                    no_copy: Some(true),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }]);
+        }
+
         let mut container_config = bollard::models::ContainerCreateBody {
             image: Some(image),
             env: Some(
@@ -453,11 +634,10 @@ impl Containers {
             let mut port_bindings = HashMap::new();
             port_bindings.insert(format!("{port}/tcp"), Some(vec![host_port_binding]));
 
-            container_config.host_config = Some(bollard::models::HostConfig {
-                port_bindings: Some(port_bindings),
-                ..Default::default()
-            })
+            host_config.port_bindings = Some(port_bindings);
         }
+
+        container_config.host_config = Some(host_config);
 
         self.client
             .create_container(
@@ -469,6 +649,10 @@ impl Containers {
             )
             .await
             .map_err(|e| ContainerError::Unknown(e.to_string()))?;
+
+        if request.run_folder.is_some() {
+            self.open_run_folder(&request.id).await?;
+        }
 
         self.client
             .start_container(&request.id, None)
@@ -724,6 +908,23 @@ impl Containers {
     }
 }
 
+/// A tar of just the folder tasks use, which anyone can write to. See [`Containers::open_run_folder`].
+fn open_folder_tar() -> std::io::Result<Vec<u8>> {
+    let mut header = tar::Header::new_ustar();
+    header.set_path(format!("{RUN_FOLDER_NAME}/"))?;
+    header.set_entry_type(tar::EntryType::Directory);
+    header.set_mode(0o777);
+    header.set_uid(0);
+    header.set_gid(0);
+    header.set_size(0);
+    header.set_mtime(crate::api::epoch_milli() / 1000);
+    header.set_cksum();
+
+    let mut builder = tar::Builder::new(vec![]);
+    builder.append(&header, std::io::empty())?;
+    builder.into_inner()
+}
+
 // We periodically need to clean up docker assets so we don't run out of disk space.
 // We perform it very infrequently though, in order to give operators time to diagnose
 // any potential issues they might be having with a particular container.
@@ -746,5 +947,43 @@ async fn prune_containers(client: bollard::Docker, interval: u64) {
             space_reclaimed = result.space_reclaimed,
             "Pruned containers"
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Users' tasks are written against this path, so it can't move.
+    #[test]
+    fn test_run_folder_is_at_gofer_run() {
+        assert_eq!(format!("{RUN_VOLUME_PATH}/{RUN_FOLDER_NAME}"), "/gofer/run");
+
+        let tar = open_folder_tar().unwrap();
+        let mut archive = tar::Archive::new(tar.as_slice());
+        let entries: Vec<(String, u32)> = (archive.entries().unwrap())
+            .map(|entry| {
+                let entry = entry.unwrap();
+                let path = entry.path().unwrap().display().to_string();
+                (path, entry.header().mode().unwrap())
+            })
+            .collect();
+        assert_eq!(entries, vec![("run/".to_string(), 0o777)]);
+    }
+
+    #[test]
+    fn test_run_folders_are_found_by_their_labels() {
+        let folder = RunFolder {
+            namespace_id: "some-namespace".into(),
+            pipeline_id: "some-pipeline".into(),
+            run_id: 12,
+        };
+
+        assert_eq!(folder.volume(), "gofer_some-namespace_some-pipeline_12");
+        assert_eq!(RunFolder::from_labels(&folder.labels()), Some(folder));
+
+        // A volume someone else labeled with only part of it isn't one of ours.
+        let labels = HashMap::from([(RUN_LABEL.to_string(), "12".to_string())]);
+        assert_eq!(RunFolder::from_labels(&labels), None);
     }
 }

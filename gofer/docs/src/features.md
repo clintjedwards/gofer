@@ -60,11 +60,16 @@ You can view how extensions work by visiting the sample extension
 
 Extensions are brought up alongside Gofer as long-running containers that it launches and manages.
 
+## Sharing Files Between Tasks
+
+Every task in a run shares a folder at `/gofer/run`, so one task can leave files for the tasks after it, the same as on
+one machine. It's deleted when the run ends.
+[More about passing data between tasks.](./guide/patterns/passing_data_between_tasks.md)
+
 ## Object Store
 
-Gofer provides a built in [object store](./ref/object_store/index.html) you can access with the Gofer CLI. This object
-store provides a caching and data transfer mechanism so you can pass values from one container to the next, but also
-store objects that you might need for all containers.
+Gofer provides a built in [object store](./ref/object_store/index.html) you can access with the Gofer CLI. It's for
+values and files that need to outlast a run, like caches.
 
 ## Secret Store
 

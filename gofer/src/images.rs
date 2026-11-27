@@ -138,6 +138,12 @@ struct ManifestType {
 // Docker reads manifests with a parser that ignores case, so to Docker 'Layers' and 'layers' are the same field and
 // the last one wins. Refusing fields we don't know is what stops a manifest from meaning one thing to us and another
 // to Docker.
+//
+// So the fields here are every one the spec has, even the ones we don't use. A base image's manifest is uploaded as
+// the registry had it, and one with, say, a `subject` is still an image Docker can run. Nothing we check depends on
+// the fields we don't use, so they can say anything.
+//
+// <https://github.com/opencontainers/image-spec/blob/v1.1.0/specs-go/v1/manifest.go>
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase", default, deny_unknown_fields)]
 struct Manifest {
@@ -147,14 +153,21 @@ struct Manifest {
     #[allow(dead_code)]
     media_type: String,
 
+    #[allow(dead_code)]
+    artifact_type: String,
+
     config: Descriptor,
 
     layers: Vec<Descriptor>,
 
     #[allow(dead_code)]
+    subject: serde_json::Value,
+
+    #[allow(dead_code)]
     annotations: serde_json::Value,
 }
 
+/// <https://github.com/opencontainers/image-spec/blob/v1.1.0/specs-go/v1/descriptor.go>
 #[derive(Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase", default, deny_unknown_fields)]
 struct Descriptor {
@@ -167,12 +180,18 @@ struct Descriptor {
 
     urls: Vec<String>,
 
+    #[allow(dead_code)]
+    annotations: serde_json::Value,
+
     // A copy of the blob. Docker only uses it when it matches the digest, so there's nothing to check.
     #[allow(dead_code)]
     data: String,
 
     #[allow(dead_code)]
-    annotations: serde_json::Value,
+    platform: serde_json::Value,
+
+    #[allow(dead_code)]
+    artifact_type: String,
 }
 
 #[derive(Deserialize, Default, Debug)]
@@ -1155,17 +1174,28 @@ mod tests {
         assert!(message.contains("duplicate field"), "{message}");
     }
 
+    // Fields a registry's manifest can have that don't change what Docker runs.
+    #[rstest]
     // Some official images do this.
+    #[case::embedded_config(|manifest: &mut serde_json::Value| manifest["config"]["data"] = json!("e30="))]
+    #[case::subject(|manifest: &mut serde_json::Value| {
+        manifest["subject"] = json!({
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": digest(b"other image").to_string(),
+            "size": 1,
+        })
+    })]
+    #[case::artifact_type(|manifest: &mut serde_json::Value| {
+        manifest["artifactType"] = json!("application/vnd.example+type");
+        manifest["layers"][0]["artifactType"] = json!("application/vnd.example+type");
+    })]
+    #[case::platform(|manifest: &mut serde_json::Value| {
+        manifest["layers"][0]["platform"] = json!({"os": "linux", "architecture": "amd64"})
+    })]
     #[tokio::test]
-    async fn verify_image_with_embedded_config() {
+    async fn verify_accepts_manifest(#[case] change: fn(&mut serde_json::Value)) {
         let mut harness = Harness::new().await;
-        let digest = harness
-            .upload_image(
-                PIPELINE,
-                |_| {},
-                |manifest| manifest["config"]["data"] = json!("e30="),
-            )
-            .await;
+        let digest = harness.upload_image(PIPELINE, |_| {}, change).await;
 
         assert_eq!(harness.verify(&digest).await, Ok(()));
     }

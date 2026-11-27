@@ -36,6 +36,7 @@ Here's everything at a glance:
 
 - [Small values](./passing_data_between_tasks.md#small-values)
 - [Files and directories](./passing_data_between_tasks.md#files-and-directories)
+- [Keeping something after the run](./passing_data_between_tasks.md#keeping-something-after-the-run)
 - [Things that trip people up](./passing_data_between_tasks.md#things-that-trip-people-up)
 
 **[Working with Git Repositories](./working_with_git_repositories.md)**

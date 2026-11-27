@@ -242,13 +242,6 @@ func PipelineObject(key string) string {
 	return fmt.Sprintf("pipeline_object{{%s}}", key)
 }
 
-// Convenience function to insert run object values.
-// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
-// If you need the raw bytes for an object use the Gofer cli.
-func RunObject(key string) string {
-	return fmt.Sprintf("run_object{{%s}}", key)
-}
-
 // Identifiers are used as the primary key in most of gofer's resources.
 // They're defined by the user and therefore should have some sane bounds.
 // For all ids we'll want the following:

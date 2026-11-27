@@ -503,12 +503,6 @@ One of the variants below. Variants without a payload are sent as a plain string
 | ----- | ---- | -------- | ----------- |
 | `roles` | array of [Role](#role) | yes | A list of all roles. |
 
-## ListRunObjectsResponse
-
-| Field | Type | Required | Description |
-| ----- | ---- | -------- | ----------- |
-| `objects` | array of [Object](#object) | yes | A list of all run objects. |
-
 ## ListRunsResponse
 
 | Field | Type | Required | Description |
@@ -723,12 +717,6 @@ A string, one of:
 | ----- | ---- | -------- | ----------- |
 | `secret` | [Secret](#secret) | yes | Information about the secret created. |
 
-## PutRunObjectResponse
-
-| Field | Type | Required | Description |
-| ----- | ---- | -------- | ----------- |
-| `object` | [Object](#object) | yes | Information about the object created. |
-
 ## RegisterPipelineConfigRequest
 
 | Field | Type | Required | Description |
@@ -814,8 +802,7 @@ A run is one or more tasks being executed on behalf of some extension. Run is a 
 | `state` | [run_state](#run_state) | yes | The current state of the run within the Gofer execution model. Describes if the run is in progress or not. |
 | `status` | [run_status](#run_status) | yes | The final result of the run. |
 | `status_reason` | [run_status_reason](#run_status_reason) (nullable) | no | More information on the circumstances around a particular run's status. |
-| `store_objects_expired` | boolean | yes | Whether run level objects are deleted. |
-| `token_id` | string (nullable) | no | The unique identifier for Gofer's auto-inject token. This feature is so that users can easily use Gofer's API with a ready injected token into the run just-in-time. If this is None this run had no tasks with the `inject_api_token` setting enabled. These tokens automatically expire after a pre-determined time. |
+| `token_id` | string (nullable) | no | The unique identifier for Gofer's auto-inject token. This feature is so that users can easily use Gofer's API with a ready injected token into the run just-in-time. If this is None this run had no tasks with the `inject_api_token` setting enabled. The token is deleted when the run ends, since only the run's own tasks use it. |
 | `variables` | array of [Variable](#variable) | yes | Run level environment variables to be passed to each task execution. |
 
 ## Secret

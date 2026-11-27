@@ -125,14 +125,14 @@ retention_versions = 10
 
 ## Object Store
 
-The object store holds values that tasks share with each other or keep between runs.
+The object store holds values and files that tasks keep between runs. Within a run, tasks share files through the run
+folder instead, which isn't configured here; see [Docker](#docker).
 [More about the object store.](../object_store/index.html)
 
 | name                   | type   | default    | description                                                                                                                                                                                                                         |
 | ---------------------- | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | engine                 | string | filesystem | The engine Gofer uses to store objects. The only accepted value is `filesystem`.                                                                                                                                                     |
 | pipeline_object_limit  | int    | 50         | How many objects each pipeline can store. Pipeline objects are kept until the limit is reached, then the oldest one is deleted to make room. Overwriting an object counts it as the newest. 0 is unlimited.                          |
-| run_object_expiry_runs | int    | 2          | How many runs keep their run objects. An object stored on run #5 with an expiry of 2 is deleted when run #7 starts, regardless of how the runs went. Tokens from `InjectAPIToken` are deleted at the same time.                     |
 
 ### Filesystem
 
@@ -144,7 +144,6 @@ The object store holds values that tasks share with each other or keep between r
 [object_store]
 engine = "filesystem"
 pipeline_object_limit = 50
-run_object_expiry_runs = 2
 
 [object_store.filesystem]
 path = "/tmp/gofer_objects"
@@ -179,6 +178,9 @@ encryption_key = "changemechangemechangemechangeme"
 
 Gofer runs tasks and extensions as containers on the machine's Docker engine.
 [More about Docker.](../docker.md)
+
+Each run's folder, the one its tasks share at `/gofer/run`, is a Docker volume, so it takes space wherever Docker keeps
+its data (usually `/var/lib/docker`) rather than in any path configured here. Gofer removes it when the run ends.
 
 | name                   | type | default | description                                                                                                          |
 | ---------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------------------- |

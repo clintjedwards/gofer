@@ -139,7 +139,7 @@ A version of 0 indicates to return the latest pipeline config.
 
 <div class="api-endpoint"><span class="api-method api-method-post">POST</span><code>/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/missing</code></div>
 
-Given the digests of the blobs that make up a pipeline's images, returns the ones Gofer doesn't have yet. A pipeline can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too.
+Given the digests of the blobs that make up a pipeline's images, returns the ones Gofer doesn't have yet. A pipeline can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too. The manifest of an image the pipeline already runs is only left out when every part of that image is still stored, so asking about a manifest is enough to tell whether its image can be used again.
 
 **Path parameters**
 

@@ -41,7 +41,7 @@ they like. Copy the host's published keys (Github lists theirs in its docs under
 into a pipeline object once, as above, or copy them into the task's image:
 
 ```bash
-gofer pipeline object put my-pipeline known_hosts ./github_known_hosts
+gofer pipeline object put known_hosts ./github_known_hosts --pipeline my-pipeline
 ```
 
 **To share a key across pipelines**, store it as a global secret limited to the namespaces that need it, as in
@@ -74,10 +74,10 @@ For large repos, add `--filter=blob:none` to download file contents only as they
 `git sparse-checkout` to check out only the directories the task uses. Fetching a commit by its hash works on Github
 and Gitlab; some self-hosted git servers need `uploadpack.allowReachableSHA1InWant` turned on first.
 
-**2. Clone once per run and share it.** When several tasks need the code, have one task fetch it and upload it as a
-run object, then have the others depend on that task and download it, as shown in
-[files and directories](./passing_data_between_tasks.md#files-and-directories). Every task sees the same tree and your
-git host only gets hit once per run.
+**2. Clone once per run and share it.** When several tasks need the code, have one task fetch it into the folder every
+task in a run shares, like `/gofer/run/repo`, and have the others depend on that task and read it from there, as in
+[passing data between tasks](./passing_data_between_tasks.md#files-and-directories). Every task sees the same tree and
+your git host only gets hit once per run.
 
 **3. Cache the repository across runs.** Keep a tarball of the repo as a pipeline object. Each run downloads it,
 runs `git fetch` to pick up only what changed, then uploads it again. A few things to know:

@@ -17,6 +17,11 @@ Task images come from Gofer, not from a registry. Before a task runs, Gofer load
 [image store](./server_configuration/configuration_reference.md#images), named `gofer-image:<digest>`, and it
 removes those once no version of any pipeline keeps them. Extensions are still pulled from their registries.
 
+Each run gets a Docker volume of its own, which is the folder its tasks share at `/gofer/run`. Gofer removes it when
+the run ends, along with the run's task containers, since Docker won't remove a volume while any container has it.
+Every hour Gofer also looks for any that a crash left behind. The volume takes space in Docker's own storage, usually
+under `/var/lib/docker`, and Docker can't limit its size.
+
 `gofer up` uses Docker as well, on the machine it runs on, to build task images. It runs
 [BuildKit](https://github.com/moby/buildkit) in a container called `gofer-buildkit`, with its cache in a volume, and
 `gofer builder --help` shows how to empty or remove it.

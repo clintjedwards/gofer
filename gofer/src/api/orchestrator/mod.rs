@@ -26,12 +26,14 @@
 //! A run asked for on one of its pipeline's skip dates is the exception. It's written as `complete` right away, so it
 //! never reaches the dispatcher.
 
+mod cleanup;
 mod dispatcher;
 mod expiry;
 mod run;
 mod task_execution;
 mod variables;
 
+pub use cleanup::sweep_finished_runs;
 pub use dispatcher::complete_queued_run;
 pub use variables::task_api_base_url;
 

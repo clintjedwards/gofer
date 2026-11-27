@@ -515,16 +515,6 @@ pub fn pipeline_object(key: &str) -> String {
     format!("pipeline_object{{{{{key}}}}}")
 }
 
-/// A convenience function for retrieving objects from the run object store.
-///
-/// Run objects are scoped to a specific run. It is meant as a way for a task within a run to pass data to other tasks.
-///
-/// When pulling objects from the object store Gofer will attempt to stringify the object (utf-8).
-/// If you need the raw bytes for an object use the Gofer cli.
-pub fn run_object(key: &str) -> String {
-    format!("run_object{{{{{key}}}}}")
-}
-
 /// Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container.
 /// Each task defines the operations to be performed and the container environment in which these operations will run.
 ///
@@ -722,10 +712,9 @@ impl Task {
     /// The provided variables will be added to the task's environment, with their keys automatically
     /// converted to uppercase. This ensures that the environment variables follow common conventions.
     ///
-    /// You can use helper functions such as [`pipeline_secret`], [`global_secret`], [`pipeline_object`],
-    /// and [`run_object`] to insert dynamically generated secrets or object strings into the values
-    /// of these variables. These helper functions ensure that your secrets and objects are correctly
-    /// formatted for retrieval within the task.
+    /// You can use helper functions such as [`pipeline_secret`], [`global_secret`] and [`pipeline_object`] to insert
+    /// dynamically generated secrets or object strings into the values of these variables. These helper functions
+    /// ensure that your secrets and objects are correctly formatted for retrieval within the task.
     ///
     /// # Examples
     ///
@@ -845,8 +834,7 @@ impl Task {
     /// easily have tasks communicate with Gofer by either embedding Gofer's CLI or just simply using the token to
     /// authenticate to the REST API.
     ///
-    /// This auto-generated token is stored in this pipeline's secret store and automatically cleaned up when the run
-    /// objects get cleaned up.
+    /// The token belongs to the run, and Gofer deletes it when the run ends.
     pub fn inject_api_token(mut self, inject_token: bool) -> Self {
         self.inject_api_token = inject_token;
         self

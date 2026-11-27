@@ -23,7 +23,6 @@ pub mod image_blobs;
 pub mod namespaces;
 pub mod object_store_extension_keys;
 pub mod object_store_pipeline_keys;
-pub mod object_store_run_keys;
 pub mod pipeline_configs;
 pub mod pipeline_metadata;
 pub mod roles;

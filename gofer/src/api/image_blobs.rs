@@ -2,7 +2,7 @@ use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{ApiState, PreflightOptions, ensure_namespace_exists, epoch_milli, is_valid_identifier},
     http_error,
-    images::{self, Digest, ImageError},
+    images::{self, Digest, ImageError, Images},
     storage::{self, StorageError},
 };
 use dropshot::{
@@ -11,6 +11,7 @@ use dropshot::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use sqlx::SqliteConnection;
 use std::sync::Arc;
 
 /// Asking about blobs holds the database's write connection, so this keeps the list to a few thousand digests.
@@ -65,6 +66,49 @@ fn image_error(e: ImageError, request_id: &str) -> HttpError {
     }
 }
 
+/// Whether a blob the pipeline has can be told to the caller as stored. When it's the manifest of an image one of the
+/// pipeline's tasks runs, that's only when every part of the image is stored too, and each part is marked as seen.
+///
+/// `gofer up` keeps a task's image from the last version by asking about its manifest alone. Say a layer's file was
+/// removed from the store, by hand or by something that cleans up old files. The manifest is still here, so without
+/// this `gofer up` would keep the image, and registering it would fail every time.
+async fn counts_as_stored(
+    images: &Images,
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    digest: &Digest,
+    now: &str,
+) -> anyhow::Result<bool> {
+    let manifest = digest.to_string();
+    if !storage::image_blobs::is_registered_image(conn, namespace_id, pipeline_id, &manifest)
+        .await?
+    {
+        return Ok(true);
+    }
+
+    let Some(blobs) = images.blobs_of(digest).await? else {
+        return Ok(false);
+    };
+
+    for blob in blobs.iter().filter(|blob| *blob != digest) {
+        if !images.contains(blob).await? {
+            return Ok(false);
+        }
+
+        let blob = blob.to_string();
+        match storage::image_blobs::update_last_seen(conn, namespace_id, pipeline_id, &blob, now)
+            .await
+        {
+            Ok(()) => {}
+            Err(StorageError::NotFound) => return Ok(false),
+            Err(e) => return Err(e.into()),
+        }
+    }
+
+    Ok(true)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ListMissingImageBlobsRequest {
     /// The digests of every blob the images are made of.
@@ -80,7 +124,9 @@ pub struct ListMissingImageBlobsResponse {
 /// List which image blobs need to be uploaded.
 ///
 /// Given the digests of the blobs that make up a pipeline's images, returns the ones Gofer doesn't have yet. A pipeline
-/// can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too.
+/// can only use blobs it uploaded itself, so blobs that only another pipeline has uploaded are returned too. The
+/// manifest of an image the pipeline already runs is only left out when every part of that image is still stored, so
+/// asking about a manifest is enough to tell whether its image can be used again.
 #[endpoint(
     method = POST,
     path = "/api/namespaces/{namespace_id}/pipelines/{pipeline_id}/image-blobs/missing",
@@ -118,14 +164,15 @@ pub async fn list_missing_image_blobs(
     let mut stored = vec![];
 
     for digest in body.digests {
+        let parsed = parse_digest(&digest)?;
         let exists = api_state
             .images
-            .contains(&parse_digest(&digest)?)
+            .contains(&parsed)
             .await
             .map_err(|e| image_error(e, &rqctx.request_id))?;
 
         if exists {
-            stored.push(digest);
+            stored.push(parsed);
         } else {
             missing.push(digest);
         }
@@ -151,13 +198,16 @@ pub async fn list_missing_image_blobs(
             &mut tx,
             &path.namespace_id,
             &path.pipeline_id,
-            &digest,
+            &digest.to_string(),
             &now,
         )
         .await
         {
             Ok(()) => {}
-            Err(StorageError::NotFound) => missing.push(digest),
+            Err(StorageError::NotFound) => {
+                missing.push(digest.to_string());
+                continue;
+            }
             Err(e) => {
                 return Err(http_error!(
                     "Could not update image blob in database",
@@ -166,6 +216,28 @@ pub async fn list_missing_image_blobs(
                     Some(e.into())
                 ));
             }
+        }
+
+        let counts = counts_as_stored(
+            &api_state.images,
+            &mut tx,
+            &path.namespace_id,
+            &path.pipeline_id,
+            &digest,
+            &now,
+        )
+        .await
+        .map_err(|e| {
+            http_error!(
+                "Could not check the rest of an image",
+                hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                rqctx.request_id.clone(),
+                Some(e.into())
+            )
+        })?;
+
+        if !counts {
+            missing.push(digest.to_string());
         }
     }
 
@@ -283,4 +355,138 @@ pub async fn put_image_blob(
         })?;
 
     Ok(HttpResponseUpdatedNoContent())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{api::pipeline_configs::ConfigState, images::Config, storage::tests::TestHarness};
+    use sha2::{Digest as _, Sha256};
+
+    const NAMESPACE: &str = "default";
+    const PIPELINE: &str = "pipeline";
+
+    /// Stores a blob and says the pipeline uploaded it long ago.
+    async fn upload(images: &Images, conn: &mut SqliteConnection, content: &[u8]) -> Digest {
+        let digest = Digest::from_hasher(Sha256::new_with_prefix(content));
+        let chunk: Result<_, std::io::Error> = Ok(bytes::Bytes::copy_from_slice(content));
+        let blob = images
+            .put(&digest, futures::stream::iter([chunk]))
+            .await
+            .unwrap();
+
+        storage::image_blobs::upsert(
+            conn,
+            &storage::image_blobs::ImageBlob {
+                namespace_id: NAMESPACE.into(),
+                pipeline_id: PIPELINE.into(),
+                digest: digest.to_string(),
+                diff_id: blob.diff_id.to_string(),
+                size: blob.size as i64,
+                last_seen: "0".into(),
+            },
+        )
+        .await
+        .unwrap();
+
+        digest
+    }
+
+    #[tokio::test]
+    async fn test_a_manifest_only_counts_while_its_whole_image_is_stored() {
+        let dir = tempfile::tempdir().unwrap();
+        let images = Images::new(&Config {
+            path: dir.path().to_string_lossy().into(),
+            retention_versions: 10,
+        })
+        .await
+        .unwrap();
+
+        let db = TestHarness::new().await;
+        let mut conn = db.write_conn().await.unwrap();
+        storage::namespaces::insert(
+            &mut conn,
+            &storage::namespaces::Namespace {
+                id: NAMESPACE.into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        storage::pipeline_metadata::insert(
+            &mut conn,
+            &storage::pipeline_metadata::PipelineMetadata {
+                namespace_id: NAMESPACE.into(),
+                pipeline_id: PIPELINE.into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        storage::pipeline_configs::insert(
+            &mut conn,
+            &storage::pipeline_configs::PipelineConfig {
+                namespace_id: NAMESPACE.into(),
+                pipeline_id: PIPELINE.into(),
+                version: 1,
+                state: ConfigState::Live.to_string(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let layer = upload(&images, &mut conn, b"some layer").await;
+        let config = upload(&images, &mut conn, b"some config").await;
+        let manifest = serde_json::json!({
+            "config": {"digest": config.to_string()},
+            "layers": [{"digest": layer.to_string()}],
+        });
+        let manifest = upload(&images, &mut conn, manifest.to_string().as_bytes()).await;
+
+        // No task runs it, so it's only a blob like any other.
+        std::fs::remove_file(images.blob_path(&layer)).unwrap();
+        assert!(counts(&images, &mut conn, &manifest, "1").await);
+        upload(&images, &mut conn, b"some layer").await;
+
+        storage::tasks::insert(
+            &mut conn,
+            &storage::tasks::Task {
+                namespace_id: NAMESPACE.into(),
+                pipeline_id: PIPELINE.into(),
+                pipeline_config_version: 1,
+                task_id: "task".into(),
+                image_digest: manifest.to_string(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(counts(&images, &mut conn, &manifest, "2").await);
+        let seen = storage::image_blobs::get(&mut conn, NAMESPACE, PIPELINE, &layer.to_string())
+            .await
+            .unwrap();
+        assert_eq!(seen.last_seen, "2");
+
+        std::fs::remove_file(images.blob_path(&layer)).unwrap();
+        assert!(!counts(&images, &mut conn, &manifest, "3").await);
+        upload(&images, &mut conn, b"some layer").await;
+
+        storage::image_blobs::delete(&mut conn, NAMESPACE, PIPELINE, &config.to_string())
+            .await
+            .unwrap();
+        assert!(!counts(&images, &mut conn, &manifest, "4").await);
+    }
+
+    async fn counts(
+        images: &Images,
+        conn: &mut SqliteConnection,
+        manifest: &Digest,
+        now: &str,
+    ) -> bool {
+        counts_as_stored(images, conn, NAMESPACE, PIPELINE, manifest, now)
+            .await
+            .unwrap()
+    }
 }

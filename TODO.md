@@ -2,14 +2,7 @@
 
 These come after the built images refactor is done.
 
-* A folder that a run's tasks share, so passing files from one task to the next feels like a local filesystem.
-  * A Docker volume per run, mounted into each task at the same path and removed when the run expires.
-  * It could replace run objects. Not pipeline objects though: those outlive runs, and two runs at once could write
-    the same folder and step on each other, which the object store's keys prevent.
-  * With more than one Gofer machine, a run's tasks would have to run on the same one. Tekton does this for tasks
-    that share a workspace, with what it calls an affinity assistant. The cost is that a run can only use one
-    machine, and if that machine dies the run's files go with it.
-* The `gofer` CLI inside every task, so together with the injected token and the shared folder a task can work with
+* The `gofer` CLI inside every task, so together with the injected token and the run folder a task can work with
   Gofer without any setup.
   * The server mounts its own binary into each task's container when it starts it, the way Docker's `--init` does,
     instead of building it into images. That way it always matches the server, works with every image, old ones and
@@ -106,8 +99,7 @@ These come after the built images refactor is done.
   `running` forever. Since everything depends on events we don't want to just broadcast unsaved ones; giving the event
   log its own sqlite database, so it never waits behind other writes, is probably the fix.
 * Stop holding the sqlite write connection across slow work. There's only one, so anything slow done while holding it
-  stalls every write in Gofer, event publishing included. For example `remove_run_objects` (orchestrator/expiry.rs)
-  holds it while deleting each object from the object store, and `launch_new_run` keeps its `BEGIN IMMEDIATE`
+  stalls every write in Gofer, event publishing included. For example `launch_new_run` keeps its `BEGIN IMMEDIATE`
   transaction open across `secret_store.put`. Worth going through the other `write_conn()` callers for the same thing.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
 code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers
@@ -117,6 +109,9 @@ in one very large file or split them up). https://github.com/oxidecomputer/drops
 * Check that our websockets stuff makes sense we use joinset, make sure we're returning errors to the main thread and
 bubbling them up properly.
 * If Gofer ever runs containers on more than one machine, note which machine each task ran on.
+* If Gofer ever runs containers on more than one machine, a run's tasks have to run on the same one, since they share
+  the run folder. Tekton does this for tasks that share a workspace, with what it calls an affinity assistant. The cost
+  is that a run can only use one machine, and if that machine dies the run's files go with it.
 * Pass back custom errors via the API so that consumers can understand what has happened.
 * Pagination...everywhere.
 * The CLI should have a feature where you can start a pipeline and follow all logs and status updates
@@ -140,6 +135,15 @@ finishes at which time it reflects a summary about what it did.
   place of a password) only works for tasks built with BuildKit.
 - Replacing Docker. The server only needs to load images and run containers, and the CLI only needs a BuildKit, so
   neither has to be Docker forever.
+- Image cleanup can delete a blob that was just uploaded. `remove_unless_newer` in `images.rs` checks a file's time
+  and then deletes it, and an upload can rename a fresh copy into place between the two. The upload still gets a 204,
+  and registering fails until the next `gofer up` uploads the blob again. Renaming the file aside, checking its time
+  and `is_used` again, and only then deleting it would close the gap.
+- Loading a task's image into Docker shares `docker.timeout_seconds` (300s by default) with every other Docker call,
+  and Docker only answers `/images/load` once it has read the whole image. So a big image on a slow disk can fail its
+  task. Loads could get a client with a much longer timeout of their own, or none.
+- Upload blobs in parallel. `gofer up` sends them one at a time, which is slow when a pipeline's first upload is a
+  few large layers.
 
 ### SecretStore
 
@@ -196,6 +200,9 @@ There are several useful things we can do with the concept of extensions:
 ### General
 
 - Let tasks set CPU and memory limits.
+- Limit how big a run folder can get. Docker's local volumes can't, so a run that writes too much fills the disk Docker
+  keeps its data on. It only lasts as long as the run, but a few big runs at once could still do it. Filesystem quotas
+  (like XFS project quotas) or checking the folder's size while the run goes are the options.
 - Metrics via openTelemetry
 - Create a container for custom use that has gofer-cli already packed in and possibly allows
   - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So
@@ -258,8 +265,9 @@ There are several useful things we can do with the concept of extensions:
 - integration tests
   - Test that we can retrieve a binary from the object store
   - Test that users in one namespace cannot access global secrets meant for another namespace.
-  - Test that two tasks can pass things to each other via objects.
-  - Test that run objects expire correctly and that they get properly marked as expired
+  - Test that two tasks can pass things to each other through the run folder, including a task that runs as another
+    user.
+  - Test that a run's folder and task containers are removed when it ends, and by the sweep when a crash left them.
   - Test that logs are removed correctly.
   - Test that GOFER_TOKEN and inject works correctly, make sure it gets cleaned up properly.
 

@@ -5,6 +5,7 @@ use crate::{
         event_utils::{self, EventListener},
         pipeline_configs, pipelines, runs, task_executions, tasks,
     },
+    containers::RunFolder,
     storage,
 };
 
@@ -12,6 +13,7 @@ use anyhow::{Context, Result};
 use sqlx::SqliteConnection;
 use std::sync::Arc;
 use tokio::sync::Barrier;
+use tokio_util::task::TaskTracker;
 use tracing::{error, trace};
 
 /// A run specific object that guides Gofer runs and tasks through their execution.
@@ -21,6 +23,9 @@ pub(super) struct RunShepherd {
     pub(super) api_state: Arc<ApiState>,
     pub(super) pipeline: pipelines::Pipeline,
     pub(super) run: runs::Run,
+
+    /// The tasks writing each task execution's logs to disk. Every clone of the shepherd shares it.
+    pub(super) log_streams: TaskTracker,
 }
 
 impl RunShepherd {
@@ -29,6 +34,16 @@ impl RunShepherd {
             api_state,
             pipeline,
             run,
+            log_streams: TaskTracker::new(),
+        }
+    }
+
+    /// The folder this run's tasks share.
+    pub(super) fn run_folder(&self) -> RunFolder {
+        RunFolder {
+            namespace_id: self.pipeline.metadata.namespace_id.clone(),
+            pipeline_id: self.pipeline.metadata.pipeline_id.clone(),
+            run_id: self.run.run_id,
         }
     }
 
@@ -178,8 +193,7 @@ impl RunShepherd {
 
     /// Starts the run's cleanup jobs and lets everyone listening know the run has started.
     fn announce_start(&self) {
-        // These jobs help keep resources from filling up.
-        tokio::spawn(self.clone().handle_run_object_expiry());
+        // This job helps keep resources from filling up.
         tokio::spawn(self.clone().handle_run_log_expiry());
 
         self.api_state
@@ -537,6 +551,8 @@ impl RunShepherd {
                 run_id: self.run.run_id,
                 status,
             });
+
+        tokio::spawn(self.clone().clean_up());
 
         Ok(())
     }

@@ -5,8 +5,8 @@
 You could build a huge graph of containers that all depend on each other. But the main theme of Gofer is simplicity.
 Before splitting work into separate tasks, think about whether it actually helps. Separate tasks are good for running
 things in parallel, using different images, or reacting differently to one step failing. They cost you a container
-start each and you have to [pass files between them](./passing_data_between_tasks.md) through the object store. When
-in doubt, pick whichever version is easier for the next person to understand.
+start each and you have to [pass files between them](./passing_data_between_tasks.md) through the folder the run's
+tasks share. When in doubt, pick whichever version is easier for the next person to understand.
 
 ## Use `Any` for cleanup and notifications.
 

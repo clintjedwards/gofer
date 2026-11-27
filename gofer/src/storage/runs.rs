@@ -17,7 +17,6 @@ pub struct Run {
     pub initiator: String,
     pub variables: String,
     pub token_id: Option<String>,
-    pub store_objects_expired: bool,
     pub event_id: Option<String>,
 }
 
@@ -29,14 +28,13 @@ pub struct UpdatableFields {
     pub status: Option<String>,
     pub status_reason: Option<String>,
     pub variables: Option<String>,
-    pub store_objects_expired: Option<bool>,
     pub event_id: Option<String>,
 }
 
 pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), StorageError> {
     let sql = "INSERT INTO runs (namespace_id, pipeline_id, pipeline_config_version, run_id, \
-        created, started, ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id)\
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        created, started, ended, state, status, status_reason, initiator, variables, token_id, event_id)\
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&run.namespace_id)
@@ -52,7 +50,6 @@ pub async fn insert(conn: &mut SqliteConnection, run: &Run) -> Result<(), Storag
         .bind(&run.initiator)
         .bind(&run.variables)
         .bind(&run.token_id)
-        .bind(run.store_objects_expired)
         .bind(&run.event_id);
 
     query
@@ -78,12 +75,12 @@ pub async fn list(
     // timestamp happens to have the same number of digits.
     let sql = if reverse {
         "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
-    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
+    state, status, status_reason, initiator, variables, token_id, event_id FROM \
     runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(created AS INTEGER) >= ? \
     ORDER BY run_id DESC LIMIT ? OFFSET ?;"
     } else {
         "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
-    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
+    state, status, status_reason, initiator, variables, token_id, event_id FROM \
     runs WHERE namespace_id = ? AND pipeline_id = ? AND CAST(created AS INTEGER) >= ? \
     ORDER BY run_id ASC LIMIT ? OFFSET ?;"
     };
@@ -110,7 +107,7 @@ pub async fn list_newest_unskipped(
     limit: i64,
 ) -> Result<Vec<Run>, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
-    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
+    state, status, status_reason, initiator, variables, token_id, event_id FROM \
     runs WHERE namespace_id = ? AND pipeline_id = ? AND status != 'skipped' ORDER BY run_id DESC LIMIT ?;";
 
     let query = sqlx::query_as::<_, Run>(sql)
@@ -131,7 +128,7 @@ pub async fn list_running(
     limit: i64,
 ) -> Result<Vec<Run>, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, ended, \
-    state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM \
+    state, status, status_reason, initiator, variables, token_id, event_id FROM \
     runs WHERE state = 'running' ORDER BY namespace_id, pipeline_id, run_id LIMIT ? OFFSET ?;";
 
     let query = sqlx::query_as::<_, Run>(sql).bind(limit).bind(offset);
@@ -191,6 +188,32 @@ pub async fn count_running(conn: &mut SqliteConnection) -> Result<Vec<RunningCou
     GROUP BY namespace_id, pipeline_id;";
 
     let query = sqlx::query_as::<_, RunningCount>(sql);
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// A finished run whose API token hasn't been deleted yet.
+#[derive(Clone, Debug, Default, FromRow)]
+pub struct FinishedRunToken {
+    pub namespace_id: String,
+    pub pipeline_id: String,
+    pub run_id: i64,
+    pub token_id: String,
+}
+
+/// Every run that ended before `ended_before`, in epoch milliseconds, and still has its API token.
+pub async fn list_finished_with_tokens(
+    conn: &mut SqliteConnection,
+    ended_before: u64,
+) -> Result<Vec<FinishedRunToken>, StorageError> {
+    let sql = "SELECT r.namespace_id, r.pipeline_id, r.run_id, r.token_id FROM runs r \
+    JOIN tokens t ON t.id = r.token_id \
+    WHERE r.state = 'complete' AND CAST(r.ended AS INTEGER) < ?;";
+
+    let query = sqlx::query_as::<_, FinishedRunToken>(sql).bind(ended_before as i64);
 
     query
         .fetch_all(conn)
@@ -260,7 +283,7 @@ pub async fn get(
     run_id: i64,
 ) -> Result<Run, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, \
-    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
+    ended, state, status, status_reason, initiator, variables, token_id, event_id FROM runs WHERE \
     namespace_id = ? AND pipeline_id = ? AND run_id = ?;";
 
     let query = sqlx::query_as::<_, Run>(sql)
@@ -280,7 +303,7 @@ pub async fn get_latest(
     pipeline_id: &str,
 ) -> Result<Run, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, run_id, created, started, \
-    ended, state, status, status_reason, initiator, variables, token_id, store_objects_expired, event_id FROM runs WHERE \
+    ended, state, status, status_reason, initiator, variables, token_id, event_id FROM runs WHERE \
     namespace_id = ? AND pipeline_id = ? Order By run_id DESC;";
 
     let query = sqlx::query_as::<_, Run>(sql)
@@ -353,15 +376,6 @@ pub async fn update(
             update_query.push(", ");
         }
         update_query.push("variables = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
-    }
-
-    if let Some(value) = &fields.store_objects_expired {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("store_objects_expired = ");
         update_query.push_bind(value);
         updated_fields_total += 1;
     }
@@ -484,7 +498,6 @@ mod tests {
             initiator: "UserA".to_string(),
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
-            store_objects_expired: false,
             event_id: Some("some_event_id".into()),
         };
 
@@ -502,7 +515,6 @@ mod tests {
             initiator: "UserA".to_string(),
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
-            store_objects_expired: false,
             event_id: Some("some_event_id".into()),
         };
 
@@ -520,7 +532,6 @@ mod tests {
             initiator: "UserA".to_string(),
             variables: "key=value".to_string(),
             token_id: Some("some_id".into()),
-            store_objects_expired: false,
             event_id: Some("some_event_id".into()),
         };
 
@@ -587,7 +598,6 @@ mod tests {
                 initiator: "UserA".to_string(),
                 variables: "".to_string(),
                 token_id: None,
-                store_objects_expired: false,
                 event_id: None,
             };
             insert(&mut conn, &run).await.expect("Failed to insert run");
@@ -620,7 +630,6 @@ mod tests {
             initiator: "UserA".to_string(),
             variables: "".to_string(),
             token_id: None,
-            store_objects_expired: false,
             event_id: None,
         };
         insert(conn, &run).await.expect("Failed to insert run");
@@ -800,7 +809,6 @@ mod tests {
             status: Some("Error".to_string()),
             status_reason: Some("Encountered an error".to_string()),
             variables: Some("key1=value1,key2=value2".to_string()),
-            store_objects_expired: Some(true),
             event_id: None,
         };
 
@@ -820,6 +828,43 @@ mod tests {
 
         assert_eq!(updated_run.state, "Failed");
         assert_eq!(updated_run.status, "Error");
+    }
+
+    #[tokio::test]
+    async fn test_list_finished_with_tokens() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        // Only run 3 is complete. Its `ended` reads as 2021 once it's cast to a number.
+        assert!(
+            list_finished_with_tokens(&mut conn, 10_000)
+                .await
+                .unwrap()
+                .is_empty(),
+            "the runs' token doesn't exist yet"
+        );
+
+        crate::storage::tokens::insert(
+            &mut conn,
+            &crate::storage::tokens::Token {
+                id: "some_id".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let finished = list_finished_with_tokens(&mut conn, 10_000).await.unwrap();
+        assert_eq!(finished.len(), 1);
+        assert_eq!(finished[0].run_id, 3);
+        assert_eq!(finished[0].token_id, "some_id");
+
+        // It ended too recently.
+        assert!(
+            list_finished_with_tokens(&mut conn, 2000)
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[tokio::test]

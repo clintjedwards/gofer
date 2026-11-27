@@ -471,7 +471,7 @@ function renderSummary(run, tasks) {
     cell("Started", runStarted(run)),
     cell("Ended", run.ended ? formatTimestamp(run.ended) : "-"),
     cell("Duration", escapeHtml(runDuration(run))),
-    `<div class="grid grid-cols-2 gap-px">${cell("Objects expired", run.store_objects_expired ? "Yes" : "No")}${cell("Logs expired", logsExpired(tasks))}</div>`,
+    cell("Logs expired", logsExpired(tasks)),
     cell("Injected token", run.token_id ? `<span class="font-mono text-xs break-all">${escapeHtml(run.token_id)}</span>` : "None"),
   ];
 

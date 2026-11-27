@@ -1215,12 +1215,6 @@ type ListRolesResponse struct {
 	Roles []Role `json:"roles"`
 }
 
-// ListRunObjectsResponse defines model for ListRunObjectsResponse.
-type ListRunObjectsResponse struct {
-	// Objects A list of all run objects.
-	Objects []Object `json:"objects"`
-}
-
 // ListRunsResponse defines model for ListRunsResponse.
 type ListRunsResponse struct {
 	// Runs A list of all runs.
@@ -1492,12 +1486,6 @@ type PutPipelineSecretResponse struct {
 	Secret Secret `json:"secret"`
 }
 
-// PutRunObjectResponse defines model for PutRunObjectResponse.
-type PutRunObjectResponse struct {
-	// Object Information about the object created.
-	Object Object `json:"object"`
-}
-
 // RegisterPipelineConfigRequest defines model for RegisterPipelineConfigRequest.
 type RegisterPipelineConfigRequest struct {
 	// Config The pipeline configuration. This is usually supplied by the CLI which translates written code into this format.
@@ -1603,12 +1591,9 @@ type Run struct {
 	// StatusReason More information on the circumstances around a particular run's status.
 	StatusReason *RunStatusReason `json:"status_reason"`
 
-	// StoreObjectsExpired Whether run level objects are deleted.
-	StoreObjectsExpired bool `json:"store_objects_expired"`
-
 	// TokenId The unique identifier for Gofer's auto-inject token. This feature is so that users can easily use Gofer's API with a ready injected token into the run just-in-time. If this is None this run had no tasks with the `inject_api_token` setting enabled.
 	//
-	// These tokens automatically expire after a pre-determined time.
+	// The token is deleted when the run ends, since only the run's own tasks use it.
 	TokenId *string `json:"token_id"`
 
 	// Variables Run level environment variables to be passed to each task execution.
@@ -2260,12 +2245,6 @@ type ListRunsParams struct {
 
 	// Since Only return runs created at or after this time, in epoch milliseconds.
 	Since *uint64 `form:"since,omitempty" json:"since,omitempty"`
-}
-
-// PutRunObjectParams defines parameters for PutRunObject.
-type PutRunObjectParams struct {
-	// Force Overwrite a value of a object if it already exists.
-	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // CancelTaskExecutionParams defines parameters for CancelTaskExecution.
@@ -5393,18 +5372,6 @@ type ClientInterface interface {
 	// GetRun request
 	GetRun(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListRunObjects request
-	ListRunObjects(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteRunObject request
-	DeleteRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetRunObject request
-	GetRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PutRunObjectWithBody request with any body
-	PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListTaskExecutions request
 	ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -6112,54 +6079,6 @@ func (c *Client) CancelRun(ctx context.Context, namespaceId string, pipelineId s
 
 func (c *Client) GetRun(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRunRequest(c.Server, namespaceId, pipelineId, runId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) ListRunObjects(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListRunObjectsRequest(c.Server, namespaceId, pipelineId, runId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) DeleteRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteRunObjectRequest(c.Server, namespaceId, pipelineId, runId, key)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetRunObject(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetRunObjectRequest(c.Server, namespaceId, pipelineId, runId, key)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutRunObjectRequestWithBody(c.Server, namespaceId, pipelineId, runId, key, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -8613,243 +8532,6 @@ func NewGetRunRequest(server string, namespaceId string, pipelineId string, runI
 	return req, nil
 }
 
-// NewListRunObjectsRequest generates requests for ListRunObjects
-func NewListRunObjectsRequest(server string, namespaceId string, pipelineId string, runId uint64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "run_id", runtime.ParamLocationPath, runId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/runs/%s/objects", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewDeleteRunObjectRequest generates requests for DeleteRunObject
-func NewDeleteRunObjectRequest(server string, namespaceId string, pipelineId string, runId uint64, key string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "run_id", runtime.ParamLocationPath, runId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/runs/%s/objects/%s", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetRunObjectRequest generates requests for GetRunObject
-func NewGetRunObjectRequest(server string, namespaceId string, pipelineId string, runId uint64, key string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "run_id", runtime.ParamLocationPath, runId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/runs/%s/objects/%s", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPutRunObjectRequestWithBody generates requests for PutRunObject with any type of body
-func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace_id", runtime.ParamLocationPath, namespaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "pipeline_id", runtime.ParamLocationPath, pipelineId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "run_id", runtime.ParamLocationPath, runId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "key", runtime.ParamLocationPath, key)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/namespaces/%s/pipelines/%s/runs/%s/objects/%s", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Force != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewListTaskExecutionsRequest generates requests for ListTaskExecutions
 func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId string, runId uint64) (*http.Request, error) {
 	var err error
@@ -10628,18 +10310,6 @@ type ClientWithResponsesInterface interface {
 	// GetRunWithResponse request
 	GetRunWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*GetRunResp, error)
 
-	// ListRunObjectsWithResponse request
-	ListRunObjectsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListRunObjectsResp, error)
-
-	// DeleteRunObjectWithResponse request
-	DeleteRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*DeleteRunObjectResp, error)
-
-	// GetRunObjectWithResponse request
-	GetRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*GetRunObjectResp, error)
-
-	// PutRunObjectWithBodyWithResponse request with any body
-	PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error)
-
 	// ListTaskExecutionsWithResponse request
 	ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error)
 
@@ -11757,100 +11427,6 @@ func (r GetRunResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetRunResp) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type ListRunObjectsResp struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ListRunObjectsResponse
-	JSON4XX      *Error
-	JSON5XX      *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r ListRunObjectsResp) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListRunObjectsResp) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DeleteRunObjectResp struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON4XX      *Error
-	JSON5XX      *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteRunObjectResp) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteRunObjectResp) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetRunObjectResp struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON4XX      *Error
-	JSON5XX      *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r GetRunObjectResp) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetRunObjectResp) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PutRunObjectResp struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *PutRunObjectResponse
-	JSON4XX      *Error
-	JSON5XX      *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r PutRunObjectResp) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PutRunObjectResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13142,42 +12718,6 @@ func (c *ClientWithResponses) GetRunWithResponse(ctx context.Context, namespaceI
 		return nil, err
 	}
 	return ParseGetRunResp(rsp)
-}
-
-// ListRunObjectsWithResponse request returning *ListRunObjectsResp
-func (c *ClientWithResponses) ListRunObjectsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListRunObjectsResp, error) {
-	rsp, err := c.ListRunObjects(ctx, namespaceId, pipelineId, runId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListRunObjectsResp(rsp)
-}
-
-// DeleteRunObjectWithResponse request returning *DeleteRunObjectResp
-func (c *ClientWithResponses) DeleteRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*DeleteRunObjectResp, error) {
-	rsp, err := c.DeleteRunObject(ctx, namespaceId, pipelineId, runId, key, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteRunObjectResp(rsp)
-}
-
-// GetRunObjectWithResponse request returning *GetRunObjectResp
-func (c *ClientWithResponses) GetRunObjectWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, reqEditors ...RequestEditorFn) (*GetRunObjectResp, error) {
-	rsp, err := c.GetRunObject(ctx, namespaceId, pipelineId, runId, key, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetRunObjectResp(rsp)
-}
-
-// PutRunObjectWithBodyWithResponse request with arbitrary body returning *PutRunObjectResp
-func (c *ClientWithResponses) PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error) {
-	rsp, err := c.PutRunObjectWithBody(ctx, namespaceId, pipelineId, runId, key, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutRunObjectResp(rsp)
 }
 
 // ListTaskExecutionsWithResponse request returning *ListTaskExecutionsResp
@@ -15146,152 +14686,6 @@ func ParseGetRunResp(rsp *http.Response) (*GetRunResp, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON4XX = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON5XX = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseListRunObjectsResp parses an HTTP response from a ListRunObjectsWithResponse call
-func ParseListRunObjectsResp(rsp *http.Response) (*ListRunObjectsResp, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListRunObjectsResp{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ListRunObjectsResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON4XX = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON5XX = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteRunObjectResp parses an HTTP response from a DeleteRunObjectWithResponse call
-func ParseDeleteRunObjectResp(rsp *http.Response) (*DeleteRunObjectResp, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteRunObjectResp{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON4XX = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON5XX = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetRunObjectResp parses an HTTP response from a GetRunObjectWithResponse call
-func ParseGetRunObjectResp(rsp *http.Response) (*GetRunObjectResp, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetRunObjectResp{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON4XX = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON5XX = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePutRunObjectResp parses an HTTP response from a PutRunObjectWithResponse call
-func ParsePutRunObjectResp(rsp *http.Response) (*PutRunObjectResp, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PutRunObjectResp{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest PutRunObjectResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
 		var dest Error

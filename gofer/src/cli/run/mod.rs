@@ -1,5 +1,4 @@
 mod debug;
-mod object;
 
 pub(crate) use debug::{phase_duration_text, phase_durations, phase_text};
 
@@ -88,9 +87,6 @@ pub enum RunCommands {
         /// Run Identifier.
         run_id: u64,
     },
-
-    /// Manage run object store.
-    Object(object::ObjectSubcommands),
 }
 
 impl Cli {
@@ -133,7 +129,6 @@ impl Cli {
                 self.run_cancel(command.namespace, &pipeline_id, run_id)
                     .await
             }
-            RunCommands::Object(object) => self.handle_run_object_subcommands(object).await,
         }
     }
 }
@@ -318,7 +313,6 @@ impl Cli {
   {%- for line in timing %}
   {{ vertical_line }} {{ line }}
   {%- endfor %}
-  {{ vertical_line }} Objects Expired: {{ objects_expired }}
   {%- if token_id %}
   {{ vertical_line }} Injected Token ID: {{ token_id }}
   {%- endif %}
@@ -343,7 +337,6 @@ impl Cli {
             &initiator_text(&run.initiator).blue().to_string(),
         );
         context.insert("timing", &self.run_timing(&run));
-        context.insert("objects_expired", &run.store_objects_expired);
         context.insert("token_id", &run.token_id);
         context.insert(
             "task_executions",
