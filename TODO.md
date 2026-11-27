@@ -88,10 +88,10 @@ These come after the built images refactor is done.
     is already a run for that branch, cancel the ongoing one and trigger a new one.
 * Transition dropshot to use the new trait api. Which will eliminate the circular dependency on openapi files.
 * Canaried deployments feature.
-* Make run execution survive failures. This has to happen before a networked scheduler (Nomad, K8s) is realistic,
-  since those calls will fail sometimes and today one failure ends the run.
-  * In monitor_task_execution, calls to the scheduler to check on container status are expected to succeed. If one
-    fails the whole thing is aborted. It should retry with backoff and only give up after a while.
+* Make run execution survive failures. Today one failed call to Docker ends the run, and running containers anywhere
+  but local Docker would make those failures more common.
+  * In monitor_task_execution, calls to Docker to check on container status are expected to succeed. If one fails the
+    whole thing is aborted. It should retry with backoff and only give up after a while.
   * The recover_run function needs to account for the fact that sometimes the event_ids mentioned within runs might
     not exist anymore. It should also not return any errors but instead log them and move on, trying its best
     despite any failures.
@@ -112,11 +112,11 @@ These come after the built images refactor is done.
 * Dropshot has implemented a trait API which would speed up compliation times and overall lead to more maintainable
 code. Right now it doesn't quite work due to the main api trait being too large. (We'd have to write all the handlers
 in one very large file or split them up). https://github.com/oxidecomputer/dropshot/issues/1069 should fix this.
-* Registry auth (tasks and extensions) hasn't been tested against a real private registry yet.
+* Extension `registry_auth` hasn't been tested against a real private registry yet.
 * Write/Design a way to clean up expired tokens after long enough.
 * Check that our websockets stuff makes sense we use joinset, make sure we're returning errors to the main thread and
 bubbling them up properly.
-* When you schedule a job on a container orch, we should note where that job has run(which node).
+* If Gofer ever runs containers on more than one machine, note which machine each task ran on.
 * Pass back custom errors via the API so that consumers can understand what has happened.
 * Pagination...everywhere.
 * The CLI should have a feature where you can start a pipeline and follow all logs and status updates
@@ -126,10 +126,20 @@ finishes at which time it reflects a summary about what it did.
 
 # The floor: Stuff I put things I probably should do but haven't prioritized/sorted yet.
 
-### Scheduler
+### Built images
 
-- Implement CPU/MEMORY per task values since all non-local schedulers will need this.
-- It would be cool to have at least one other scheduler. Nomad is a great scheduler for this.
+- `gofer up` inside a Gofer task. Tasks that are only a base image already work there, since they don't need Docker.
+  The rest need a BuildKit to talk to, like a remote one that `gofer up` reaches over the network instead of starting
+  its own container.
+- Copying files in without Docker. A layer that adds `/app/file` also decides what `/app` itself is, so doing it
+  safely means reading the base's own folders first: their owners, modes, and symlinks like `/bin` to `/usr/bin`.
+- ARM and mixed platforms. Images are always linux/amd64 today. A platform override per task would cover ARM servers,
+  and if Gofer becomes distributed, each machine might need its own.
+- Identity tokens for tasks that are only a base image. Those are downloaded with oci-client, which can only trade a
+  username and password for a registry token, so a login that's an identity token (some registries hand these out in
+  place of a password) only works for tasks built with BuildKit.
+- Replacing Docker. The server only needs to load images and run containers, and the CLI only needs a BuildKit, so
+  neither has to be Docker forever.
 
 ### SecretStore
 
@@ -177,6 +187,7 @@ There are several useful things we can do with the concept of extensions:
 
 ### General
 
+- Let tasks set CPU and memory limits.
 - Metrics via openTelemetry
 - Create a container for custom use that has gofer-cli already packed in and possibly allows
   - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So users can get zero to code ultra-fast.

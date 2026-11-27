@@ -13,7 +13,11 @@
 
 - **Run:** A run is a single execution of a pipeline. A run can be started automatically via [extensions](./ref/extensions/index.html) or manually via the API or [CLI](./cli/index.html)
 
-- **Task:** A task is the lowest unit in Gofer. It is a small abstraction over running a single container. Through tasks you can define what container you want to run, when to run it in relation to other containers, and what variables/secrets those containers should use.
+- **Task:** A task is the lowest unit in Gofer. It is a small abstraction over running a single container. Through tasks you can define what the container's image is made of, when to run it in relation to other containers, and what variables/secrets those containers should use.
+
+- **Task image:** The image a task runs. `gofer up` builds it from the task's base image, files, and commands, or from
+  a Dockerfile, and uploads it with the pipeline config. Each version keeps the images it was registered with. See
+  [the task's image](./ref/pipeline_configuration/tasks.md#the-tasks-image).
 
 - **Task Execution:** A task execution is the programmatic running of a single task container. Referencing a specific task execution is how you can examine the results, logs, and details of one of your tasks on any given run.
 

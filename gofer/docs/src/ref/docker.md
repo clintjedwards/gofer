@@ -13,6 +13,14 @@ timeout_seconds = 300
 
 Docker needs to be installed and the Gofer process needs to have the required permissions to run containers upon it.
 
+Task images come from Gofer, not from a registry. Before a task runs, Gofer loads its image into Docker from its own
+[image store](./server_configuration/configuration_reference.md#images), named `gofer-image:<digest>`, and it
+removes those once no version of any pipeline keeps them. Extensions are still pulled from their registries.
+
+`gofer up` uses Docker as well, on the machine it runs on, to build task images. It runs
+[BuildKit](https://github.com/moby/buildkit) in a container called `gofer-buildkit`, with its cache in a volume, and
+`gofer builder --help` shows how to empty or remove it.
+
 Other than that Gofer just needs to know how to clean up after itself.
 
 | Parameter              | Type | Default | Description                                                                                                                                                                                                     |

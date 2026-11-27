@@ -69,8 +69,9 @@ A pipeline consists of a few parts:
 
 - **An id and a name.** `simple` is the id you'll use in commands; "Simple Pipeline" is the name people see.
 - **A description** so others know what it's for.
-- **One or more [tasks](../ref/pipeline_configuration/tasks.md).** Each task is a container to run. This one runs
-  `ubuntu:latest`, prints a message, and gets an environment variable `TEST=sample`.
+- **One or more [tasks](../ref/pipeline_configuration/tasks.md).** Each task is a container to run, and says what its
+  image is made of: a base image, plus any files to copy in and commands to run. This one is just `ubuntu:latest`. It
+  prints a message and gets an environment variable `TEST=sample`.
 - **`Finish()`**, which checks the pipeline for mistakes and prints it out.
 
 ## Try it

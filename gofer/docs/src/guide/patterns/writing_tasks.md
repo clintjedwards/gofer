@@ -16,7 +16,7 @@ pick up from a half finished state.
 
 A task that hangs holds its run open, and a slot in the pipeline's parallelism, until something stops it. Give tasks
 a timeout close to how long they should actually take, with `Timeout(10 * time.Minute)` in Go or
-`.timeout(Duration::from_secs(600))` in Rust. The clock starts when the container starts, so pulling the image doesn't
+`.timeout(Duration::from_secs(600))` in Rust. The clock starts when the container starts, so loading the image doesn't
 count.
 
 When a task runs past its timeout, Gofer stops it the same way it does for a cancel, then marks the task and the run
@@ -32,23 +32,20 @@ lets you override a value for a single run with `gofer pipeline run my-pipeline 
 [task environment variables](../../ref/pipeline_configuration/tasks.md#task-environment-variables-and-configuration)
 for where variables come from and which one wins.
 
-## Pin your image tags.
+## Pin your base images.
 
-Gofer keeps every version of your pipeline config and records which version each run used, so you can always look
-back at what ran. That only holds if the images are pinned too. With `:latest`, the config says the same thing on
-Monday and Friday while the code inside the image changed in between.
-
-Gofer also only pulls an image when the host doesn't have it yet. So without
-`AlwaysPullNewestImage(true)`, a `:latest` task runs whatever version that host happened to pull last, and two hosts
-can run different code for the same task. Prefer a version tag (`my-org/deployer:1.4.2`) or a digest
-(`my-org/deployer@sha256:...`). Save `AlwaysPullNewestImage` for images where you really do want the newest build every
-time, like your own tooling images, and accept that each run pays for the pull.
+Each version of a pipeline runs exactly the images `gofer up` built for it, so a version never changes under you.
+Which base a tag like `:latest` gave you is decided when the image is built, though, and a task is only built again
+when it changes. Two tasks on `python:3` can end up on different Pythons, depending on when each one last changed.
+A version tag (`python:3.13-slim`) or a digest (`python@sha256:...`) makes builds come out the same whenever they
+happen. When you do want what a tag points to now, `gofer up --rebuild` builds every task from scratch.
 
 ## Keep your images lean.
 
-There's no guarantee a task lands on a machine that already has its image. Large images take a long time to download
-and a lot of disk space, and that time comes out of every run that has to pull them. Start from a small base image and
-only install what the task needs.
+Every image `gofer up` builds is uploaded to Gofer, kept for the pipeline's newest versions, and loaded into Docker
+the first time it runs. Large images take longer each of those times and use more disk. Start from a small base image,
+and use [`Keep`](../../ref/pipeline_configuration/tasks.md#keeping-only-whats-needed) to leave compilers and build
+tools behind.
 
 ## Fail loudly.
 

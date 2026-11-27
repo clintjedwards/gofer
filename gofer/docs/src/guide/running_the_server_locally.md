@@ -17,6 +17,9 @@ install docker for your operating system [on its documentation site.](https://do
 Gofer talks to Docker as the user you run it as, so make sure that user can run containers. `docker ps` working
 without `sudo` is a good sign; on Linux that usually means being in the `docker` group.
 
+`gofer up` uses Docker too, on whichever machine you run it from, to build the images of tasks that copy files in or
+run commands. Here that's the same machine.
+
 ## Start the server
 
 By default the Gofer binary is able to run the server in development mode. Simply start the service by:

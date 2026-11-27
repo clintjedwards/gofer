@@ -5,8 +5,8 @@ Gofer runs as a single static binary that you deploy onto your favorite VPS.
 While Gofer will happily run in development mode without any additional configuration, this mode is **NOT**
 recommended for production workloads and **not intended to be secure.**
 
-Instead Gofer allows you to edit its startup configuration allowing you to configure it to run on your favorite
-container orchestrator, object store, and/or secret backend.
+Instead Gofer allows you to edit its startup configuration, covering things like where it keeps its data, its object
+store and secret store, and how it talks to Docker.
 
 ## Setup
 

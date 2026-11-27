@@ -8,19 +8,31 @@ Before it registers anything, `gofer up` shows what's different from the latest 
 ```text
 $ gofer up ./my-pipeline
  Changes since v2:
+   │ ~ tasks.build.base: golang:1.24 -> golang:1.25
    │ ~ tasks.build.command:
-   │       sh -c 'exec "$(command -v bash || echo sh)" -c "$1"' gofer-script 'echo one
-   │     - echo two
-   │     + echo 2
-   │       echo three'
-   │ ~ tasks.build.image: alpine:latest -> alpine:3.20
-   │ + tasks.notify: new task using alpine:latest
+   │       sh -c 'exec "$(command -v bash || echo sh)" -c "$1"' gofer-script 'go vet ./...
+   │     - go test ./...'
+   │     + go test -race ./...'
+   │ ~ tasks.cleanup.files: changed
+   │ + tasks.notify: new task built from alpine:3.22
  ? Register and deploy these changes? [y/N]: y
+ ✓ notify  built in 1.0s
+ ✓ cleanup  built in 3.9s
+ ✓ build  built in 41.2s
  ✓ Registered pipeline: [my-pipeline] 'My Pipeline' v3
 ```
 
 Pass `--yes` to skip the question. Gofer also skips it when it isn't run from a terminal, like in CI. If nothing
 changed, no new version is made; Gofer just deploys the latest version if it isn't live yet.
+
+## Task images
+
+Only the tasks that changed are built again. `tasks.<id>.files: changed` means some of the files a task copies in are
+different; the others are changes to how the task is built or run. A task that didn't change keeps the image it
+already has, and only the parts of new images that Gofer doesn't have yet are uploaded.
+
+If Gofer has removed a task's image, `gofer up` says so and builds it again, even when nothing else changed. To build
+every task from scratch, for example to pick up a base image whose tag has moved, use `gofer up --rebuild`.
 
 Keeping every version means you can always see exactly what a past run ran with. Each run records its version, and
 `gofer run get <pipeline_id> <run_id>` shows it next to the run number.
@@ -65,8 +77,12 @@ gofer pipeline config deploy my-pipeline 2
 
 That makes version 2 live and deprecates the current one, without registering anything new.
 
+Gofer keeps the images of each pipeline's newest versions, 10 by default (`images.retention_versions` in the
+[server configuration](../server_configuration/configuration_reference.md#images)). Deploying a version older than
+that fails, since its images are gone.
+
 You can also `gofer up` the old code again, for example from an earlier commit. That registers it as a new version
-and deploys it, which is the way to go if the version you want has been deleted.
+and deploys it, which is the way to go if the version you want has been deleted or lost its images.
 
 ## Cleaning up old versions
 

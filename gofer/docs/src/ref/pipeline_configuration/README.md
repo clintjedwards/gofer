@@ -22,8 +22,8 @@ That is to say:
 ## SDK
 
 Creating a pipeline involves using the SDK currently written in Go or Rust. A pipeline config is just a small
-program: it describes the pipeline with the SDK and prints it as JSON, and `gofer up` builds it, runs it, and sends
-that JSON to Gofer.
+program: it describes the pipeline with the SDK and prints it as JSON. `gofer up` compiles it, runs it, builds each
+task's image, and sends Gofer the JSON along with the images.
 
 - **Go:** `github.com/clintjedwards/gofer/sdk/go/config`. Every function is documented on
   [pkg.go.dev](https://pkg.go.dev/github.com/clintjedwards/gofer/sdk/go/config).
@@ -74,7 +74,7 @@ which we can type our description into.
 
 ### Add a task
 
-Lastly let's add a task(container) to our pipeline. We'll add a simple ubuntu container and change the command that gets
+Lastly let's add a task(container) to our pipeline. We'll start its image from ubuntu and change the command that gets
 run on container start to just say "Hello from Gofer!".
 
 ```go
@@ -90,7 +90,8 @@ We used the `Tasks` function to add multiple tasks and then we use the SDK's `Ne
 You can see we:
 
 - Give the task an ID, much like our pipeline earlier.
-- Specify which image we want to use.
+- Specify the base image its image starts from. A task can also copy files in and run commands to build its image;
+  [Tasks](./tasks.md#the-tasks-image) shows how.
 - Tack on a description.
 - And then finally specify the command.
 
@@ -236,7 +237,8 @@ pipelines whose users you'd also trust to run this one.
 
 ## Next Steps
 
-- [Tasks](./tasks.md) covers everything a task can do: dependencies, variables, secrets, and objects.
+- [Tasks](./tasks.md) covers everything a task can do: building its image, dependencies, variables, secrets, and
+  objects.
 - [Updating Pipelines](./updating.md) explains what happens when you `gofer up` a pipeline again.
 - [Running Pipelines Automatically](./subscriptions.md) shows how to make a pipeline run on a schedule or when
   something happens.

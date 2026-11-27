@@ -1,4 +1,4 @@
-#import "@preview/fletcher:0.5.2" as fletcher: diagram, node, edge
+#import "@preview/fletcher:0.6.0" as fletcher: diagram, node, edge
 #set page(
   paper: "us-letter",
   header: align(right)[
@@ -623,13 +623,13 @@ welcoming to this exact type of tooling.
 
 #diagram(
   node-stroke: 0.5pt,
-  node((0, 0.5), `Container Orchestrator`, shape: rect, width: 8em),
-  edge((1, 0.5), "<|-"),
-  node((1, 0.5), `Gofer Control Plane`, width: 6em),
-  edge((2, 1), "-|>"),
-  edge((2, 0), "-|>"),
-  node((2, 0), `Secret Store`, shape: rect, width: 4em),
-  node((2, 1), `Object Store`, shape: rect, width: 4em),
+  node((0, 0.5), `Container Orchestrator`, shape: rect),
+  node((1, 0.5), `Gofer Control Plane`),
+  node((2, 0), `Secret Store`, shape: rect),
+  node((2, 1), `Object Store`, shape: rect),
+  edge((1, 0.5), (0, 0.5), "-|>"),
+  edge((1, 0.5), (2, 0), "-|>"),
+  edge((1, 0.5), (2, 1), "-|>"),
 )
 
 _Fig. 1: Gofer’s architecture and modular connections_
@@ -656,15 +656,15 @@ The next diagram here shows how Gofer manages what are called “pipeline extens
 
 #diagram(
   node-stroke: 0.5pt,
-  node((1, 1.5), `Gofer Control Plane`, width: 6em),
-  edge((2, 0), "<|-"),
-  edge((2.5, 1), "<|-"),
-  edge((2.5, 2), "<|-"),
-  edge((2, 3), "<|-"),
-  node((2, 0), `Interval Extension`, shape: rect, width: 6em),
-  node((2.5, 1), `Cron Extension`, shape: rect, width: 6em),
-  node((2.5, 2), `Github Extension`, shape: rect, width: 6em),
-  node((2, 3), `Various Others`, shape: rect, width: 6em),
+  node((1, 1.5), `Gofer Control Plane`),
+  node((2, 0), `Interval Extension`, shape: rect),
+  node((2.5, 1), `Cron Extension`, shape: rect),
+  node((2.5, 2), `Github Extension`, shape: rect),
+  node((2, 3), `Various Others`, shape: rect),
+  edge((1, 1.5), (2, 0), "<|-"),
+  edge((1, 1.5), (2.5, 1), "<|-"),
+  edge((1, 1.5), (2.5, 2), "<|-"),
+  edge((1, 1.5), (2, 3), "<|-"),
 )
 
 _Fig. 2: Extensions_

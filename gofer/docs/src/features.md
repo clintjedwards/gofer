@@ -4,6 +4,14 @@
 
 Other infrastructure tooling tried configuration languages(yaml, hcl).... and they kinda suck[^1]. The Gofer CLI allows you to create your pipelines in a fully featured programming language. Pipelines can currently be written in Go or Rust[^2].
 
+## Images built from your code.
+
+A task says what its image is made of: a base image plus files to copy in and commands to run, or a Dockerfile.
+`gofer up` builds the images on your machine and uploads them with the pipeline config, so each version of a pipeline
+runs exactly what it was registered with, and rolling back brings back the old images too. Only the tasks that changed
+are built again, Go and Rust compiler caches are kept between builds, and a task that's only a base image and a
+command doesn't need Docker at all. See [the task's image](./ref/pipeline_configuration/tasks.md#the-tasks-image).
+
 ## DAG(Directed Acyclic Graph) Support.
 
 Gofer provides the ability to run your containers in reference to your other containers.
@@ -58,11 +66,12 @@ Gofer provides a list of events for the most common actions performed. You can v
 
 Gofer allows extensions to consume external events. This allows for extensions to respond to webhooks from favorite sites like Github and more.
 
-## Pluggable Everything
+## Pluggable Storage
 
-Gofer plugs into all your favorite backends your team is already using. This means that you never have to maintain things outside of your wheelhouse.
-
-Whether you want to schedule your containers on [K8s](https://kubernetes.io/) or [AWS Lambda](https://aws.amazon.com/lambda/), or maybe you'd like to use an object store that you're more familiar with in [minio](https://min.io/) or [AWS S3](https://aws.amazon.com/s3/), Gofer provides either an already created plugin or an interface to write your own.
+Gofer's object store and secret store each sit behind a small interface, so another backend, like
+[AWS S3](https://aws.amazon.com/s3/) for objects, can be added without changing the rest of Gofer. It comes with a
+[filesystem object store](./ref/object_store/filesystem.md) and a [sqlite secret store](./ref/secret_store/sqlite.md),
+which need no setup. Containers run on [Docker](./ref/docker.md).
 
 [^1]: Initially why configuration languages are used made sense, namely lowering the bar for users who might not know how to program and making it simpler overall to maintain(read: not shoot yourself in the foot with crazy inheritance structures). But, in practice, we've found that they kinda suck. Nobody wants to learn yet another language for this one specific thing. Furthermore, using a separate configuration language doesn't allow you to plug into years of practice/tooling/testing teams have with a certain favorite language.
 

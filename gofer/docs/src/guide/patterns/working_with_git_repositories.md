@@ -14,11 +14,11 @@ gofer secret pipeline put my-pipeline deploy_key < ./deploy_key
 rm ./deploy_key
 ```
 
-Then hand it to the task as a variable and point git at it:
+Then hand it to the task as a variable and point git at it. Installing git with `Run` puts it in the task's image once,
+so runs don't download it every time:
 
 ```go
 const setupGit = `
-apk add --no-cache git openssh-client
 mkdir -p ~/.ssh
 printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key   # Secrets are stored without the trailing newline ssh requires.
 chmod 600 ~/.ssh/deploy_key
@@ -26,7 +26,8 @@ printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
 export GIT_SSH_COMMAND="ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
 `
 
-sdk.NewTask("build", "alpine:latest").
+sdk.NewTask("build", "alpine:3.22").
+    Run("apk add --no-cache git openssh-client").
     Variables(map[string]string{
         "DEPLOY_KEY":  sdk.PipelineSecret("deploy_key"),
         "KNOWN_HOSTS": sdk.PipelineObject("known_hosts"),
@@ -37,7 +38,7 @@ sdk.NewTask("build", "alpine:latest").
 **Pin the host's SSH keys instead of turning off host checking.** It's tempting to add
 `-o StrictHostKeyChecking=no`, but then anyone who can intercept the connection can feed your task whatever code
 they like. Copy the host's published keys (Github lists theirs in its docs under "Github's SSH key fingerprints")
-into a pipeline object once, as above, or bake them into your image:
+into a pipeline object once, as above, or copy them into the task's image:
 
 ```bash
 gofer pipeline object put my-pipeline known_hosts ./github_known_hosts
@@ -88,8 +89,10 @@ runs `git fetch` to pick up only what changed, then uploads it again. A few thin
 - Pipeline objects past `pipeline_object_limit` get deleted, oldest first, so write the clone task to fall back to a
   fresh clone when the cache is missing.
 
-**4. Bake it into the image.** For repos that rarely change, like shared scripts or tooling, copying them into the
-task's image at build time skips the download entirely.
+**4. Copy it into the image.** For code that sits next to your pipeline config and only needs updating when you run
+`gofer up`, like shared scripts or tooling, [`Copy`](../../ref/pipeline_configuration/tasks.md#copying-files-and-running-commands)
+puts it in the task's image and skips the download entirely. The image has the files as they were at that `gofer up`,
+so this doesn't fit code a run is meant to test.
 
 **5. Run a git caching proxy.** For very large repos, or many runs close together, a caching proxy near your
 container hosts (like [git-cache-http-server](https://github.com/jonasmalacofilho/git-cache-http-server)) serves

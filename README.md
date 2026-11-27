@@ -12,7 +12,7 @@
 
 Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.
 
-Gofer focuses on the "what" and "when" of your workloads, leaving the "how" and "where" to pluggable, more sophisticated container orchestrators (such as K8s or Nomad or even local Docker).
+Gofer focuses on the "what" and "when" of your workloads. It builds each task's image from your code, keeps it with the version of the pipeline that uses it, and runs it on Docker.
 
 It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages.
 
@@ -38,12 +38,13 @@ pretty low priority for me.
 ## Features:
 
 - **Simple Deployment**: Install Gofer effortlessly with a single static binary and manage it through its intuitive command-line interface.
-- **Language Flexibility**: Craft your pipelines in programming languages you're already comfortable with, such as Go or Rust—no more wrestling with unfamiliar YAML.
+- **Language Flexibility**: Craft your pipelines in programming languages you're already comfortable with, such as Go or Rust, instead of wrestling with unfamiliar YAML.
 - **Local Testing**: Validate and run your pipelines locally, eliminating the guesswork of "commit and see" testing.
 - **Extensible Architecture**: Easily extend Gofer's capabilities by writing your own plugins, backends, and more, in any language via OpenAPI.
 - **Built-In Storage**: Comes with an integrated Object and Secret store for your convenience.
 - **DAG Support**: Harness the power of Directed Acyclic Graphs (DAGs) for complex workflow automation.
 - **Versioned Pipelines**: Every update to a pipeline is kept as a new version, so you can see exactly what each run ran with and roll back to an earlier one.
+- **Built Images**: `gofer up` builds each task's image from a base image, your files and commands, or a Dockerfile, so a version always runs exactly the images it was registered with. Only tasks that changed are rebuilt, and Go and Rust builds stay cached.
 
 ## Demo:
 

@@ -14,6 +14,13 @@ Either way, pass secrets in with `sdk.PipelineSecret` or `sdk.GlobalSecret` inst
 config. Configs are stored and shown as written, so anything typed into one directly is visible to anyone who can
 read the pipeline.
 
+## Keep secrets out of images.
+
+A task gets its variables, secrets included, when its container starts. They're never part of the build, so they
+can't end up in the image. Files are different: anything a task copies in is in its image, which is uploaded to Gofer
+and kept for the pipeline's newest versions. Keep keys and tokens out of the folders you copy, or list them in the
+folder's `.dockerignore`, and pass them in as secrets instead.
+
 ## Only give API tokens to tasks that need them.
 
 `InjectAPIToken(true)` gives a task a token for Gofer's API, which it needs to store objects or use the `gofer` CLI.

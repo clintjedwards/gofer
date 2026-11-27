@@ -28,11 +28,23 @@ From there:
 
 When a run takes longer than it should, the timeline in `gofer run debug` (and on the run's page in the web UI) splits
 each task into the time it spent waiting on its dependencies, setting up, and running. Setting up is everything
-between a task being ready to go and its container running: resolving secrets and objects, pulling the image, and
-starting the container. `gofer task get` breaks that down further, so a slow image pull stands out.
+between a task being ready to go and its container running: resolving secrets and objects, loading the image into
+Docker, and starting the container. `gofer task get` breaks that down further, so a slow image load stands out. It's
+usually a large image running for the first time on that Docker.
 
 If the run itself took a while to begin, it was probably queued behind the pipeline's parallelism limit; the run's
 start time shows how long it waited.
+
+## Debugging builds
+
+When `gofer up` can't build a task's image, it shows why, the last lines the failing step printed, and where the full
+log is, under `~/.cache/gofer/builds/`. Nothing is registered until every image builds.
+
+- A task whose image Gofer has removed fails to start with a message saying to run `gofer up`, which builds it again.
+- If a build behaves as if it's using something old, like a base image whose tag has moved,
+  `gofer up --rebuild` builds every task from scratch with empty compiler caches.
+- `gofer builder prune` empties the builder's cache to get disk space back, and `gofer builder remove` removes the
+  builder entirely; the next build starts a new one.
 
 ## Debugging the CLI
 

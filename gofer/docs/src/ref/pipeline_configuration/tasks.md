@@ -1,11 +1,10 @@
 # Tasks
 
-Gofer's abstraction for running a container is called a Task. Specifically Tasks are containers you point Gofer to and
-configure to perform some workload.
+A task is one container in a pipeline. It says what its image is made of, what to run in it, and when to run it
+compared to the pipeline's other tasks.
 
-A Task can be any container you want to run. In the
-[Getting Started](../../guide/create_your_first_pipeline_configuration.md) example we take a regular standard
-`ubuntu:latest` container and customize it to run a passed in bash script.
+In the [Getting Started](../../guide/create_your_first_pipeline_configuration.md) example, the task starts from
+`ubuntu:latest` and runs a single command:
 
 ```go
 Tasks(
@@ -14,6 +13,126 @@ Tasks(
         Command("echo", "Hello from Gofer!"),
 )
 ```
+
+## The Task's Image
+
+`gofer up` builds every task's image on your machine and uploads it to Gofer along with the pipeline config. A version
+of a pipeline always runs exactly the images it was registered with, so a run on Friday runs the same thing as one on
+Monday, even if a tag like `ubuntu:latest` moved in between.
+
+`NewTask(id, base)` starts the image from a base image, like `golang:1.25` or `python:3-slim`. With nothing added, as
+above, the image is the base image with your command.
+
+### Copying files and running commands
+
+`Copy` puts files from next to your pipeline config into the image, and `Run` runs a command in it. They happen in the
+order you write them:
+
+```go
+sdk.NewTask("cleanup", "python:3-slim").
+    Copy("./cleanup.py", "/cleanup.py").
+    Run("pip install requests").
+    Command("python", "/cleanup.py")
+```
+
+```rust
+Task::new("cleanup", "python:3-slim")
+    .copy("./cleanup.py", "/cleanup.py")
+    .run("pip install requests")
+    .command(vec!["python".into(), "/cleanup.py".into()])
+```
+
+- `Copy(from, to)` copies a file, or what's inside a folder. `from` is relative to the folder of the pipeline config,
+  and can be outside it, like `../shared`. The folder's `.dockerignore` decides what to leave out, and so do
+  folders that only hold a cache, like Cargo's `target/`. Copied files belong to root and keep only their executable
+  bit, so the image comes out the same on every machine.
+- `Run(command)` runs the command with `/bin/sh -c`, so the image needs a shell.
+
+Variables and secrets aren't there while the image is built; a task gets them when it runs. That keeps them out of the
+image, but it also means a run step can't use a secret to download something private. Vendor those dependencies, or
+build them outside of Gofer and copy the result in.
+
+### Keeping only what's needed
+
+A build often needs far more than the program it makes. `Keep` moves only the paths you name onto a smaller base once
+every step has run:
+
+```go
+sdk.NewTask("report", "golang:1.25").
+    Copy("./report", "/src").
+    Run("cd /src && go build -o /app/report .").
+    Keep([]string{"/app/report"}, "debian:13-slim").
+    Command("/app/report")
+```
+
+The compiler stays behind, so the image uploads and starts faster. Paths have to be full paths, and each one lands at
+the same path on the new base. Nothing else carries over from the first base, like its environment variables or
+working directory, so the new base needs whatever the kept files need to run.
+
+### Compiler caches
+
+Gofer keeps Go's and Cargo's caches between builds on its own, so a plain `go build` or `cargo build --release` is
+only slow the first time. Put the `cargo build` in the first run step after your copies. A step in between could make
+code that Cargo wouldn't notice changing, like a crate generated from a spec, so the steps after it go without the
+Rust cache, and `gofer up` prints a tip saying which step was the reason.
+
+### Dockerfiles
+
+For anything `Copy` and `Run` can't do, build from a Dockerfile. Both paths are relative to the folder of the pipeline
+config, and the context is the folder the Dockerfile can use files from, the same as with `docker build`:
+
+```go
+sdk.NewDockerfileTask("scan", "./scan/Dockerfile", "./scan")
+```
+
+The context's `.dockerignore` works the way it does with Docker, and so does a `Dockerfile.dockerignore` next to the
+Dockerfile. Gofer doesn't pass build arguments, so each `ARG` has its default.
+
+### How the image runs
+
+`Command` and `Entrypoint` replace the image's own, the same way `docker run` does. `Script` runs a shell script with
+`bash` if the image has it and `sh` if it doesn't. All three work for Dockerfile tasks too. They're built into the
+image, so changing one makes a new image, which is quick since only the image's config changes.
+
+### When images are built
+
+`gofer up` hashes the files each task copies in, and only builds a task again when its files, how it's built or how
+it runs changed. The rest keep the image they already have. The changes `gofer up` shows say
+`tasks.<id>.files: changed` when it's a task's files.
+
+- A task that's only a base image and a command doesn't need Docker. Gofer reads the base from its registry and only
+  changes the image's config. Anything with `Copy`, `Run`, `Keep` or a Dockerfile is built with Docker, on the machine
+  that runs `gofer up`.
+- `gofer up --rebuild` builds every task from scratch, with empty compiler caches. Use it when a base image's tag has
+  moved and you want what it points to now.
+- Base images are looked up on every build, so building needs the network even when everything is cached.
+- Images are always for linux/amd64. On another kind of machine, like an ARM Mac, builds use emulation, which can make
+  compiling slow.
+- When a build fails, `gofer up` shows its last lines and where its full log is, under `~/.cache/gofer/builds/`.
+
+Gofer keeps the images of each pipeline's newest versions, set by `images.retention_versions` in the
+[server configuration](../server_configuration/configuration_reference.md#images). On your side, `gofer builder prune`
+empties the builder's cache, which never grows past `builder_cache_max_gb` in the
+[CLI configuration](../../cli/configuration.md).
+
+### Private base images
+
+If a task's base image is in a registry that needs a login, log in with Docker the way you usually would, then run
+`gofer up`:
+
+```bash
+docker login registry.example.com
+```
+
+`gofer up` builds the image on your machine with the same logins Docker uses, including credential helpers and
+`DOCKER_AUTH_CONFIG`. A build only gets the logins for the registries it downloads from, and they never end up in the
+image. The Gofer server never needs them, since it runs the image `gofer up` uploaded instead of downloading one.
+
+In a Dockerfile, a `FROM` can use a variable from an `ARG`, like `FROM ${BASE}`, and Gofer uses the `ARG`'s default to
+work out which registry the image is in.
+
+Some registries hand out an identity token in place of a password. Gofer can use one of those for a task it builds with
+Docker, but not yet for a task that's only a base image and a command, since that's downloaded without Docker.
 
 ## Task Dependencies (DAGs)
 
@@ -89,7 +208,7 @@ These are the system variables Gofer injects into every task:
 | `GOFER_PIPELINE_ID` | The pipeline identification string.                                                                                                                                                          |
 | `GOFER_RUN_ID`      | The run identification number.                                                                                                                                                               |
 | `GOFER_TASK_ID`     | The task execution identification string.                                                                                                                                                    |
-| `GOFER_TASK_IMAGE`  | The image name the task is currently running with.                                                                                                                                           |
+| `GOFER_TASK_IMAGE`  | The digest of the image the task runs, the one `gofer up` built for it.                                                                                                                      |
 | `GOFER_TOKEN`       | Optional. Only set when the task uses `InjectAPIToken`. It's the same variable the Gofer CLI reads its token from. See [passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for an example. |
 
 ## Using Secrets and Objects in Variables
@@ -109,7 +228,7 @@ string yourself:
 | `sdk.RunObject(key)`      | `run_object(key)`      | `run_object{{key}}`      | Objects stored on the current run.                                 |
 
 ```go
-sdk.NewTask("deploy", "my-org/deployer:latest").
+sdk.NewTask("deploy", "my-org/deployer:1.4").
     Variables(map[string]string{
         "ENVIRONMENT":  "production",                    // Passed in as is.
         "DEPLOY_KEY":   sdk.PipelineSecret("deploy_key"), // Becomes the value of the pipeline secret "deploy_key".
@@ -134,25 +253,6 @@ your task instead.
 If a secret or object doesn't exist, or a global secret doesn't allow your namespace, the task fails before its
 container starts and the reason says which key was missing.
 
-## Private Base Images
-
-If a task's base image is in a registry that needs a login, log in with Docker the way you usually would, then run
-`gofer up`:
-
-```bash
-docker login registry.example.com
-```
-
-`gofer up` builds the image on your machine with the same logins Docker uses, including credential helpers and
-`DOCKER_AUTH_CONFIG`. A build only gets the logins for the registries it downloads from, and they never end up in the
-image. The Gofer server never needs them, since it runs the image `gofer up` uploaded instead of downloading one.
-
-In a Dockerfile, a `FROM` can use a variable from an `ARG`, like `FROM ${BASE}`. Gofer doesn't pass build arguments,
-so each one is its `ARG`'s default, and that's how Gofer works out which registry the image is in.
-
-Some registries hand out an identity token in place of a password. Gofer can use one of those for a task it builds with
-Docker, but not yet for a task that's only a base image and a command, since that's downloaded without Docker.
-
 ## What happens when a task is run?
 
 The high level flow is:
@@ -161,6 +261,5 @@ The high level flow is:
 2. Gofer waits for the task's parents to finish and checks they ended in the states the task requires.
 3. Gofer parses the task configuration's variables list. It replaces any secret or object strings
    with their actual values from the object or secret store.
-4. Gofer then passes the details of your task to Docker, variables are passed in as environment variables.
-5. Gofer loads the task's image into Docker from what `gofer up` uploaded, if Docker doesn't have it already.
-6. The container is then run with the settings passed.
+4. Gofer loads the task's image into Docker from what `gofer up` uploaded, if Docker doesn't have it already.
+5. Gofer starts the container, with the variables as environment variables.
