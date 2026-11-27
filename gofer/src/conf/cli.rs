@@ -28,8 +28,9 @@ pub struct CliConfig {
     /// How large the builder's cache can get, in GiB.
     pub builder_cache_max_gb: u64,
 
-    /// Print advice after a build, like how to make it faster.
-    pub build_tips: bool,
+    /// How many tips to print after each `gofer up`, like how to make a build faster. 0 turns them off. Tips that don't
+    /// fit wait for a later `gofer up`.
+    pub build_tips: usize,
 
     /// Provides extra debug output.
     pub debug: bool,

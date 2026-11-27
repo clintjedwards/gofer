@@ -52,7 +52,7 @@ environment variable or the default.
 | output_format            | string | `spinner`               | Can be one of `spinner`, `plain`, `silent`, `json`. Controls the output of CLI commands. `spinner` falls back to `plain` when output isn't a terminal.            |
 | debug                    | bool   | `false`                 | Print debug statements.                                                                                                                                          |
 | builder_cache_max_gb     | int    | `20`                    | How large the cache of the builder that makes task images can get, in GiB. What was used longest ago goes first. Changing it restarts the builder.               |
-| build_tips               | bool   | `true`                  | Print advice after builds, like how to make them faster. Each tip shows once for a task, until its reason changes.                                               |
+| build_tips               | int    | `2`                     | How many tips to print after each `gofer up`, like how to make builds faster. `0` turns them off. Each tip shows once for a task, until its reason changes, and ones that don't fit wait for a later `gofer up`. |
 
 ### Example configuration file
 

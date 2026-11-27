@@ -3,7 +3,7 @@
 # something to test against without diving deep into configuration settings first.
 api_base_url = "http://127.0.0.1:8080"
 builder_cache_max_gb = 20
-build_tips = true
+build_tips = 2
 debug = false
 detail = false
 namespace = "default"

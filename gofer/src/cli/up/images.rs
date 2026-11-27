@@ -252,7 +252,7 @@ impl Cli {
         }
 
         // Tips are only for people, and they're only remembered as shown when they really were.
-        if self.conf.build_tips
+        if self.conf.build_tips > 0
             && matches!(
                 self.conf.output_format,
                 OutputFormat::Spinner | OutputFormat::Plain
@@ -266,7 +266,7 @@ impl Cli {
                 .zip(&built)
                 .map(|(name, (_, built))| (name.as_str(), built.tips.clone()))
                 .collect();
-            report::tips(&tips::pick(&store, &found, 2));
+            report::tips(&tips::pick(&store, &found, self.conf.build_tips));
         }
 
         Ok(built)
