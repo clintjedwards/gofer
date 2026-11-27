@@ -51,7 +51,7 @@ Set TypingSpeed 60ms
 Set Theme { "name": "Eastwood", "black": "#424242", "red": "#ff7675", "green": "#badc58", "yellow": "#ffeaa7", "blue": "#74b9ff", "magenta": "#cc99cc", "cyan": "#81ecec", "white": "#d3d0c8", "brightBlack": "#c4c2bb", "brightRed": "#ff7675", "brightGreen": "#badc58", "brightYellow": "#ffeaa7", "brightBlue": "#74b9ff", "brightMagenta": "#cc99cc", "brightCyan": "#81ecec", "brightWhite": "#d3d0c8", "background": "#424242", "foreground": "#d3d0c8", "selection": "#74b9ff", "cursor": "#d3d0c8" }
 
 Hide
-Type "export PATH=$PWD/../../../../target/debug:$PATH BAT_THEME=ansi BAT_STYLE=plain BAT_PAGING=never BAT_TABS=4 && cd ../../../../examplePipelines/go/images && clear"
+Type "export PATH=$PWD/../../../../target/x86_64-unknown-linux-musl/debug:$PATH BAT_THEME=ansi BAT_STYLE=plain BAT_PAGING=never BAT_TABS=4 && cd ../../../../examplePipelines/go/images && clear"
 Enter
 Sleep 500ms
 Show

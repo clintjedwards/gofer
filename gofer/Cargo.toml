@@ -20,8 +20,8 @@ colored = "3.1"
 comfy-table = "8.0"
 dashmap = "6.2"
 dirs = "7.0"
-dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1" }
-dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1" }
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1-1" }
+dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1-1" }
 figment = { version = "0.10", features = ["env", "toml"] }
 futures = "0.3"
 gofer_sdk = { path = "../sdk/rust" }
@@ -31,18 +31,22 @@ humantime = "2.4"
 hyper = { version = "1.11", features = ["server", "full"] }
 lazy-regex = "3.6"
 mime_guess = "2.0"
-oci-client = { version = "0.18", default-features = false, features = ["rustls-tls"] }
+oci-client = { version = "0.18", default-features = false, features = ["rustls-tls-no-provider"] }
 open = "5.4"
 polyfmt = { git = "https://github.com/clintjedwards/polyfmt-rs.git", tag = "v0.2.0", features = ["tui"] }
 rand = "0.10"
 regex = "1.13"
 reqwest = { version = "0.13", features = [
     "json",
-    "rustls",
+    "rustls-no-provider",
     "stream"
 ], default-features = false }
 rstest = "0.27"
 rust-embed = "8.12"
+# ring is the only crypto provider in the build. The usual default, aws-lc-rs, is a large C library that makes static
+# builds hard, so every TLS dependency here is set up to leave the choice to us, and main installs ring.
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+rustls-native-certs = "0.8"
 schemars = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -52,12 +56,13 @@ strum = { version = "0.28", features = ["derive"] }
 tera = "2.4"
 thiserror = "2.0"
 tokio = { version = "1.53", features = ["full"] }
-tokio-rustls = "0.26"
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12"] }
 tokio-tungstenite = "0.30"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tungstenite = "0.30"
 uuid = { version = "1.26", features = ["v7"] }
+webpki-root-certs = "1.0"
 semver = "1.0"
 libc = "0.2"
 object_store = "0.14"

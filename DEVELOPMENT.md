@@ -20,6 +20,9 @@ Is this all I really need to do to edit this piece of shit for real
 To run Gofer dev mode:
 
 - [Docker](https://www.docker.com/)
+- musl-gcc, from the `musl` package on Arch or `musl-tools` on Debian and Ubuntu. Every build of Gofer is a static
+  binary (see `.cargo/config.toml`), so it can mount itself into tasks as the `gofer` CLI whatever their image is, and
+  the C libraries it uses are compiled with musl. Binaries land in `target/x86_64-unknown-linux-musl/`.
 
 ### Run from the Makefile
 
@@ -141,7 +144,7 @@ extension manifests built into the binary, and those manifests point at the exte
 
 ### Tools you'll need
 
-- Rust (the toolchain is pinned in `rust-toolchain.toml`) and Go
+- Rust (the toolchain is pinned in `rust-toolchain.toml`), musl-gcc (see [Dev Setup](#dev-setup)) and Go
 - [oapi-codegen](https://github.com/deepmap/oapi-codegen) and mdbook/mdbook-linkcheck (see the sections above)
 - Docker, logged in to ghcr.io with a token that has `write:packages`: `docker login ghcr.io -u <github user>`
 - [release](https://github.com/clintjedwards/release), configured with a GitHub token (and an Anthropic key if you
@@ -172,7 +175,7 @@ Gofer is pre-1.0, so a breaking change bumps the minor version and anything else
 
    This sets the version in `gofer/Cargo.toml` and `sdk/rust/Cargo.toml` and then runs `make build-release`, which
    regenerates the OpenAPI spec, API docs and SDKs, regenerates the extension manifests pinned to the new version,
-   builds the docs and builds the release binary at `target/x86_64-unknown-linux-gnu/release/gofer_amd64_linux_gnu`.
+   builds the docs and builds the release binary at `target/x86_64-unknown-linux-musl/release/gofer_amd64_linux_musl`.
 
 3. **Test it:**
 
@@ -196,7 +199,7 @@ Gofer is pre-1.0, so a breaking change bumps the minor version and anything else
    step 2:
 
    ```bash
-   release 0.12.0 -u true -a ./target/x86_64-unknown-linux-gnu/release/gofer_amd64_linux_gnu
+   release 0.12.0 -u true -a ./target/x86_64-unknown-linux-musl/release/gofer_amd64_linux_musl
    ```
 
    It collects the commits since the last version tag, has an LLM draft the changelog from them (`-u true`), and

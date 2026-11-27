@@ -623,6 +623,13 @@ fn setting_source(figment: &figment::Figment, key: &str) -> String {
     }
 }
 
+/// Makes ring the crypto provider for every TLS connection Gofer makes or serves. None of Gofer's dependencies pick
+/// one themselves, and reqwest panics if it builds a client before one is installed. Calling it again does nothing.
+pub fn install_crypto_provider() {
+    // An error only means a provider is already installed.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 /// Creates a new HTTP client that is set up to talk to Gofer.
 pub fn new_api_client(url: &str, token: &str) -> Result<gofer_sdk::api::Client> {
     let mut headers = header::HeaderMap::new();
@@ -637,10 +644,18 @@ pub fn new_api_client(url: &str, token: &str) -> Result<gofer_sdk::api::Client> 
 
     // Log and event streaming use websockets, which upgrade from an HTTP/1.1 request. Over HTTPS a proxy like Caddy
     // will happily negotiate HTTP/2, which has no way to carry that upgrade, so the server just sees a normal request.
-    let client = Client::builder()
-        .default_headers(headers)
-        .http1_only()
-        .build()?;
+    let mut builder = Client::builder().default_headers(headers).http1_only();
+
+    // Tasks run the CLI in whatever image they have, and slim ones like debian:13-slim come without CA certificates.
+    // With none at all the client can't even be built, whatever the URL is, so trust the roots Mozilla publishes
+    // instead. A system that has its own keeps using only those.
+    if rustls_native_certs::load_native_certs().certs.is_empty() {
+        for cert in webpki_root_certs::TLS_SERVER_ROOT_CERTS {
+            builder = builder.add_root_certificate(reqwest::Certificate::from_der(cert)?);
+        }
+    }
+
+    let client = builder.build()?;
 
     // The generated client appends paths starting with "/", so a trailing slash would produce "//" in every URL.
     Ok(gofer_sdk::api::Client::new_with_client(

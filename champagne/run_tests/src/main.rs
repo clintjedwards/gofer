@@ -68,7 +68,13 @@ To test something else: gofer pipeline run run-tests -v REF=<branch, tag or comm
         Task::new("test-rust", "rust:1")
             .description("Checks formatting and lints, then runs every test in the Rust workspace")
             .depends_on("checkout", RequiredParentStatus::Success)
-            // The toolchain the repo pins goes into the image, so runs don't download it each time.
+            // Gofer builds as a static binary, and the C libraries it uses are compiled with musl-gcc.
+            .run(
+                "apt-get update && apt-get install -y --no-install-recommends musl-tools \
+                 && rm -rf /var/lib/apt/lists/*",
+            )
+            // The toolchain the repo pins goes into the image, so runs don't download it each time. That includes
+            // the musl target its file lists.
             .copy(
                 "../../rust-toolchain.toml",
                 "/toolchain/rust-toolchain.toml",

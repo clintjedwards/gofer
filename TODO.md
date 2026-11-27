@@ -2,14 +2,6 @@
 
 These come after the built images refactor is done.
 
-* The `gofer` CLI inside every task, so together with the injected token and the run folder a task can work with
-  Gofer without any setup.
-  * The server mounts its own binary into each task's container when it starts it, the way Docker's `--init` does,
-    instead of building it into images. That way it always matches the server, works with every image, old ones and
-    extensions included, and doesn't change anyone's image.
-  * It needs a static build. The current binary needs glibc, so it won't start on Alpine or distroless images.
-  * Nothing can require it, so task code still doesn't need to know about Gofer.
-  * This would cover the idea under General of a container that has the CLI packed in.
 * Extensions that don't come from a registry. Today an extension is still an image Gofer pulls, with its own
   `registry_auth`, while tasks run images Gofer stores itself.
   * At the least, the extensions that come with Gofer (cron, interval, github) should ship with it, so starting them
@@ -202,9 +194,11 @@ There are several useful things we can do with the concept of extensions:
   keeps its data on. It only lasts as long as the run, but a few big runs at once could still do it. Filesystem quotas
   (like XFS project quotas) or checking the folder's size while the run goes are the options.
 - Metrics via openTelemetry
-- Create a container for custom use that has gofer-cli already packed in and possibly allows
-  - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So
-    users can get zero to code ultra-fast.
+- Builds are static with musl, whose memory allocator is slow when many threads allocate at once; the test suite takes
+  about 45% longer than with glibc. If the server ever feels slow under load, making mimalloc the global allocator is
+  the usual fix.
+- Tasks only get the gofer CLI when Gofer runs on the same machine as Docker, since it's a bind mount of Gofer's own
+  binary. A Gofer that runs in a container would have to copy itself into a volume once and mount that instead.
 - Improve Logging:
   - We should change extensions(and probably main?) over to use slog instead so we can get consistent logging patterns
     from extensions.

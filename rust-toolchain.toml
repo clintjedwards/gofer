@@ -1,2 +1,4 @@
 [toolchain]
 channel = "1.99.0"
+# Builds are static; see .cargo/config.toml.
+targets = ["x86_64-unknown-linux-musl"]

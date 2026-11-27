@@ -504,6 +504,7 @@ impl RunShepherd {
                 entrypoint: None,
                 command: None,
                 run_folder: Some(self.run_folder()),
+                gofer_cli: true,
                 timeline: Some(timeline.clone()),
             })
             .await?;

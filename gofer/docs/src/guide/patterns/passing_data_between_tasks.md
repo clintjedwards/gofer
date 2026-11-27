@@ -43,19 +43,19 @@ The folder goes when the run ends, so nothing in it can be fetched afterward. To
 or a report, have a task put it somewhere that lasts: a registry, a bucket, or a
 [pipeline object](../../ref/object_store/index.html).
 
-A task stores a pipeline object through Gofer's API, so give it `InjectAPIToken(true)`. Gofer sets `GOFER_TOKEN`,
-`GOFER_API_BASE_URL`, `GOFER_NAMESPACE` and `GOFER_PIPELINE_ID` on the task, so the request needs no other setup:
+Every task has the `gofer` CLI, and a task stores a pipeline object through Gofer's API, so give it
+`InjectAPIToken(true)`. Gofer sets `GOFER_TOKEN`, `GOFER_API_BASE_URL`, `GOFER_NAMESPACE` and `GOFER_PIPELINE_ID` on
+the task, which is everything the CLI needs:
 
-```bash
-curl -sf -X POST \
-  -H "Authorization: Bearer $GOFER_TOKEN" -H "gofer-api-version: v0" \
-  --data-binary @/gofer/run/report.html \
-  "$GOFER_API_BASE_URL/api/namespaces/$GOFER_NAMESPACE/pipelines/$GOFER_PIPELINE_ID/objects/report?force=true"
+```go
+pipeline.Task(sdk.NewTask("keep-report", "alpine:3.22").
+    DependsOn("build", sdk.RequiredParentStatusAny).
+    InjectAPIToken(true).
+    Script(`gofer pipeline object put report /gofer/run/report.html --force`))
 ```
 
-If your image has the `gofer` binary, `gofer pipeline object put report /gofer/run/report.html --force` does the same
-thing; it picks up the pipeline from the environment. Pipeline objects last across runs, but the oldest ones are
-deleted once a pipeline has `pipeline_object_limit` of them, and every run writes to the same keys.
+Pipeline objects last across runs, but the oldest ones are deleted once a pipeline has `pipeline_object_limit` of
+them, and every run writes to the same keys.
 
 If tasks can't reach Gofer, check `server.extension_address`. That's where `GOFER_API_BASE_URL` comes from, since
 tasks and extensions sit on the same container network.

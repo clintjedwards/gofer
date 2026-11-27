@@ -66,6 +66,12 @@ Every task in a run shares a folder at `/gofer/run`, so one task can leave files
 one machine. It's deleted when the run ends.
 [More about passing data between tasks.](./guide/patterns/passing_data_between_tasks.md)
 
+## The Gofer CLI in Every Task
+
+Every task can run `gofer`, whatever its image is, so a task can store an object or start another pipeline's run
+without installing anything. It's Gofer's own binary, so it always matches the server.
+[More about the gofer CLI in tasks.](./ref/pipeline_configuration/tasks.md#the-gofer-cli)
+
 ## Object Store
 
 Gofer provides a built in [object store](./ref/object_store/index.html) you can access with the Gofer CLI. It's for

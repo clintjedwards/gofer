@@ -15,14 +15,16 @@ categories = ["command-line-utilities", "development-tools"]
 async-trait = "0.1"
 anyhow = "1.0"
 base64 = "0.23"
-dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1" }
-dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1" }
+dropshot = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1-1" }
+dropshot_endpoint = { git = "https://github.com/clintjedwards/dropshot.git", tag = "v0.17.1-1" }
 futures = "0.3"
 http = "1.5"
 lazy-regex = "3.6"
 progenitor = "0.15"
 rand = "0.10"
-reqwest = { version = "0.13", features = ["json", "query", "stream"] }
+# No TLS here, so the SDK doesn't choose a TLS library for every program that uses it, pipeline configs included. The
+# API client needs one to reach Gofer over HTTPS; a program enables it with one of reqwest's TLS features.
+reqwest = { version = "0.13", default-features = false, features = ["json", "query", "stream"] }
 schemars = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

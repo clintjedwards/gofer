@@ -6,6 +6,9 @@ This command line tool is how you upload pipelines, view runs, upload artifacts 
 
 To view the possible commands for the Gofer pipeline simply run `gofer --help`.
 
+Every task has the CLI too, as `gofer`, so a task can store objects or start runs without installing anything. See
+[the gofer CLI](../ref/pipeline_configuration/tasks.md#the-gofer-cli).
+
 ## Reading task logs
 
 `gofer task logs <pipeline_id> <run_id> <task_id>` prints a task's output. If the task is still running it keeps

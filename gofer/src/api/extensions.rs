@@ -557,6 +557,7 @@ async fn start_extension(
         entrypoint: None,
         command: None,
         run_folder: None,
+        gofer_cli: false,
         timeline: None,
     };
 

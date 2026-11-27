@@ -15,9 +15,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-RUN wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_gnu
-RUN cp gofer_amd64_linux_gnu /usr/bin/gofer
-RUN chmod +x /usr/bin/gofer
+# There's no need to add the gofer CLI; Gofer puts its own binary in every task, at /gofer/bin/gofer.
 
 # By default, just show the Rust version
 CMD ["rustc", "--version"]

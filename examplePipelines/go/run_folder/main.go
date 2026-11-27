@@ -86,14 +86,20 @@ To build another branch or tag: gofer pipeline run run-folder -v REF=<branch or 
 		Description("Packages each build with a checksum, as a user other than root").
 		DependsOn("build", sdk.RequiredParentStatusSuccess))
 
-	// Runs even when tests fail or nothing got built, since that's when a summary is most useful.
+	// Runs even when tests fail or nothing got built, since that's when a summary is most useful. The run folder goes
+	// when the run ends, so the summary is kept as a pipeline object, with the gofer CLI every task has.
 	pipeline.Task(sdk.NewTask("summary", "python:3-slim").
 		Description("Writes a summary of the run and keeps it as a pipeline object").
 		DependsOn("test", sdk.RequiredParentStatusAny).
 		DependsOn("package", sdk.RequiredParentStatusAny).
 		Copy("./summary.py", "/summary.py").
 		InjectAPIToken(true).
-		Command("python", "/summary.py"))
+		Script(`
+			set -eu
+			python /summary.py
+			gofer pipeline object put summary /gofer/run/summary.md --force
+			echo "kept as the pipeline object 'summary'; gofer pipeline object get summary --pipeline $GOFER_PIPELINE_ID --stringify"
+		`))
 
 	if err := pipeline.Finish(); err != nil {
 		log.Fatal(err)

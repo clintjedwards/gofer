@@ -1,0 +1,5 @@
+# Every build is a static binary, so Gofer can mount itself into task containers whatever their image is. A binary
+# linked against glibc won't start on Alpine or distroless images. The C dependencies are compiled with musl-gcc, from
+# the musl package (musl-tools on Debian and Ubuntu).
+[build]
+target = "x86_64-unknown-linux-musl"

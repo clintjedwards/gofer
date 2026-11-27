@@ -71,7 +71,7 @@ You can [view and download releases by version here][releases-url].
 
 ### Download the latest release:
 
-- **Linux:** `wget -O gofer https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_gnu`
+- **Linux:** `wget -O gofer https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_musl`
 
 ### Build from source:
 

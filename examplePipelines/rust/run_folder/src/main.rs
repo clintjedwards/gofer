@@ -99,7 +99,8 @@ To build another branch or tag: gofer pipeline run run-folder -v REF=<branch or 
             .depends_on("build", RequiredParentStatus::Success),
     );
 
-    // Runs even when tests fail or nothing got built, since that's when a summary is most useful.
+    // Runs even when tests fail or nothing got built, since that's when a summary is most useful. The run folder goes
+    // when the run ends, so the summary is kept as a pipeline object, with the gofer CLI every task has.
     pipeline.task(
         Task::new("summary", "python:3-slim")
             .description("Writes a summary of the run and keeps it as a pipeline object")
@@ -107,7 +108,14 @@ To build another branch or tag: gofer pipeline run run-folder -v REF=<branch or 
             .depends_on("package", RequiredParentStatus::Any)
             .copy("./summary.py", "/summary.py")
             .inject_api_token(true)
-            .command(vec!["python".into(), "/summary.py".into()]),
+            .script(
+                r#"
+                set -eu
+                python /summary.py
+                gofer pipeline object put summary /gofer/run/summary.md --force
+                echo "kept as the pipeline object 'summary'; gofer pipeline object get summary --pipeline $GOFER_PIPELINE_ID --stringify"
+                "#,
+            ),
     );
 
     pipeline.finish().unwrap();

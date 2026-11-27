@@ -19,9 +19,7 @@ RUN curl -OL https://go.dev/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz \
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-RUN wget https://github.com/clintjedwards/gofer/releases/latest/download/gofer_amd64_linux_gnu
-RUN cp gofer_amd64_linux_gnu /usr/bin/gofer
-RUN chmod +x /usr/bin/gofer
+# There's no need to add the gofer CLI; Gofer puts its own binary in every task, at /gofer/bin/gofer.
 
 # By default, just display the Go version
 CMD ["go", "version"]

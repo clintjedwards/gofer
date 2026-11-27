@@ -207,6 +207,24 @@ These are the system variables Gofer injects into every task:
 | `GOFER_TASK_IMAGE`  | The digest of the image the task runs, the one `gofer up` built for it.                                                                                                                      |
 | `GOFER_TOKEN`       | Optional. Only set when the task uses `InjectAPIToken`. It's the same variable the Gofer CLI reads its token from. See [passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for an example. |
 
+## The gofer CLI
+
+Every task can run the [Gofer CLI](../../cli/index.html) as `gofer`, whatever its image is. It's Gofer's own
+binary, so it's always the same version as the server, and Gofer adds it to the container when the task starts
+rather than putting it in the image:
+
+- It's at `/gofer/bin/gofer`, and `/gofer/bin` goes on the end of the task's PATH. An image that has a `gofer` of its
+  own keeps using that one.
+- Gofer sets the variables it needs, so a task with `InjectAPIToken` can run commands like
+  `gofer pipeline object put report /gofer/run/report.html --force` with no setup.
+- It works in images without a shell or CA certificates, like distroless or `debian:13-slim`. Over HTTPS, the image
+  needs whatever certificates Gofer's own certificate is signed with, or the CLI uses the public ones Mozilla
+  publishes when the image has none.
+- Nothing about a task needs it, so task code doesn't have to know about Gofer.
+
+It's only there when Gofer itself is a static build, which every build from the repository is. A Gofer built for
+glibc logs that tasks won't get it when it starts, since that binary won't start in images like Alpine.
+
 ## Using Secrets and Objects in Variables
 
 A variable's value can pull from Gofer's [secret store](../secret_store/index.html) or
@@ -256,4 +274,5 @@ The high level flow is:
 3. Gofer parses the task configuration's variables list. It replaces any secret or object strings
    with their actual values from the object or secret store.
 4. Gofer loads the task's image into Docker from what `gofer up` uploaded, if Docker doesn't have it already.
-5. Gofer starts the container, with the variables as environment variables.
+5. Gofer starts the container, with the variables as environment variables, the run's folder at `/gofer/run`, and
+   the `gofer` CLI at `/gofer/bin/gofer`.

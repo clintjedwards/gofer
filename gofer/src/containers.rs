@@ -10,7 +10,7 @@ use dashmap::DashMap;
 use futures::Stream;
 use futures::stream::{StreamExt, TryStreamExt};
 use serde::Deserialize;
-use std::{collections::HashMap, pin::Pin, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, pin::Pin, sync::Arc};
 use strum::{Display, EnumString};
 use tokio::io::AsyncWrite;
 use tokio::sync::mpsc::UnboundedSender;
@@ -24,6 +24,14 @@ const TASK_PLATFORM: &str = "linux/amd64";
 /// `/gofer/run`. See [`Containers::open_run_folder`] for why they're not the same.
 const RUN_VOLUME_PATH: &str = "/gofer";
 const RUN_FOLDER_NAME: &str = "run";
+
+/// Where every task finds the gofer CLI, which is Gofer's own binary. It's under `/gofer` with the run folder, which
+/// images aren't meant to use, and its folder goes on the end of the task's PATH.
+const TASK_CLI_FOLDER: &str = "/gofer/bin";
+const TASK_CLI_PATH: &str = "/gofer/bin/gofer";
+
+/// The PATH Docker gives a container whose image doesn't set one.
+const DEFAULT_PATH: &str = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
 
 /// The labels on a run folder's volume, which say whose run it belongs to.
 const NAMESPACE_LABEL: &str = "gofer.namespace";
@@ -162,6 +170,10 @@ pub struct StartContainerRequest {
     /// Only for tasks; the run's folder to mount, which is created if this is the run's first task.
     pub run_folder: Option<RunFolder>,
 
+    /// Only for tasks; mounts Gofer's own binary at `/gofer/bin/gofer` and adds `/gofer/bin` to the end of PATH, when
+    /// this Gofer is a build that can run in any image. See [`task_cli`].
+    pub gofer_cli: bool,
+
     /// Where to report the phases of starting the container as they begin. Lets task executions show where their time
     /// went before the container was running.
     pub timeline: Option<UnboundedSender<TimelineEntry>>,
@@ -229,6 +241,15 @@ fn format_env_var(key: &str, value: &str) -> String {
     format!("{key}={value}")
 }
 
+/// Picks PATH out of an image's environment, which Docker lists as `KEY=value` strings, or the one Docker uses when
+/// the image doesn't set it.
+fn image_path_from_env(env: &[String]) -> String {
+    env.iter()
+        .find_map(|var| var.strip_prefix("PATH="))
+        .unwrap_or(DEFAULT_PATH)
+        .to_string()
+}
+
 #[derive(Deserialize, Default, Debug, Clone)]
 pub struct Config {
     pub prune: bool,
@@ -243,6 +264,30 @@ pub struct Containers {
 
     /// A lock for each image being loaded, by name, so tasks that start at the same time don't each load the same one.
     loads: Arc<DashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+
+    /// Gofer's own binary, which tasks get as the gofer CLI. None when this build can't run in every image.
+    cli: Option<PathBuf>,
+}
+
+/// Finds Gofer's own binary, so tasks can use it as the gofer CLI. Only a static build runs in every image: one
+/// linked against glibc won't start on Alpine or distroless, and the error it gives there, "no such file or
+/// directory", doesn't say why. So a build like that keeps itself out of tasks.
+fn task_cli() -> Option<PathBuf> {
+    if !cfg!(target_feature = "crt-static") {
+        info!(
+            "this Gofer isn't a static build, so tasks won't get the gofer CLI at {TASK_CLI_PATH}; build it for \
+             x86_64-unknown-linux-musl, which the repository's .cargo/config.toml does"
+        );
+        return None;
+    }
+
+    match std::env::current_exe() {
+        Ok(path) => Some(path),
+        Err(e) => {
+            warn!(error = %e, "could not find Gofer's own binary, so tasks won't get the gofer CLI");
+            None
+        }
+    }
 }
 
 impl Containers {
@@ -293,6 +338,7 @@ impl Containers {
         Ok(Self {
             client,
             loads: Arc::new(DashMap::new()),
+            cli: task_cli(),
         })
     }
 
@@ -378,6 +424,21 @@ impl Containers {
         }
     }
 
+    /// The PATH an image's containers start with. Setting PATH for a container replaces the image's, so adding a
+    /// folder to it means starting from this.
+    async fn image_path(&self, name: &str) -> Result<String, ContainerError> {
+        let image = self.client.inspect_image(name).await.map_err(|e| {
+            ContainerError::Unknown(format!("could not inspect image '{name}'; {e}"))
+        })?;
+
+        Ok(image_path_from_env(
+            &image
+                .config
+                .and_then(|config| config.env)
+                .unwrap_or_default(),
+        ))
+    }
+
     /// The names of every task image Docker has, as [`crate::images::Digest::docker_name`] makes them.
     pub async fn list_task_images(&self) -> Result<Vec<String>, ContainerError> {
         let options = bollard::query_parameters::ListImagesOptions {
@@ -446,17 +507,28 @@ impl Containers {
             ContainerError::Unknown(format!("could not open the run's folder; {e}"))
         })?;
 
-        self.client
-            .upload_to_container(
+        let upload = || {
+            self.client.upload_to_container(
                 container_id,
                 Some(bollard::query_parameters::UploadToContainerOptions {
                     path: RUN_VOLUME_PATH.into(),
                     ..Default::default()
                 }),
-                bollard::body_full(tar.into()),
+                bollard::body_full(tar.clone().into()),
             )
-            .await
-            .map_err(|e| ContainerError::Unknown(format!("could not open the run's folder; {e}")))
+        };
+
+        // Docker only makes a folder from the tar if it doesn't see one there already. Two tasks that start at the same
+        // moment can both see that `run` isn't there yet, and then the slower one fails with "mkdirat run: file
+        // exists". The folder is there by then, so copying the tar again only sets its permissions.
+        if let Err(e) = upload().await {
+            debug!(container_id, error = %e, "could not open the run's folder; trying again");
+            upload().await.map_err(|e| {
+                ContainerError::Unknown(format!("could not open the run's folder; {e}"))
+            })?;
+        }
+
+        Ok(())
     }
 
     /// Every run folder Docker has.
@@ -579,11 +651,13 @@ impl Containers {
         }
 
         let mut host_config = bollard::models::HostConfig::default();
+        let mut mounts = Vec::new();
+        let mut variables = request.variables;
 
         if let Some(folder) = &request.run_folder {
             self.create_run_folder(folder).await?;
 
-            host_config.mounts = Some(vec![bollard::models::Mount {
+            mounts.push(bollard::models::Mount {
                 target: Some(RUN_VOLUME_PATH.into()),
                 source: Some(folder.volume()),
                 typ: Some(bollard::models::MountType::VOLUME),
@@ -593,14 +667,44 @@ impl Containers {
                     ..Default::default()
                 }),
                 ..Default::default()
-            }]);
+            });
+        }
+
+        if request.gofer_cli
+            && let Some(cli) = &self.cli
+        {
+            // The binary can go missing while Gofer runs, like when an upgrade deletes it before Gofer restarts. Docker
+            // would refuse to start the task then, and nothing about a task needs the CLI.
+            if cli.exists() {
+                mounts.push(bollard::models::Mount {
+                    target: Some(TASK_CLI_PATH.into()),
+                    source: Some(cli.to_string_lossy().into_owned()),
+                    typ: Some(bollard::models::MountType::BIND),
+                    read_only: Some(true),
+                    ..Default::default()
+                });
+
+                let path = match variables.get("PATH") {
+                    Some(path) => path.clone(),
+                    None => self.image_path(&image).await?,
+                };
+                variables.insert("PATH".into(), format!("{path}:{TASK_CLI_FOLDER}"));
+            } else {
+                warn!(
+                    path = %cli.display(),
+                    "Gofer's binary isn't where it started from anymore, so this task won't get the gofer CLI"
+                );
+            }
+        }
+
+        if !mounts.is_empty() {
+            host_config.mounts = Some(mounts);
         }
 
         let mut container_config = bollard::models::ContainerCreateBody {
             image: Some(image),
             env: Some(
-                request
-                    .variables
+                variables
                     .into_iter()
                     .map(|(key, value)| format_env_var(&key, &value))
                     .collect(),
@@ -953,6 +1057,28 @@ async fn prune_containers(client: bollard::Docker, interval: u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Users' tasks are written against this path too, so it can't move.
+    #[test]
+    fn test_cli_is_at_gofer_bin() {
+        assert_eq!(TASK_CLI_PATH, format!("{TASK_CLI_FOLDER}/gofer"));
+        assert_eq!(TASK_CLI_PATH, "/gofer/bin/gofer");
+    }
+
+    #[test]
+    fn test_image_path_from_env() {
+        let env = [
+            "HOME=/root".to_string(),
+            "PATH=/opt/tool/bin:/usr/bin".to_string(),
+        ];
+        assert_eq!(image_path_from_env(&env), "/opt/tool/bin:/usr/bin");
+
+        // Scratch and distroless images often don't set one, and Docker gives them its own.
+        assert_eq!(
+            image_path_from_env(&["HOME=/root".to_string()]),
+            DEFAULT_PATH
+        );
+    }
 
     // Users' tasks are written against this path, so it can't move.
     #[test]

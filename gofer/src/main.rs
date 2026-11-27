@@ -13,6 +13,7 @@ use polyfmt::error;
 #[tokio::main]
 async fn main() {
     setup_panic!();
+    cli::install_crypto_provider();
 
     let mut cli = match cli::Cli::new() {
         Ok(cli) => cli,

@@ -1,12 +1,8 @@
-"""Sums up what the run's other tasks left in the run folder, then keeps the summary as a pipeline object.
-
-The run folder is deleted when the run ends, so anything worth looking at later has to go somewhere that lasts.
-"""
+"""Sums up what the run's other tasks left in the run folder, into /gofer/run/summary.md."""
 
 import json
 import os
 import pathlib
-import urllib.request
 
 RUN = pathlib.Path("/gofer/run")
 
@@ -58,24 +54,6 @@ def summarize_release():
     return "\n".join(lines)
 
 
-def keep(summary):
-    url = (
-        f"{os.environ['GOFER_API_BASE_URL']}/api/namespaces/{os.environ['GOFER_NAMESPACE']}"
-        f"/pipelines/{os.environ['GOFER_PIPELINE_ID']}/objects/summary?force=true"
-    )
-    request = urllib.request.Request(
-        url,
-        data=summary.encode(),
-        method="POST",
-        headers={
-            "Authorization": f"Bearer {os.environ['GOFER_TOKEN']}",
-            "gofer-api-version": "v0",
-            "Content-Type": "application/octet-stream",
-        },
-    )
-    urllib.request.urlopen(request).close()
-
-
 summary = f"""# Run {os.environ["GOFER_RUN_ID"]} at {read_version()}
 
 ## Tests
@@ -87,7 +65,5 @@ summary = f"""# Run {os.environ["GOFER_RUN_ID"]} at {read_version()}
 {summarize_release()}
 """
 
+(RUN / "summary.md").write_text(summary)
 print(summary)
-keep(summary)
-print(f"Kept as the pipeline object 'summary'. To read it: gofer pipeline object get summary "
-      f"--pipeline {os.environ['GOFER_PIPELINE_ID']} --stringify")

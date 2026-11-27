@@ -150,8 +150,9 @@ want to use the [Gofer CLI](../../cli/index.html) or the Gofer API to communicat
 some point in your task.
 
 You can tell Gofer to do this by using the `InjectAPIToken` function for a particular task. The token shows up in the
-task as the `GOFER_TOKEN` environment variable, which is the same variable the Gofer CLI reads. Gofer also sets
-`GOFER_API_BASE_URL` and `GOFER_NAMESPACE` on every task, so the CLI needs no other setup. See
+task as the `GOFER_TOKEN` environment variable, which is the same variable the Gofer CLI reads. Every task already
+has the CLI as `gofer` (see [the gofer CLI](./tasks.md#the-gofer-cli)), and Gofer sets `GOFER_API_BASE_URL` and
+`GOFER_NAMESPACE` on every task, so the CLI needs no other setup. See
 [passing data between tasks](../../guide/patterns/passing_data_between_tasks.md) for a full example.
 
 The token is deleted when the run ends, since only the run's own tasks use it.

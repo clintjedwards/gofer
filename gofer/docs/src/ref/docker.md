@@ -22,6 +22,10 @@ the run ends, along with the run's task containers, since Docker won't remove a 
 Every hour Gofer also looks for any that a crash left behind. The volume takes space in Docker's own storage, usually
 under `/var/lib/docker`, and Docker can't limit its size.
 
+Every task also gets [the gofer CLI](./pipeline_configuration/tasks.md#the-gofer-cli): Gofer mounts its own binary,
+read only, at `/gofer/bin/gofer`. That's a bind mount of the file Gofer was started from, so Gofer has to run on the
+same machine as Docker, and not in a container of its own, for tasks to get it.
+
 `gofer up` uses Docker as well, on the machine it runs on, to build task images. It runs
 [BuildKit](https://github.com/moby/buildkit) in a container called `gofer-buildkit`, with its cache in a volume, and
 `gofer builder --help` shows how to empty or remove it.

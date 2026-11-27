@@ -18,6 +18,7 @@ examplePipelines/go/script/script
 examplePipelines/go/secrets/secrets
 examplePipelines/go/simple/simple
 examplePipelines/go/images/images
+examplePipelines/go/run_folder/run_folder
 
 # The image the hurl tests use, unpacked by `make run-hurl-tests`
 gofer/tests/fixtures/

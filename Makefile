@@ -108,13 +108,13 @@ prep-release: check-semver-included
 ## build-release: build Gofer for release.
 build-release: generate-openapi generate-manifests build-docs
 > cd gofer
-> cargo build --release --target=x86_64-unknown-linux-gnu
+> cargo build --release --target=x86_64-unknown-linux-musl
 > cd ..
-> mv ./target/x86_64-unknown-linux-gnu/release/gofer ./target/x86_64-unknown-linux-gnu/release/gofer_amd64_linux_gnu
+> mv ./target/x86_64-unknown-linux-musl/release/gofer ./target/x86_64-unknown-linux-musl/release/gofer_amd64_linux_musl
 
 DEPLOY_HOST = gofer.clintjedwards.home
 DEPLOY_BIN_PATH = /usr/bin/gofer
-RELEASE_BIN = ./target/x86_64-unknown-linux-gnu/release/gofer_amd64_linux_gnu
+RELEASE_BIN = ./target/x86_64-unknown-linux-musl/release/gofer_amd64_linux_musl
 
 ## deploy: build release and replace the running Gofer binary on DEPLOY_HOST
 deploy: build-release
