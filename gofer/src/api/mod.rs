@@ -6,6 +6,7 @@ mod events;
 pub mod extensions;
 mod external;
 mod image_blobs;
+mod image_retention;
 mod namespaces;
 mod objects;
 mod orchestrator;
@@ -496,6 +497,7 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     // and shown by `gofer extension list` rather than returned.
     extensions::reconcile::reconcile_on_boot(api_state.clone()).await;
     tokio::spawn(extensions::health::poll(api_state.clone()));
+    tokio::spawn(image_retention::run(api_state.clone()));
 
     shutdown
         .await

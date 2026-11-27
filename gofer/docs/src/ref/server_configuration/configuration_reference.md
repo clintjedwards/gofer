@@ -108,13 +108,19 @@ use_tls = false
 
 The images that tasks run as.
 
-| name | type   | default           | description                                                                              |
-| ---- | ------ | ----------------- | ---------------------------------------------------------------------------------------- |
-| path | string | /tmp/gofer_images | The directory that image files are stored in. Gofer creates it if it doesn't exist.       |
+| name               | type   | default           | description                                                                                                                                                                                                                       |
+| ------------------ | ------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| path               | string | /tmp/gofer_images | The directory that image files are stored in. Gofer creates it if it doesn't exist.                                                                                                                                                |
+| retention_versions | int    | 10                | How many of each pipeline's newest versions keep their images. A version that's live, being deployed, or has runs that haven't finished always keeps them too. Older versions can't be deployed once theirs are gone. At least 1. |
+
+Gofer removes the images no version keeps after each registration and every hour. A part of an image that nothing
+uses is still kept for a day after `gofer up` last uploaded it or asked about it, so one that's partway through never
+loses what it's counting on.
 
 ```toml
 [images]
 path = "/tmp/gofer_images"
+retention_versions = 10
 ```
 
 ## Object Store

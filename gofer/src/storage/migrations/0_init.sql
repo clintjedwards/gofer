@@ -126,6 +126,9 @@ CREATE TABLE IF NOT EXISTS image_blobs (
     PRIMARY KEY (namespace_id, pipeline_id, digest)
 ) STRICT;
 
+-- Pipelines share blob files on disk, so a file can only go once no pipeline has it, and that's looked up by digest.
+CREATE INDEX idx_image_blobs_digest ON image_blobs (digest);
+
 CREATE TABLE IF NOT EXISTS extension_registrations (
     extension_id     TEXT NOT NULL,
     image            TEXT NOT NULL,

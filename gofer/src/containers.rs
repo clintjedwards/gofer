@@ -330,7 +330,28 @@ impl Containers {
         }
     }
 
-    async fn remove_image(&self, name: &str) -> Result<(), ContainerError> {
+    /// The names of every task image Docker has, as [`crate::images::Digest::docker_name`] makes them.
+    pub async fn list_task_images(&self) -> Result<Vec<String>, ContainerError> {
+        let options = bollard::query_parameters::ListImagesOptions {
+            filters: Some(HashMap::from([(
+                "reference".to_string(),
+                vec![crate::images::DOCKER_REPOSITORY.to_string()],
+            )])),
+            ..Default::default()
+        };
+
+        let images = (self.client.list_images(Some(options)).await)
+            .map_err(|e| ContainerError::Unknown(format!("could not list images; {e}")))?;
+
+        Ok(images
+            .into_iter()
+            .flat_map(|image| image.repo_tags)
+            .filter(|name| crate::images::Digest::from_docker_name(name).is_some())
+            .collect())
+    }
+
+    /// Removes an image even when stopped containers still use it, which Docker leaves running ones alone for.
+    pub async fn remove_image(&self, name: &str) -> Result<(), ContainerError> {
         let options = bollard::query_parameters::RemoveImageOptions {
             force: true,
             ..Default::default()

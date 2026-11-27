@@ -42,6 +42,7 @@ timeout_seconds = 300           # Should be the same or more than task_execution
 
 [images]
 path = "/tmp/gofer_images"
+retention_versions = 10
 
 [object_store]
 engine = "filesystem"

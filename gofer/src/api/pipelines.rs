@@ -554,20 +554,20 @@ pub async fn delete_pipeline(
         )
         .await?;
 
-    let mut conn = match api_state.storage.write_conn().await {
-        Ok(conn) => conn,
+    let mut tx = match api_state.storage.open_tx().await {
+        Ok(tx) => tx,
         Err(e) => {
             return Err(http_error!(
                 "Could not open connection to database",
                 hyper::StatusCode::INTERNAL_SERVER_ERROR,
-                rqctx.request_id,
+                rqctx.request_id.clone(),
                 Some(e.into())
             ));
         }
     };
 
     if let Err(e) =
-        storage::pipeline_metadata::delete(&mut conn, &path.namespace_id, &path.pipeline_id).await
+        storage::pipeline_metadata::delete(&mut tx, &path.namespace_id, &path.pipeline_id).await
     {
         match e {
             storage::StorageError::NotFound => {
@@ -586,6 +586,28 @@ pub async fn delete_pipeline(
             }
         }
     };
+
+    // These don't go with the pipeline on their own, since a new pipeline's blobs are uploaded before it exists. Image
+    // cleanup removes the files once no other pipeline has them.
+    if let Err(e) =
+        storage::image_blobs::delete_all(&mut tx, &path.namespace_id, &path.pipeline_id).await
+    {
+        return Err(http_error!(
+            "Could not delete image blobs from database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    }
+
+    if let Err(e) = tx.commit().await {
+        return Err(http_error!(
+            "Could not close database transaction",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            rqctx.request_id.clone(),
+            Some(e.into())
+        ));
+    }
 
     Ok(HttpResponseDeleted())
 }

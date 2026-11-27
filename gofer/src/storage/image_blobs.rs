@@ -86,6 +86,131 @@ pub async fn update_last_seen(
     Ok(())
 }
 
+/// The manifests of the images a pipeline keeps: those of its newest `newest` versions, and of any version that's live,
+/// being deployed, or has runs that haven't finished.
+pub async fn list_kept_images(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    newest: i64,
+) -> Result<Vec<String>, StorageError> {
+    let sql = "SELECT DISTINCT image_digest FROM tasks \
+        WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version IN ( \
+            SELECT version FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? AND ( \
+                version IN (SELECT version FROM pipeline_configs WHERE namespace_id = ? AND pipeline_id = ? \
+                    ORDER BY version DESC LIMIT ?) \
+                OR state = 'live' \
+                OR version IN (SELECT start_version FROM deployments WHERE namespace_id = ? AND pipeline_id = ? \
+                    AND state = 'running') \
+                OR version IN (SELECT end_version FROM deployments WHERE namespace_id = ? AND pipeline_id = ? \
+                    AND state = 'running') \
+                OR version IN (SELECT pipeline_config_version FROM runs WHERE namespace_id = ? AND pipeline_id = ? \
+                    AND state != 'complete') \
+            ) \
+        );";
+
+    // Every subquery is for this one pipeline, so each needs it again.
+    let query = sqlx::query_scalar::<_, String>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(newest)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(namespace_id)
+        .bind(pipeline_id);
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// The blobs a pipeline was last told about, or uploaded, before `before`, in epoch milliseconds.
+pub async fn list_seen_before(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    before: u64,
+) -> Result<Vec<String>, StorageError> {
+    let sql = "SELECT digest FROM image_blobs \
+        WHERE namespace_id = ? AND pipeline_id = ? AND CAST(last_seen AS INTEGER) < ?;";
+
+    let query = sqlx::query_scalar::<_, String>(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(before as i64);
+
+    query
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// Every pipeline that has blobs, including ones that were never registered.
+pub async fn list_pipelines(
+    conn: &mut SqliteConnection,
+) -> Result<Vec<(String, String)>, StorageError> {
+    let sql = "SELECT DISTINCT namespace_id, pipeline_id FROM image_blobs;";
+
+    sqlx::query_as::<_, (String, String)>(sql)
+        .fetch_all(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// Whether any pipeline has this blob.
+pub async fn is_used(conn: &mut SqliteConnection, digest: &str) -> Result<bool, StorageError> {
+    let sql = "SELECT EXISTS (SELECT 1 FROM image_blobs WHERE digest = ?);";
+
+    sqlx::query_scalar::<_, bool>(sql)
+        .bind(digest)
+        .fetch_one(conn)
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+pub async fn delete(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+    digest: &str,
+) -> Result<(), StorageError> {
+    let sql = "DELETE FROM image_blobs WHERE namespace_id = ? AND pipeline_id = ? AND digest = ?;";
+
+    sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .bind(digest)
+        .execute(conn)
+        .map_ok(|_| ())
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
+/// Drops all of a pipeline's blobs, for when the pipeline is deleted. They have no foreign key to it, so this doesn't
+/// happen on its own.
+pub async fn delete_all(
+    conn: &mut SqliteConnection,
+    namespace_id: &str,
+    pipeline_id: &str,
+) -> Result<(), StorageError> {
+    let sql = "DELETE FROM image_blobs WHERE namespace_id = ? AND pipeline_id = ?;";
+
+    sqlx::query(sql)
+        .bind(namespace_id)
+        .bind(pipeline_id)
+        .execute(conn)
+        .map_ok(|_| ())
+        .map_err(|e| map_sqlx_error(e, sql))
+        .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

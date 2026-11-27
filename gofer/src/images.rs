@@ -87,9 +87,18 @@ impl Digest {
     /// comes from the contents, so two versions that built the same image share it, and a name can never point at a
     /// different image.
     pub fn docker_name(&self) -> String {
-        format!("gofer-image:{}", self.hex())
+        format!("{DOCKER_REPOSITORY}:{}", self.hex())
+    }
+
+    /// The manifest's digest back from a name [`Self::docker_name`] made.
+    pub fn from_docker_name(name: &str) -> Option<Self> {
+        let hex = name.strip_prefix(DOCKER_REPOSITORY)?.strip_prefix(':')?;
+        format!("sha256:{hex}").parse().ok()
     }
 }
+
+/// Where Docker keeps the task images Gofer loads into it.
+pub const DOCKER_REPOSITORY: &str = "gofer-image";
 
 impl FromStr for Digest {
     type Err = ImageError;
@@ -220,17 +229,30 @@ impl Drop for Upload {
 pub struct Config {
     /// The path of the directory that should contain the image files.
     pub path: String,
+
+    /// How many of each pipeline's newest versions keep their images. See `api::image_retention`.
+    pub retention_versions: u64,
 }
 
 #[derive(Debug, Clone)]
 pub struct Images {
     path: PathBuf,
+
+    pub retention_versions: u64,
 }
 
 impl Images {
     pub async fn new(config: &Config) -> Result<Self, ImageError> {
+        // With none, a version registered without being deployed would lose its images before anyone could run it.
+        if config.retention_versions == 0 {
+            return Err(ImageError::Invalid(
+                "retention_versions must be at least 1".into(),
+            ));
+        }
+
         let images = Self {
             path: PathBuf::from(&config.path),
+            retention_versions: config.retention_versions,
         };
 
         // Anything still in here was cut short by Gofer stopping.
@@ -261,7 +283,7 @@ impl Images {
         self.path.join("blobs").join("sha256")
     }
 
-    fn blob_path(&self, digest: &Digest) -> PathBuf {
+    pub(crate) fn blob_path(&self, digest: &Digest) -> PathBuf {
         self.blobs_path().join(digest.hex())
     }
 
@@ -419,6 +441,67 @@ impl Images {
             layers,
             diff_ids: config_contents.rootfs.diff_ids,
         }))
+    }
+
+    /// Every blob an image is made of, its manifest included, or `None` if the manifest isn't stored. Unlike
+    /// [`Self::stored_image`], this doesn't need the rest of the image to be there.
+    pub async fn blobs_of(&self, manifest: &Digest) -> Result<Option<Vec<Digest>>, ImageError> {
+        let Some(size) = self.size(manifest).await? else {
+            return Ok(None);
+        };
+        let contents: Manifest = self.read_json(manifest, size).await?;
+
+        let mut blobs = vec![manifest.clone(), contents.config.digest.parse()?];
+        for layer in &contents.layers {
+            blobs.push(layer.digest.parse()?);
+        }
+
+        Ok(Some(blobs))
+    }
+
+    /// Every blob in the store.
+    pub async fn list(&self) -> Result<Vec<Digest>, ImageError> {
+        let mut entries = tokio::fs::read_dir(self.blobs_path())
+            .await
+            .map_err(internal)?;
+        let mut blobs = vec![];
+
+        while let Some(entry) = entries.next_entry().await.map_err(internal)? {
+            // Only blobs are ever moved in here, but a stray file shouldn't stop anything.
+            if let Ok(digest) = format!("sha256:{}", entry.file_name().to_string_lossy()).parse() {
+                blobs.push(digest);
+            }
+        }
+
+        Ok(blobs)
+    }
+
+    /// Deletes a blob unless it was uploaded after `cutoff`, and says whether it did.
+    ///
+    /// An upload replaces the blob's file before its pipeline is written down as having it, so for a moment a blob
+    /// that's just been uploaded can look like nothing uses it. The file's time is when it was uploaded, and this is
+    /// what keeps it.
+    pub async fn remove_unless_newer(
+        &self,
+        digest: &Digest,
+        cutoff: std::time::SystemTime,
+    ) -> Result<bool, ImageError> {
+        let path = self.blob_path(digest);
+
+        let modified = match tokio::fs::metadata(&path).await {
+            Ok(metadata) => metadata.modified().map_err(internal)?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+            Err(e) => return Err(internal(e)),
+        };
+        if modified > cutoff {
+            return Ok(false);
+        }
+
+        match tokio::fs::remove_file(&path).await {
+            Ok(()) => Ok(true),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(e) => Err(internal(e)),
+        }
     }
 
     async fn size(&self, digest: &Digest) -> Result<Option<u64>, ImageError> {
@@ -738,6 +821,7 @@ mod tests {
             let dir = tempfile::tempdir().unwrap();
             let images = Images::new(&Config {
                 path: dir.path().to_string_lossy().into(),
+                retention_versions: 10,
             })
             .await
             .unwrap();
@@ -968,6 +1052,7 @@ mod tests {
 
         let images = Images::new(&Config {
             path: harness.dir.path().to_string_lossy().into(),
+            retention_versions: 10,
         })
         .await
         .unwrap();

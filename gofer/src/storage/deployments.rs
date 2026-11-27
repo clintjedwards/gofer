@@ -78,7 +78,7 @@ pub async fn list_running(
     pipeline_id: &str,
 ) -> Result<Vec<Deployment>, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, deployment_id, start_version, end_version, started, ended, state, status, \
-        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND state = 'RUNNING';";
+        status_reason, logs FROM deployments WHERE namespace_id = ? AND pipeline_id = ? AND state = 'running';";
 
     let query = sqlx::query_as::<_, Deployment>(sql)
         .bind(namespace_id)
@@ -316,6 +316,34 @@ mod tests {
             .expect("Deployment not found");
         assert_eq!(some_deployment.pipeline_id, "some_pipeline_id");
         assert_eq!(some_deployment.state, "Deploymenting");
+    }
+
+    // The query spells the state itself, so it has to match how the API writes `State::Running`.
+    #[tokio::test]
+    async fn test_list_running_deployments() {
+        let (_harness, mut conn) = setup().await.expect("Failed to set up DB");
+
+        assert!(
+            list_running(&mut conn, "some_id", "some_pipeline_id")
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
+        let deployment = Deployment {
+            deployment_id: 2,
+            state: "running".into(),
+            ..get(&mut conn, "some_id", "some_pipeline_id", 1)
+                .await
+                .unwrap()
+        };
+        insert(&mut conn, &deployment).await.unwrap();
+
+        let running = list_running(&mut conn, "some_id", "some_pipeline_id")
+            .await
+            .unwrap();
+        assert_eq!(running.len(), 1);
+        assert_eq!(running[0].deployment_id, 2);
     }
 
     #[tokio::test]

@@ -5,7 +5,8 @@ use super::permissioning::{
 use crate::{
     api::{
         ApiState, PreflightOptions, deployments, ensure_namespace_exists, ensure_pipeline_exists,
-        epoch_milli, event_utils, generate_inject_api_token_role_id, pipelines, tasks,
+        epoch_milli, event_utils, generate_inject_api_token_role_id, image_retention, pipelines,
+        tasks,
     },
     http_error,
     storage::{self, StorageError},
@@ -903,6 +904,13 @@ pub async fn register_config(
             pipeline_id: new_pipeline_metadata.pipeline_id.clone(),
         });
 
+    // A new version can push an old one out of the versions that keep their images.
+    tokio::spawn(image_retention::clean_pipeline(
+        api_state.clone(),
+        new_pipeline_metadata.namespace_id.clone(),
+        new_pipeline_metadata.pipeline_id.clone(),
+    ));
+
     let resp = RegisterPipelineConfigResponse {
         pipeline: pipelines::Pipeline {
             metadata: new_pipeline_metadata,
@@ -995,6 +1003,56 @@ pub async fn deploy_config(
             ));
         }
     };
+
+    // An old version's images may have been removed, and deploying it anyway would make every run of it fail. This is
+    // checked inside the deploy's transaction, so cleanup can't remove them between the check and the deploy starting.
+    let version_tasks =
+        storage::tasks::list(&mut tx, &path.namespace_id, &path.pipeline_id, path.version)
+            .await
+            .map_err(|e| {
+                http_error!(
+                    "Could not get tasks from database",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                )
+            })?;
+
+    for task in version_tasks {
+        let result = match task.image_digest.parse::<crate::images::Digest>() {
+            Ok(digest) => {
+                (api_state.images)
+                    .verify(&mut tx, &path.namespace_id, &path.pipeline_id, &digest)
+                    .await
+            }
+            Err(e) => Err(e),
+        };
+
+        match result {
+            Ok(()) => {}
+            // Registration checked these, so one that fails now has been removed since.
+            Err(crate::images::ImageError::Invalid(_)) => {
+                return Err(HttpError::for_bad_request(
+                    None,
+                    format!(
+                        "version {} can't be deployed, because the image for task '{}' is no longer stored. Gofer \
+                         keeps the images of a pipeline's newest {} versions, and of any version that's live, being \
+                         deployed or has runs that haven't finished. Running `gofer up` with this version's config \
+                         registers it again with new images",
+                        path.version, task.task_id, api_state.images.retention_versions
+                    ),
+                ));
+            }
+            Err(e) => {
+                return Err(http_error!(
+                    "Could not check a task's image",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    rqctx.request_id.clone(),
+                    Some(e.into())
+                ));
+            }
+        }
+    }
 
     let end_version = path.version;
 
