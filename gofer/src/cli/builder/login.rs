@@ -574,16 +574,23 @@ esac
         let helper = helper.to_str().unwrap();
 
         for (key, expected) in [
-            (DOCKER_HUB_KEY, "me:pass".to_string()),
-            ("token.example.com", "identity token refresh".into()),
-            ("ghcr.io", "nothing".into()),
-            (
-                "broken.example.com",
-                format!("failed: {helper} failed: the keyring is locked"),
-            ),
+            (DOCKER_HUB_KEY, "me:pass"),
+            ("token.example.com", "identity token refresh"),
+            ("ghcr.io", "nothing"),
         ] {
             assert_eq!(describe(&from_helper(helper, key).await), expected, "{key}");
         }
+
+        // The config tests use figment's Jail, which moves the whole test process into a temporary folder and deletes
+        // it when it's done. Tests are threads of one process, so a helper started right then can inherit a folder
+        // that's gone, and sh complains about it on stderr before the script runs, like
+        // "sh: 0: getcwd() failed: No such file or directory". Only the end of the message comes from the helper.
+        let broken = describe(&from_helper(helper, "broken.example.com").await);
+        assert!(
+            broken.starts_with(&format!("failed: {helper} failed: ")),
+            "{broken}"
+        );
+        assert!(broken.ends_with("the keyring is locked"), "{broken}");
     }
 
     fn logins() -> Logins {

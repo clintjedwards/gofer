@@ -3,8 +3,6 @@ name = "champagne"
 version = "0.1.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+# The SDK from the same checkout, so the config always matches the Gofer it's registered with.
 [dependencies]
-# gofer_sdk = { git = "https://github.com/clintjedwards/gofer", tag = "v0.8.3" }
-gofer_sdk = { git = "https://github.com/clintjedwards/gofer", branch = "main" }
+gofer_sdk = { path = "../../sdk/rust" }

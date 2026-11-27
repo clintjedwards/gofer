@@ -46,8 +46,6 @@ These come after the built images refactor is done.
   * The `require` version in each go.mod goes stale and is misleading.
   * `go install .../containers/extensions/<ext>@latest` stops working since Go refuses modules with replace
     directives. Probably nobody does this.
-  * champagne/run_tests has the same problem on the Rust side (`gofer_sdk` from git on `branch = "main"`); a path
-    dependency would fix it.
 * Buffer external events (webhooks) for extensions that are down, e.g. while one restarts during a reload. Keep the
   last N requests per extension with the time they arrived and hand them over when the extension starts, letting the
   extension decide what to do with them. That covers webhook driven extensions like github. Time based extensions
@@ -270,6 +268,15 @@ There are several useful things we can do with the concept of extensions:
   - Test that a run's folder and task containers are removed when it ends, and by the sweep when a crash left them.
   - Test that logs are removed correctly.
   - Test that GOFER_TOKEN and inject works correctly, make sure it gets cleaned up properly.
+- champagne (`champagne/run_tests`) runs the Rust and Go checks, but not yet the rest of what a release runs:
+  - The hurl integration tests. They start a Gofer and build an image, so the task needs a Docker daemon, either the
+    host's socket (which hands the task the whole host) or Docker in Docker.
+  - The docs build and its link check, which need mdbook in the image.
+  - `make check-manifests`.
+  - Hooking it up to the GitHub extension, so pushes and pull requests start runs. The checkout already reads the
+    extension's commit variables.
+  - Keeping Cargo's downloads and build between runs. Every run builds the workspace from nothing; the target
+    folder is too big to keep as a pipeline object.
 
 ### Security
 
