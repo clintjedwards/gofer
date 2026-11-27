@@ -51,7 +51,7 @@ Set TypingSpeed 60ms
 Set Theme { "name": "Eastwood", "black": "#424242", "red": "#ff7675", "green": "#badc58", "yellow": "#ffeaa7", "blue": "#74b9ff", "magenta": "#cc99cc", "cyan": "#81ecec", "white": "#d3d0c8", "brightBlack": "#c4c2bb", "brightRed": "#ff7675", "brightGreen": "#badc58", "brightYellow": "#ffeaa7", "brightBlue": "#74b9ff", "brightMagenta": "#cc99cc", "brightCyan": "#81ecec", "brightWhite": "#d3d0c8", "background": "#424242", "foreground": "#d3d0c8", "selection": "#74b9ff", "cursor": "#d3d0c8" }
 
 Hide
-Type "export PATH=$PWD/../../../../target/debug:$PATH BAT_THEME=ansi BAT_STYLE=plain BAT_PAGING=never BAT_TABS=4 && cd ../../../../examplePipelines/go/dag && clear"
+Type "export PATH=$PWD/../../../../target/debug:$PATH BAT_THEME=ansi BAT_STYLE=plain BAT_PAGING=never BAT_TABS=4 && cd ../../../../examplePipelines/go/images && clear"
 Enter
 Sleep 500ms
 Show
@@ -60,62 +60,13 @@ Sleep 1s
 Type "bat main.go"
 Sleep 500ms
 Enter
-Sleep 10s
+Sleep 14s
 
+Type "clear"
+Enter
+
+# Builds every task's image and registers the pipeline with them.
 Type "gofer up ."
-Sleep 500ms
-Enter
-Sleep 6s
-
-Type "clear"
-Enter
-
-Type "gofer fetch dag"
-Sleep 500ms
-Enter
-Sleep 6s
-
-Type "gofer pipeline run dag"
-Sleep 500ms
-Enter
-Sleep 3s
-
-Type "clear"
-Enter
-
-Type "gofer fetch dag 1"
-Sleep 500ms
-Enter
-Sleep 6s
-
-Hide
-Sleep 20s
-Type "clear"
-Enter
-Show
-
-Type "gofer fetch dag 1"
-Sleep 500ms
-Enter
-Sleep 6s
-
-Type "clear"
-Enter
-
-Type "gofer task logs dag 1 depends-on-first"
-Sleep 500ms
-Enter
-Sleep 10s
-Ctrl+C
-Sleep 1s
-
-Hide
-Sleep 18s
-Type "clear"
-Enter
-Show
-
-Type "gofer fetch dag 1"
 Sleep 500ms
 Enter
 Sleep 8s
@@ -123,10 +74,57 @@ Sleep 8s
 Type "clear"
 Enter
 
-Type "gofer run debug dag 1"
+Type "gofer pipeline run images"
 Sleep 500ms
 Enter
-Sleep 15s
+Sleep 3s
+
+Type "clear"
+Enter
+
+Type "gofer fetch images 1"
+Sleep 500ms
+Enter
+Sleep 7s
+
+Type "clear"
+Enter
+
+Type "gofer task logs images 1 report"
+Sleep 500ms
+Enter
+Sleep 3s
+
+Type "gofer task logs images 1 cleanup"
+Sleep 500ms
+Enter
+Sleep 4s
+
+Type "clear"
+Enter
+
+# Change one file, and only the task that copies it in is built again.
+Type `echo 'print("cleanup: and one more line")' >> cleanup.py`
+Sleep 500ms
+Enter
+Sleep 1s
+
+Type "gofer up ."
+Sleep 500ms
+Enter
+Sleep 4s
+Type "y"
+Sleep 500ms
+Enter
+Sleep 7s
+
+Type "clear"
+Enter
+
+Type "gofer run debug images 1"
+Sleep 500ms
+Enter
+Sleep 12s
 
 Type "clear"
 Enter
@@ -135,3 +133,9 @@ Type "gofer extension list"
 Sleep 500ms
 Enter
 Sleep 6s
+
+# Puts the example back the way it was.
+Hide
+Type "git checkout -- cleanup.py"
+Enter
+Sleep 500ms

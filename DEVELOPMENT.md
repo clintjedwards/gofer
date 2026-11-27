@@ -94,9 +94,14 @@ configuration file which will pop out a video on the other side.
 
 In order to do this VHS has to run the commands so we must start the server first before we regenerate the video.
 
+The demo builds the `images` example's task images, and the tape's waits expect those builds to come from the
+builder's cache. So register the example once first, then start over with a fresh database.
+
 ```bash
-rm -rf /tmp/gofer* # Start with a fresh database
-make run # Start the server in dev mode
+rm -rf /tmp/gofer* && make run # Start the server in dev mode
+cargo run --bin gofer -- up examplePipelines/go/images # In another terminal; fills the builder's cache
+# Stop the server, then:
+rm -rf /tmp/gofer* && make run # Start again with a fresh database
 cd gofer/docs/src/assets
 vhs demo.tape # this will start running commands against the server and output the video as demo.mp4.
 ```

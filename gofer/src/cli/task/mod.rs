@@ -482,45 +482,63 @@ impl Cli {
         // Log lines go straight to stdout instead of through the formatter. They already end in a newline, and when
         // they're piped into something like `head` that exits early we need to see the broken pipe and stop, rather
         // than panic on the next write.
-        let mut stdout = std::io::stdout().lock();
+        //
+        // The spinner draws its own line on the terminal, so it's paused while the logs are written; otherwise one of
+        // its frames is left above them. Anything it would print in the meantime is hidden, so why the logs ended is
+        // kept until it's back.
+        pause!();
 
-        while let Some(message) = read.next().await {
-            match message {
-                Ok(Message::Text(text)) => match stdout.write_all(text.as_bytes()) {
-                    Ok(()) => {}
-                    Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => break,
-                    Err(e) => bail!("Could not write logs; {}", e),
-                },
-                Ok(Message::Binary(_)) => println!("Received binary data"),
-                Ok(Message::Close(frame)) => {
-                    if let Some(frame) = frame {
-                        match frame.code {
-                            tungstenite::protocol::frame::coding::CloseCode::Normal => break,
-                            _ => {
-                                error!("Connection closed by server; {}", frame.reason)
-                            }
-                        }
-                        break;
+        let ended = async {
+            let mut stdout = std::io::stdout().lock();
+
+            while let Some(message) = read.next().await {
+                match message {
+                    Ok(Message::Text(text)) => match stdout.write_all(text.as_bytes()) {
+                        Ok(()) => {}
+                        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => return Ok(None),
+                        Err(e) => bail!("Could not write logs; {}", e),
+                    },
+                    Ok(Message::Binary(_)) => {
+                        _ = stdout.write_all(b"Received binary data\n");
                     }
-                    error!("Connection closed by server without reason");
-                    break;
+                    Ok(Message::Close(frame)) => {
+                        return Ok(match frame {
+                            Some(frame)
+                                if frame.code
+                                    == tungstenite::protocol::frame::coding::CloseCode::Normal =>
+                            {
+                                None
+                            }
+                            Some(frame) => {
+                                Some(format!("Connection closed by server; {}", frame.reason))
+                            }
+                            None => Some("Connection closed by server without reason".into()),
+                        });
+                    }
+                    Err(tokio_tungstenite::tungstenite::Error::ConnectionClosed) => {
+                        return Ok(Some("Connection closed".into()));
+                    }
+                    Err(tokio_tungstenite::tungstenite::Error::Protocol(e))
+                        if e.to_string()
+                            .contains("Connection reset without closing handshake") =>
+                    {
+                        return Ok(Some("Connection reset without closing handshake".into()));
+                    }
+                    Err(e) => {
+                        bail!("Error receiving message: {}", e);
+                    }
+                    _ => {}
                 }
-                Err(tokio_tungstenite::tungstenite::Error::ConnectionClosed) => {
-                    error!("Connection closed");
-                    break;
-                }
-                Err(tokio_tungstenite::tungstenite::Error::Protocol(e))
-                    if e.to_string()
-                        .contains("Connection reset without closing handshake") =>
-                {
-                    error!("Connection reset without closing handshake");
-                    break;
-                }
-                Err(e) => {
-                    bail!("Error receiving message: {}", e);
-                }
-                _ => {}
             }
+
+            Ok(None)
+        }
+        .await;
+
+        resume!();
+
+        if let Some(reason) = ended? {
+            error!("{reason}");
         }
 
         Ok(())

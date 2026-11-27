@@ -10,19 +10,18 @@
 [![website-badge](https://img.shields.io/badge/docs-learn%20more-3498db?style=flat-square)](https://gofer.clintjedwards.com/docs)
 [![project status](https://img.shields.io/badge/Project%20Status-Alpha-orange?style=flat-square)](https://github.com/clintjedwards/gofer/releases)
 
-Gofer is an opinionated, streamlined automation engine designed for the cloud-native era. It's basically remote code execution as a platform.
+Gofer is an opinionated automation engine designed for the cloud-native era. It's basically remote code execution as
+a platform.
 
-Gofer focuses on the "what" and "when" of your workloads. It builds each task's image from your code, keeps it with the version of the pipeline that uses it, and runs it on Docker.
+Gofer allows you to write pipelines in real code and keep those pipelines in sync with your business logic without
+having to merge the two.
 
-It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative configurations written in real programming languages.
+It specializes in executing your custom scripts in a containerized environment, making it versatile for both developers
+and operations teams. Deploy Gofer effortlessly as a single static binary, and manage it using expressive, declarative
+configurations written in familiar programming languages.
 
-Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL operations, or any task you can containerize and trigger based on events.
-
-## Low Priority
-
-Previously I had discontinued Gofer, but I've been using it personally so much that I figured it would be good to keep
-it un-archived to push bug fixes and with LLMs being so good now maybe start rolling new features/refactors. But it's
-pretty low priority for me.
+Its primary function is to execute short-term jobs like code linting, build automation, testing, port scanning, ETL
+operations, or any task you can containerize and trigger based on events.
 
 ## Why?:
 
@@ -44,12 +43,13 @@ pretty low priority for me.
 - **Built-In Storage**: Comes with an integrated Object and Secret store for your convenience.
 - **DAG Support**: Harness the power of Directed Acyclic Graphs (DAGs) for complex workflow automation.
 - **Versioned Pipelines**: Every update to a pipeline is kept as a new version, so you can see exactly what each run ran with and roll back to an earlier one.
-- **Built Images**: `gofer up` builds each task's image from a base image, your files and commands, or a Dockerfile, so a version always runs exactly the images it was registered with. Only tasks that changed are rebuilt, and Go and Rust builds stay cached.
+- **Build Images Easily**: Instead of having to manage Dockerfiles and image building Gofer hands you an API to wrap your code in and build the image to run it
+   automagically.
 
 ## Demo:
 
 <!-- ANCHOR_END: before_demo -->
-https://github.com/user-attachments/assets/ff9a39ca-c85a-4cfc-8c99-da510c01e3c2
+https://github.com/user-attachments/assets/98d96053-9b62-44ab-8f89-1b504bd86508
 <!-- ANCHOR: after_demo -->
 
 ## Documentation & Getting Started
@@ -89,8 +89,6 @@ running it locally, regenerating the OpenAPI spec and SDKs, editing the docs and
 - **Clint Edwards** - [Github](https://github.com/clintjedwards)
 
 This software is provided as-is. It's a hobby project, done in my free time, and I don't get paid for doing it.
-
-If you're looking for the previous Golang version you can [find it here.](https://github.com/clintjedwards/gofer/tree/e83adcd5c5164bba791f06e38702d81621b5624b)
 
 [website-url]: https://gofer.clintjedwards.com/docs
 [concourse-url]: https://concourse-ci.org/
