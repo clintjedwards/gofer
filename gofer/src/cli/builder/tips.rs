@@ -3,6 +3,7 @@
 
 use super::{
     Build, Step, Task,
+    report::bytes,
     source::{Kind, Source},
 };
 use lazy_regex::regex;
@@ -334,19 +335,11 @@ fn first_line(command: &str) -> String {
     }
 }
 
-fn bytes(size: u64) -> String {
-    const MB: f64 = 1000.0 * 1000.0;
-
-    match size as f64 / MB {
-        mb if mb >= 1000.0 => format!("{:.1}GB", mb / 1000.0),
-        mb => format!("{mb:.0}MB"),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::builder::{Keep, Steps};
+    use crate::cli::builder::Steps;
+    use gofer_sdk::config::Keep;
     use pretty_assertions::assert_eq;
     use std::fs;
 
@@ -387,7 +380,7 @@ mod tests {
     }
 
     fn found(dir: &Path, build: &Build, old_cargo: Option<&str>, image_size: u64) -> Vec<Tip> {
-        let sources = build.sources(dir).unwrap();
+        let sources = super::super::sources(build, dir).unwrap();
         let uncached = match build {
             Build::Steps(steps) => {
                 super::super::dockerfile::render("t", steps, &sources, false)

@@ -286,7 +286,7 @@ function renderTasks(config) {
       (task) => `<tr>
         <td class="px-4 py-2.5 align-top whitespace-nowrap">${taskName(task.id)}
           ${task.description ? `<p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 whitespace-normal">${escapeHtml(task.description)}</p>` : ""}</td>
-        <td class="px-4 py-2.5 align-top font-mono text-xs break-all">${escapeHtml(task.image)}</td>
+        <td class="px-4 py-2.5 align-top font-mono text-xs break-all">${escapeHtml(builtFrom(task.build))}</td>
         <td class="px-4 py-2.5 align-top text-xs">${startsAfter(task.depends_on)}</td>
       </tr>`
     )
@@ -297,7 +297,7 @@ function renderTasks(config) {
         <thead class="bg-gray-50 dark:bg-neutral-900/40">
           <tr class="text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
             <th scope="col" class="px-4 py-3 font-medium">Task</th>
-            <th scope="col" class="px-4 py-3 font-medium">Image</th>
+            <th scope="col" class="px-4 py-3 font-medium">Built from</th>
             <th scope="col" class="px-4 py-3 font-medium">Starts</th>
           </tr>
         </thead>

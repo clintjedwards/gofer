@@ -11,6 +11,9 @@
 dir=$1
 no_cache=$2
 
+# A task that copies nothing in has nothing to put in its context, but buildctl won't start without the folder.
+mkdir -p "$dir/context"
+
 exec 3<&0
 # shellcheck disable=SC2086 # $no_cache is either nothing or one flag.
 buildctl build --frontend dockerfile.v0 --progress=rawjson $no_cache \

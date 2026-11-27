@@ -106,8 +106,8 @@ pub enum StatusReasonType {
     /// While executing the run, one or more tasks exited with an abnormal exit code.
     AbnormalExit,
 
-    /// While executing the run, one or more tasks returned errors from the scheduler or could not be scheduled.
-    SchedulerError,
+    /// While executing the run, one or more tasks' images couldn't be loaded, or their containers couldn't be started.
+    ContainerError,
 
     /// The run could not be executed as requested due to user defined attributes given.
     FailedPrecondition,

@@ -1,3 +1,22 @@
+# Pipelines can only use image blobs they uploaded themselves, so this one uploads the test image first.
+PUT http://localhost:8080/api/namespaces/default/pipelines/test/image-blobs/{{layer}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/layer;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/test/image-blobs/{{config}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/config;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/test/image-blobs/{{manifest}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/manifest;
+HTTP 204
+
 # Create new pipeline config
 POST http://localhost:8080/api/namespaces/default/pipelines/test/configs
 gofer-api-version: v0
@@ -11,13 +30,12 @@ Authorization: Bearer {{secret}}
     "parallelism": 0,
     "tasks": [
         {
-            "always_pull_newest_image": true,
             "depends_on": {},
-            "command": ["echo", "Hello from Gofer!"],
             "id": "task-one",
-            "image": "ubuntu:latest",
+            "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}},
+            "image": {"digest": "{{manifest}}", "source_hash": "hurl"},
             "inject_api_token": false,
-            "variables": {"test": "sample"}
+            "variables": {"test": "sample", "SCRIPT": "echo Hello from Gofer!"}
         }
     ]
   }
@@ -194,9 +212,9 @@ Authorization: Bearer {{secret}}
     "allow_runs_from": ["no-slash", "team-a/("],
     "skip_dates": ["12/25", "13/01", "12/25:someday"],
     "tasks": [
-        {"id": "task-a", "image": "ubuntu:latest", "depends_on": {"task-b": "Any"}, "variables": {}, "inject_api_token": false, "always_pull_newest_image": false},
-        {"id": "task-b", "image": "ubuntu:latest", "depends_on": {"task-a": "Any"}, "variables": {}, "inject_api_token": false, "always_pull_newest_image": false},
-        {"id": "task-c", "image": "", "depends_on": {"missing": "Success"}, "variables": {}, "inject_api_token": false, "always_pull_newest_image": false}
+        {"id": "task-a", "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}}, "depends_on": {"task-b": "Any"}, "variables": {}, "inject_api_token": false},
+        {"id": "task-b", "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}}, "depends_on": {"task-a": "Any"}, "variables": {}, "inject_api_token": false},
+        {"id": "task-c", "build": {"steps": {"base": "", "steps": [], "keep": null}}, "depends_on": {"missing": "Success"}, "variables": {}, "inject_api_token": false}
     ]
   }
 }
@@ -204,7 +222,7 @@ HTTP 400
 [Asserts]
 jsonpath "$.message" contains "task-a -> task-b -> task-a"
 jsonpath "$.message" contains "depends on 'missing'"
-jsonpath "$.message" contains "image for task 'task-c'"
+jsonpath "$.message" contains "base image for task 'task-c'"
 jsonpath "$.message" contains "parallelism"
 jsonpath "$.message" contains "allow_runs_from: 'no-slash'"
 jsonpath "$.message" contains "allow_runs_from: 'team-a/('"
@@ -212,7 +230,66 @@ jsonpath "$.message" contains "skip_dates: '13/01'"
 jsonpath "$.message" contains "skip_dates: '12/25:someday'"
 jsonpath "$.message" not contains "skip_dates: '12/25';"
 
+# A task needs an image, which `gofer up` builds before it registers a config.
+POST http://localhost:8080/api/namespaces/default/pipelines/no-image/configs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "config": {
+    "id": "no-image",
+    "name": "No image",
+    "parallelism": 0,
+    "tasks": [
+        {"id": "task-one", "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}}, "depends_on": {}, "variables": {}, "inject_api_token": false}
+    ]
+  }
+}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "these tasks have no image: task-one"
+
+# The test image is on disk, but only other pipelines uploaded it, so this one can't use it. Otherwise any pipeline
+# could run another's image and read what's inside.
+POST http://localhost:8080/api/namespaces/default/pipelines/borrowed-image/configs
+gofer-api-version: v0
+Content-Type: application/json
+Authorization: Bearer {{secret}}
+{
+  "config": {
+    "id": "borrowed-image",
+    "name": "Borrowed image",
+    "parallelism": 0,
+    "tasks": [
+        {"id": "task-one", "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}}, "image": {"digest": "{{manifest}}", "source_hash": "hurl"}, "depends_on": {}, "variables": {}, "inject_api_token": false}
+    ]
+  }
+}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "the image for task 'task-one' can't be used"
+jsonpath "$.message" contains "has not been uploaded for pipeline 'borrowed-image'"
+
 # A run started on a skip date is recorded, but never starts and doesn't get a token.
+# Pipelines can only use image blobs they uploaded themselves, so this one uploads the test image first.
+PUT http://localhost:8080/api/namespaces/default/pipelines/skips/image-blobs/{{layer}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/layer;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/skips/image-blobs/{{config}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/config;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/skips/image-blobs/{{manifest}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/manifest;
+HTTP 204
+
 POST http://localhost:8080/api/namespaces/default/pipelines/skips/configs
 gofer-api-version: v0
 Content-Type: application/json
@@ -226,12 +303,11 @@ Authorization: Bearer {{secret}}
     "tasks": [
         {
             "id": "task-one",
-            "image": "ubuntu:latest",
-            "command": ["true"],
+            "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}},
+            "image": {"digest": "{{manifest}}", "source_hash": "hurl"},
             "depends_on": {},
             "variables": {},
-            "inject_api_token": true,
-            "always_pull_newest_image": false
+            "inject_api_token": true
         }
     ]
   }
@@ -324,6 +400,25 @@ HTTP 503
 
 # A task that runs past its own timeout is stopped, and both it and the run fail with a reason that says which
 # timeout it hit. The trap makes the container exit on the stop signal so we don't wait out the stop grace period.
+# Pipelines can only use image blobs they uploaded themselves, so this one uploads the test image first.
+PUT http://localhost:8080/api/namespaces/default/pipelines/timeout/image-blobs/{{layer}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/layer;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/timeout/image-blobs/{{config}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/config;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/timeout/image-blobs/{{manifest}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/manifest;
+HTTP 204
+
 POST http://localhost:8080/api/namespaces/default/pipelines/timeout/configs
 gofer-api-version: v0
 Content-Type: application/json
@@ -336,12 +431,11 @@ Authorization: Bearer {{secret}}
     "tasks": [
         {
             "id": "sleepy",
-            "image": "ubuntu:latest",
-            "command": ["sh", "-c", "trap 'exit 143' TERM; sleep 60 & wait"],
+            "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}},
+            "image": {"digest": "{{manifest}}", "source_hash": "hurl"},
             "depends_on": {},
-            "variables": {},
+            "variables": {"SCRIPT": "trap 'exit 143' TERM; sleep 60 & wait"},
             "inject_api_token": false,
-            "always_pull_newest_image": false,
             "timeout_seconds": 2
         }
     ]

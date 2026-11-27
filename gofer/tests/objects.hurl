@@ -1,5 +1,24 @@
 # Objects belong to a pipeline or a run, so we make a pipeline of our own first. It gets its own id because hurl runs
 # test files in parallel.
+# Pipelines can only use image blobs they uploaded themselves, so this one uploads the test image first.
+PUT http://localhost:8080/api/namespaces/default/pipelines/objects/image-blobs/{{layer}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/layer;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/objects/image-blobs/{{config}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/config;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/default/pipelines/objects/image-blobs/{{manifest}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/manifest;
+HTTP 204
+
 POST http://localhost:8080/api/namespaces/default/pipelines/objects/configs
 gofer-api-version: v0
 Content-Type: application/json
@@ -12,12 +31,11 @@ Authorization: Bearer {{secret}}
     "tasks": [
         {
             "id": "task-one",
-            "image": "ubuntu:latest",
-            "command": ["echo", "Hello from Gofer!"],
+            "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}},
+            "image": {"digest": "{{manifest}}", "source_hash": "hurl"},
             "depends_on": {},
-            "variables": {},
-            "inject_api_token": false,
-            "always_pull_newest_image": false
+            "variables": {"SCRIPT": "echo Hello from Gofer!"},
+            "inject_api_token": false
         }
     ]
   }

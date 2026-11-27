@@ -27,12 +27,6 @@ Returns a list of all task executions by run.
 | `pipeline_id` | string | yes | The unique identifier for the target pipeline. |
 | `run_id` | integer | yes | The unique identifier for the target run. |
 
-**Query parameters**
-
-| Name | Type | Required | Description |
-| ---- | ---- | -------- | ----------- |
-| `include_secret` | boolean | no | Return credentials in plaintext instead of redacted. Admin only. |
-
 **Responses**
 
 | Status | Body | Description |
@@ -56,12 +50,6 @@ Returns a list of all task executions by run.
 | `pipeline_id` | string | yes | The unique identifier for the target pipeline. |
 | `run_id` | integer | yes | The unique identifier for the target run. |
 | `task_id` | string | yes | The unique identifier for the target task execution. |
-
-**Query parameters**
-
-| Name | Type | Required | Description |
-| ---- | ---- | -------- | ----------- |
-| `include_secret` | boolean | no | Return credentials in plaintext instead of redacted. Admin only. |
 
 **Responses**
 

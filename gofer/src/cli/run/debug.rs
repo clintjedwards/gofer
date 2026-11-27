@@ -11,8 +11,8 @@ use std::collections::HashMap;
 /// How many columns wide the timeline bars are.
 const TIMELINE_WIDTH: usize = 30;
 
-/// The width of the labels ("Reason", "Image", ...) in the "What went wrong" section, so their values line up.
-const LABEL_WIDTH: usize = 8;
+/// The width of the labels ("Reason", "Built from", ...) in the "What went wrong" section, so their values line up.
+const LABEL_WIDTH: usize = 11;
 
 impl Cli {
     pub async fn run_debug(
@@ -37,7 +37,7 @@ impl Cli {
 
         let mut task_executions = self
             .client
-            .list_task_executions(&namespace, pipeline_id, run_id, None)
+            .list_task_executions(&namespace, pipeline_id, run_id)
             .await
             .context("Could not successfully retrieve task executions from Gofer api")?
             .into_inner()
@@ -203,10 +203,14 @@ impl Cli {
                         ));
                     }
 
-                    output.extend(labeled("Image", std::slice::from_ref(&task.task.image)));
-                    if !task.image_digest.is_empty() {
-                        output.extend(labeled("Digest", std::slice::from_ref(&task.image_digest)));
-                    }
+                    output.extend(labeled(
+                        "Built from",
+                        &[crate::cli::built_from(&task.task.build)],
+                    ));
+                    output.extend(labeled(
+                        "Digest",
+                        std::slice::from_ref(&task.task.image.digest),
+                    ));
 
                     let log_lines = if lines == 0 {
                         vec![]
@@ -321,7 +325,7 @@ pub(crate) fn phase_duration_text(millis: u64) -> String {
     }
 }
 
-/// A phase in plain words, like "pulling image".
+/// A phase in plain words, like "loading image".
 pub(crate) fn phase_text(phase: &TaskExecutionPhase) -> String {
     phase.to_string().replace('_', " ")
 }

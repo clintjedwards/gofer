@@ -46,7 +46,7 @@ pub fn copy_folder(index: usize) -> String {
     format!("copies/{index}/")
 }
 
-/// Turns steps into a Dockerfile. The sources are the ones from [`super::Build::sources`].
+/// Turns steps into a Dockerfile. The sources are the ones from [`super::sources`].
 ///
 /// Everything the user wrote ends up in JSON, which is always one line, so a newline or a Dockerfile keyword in there
 /// can't turn into another instruction. The task's name keeps its Rust cache apart from other tasks'.
@@ -284,7 +284,8 @@ fn rust_cache_id(task: &str, base: &str, earlier_runs: &[&str]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::builder::{Build, Keep};
+    use crate::cli::builder::Build;
+    use gofer_sdk::config::Keep;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
     use std::fs;
@@ -329,7 +330,7 @@ mod tests {
 
     fn try_render(steps: &Steps) -> Result<Rendered> {
         let dir = project();
-        let sources = Build::Steps(steps.clone()).sources(dir.path())?;
+        let sources = super::super::sources(&Build::Steps(steps.clone()), dir.path())?;
         render("default/nightly/report", steps, &sources, false)
     }
 
@@ -545,7 +546,7 @@ mod tests {
     fn test_fresh_caches_are_new_every_time() {
         let dir = project();
         let steps = steps(vec![copy("rust", "/src"), run("cargo build")]);
-        let sources = Build::Steps(steps.clone()).sources(dir.path()).unwrap();
+        let sources = super::super::sources(&Build::Steps(steps.clone()), dir.path()).unwrap();
         let caches = |fresh| {
             let rendered = render("default/nightly/report", &steps, &sources, fresh).unwrap();
             let ids = regex!(r"id=([a-z0-9-]+),");

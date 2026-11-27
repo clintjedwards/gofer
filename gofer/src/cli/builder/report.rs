@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! ✓ cleanup  built in 1.2s
-//! ⠋ report  cargo build --release  12s
+//! ⠋ report  cargo build --release  12s  ·  scan  RUN go build ./...  3s
 //! x scan  Failed at: go build ./... (exit code 1)
 //!       <its last 20 lines>
 //!     Full log: ~/.cache/gofer/builds/default-nightly-scan-20261124T120000.log
@@ -18,9 +18,16 @@ fn for_people() -> Vec<Format> {
     vec![Format::Spinner, Format::Plain, Format::Tree]
 }
 
-/// Shows the step a task's build is on, next to the spinner.
-pub fn step(task: &str, step: &str, running_for: Duration) {
-    print!("{task}  {step}  {}s", running_for.as_secs(); vec![Format::Spinner]);
+/// Shows the step each running build is on, next to the spinner, like `report  cargo build --release  12s`. With more
+/// than one, they share the line.
+pub fn building(running: &[(&str, &str, Duration)]) {
+    let line: Vec<String> = (running.iter())
+        .map(|(task, step, running_for)| format!("{task}  {step}  {}s", running_for.as_secs()))
+        .collect();
+
+    if !line.is_empty() {
+        print!("{}", line.join("  ·  "); vec![Format::Spinner]);
+    }
 }
 
 pub fn built(task: &str, took: Duration) {
@@ -56,6 +63,16 @@ pub fn tips(tips: &[Tip]) {
 /// For when Docker isn't on amd64, like on an ARM Mac. Images are always for amd64, so building them is emulated.
 pub fn emulated() {
     println!("Building for linux/amd64. This uses emulation, so compiling can be slow."; for_people());
+}
+
+/// A size the way people say it, like `310MB` or `1.2GB`.
+pub fn bytes(size: u64) -> String {
+    const MB: f64 = 1000.0 * 1000.0;
+
+    match size as f64 / MB {
+        mb if mb >= 1000.0 => format!("{:.1}GB", mb / 1000.0),
+        mb => format!("{mb:.0}MB"),
+    }
 }
 
 /// A failed build, as one message for people and as fields for JSON.

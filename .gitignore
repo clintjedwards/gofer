@@ -17,6 +17,10 @@ examplePipelines/go/objects/objects
 examplePipelines/go/script/script
 examplePipelines/go/secrets/secrets
 examplePipelines/go/simple/simple
+examplePipelines/go/images/images
+
+# The image the hurl tests use, unpacked by `make run-hurl-tests`
+gofer/tests/fixtures/
 
 # Remove auto-built documentation
 gofer/docs/book/html/*

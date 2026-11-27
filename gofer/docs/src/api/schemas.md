@@ -25,6 +25,26 @@ A string, one of:
 | `can_revert` | boolean | yes | Whether the version that was running before can be brought back with revert. |
 | `extension` | [Extension](#extension) | yes | The extension as it ended up. Check `state` and `state_reason` to see whether it started. |
 
+## Build
+
+How a task's image is made. `gofer up` builds it on the user's machine and uploads it to Gofer, so a version of a pipeline always runs exactly the image it was registered with.
+
+One of the variants below. Variants without a payload are sent as a plain string; the rest are an object with the variant name as its only key.
+
+| Variant | Payload | Description |
+| ------- | ------- | ----------- |
+| `steps` | [Steps](#steps) | Start from a base image, then copy files in and run commands, in the order they were written. |
+| `dockerfile` | `context`: string<br>`path`: string | Build from a Dockerfile, for anything the steps can't do. Both paths are relative to the folder of the pipeline's config. |
+
+## BuiltImage
+
+The image `gofer up` built for a task.
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `digest` | string | yes | The digest of the image's manifest, like `sha256:4a5c...`. |
+| `source_hash` | string | yes | A hash of the files that went into the image. It's how `gofer up` knows whether they changed since. |
+
 ## Config
 
 A representation of the user's configuration settings for a particular pipeline.
@@ -368,6 +388,13 @@ Everything a role allows. Each grant stands on its own; a request is allowed onl
 | `id` | string | yes | The unique identifier for the token that initiated the request. |
 | `kind` | [token_kind](#token_kind) | yes | What kind of token started the run; a person, an extension, another run, or `anonymous` when no token was used (only possible with `bypass_auth` on). |
 | `user` | string | yes | The plaintext username for of the token. |
+
+## Keep
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `base` | string | yes | The image to move them onto, like `debian:13-slim`. It needs whatever the kept files need to run, like the system libraries a program uses. |
+| `paths` | array of string | yes | Full paths in the image. Each lands at the same path on the new base. |
 
 ## Kind
 
@@ -731,14 +758,7 @@ When installing a new extension, we allow the extension installer to pass a bunc
 
 ## RegistryAuth
 
-Authentication information for container registries.
-
-| Field | Type | Required | Description |
-| ----- | ---- | -------- | ----------- |
-| `pass` | string | yes |  |
-| `user` | string | yes |  |
-
-## RegistryAuth2
+Authentication information for container registries. Extensions use it to pull their images.
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
@@ -819,6 +839,23 @@ A run is one or more tasks being executed on behalf of some extension. Run is a 
 | ----- | ---- | -------- | ----------- |
 | `run` | [Run](#run) | yes | Information about the run started. |
 
+## Step
+
+One of the variants below. Variants without a payload are sent as a plain string; the rest are an object with the variant name as its only key.
+
+| Variant | Payload | Description |
+| ------- | ------- | ----------- |
+| `copy` | `from`: string<br>`to`: string | Copies a file, or what's inside a folder, into the image. `from` is relative to the folder of the pipeline's config, and leaving it is fine, like `../shared`. |
+| `run` | `command`: string | Runs a command with `/bin/sh -c`. |
+
+## Steps
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `base` | string | yes | The image to start from, like `rust:1-trixie`. |
+| `keep` | [Keep](#keep) (nullable) | no | Moves what it lists onto another base image once every step has run, leaving everything else behind. |
+| `steps` | array of [Step](#step) | yes |  |
+
 ## Subscription
 
 | Field | Type | Required | Description |
@@ -837,15 +874,14 @@ A task represents a particular workload within a pipeline. Tasks are composable 
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
-| `always_pull_newest_image` | boolean | yes | Always check for most recent version of the current image before running. |
-| `command` | array of string (nullable) | no | Command to run on init of container; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd |
+| `build` | [Build](#build) | yes | How the task's image is made. `gofer up` builds it on the user's machine before it registers the config. |
+| `command` | array of string (nullable) | no | Replaces the image's command; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd. It's already built into the image. |
 | `depends_on` | map of string to [RequiredParentStatus](#requiredparentstatus) | yes | Which other tasks (by id) this task depends on. |
 | `description` | string | yes | Short description about the workload. |
-| `entrypoint` | array of string (nullable) | no | Command to run on init of container; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint |
+| `entrypoint` | array of string (nullable) | no | Replaces the image's entrypoint; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint. It's already built into the image. |
 | `id` | string | yes | Unique identifier for the task. |
-| `image` | string | yes | Which container image to run for this specific task. Example: "ubuntu:latest" |
+| `image` | [BuiltImage](#builtimage) | yes | The image that was built for this version of the task, which is what its runs use. |
 | `inject_api_token` | boolean | yes | Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container. |
-| `registry_auth` | [RegistryAuth](#registryauth) (nullable) | no | Auth credentials for the image's registry. The password is a secret reference like `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses. |
 | `timeout_seconds` | integer | yes | How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here. |
 | `variables` | array of [Variable](#variable) | yes | Variables which will be passed in as env vars to the task. |
 
@@ -855,17 +891,18 @@ Represents a single task within a `Pipeline`. A task is a unit of work that oper
 
 - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`
 
+Gofer builds every task's image itself, when you run `gofer up`. A task starts from a base image, copies in your files and runs commands, or it points at a Dockerfile.
+
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
-| `always_pull_newest_image` | boolean | yes | Always attempt to pull the newest container image. |
-| `command` | array of string (nullable) | no |  |
+| `build` | [Build](#build) | yes | How the task's image is made. |
+| `command` | array of string (nullable) | no | Replaces the image's command. It's built into the image. |
 | `depends_on` | map of string to [RequiredParentStatus2](#requiredparentstatus2) | yes |  |
 | `description` | string (nullable) | no |  |
-| `entrypoint` | array of string (nullable) | no |  |
+| `entrypoint` | array of string (nullable) | no | Replaces the image's entrypoint. It's built into the image. |
 | `id` | string | yes |  |
-| `image` | string | yes |  |
+| `image` | [BuiltImage](#builtimage) (nullable) | no | The image `gofer up` built. A config straight from the SDK doesn't have one; `gofer up` fills it in before it registers the config. |
 | `inject_api_token` | boolean | yes |  |
-| `registry_auth` | [RegistryAuth2](#registryauth2) (nullable) | no |  |
 | `timeout_seconds` | integer | no | How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse. |
 | `variables` | map of string to string | yes |  |
 
@@ -878,7 +915,6 @@ a task execution is a specific execution of a task/container. It represents a 4t
 | `created` | integer | yes | Time of task execution creation in epoch milliseconds. |
 | `ended` | integer | yes | Time of task execution end in epoch milliseconds. |
 | `exit_code` | integer (nullable) | no | The exit code of the task execution completion if it is finished. |
-| `image_digest` | string | yes | The exact image the task execution ran with. Tags can move between runs, so this pins down what actually ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started. |
 | `logs_expired` | boolean | yes | Whether the logs have past their retention time. |
 | `logs_removed` | boolean | yes | If the logs for this execution have been removed. This can be due to user request or automatic action based on expiry time. |
 | `namespace_id` | string | yes | Unique identifier of the target namespace. |
@@ -1044,8 +1080,8 @@ A string, one of:
 | Value | Description |
 | ----- | ----------- |
 | `unknown` | Should never be in this state. |
-| `processing` | Pre-scheduling validation and prep. |
-| `running` | Currently running as reported by scheduler. |
+| `processing` | Being checked and prepared before its container starts. |
+| `running` | Its container is running, as Docker reports it. |
 | `degraded` | Running, but it stopped answering health checks. Gofer keeps sending it work and restarts it if it doesn't recover. The extension's `state_reason` has the last error. |
 | `exited` | Extension has exited; usually because of an error. |
 | `stopped` | Not running on purpose, because it's disabled or no longer in the config. |
@@ -1104,7 +1140,7 @@ A string, one of:
 | ----- | ----------- |
 | `unknown` | Gofer has no fucking clue how the run got into this state. |
 | `abnormal_exit` | While executing the run, one or more tasks exited with an abnormal exit code. |
-| `scheduler_error` | While executing the run, one or more tasks returned errors from the scheduler or could not be scheduled. |
+| `container_error` | While executing the run, one or more tasks' images couldn't be loaded, or their containers couldn't be started. |
 | `failed_precondition` | The run could not be executed as requested due to user defined attributes given. |
 | `user_cancelled` | One or more tasks could not be completed due to a user cancelling the run. |
 | `admin_cancelled` | One or more tasks could not be completed due to the system or admin cancelling the run. |
@@ -1149,8 +1185,8 @@ A string, one of:
 | ----- | ----------- |
 | `waiting_on_dependencies` | Waiting for the tasks it depends on to finish. |
 | `preparing` | Resolving variables, which includes reading from the secret and object stores. |
-| `pulling_image` | The scheduler is pulling the container image. |
-| `starting_container` | The scheduler is creating and starting the container. |
+| `loading_image` | Docker is loading the task's image from Gofer's image store. Skipped when Docker already has it. |
+| `starting_container` | Docker is creating and starting the container. |
 | `running` | The container is running. |
 
 ## task_execution_state
@@ -1161,9 +1197,9 @@ A string, one of:
 | ----- | ----------- |
 | `complete` |  |
 | `unknown` | Should never be in this state. |
-| `processing` | Pre-scheduler validation and prep. |
-| `waiting` | Waiting to be scheduled. |
-| `running` | Currently running as reported by scheduler. |
+| `processing` | Being checked and prepared before its container starts. |
+| `waiting` | Waiting for its container to start. |
+| `running` | Its container is running, as Docker reports it. |
 
 ## task_execution_status
 
@@ -1192,7 +1228,7 @@ A string, one of:
 | ----- | ----------- |
 | `unknown` | Gofer has no fucking clue how the run got into this state. |
 | `abnormal_exit` | A non-zero exit code has been received. |
-| `scheduler_error` | Encountered an error with the container scheduler. |
+| `container_error` | Docker couldn't load the task's image, or couldn't start or watch its container. |
 | `failed_precondition` | User error in task execution parameters. |
 | `cancelled` | User invoked cancellation.k |
 | `orphaned` | Task execution was lost due to extreme internal error. |

@@ -161,6 +161,20 @@ run-hurl-tests:
 > done;
 
 > @cd tests
+> # Every test registers its tasks with this one image, so it's built and taken apart first. Each test uploads its
+> # layer, config and manifest from fixtures/, and gets their digests as hurl variables.
+> docker build --quiet --tag gofer-hurl-image image > /dev/null
+> rm -rf fixtures && mkdir -p fixtures/saved
+> docker save gofer-hurl-image | tar -x -C fixtures/saved
+> MANIFEST=$$(jq -r '.manifests[0].digest' fixtures/saved/index.json)
+> MANIFEST_FILE=fixtures/saved/blobs/sha256/$${MANIFEST#sha256:}
+> if [ "$$(jq '.layers | length' "$$MANIFEST_FILE")" != 1 ]; then echo "image/Dockerfile has to make one layer"; exit 1; fi
+> CONFIG=$$(jq -r '.config.digest' "$$MANIFEST_FILE")
+> LAYER=$$(jq -r '.layers[0].digest' "$$MANIFEST_FILE")
+> cp "$$MANIFEST_FILE" fixtures/manifest
+> cp "fixtures/saved/blobs/sha256/$${CONFIG#sha256:}" fixtures/config
+> cp "fixtures/saved/blobs/sha256/$${LAYER#sha256:}" fixtures/layer
+
 > SECRET=$$(curl -s --fail --request POST \
   --url http://localhost:8080/api/tokens/bootstrap \
   --header 'gofer-api-version: v0' \
@@ -169,12 +183,14 @@ run-hurl-tests:
 > echo -ne "\r\033[K"  # Moves cursor to start of line and clears the line
 > echo "Hurl Results"
 > echo "--------------------------------"
-> hurl --color --test *.hurl --variable secret=$$SECRET --error-format long
+> hurl --color --test *.hurl --variable secret=$$SECRET --variable manifest=$$MANIFEST --variable config=$$CONFIG \
+  --variable layer=$$LAYER --error-format long
 
 ## cleanup-integration-tests: Clean up the background gofer process and the data it left behind.
 cleanup-integration-tests:
 > @pkill -9 gofer
-> @rm -rf /tmp/gofer* || true
+> @rm -rf /tmp/gofer* gofer/tests/fixtures || true
+> @docker rmi gofer-hurl-image > /dev/null 2>&1 || true
 
 ## run-tailwind: Run the tailwind compiler
 run-tailwind:

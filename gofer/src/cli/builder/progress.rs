@@ -486,7 +486,8 @@ impl std::error::Error for Failure {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::builder::{Keep, Steps};
+    use crate::cli::builder::Steps;
+    use gofer_sdk::config::Keep;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 

@@ -126,7 +126,7 @@ fn system_injected_vars(
             "GOFER_TASK_IMAGE".to_string(),
             Variable {
                 key: "GOFER_TASK_IMAGE".to_string(),
-                value: task.image.clone(),
+                value: task.image.digest.clone(),
                 source: VariableSource::System,
             },
         ),

@@ -1005,15 +1005,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "query",
-            "name": "include_secret",
-            "description": "Return credentials in plaintext instead of redacted. Admin only.",
-            "schema": {
-              "nullable": true,
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
@@ -1127,15 +1118,6 @@
             "schema": {
               "type": "integer",
               "format": "int64"
-            }
-          },
-          {
-            "in": "query",
-            "name": "include_secret",
-            "description": "Return credentials in plaintext instead of redacted. Admin only.",
-            "schema": {
-              "nullable": true,
-              "type": "boolean"
             }
           }
         ],
@@ -2260,15 +2242,6 @@
               "format": "uint64",
               "minimum": 0
             }
-          },
-          {
-            "in": "query",
-            "name": "include_secret",
-            "description": "Return credentials in plaintext instead of redacted. Admin only.",
-            "schema": {
-              "nullable": true,
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
@@ -2335,15 +2308,6 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "include_secret",
-            "description": "Return credentials in plaintext instead of redacted. Admin only.",
-            "schema": {
-              "nullable": true,
-              "type": "boolean"
             }
           }
         ],
@@ -3886,6 +3850,68 @@
           "extension"
         ]
       },
+      "Build": {
+        "description": "How a task's image is made. `gofer up` builds it on the user's machine and uploads it to Gofer, so a version of a pipeline always runs exactly the image it was registered with.",
+        "oneOf": [
+          {
+            "description": "Start from a base image, then copy files in and run commands, in the order they were written.",
+            "type": "object",
+            "properties": {
+              "steps": {
+                "$ref": "#/components/schemas/Steps"
+              }
+            },
+            "required": [
+              "steps"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "description": "Build from a Dockerfile, for anything the steps can't do. Both paths are relative to the folder of the pipeline's config.",
+            "type": "object",
+            "properties": {
+              "dockerfile": {
+                "type": "object",
+                "properties": {
+                  "context": {
+                    "description": "The folder whose files the Dockerfile can use.",
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "context",
+                  "path"
+                ]
+              }
+            },
+            "required": [
+              "dockerfile"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "BuiltImage": {
+        "description": "The image `gofer up` built for a task.",
+        "type": "object",
+        "properties": {
+          "digest": {
+            "description": "The digest of the image's manifest, like `sha256:4a5c...`.",
+            "type": "string"
+          },
+          "source_hash": {
+            "description": "A hash of the files that went into the image. It's how `gofer up` knows whether they changed since.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "digest",
+          "source_hash"
+        ]
+      },
       "Config": {
         "description": "A representation of the user's configuration settings for a particular pipeline.",
         "type": "object",
@@ -4860,6 +4886,26 @@
           "id",
           "kind",
           "user"
+        ]
+      },
+      "Keep": {
+        "type": "object",
+        "properties": {
+          "base": {
+            "description": "The image to move them onto, like `debian:13-slim`. It needs whatever the kept files need to run, like the system libraries a program uses.",
+            "type": "string"
+          },
+          "paths": {
+            "description": "Full paths in the image. Each lands at the same path on the new base.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "base",
+          "paths"
         ]
       },
       "Kind": {
@@ -6416,22 +6462,7 @@
         ]
       },
       "RegistryAuth": {
-        "description": "Authentication information for container registries.",
-        "type": "object",
-        "properties": {
-          "pass": {
-            "type": "string"
-          },
-          "user": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "pass",
-          "user"
-        ]
-      },
-      "RegistryAuth2": {
+        "description": "Authentication information for container registries. Extensions use it to pull their images.",
         "type": "object",
         "properties": {
           "pass": {
@@ -6664,6 +6695,84 @@
           "run"
         ]
       },
+      "Step": {
+        "oneOf": [
+          {
+            "description": "Copies a file, or what's inside a folder, into the image. `from` is relative to the folder of the pipeline's config, and leaving it is fine, like `../shared`.",
+            "type": "object",
+            "properties": {
+              "copy": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ]
+              }
+            },
+            "required": [
+              "copy"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "description": "Runs a command with `/bin/sh -c`.",
+            "type": "object",
+            "properties": {
+              "run": {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "command"
+                ]
+              }
+            },
+            "required": [
+              "run"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Steps": {
+        "type": "object",
+        "properties": {
+          "base": {
+            "description": "The image to start from, like `rust:1-trixie`.",
+            "type": "string"
+          },
+          "keep": {
+            "nullable": true,
+            "description": "Moves what it lists onto another base image once every step has run, leaving everything else behind.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Keep"
+              }
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            }
+          }
+        },
+        "required": [
+          "base",
+          "steps"
+        ]
+      },
       "Subscription": {
         "type": "object",
         "properties": {
@@ -6721,13 +6830,17 @@
         "description": "A task represents a particular workload within a pipeline. Tasks are composable within a larger pipeline, meaning they can be run before, after, or alongside other tasks. Tasks represent the lowest level of the Gofer hierarchy and is what Gofer references to see how a user might want their workload handled.",
         "type": "object",
         "properties": {
-          "always_pull_newest_image": {
-            "description": "Always check for most recent version of the current image before running.",
-            "type": "boolean"
+          "build": {
+            "description": "How the task's image is made. `gofer up` builds it on the user's machine before it registers the config.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Build"
+              }
+            ]
           },
           "command": {
             "nullable": true,
-            "description": "Command to run on init of container; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd",
+            "description": "Replaces the image's command; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd. It's already built into the image.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6746,7 +6859,7 @@
           },
           "entrypoint": {
             "nullable": true,
-            "description": "Command to run on init of container; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint",
+            "description": "Replaces the image's entrypoint; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint. It's already built into the image.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6757,21 +6870,16 @@
             "type": "string"
           },
           "image": {
-            "description": "Which container image to run for this specific task.\n\nExample: \"ubuntu:latest\"",
-            "type": "string"
+            "description": "The image that was built for this version of the task, which is what its runs use.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BuiltImage"
+              }
+            ]
           },
           "inject_api_token": {
             "description": "Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container.",
             "type": "boolean"
-          },
-          "registry_auth": {
-            "nullable": true,
-            "description": "Auth credentials for the image's registry. The password is a secret reference like `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RegistryAuth"
-              }
-            ]
           },
           "timeout_seconds": {
             "description": "How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here.",
@@ -6788,7 +6896,7 @@
           }
         },
         "required": [
-          "always_pull_newest_image",
+          "build",
           "depends_on",
           "description",
           "id",
@@ -6799,15 +6907,20 @@
         ]
       },
       "Task2": {
-        "description": "Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container. Each task defines the operations to be performed and the container environment in which these operations will run.\n\n- The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`\n\n# Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: \"example_task\".to_string(), description: Some(\"This task executes a simple print command in an Ubuntu container.\".to_string()), image: \"ubuntu:latest\".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([(\"KEY\", \"value\".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec![\"echo\".to_string(), \"Hello World!\".to_string()]), inject_api_token: false, }; ```",
+        "description": "Represents a single task within a [`Pipeline`]. A task is a unit of work that operates within its own container. Each task defines the operations to be performed and the container environment in which these operations will run.\n\n- The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`\n\nGofer builds every task's image itself, when you run `gofer up`. A task starts from a base image, copies in your files and runs commands, or it points at a Dockerfile.\n\n# Example ``` # use gofer_sdk::config::Task; // Compile a folder, then keep only the binary on a small base. let report = Task::new(\"report\", \"rust:1-trixie\") .copy(\"./report\", \"/src\") .run(\"cd /src && cargo build --release\") .keep([\"/src/target/release/report\"], \"debian:13-slim\") .command(vec![\"/src/target/release/report\".into()]);\n\n// Anything the steps can't do is a Dockerfile. The last argument is the folder it builds from. let scan = Task::dockerfile(\"scan\", \"./scan/Dockerfile\", \"./scan\"); ```",
         "type": "object",
         "properties": {
-          "always_pull_newest_image": {
-            "description": "Always attempt to pull the newest container image.",
-            "type": "boolean"
+          "build": {
+            "description": "How the task's image is made.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Build"
+              }
+            ]
           },
           "command": {
             "nullable": true,
+            "description": "Replaces the image's command. It's built into the image.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6825,6 +6938,7 @@
           },
           "entrypoint": {
             "nullable": true,
+            "description": "Replaces the image's entrypoint. It's built into the image.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6834,18 +6948,17 @@
             "type": "string"
           },
           "image": {
-            "type": "string"
+            "nullable": true,
+            "description": "The image `gofer up` built. A config straight from the SDK doesn't have one; `gofer up` fills it in before it registers the config.",
+            "default": null,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BuiltImage"
+              }
+            ]
           },
           "inject_api_token": {
             "type": "boolean"
-          },
-          "registry_auth": {
-            "nullable": true,
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RegistryAuth2"
-              }
-            ]
           },
           "timeout_seconds": {
             "description": "How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse.",
@@ -6862,10 +6975,9 @@
           }
         },
         "required": [
-          "always_pull_newest_image",
+          "build",
           "depends_on",
           "id",
-          "image",
           "inject_api_token",
           "variables"
         ]
@@ -6892,10 +7004,6 @@
             "type": "integer",
             "format": "uint8",
             "minimum": 0
-          },
-          "image_digest": {
-            "description": "The exact image the task execution ran with. Tags can move between runs, so this pins down what actually ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started.",
-            "type": "string"
           },
           "logs_expired": {
             "description": "Whether the logs have past their retention time.",
@@ -6980,7 +7088,6 @@
         "required": [
           "created",
           "ended",
-          "image_digest",
           "logs_expired",
           "logs_removed",
           "namespace_id",
@@ -7338,14 +7445,14 @@
             ]
           },
           {
-            "description": "Pre-scheduling validation and prep.",
+            "description": "Being checked and prepared before its container starts.",
             "type": "string",
             "enum": [
               "processing"
             ]
           },
           {
-            "description": "Currently running as reported by scheduler.",
+            "description": "Its container is running, as Docker reports it.",
             "type": "string",
             "enum": [
               "running"
@@ -7523,10 +7630,10 @@
             ]
           },
           {
-            "description": "While executing the run, one or more tasks returned errors from the scheduler or could not be scheduled.",
+            "description": "While executing the run, one or more tasks' images couldn't be loaded, or their containers couldn't be started.",
             "type": "string",
             "enum": [
-              "scheduler_error"
+              "container_error"
             ]
           },
           {
@@ -7622,14 +7729,14 @@
             ]
           },
           {
-            "description": "The scheduler is pulling the container image.",
+            "description": "Docker is loading the task's image from Gofer's image store. Skipped when Docker already has it.",
             "type": "string",
             "enum": [
-              "pulling_image"
+              "loading_image"
             ]
           },
           {
-            "description": "The scheduler is creating and starting the container.",
+            "description": "Docker is creating and starting the container.",
             "type": "string",
             "enum": [
               "starting_container"
@@ -7660,21 +7767,21 @@
             ]
           },
           {
-            "description": "Pre-scheduler validation and prep.",
+            "description": "Being checked and prepared before its container starts.",
             "type": "string",
             "enum": [
               "processing"
             ]
           },
           {
-            "description": "Waiting to be scheduled.",
+            "description": "Waiting for its container to start.",
             "type": "string",
             "enum": [
               "waiting"
             ]
           },
           {
-            "description": "Currently running as reported by scheduler.",
+            "description": "Its container is running, as Docker reports it.",
             "type": "string",
             "enum": [
               "running"
@@ -7758,10 +7865,10 @@
             ]
           },
           {
-            "description": "Encountered an error with the container scheduler.",
+            "description": "Docker couldn't load the task's image, or couldn't start or watch its container.",
             "type": "string",
             "enum": [
-              "scheduler_error"
+              "container_error"
             ]
           },
           {

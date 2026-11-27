@@ -1,0 +1,7 @@
+# The program the `report` task compiles. It has a workspace of its own so it isn't mistaken for part of Gofer's.
+[package]
+name = "report"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]

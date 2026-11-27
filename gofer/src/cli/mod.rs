@@ -1,5 +1,4 @@
 mod archive;
-#[allow(dead_code)] // `gofer up` will use this once tasks say how their images are built.
 mod builder;
 mod event;
 mod extension;
@@ -102,6 +101,11 @@ enum Commands {
         /// from a terminal.
         #[arg(short, long)]
         yes: bool,
+
+        /// Build every task's image again from scratch, downloading base images again and starting compiler caches
+        /// empty. Gofer can't tell when a base image like `rust:1` changes upstream, so this is how to pick that up.
+        #[arg(long)]
+        rebuild: bool,
     },
 
     /// Lookup pipeline specific information.
@@ -308,7 +312,11 @@ impl Cli {
                 path,
                 deploy,
                 yes,
-            } => self.pipeline_create(namespace, path, deploy, yes).await,
+                rebuild,
+            } => {
+                self.pipeline_create(namespace, path, deploy, yes, rebuild)
+                    .await
+            }
             Commands::Fetch {
                 namespace,
                 pipeline_id,
@@ -693,6 +701,19 @@ fn ask_yes_no(prompt: &str) -> bool {
     matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes")
 }
 
+/// What a task's image is built from, in a few words, like `rust:1-trixie, kept on debian:13-slim`.
+fn built_from(build: &gofer_sdk::api::types::Build) -> String {
+    use gofer_sdk::api::types::Build;
+
+    match build {
+        Build::Steps(steps) => match &steps.keep {
+            Some(keep) => format!("{}, kept on {}", steps.base, keep.base),
+            None => steps.base.clone(),
+        },
+        Build::Dockerfile { path, .. } => path.clone(),
+    }
+}
+
 /// The magenta bar that runs down the left side of each section in `get` output.
 fn rail() -> String {
     "│".magenta().to_string()
@@ -769,7 +790,7 @@ fn tasks_table(tasks: &HashMap<String, gofer_sdk::api::types::Task>) -> Vec<Stri
     });
 
     rail_table(
-        &["TASK", "STARTS"],
+        &["TASK", "BUILT FROM", "STARTS"],
         tasks
             .into_iter()
             .map(|task| {
@@ -781,6 +802,7 @@ fn tasks_table(tasks: &HashMap<String, gofer_sdk::api::types::Task>) -> Vec<Stri
                 };
                 vec![
                     comfy_table::Cell::new(&task.id).fg(comfy_table::Color::Blue),
+                    comfy_table::Cell::new(built_from(&task.build)),
                     comfy_table::Cell::new(starts),
                 ]
             })

@@ -59,10 +59,10 @@ pub enum State {
     #[default]
     Unknown,
 
-    /// Pre-scheduling validation and prep.
+    /// Being checked and prepared before its container starts.
     Processing,
 
-    /// Currently running as reported by scheduler.
+    /// Its container is running, as Docker reports it.
     Running,
 
     /// Running, but it stopped answering health checks. Gofer keeps sending it work and restarts it if it doesn't
@@ -537,19 +537,22 @@ async fn start_extension(
 
     let start_container_request = containers::StartContainerRequest {
         id: ext_container_id.clone(),
-        image: registration.image.clone(),
+        image: containers::Image::Registry {
+            name: registration.image.clone(),
+            auth: resolved
+                .registry_auth
+                .clone()
+                .map(|auth| containers::RegistryAuth {
+                    user: auth.user,
+                    pass: auth.pass,
+                }),
+            // It's most likely that the user always wants the latest version of the tag.
+            always_pull: true,
+        },
         variables: extension_vars
             .into_iter()
             .map(|var| (var.key, var.value))
             .collect(),
-        registry_auth: resolved
-            .registry_auth
-            .clone()
-            .map(|auth| containers::RegistryAuth {
-                user: auth.user,
-                pass: auth.pass,
-            }),
-        always_pull: true, // It's most likely that the user always wants the latest version of the tag.
         networking: Some(8082), //TODO(Replace this with port listed in the conf package)
         entrypoint: None,
         command: None,

@@ -4,11 +4,11 @@ use super::{
 };
 use crate::{
     api::{
-        GOFER_EOF, RegistryAuth, Variable, epoch_milli,
+        GOFER_EOF, Variable, epoch_milli,
         event_utils::{self, EventListener},
-        interpolate_vars, resolve_registry_auth, task_executions, tasks,
+        interpolate_vars, task_executions, tasks,
     },
-    containers, storage,
+    containers, images, storage,
 };
 
 use anyhow::{Context, Result, bail};
@@ -110,7 +110,7 @@ impl RunShepherd {
             task_executions::Phase::Preparing,
         ));
 
-        let (env_vars, registry_auth) = match self.resolve_variables(task, env_vars).await {
+        let env_vars = match self.resolve_variables(env_vars).await {
             Ok(resolved) => resolved,
             Err(e) => {
                 self.end_task_execution(
@@ -119,7 +119,7 @@ impl RunShepherd {
                     Some(task_executions::StatusReason {
                         reason: task_executions::StatusReasonType::FailedPrecondition,
                         description: format!(
-                            "Task could not be run due to inability to retrieve interpolated variables or registry auth; {}",
+                            "Task could not be run due to inability to retrieve interpolated variables; {}",
                             e
                         ),
                     }),
@@ -139,34 +139,44 @@ impl RunShepherd {
             &task.id,
         );
 
-        // Captured before scheduling so the task's duration includes pulling its image and starting the container;
+        // Captured before scheduling so the task's duration includes loading its image and starting the container;
         // short tasks can finish before start_container even returns.
         let started = epoch_milli();
 
-        let start_response = match self
-            .start_container(task, &container_id, env_vars, registry_auth, &timeline)
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => {
-                // The error is in the task execution's status reason, so there's nothing more to log.
-                self.end_task_execution(
-                    &task.id,
-                    task_executions::Status::Failed,
-                    Some(task_executions::StatusReason {
-                        reason: task_executions::StatusReasonType::SchedulerError,
-                        description: format!(
-                            "Task could not be run because its container could not be started; {}",
-                            e
-                        ),
-                    }),
-                )
-                .await
-                .context("Could not mark task execution as failed after its container could not be started")?;
+        let image = match self.load_image(task, &timeline).await {
+            Ok(image) => image,
+            Err(reason) => {
+                self.end_task_execution(&task.id, task_executions::Status::Failed, Some(reason))
+                    .await
+                    .context("Could not mark task execution as failed after its image could not be loaded")?;
 
                 return Ok(());
             }
         };
+
+        if let Err(e) = self
+            .start_container(&image, &container_id, env_vars, &timeline)
+            .await
+        {
+            // The error is in the task execution's status reason, so there's nothing more to log.
+            self.end_task_execution(
+                &task.id,
+                task_executions::Status::Failed,
+                Some(task_executions::StatusReason {
+                    reason: task_executions::StatusReasonType::ContainerError,
+                    description: format!(
+                        "Task could not be run because its container could not be started; {}",
+                        e
+                    ),
+                }),
+            )
+            .await
+            .context(
+                "Could not mark task execution as failed after its container could not be started",
+            )?;
+
+            return Ok(());
+        }
 
         trace!(
             namespace_id = self.pipeline.metadata.namespace_id.clone(),
@@ -192,7 +202,6 @@ impl RunShepherd {
             storage::task_executions::UpdatableFields {
                 state: Some(task_executions::State::Running.to_string()),
                 started: Some(started.to_string()),
-                image_digest: start_response.image_digest,
                 ..Default::default()
             },
         )
@@ -384,16 +393,12 @@ impl RunShepherd {
         }
     }
 
-    /// Fills in the secrets and objects the task's variables and registry auth refer to.
+    /// Fills in the secrets and objects the task's variables refer to.
     ///
     /// At first glance this may seem like it could happen earlier, but it's important that it runs only after a
     /// task's parents have finished; this lets one task pass variables to the tasks downstream of it.
-    async fn resolve_variables(
-        &self,
-        task: &tasks::Task,
-        env_vars: Vec<Variable>,
-    ) -> Result<(Vec<Variable>, Option<RegistryAuth>)> {
-        let env_vars = interpolate_vars(
+    async fn resolve_variables(&self, env_vars: Vec<Variable>) -> Result<Vec<Variable>> {
+        interpolate_vars(
             &self.api_state.storage,
             self.api_state.secret_store.as_ref(),
             self.api_state.object_store.as_ref(),
@@ -402,32 +407,87 @@ impl RunShepherd {
             Some(self.run.run_id),
             &env_vars,
         )
-        .await?;
-
-        let registry_auth = match &task.registry_auth {
-            Some(auth) => Some(
-                resolve_registry_auth(
-                    &self.api_state.storage,
-                    self.api_state.secret_store.as_ref(),
-                    &self.pipeline.metadata.namespace_id,
-                    &self.pipeline.metadata.pipeline_id,
-                    auth,
-                )
-                .await?,
-            ),
-            None => None,
-        };
-
-        Ok((env_vars, registry_auth))
+        .await
     }
 
-    /// Starts the task execution's container.
-    async fn start_container(
+    /// Makes sure Docker has the task's image, loading it from Gofer's image store if it doesn't, and returns the name
+    /// Docker knows it by.
+    ///
+    /// Docker's copy has to have exactly the layers the image was registered with. Docker finds a layer by its diff
+    /// id, and its JSON parser reads `rootfs` and `RootFS` as the same field where ours doesn't, so only Docker's own
+    /// answer settles what it would run.
+    async fn load_image(
         &self,
         task: &tasks::Task,
+        timeline: &mpsc::UnboundedSender<task_executions::TimelineEntry>,
+    ) -> std::result::Result<String, task_executions::StatusReason> {
+        let container_error = |description: String| task_executions::StatusReason {
+            reason: task_executions::StatusReasonType::ContainerError,
+            description,
+        };
+
+        let digest: images::Digest =
+            task.image.digest.parse().map_err(|e| {
+                container_error(format!("The task's image has an invalid digest; {e}"))
+            })?;
+
+        let image = match self.api_state.images.stored_image(&digest).await {
+            Ok(Some(image)) => image,
+            Ok(None) => {
+                return Err(task_executions::StatusReason {
+                    reason: task_executions::StatusReasonType::FailedPrecondition,
+                    description: format!(
+                        "The image for version {} of this pipeline is no longer stored, so the task can't run. \
+                         Running `gofer up` builds a new version.",
+                        self.pipeline.config.version
+                    ),
+                });
+            }
+            Err(e) => {
+                return Err(container_error(format!(
+                    "Could not read the task's image from Gofer's image store; {e}"
+                )));
+            }
+        };
+
+        let name = digest.docker_name();
+
+        // A copy that doesn't match, like something tagged with this name by hand, gets replaced once.
+        for replace in [false, true] {
+            let layers = (self.api_state.containers)
+                .load_image(
+                    &name,
+                    replace,
+                    || {
+                        _ = timeline.send(task_executions::TimelineEntry::now(
+                            task_executions::Phase::LoadingImage,
+                        ));
+                    },
+                    || self.api_state.images.docker_archive(&image),
+                )
+                .await
+                .map_err(|e| {
+                    container_error(format!("Could not load the task's image into Docker; {e}"))
+                })?;
+
+            if layers == image.diff_ids {
+                return Ok(name);
+            }
+        }
+
+        Err(container_error(
+            "Docker's copy of the task's image doesn't have the layers it was registered with, so it wasn't run. \
+             Docker read the image differently from how Gofer checked it."
+                .into(),
+        ))
+    }
+
+    /// Starts the task execution's container from its image, which [`Self::load_image`] made sure Docker has.
+    async fn start_container(
+        &self,
+        image: &str,
         container_id: &str,
         env_vars: Vec<Variable>,
-        registry_auth: Option<RegistryAuth>,
         timeline: &mpsc::UnboundedSender<task_executions::TimelineEntry>,
     ) -> Result<containers::StartContainerResponse> {
         let response = self
@@ -435,16 +495,15 @@ impl RunShepherd {
             .containers
             .start_container(containers::StartContainerRequest {
                 id: container_id.to_string(),
-                image: task.image.clone(),
+                image: containers::Image::Loaded(image.to_string()),
                 variables: env_vars
                     .into_iter()
                     .map(|var| (var.key, var.value))
                     .collect(),
-                registry_auth: registry_auth.map(|auth| auth.into()),
-                always_pull: task.always_pull_newest_image,
                 networking: None,
-                entrypoint: task.entrypoint.clone(),
-                command: task.command.clone(),
+                // How the task runs is built into its image.
+                entrypoint: None,
+                command: None,
                 timeline: Some(timeline.clone()),
             })
             .await?;
@@ -801,7 +860,7 @@ impl RunShepherd {
                                     1,
                                     task_executions::Status::Unknown,
                                     Some(task_executions::StatusReason {
-                                        reason: task_executions::StatusReasonType::SchedulerError,
+                                        reason: task_executions::StatusReasonType::ContainerError,
                                         description:
                                             "Could not query Docker for the task execution state"
                                                 .into(),
@@ -826,7 +885,7 @@ impl RunShepherd {
                                     1,
                                     task_executions::Status::Unknown,
                                     Some(task_executions::StatusReason {
-                                        reason: task_executions::StatusReasonType::SchedulerError,
+                                        reason: task_executions::StatusReasonType::ContainerError,
                                         description:
                                             "An unknown error has occurred on the container level; This should (ideally) never happen. Please contact support or file a bug."
                                                 .into(),

@@ -4,9 +4,8 @@ use super::permissioning::{
 };
 use crate::{
     api::{
-        ApiState, IncludeSecretQueryArgs, PreflightOptions, deployments, ensure_namespace_exists,
-        ensure_pipeline_exists, epoch_milli, event_utils, generate_inject_api_token_role_id,
-        include_secrets, pipelines, tasks, validate_registry_auth_pass,
+        ApiState, PreflightOptions, deployments, ensure_namespace_exists, ensure_pipeline_exists,
+        epoch_milli, event_utils, generate_inject_api_token_role_id, pipelines, tasks,
     },
     http_error,
     storage::{self, StorageError},
@@ -15,7 +14,7 @@ use anyhow::{Context, Result};
 use chrono::{Datelike, NaiveDate};
 use dropshot::{
     ClientErrorStatusCode, HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseOk,
-    Path, Query, RequestContext, TypedBody, endpoint,
+    Path, RequestContext, TypedBody, endpoint,
 };
 use gofer_sdk::config;
 use schemars::JsonSchema;
@@ -127,8 +126,8 @@ impl Config {
             tasks: config
                 .tasks
                 .into_iter()
-                .map(|task| (task.id.clone(), tasks::Task::from(task)))
-                .collect(),
+                .map(|task| Ok((task.id.clone(), tasks::Task::try_from(task)?)))
+                .collect::<Result<_>>()?,
             state: ConfigState::Unreleased,
             registered: epoch_milli(),
             deprecated: 0,
@@ -155,16 +154,6 @@ impl Config {
                 )
             })
             .map(String::as_str)
-    }
-
-    /// The copy of a config that's safe to hand back to API callers. See [`crate::api::REDACTED`].
-    pub fn redacted(mut self) -> Self {
-        self.tasks = self
-            .tasks
-            .into_iter()
-            .map(|(id, task)| (id, task.redacted()))
-            .collect();
-        self
     }
 }
 
@@ -302,12 +291,10 @@ pub struct ListPipelineConfigsResponse {
 pub async fn list_configs(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<PipelineConfigPathArgsRoot>,
-    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<ListPipelineConfigsResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let query = query_params.into_inner();
-    let req_metadata = api_state
+    api_state
         .preflight_check(
             &rqctx,
             PreflightOptions {
@@ -358,8 +345,6 @@ pub async fn list_configs(
             }
         };
 
-    let show_secrets = include_secrets(&req_metadata, &query)?;
-
     let mut configs: Vec<Config> = vec![];
 
     for storage_config in storage_configs {
@@ -391,11 +376,7 @@ pub async fn list_configs(
             )
         })?;
 
-        configs.push(if show_secrets {
-            config
-        } else {
-            config.redacted()
-        });
+        configs.push(config);
     }
 
     if let Err(e) = tx.commit().await {
@@ -428,12 +409,10 @@ pub struct GetPipelineConfigResponse {
 pub async fn get_config(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<PipelineConfigPathArgs>,
-    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<GetPipelineConfigResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let query = query_params.into_inner();
-    let req_metadata = api_state
+    api_state
         .preflight_check(
             &rqctx,
             PreflightOptions {
@@ -546,14 +525,66 @@ pub async fn get_config(
         ));
     };
 
-    let resp = GetPipelineConfigResponse {
-        config: if include_secrets(&req_metadata, &query)? {
-            config
-        } else {
-            config.redacted()
-        },
-    };
+    let resp = GetPipelineConfigResponse { config };
     Ok(HttpResponseOk(resp))
+}
+
+/// Checks every task's image with [`crate::images::Images::verify`]: that it's an image Gofer can run, and that this
+/// pipeline uploaded every part of it. Tasks that built the same image only have it checked once.
+async fn verify_images(
+    api_state: &ApiState,
+    request_id: &str,
+    path: &PipelineConfigPathArgsRoot,
+    config: &config::Pipeline,
+) -> Result<(), HttpError> {
+    let mut conn = api_state.storage.read_conn().await.map_err(|e| {
+        http_error!(
+            "Could not open connection to database",
+            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            request_id.to_string(),
+            Some(e.into())
+        )
+    })?;
+
+    let mut checked = std::collections::HashSet::new();
+
+    for task in &config.tasks {
+        let Some(image) = &task.image else {
+            continue;
+        };
+        if !checked.insert(&image.digest) {
+            continue;
+        }
+
+        let result = match image.digest.parse::<crate::images::Digest>() {
+            Ok(digest) => {
+                (api_state.images)
+                    .verify(&mut conn, &path.namespace_id, &path.pipeline_id, &digest)
+                    .await
+            }
+            Err(e) => Err(e),
+        };
+
+        match result {
+            Ok(()) => {}
+            Err(crate::images::ImageError::Invalid(e)) => {
+                return Err(HttpError::for_bad_request(
+                    None,
+                    format!("the image for task '{}' can't be used; {e}", task.id),
+                ));
+            }
+            Err(e) => {
+                return Err(http_error!(
+                    "Could not check a task's image",
+                    hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                    request_id.to_string(),
+                    Some(e.into())
+                ));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -665,15 +696,19 @@ pub async fn register_config(
         return Err(HttpError::for_bad_request(None, e.to_string()));
     };
 
-    for task in &body.config.tasks {
-        if let Some(auth) = &task.registry_auth
-            && let Err(e) = validate_registry_auth_pass(&auth.pass)
-        {
-            return Err(HttpError::for_bad_request(
-                None,
-                format!("task '{}' has invalid registry auth; {}", task.id, e),
-            ));
-        }
+    // Gofer can't build images itself; `gofer up` builds them on the user's machine and uploads them first.
+    let without_images: Vec<&str> = (body.config.tasks.iter())
+        .filter(|task| task.image.is_none())
+        .map(|task| task.id.as_str())
+        .collect();
+    if !without_images.is_empty() {
+        return Err(HttpError::for_bad_request(
+            None,
+            format!(
+                "these tasks have no image: {}. `gofer up` builds them before it registers a config",
+                without_images.join(", ")
+            ),
+        ));
     }
 
     if path.pipeline_id != body.config.id {
@@ -682,6 +717,9 @@ pub async fn register_config(
             "pipeline_id in URL path does not match pipeline id in configuration".into(),
         ));
     };
+
+    // Before the write transaction, since this reads every blob's file.
+    verify_images(api_state, &rqctx.request_id, &path, &body.config).await?;
 
     let mut tx = match api_state.storage.open_tx().await {
         Ok(conn) => conn,
@@ -868,7 +906,7 @@ pub async fn register_config(
     let resp = RegisterPipelineConfigResponse {
         pipeline: pipelines::Pipeline {
             metadata: new_pipeline_metadata,
-            config: new_pipeline_config.redacted(),
+            config: new_pipeline_config,
         },
     };
 

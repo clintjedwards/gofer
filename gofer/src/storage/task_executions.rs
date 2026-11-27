@@ -19,7 +19,6 @@ pub struct TaskExecution {
     pub status: String,
     pub status_reason: String,
     pub variables: String,
-    pub image_digest: String,
     pub timeline: String,
 }
 
@@ -34,7 +33,6 @@ pub struct UpdatableFields {
     pub logs_expired: Option<bool>,
     pub logs_removed: Option<bool>,
     pub variables: Option<String>,
-    pub image_digest: Option<String>,
     pub timeline: Option<String>,
 }
 
@@ -43,7 +41,7 @@ pub async fn insert(
     task_execution: &TaskExecution,
 ) -> Result<(), StorageError> {
     let sql = "INSERT INTO task_executions (namespace_id, pipeline_id, run_id, task_id, task, created, started, ended, \
-            exit_code, logs_expired, logs_removed, state, status, status_reason, variables, image_digest, timeline) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+            exit_code, logs_expired, logs_removed, state, status, status_reason, variables, timeline) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
         .bind(&task_execution.namespace_id)
@@ -61,7 +59,6 @@ pub async fn insert(
         .bind(&task_execution.status)
         .bind(&task_execution.status_reason)
         .bind(&task_execution.variables)
-        .bind(&task_execution.image_digest)
         .bind(&task_execution.timeline);
 
     query
@@ -79,7 +76,7 @@ pub async fn list(
     run_id: i64,
 ) -> Result<Vec<TaskExecution>, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, run_id, task_id, task, created, started, ended, exit_code, logs_expired, \
-        logs_removed, state, status, status_reason, variables, image_digest, timeline FROM task_executions \
+        logs_removed, state, status, status_reason, variables, timeline FROM task_executions \
         WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ?;";
 
     let query = sqlx::query_as::<_, TaskExecution>(sql)
@@ -101,7 +98,7 @@ pub async fn get(
     task_id: &str,
 ) -> Result<TaskExecution, StorageError> {
     let sql = "SELECT namespace_id, pipeline_id, run_id, task_id, task, created, started, ended, exit_code, logs_expired, \
-        logs_removed, state, status, status_reason, variables, image_digest, timeline FROM task_executions \
+        logs_removed, state, status, status_reason, variables, timeline FROM task_executions \
         WHERE namespace_id = ? AND pipeline_id = ? AND run_id = ? AND task_id = ?;";
 
     let query = sqlx::query_as(sql)
@@ -205,15 +202,6 @@ pub async fn update(
             update_query.push(", ");
         }
         update_query.push("variables = ");
-        update_query.push_bind(value);
-        updated_fields_total += 1;
-    }
-
-    if let Some(value) = &fields.image_digest {
-        if updated_fields_total > 0 {
-            update_query.push(", ");
-        }
-        update_query.push("image_digest = ");
         update_query.push_bind(value);
         updated_fields_total += 1;
     }
@@ -362,7 +350,6 @@ mod tests {
             status: "Completed".to_string(),
             status_reason: "Finished successfully".to_string(),
             variables: "key=value".to_string(),
-            image_digest: String::new(),
             timeline: "[]".to_string(),
         };
 
@@ -414,7 +401,6 @@ mod tests {
             logs_expired: Some(true),
             logs_removed: Some(false),
             variables: Some("key2=value2".to_string()),
-            image_digest: Some("sha256:abc123".to_string()),
             timeline: Some(r#"[{"phase":"running","started":1}]"#.to_string()),
         };
 
@@ -434,7 +420,6 @@ mod tests {
             .expect("Failed to retrieve updated task_execution");
 
         assert_eq!(updated_task_execution.state, "updated_state");
-        assert_eq!(updated_task_execution.image_digest, "sha256:abc123");
     }
 
     #[tokio::test]

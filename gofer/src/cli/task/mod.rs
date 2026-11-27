@@ -174,7 +174,7 @@ impl Cli {
 
         let tasks = self
             .client
-            .list_task_executions(&namespace, pipeline_id, run_id, None)
+            .list_task_executions(&namespace, pipeline_id, run_id)
             .await
             .context("Could not successfully retrieve tasks from Gofer api")?
             .into_inner()
@@ -240,7 +240,7 @@ impl Cli {
 
         let task = self
             .client
-            .get_task_execution(&namespace, pipeline_id, run_id, task_id, None)
+            .get_task_execution(&namespace, pipeline_id, run_id, task_id)
             .await
             .context("Could not successfully retrieve task from Gofer api")?
             .into_inner()
@@ -290,7 +290,7 @@ impl Cli {
   {{ vertical_line }} Parent Pipeline: {{ pipeline_id }}
   {{ run_prefix }} Parent Run: {{ run_id }}
   {{ task_prefix }} Task ID: {{ task_id }}
-  {{ vertical_line }} Image: {{ image_name }}
+  {{ vertical_line }} Built From: {{ image_name }}
   {%- if image_digest %}
   {{ vertical_line }} Image Digest: {{ image_digest }}
   {%- endif %}
@@ -349,8 +349,11 @@ impl Cli {
             "duration",
             &duration(task.started as i64, task.ended as i64),
         );
-        context.insert("image_name", &task.task.image.blue().to_string());
-        context.insert("image_digest", &task.image_digest);
+        context.insert(
+            "image_name",
+            &crate::cli::built_from(&task.task.build).blue().to_string(),
+        );
+        context.insert("image_digest", &task.task.image.digest);
         context.insert("log_lines", &log_lines);
         context.insert("breakdown", &breakdown);
         context.insert(

@@ -7,6 +7,7 @@ members = [
     "examplePipelines/rust/objects",
     "examplePipelines/rust/dag",
     "examplePipelines/rust/script",
+    "examplePipelines/rust/images",
 ]
 exclude = [
   # Because dogfood depends on the rest of Gofer, it may sometimes cause issues when attempting to `cargo update` or

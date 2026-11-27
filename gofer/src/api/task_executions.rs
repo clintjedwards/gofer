@@ -1,10 +1,10 @@
 use super::permissioning::{Action, NamespaceResource, Requirement};
 use crate::{
     api::{
-        ApiState, GOFER_EOF, IncludeSecretQueryArgs, PreflightOptions, StreamEnd, Variable,
-        close_websocket_stream, ensure_run_exists, epoch_milli,
+        ApiState, GOFER_EOF, PreflightOptions, StreamEnd, Variable, close_websocket_stream,
+        ensure_run_exists, epoch_milli,
         event_utils::{self, EventListener},
-        format_duration, include_secrets, listen_for_terminate_signal, tasks, websocket_error,
+        format_duration, listen_for_terminate_signal, tasks, websocket_error,
     },
     containers, http_error, storage,
 };
@@ -95,13 +95,13 @@ pub enum State {
     #[default]
     Unknown,
 
-    /// Pre-scheduler validation and prep.
+    /// Being checked and prepared before its container starts.
     Processing,
 
-    /// Waiting to be scheduled.
+    /// Waiting for its container to start.
     Waiting,
 
-    /// Currently running as reported by scheduler.
+    /// Its container is running, as Docker reports it.
     Running,
 
     Complete,
@@ -146,8 +146,8 @@ pub enum StatusReasonType {
     /// A non-zero exit code has been received.
     AbnormalExit,
 
-    /// Encountered an error with the container scheduler.
-    SchedulerError,
+    /// Docker couldn't load the task's image, or couldn't start or watch its container.
+    ContainerError,
 
     /// User error in task execution parameters.
     FailedPrecondition,
@@ -176,10 +176,10 @@ pub enum Phase {
     /// Resolving variables, which includes reading from the secret and object stores.
     Preparing,
 
-    /// The scheduler is pulling the container image.
-    PullingImage,
+    /// Docker is loading the task's image from Gofer's image store. Skipped when Docker already has it.
+    LoadingImage,
 
-    /// The scheduler is creating and starting the container.
+    /// Docker is creating and starting the container.
     StartingContainer,
 
     /// The container is running.
@@ -268,10 +268,6 @@ pub struct TaskExecution {
     /// Information about the underlying task this task execution ran.
     pub task: tasks::Task,
 
-    /// The exact image the task execution ran with. Tags can move between runs, so this pins down what actually
-    /// ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started.
-    pub image_digest: String,
-
     /// The phases the task execution went through in order, so you can tell where its time went.
     pub timeline: Vec<TimelineEntry>,
 }
@@ -294,15 +290,8 @@ impl TaskExecution {
             status_reason: None,
             variables: vec![],
             task,
-            image_digest: String::new(),
             timeline: vec![],
         }
-    }
-
-    /// The copy of a task execution that's safe to hand back to API callers. See [`crate::api::REDACTED`].
-    pub fn redacted(mut self) -> Self {
-        self.task = self.task.redacted();
-        self
     }
 }
 
@@ -401,7 +390,6 @@ impl TryFrom<storage::task_executions::TaskExecution> for TaskExecution {
             status_reason,
             variables,
             task,
-            image_digest: value.image_digest,
             timeline,
         })
     }
@@ -457,7 +445,6 @@ impl TryFrom<TaskExecution> for storage::task_executions::TaskExecution {
             status_reason,
             variables,
             task,
-            image_digest: value.image_digest,
             timeline,
         })
     }
@@ -480,12 +467,10 @@ pub struct ListTaskExecutionsResponse {
 pub async fn list_task_executions(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<TaskExecutionPathArgsRoot>,
-    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<ListTaskExecutionsResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let query = query_params.into_inner();
-    let req_metadata = api_state
+    api_state
         .preflight_check(
             &rqctx,
             PreflightOptions {
@@ -549,8 +534,6 @@ pub async fn list_task_executions(
         }
     };
 
-    let show_secrets = include_secrets(&req_metadata, &query)?;
-
     let mut task_executions: Vec<TaskExecution> = vec![];
 
     for storage_task_execution in storage_task_executions {
@@ -563,11 +546,7 @@ pub async fn list_task_executions(
             )
         })?;
 
-        task_executions.push(if show_secrets {
-            task_execution
-        } else {
-            task_execution.redacted()
-        });
+        task_executions.push(task_execution);
     }
 
     let resp = ListTaskExecutionsResponse { task_executions };
@@ -589,12 +568,10 @@ pub struct GetTaskExecutionResponse {
 pub async fn get_task_execution(
     rqctx: RequestContext<Arc<ApiState>>,
     path_params: Path<TaskExecutionPathArgs>,
-    query_params: Query<IncludeSecretQueryArgs>,
 ) -> Result<HttpResponseOk<GetTaskExecutionResponse>, HttpError> {
     let api_state = rqctx.context();
     let path = path_params.into_inner();
-    let query = query_params.into_inner();
-    let req_metadata = api_state
+    api_state
         .preflight_check(
             &rqctx,
             PreflightOptions {
@@ -664,13 +641,7 @@ pub async fn get_task_execution(
         )
     })?;
 
-    let resp = GetTaskExecutionResponse {
-        task_execution: if include_secrets(&req_metadata, &query)? {
-            task_execution
-        } else {
-            task_execution.redacted()
-        },
-    };
+    let resp = GetTaskExecutionResponse { task_execution };
     Ok(HttpResponseOk(resp))
 }
 

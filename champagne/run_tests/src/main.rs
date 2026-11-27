@@ -8,7 +8,6 @@ fn main() {
             "ghcr.io/clintjedwards/gofer/tools:rust",
         )
             .description("Run cargo test command for workspace")
-            .always_pull_newest_image(true)
             .inject_api_token(true)
             // We need to insert the gofer api base url so that the gofer CLI knows where to send requests.
             .variables(vec![("GOFER_API_BASE_URL", "http://172.17.0.1:8080")])

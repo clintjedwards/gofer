@@ -6,7 +6,7 @@
 use crate::storage::{self, StorageError};
 use bytes::Bytes;
 use flate2::bufread::MultiGzDecoder;
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use lazy_regex::regex;
 use serde::{
     Deserialize,
@@ -19,9 +19,10 @@ use std::{
     fmt::Display,
     io::{BufRead, Read},
     path::{Path, PathBuf},
+    pin::Pin,
     str::FromStr,
 };
-use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 
 /// The largest a blob can be, both as uploaded and once decompressed.
 pub const MAX_BLOB_BYTES: usize = 50 * 1_000_000_000; // 50GB
@@ -80,6 +81,13 @@ impl Digest {
 
     pub fn hex(&self) -> &str {
         &self.0["sha256:".len()..]
+    }
+
+    /// What Docker calls a task's image once Gofer has loaded it, where this is the digest of its manifest. The name
+    /// comes from the contents, so two versions that built the same image share it, and a name can never point at a
+    /// different image.
+    pub fn docker_name(&self) -> String {
+        format!("gofer-image:{}", self.hex())
     }
 }
 
@@ -323,7 +331,6 @@ impl Images {
     ///
     /// A pipeline can only use blobs it uploaded itself. Otherwise anyone able to register a config could name a layer
     /// from someone else's image, run it, and read the files inside.
-    #[allow(dead_code)] // Registering a config will use this once tasks have images.
     pub async fn verify(
         &self,
         conn: &mut SqliteConnection,
@@ -378,6 +385,112 @@ impl Images {
         }
 
         Ok(())
+    }
+
+    /// Reads what a registered image is made of, or `None` if any part of it is gone from the store.
+    pub async fn stored_image(&self, manifest: &Digest) -> Result<Option<StoredImage>, ImageError> {
+        let Some(manifest_size) = self.size(manifest).await? else {
+            return Ok(None);
+        };
+
+        let manifest_type: ManifestType = self.read_json(manifest, manifest_size).await?;
+        let contents: Manifest = self.read_json(manifest, manifest_size).await?;
+
+        let config: Digest = contents.config.digest.parse()?;
+        let Some(config_size) = self.size(&config).await? else {
+            return Ok(None);
+        };
+        let config_contents: ImageConfig = self.read_json(&config, config_size).await?;
+
+        let mut layers = vec![];
+        for layer in &contents.layers {
+            let layer: Digest = layer.digest.parse()?;
+            if self.size(&layer).await?.is_none() {
+                return Ok(None);
+            }
+            layers.push(layer);
+        }
+
+        Ok(Some(StoredImage {
+            manifest: manifest.clone(),
+            manifest_type: manifest_type.media_type,
+            manifest_size,
+            config,
+            layers,
+            diff_ids: config_contents.rootfs.diff_ids,
+        }))
+    }
+
+    async fn size(&self, digest: &Digest) -> Result<Option<u64>, ImageError> {
+        match tokio::fs::metadata(self.blob_path(digest)).await {
+            Ok(metadata) => Ok(Some(metadata.len())),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(internal(e)),
+        }
+    }
+
+    /// The image as a tar that `docker load` takes, read from the store as it's sent, so a large image is never in
+    /// memory all at once. Docker knows it as [`Digest::docker_name`] afterwards.
+    ///
+    /// It has both Docker's own `manifest.json` and an OCI layout. Docker's older image store refuses a tar without the
+    /// first. Its newer containerd store makes up a different manifest without the second, so the image wouldn't have
+    /// the digest it was registered with.
+    pub fn docker_archive(
+        &self,
+        image: &StoredImage,
+    ) -> impl Stream<Item = std::io::Result<Bytes>> + Send + 'static {
+        let name = image.manifest.docker_name();
+        let blob_name = |digest: &Digest| format!("blobs/sha256/{}", digest.hex());
+
+        let manifest_json = serde_json::json!([{
+            "Config": blob_name(&image.config),
+            "RepoTags": [name],
+            "Layers": image.layers.iter().map(blob_name).collect::<Vec<_>>(),
+        }]);
+
+        let index_json = serde_json::json!({
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [{
+                "mediaType": image.manifest_type,
+                "digest": image.manifest.to_string(),
+                "size": image.manifest_size,
+                "annotations": {
+                    "io.containerd.image.name": format!("docker.io/library/{name}"),
+                    "org.opencontainers.image.ref.name": image.manifest.hex(),
+                },
+            }],
+        });
+
+        let mut entries = vec![
+            ArchiveEntry::Text("manifest.json".into(), manifest_json.to_string()),
+            ArchiveEntry::Text("index.json".into(), index_json.to_string()),
+            ArchiveEntry::Text(
+                "oci-layout".into(),
+                r#"{"imageLayoutVersion":"1.0.0"}"#.into(),
+            ),
+        ];
+
+        // An image can list the same layer twice, but the tar only needs it once.
+        let mut blobs: Vec<&Digest> = vec![&image.manifest, &image.config];
+        for layer in &image.layers {
+            if !blobs.contains(&layer) {
+                blobs.push(layer);
+            }
+        }
+        for digest in blobs {
+            entries.push(ArchiveEntry::Blob(
+                blob_name(digest),
+                self.blob_path(digest),
+            ));
+        }
+
+        futures::stream::iter(entries)
+            .flat_map(ArchiveEntry::into_tar)
+            // A tar ends with two empty blocks.
+            .chain(futures::stream::once(async {
+                Ok(Bytes::from_static(&[0; 1024]))
+            }))
     }
 
     /// Returns a blob by its digest, provided the pipeline uploaded it and it's still in the store.
@@ -452,6 +565,80 @@ impl Images {
             ImageError::Invalid(format!("image blob '{digest}' could not be parsed; {e}"))
         })
     }
+}
+
+/// What a registered image is made of, read from its manifest and config.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredImage {
+    pub manifest: Digest,
+
+    /// The manifest's own media type, which `docker load` has to be told.
+    manifest_type: String,
+
+    manifest_size: u64,
+
+    pub config: Digest,
+
+    pub layers: Vec<Digest>,
+
+    /// The digest of each layer's decompressed contents, in order, as the config lists them. Registration checked them
+    /// against the layers themselves, so they're what Docker's copy of the image has to have too.
+    pub diff_ids: Vec<String>,
+}
+
+/// One file in the tar that [`Images::docker_archive`] makes.
+enum ArchiveEntry {
+    Text(String, String),
+
+    /// A blob from the store, which is only read while it's being sent.
+    Blob(String, PathBuf),
+}
+
+impl ArchiveEntry {
+    fn into_tar(self) -> Pin<Box<dyn Stream<Item = std::io::Result<Bytes>> + Send>> {
+        match self {
+            ArchiveEntry::Text(name, text) => {
+                let header = tar_header(&name, text.len() as u64);
+                let padding = tar_padding(text.len() as u64);
+                Box::pin(futures::stream::iter([
+                    header,
+                    Ok(Bytes::from(text)),
+                    Ok(padding),
+                ]))
+            }
+
+            ArchiveEntry::Blob(name, path) => Box::pin(
+                futures::stream::once(async move {
+                    let file = tokio::fs::File::open(&path).await?;
+                    let size = file.metadata().await?.len();
+                    let contents = tokio_util::io::ReaderStream::new(file.take(size));
+
+                    Ok::<_, std::io::Error>(
+                        futures::stream::once(async move { tar_header(&name, size) })
+                            .chain(contents)
+                            .chain(futures::stream::once(async move { Ok(tar_padding(size)) })),
+                    )
+                })
+                .try_flatten(),
+            ),
+        }
+    }
+}
+
+fn tar_header(name: &str, size: u64) -> std::io::Result<Bytes> {
+    let mut header = tar::Header::new_ustar();
+    header.set_path(name)?;
+    header.set_size(size);
+    header.set_mode(0o644);
+    header.set_mtime(0);
+    header.set_entry_type(tar::EntryType::Regular);
+    header.set_cksum();
+    Ok(Bytes::copy_from_slice(header.as_bytes()))
+}
+
+/// A tar stores each file in 512 byte blocks, so the last one is filled out with zeros.
+fn tar_padding(size: u64) -> Bytes {
+    Bytes::from(vec![0; ((512 - size % 512) % 512) as usize])
 }
 
 /// Works out the digest of a file's decompressed contents.
@@ -932,6 +1119,76 @@ mod tests {
             message.contains("has not been uploaded for pipeline 'some-pipeline'"),
             "{message}"
         );
+    }
+
+    #[tokio::test]
+    async fn docker_archive_has_what_docker_load_needs() {
+        let mut harness = Harness::new().await;
+        let manifest = harness.upload_image(PIPELINE, |_| {}, |_| {}).await;
+        let image = harness
+            .images
+            .stored_image(&manifest)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(image.diff_ids, vec![digest(b"some layer").to_string()]);
+
+        let tar: Vec<u8> = harness
+            .images
+            .docker_archive(&image)
+            .try_collect::<Vec<Bytes>>()
+            .await
+            .unwrap()
+            .concat();
+
+        let mut files = HashMap::new();
+        for entry in tar::Archive::new(tar.as_slice()).entries().unwrap() {
+            let mut entry = entry.unwrap();
+            let mut content = vec![];
+            entry.read_to_end(&mut content).unwrap();
+            files.insert(entry.path().unwrap().display().to_string(), content);
+        }
+
+        let blob = |digest: &Digest| format!("blobs/sha256/{}", digest.hex());
+        let mut names: Vec<&str> = files.keys().map(String::as_str).collect();
+        names.sort();
+        let mut expected = vec![
+            "index.json".to_string(),
+            "manifest.json".to_string(),
+            "oci-layout".to_string(),
+            blob(&manifest),
+            blob(&image.config),
+            blob(&image.layers[0]),
+        ];
+        expected.sort();
+        assert_eq!(names, expected);
+
+        // Blobs come out exactly as they were uploaded.
+        for digest in [&manifest, &image.config, &image.layers[0]] {
+            assert_eq!(
+                files[&blob(digest)],
+                std::fs::read(harness.images.blob_path(digest)).unwrap()
+            );
+        }
+
+        let docker_manifest: serde_json::Value =
+            serde_json::from_slice(&files["manifest.json"]).unwrap();
+        assert_eq!(
+            docker_manifest[0]["RepoTags"],
+            json!([manifest.docker_name()])
+        );
+
+        let index: serde_json::Value = serde_json::from_slice(&files["index.json"]).unwrap();
+        assert_eq!(index["manifests"][0]["digest"], json!(manifest.to_string()));
+    }
+
+    #[tokio::test]
+    async fn stored_image_is_none_once_a_part_is_gone() {
+        let mut harness = Harness::new().await;
+        let manifest = harness.upload_image(PIPELINE, |_| {}, |_| {}).await;
+        std::fs::remove_file(harness.images.blob_path(&digest(&gzip(b"some layer")))).unwrap();
+
+        assert_eq!(harness.images.stored_image(&manifest).await.unwrap(), None);
     }
 
     #[tokio::test]

@@ -27,12 +27,6 @@ const (
 	RequiredParentStatusFailure RequiredParentStatus = "Failure"
 )
 
-// RegistryAuth represents docker repository authentication.
-type RegistryAuth struct {
-	User string `json:"user" example:"some_user" doc:"Container registry username"`
-	Pass string `json:"pass" example:"some_pass" doc:"Container registry password"`
-}
-
 // PipelineWrapper type simply exists so that we can make structs with fields like "id"
 // and we can still add functions called "id()". This makes it not only easier to
 // reason about when working with the struct, but when just writing pipelines as an end user.
@@ -50,28 +44,6 @@ type Pipeline struct {
 	AllowRunsFrom []string       `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"`     // Other pipelines whose runs may start runs of this one.
 	SkipDates     []string       `json:"skip_dates,omitempty" example:"[\"12/25\", \"11/22-11/28:thu\"]" doc:"Days the pipeline does not run, as MM/DD or MM/DD-MM/DD with an optional weekday"` // Days the pipeline does not run.
 	Tasks         []*TaskWrapper `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                              // The task set of the pipeline. AKA which containers should be run.
-}
-
-type UserPipelineTaskConfig struct {
-	ID             string                          `json:"id" example:"my_pipeline_task_name" doc:"Unique identifier for the task"`
-	Description    string                          `json:"description" example:"My pipeline does x" doc:"A short description for the task"`
-	Image          string                          `json:"image" example:"ubuntu:latest" doc:"Which container image to run for this specific task"`
-	RegistryAuth   *RegistryAuth                   `json:"registry_auth" doc:"Auth credentials for the image's registry"`
-	DependsOn      map[string]RequiredParentStatus `json:"depends_on" example:"{\"task-one\":\"SUCCESS\"}"`
-	Variables      map[string]string               `json:"variables" example:"{\"APP_VAR_ONE\":\"some_var_value\"}" doc:"Variables which will be passed in as env vars to the task"`
-	Entrypoint     []string                        `json:"entrypoint" example:"[\"printenv\"]" doc:"Command to run on init of container; can be overridden"`
-	Command        []string                        `json:"command" example:"[\"printenv\"]" doc:"Command to run on init of container; cannot be overridden"`
-	InjectAPIToken bool                            `json:"inject_api_token,omitempty" example:"true" doc:"Whether to inject a run specific Gofer API Key. Useful for using Gofer API within the container"`
-}
-
-type UserPipelineConfig struct {
-	ID            string                    `json:"id" example:"my_pipeline_name" doc:"Unique Identifier for the pipeline"`                                                                                 // Unique Identifier for the pipeline.
-	Name          string                    `json:"name" example:"My Pipeline Name" doc:"Humanized name for the pipeline"`                                                                                  // Humanized name for the pipeline.
-	Description   string                    `json:"description" example:"This pipeline is used for x" doc:"A short description for the pipeline"`                                                           // A short description for the pipeline.
-	Parallelism   int64                     `json:"parallelism" example:"2" doc:"The total amount of pipelines run allowed at any given time"`                                                              // How many runs are allowed to run at the same time.
-	AllowRunsFrom []string                  `json:"allow_runs_from,omitempty" example:"[\"team-a-.*/.*\"]" doc:"Other pipelines whose runs may start runs of this one, as namespace/pipeline patterns"`     // Other pipelines whose runs may start runs of this one.
-	SkipDates     []string                  `json:"skip_dates,omitempty" example:"[\"12/25\", \"11/22-11/28:thu\"]" doc:"Days the pipeline does not run, as MM/DD or MM/DD-MM/DD with an optional weekday"` // Days the pipeline does not run.
-	Tasks         []*UserPipelineTaskConfig `json:"tasks" doc:"The task set of the pipeline. AKA which containers should run"`                                                                              // The task set of the pipeline. AKA which containers should be run.
 }
 
 // `Pipeline` represents a sequence of tasks, where each task is a discrete unit of work encapsulated within a container.
@@ -233,23 +205,6 @@ func validateSkipDate(skipDate string) error {
 func (p *PipelineWrapper) Tasks(tasks ...*TaskWrapper) *PipelineWrapper {
 	p.Pipeline.Tasks = tasks
 	return p
-}
-
-func (p *PipelineWrapper) ToUserPipelineConfig() *UserPipelineConfig {
-	tasks := []*UserPipelineTaskConfig{}
-	for _, task := range p.Pipeline.Tasks {
-		tasks = append(tasks, task.ToUserPipelineTaskConfig())
-	}
-
-	return &UserPipelineConfig{
-		ID:            p.ID,
-		Name:          p.Name,
-		Description:   p.Pipeline.Description,
-		Parallelism:   p.Pipeline.Parallelism,
-		AllowRunsFrom: p.Pipeline.AllowRunsFrom,
-		SkipDates:     p.Pipeline.SkipDates,
-		Tasks:         tasks,
-	}
 }
 
 // Call finish as the last method to the pipeline config. Finish validates and converts the pipeline

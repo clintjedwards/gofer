@@ -9,21 +9,21 @@ pub struct Task {
     pub pipeline_config_version: i64,
     pub task_id: String,
     pub description: String,
-    pub image: String,
-    pub registry_auth: String,
+    pub build: String,
+    pub image_digest: String,
+    pub source_hash: String,
     pub depends_on: String,
     pub variables: String,
     pub entrypoint: String,
     pub command: String,
     pub inject_api_token: bool,
-    pub always_pull_newest_image: bool,
     pub timeout_seconds: i64,
 }
 
 pub async fn insert(conn: &mut SqliteConnection, task: &Task) -> Result<(), StorageError> {
     let sql = "INSERT INTO tasks (namespace_id, pipeline_id, pipeline_config_version, task_id, \
-        description, image, registry_auth, depends_on, variables, entrypoint, command, \
-        inject_api_token, always_pull_newest_image, timeout_seconds) \
+        description, build, image_digest, source_hash, depends_on, variables, entrypoint, command, \
+        inject_api_token, timeout_seconds) \
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     let query = sqlx::query(sql)
@@ -32,14 +32,14 @@ pub async fn insert(conn: &mut SqliteConnection, task: &Task) -> Result<(), Stor
         .bind(task.pipeline_config_version)
         .bind(&task.task_id)
         .bind(&task.description)
-        .bind(&task.image)
-        .bind(&task.registry_auth)
+        .bind(&task.build)
+        .bind(&task.image_digest)
+        .bind(&task.source_hash)
         .bind(&task.depends_on)
         .bind(&task.variables)
         .bind(&task.entrypoint)
         .bind(&task.command)
         .bind(task.inject_api_token)
-        .bind(task.always_pull_newest_image)
         .bind(task.timeout_seconds);
 
     query
@@ -56,9 +56,8 @@ pub async fn list(
     pipeline_id: &str,
     version: i64,
 ) -> Result<Vec<Task>, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
-        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image, \
-        timeout_seconds FROM \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, build, \
+        image_digest, source_hash, depends_on, variables, entrypoint, command, inject_api_token, timeout_seconds FROM \
         tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ?;";
 
     let query = sqlx::query_as::<_, Task>(sql)
@@ -82,9 +81,8 @@ pub async fn get(
     version: i64,
     task_id: &str,
 ) -> Result<Task, StorageError> {
-    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, image, \
-        registry_auth, depends_on, variables, entrypoint, command, inject_api_token, always_pull_newest_image, \
-        timeout_seconds FROM \
+    let sql = "SELECT namespace_id, pipeline_id, pipeline_config_version, task_id, description, build, \
+        image_digest, source_hash, depends_on, variables, entrypoint, command, inject_api_token, timeout_seconds FROM \
         tasks WHERE namespace_id = ? AND pipeline_id = ? AND pipeline_config_version = ? AND task_id = ?;";
 
     let query = sqlx::query_as::<_, Task>(sql)
@@ -161,14 +159,14 @@ mod tests {
             pipeline_config_version: 1,
             task_id: "new_task_id".into(),
             description: "A new task".into(),
-            image: "rust:1.43".into(),
-            registry_auth: "auth_token".into(),
+            build: "{}".into(),
+            image_digest: "sha256:abc".into(),
+            source_hash: "def".into(),
             depends_on: "task_id".into(),
             variables: "KEY=VALUE".into(),
             entrypoint: "/bin/sh".into(),
             command: "cargo test".into(),
             inject_api_token: false,
-            always_pull_newest_image: false,
             timeout_seconds: 600,
         };
 

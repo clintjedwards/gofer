@@ -27,12 +27,6 @@ A pipeline's config is the small program you write to configure how you want you
 | `namespace_id` | string | yes | The unique identifier for the target namespace. |
 | `pipeline_id` | string | yes | The unique identifier for the target pipeline. |
 
-**Query parameters**
-
-| Name | Type | Required | Description |
-| ---- | ---- | -------- | ----------- |
-| `include_secret` | boolean | no | Return credentials in plaintext instead of redacted. Admin only. |
-
 **Responses**
 
 | Status | Body | Description |
@@ -83,12 +77,6 @@ A version of 0 indicates to return the latest pipeline config.
 | `namespace_id` | string | yes | The unique identifier for the target namespace. |
 | `pipeline_id` | string | yes | The unique identifier for the target pipeline. |
 | `version` | integer | yes | The version of the configuration you want to target. 0 means return the latest. |
-
-**Query parameters**
-
-| Name | Type | Required | Description |
-| ---- | ---- | -------- | ----------- |
-| `include_secret` | boolean | no | Return credentials in plaintext instead of redacted. Admin only. |
 
 **Responses**
 

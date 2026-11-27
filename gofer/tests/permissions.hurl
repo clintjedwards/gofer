@@ -80,6 +80,25 @@ Authorization: Bearer {{secret}}
 }
 HTTP 201
 
+# Pipelines can only use image blobs they uploaded themselves, so this one uploads the test image first.
+PUT http://localhost:8080/api/namespaces/perm-frontend/pipelines/website/image-blobs/{{layer}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/layer;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/perm-frontend/pipelines/website/image-blobs/{{config}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/config;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/perm-frontend/pipelines/website/image-blobs/{{manifest}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/manifest;
+HTTP 204
+
 # Register pipeline 'perm-frontend/website'.
 POST http://localhost:8080/api/namespaces/perm-frontend/pipelines/website/configs
 gofer-api-version: v0
@@ -93,21 +112,36 @@ Authorization: Bearer {{secret}}
     "parallelism": 0,
     "tasks": [
       {
-        "always_pull_newest_image": true,
         "depends_on": {},
-        "command": [
-          "echo",
-          "hello"
-        ],
         "id": "task-one",
-        "image": "ubuntu:latest",
+        "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}},
+        "image": {"digest": "{{manifest}}", "source_hash": "hurl"},
         "inject_api_token": false,
-        "variables": {}
+        "variables": {"SCRIPT": "echo hello"}
       }
     ]
   }
 }
 HTTP 201
+
+# Pipelines can only use image blobs they uploaded themselves, so this one uploads the test image first.
+PUT http://localhost:8080/api/namespaces/perm-frontend/pipelines/billing/image-blobs/{{layer}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/layer;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/perm-frontend/pipelines/billing/image-blobs/{{config}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/config;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/perm-frontend/pipelines/billing/image-blobs/{{manifest}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/manifest;
+HTTP 204
 
 # Register pipeline 'perm-frontend/billing'.
 POST http://localhost:8080/api/namespaces/perm-frontend/pipelines/billing/configs
@@ -122,21 +156,36 @@ Authorization: Bearer {{secret}}
     "parallelism": 0,
     "tasks": [
       {
-        "always_pull_newest_image": true,
         "depends_on": {},
-        "command": [
-          "echo",
-          "hello"
-        ],
         "id": "task-one",
-        "image": "ubuntu:latest",
+        "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}},
+        "image": {"digest": "{{manifest}}", "source_hash": "hurl"},
         "inject_api_token": false,
-        "variables": {}
+        "variables": {"SCRIPT": "echo hello"}
       }
     ]
   }
 }
 HTTP 201
+
+# Pipelines can only use image blobs they uploaded themselves, so this one uploads the test image first.
+PUT http://localhost:8080/api/namespaces/perm-backend/pipelines/billing/image-blobs/{{layer}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/layer;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/perm-backend/pipelines/billing/image-blobs/{{config}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/config;
+HTTP 204
+
+PUT http://localhost:8080/api/namespaces/perm-backend/pipelines/billing/image-blobs/{{manifest}}
+gofer-api-version: v0
+Authorization: Bearer {{secret}}
+file,fixtures/manifest;
+HTTP 204
 
 # Register pipeline 'perm-backend/billing'.
 POST http://localhost:8080/api/namespaces/perm-backend/pipelines/billing/configs
@@ -151,16 +200,12 @@ Authorization: Bearer {{secret}}
     "parallelism": 0,
     "tasks": [
       {
-        "always_pull_newest_image": true,
         "depends_on": {},
-        "command": [
-          "echo",
-          "hello"
-        ],
         "id": "task-one",
-        "image": "ubuntu:latest",
+        "build": {"steps": {"base": "alpine:3.22", "steps": [], "keep": null}},
+        "image": {"digest": "{{manifest}}", "source_hash": "hurl"},
         "inject_api_token": false,
-        "variables": {}
+        "variables": {"SCRIPT": "echo hello"}
       }
     ]
   }

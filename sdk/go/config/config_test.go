@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/clintjedwards/gofer/sdk/go/internal/dag"
@@ -62,46 +63,73 @@ func TestInvalidPipelineCyclical(t *testing.T) {
 	}
 }
 
-// Tests that a pipeline can be fully serialized into json and back and retain correct structure.
-// Mostly a test on the many json conversion calls in the library.
-func TestSimpleConfigSerialization(t *testing.T) {
-	pipeline := NewPipeline("simple_test_pipeline", "Simple Test Pipeline").
-		Description("Simple Test Pipeline").
-		Tasks(
-			NewTask("simple-task", "ubuntu:latest").
-				Description("This task simply prints our hello-world message and exits!").
-				Command("echo", `Hello from Gofer!`),
-		)
-
-	pipelineJSON, err := json.Marshal(pipeline)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := UserPipelineConfig{}
-	err = json.Unmarshal(pipelineJSON, &got)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	want := UserPipelineConfig{
-		ID:          "simple_test_pipeline",
-		Name:        "Simple Test Pipeline",
-		Description: "Simple Test Pipeline",
-		Tasks: []*UserPipelineTaskConfig{
-			{
-				ID:          "simple-task",
-				Image:       "ubuntu:latest",
-				Description: "This task simply prints our hello-world message and exits!",
-				Command:     []string{"echo", `Hello from Gofer!`},
-				DependsOn:   map[string]RequiredParentStatus{},
-				Variables:   map[string]string{},
-			},
+// The Rust SDK writes the same JSON, and the server reads both, so the shape can't change by accident. This is the
+// same JSON the Rust SDK's test_builds_serialize_like_the_go_sdk expects.
+func TestBuildsSerializeLikeTheRustSDK(t *testing.T) {
+	cases := []struct {
+		task *TaskWrapper
+		want string
+	}{
+		{
+			task: NewTask("report", "rust:1").
+				Copy("./report", "/src").
+				Run("cargo build --release").
+				Keep([]string{"/src/target/release/report"}, "debian:13-slim"),
+			want: `{"steps": {
+				"base": "rust:1",
+				"steps": [
+					{"copy": {"from": "./report", "to": "/src"}},
+					{"run": {"command": "cargo build --release"}}
+				],
+				"keep": {"paths": ["/src/target/release/report"], "base": "debian:13-slim"}
+			}}`,
+		},
+		{
+			task: NewDockerfileTask("scan", "scan/Dockerfile", "scan"),
+			want: `{"dockerfile": {"path": "scan/Dockerfile", "context": "scan"}}`,
 		},
 	}
 
-	if diff := cmp.Diff(&want, &got); diff != "" {
-		t.Errorf("json did not match (-want +got):\n%s", diff)
+	for _, c := range cases {
+		gotJSON, err := json.Marshal(c.task)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var got, want map[string]any
+		if err := json.Unmarshal(gotJSON, &got); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal([]byte(c.want), &want); err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(want, got["build"]); diff != "" {
+			t.Errorf("build json did not match (-want +got):\n%s", diff)
+		}
+
+		// A config straight from the SDK has no image yet.
+		if got["image"] != nil {
+			t.Errorf("expected no image, got %v", got["image"])
+		}
+	}
+}
+
+func TestStepsCantBeUsedOnDockerfileTasks(t *testing.T) {
+	task := NewDockerfileTask("scan", "Dockerfile", ".").Copy("./app", "/app")
+
+	err := NewPipeline("pipeline", "").Tasks(task).Validate()
+	if err == nil || !strings.Contains(err.Error(), "built from a Dockerfile") {
+		t.Fatalf("expected an error about Dockerfile tasks; found %v", err)
+	}
+}
+
+func TestKeptPathsHaveToBeFullPaths(t *testing.T) {
+	task := NewTask("report", "rust:1").Keep([]string{"target/release/report"}, "debian:13-slim")
+
+	err := NewPipeline("pipeline", "").Tasks(task).Validate()
+	if err == nil || !strings.Contains(err.Error(), "full path") {
+		t.Fatalf("expected an error about full paths; found %v", err)
 	}
 }
 

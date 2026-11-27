@@ -359,7 +359,7 @@ impl Cli {
 
         let pipeline_config = self
             .client
-            .get_config(&namespace, id, 0, None)
+            .get_config(&namespace, id, 0)
             .await
             .context("Could not successfully retrieve pipeline config from Gofer api")?
             .into_inner()

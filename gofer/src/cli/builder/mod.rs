@@ -68,25 +68,25 @@ mod dockerignore;
 mod image;
 mod logs;
 mod progress;
-mod report;
+pub mod report;
 mod source;
-mod tips;
+pub mod tips;
 
 use crate::cli::Cli;
 use anyhow::{Context, Result, bail};
-use buildkit::{Builder, NoDocker};
+pub use buildkit::Builder;
+use buildkit::NoDocker;
 use clap::{Args, Subcommand};
 use context::Contents;
 use image::Image;
 use polyfmt::{Format, print, success};
 use progress::{Failure, Progress};
-use source::Source;
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-    time::Instant,
-};
+pub use source::{Source, hash as source_hash};
+use std::{io::Write, path::Path, time::Instant};
 use tips::Tip;
+
+// Tasks say how their images are built in the SDK's own types, the same ones the server stores.
+pub use gofer_sdk::config::{Build, Step, Steps};
 
 /// Linux won't start a program with an argument longer than this, counting the NUL at its end. It's 32 pages, and a
 /// page is 4KB on amd64.
@@ -159,9 +159,6 @@ impl Task<'_> {
 pub struct Built {
     pub image: Image,
 
-    /// Everything BuildKit said while it built.
-    pub log: PathBuf,
-
     /// Everything the user could improve. [`tips::pick`] decides which ones are worth saying.
     pub tips: Vec<Tip>,
 }
@@ -171,7 +168,7 @@ pub struct Built {
 const IGNORE_FILE: &str = "Dockerfile.dockerignore";
 const IGNORE_FILE_CONTENT: &str = "# Gofer has already left out what .dockerignore says to.\n";
 
-/// Builds a task's image. The sources have to be the ones from [`Build::sources`], and `source_hash` their hash. With
+/// Builds a task's image. The sources have to be the ones from [`sources`], and `source_hash` their hash. With
 /// `no_cache`, nothing is reused from earlier builds. `on_step` hears about each step as it starts, by what the user
 /// calls it.
 ///
@@ -335,11 +332,7 @@ pub async fn build(
         image_size: image.size(),
     });
 
-    Ok(Built {
-        image,
-        log: log_path,
-        tips,
-    })
+    Ok(Built { image, tips })
 }
 
 /// Says what went wrong in the user's terms, where we can tell.
@@ -385,72 +378,33 @@ fn needs_docker_because(build: &Build) -> &'static str {
     }
 }
 
-/// How a task's image is made.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Build {
-    Steps(Steps),
+/// Finds the files that go into a task's image. For steps that's one source per copy, in order. For a Dockerfile it's
+/// the Dockerfile and then its context.
+pub fn sources(build: &Build, config_folder: &Path) -> Result<Vec<Source>> {
+    match build {
+        Build::Steps(steps) => steps
+            .steps
+            .iter()
+            .filter_map(|step| match step {
+                Step::Copy { from, .. } => Some(
+                    Source::copy(&config_folder.join(from))
+                        .with_context(|| format!("Could not copy '{from}'")),
+                ),
+                Step::Run { .. } => None,
+            })
+            .collect(),
 
-    /// Both paths are relative to the folder of the pipeline's config.
-    Dockerfile {
-        path: String,
-        context: String,
-    },
-}
+        Build::Dockerfile { path, context } => {
+            // Docker lets a Dockerfile have an ignore file of its own, which replaces the one in the context.
+            let ignore_file = config_folder.join(format!("{path}.dockerignore"));
+            let ignore_file = ignore_file.exists().then_some(ignore_file.as_path());
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Steps {
-    /// The image to start from.
-    pub base: String,
-
-    pub steps: Vec<Step>,
-
-    pub keep: Option<Keep>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Step {
-    /// Copies a file, or what's inside of a folder. `from` is relative to the folder of the pipeline's config.
-    Copy { from: String, to: String },
-
-    /// Runs a command with `/bin/sh -c`.
-    Run { command: String },
-}
-
-/// Moves files onto another base image once every step has run, leaving everything else behind.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Keep {
-    pub paths: Vec<String>,
-    pub base: String,
-}
-
-impl Build {
-    /// Finds the files that go into the image. For steps that's one source per copy, in order.
-    pub fn sources(&self, config_folder: &Path) -> Result<Vec<Source>> {
-        match self {
-            Build::Steps(steps) => steps
-                .steps
-                .iter()
-                .filter_map(|step| match step {
-                    Step::Copy { from, .. } => Some(
-                        Source::copy(&config_folder.join(from))
-                            .with_context(|| format!("Could not copy '{from}'")),
-                    ),
-                    Step::Run { .. } => None,
-                })
-                .collect(),
-
-            Build::Dockerfile { path, context } => {
-                // Docker lets a Dockerfile have an ignore file of its own, which replaces the one in the context.
-                let ignore_file = config_folder.join(format!("{path}.dockerignore"));
-                let ignore_file = ignore_file.exists().then_some(ignore_file.as_path());
-
-                Ok(vec![
-                    Source::copy(&config_folder.join(path))
-                        .with_context(|| format!("Could not read the Dockerfile '{path}'"))?,
-                    Source::context(&config_folder.join(context), ignore_file)
-                        .with_context(|| format!("Could not read the build context '{context}'"))?,
-                ])
-            }
+            Ok(vec![
+                Source::copy(&config_folder.join(path))
+                    .with_context(|| format!("Could not read the Dockerfile '{path}'"))?,
+                Source::context(&config_folder.join(context), ignore_file)
+                    .with_context(|| format!("Could not read the build context '{context}'"))?,
+            ])
         }
     }
 }
@@ -492,7 +446,7 @@ mod tests {
             keep: None,
         });
 
-        let sources = build.sources(&dir.path().join("pipeline")).unwrap();
+        let sources = super::sources(&build, &dir.path().join("pipeline")).unwrap();
         assert_eq!(sources.len(), 2);
         assert_eq!(names(&sources[0]), vec!["main.py"]);
         assert_eq!(names(&sources[1]), vec!["shared.py"]);
@@ -503,7 +457,7 @@ mod tests {
             steps: vec![copy("./missing")],
             keep: None,
         });
-        let error = build.sources(dir.path()).unwrap_err().to_string();
+        let error = super::sources(&build, dir.path()).unwrap_err().to_string();
         assert!(error.contains("./missing"), "{error}");
     }
 
@@ -519,12 +473,12 @@ mod tests {
         };
 
         // Ignoring the Dockerfile only keeps it out of the context.
-        let sources = build.sources(dir.path()).unwrap();
+        let sources = super::sources(&build, dir.path()).unwrap();
         assert_eq!(names(&sources[0]), vec!["Dockerfile"]);
         assert_eq!(names(&sources[1]), vec!["a"]);
 
         fs::write(dir.path().join("Dockerfile.dockerignore"), "*\n!Dockerfile").unwrap();
-        let sources = build.sources(dir.path()).unwrap();
+        let sources = super::sources(&build, dir.path()).unwrap();
         assert_eq!(names(&sources[1]), vec!["Dockerfile"]);
     }
 
@@ -548,7 +502,7 @@ mod tests {
             keep: None,
         });
         assert_eq!(
-            names(&copy.sources(dir.path()).unwrap()[0]),
+            names(&super::sources(&copy, dir.path()).unwrap()[0]),
             vec!["Dockerfile"]
         );
 
@@ -558,7 +512,7 @@ mod tests {
             context: ".".into(),
         };
         assert_eq!(
-            names(&dockerfile.sources(dir.path()).unwrap()[1]),
+            names(&super::sources(&dockerfile, dir.path()).unwrap()[1]),
             vec!["Dockerfile", "target", "target/CACHEDIR.TAG"]
         );
     }

@@ -138,7 +138,7 @@ extension manifests built into the binary, and those manifests point at the exte
 - Docker, logged in to ghcr.io with a token that has `write:packages`: `docker login ghcr.io -u <github user>`
 - [release](https://github.com/clintjedwards/release), configured with a GitHub token (and an Anthropic key if you
   want it to draft the changelog) in `~/.release.toml`
-- [hurl](https://hurl.dev) and jq for the integration tests
+- [hurl](https://hurl.dev) and jq for the integration tests, which also use Docker to build the image their tasks run
 
 ### Steps
 

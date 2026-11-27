@@ -17,6 +17,15 @@ These come after the built images refactor is done.
   * It needs a static build. The current binary needs glibc, so it won't start on Alpine or distroless images.
   * Nothing can require it, so task code still doesn't need to know about Gofer.
   * This would cover the idea under General of a container that has the CLI packed in.
+* Extensions that don't come from a registry. Today an extension is still an image Gofer pulls, with its own
+  `registry_auth`, while tasks run images Gofer stores itself.
+  * At the least, the extensions that come with Gofer (cron, interval, github) should ship with it, so starting them
+    never pulls anything, works without the network, and always matches the server's version. They could be built
+    into the release and loaded from Gofer's own image store, the same way tasks are.
+  * Maybe every extension: one is installed by uploading its image through the same blob routes `gofer up` uses, and
+    then runs like a very long task. That would make extension `registry_auth` go away too. Open questions: who
+    uploads it (an admin with the CLI, from a Dockerfile or from their local Docker), and how upgrading one works.
+  * If neither turns out worth it, extensions keep pulling from registries as they do now.
 
 # Small things I want to keep track of that I definitely need to do.
 

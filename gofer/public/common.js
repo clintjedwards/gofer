@@ -32,6 +32,15 @@ async function apiFetch(path) {
 
 // Anything that came from the API goes through here before it touches innerHTML. Usernames, status reasons, and
 // variable values are all user controlled.
+// What a task's image is built from, in a few words. The same as the CLI's `built_from`.
+function builtFrom(build) {
+  if (build.dockerfile) {
+    return build.dockerfile.path;
+  }
+  const steps = build.steps;
+  return steps.keep ? `${steps.base}, kept on ${steps.keep.base}` : steps.base;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")

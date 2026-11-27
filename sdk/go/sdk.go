@@ -308,7 +308,7 @@ const (
 
 // Defines values for RunStatusReasonType2.
 const (
-	RunStatusReasonType2SchedulerError RunStatusReasonType2 = "scheduler_error"
+	RunStatusReasonType2ContainerError RunStatusReasonType2 = "container_error"
 )
 
 // Defines values for RunStatusReasonType3.
@@ -363,7 +363,7 @@ const (
 
 // Defines values for TaskExecutionPhase2.
 const (
-	PullingImage TaskExecutionPhase2 = "pulling_image"
+	LoadingImage TaskExecutionPhase2 = "loading_image"
 )
 
 // Defines values for TaskExecutionPhase3.
@@ -438,7 +438,7 @@ const (
 
 // Defines values for TaskExecutionStatusReasonType2.
 const (
-	TaskExecutionStatusReasonType2SchedulerError TaskExecutionStatusReasonType2 = "scheduler_error"
+	TaskExecutionStatusReasonType2ContainerError TaskExecutionStatusReasonType2 = "container_error"
 )
 
 // Defines values for TaskExecutionStatusReasonType3.
@@ -502,6 +502,34 @@ type ApplyExtensionResponse struct {
 
 	// Extension The extension as it ended up. Check `state` and `state_reason` to see whether it started.
 	Extension Extension `json:"extension"`
+}
+
+// Build How a task's image is made. `gofer up` builds it on the user's machine and uploads it to Gofer, so a version of a pipeline always runs exactly the image it was registered with.
+type Build struct {
+	union json.RawMessage
+}
+
+// Build0 Start from a base image, then copy files in and run commands, in the order they were written.
+type Build0 struct {
+	Steps Steps `json:"steps"`
+}
+
+// Build1 Build from a Dockerfile, for anything the steps can't do. Both paths are relative to the folder of the pipeline's config.
+type Build1 struct {
+	Dockerfile struct {
+		// Context The folder whose files the Dockerfile can use.
+		Context string `json:"context"`
+		Path    string `json:"path"`
+	} `json:"dockerfile"`
+}
+
+// BuiltImage The image `gofer up` built for a task.
+type BuiltImage struct {
+	// Digest The digest of the image's manifest, like `sha256:4a5c...`.
+	Digest string `json:"digest"`
+
+	// SourceHash A hash of the files that went into the image. It's how `gofer up` knows whether they changed since.
+	SourceHash string `json:"source_hash"`
 }
 
 // Config A representation of the user's configuration settings for a particular pipeline.
@@ -900,6 +928,15 @@ type Initiator struct {
 
 	// User The plaintext username for of the token.
 	User string `json:"user"`
+}
+
+// Keep defines model for Keep.
+type Keep struct {
+	// Base The image to move them onto, like `debian:13-slim`. It needs whatever the kept files need to run, like the system libraries a program uses.
+	Base string `json:"base"`
+
+	// Paths Full paths in the image. Each lands at the same path on the new base.
+	Paths []string `json:"paths"`
 }
 
 // Kind defines model for Kind.
@@ -1500,14 +1537,8 @@ type Registration struct {
 	Status ExtensionStatus `json:"status"`
 }
 
-// RegistryAuth Authentication information for container registries.
+// RegistryAuth Authentication information for container registries. Extensions use it to pull their images.
 type RegistryAuth struct {
-	Pass string `json:"pass"`
-	User string `json:"user"`
-}
-
-// RegistryAuth2 defines model for RegistryAuth2.
-type RegistryAuth2 struct {
 	Pass string `json:"pass"`
 	User string `json:"user"`
 }
@@ -1611,6 +1642,36 @@ type StartRunResponse struct {
 	Run Run `json:"run"`
 }
 
+// Step defines model for Step.
+type Step struct {
+	union json.RawMessage
+}
+
+// Step0 Copies a file, or what's inside a folder, into the image. `from` is relative to the folder of the pipeline's config, and leaving it is fine, like `../shared`.
+type Step0 struct {
+	Copy struct {
+		From string `json:"from"`
+		To   string `json:"to"`
+	} `json:"copy"`
+}
+
+// Step1 Runs a command with `/bin/sh -c`.
+type Step1 struct {
+	Run struct {
+		Command string `json:"command"`
+	} `json:"run"`
+}
+
+// Steps defines model for Steps.
+type Steps struct {
+	// Base The image to start from, like `rust:1-trixie`.
+	Base string `json:"base"`
+
+	// Keep Moves what it lists onto another base image once every step has run, leaving everything else behind.
+	Keep  *Keep  `json:"keep"`
+	Steps []Step `json:"steps"`
+}
+
 // Subscription defines model for Subscription.
 type Subscription struct {
 	// ExtensionId Unique identifier of the target extension.
@@ -1637,10 +1698,10 @@ type Subscription struct {
 
 // Task A task represents a particular workload within a pipeline. Tasks are composable within a larger pipeline, meaning they can be run before, after, or alongside other tasks. Tasks represent the lowest level of the Gofer hierarchy and is what Gofer references to see how a user might want their workload handled.
 type Task struct {
-	// AlwaysPullNewestImage Always check for most recent version of the current image before running.
-	AlwaysPullNewestImage bool `json:"always_pull_newest_image"`
+	// Build How the task's image is made. `gofer up` builds it on the user's machine before it registers the config.
+	Build Build `json:"build"`
 
-	// Command Command to run on init of container; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd
+	// Command Replaces the image's command; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd. It's already built into the image.
 	Command *[]string `json:"command"`
 
 	// DependsOn Which other tasks (by id) this task depends on.
@@ -1649,22 +1710,17 @@ type Task struct {
 	// Description Short description about the workload.
 	Description string `json:"description"`
 
-	// Entrypoint Command to run on init of container; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint
+	// Entrypoint Replaces the image's entrypoint; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint. It's already built into the image.
 	Entrypoint *[]string `json:"entrypoint"`
 
 	// Id Unique identifier for the task.
 	Id string `json:"id"`
 
-	// Image Which container image to run for this specific task.
-	//
-	// Example: "ubuntu:latest"
-	Image string `json:"image"`
+	// Image The image that was built for this version of the task, which is what its runs use.
+	Image BuiltImage `json:"image"`
 
 	// InjectApiToken Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container.
 	InjectApiToken bool `json:"inject_api_token"`
-
-	// RegistryAuth Auth credentials for the image's registry. The password is a secret reference like `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses.
-	RegistryAuth *RegistryAuth `json:"registry_auth"`
 
 	// TimeoutSeconds How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here.
 	TimeoutSeconds uint64 `json:"timeout_seconds"`
@@ -1677,18 +1733,27 @@ type Task struct {
 //
 // - The ID must be between 3 and 32 characters long and only alphanumeric, hyphens are the only allowed alphanumeric character. Ex. `simple-pipeline` - The name is a human friendly name to represent the pipeline. Ex. `Simple Pipeline`
 //
-// # Example Usage ```ignore // Define a new task within a pipeline. let task = Task { id: "example_task".to_string(), description: Some("This task executes a simple print command in an Ubuntu container.".to_string()), image: "ubuntu:latest".to_string(), registry_auth: None, depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs. variables: HashMap::from([("KEY", "value".to_string())]), entrypoint: None, // Use the image's default entrypoint. command: Some(vec!["echo".to_string(), "Hello World!".to_string()]), inject_api_token: false, }; ```
+// Gofer builds every task's image itself, when you run `gofer up`. A task starts from a base image, copies in your files and runs commands, or it points at a Dockerfile.
+//
+// # Example ``` # use gofer_sdk::config::Task; // Compile a folder, then keep only the binary on a small base. let report = Task::new("report", "rust:1-trixie") .copy("./report", "/src") .run("cd /src && cargo build --release") .keep(["/src/target/release/report"], "debian:13-slim") .command(vec!["/src/target/release/report".into()]);
+//
+// // Anything the steps can't do is a Dockerfile. The last argument is the folder it builds from. let scan = Task::dockerfile("scan", "./scan/Dockerfile", "./scan"); ```
 type Task2 struct {
-	// AlwaysPullNewestImage Always attempt to pull the newest container image.
-	AlwaysPullNewestImage bool                             `json:"always_pull_newest_image"`
-	Command               *[]string                        `json:"command"`
-	DependsOn             map[string]RequiredParentStatus2 `json:"depends_on"`
-	Description           *string                          `json:"description"`
-	Entrypoint            *[]string                        `json:"entrypoint"`
-	Id                    string                           `json:"id"`
-	Image                 string                           `json:"image"`
-	InjectApiToken        bool                             `json:"inject_api_token"`
-	RegistryAuth          *RegistryAuth2                   `json:"registry_auth"`
+	// Build How the task's image is made.
+	Build Build `json:"build"`
+
+	// Command Replaces the image's command. It's built into the image.
+	Command     *[]string                        `json:"command"`
+	DependsOn   map[string]RequiredParentStatus2 `json:"depends_on"`
+	Description *string                          `json:"description"`
+
+	// Entrypoint Replaces the image's entrypoint. It's built into the image.
+	Entrypoint *[]string `json:"entrypoint"`
+	Id         string    `json:"id"`
+
+	// Image The image `gofer up` built. A config straight from the SDK doesn't have one; `gofer up` fills it in before it registers the config.
+	Image          *BuiltImage `json:"image"`
+	InjectApiToken bool        `json:"inject_api_token"`
 
 	// TimeoutSeconds How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse.
 	TimeoutSeconds *uint64           `json:"timeout_seconds,omitempty"`
@@ -1705,9 +1770,6 @@ type TaskExecution struct {
 
 	// ExitCode The exit code of the task execution completion if it is finished.
 	ExitCode *uint8 `json:"exit_code"`
-
-	// ImageDigest The exact image the task execution ran with. Tags can move between runs, so this pins down what actually ran. Usually the repo digest, or the image ID for locally built images. Empty until the task has started.
-	ImageDigest string `json:"image_digest"`
 
 	// LogsExpired Whether the logs have past their retention time.
 	LogsExpired bool `json:"logs_expired"`
@@ -1914,10 +1976,10 @@ type ExtensionState struct {
 // ExtensionState0 Should never be in this state.
 type ExtensionState0 string
 
-// ExtensionState1 Pre-scheduling validation and prep.
+// ExtensionState1 Being checked and prepared before its container starts.
 type ExtensionState1 string
 
-// ExtensionState2 Currently running as reported by scheduler.
+// ExtensionState2 Its container is running, as Docker reports it.
 type ExtensionState2 string
 
 // ExtensionState3 Running, but it stopped answering health checks. Gofer keeps sending it work and restarts it if it doesn't recover. The extension's `state_reason` has the last error.
@@ -2006,7 +2068,7 @@ type RunStatusReasonType0 string
 // RunStatusReasonType1 While executing the run, one or more tasks exited with an abnormal exit code.
 type RunStatusReasonType1 string
 
-// RunStatusReasonType2 While executing the run, one or more tasks returned errors from the scheduler or could not be scheduled.
+// RunStatusReasonType2 While executing the run, one or more tasks' images couldn't be loaded, or their containers couldn't be started.
 type RunStatusReasonType2 string
 
 // RunStatusReasonType3 The run could not be executed as requested due to user defined attributes given.
@@ -2050,10 +2112,10 @@ type TaskExecutionPhase0 string
 // TaskExecutionPhase1 Resolving variables, which includes reading from the secret and object stores.
 type TaskExecutionPhase1 string
 
-// TaskExecutionPhase2 The scheduler is pulling the container image.
+// TaskExecutionPhase2 Docker is loading the task's image from Gofer's image store. Skipped when Docker already has it.
 type TaskExecutionPhase2 string
 
-// TaskExecutionPhase3 The scheduler is creating and starting the container.
+// TaskExecutionPhase3 Docker is creating and starting the container.
 type TaskExecutionPhase3 string
 
 // TaskExecutionPhase4 The container is running.
@@ -2070,13 +2132,13 @@ type TaskExecutionState0 string
 // TaskExecutionState1 Should never be in this state.
 type TaskExecutionState1 string
 
-// TaskExecutionState2 Pre-scheduler validation and prep.
+// TaskExecutionState2 Being checked and prepared before its container starts.
 type TaskExecutionState2 string
 
-// TaskExecutionState3 Waiting to be scheduled.
+// TaskExecutionState3 Waiting for its container to start.
 type TaskExecutionState3 string
 
-// TaskExecutionState4 Currently running as reported by scheduler.
+// TaskExecutionState4 Its container is running, as Docker reports it.
 type TaskExecutionState4 string
 
 // TaskExecutionStatus defines model for task_execution_status.
@@ -2119,7 +2181,7 @@ type TaskExecutionStatusReasonType0 string
 // TaskExecutionStatusReasonType1 A non-zero exit code has been received.
 type TaskExecutionStatusReasonType1 string
 
-// TaskExecutionStatusReasonType2 Encountered an error with the container scheduler.
+// TaskExecutionStatusReasonType2 Docker couldn't load the task's image, or couldn't start or watch its container.
 type TaskExecutionStatusReasonType2 string
 
 // TaskExecutionStatusReasonType3 User error in task execution parameters.
@@ -2184,18 +2246,6 @@ type ListExtensionSubscriptionsParams struct {
 	IncludeDisabled *bool `form:"include_disabled,omitempty" json:"include_disabled,omitempty"`
 }
 
-// ListConfigsParams defines parameters for ListConfigs.
-type ListConfigsParams struct {
-	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
-	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
-}
-
-// GetConfigParams defines parameters for GetConfig.
-type GetConfigParams struct {
-	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
-	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
-}
-
 // PutPipelineObjectParams defines parameters for PutPipelineObject.
 type PutPipelineObjectParams struct {
 	// Force Overwrite a value of a object if it already exists.
@@ -2218,22 +2268,10 @@ type PutRunObjectParams struct {
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
-// ListTaskExecutionsParams defines parameters for ListTaskExecutions.
-type ListTaskExecutionsParams struct {
-	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
-	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
-}
-
 // CancelTaskExecutionParams defines parameters for CancelTaskExecution.
 type CancelTaskExecutionParams struct {
 	// WaitFor Period of time to wait the task before forcing it to cancel. 0 means send SIGKILL instantly.
 	WaitFor uint64 `form:"wait_for" json:"wait_for"`
-}
-
-// GetTaskExecutionParams defines parameters for GetTaskExecution.
-type GetTaskExecutionParams struct {
-	// IncludeSecret Return credentials in plaintext instead of redacted. Admin only.
-	IncludeSecret *bool `form:"include_secret,omitempty" json:"include_secret,omitempty"`
 }
 
 // AttachTaskExecutionParams defines parameters for AttachTaskExecution.
@@ -2309,6 +2347,68 @@ type ExchangeWebLoginJSONRequestBody = ExchangeWebLoginRequest
 
 // UpdateTokenJSONRequestBody defines body for UpdateToken for application/json ContentType.
 type UpdateTokenJSONRequestBody = UpdateTokenRequest
+
+// AsBuild0 returns the union data inside the Build as a Build0
+func (t Build) AsBuild0() (Build0, error) {
+	var body Build0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromBuild0 overwrites any union data inside the Build as the provided Build0
+func (t *Build) FromBuild0(v Build0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeBuild0 performs a merge with any union data inside the Build, using the provided Build0
+func (t *Build) MergeBuild0(v Build0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsBuild1 returns the union data inside the Build as a Build1
+func (t Build) AsBuild1() (Build1, error) {
+	var body Build1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromBuild1 overwrites any union data inside the Build as the provided Build1
+func (t *Build) FromBuild1(v Build1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeBuild1 performs a merge with any union data inside the Build, using the provided Build1
+func (t *Build) MergeBuild1(v Build1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t Build) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *Build) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // AsConfigState0 returns the union data inside the ConfigState as a ConfigState0
 func (t ConfigState) AsConfigState0() (ConfigState0, error) {
@@ -3194,6 +3294,68 @@ func (t PlanAction) MarshalJSON() ([]byte, error) {
 }
 
 func (t *PlanAction) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsStep0 returns the union data inside the Step as a Step0
+func (t Step) AsStep0() (Step0, error) {
+	var body Step0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStep0 overwrites any union data inside the Step as the provided Step0
+func (t *Step) FromStep0(v Step0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStep0 performs a merge with any union data inside the Step, using the provided Step0
+func (t *Step) MergeStep0(v Step0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsStep1 returns the union data inside the Step as a Step1
+func (t Step) AsStep1() (Step1, error) {
+	var body Step1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStep1 overwrites any union data inside the Step as the provided Step1
+func (t *Step) FromStep1(v Step1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStep1 performs a merge with any union data inside the Step, using the provided Step1
+func (t *Step) MergeStep1(v Step1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t Step) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *Step) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -5175,7 +5337,7 @@ type ClientInterface interface {
 	UpdatePipeline(ctx context.Context, namespaceId string, pipelineId string, body UpdatePipelineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListConfigs request
-	ListConfigs(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListConfigs(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RegisterConfigWithBody request with any body
 	RegisterConfigWithBody(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5186,7 +5348,7 @@ type ClientInterface interface {
 	DeleteConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetConfig request
-	GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeployConfig request
 	DeployConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5244,13 +5406,13 @@ type ClientInterface interface {
 	PutRunObjectWithBody(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTaskExecutions request
-	ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CancelTaskExecution request
 	CancelTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *CancelTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTaskExecution request
-	GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AttachTaskExecution request
 	AttachTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *AttachTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5720,8 +5882,8 @@ func (c *Client) UpdatePipeline(ctx context.Context, namespaceId string, pipelin
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListConfigs(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListConfigsRequest(c.Server, namespaceId, pipelineId, params)
+func (c *Client) ListConfigs(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListConfigsRequest(c.Server, namespaceId, pipelineId)
 	if err != nil {
 		return nil, err
 	}
@@ -5768,8 +5930,8 @@ func (c *Client) DeleteConfig(ctx context.Context, namespaceId string, pipelineI
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetConfigRequest(c.Server, namespaceId, pipelineId, version, params)
+func (c *Client) GetConfig(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetConfigRequest(c.Server, namespaceId, pipelineId, version)
 	if err != nil {
 		return nil, err
 	}
@@ -6008,8 +6170,8 @@ func (c *Client) PutRunObjectWithBody(ctx context.Context, namespaceId string, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTaskExecutionsRequest(c.Server, namespaceId, pipelineId, runId, params)
+func (c *Client) ListTaskExecutions(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTaskExecutionsRequest(c.Server, namespaceId, pipelineId, runId)
 	if err != nil {
 		return nil, err
 	}
@@ -6032,8 +6194,8 @@ func (c *Client) CancelTaskExecution(ctx context.Context, namespaceId string, pi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTaskExecutionRequest(c.Server, namespaceId, pipelineId, runId, taskId, params)
+func (c *Client) GetTaskExecution(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskExecutionRequest(c.Server, namespaceId, pipelineId, runId, taskId)
 	if err != nil {
 		return nil, err
 	}
@@ -7550,7 +7712,7 @@ func NewUpdatePipelineRequestWithBody(server string, namespaceId string, pipelin
 }
 
 // NewListConfigsRequest generates requests for ListConfigs
-func NewListConfigsRequest(server string, namespaceId string, pipelineId string, params *ListConfigsParams) (*http.Request, error) {
+func NewListConfigsRequest(server string, namespaceId string, pipelineId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7580,28 +7742,6 @@ func NewListConfigsRequest(server string, namespaceId string, pipelineId string,
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.IncludeSecret != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -7715,7 +7855,7 @@ func NewDeleteConfigRequest(server string, namespaceId string, pipelineId string
 }
 
 // NewGetConfigRequest generates requests for GetConfig
-func NewGetConfigRequest(server string, namespaceId string, pipelineId string, version int64, params *GetConfigParams) (*http.Request, error) {
+func NewGetConfigRequest(server string, namespaceId string, pipelineId string, version int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -7752,28 +7892,6 @@ func NewGetConfigRequest(server string, namespaceId string, pipelineId string, v
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.IncludeSecret != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -8733,7 +8851,7 @@ func NewPutRunObjectRequestWithBody(server string, namespaceId string, pipelineI
 }
 
 // NewListTaskExecutionsRequest generates requests for ListTaskExecutions
-func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams) (*http.Request, error) {
+func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId string, runId uint64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8770,28 +8888,6 @@ func NewListTaskExecutionsRequest(server string, namespaceId string, pipelineId 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.IncludeSecret != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -8876,7 +8972,7 @@ func NewCancelTaskExecutionRequest(server string, namespaceId string, pipelineId
 }
 
 // NewGetTaskExecutionRequest generates requests for GetTaskExecution
-func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams) (*http.Request, error) {
+func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId string, runId uint64, taskId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8920,28 +9016,6 @@ func NewGetTaskExecutionRequest(server string, namespaceId string, pipelineId st
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.IncludeSecret != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_secret", runtime.ParamLocationQuery, *params.IncludeSecret); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -10498,7 +10572,7 @@ type ClientWithResponsesInterface interface {
 	UpdatePipelineWithResponse(ctx context.Context, namespaceId string, pipelineId string, body UpdatePipelineJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePipelineResp, error)
 
 	// ListConfigsWithResponse request
-	ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*ListConfigsResp, error)
+	ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*ListConfigsResp, error)
 
 	// RegisterConfigWithBodyWithResponse request with any body
 	RegisterConfigWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RegisterConfigResp, error)
@@ -10509,7 +10583,7 @@ type ClientWithResponsesInterface interface {
 	DeleteConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*DeleteConfigResp, error)
 
 	// GetConfigWithResponse request
-	GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*GetConfigResp, error)
+	GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*GetConfigResp, error)
 
 	// DeployConfigWithResponse request
 	DeployConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*DeployConfigResp, error)
@@ -10567,13 +10641,13 @@ type ClientWithResponsesInterface interface {
 	PutRunObjectWithBodyWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, key string, params *PutRunObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutRunObjectResp, error)
 
 	// ListTaskExecutionsWithResponse request
-	ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error)
+	ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error)
 
 	// CancelTaskExecutionWithResponse request
 	CancelTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *CancelTaskExecutionParams, reqEditors ...RequestEditorFn) (*CancelTaskExecutionResp, error)
 
 	// GetTaskExecutionWithResponse request
-	GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error)
+	GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error)
 
 	// AttachTaskExecutionWithResponse request
 	AttachTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *AttachTaskExecutionParams, reqEditors ...RequestEditorFn) (*AttachTaskExecutionResp, error)
@@ -12894,8 +12968,8 @@ func (c *ClientWithResponses) UpdatePipelineWithResponse(ctx context.Context, na
 }
 
 // ListConfigsWithResponse request returning *ListConfigsResp
-func (c *ClientWithResponses) ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, params *ListConfigsParams, reqEditors ...RequestEditorFn) (*ListConfigsResp, error) {
-	rsp, err := c.ListConfigs(ctx, namespaceId, pipelineId, params, reqEditors...)
+func (c *ClientWithResponses) ListConfigsWithResponse(ctx context.Context, namespaceId string, pipelineId string, reqEditors ...RequestEditorFn) (*ListConfigsResp, error) {
+	rsp, err := c.ListConfigs(ctx, namespaceId, pipelineId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -12929,8 +13003,8 @@ func (c *ClientWithResponses) DeleteConfigWithResponse(ctx context.Context, name
 }
 
 // GetConfigWithResponse request returning *GetConfigResp
-func (c *ClientWithResponses) GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, params *GetConfigParams, reqEditors ...RequestEditorFn) (*GetConfigResp, error) {
-	rsp, err := c.GetConfig(ctx, namespaceId, pipelineId, version, params, reqEditors...)
+func (c *ClientWithResponses) GetConfigWithResponse(ctx context.Context, namespaceId string, pipelineId string, version int64, reqEditors ...RequestEditorFn) (*GetConfigResp, error) {
+	rsp, err := c.GetConfig(ctx, namespaceId, pipelineId, version, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -13107,8 +13181,8 @@ func (c *ClientWithResponses) PutRunObjectWithBodyWithResponse(ctx context.Conte
 }
 
 // ListTaskExecutionsWithResponse request returning *ListTaskExecutionsResp
-func (c *ClientWithResponses) ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, params *ListTaskExecutionsParams, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error) {
-	rsp, err := c.ListTaskExecutions(ctx, namespaceId, pipelineId, runId, params, reqEditors...)
+func (c *ClientWithResponses) ListTaskExecutionsWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, reqEditors ...RequestEditorFn) (*ListTaskExecutionsResp, error) {
+	rsp, err := c.ListTaskExecutions(ctx, namespaceId, pipelineId, runId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -13125,8 +13199,8 @@ func (c *ClientWithResponses) CancelTaskExecutionWithResponse(ctx context.Contex
 }
 
 // GetTaskExecutionWithResponse request returning *GetTaskExecutionResp
-func (c *ClientWithResponses) GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, params *GetTaskExecutionParams, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error) {
-	rsp, err := c.GetTaskExecution(ctx, namespaceId, pipelineId, runId, taskId, params, reqEditors...)
+func (c *ClientWithResponses) GetTaskExecutionWithResponse(ctx context.Context, namespaceId string, pipelineId string, runId uint64, taskId string, reqEditors ...RequestEditorFn) (*GetTaskExecutionResp, error) {
+	rsp, err := c.GetTaskExecution(ctx, namespaceId, pipelineId, runId, taskId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

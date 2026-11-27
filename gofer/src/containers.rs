@@ -5,14 +5,20 @@ use crate::api::task_executions::{
 };
 use anyhow::Context;
 use bollard::exec::{CreateExecOptions, StartExecOptions};
+use bytes::Bytes;
+use dashmap::DashMap;
 use futures::Stream;
-use futures::stream::TryStreamExt;
+use futures::stream::{StreamExt, TryStreamExt};
 use serde::Deserialize;
-use std::{collections::HashMap, pin::Pin};
+use std::{collections::HashMap, pin::Pin, sync::Arc};
 use strum::{Display, EnumString};
 use tokio::io::AsyncWrite;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, error, info, instrument, trace};
+use tracing::{debug, error, info, instrument, trace, warn};
+
+/// The platform every task image is built for. Docker is asked for it when a task's container is made, so a machine
+/// that isn't amd64 runs it under emulation instead of failing.
+const TASK_PLATFORM: &str = "linux/amd64";
 
 /// Represents different container failure possibilities.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -55,7 +61,7 @@ impl std::fmt::Debug for RegistryAuth {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RegistryAuth")
             .field("user", &self.user)
-            .field("pass", &crate::api::REDACTED)
+            .field("pass", &"[redacted]")
             .finish()
     }
 }
@@ -69,23 +75,34 @@ impl From<crate::api::RegistryAuth> for RegistryAuth {
     }
 }
 
+/// Where a container's image comes from.
+#[derive(Debug)]
+pub enum Image {
+    /// One that Docker pulls from a registry, like an extension's.
+    Registry {
+        /// The image's name; a tag can be included.
+        name: String,
+
+        auth: Option<RegistryAuth>,
+
+        /// Pull it even when Docker already has an image by that name, for tags that move, like `latest`.
+        always_pull: bool,
+    },
+
+    /// One that's already in Docker, because Gofer loaded it from its own store with [`Containers::load_image`]. A
+    /// task's image is always one of these.
+    Loaded(String),
+}
+
 #[derive(Debug)]
 pub struct StartContainerRequest {
     /// A unique identifier to identify the container with.
     pub id: String,
 
-    /// The docker image repository and docker image name; tag can be included.
-    pub image: String,
+    pub image: Image,
 
     /// Environment variables to be passed to the container.
     pub variables: HashMap<String, String>,
-
-    /// Registry authentication details.
-    pub registry_auth: Option<RegistryAuth>,
-
-    /// Attempt to pull the container from the upstream repository even if it exists already locally.
-    /// This is useful if your containers don't use proper tagging or versioning.
-    pub always_pull: bool,
 
     /// Only needed by extensions; spin the container up with appropriate networking settings such that Gofer can
     /// connect to it.
@@ -97,9 +114,8 @@ pub struct StartContainerRequest {
     /// Replaces container's cmd instruction with a custom one.
     pub command: Option<Vec<String>>,
 
-    /// Where to report the phases of starting the container (pulling the image, starting the container) as they
-    /// begin. Lets task executions show where their time went before the container was running. Skips any phase
-    /// that doesn't happen, like pulling an image that's already present.
+    /// Where to report the phases of starting the container as they begin. Lets task executions show where their time
+    /// went before the container was running.
     pub timeline: Option<UnboundedSender<TimelineEntry>>,
 }
 
@@ -107,9 +123,6 @@ pub struct StartContainerRequest {
 pub struct StartContainerResponse {
     /// An endpoint that only is returned for containers with networking set to on.
     pub url: Option<String>,
-
-    /// The exact image the container was started with. Usually the repo digest, or the image ID for local images.
-    pub image_digest: Option<String>,
 }
 
 #[derive(Debug)]
@@ -179,6 +192,9 @@ pub struct Config {
 #[derive(Debug, Clone)]
 pub struct Containers {
     client: bollard::Docker,
+
+    /// A lock for each image being loaded, by name, so tasks that start at the same time don't each load the same one.
+    loads: Arc<DashMap<String, Arc<tokio::sync::Mutex<()>>>>,
 }
 
 impl Containers {
@@ -212,81 +228,150 @@ impl Containers {
             ));
         }
 
+        let architecture = version.arch.clone().unwrap_or_default();
+        if architecture != "amd64" {
+            warn!(
+                architecture,
+                "Docker isn't running on amd64, but task images are always built for {TASK_PLATFORM}; tasks will \
+                 run under emulation, which can be slow"
+            );
+        }
+
         debug!(
             version = version.version.unwrap_or_default(),
             "Successfully connected to Docker"
         );
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            loads: Arc::new(DashMap::new()),
+        })
     }
 
-    /// Start a container based on details passed. Pulls the container's image first if it needs to.
+    /// Makes sure Docker has an image, calling `archive` for a tar in the format `docker load` takes when it doesn't.
+    /// Returns the diff ids of the image's layers as Docker has them, which is how the caller can check that Docker's
+    /// copy is the image it meant. With `replace`, Docker's copy goes first and the image is always loaded.
+    ///
+    /// Two loads of the same image run one after the other, so the second finds it already there. `loading` is called
+    /// first when there's a wait for an image to load, whether this loads it or waits for another load to finish.
+    pub async fn load_image<S>(
+        &self,
+        name: &str,
+        replace: bool,
+        loading: impl FnOnce(),
+        archive: impl FnOnce() -> S,
+    ) -> Result<Vec<String>, ContainerError>
+    where
+        S: Stream<Item = std::io::Result<Bytes>> + Send + 'static,
+    {
+        let mut loading = Some(loading);
+        let mut waiting = || {
+            if let Some(loading) = loading.take() {
+                loading();
+            }
+        };
+
+        let lock = self.loads.entry(name.to_string()).or_default().clone();
+        let _guard = match lock.clone().try_lock_owned() {
+            Ok(guard) => guard,
+            Err(_) => {
+                waiting();
+                lock.lock_owned().await
+            }
+        };
+
+        if replace {
+            self.remove_image(name).await?;
+        } else if let Some(layers) = self.image_layers(name).await? {
+            return Ok(layers);
+        }
+
+        waiting();
+
+        let mut progress = self.client.import_image_stream(
+            bollard::query_parameters::ImportImageOptions {
+                quiet: true,
+                ..Default::default()
+            },
+            archive(),
+            None,
+        );
+
+        while let Some(update) = progress.next().await {
+            let update = update
+                .map_err(|e| ContainerError::Unknown(format!("could not load image; {e}")))?;
+            if let Some(error) = update.error_detail.and_then(|detail| detail.message) {
+                return Err(ContainerError::Unknown(format!(
+                    "could not load image; {error}"
+                )));
+            }
+        }
+
+        self.image_layers(name).await?.ok_or_else(|| {
+            ContainerError::NoSuchImage(format!("'{name}' wasn't there after loading it"))
+        })
+    }
+
+    /// The diff ids of an image's layers as Docker has them, or `None` if Docker doesn't have the image.
+    async fn image_layers(&self, name: &str) -> Result<Option<Vec<String>>, ContainerError> {
+        match self.client.inspect_image(name).await {
+            Ok(image) => Ok(Some(
+                image
+                    .root_fs
+                    .and_then(|root_fs| root_fs.layers)
+                    .unwrap_or_default(),
+            )),
+            Err(bollard::errors::Error::DockerResponseServerError {
+                status_code: 404, ..
+            }) => Ok(None),
+            Err(e) => Err(ContainerError::Unknown(format!(
+                "could not inspect image '{name}'; {e}"
+            ))),
+        }
+    }
+
+    async fn remove_image(&self, name: &str) -> Result<(), ContainerError> {
+        let options = bollard::query_parameters::RemoveImageOptions {
+            force: true,
+            ..Default::default()
+        };
+
+        match self.client.remove_image(name, Some(options), None).await {
+            Ok(_)
+            | Err(bollard::errors::Error::DockerResponseServerError {
+                status_code: 404, ..
+            }) => Ok(()),
+            Err(e) => Err(ContainerError::Unknown(format!(
+                "could not remove image '{name}'; {e}"
+            ))),
+        }
+    }
+
+    /// Start a container based on details passed. Pulls the container's image first if it's from a registry and needs
+    /// to be.
     pub async fn start_container(
         &self,
         request: StartContainerRequest,
     ) -> Result<StartContainerResponse, ContainerError> {
-        let credentials =
-            request
-                .registry_auth
-                .as_ref()
-                .map(|ra| bollard::auth::DockerCredentials {
-                    username: Some(ra.user.clone()),
-                    password: Some(ra.pass.clone()),
-                    ..Default::default()
-                });
-
         let report = |phase| {
             if let Some(timeline) = &request.timeline {
                 _ = timeline.send(TimelineEntry::now(phase));
             }
         };
 
-        if request.always_pull {
-            report(Phase::PullingImage);
-            self.client
-                .create_image(
-                    Some(bollard::query_parameters::CreateImageOptions {
-                        from_image: Some(request.image.clone()),
-                        ..Default::default()
-                    }),
-                    None,
-                    credentials,
-                )
-                .try_collect::<Vec<_>>()
-                .await
-                .map_err(|e| ContainerError::NoSuchImage(format!("{:?}", e)))?;
-        } else {
-            let mut filters = HashMap::new();
-            filters.insert("reference".to_string(), vec![request.image.clone()]);
-
-            let images = self
-                .client
-                .list_images(Some(bollard::query_parameters::ListImagesOptions {
-                    all: true,
-                    filters: Some(filters),
-                    ..Default::default()
-                }))
-                .await
-                .map_err(|e| {
-                    ContainerError::Unknown(format!("could not list local images; {:?}", e))
-                })?;
-
-            if images.is_empty() {
-                report(Phase::PullingImage);
-                self.client
-                    .create_image(
-                        Some(bollard::query_parameters::CreateImageOptions {
-                            from_image: Some(request.image.clone()),
-                            ..Default::default()
-                        }),
-                        None,
-                        credentials,
-                    )
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .map_err(|e| ContainerError::NoSuchImage(format!("{:?}", e)))?;
+        let (image, platform) = match &request.image {
+            Image::Registry {
+                name,
+                auth,
+                always_pull,
+            } => {
+                if *always_pull || self.image_layers(name).await?.is_none() {
+                    self.pull_image(name, auth.as_ref()).await?;
+                }
+                (name.clone(), String::new())
             }
-        }
+            Image::Loaded(name) => (name.clone(), TASK_PLATFORM.to_string()),
+        };
 
         report(Phase::StartingContainer);
 
@@ -310,7 +395,7 @@ impl Containers {
         }
 
         let mut container_config = bollard::models::ContainerCreateBody {
-            image: Some(request.image.clone()),
+            image: Some(image),
             env: Some(
                 request
                     .variables
@@ -357,7 +442,7 @@ impl Containers {
             .create_container(
                 Some(bollard::query_parameters::CreateContainerOptions {
                     name: Some(request.id.clone()),
-                    ..Default::default()
+                    platform,
                 }),
                 container_config,
             )
@@ -375,26 +460,7 @@ impl Containers {
             .await
             .map_err(|e| ContainerError::Unknown(e.to_string()))?;
 
-        // A tag like 'latest' can point at a different image from one run to the next, so we record the exact image
-        // the container started with. Locally built images have no repo digest, so we fall back to the image ID.
-        let image_digest = match &container_info.image {
-            Some(image_id) => match self.client.inspect_image(image_id).await {
-                Ok(image) => image
-                    .repo_digests
-                    .and_then(|digests| digests.into_iter().next())
-                    .or_else(|| Some(image_id.clone())),
-                Err(e) => {
-                    debug!(container_name = &request.id, error = %e, "could not inspect image for digest");
-                    Some(image_id.clone())
-                }
-            },
-            None => None,
-        };
-
-        let mut response = StartContainerResponse {
-            url: None,
-            image_digest,
-        };
+        let mut response = StartContainerResponse { url: None };
 
         if let Some(port) = request.networking {
             let network_settings = container_info.network_settings.ok_or_else(|| {
@@ -439,6 +505,33 @@ impl Containers {
         }
 
         Ok(response)
+    }
+
+    async fn pull_image(
+        &self,
+        name: &str,
+        auth: Option<&RegistryAuth>,
+    ) -> Result<(), ContainerError> {
+        let credentials = auth.map(|auth| bollard::auth::DockerCredentials {
+            username: Some(auth.user.clone()),
+            password: Some(auth.pass.clone()),
+            ..Default::default()
+        });
+
+        self.client
+            .create_image(
+                Some(bollard::query_parameters::CreateImageOptions {
+                    from_image: Some(name.to_string()),
+                    ..Default::default()
+                }),
+                None,
+                credentials,
+            )
+            .try_collect::<Vec<_>>()
+            .await
+            .map_err(|e| ContainerError::NoSuchImage(format!("{e:?}")))?;
+
+        Ok(())
     }
 
     /// Kill a container with an associated timeout if the container does not respond to graceful shutdown.

@@ -1,8 +1,9 @@
 use crate::{
-    api::{RegistryAuth, Variable, VariableSource},
+    api::{Variable, VariableSource},
     storage,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
+use gofer_sdk::config::{Build, BuiltImage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -44,14 +45,11 @@ pub struct Task {
     /// Short description about the workload.
     pub description: String,
 
-    /// Which container image to run for this specific task.
-    ///
-    /// Example: "ubuntu:latest"
-    pub image: String,
+    /// How the task's image is made. `gofer up` builds it on the user's machine before it registers the config.
+    pub build: Build,
 
-    /// Auth credentials for the image's registry. The password is a secret reference like
-    /// `pipeline_secret{{registry_pass}}`; anything else is redacted in API responses.
-    pub registry_auth: Option<RegistryAuth>,
+    /// The image that was built for this version of the task, which is what its runs use.
+    pub image: BuiltImage,
 
     /// Which other tasks (by id) this task depends on.
     pub depends_on: HashMap<String, RequiredParentStatus>,
@@ -59,38 +57,38 @@ pub struct Task {
     /// Variables which will be passed in as env vars to the task.
     pub variables: Vec<Variable>,
 
-    /// Command to run on init of container; follows normal docker convention for entrypoint: https://docs.docker.com/reference/dockerfile/#entrypoint
+    /// Replaces the image's entrypoint; follows normal docker convention for entrypoint:
+    /// https://docs.docker.com/reference/dockerfile/#entrypoint. It's already built into the image.
     pub entrypoint: Option<Vec<String>>,
 
-    /// Command to run on init of container; follows normal docker convention of command: https://docs.docker.com/reference/dockerfile/#cmd
+    /// Replaces the image's command; follows normal docker convention of command:
+    /// https://docs.docker.com/reference/dockerfile/#cmd. It's already built into the image.
     pub command: Option<Vec<String>>,
 
     /// Whether to inject a run specific Gofer API key. Useful for using Gofer API within the container.
     pub inject_api_token: bool,
-
-    /// Always check for most recent version of the current image before running.
-    pub always_pull_newest_image: bool,
 
     /// How long, in seconds, the task's container can run before Gofer stops it and fails the task. 0 means the
     /// server's `api.task_execution_max_timeout_seconds` applies, which also caps anything set here.
     pub timeout_seconds: u64,
 }
 
-impl Task {
-    /// The copy of a task that's safe to hand back to API callers. See [`crate::api::REDACTED`].
-    pub fn redacted(mut self) -> Self {
-        self.registry_auth = self.registry_auth.map(RegistryAuth::redacted);
-        self
-    }
-}
+impl TryFrom<gofer_sdk::config::Task> for Task {
+    type Error = anyhow::Error;
 
-impl From<gofer_sdk::config::Task> for Task {
-    fn from(value: gofer_sdk::config::Task) -> Self {
-        Task {
+    fn try_from(value: gofer_sdk::config::Task) -> Result<Self> {
+        let image = value.image.with_context(|| {
+            format!(
+                "task '{}' has no image; `gofer up` builds one before it registers a config",
+                value.id
+            )
+        })?;
+
+        Ok(Task {
             id: value.id,
             description: value.description.unwrap_or_default(),
-            image: value.image,
-            registry_auth: value.registry_auth.map(RegistryAuth::from),
+            build: value.build,
+            image,
             depends_on: value
                 .depends_on
                 .into_iter()
@@ -108,9 +106,8 @@ impl From<gofer_sdk::config::Task> for Task {
             entrypoint: value.entrypoint,
             command: value.command,
             inject_api_token: value.inject_api_token,
-            always_pull_newest_image: value.always_pull_newest_image,
             timeout_seconds: value.timeout_seconds,
-        }
+        })
     }
 }
 
@@ -127,14 +124,14 @@ impl Task {
             pipeline_config_version: version,
             task_id: self.id.clone(),
             description: self.description.clone(),
-            image: self.image.clone(),
-            registry_auth: serde_json::to_string(&self.registry_auth)?,
+            build: serde_json::to_string(&self.build)?,
+            image_digest: self.image.digest.clone(),
+            source_hash: self.image.source_hash.clone(),
             depends_on: serde_json::to_string(&self.depends_on)?,
             variables: serde_json::to_string(&self.variables)?,
             entrypoint: serde_json::to_string(&self.entrypoint)?,
             command: serde_json::to_string(&self.command)?,
             inject_api_token: self.inject_api_token,
-            always_pull_newest_image: self.always_pull_newest_image,
             timeout_seconds: self.timeout_seconds.try_into()?,
         };
 
@@ -145,14 +142,16 @@ impl Task {
         let task = Self {
             id: storage_task.task_id,
             description: storage_task.description,
-            image: storage_task.image,
-            registry_auth: serde_json::from_str(&storage_task.registry_auth)?,
+            build: serde_json::from_str(&storage_task.build)?,
+            image: BuiltImage {
+                digest: storage_task.image_digest,
+                source_hash: storage_task.source_hash,
+            },
             depends_on: serde_json::from_str(&storage_task.depends_on)?,
             variables: serde_json::from_str(&storage_task.variables)?,
             entrypoint: serde_json::from_str(&storage_task.entrypoint)?,
             command: serde_json::from_str(&storage_task.command)?,
             inject_api_token: storage_task.inject_api_token,
-            always_pull_newest_image: storage_task.always_pull_newest_image,
             timeout_seconds: storage_task.timeout_seconds.try_into()?,
         };
 
@@ -163,14 +162,34 @@ impl Task {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gofer_sdk::config::{Keep, Step, Steps};
+    use pretty_assertions::assert_eq;
 
     #[tokio::test]
     async fn test_task_storage_serialization() {
         let task = Task {
             id: "task1".to_string(),
             description: "A test task".to_string(),
-            image: "rust:latest".to_string(),
-            registry_auth: None,
+            build: Build::Steps(Steps {
+                base: "rust:1".into(),
+                steps: vec![
+                    Step::Copy {
+                        from: "./app".into(),
+                        to: "/src".into(),
+                    },
+                    Step::Run {
+                        command: "cargo build --release".into(),
+                    },
+                ],
+                keep: Some(Keep {
+                    paths: vec!["/src/target/release/app".into()],
+                    base: "debian:13-slim".into(),
+                }),
+            }),
+            image: BuiltImage {
+                digest: format!("sha256:{}", "a".repeat(64)),
+                source_hash: "b".repeat(64),
+            },
             depends_on: HashMap::from([("task_0".into(), RequiredParentStatus::Success)]),
             variables: vec![Variable {
                 key: "test".into(),
@@ -180,57 +199,26 @@ mod tests {
             entrypoint: Some(vec!["/entrypoint.sh".to_string()]),
             command: Some(vec!["run".to_string(), "--option".to_string()]),
             inject_api_token: true,
-            always_pull_newest_image: true,
             timeout_seconds: 600,
         };
 
-        let namespace_id = "ns1".to_string();
-        let pipeline_id = "pipeline1".to_string();
-        let version = 1i64;
-
-        // Testing to_storage
         let storage_task = task
-            .to_storage(namespace_id.clone(), pipeline_id.clone(), version)
+            .to_storage("ns1".into(), "pipeline1".into(), 1)
             .expect("Failed to convert Task to storage::tasks::Task");
-        assert_eq!(storage_task.namespace_id, namespace_id);
-        assert_eq!(storage_task.pipeline_id, pipeline_id);
-        assert_eq!(storage_task.pipeline_config_version, version);
-        assert_eq!(storage_task.task_id, task.id);
-        assert_eq!(storage_task.description, task.description);
-        assert_eq!(storage_task.image, task.image);
-        assert_eq!(
-            storage_task.registry_auth,
-            serde_json::to_string(&task.registry_auth).unwrap()
-        );
-        assert_eq!(
-            storage_task.depends_on,
-            serde_json::to_string(&task.depends_on).unwrap()
-        );
-        assert_eq!(
-            storage_task.variables,
-            serde_json::to_string(&task.variables).unwrap()
-        );
-        assert_eq!(
-            storage_task.entrypoint,
-            serde_json::to_string(&task.entrypoint).unwrap()
-        );
-        assert_eq!(
-            storage_task.command,
-            serde_json::to_string(&task.command).unwrap()
-        );
-        assert_eq!(storage_task.inject_api_token, task.inject_api_token);
+        assert_eq!(storage_task.namespace_id, "ns1");
+        assert_eq!(storage_task.pipeline_id, "pipeline1");
+        assert_eq!(storage_task.pipeline_config_version, 1);
+        assert_eq!(storage_task.image_digest, task.image.digest);
 
-        // Testing from_storage
         let reconstructed_task = Task::from_storage(storage_task)
             .expect("Failed to convert storage::tasks::Task to Task");
-        assert_eq!(reconstructed_task.id, task.id);
-        assert_eq!(reconstructed_task.description, task.description);
-        assert_eq!(reconstructed_task.image, task.image);
-        assert_eq!(reconstructed_task.registry_auth, task.registry_auth);
-        assert_eq!(reconstructed_task.depends_on, task.depends_on);
-        assert_eq!(reconstructed_task.variables, task.variables);
-        assert_eq!(reconstructed_task.entrypoint, task.entrypoint);
-        assert_eq!(reconstructed_task.command, task.command);
-        assert_eq!(reconstructed_task.inject_api_token, task.inject_api_token);
+        assert_eq!(reconstructed_task, task);
+    }
+
+    #[test]
+    fn test_tasks_need_an_image_to_be_registered() {
+        let task = gofer_sdk::config::Task::new("report", "rust:1");
+        let error = Task::try_from(task).unwrap_err().to_string();
+        assert!(error.contains("`gofer up` builds one"), "{error}");
     }
 }

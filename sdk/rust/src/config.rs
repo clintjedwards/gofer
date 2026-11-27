@@ -15,10 +15,64 @@ pub enum RequiredParentStatus {
     Failure,
 }
 
+/// How a task's image is made. `gofer up` builds it on the user's machine and uploads it to Gofer, so a version of a
+/// pipeline always runs exactly the image it was registered with.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub struct RegistryAuth {
-    pub user: String,
-    pub pass: String,
+#[serde(rename_all = "snake_case")]
+pub enum Build {
+    /// Start from a base image, then copy files in and run commands, in the order they were written.
+    Steps(Steps),
+
+    /// Build from a Dockerfile, for anything the steps can't do. Both paths are relative to the folder of the
+    /// pipeline's config.
+    Dockerfile {
+        path: String,
+
+        /// The folder whose files the Dockerfile can use.
+        context: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Steps {
+    /// The image to start from, like `rust:1-trixie`.
+    pub base: String,
+
+    pub steps: Vec<Step>,
+
+    /// Moves what it lists onto another base image once every step has run, leaving everything else behind.
+    pub keep: Option<Keep>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Step {
+    /// Copies a file, or what's inside a folder, into the image. `from` is relative to the folder of the pipeline's
+    /// config, and leaving it is fine, like `../shared`.
+    Copy { from: String, to: String },
+
+    /// Runs a command with `/bin/sh -c`.
+    Run { command: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Keep {
+    /// Full paths in the image. Each lands at the same path on the new base.
+    pub paths: Vec<String>,
+
+    /// The image to move them onto, like `debian:13-slim`. It needs whatever the kept files need to run, like the
+    /// system libraries a program uses.
+    pub base: String,
+}
+
+/// The image `gofer up` built for a task.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct BuiltImage {
+    /// The digest of the image's manifest, like `sha256:4a5c...`.
+    pub digest: String,
+
+    /// A hash of the files that went into the image. It's how `gofer up` knows whether they changed since.
+    pub source_hash: String,
 }
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -278,13 +332,8 @@ impl Pipeline {
                 problems.push(e);
             }
 
-            if task.image.trim().is_empty() {
-                problems.push(ConfigError::InvalidArgument {
-                    argument: format!("image for task '{}'", task.id),
-                    value: task.image.clone(),
-                    description: "cannot be empty".into(),
-                });
-            }
+            problems.extend(task.misused.iter().cloned());
+            validate_build(&task.id, &task.build, &mut problems);
 
             for (parent, status) in &task.depends_on {
                 if *status == RequiredParentStatus::Unknown {
@@ -385,6 +434,64 @@ impl Pipeline {
     }
 }
 
+/// Checks what can be checked about a build without its files. `gofer up` finds the rest, like a path that doesn't
+/// exist, when it builds.
+fn validate_build(task_id: &str, build: &Build, problems: &mut Vec<ConfigError>) {
+    let mut not_empty = |argument: &str, value: &str| {
+        if value.trim().is_empty() {
+            problems.push(ConfigError::InvalidArgument {
+                argument: format!("{argument} for task '{task_id}'"),
+                value: value.into(),
+                description: "cannot be empty".into(),
+            });
+        }
+    };
+
+    match build {
+        Build::Steps(steps) => {
+            not_empty("base image", &steps.base);
+
+            for step in &steps.steps {
+                match step {
+                    Step::Copy { from, to } => {
+                        not_empty("copy source", from);
+                        not_empty("copy destination", to);
+                    }
+                    Step::Run { command } => not_empty("run command", command),
+                }
+            }
+
+            if let Some(keep) = &steps.keep {
+                not_empty("keep base image", &keep.base);
+
+                if keep.paths.is_empty() {
+                    problems.push(ConfigError::InvalidArgument {
+                        argument: format!("keep for task '{task_id}'"),
+                        value: String::new(),
+                        description: "needs at least one path to keep".into(),
+                    });
+                }
+
+                // A relative path would be relative to whatever folder each image starts in, which can differ.
+                for path in &keep.paths {
+                    if !path.starts_with('/') {
+                        problems.push(ConfigError::InvalidArgument {
+                            argument: format!("keep path for task '{task_id}'"),
+                            value: path.clone(),
+                            description: "has to be a full path, starting with '/'".into(),
+                        });
+                    }
+                }
+            }
+        }
+
+        Build::Dockerfile { path, context } => {
+            not_empty("Dockerfile path", path);
+            not_empty("Dockerfile context", context);
+        }
+    }
+}
+
 /// Runs [`Task::script`]'s script with bash when the image has it and sh otherwise. The script is passed as `$1`
 /// rather than pasted into this string so it never needs quoting.
 const SCRIPT_LAUNCHER: &str = r#"exec "$(command -v bash || echo sh)" -c "$1""#;
@@ -427,72 +534,176 @@ pub fn run_object(key: &str) -> String {
 ///   - The name is a human friendly name to represent the pipeline.
 ///     Ex. `Simple Pipeline`
 ///
-/// # Example Usage
-/// ```ignore
-/// // Define a new task within a pipeline.
-/// let task = Task {
-///     id: "example_task".to_string(),
-///     description: Some("This task executes a simple print command in an Ubuntu container.".to_string()),
-///     image: "ubuntu:latest".to_string(),
-///     registry_auth: None,
-///     depends_on: HashMap::new(), // No dependencies, so it starts immediately when the pipeline runs.
-///     variables: HashMap::from([("KEY", "value".to_string())]),
-///     entrypoint: None, // Use the image's default entrypoint.
-///     command: Some(vec!["echo".to_string(), "Hello World!".to_string()]),
-///     inject_api_token: false,
-/// };
+/// Gofer builds every task's image itself, when you run `gofer up`. A task starts from a base image, copies in your
+/// files and runs commands, or it points at a Dockerfile.
+///
+/// # Example
+/// ```
+/// # use gofer_sdk::config::Task;
+/// // Compile a folder, then keep only the binary on a small base.
+/// let report = Task::new("report", "rust:1-trixie")
+///     .copy("./report", "/src")
+///     .run("cd /src && cargo build --release")
+///     .keep(["/src/target/release/report"], "debian:13-slim")
+///     .command(vec!["/src/target/release/report".into()]);
+///
+/// // Anything the steps can't do is a Dockerfile. The last argument is the folder it builds from.
+/// let scan = Task::dockerfile("scan", "./scan/Dockerfile", "./scan");
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Task {
     pub id: String,
     pub description: Option<String>,
-    pub image: String,
-    pub registry_auth: Option<RegistryAuth>,
+
+    /// How the task's image is made.
+    pub build: Build,
+
+    /// The image `gofer up` built. A config straight from the SDK doesn't have one; `gofer up` fills it in before it
+    /// registers the config.
+    #[serde(default)]
+    pub image: Option<BuiltImage>,
+
     pub depends_on: HashMap<String, RequiredParentStatus>,
     pub variables: HashMap<String, String>,
-    pub entrypoint: Option<Vec<String>>,
-    pub command: Option<Vec<String>>,
-    pub inject_api_token: bool,
 
-    /// Always attempt to pull the newest container image.
-    pub always_pull_newest_image: bool,
+    /// Replaces the image's entrypoint. It's built into the image.
+    pub entrypoint: Option<Vec<String>>,
+
+    /// Replaces the image's command. It's built into the image.
+    pub command: Option<Vec<String>>,
+
+    pub inject_api_token: bool,
 
     /// How long the task's container can run before Gofer stops it and fails the task. 0 means the server's max
     /// task execution timeout applies. Defaults to 0 so configs built with older SDKs still parse.
     #[serde(default)]
     pub timeout_seconds: u64,
+
+    /// Builder methods that were used where they can't work, like [`Task::copy`] on a Dockerfile task. They can't
+    /// return an error without breaking the chain, so [`Pipeline::validate`] reports these.
+    #[serde(skip)]
+    misused: Vec<ConfigError>,
 }
 
 impl Task {
-    pub fn new(id: &str, image: &str) -> Self {
+    /// A task whose image starts from `base`, like `rust:1-trixie` or `python:3`. Add to it with [`Task::copy`],
+    /// [`Task::run`] and [`Task::keep`], or leave it as is to run the base image with a command of your own.
+    pub fn new(id: &str, base: &str) -> Self {
+        Self::with_build(
+            id,
+            Build::Steps(Steps {
+                base: base.to_string(),
+                steps: vec![],
+                keep: None,
+            }),
+        )
+    }
+
+    /// A task whose image is built from a Dockerfile, for anything [`Task::copy`] and [`Task::run`] can't do. Both
+    /// paths are relative to the folder of the pipeline's config. The context is the folder the Dockerfile can use
+    /// files from, the same as the one you'd pass to `docker build`, and its `.dockerignore` is used the same way.
+    pub fn dockerfile(id: &str, path: &str, context: &str) -> Self {
+        Self::with_build(
+            id,
+            Build::Dockerfile {
+                path: path.to_string(),
+                context: context.to_string(),
+            },
+        )
+    }
+
+    fn with_build(id: &str, build: Build) -> Self {
         Task {
             id: id.to_string(),
             description: None,
-            image: image.to_string(),
-            registry_auth: None,
+            build,
+            image: None,
             depends_on: HashMap::new(),
             variables: HashMap::new(),
             entrypoint: None,
             command: None,
             inject_api_token: false,
-            always_pull_newest_image: true,
             timeout_seconds: 0,
+            misused: vec![],
         }
+    }
+
+    /// Copies a file, or what's inside a folder, into the image at `to`. `from` is relative to the folder of the
+    /// pipeline's config, and leaving it is fine, like `../shared`.
+    ///
+    /// The folder's `.dockerignore` decides what to leave out. Folders that only hold a cache, like Cargo's `target/`,
+    /// are left out too, so copying a project doesn't copy what a local build left behind.
+    pub fn copy(self, from: &str, to: &str) -> Self {
+        self.add_step(
+            "copy",
+            Step::Copy {
+                from: from.to_string(),
+                to: to.to_string(),
+            },
+        )
+    }
+
+    /// Runs a command in the image with `/bin/sh -c`, after the steps before it. Gofer keeps caches for Cargo and Go
+    /// between builds on its own, so a plain `cargo build --release` is only slow the first time.
+    pub fn run(self, command: &str) -> Self {
+        self.add_step(
+            "run",
+            Step::Run {
+                command: command.to_string(),
+            },
+        )
+    }
+
+    /// Once every step has run, moves only `paths` onto `base` and leaves everything else behind, including the
+    /// compiler. A smaller image uploads and starts faster. Paths have to be full paths, and each one lands at the
+    /// same path on the new base.
+    ///
+    /// Nothing else carries over from the first base: no environment variables, working directory or entrypoint.
+    /// The new base needs whatever the kept files need to run; `rust:1-trixie` builds programs that run on
+    /// `debian:13-slim`, for example. Calling it again replaces what was kept before.
+    pub fn keep<I, S>(mut self, paths: I, base: &str) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let keep = Keep {
+            paths: paths.into_iter().map(Into::into).collect(),
+            base: base.to_string(),
+        };
+
+        match &mut self.build {
+            Build::Steps(steps) => steps.keep = Some(keep),
+            Build::Dockerfile { .. } => self.misuse("keep", &keep.paths.join(", ")),
+        }
+        self
+    }
+
+    fn add_step(mut self, name: &str, step: Step) -> Self {
+        match &mut self.build {
+            Build::Steps(steps) => steps.steps.push(step),
+            Build::Dockerfile { .. } => {
+                let value = match &step {
+                    Step::Copy { from, .. } => from.clone(),
+                    Step::Run { command } => command.clone(),
+                };
+                self.misuse(name, &value);
+            }
+        }
+        self
+    }
+
+    fn misuse(&mut self, name: &str, value: &str) {
+        self.misused.push(ConfigError::InvalidArgument {
+            argument: format!("{name} for task '{}'", self.id),
+            value: value.to_string(),
+            description:
+                "can't be used on a task built from a Dockerfile; do it in the Dockerfile instead"
+                    .into(),
+        });
     }
 
     pub fn description(mut self, description: &str) -> Self {
         self.description = Some(description.to_string());
-        self
-    }
-
-    /// Authentication details if your container repository requires them. The password has to be a secret reference
-    /// like `pipeline_secret("registry_pass")` or `global_secret("registry_pass")` so it stays out of your config. The
-    /// user can be plain or a secret.
-    pub fn registry_auth(mut self, user: &str, pass: &str) -> Self {
-        self.registry_auth = Some(RegistryAuth {
-            user: user.to_string(),
-            pass: pass.to_string(),
-        });
         self
     }
 
@@ -579,14 +790,15 @@ impl Task {
         self
     }
 
-    /// Set/Replace the Entrypoint of the task container.
+    /// Replaces the image's entrypoint, the same way `docker run --entrypoint` would, so the image's command goes
+    /// too unless you set one. It's built into the image.
     /// https://docs.docker.com/engine/reference/builder/#understand-how-cmd-and-entrypoint-interact
     pub fn entrypoint(mut self, entrypoint: Vec<String>) -> Self {
         self.entrypoint = Some(entrypoint);
         self
     }
 
-    /// Set/Replace the command(CMD) of the task container.
+    /// Replaces the image's command (CMD). It's built into the image.
     /// https://docs.docker.com/engine/reference/builder/#understand-how-cmd-and-entrypoint-interact
     pub fn command(mut self, command: Vec<String>) -> Self {
         self.command = Some(command);
@@ -605,7 +817,6 @@ impl Task {
     /// # use gofer_sdk::config::Task;
     /// let task = Task::new("run-cargo-test", "ghcr.io/clintjedwards/gofer/tools:rust")
     ///     .description("Run cargo test command for workspace")
-    ///     .always_pull_newest_image(true)
     ///     .script(r#"
     ///         cargo test
     ///         wget https://example.com/somefile
@@ -641,13 +852,7 @@ impl Task {
         self
     }
 
-    /// Always attempt to pull the newest container image for a given tag.
-    pub fn always_pull_newest_image(mut self, pull: bool) -> Self {
-        self.always_pull_newest_image = pull;
-        self
-    }
-
-    /// How long the task's container can run before Gofer stops it and marks the task as failed. Time spent pulling
+    /// How long the task's container can run before Gofer stops it and marks the task as failed. Time spent loading
     /// the image doesn't count. Without a timeout, or with one longer than the server allows, the server's max task
     /// execution timeout applies instead.
     ///
@@ -785,6 +990,65 @@ mod tests {
                 ])
             )]))
         )
+    }
+
+    /// The Go SDK writes the same JSON, and the server reads both, so the shape can't change by accident.
+    #[test]
+    fn test_builds_serialize_like_the_go_sdk() {
+        let task = Task::new("report", "rust:1")
+            .copy("./report", "/src")
+            .run("cargo build --release")
+            .keep(["/src/target/release/report"], "debian:13-slim");
+
+        assert_eq!(
+            serde_json::to_value(&task.build).unwrap(),
+            serde_json::json!({"steps": {
+                "base": "rust:1",
+                "steps": [
+                    {"copy": {"from": "./report", "to": "/src"}},
+                    {"run": {"command": "cargo build --release"}},
+                ],
+                "keep": {"paths": ["/src/target/release/report"], "base": "debian:13-slim"},
+            }})
+        );
+
+        assert_eq!(
+            serde_json::to_value(Task::dockerfile("scan", "scan/Dockerfile", "scan").build)
+                .unwrap(),
+            serde_json::json!({"dockerfile": {"path": "scan/Dockerfile", "context": "scan"}})
+        );
+
+        // A config straight from the SDK has no image yet, and the problems found while building it aren't part of it.
+        let json = serde_json::to_value(&task).unwrap();
+        assert_eq!(json["image"], serde_json::Value::Null);
+        assert!(json.get("misused").is_none());
+    }
+
+    #[test]
+    fn test_steps_cant_be_used_on_dockerfile_tasks() {
+        let task = Task::dockerfile("scan", "Dockerfile", ".")
+            .copy("./app", "/app")
+            .run("make")
+            .keep(["/app"], "alpine:3");
+
+        let result = Pipeline::new("pipeline", "").tasks(vec![task]).validate();
+        let Err(ConfigError::Invalid(problems)) = result else {
+            panic!("expected an invalid config, got {result:?}");
+        };
+        assert_eq!(problems.len(), 3, "{problems:#?}");
+        assert!(problems[0].to_string().contains("built from a Dockerfile"));
+    }
+
+    #[test]
+    fn test_kept_paths_have_to_be_full_paths() {
+        let task = Task::new("report", "rust:1").keep(["target/release/report"], "debian:13-slim");
+
+        let result = Pipeline::new("pipeline", "").tasks(vec![task]).validate();
+        let Err(ConfigError::Invalid(problems)) = result else {
+            panic!("expected an invalid config, got {result:?}");
+        };
+        assert_eq!(problems.len(), 1, "{problems:#?}");
+        assert!(problems[0].to_string().contains("full path"));
     }
 
     #[test]

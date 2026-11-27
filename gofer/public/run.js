@@ -329,7 +329,7 @@ function runStarted(run) {
 const PHASES = {
   waiting_on_dependencies: { label: "waiting on dependencies", bar: "bg-gray-200 dark:bg-neutral-600" },
   preparing: { label: "preparing", bar: "bg-emerald-500/20" },
-  pulling_image: { label: "pulling image", bar: "bg-emerald-500/35" },
+  loading_image: { label: "loading image", bar: "bg-emerald-500/35" },
   starting_container: { label: "starting container", bar: "bg-emerald-500/50" },
   running: { label: "running", bar: null },
 };
@@ -627,7 +627,7 @@ const MIN_SEGMENT_PERCENT = 1.5;
 // Places a task's timeline segments on its bar, as a left and width in percent for each. A segment lasts until the
 // next one starts, so they're drawn side by side and never overlap.
 //
-// On a long run, short phases like pulling an image round down to nothing, so every phase that took any time gets a
+// On a long run, short phases like loading an image round down to nothing, so every phase that took any time gets a
 // minimum width, and the last segment always gets one so very short tasks don't vanish. The room for that comes out
 // of the longer phases, so the task still ends where it really did. A task too short to fit its segments even then
 // starts a little early instead of running off the end of the bar.
@@ -777,10 +777,8 @@ function renderProblems(tasks) {
       if (task.status_reason) {
         parts.push(labeled("Reason", `<span class="font-medium">${escapeHtml(task.status_reason.reason)}</span>: ${escapeHtml(task.status_reason.description)}`));
       }
-      parts.push(labeled("Image", `<span class="font-mono text-xs">${escapeHtml(task.task.image)}</span>`));
-      if (task.image_digest) {
-        parts.push(labeled("Digest", `<span class="font-mono text-xs break-all">${escapeHtml(task.image_digest)}</span>`));
-      }
+      parts.push(labeled("Built from", `<span class="font-mono text-xs">${escapeHtml(builtFrom(task.task.build))}</span>`));
+      parts.push(labeled("Digest", `<span class="font-mono text-xs break-all">${escapeHtml(task.task.image.digest)}</span>`));
 
       let output;
       if (task.started === 0) {
@@ -885,8 +883,8 @@ function renderTaskDetails(task) {
   return `<div class="grid gap-6 md:grid-cols-2">
       <dl class="space-y-2 text-sm">
         ${task.task.description ? labeled("About", escapeHtml(task.task.description)) : ""}
-        ${labeled("Image", `<span class="font-mono text-xs break-all">${escapeHtml(task.task.image)}</span>`)}
-        ${task.image_digest ? labeled("Digest", `<span class="font-mono text-xs break-all">${escapeHtml(task.image_digest)}</span>`) : ""}
+        ${labeled("Built from", `<span class="font-mono text-xs break-all">${escapeHtml(builtFrom(task.task.build))}</span>`)}
+        ${labeled("Digest", `<span class="font-mono text-xs break-all">${escapeHtml(task.task.image.digest)}</span>`)}
         ${labeled("Entrypoint", formatArgs(task.task.entrypoint))}
         ${labeled("Command", formatArgs(task.task.command))}
         ${labeled("Exit code", task.exit_code ?? "-")}
@@ -896,7 +894,6 @@ function renderTaskDetails(task) {
         ${renderTimeSpent(task)}
         ${labeled("Logs", logs)}
         ${labeled("API token", yesNo(task.task.inject_api_token))}
-        ${labeled("Always pull", yesNo(task.task.always_pull_newest_image))}
         ${labeled("Timeout", task.task.timeout_seconds ? `${task.task.timeout_seconds}s` : "Server max")}
       </dl>
       <div>

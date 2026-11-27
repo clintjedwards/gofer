@@ -1,11 +1,13 @@
+mod images;
+
 use crate::cli::{Cli, api_error_message, ask_yes_no, rail};
 use crate::conf::cli::OutputFormat;
 use anyhow::bail;
 use anyhow::{Context, Result};
 use colored::Colorize;
-use gofer_sdk::api::types::ConfigState;
+use gofer_sdk::api::types::{self, ConfigState};
 use polyfmt::{Format, error, print, println, success};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::{BufRead, BufReader, IsTerminal, Read};
 use std::path::PathBuf;
 
@@ -31,6 +33,7 @@ impl Cli {
         path: PathBuf,
         deploy: bool,
         yes: bool,
+        rebuild: bool,
     ) -> Result<()> {
         let namespace = match namespace_id {
             Some(namespace) => namespace,
@@ -47,6 +50,7 @@ impl Cli {
             )
         })?;
 
+        let config_folder = full_path.clone();
         let full_path = full_path.to_string_lossy();
 
         // We need to detect which compiler we need to use by examining
@@ -128,22 +132,33 @@ impl Cli {
         let mut output = "".to_string();
         cmd.stdout.unwrap().read_to_string(&mut output).unwrap();
 
-        let config: gofer_sdk::api::types::Pipeline =
+        let mut config: gofer_sdk::api::types::Pipeline =
             serde_json::from_str(&output).context("Could not parse pipeline config")?;
+
+        print!("Hashing the files each task copies in"; vec![Format::Spinner]);
+        let prepared = images::prepare(&config_folder, &config)?;
+        let hashes: HashMap<&str, &str> = (prepared.iter())
+            .map(|(id, prepared)| (id.as_str(), prepared.source_hash.as_str()))
+            .collect();
 
         print!("Comparing with the current pipeline config"; vec![Format::Spinner]);
 
-        let current = match self
-            .client
-            .get_config(&namespace, &config.id, 0, None)
-            .await
-        {
+        let current = match self.client.get_config(&namespace, &config.id, 0).await {
             Ok(response) => Some(response.into_inner().config),
             Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => None,
             Err(e) => bail!(
                 "Could not get the current pipeline config; {}",
                 api_error_message(e)
             ),
+        };
+
+        // With --rebuild nothing is kept, so a base image that changed upstream gets downloaded again.
+        let reusable = match rebuild {
+            true => images::Reusable::default(),
+            false => {
+                self.reusable_images(&namespace, &config, &prepared, current.as_ref())
+                    .await?
+            }
         };
 
         match &current {
@@ -158,9 +173,9 @@ impl Cli {
                 );
             }
             Some(current) => {
-                let changes = diff(&current_fields(current), &new_fields(&config));
+                let changes = diff(&current_fields(current), &new_fields(&config, &hashes));
 
-                if changes.is_empty() {
+                if changes.is_empty() && reusable.gone.is_empty() && !rebuild {
                     return self.unchanged(&namespace, current, deploy).await;
                 }
 
@@ -170,6 +185,20 @@ impl Cli {
                 );
                 for change in &changes {
                     print_change(change);
+                }
+                for id in &reusable.gone {
+                    println!(
+                        "  {} {} tasks.{id}: its image is gone from Gofer, so it's built again",
+                        rail(),
+                        "~".yellow()
+                    );
+                }
+                if rebuild {
+                    println!(
+                        "  {} {} every task's image is built again from scratch",
+                        rail(),
+                        "~".yellow()
+                    );
                 }
 
                 // Prompts can't be answered when nobody's at a terminal or the output is JSON or silent, so in those
@@ -189,6 +218,34 @@ impl Cli {
                     return Ok(());
                 }
             }
+        }
+
+        let to_build: Vec<&types::Task2> = (config.tasks.iter())
+            .filter(|task| !reusable.images.contains_key(&task.id))
+            .collect();
+
+        let mut images = reusable.images;
+        if !to_build.is_empty() {
+            let built = self
+                .build_images(&namespace, &config, &to_build, &prepared, rebuild)
+                .await?;
+            self.upload_images(&namespace, &config.id, &built).await?;
+
+            for (ids, built) in &built {
+                for id in ids {
+                    images.insert(
+                        id.clone(),
+                        types::BuiltImage {
+                            digest: built.image.manifest.to_string(),
+                            source_hash: prepared[id].source_hash.clone(),
+                        },
+                    );
+                }
+            }
+        }
+
+        for task in &mut config.tasks {
+            task.image = images.remove(&task.id);
         }
 
         print!("Creating pipeline config"; vec![Format::Spinner]);
@@ -263,7 +320,7 @@ fn print_next_steps(pipeline_id: &str) {
     );
 }
 
-/// A pipeline config flattened into `field -> value`, like `tasks.build.image -> alpine`. The config we just built
+/// A pipeline config flattened into `field -> value`, like `tasks.build.base -> alpine`. The config we just built
 /// and the one Gofer has come back in different shapes (a task list with variables as a map versus a task map with
 /// variables as a list), so we flatten both and compare those instead.
 type Fields = BTreeMap<String, String>;
@@ -272,14 +329,16 @@ type Fields = BTreeMap<String, String>;
 struct FlatTask {
     id: String,
     description: String,
-    image: String,
-    registry_auth: Option<(String, String)>,
+    build: Vec<(String, String)>,
+
+    /// The hash of the files the task copies in. Only whether it changed is shown.
+    files: String,
+
     depends_on: BTreeMap<String, String>,
     variables: BTreeMap<String, String>,
     entrypoint: Option<Vec<String>>,
     command: Option<Vec<String>>,
     inject_api_token: bool,
-    always_pull_newest_image: bool,
     timeout_seconds: u64,
 }
 
@@ -294,12 +353,11 @@ impl FlatTask {
             }
         };
 
-        insert("image", self.image);
         insert("description", self.description);
-        if let Some((user, pass)) = self.registry_auth {
-            insert("registry_auth.user", user);
-            insert("registry_auth.pass", pass);
+        for (field, value) in self.build {
+            insert(&field, value);
         }
+        insert("files", self.files);
         for (parent, status) in self.depends_on {
             insert(&format!("depends_on.{parent}"), status);
         }
@@ -319,14 +377,42 @@ impl FlatTask {
                 .unwrap_or_default(),
         );
         insert("inject_api_token", self.inject_api_token.to_string());
-        insert(
-            "always_pull_newest_image",
-            self.always_pull_newest_image.to_string(),
-        );
         // 0 means unset, so it's left out like the other empty values.
         if self.timeout_seconds > 0 {
             insert("timeout_seconds", self.timeout_seconds.to_string());
         }
+    }
+}
+
+/// How a task's image is built, as fields. Every task has either `base` or `dockerfile`. Steps are numbered from 1,
+/// in order, so adding one in the middle shows up as every step after it changing.
+fn build_fields(build: &types::Build) -> Vec<(String, String)> {
+    match build {
+        types::Build::Steps(steps) => {
+            let mut fields = vec![("base".to_string(), steps.base.clone())];
+
+            for (number, step) in steps.steps.iter().enumerate() {
+                let step = match step {
+                    types::Step::Copy { from, to } => format!("copy {from} to {to}"),
+                    types::Step::Run { command } => format!("run {command}"),
+                };
+                fields.push((format!("steps.{}", number + 1), step));
+            }
+
+            if let Some(keep) = &steps.keep {
+                fields.push((
+                    "keep".into(),
+                    format!("{} on {}", keep.paths.join(", "), keep.base),
+                ));
+            }
+
+            fields
+        }
+
+        types::Build::Dockerfile { path, context } => vec![
+            ("dockerfile".into(), path.clone()),
+            ("context".into(), context.clone()),
+        ],
     }
 }
 
@@ -335,7 +421,7 @@ fn join_args(args: &[String]) -> String {
     shlex::try_join(args.iter().map(String::as_str)).unwrap_or_else(|_| args.join(" "))
 }
 
-fn new_fields(config: &gofer_sdk::api::types::Pipeline) -> Fields {
+fn new_fields(config: &gofer_sdk::api::types::Pipeline, hashes: &HashMap<&str, &str>) -> Fields {
     let mut fields = Fields::new();
     fields.insert("name".into(), config.name.clone());
     fields.insert(
@@ -350,11 +436,8 @@ fn new_fields(config: &gofer_sdk::api::types::Pipeline) -> Fields {
         FlatTask {
             id: task.id.clone(),
             description: task.description.clone().unwrap_or_default(),
-            image: task.image.clone(),
-            registry_auth: task
-                .registry_auth
-                .as_ref()
-                .map(|auth| (auth.user.clone(), auth.pass.clone())),
+            build: build_fields(&task.build),
+            files: hashes.get(task.id.as_str()).unwrap_or(&"").to_string(),
             depends_on: task
                 .depends_on
                 .iter()
@@ -364,7 +447,6 @@ fn new_fields(config: &gofer_sdk::api::types::Pipeline) -> Fields {
             entrypoint: task.entrypoint.clone(),
             command: task.command.clone(),
             inject_api_token: task.inject_api_token,
-            always_pull_newest_image: task.always_pull_newest_image,
             timeout_seconds: task.timeout_seconds,
         }
         .insert_into(&mut fields);
@@ -386,11 +468,8 @@ fn current_fields(config: &gofer_sdk::api::types::Config) -> Fields {
         FlatTask {
             id: task.id.clone(),
             description: task.description.clone(),
-            image: task.image.clone(),
-            registry_auth: task
-                .registry_auth
-                .as_ref()
-                .map(|auth| (auth.user.clone(), auth.pass.clone())),
+            build: build_fields(&task.build),
+            files: task.image.source_hash.clone(),
             depends_on: task
                 .depends_on
                 .iter()
@@ -404,7 +483,6 @@ fn current_fields(config: &gofer_sdk::api::types::Config) -> Fields {
             entrypoint: task.entrypoint.clone(),
             command: task.command.clone(),
             inject_api_token: task.inject_api_token,
-            always_pull_newest_image: task.always_pull_newest_image,
             timeout_seconds: task.timeout_seconds,
         }
         .insert_into(&mut fields);
@@ -421,22 +499,24 @@ struct Change {
     new: Option<String>,
 }
 
-/// Every task has an image, and task ids can't contain dots, so `tasks.<id>.image` tells us which tasks exist.
-fn task_images(fields: &Fields) -> BTreeMap<&str, &str> {
+/// Every task has a base image or a Dockerfile, and task ids can't contain dots, so `tasks.<id>.base` and
+/// `tasks.<id>.dockerfile` tell us which tasks exist, and what each is built from.
+fn task_builds(fields: &Fields) -> BTreeMap<&str, &str> {
     fields
         .iter()
-        .filter_map(|(field, image)| {
-            let id = field.strip_prefix("tasks.")?.strip_suffix(".image")?;
-            (!id.contains('.')).then_some((id, image.as_str()))
+        .filter_map(|(field, built_from)| {
+            let rest = field.strip_prefix("tasks.")?;
+            let id = (rest.strip_suffix(".base")).or_else(|| rest.strip_suffix(".dockerfile"))?;
+            (!id.contains('.')).then_some((id, built_from.as_str()))
         })
         .collect()
 }
 
-/// A task that was added or removed as a whole is one change, `tasks.<id>`, with its image as the value. Listing all
+/// A task that was added or removed as a whole is one change, `tasks.<id>`, with what it's built from as the value. Listing all
 /// of its fields would mostly be defaults like `inject_api_token = false`.
 fn diff(old: &Fields, new: &Fields) -> Vec<Change> {
-    let old_tasks = task_images(old);
-    let new_tasks = task_images(new);
+    let old_tasks = task_builds(old);
+    let new_tasks = task_builds(new);
     let in_whole_task = |field: &str| {
         field
             .strip_prefix("tasks.")
@@ -465,8 +545,8 @@ fn diff(old: &Fields, new: &Fields) -> Vec<Change> {
         if old_tasks.contains_key(id) != new_tasks.contains_key(id) {
             changes.push(Change {
                 field: format!("tasks.{id}"),
-                old: old_tasks.get(id).map(|image| image.to_string()),
-                new: new_tasks.get(id).map(|image| image.to_string()),
+                old: old_tasks.get(id).map(|built_from| built_from.to_string()),
+                new: new_tasks.get(id).map(|built_from| built_from.to_string()),
             });
         }
     }
@@ -499,11 +579,18 @@ fn print_change(change: &Change) {
     let is_task = field.matches('.').count() == 1 && field.starts_with("tasks.");
 
     let line = match (&change.old, &change.new) {
-        (None, Some(image)) if is_task => {
-            format!("{} {field}: new task using {image}", "+".green())
+        // Hashes mean nothing to read, so only say that the files changed.
+        (Some(_), Some(_)) if field.ends_with(".files") => {
+            format!("{} {field}: changed", "~".yellow())
         }
-        (Some(image), None) if is_task => {
-            format!("{} {field}: removed (was using {image})", "-".red())
+        (None, Some(built_from)) if is_task => {
+            format!("{} {field}: new task built from {built_from}", "+".green())
+        }
+        (Some(built_from), None) if is_task => {
+            format!(
+                "{} {field}: removed (was built from {built_from})",
+                "-".red()
+            )
         }
         (None, Some(new)) => format!("{} {field} = {new}", "+".green()),
         (Some(old), None) => format!("{} {field} (was {old})", "-".red()),
@@ -618,13 +705,11 @@ mod tests {
             "skip_dates": [],
             "tasks": [{
                 "id": "build",
-                "image": "alpine:latest",
-                "registry_auth": {"user": "me", "pass": "pipeline_secret{{registry_pass}}"},
+                "build": {"steps": {"base": "alpine:latest", "steps": [{"run": {"command": "make"}}], "keep": null}},
                 "depends_on": {"test": "Success"},
                 "variables": {"LOG_LEVEL": "debug"},
                 "command": ["sh", "-c", "echo one\necho two\necho three"],
-                "inject_api_token": false,
-                "always_pull_newest_image": true
+                "inject_api_token": false
             }]
         }))
         .unwrap()
@@ -647,17 +732,38 @@ mod tests {
             "tasks": {"build": {
                 "id": "build",
                 "description": "",
-                "image": "alpine:latest",
-                "registry_auth": {"user": "me", "pass": "pipeline_secret{{registry_pass}}"},
+                "build": {"steps": {"base": "alpine:latest", "steps": [{"run": {"command": "make"}}], "keep": null}},
+                "image": {"digest": "sha256:aaaa", "source_hash": "bbbb"},
                 "depends_on": {"test": "success"},
                 "variables": [{"key": "LOG_LEVEL", "value": "debug", "source": "pipeline_config"}],
                 "command": ["sh", "-c", "echo one\necho two\necho three"],
                 "inject_api_token": false,
-                "always_pull_newest_image": true,
                 "timeout_seconds": 0
             }}
         }))
         .unwrap()
+    }
+
+    /// The hash of the files the stored task was built from.
+    fn same_files() -> HashMap<&'static str, &'static str> {
+        HashMap::from([("build", "bbbb"), ("compile", "bbbb")])
+    }
+
+    #[test]
+    fn test_changed_files_are_one_change() {
+        let changes = diff(
+            &current_fields(&stored()),
+            &new_fields(&built(), &HashMap::from([("build", "cccc")])),
+        );
+
+        assert_eq!(
+            changes,
+            vec![Change {
+                field: "tasks.build.files".into(),
+                old: Some("bbbb".into()),
+                new: Some("cccc".into()),
+            }]
+        );
     }
 
     #[test]
@@ -665,7 +771,10 @@ mod tests {
         let mut config = built();
         config.tasks[0].id = "compile".into();
 
-        let changes = diff(&current_fields(&stored()), &new_fields(&config));
+        let changes = diff(
+            &current_fields(&stored()),
+            &new_fields(&config, &same_files()),
+        );
 
         assert_eq!(
             changes,
@@ -687,7 +796,10 @@ mod tests {
     #[test]
     fn test_same_config_in_both_shapes_has_no_changes() {
         assert_eq!(
-            diff(&current_fields(&stored()), &new_fields(&built())),
+            diff(
+                &current_fields(&stored()),
+                &new_fields(&built(), &same_files())
+            ),
             vec![]
         );
     }
@@ -695,7 +807,14 @@ mod tests {
     #[test]
     fn test_changes_are_per_field() {
         let mut config = built();
-        config.tasks[0].image = "alpine:3.20".into();
+        let types::Build::Steps(steps) = &mut config.tasks[0].build else {
+            panic!("the test config is built from steps");
+        };
+        steps.base = "alpine:3.20".into();
+        steps.steps.push(types::Step::Copy {
+            from: "./app".into(),
+            to: "/app".into(),
+        });
         config.tasks[0].variables.remove("LOG_LEVEL");
         config.tasks[0].command = Some(vec![
             "sh".into(),
@@ -703,20 +822,28 @@ mod tests {
             "echo one\necho 2\necho three".into(),
         ]);
 
-        let changes = diff(&current_fields(&stored()), &new_fields(&config));
+        let changes = diff(
+            &current_fields(&stored()),
+            &new_fields(&config, &same_files()),
+        );
 
         assert_eq!(
             changes,
             vec![
+                Change {
+                    field: "tasks.build.base".into(),
+                    old: Some("alpine:latest".into()),
+                    new: Some("alpine:3.20".into()),
+                },
                 Change {
                     field: "tasks.build.command".into(),
                     old: Some("sh -c 'echo one\necho two\necho three'".into()),
                     new: Some("sh -c 'echo one\necho 2\necho three'".into()),
                 },
                 Change {
-                    field: "tasks.build.image".into(),
-                    old: Some("alpine:latest".into()),
-                    new: Some("alpine:3.20".into()),
+                    field: "tasks.build.steps.2".into(),
+                    old: None,
+                    new: Some("copy ./app to /app".into()),
                 },
                 Change {
                     field: "tasks.build.variables.LOG_LEVEL".into(),
