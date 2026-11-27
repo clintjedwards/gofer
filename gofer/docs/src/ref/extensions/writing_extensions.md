@@ -4,8 +4,8 @@ Just like tasks, extensions are simply containers, which makes them easy to test
 small HTTP service that Gofer starts, sends pipeline subscriptions to, and that calls Gofer's API when something
 should happen (usually starting a run).
 
-The easiest way to write one is with one of the SDKs. The Go SDK is `github.com/clintjedwards/gofer/sdk/go/extensions`. It handles the
-HTTP service, authentication with Gofer, and printing your extension's [manifest](./manifest.md). The
+The easiest way to write one is with one of the SDKs. The Go SDK is `github.com/clintjedwards/gofer/sdk/go/extensions`.
+It handles the HTTP service, authentication with Gofer, and printing your extension's [manifest](./manifest.md). The
 [interval extension](https://github.com/clintjedwards/gofer/tree/main/containers/extensions/interval) is heavily
 commented and makes a good starting point.
 

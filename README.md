@@ -36,15 +36,19 @@ operations, or any task you can containerize and trigger based on events.
 
 ## Features:
 
-- **Simple Deployment**: Install Gofer effortlessly with a single static binary and manage it through its intuitive command-line interface.
-- **Language Flexibility**: Craft your pipelines in programming languages you're already comfortable with, such as Go or Rust, instead of wrestling with unfamiliar YAML.
+- **Simple Deployment**: Install Gofer effortlessly with a single static binary and manage it through its intuitive
+  command-line interface.
+- **Language Flexibility**: Craft your pipelines in programming languages you're already comfortable with, such as Go or
+  Rust, instead of wrestling with unfamiliar YAML.
 - **Local Testing**: Validate and run your pipelines locally, eliminating the guesswork of "commit and see" testing.
-- **Extensible Architecture**: Easily extend Gofer's capabilities by writing your own plugins, backends, and more, in any language via OpenAPI.
+- **Extensible Architecture**: Easily extend Gofer's capabilities by writing your own plugins, backends, and more, in
+  any language via OpenAPI.
 - **Built-In Storage**: Comes with an integrated Object and Secret store for your convenience.
 - **DAG Support**: Harness the power of Directed Acyclic Graphs (DAGs) for complex workflow automation.
-- **Versioned Pipelines**: Every update to a pipeline is kept as a new version, so you can see exactly what each run ran with and roll back to an earlier one.
-- **Build Images Easily**: Instead of having to manage Dockerfiles and image building Gofer hands you an API to wrap your code in and build the image to run it
-   automagically.
+- **Versioned Pipelines**: Every update to a pipeline is kept as a new version, so you can see exactly what each run ran
+  with and roll back to an earlier one.
+- **Build Images Easily**: Instead of having to manage Dockerfiles and image building Gofer hands you an API to wrap
+  your code in and build the image to run it automagically.
 
 ## Demo:
 
@@ -58,7 +62,8 @@ If you want to fully dive into Gofer, check out the [documentation site][website
 
 ## Install
 
-Extended installation information is available through the [documentation site](https://gofer.clintjedwards.com/docs/guide/installing_gofer.html).
+Extended installation information is available through the
+[documentation site](https://gofer.clintjedwards.com/docs/guide/installing_gofer.html).
 
 ### Download a specific release:
 

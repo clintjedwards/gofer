@@ -7,10 +7,10 @@ accident, or cancelled halfway through, and Gofer doesn't guarantee a task only 
 checks what's already there before changing anything is much easier to live with than one that assumes a clean
 slate.
 
-Cancelling is part of this. When a task is cancelled, Gofer asks its container to stop (Docker sends `SIGTERM`) and
-then kills it if it's still running after `task_execution_stop_timeout_seconds`, 5 minutes by default. If your task holds a
-lock or is halfway through a write when that happens, catch the signal and clean up, or make sure the next run can
-pick up from a half finished state.
+Cancelling is part of this. When a task is cancelled, Gofer asks its container to stop (Docker sends `SIGTERM`) and then
+kills it if it's still running after `task_execution_stop_timeout_seconds`, 5 minutes by default. If your task holds a
+lock or is halfway through a write when that happens, catch the signal and clean up, or make sure the next run can pick
+up from a half finished state.
 
 ## Give long tasks a timeout.
 

@@ -5,7 +5,8 @@ allowing you to focus on your tasks with minimal interference. The permissioning
 Role-Based Access Control (RBAC) and is primarily used to prevent certain token holders, such as extensions,
 from accessing excessive parts of the system.
 
-For most users, this means the ability to categorize users into distinct groups, typically at the namespace or pipeline level.
+For most users, this means the ability to categorize users into distinct groups, typically at the namespace or pipeline
+level.
 
 Authorization in Gofer is token-based, a principle that extends seamlessly to the frontend as well.
 

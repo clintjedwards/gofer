@@ -95,7 +95,8 @@ Gofer creates any of these files and directories that don't exist. If it doesn't
 
 ### 2) Running the binary
 
-You can find the most recent releases of Gofer on the [github releases page.](https://github.com/clintjedwards/gofer/releases).
+You can find the most recent releases of Gofer on the
+[github releases page.](https://github.com/clintjedwards/gofer/releases).
 
 Simply use whatever configuration management system you're most familiar with to place the binary on your chosen
 VPS and manage it. You can find a quick and dirty `wget` command to pull the

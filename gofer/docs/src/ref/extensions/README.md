@@ -92,8 +92,9 @@ extension can use any global secret.
 ### Default extensions
 
 Every Gofer install gets the [cron](./provided/cron.md) and [interval](./provided/interval.md) extensions without
-listing them. Their manifests are built into Gofer, so they always match the version of Gofer you're running and starting them never depends on downloading anything. Gofer serves them at
-`/extensions/manifests/<name>.toml` if you want to read one.
+listing them. Their manifests are built into Gofer, so they always match the version of Gofer you're running and
+starting them never depends on downloading anything. Gofer serves them at `/extensions/manifests/<name>.toml` if you
+want to read one.
 
 To change one of them, add an entry with the same id. Anything you set replaces the default:
 

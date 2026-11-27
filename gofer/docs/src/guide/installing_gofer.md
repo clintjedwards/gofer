@@ -1,6 +1,7 @@
 # Installing Gofer
 
-Gofer comes as an easy to distribute pre-compiled binary that you can run on your machine locally, but you can always build Gofer from [source](#from-source) if need be.
+Gofer comes as an easy to distribute pre-compiled binary that you can run on your machine locally, but you can always
+build Gofer from [source](#from-source) if need be.
 
 ## Pre-compiled (Recommended)
 

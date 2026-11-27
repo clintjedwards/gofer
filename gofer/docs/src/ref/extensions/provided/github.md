@@ -1,7 +1,8 @@
 # Github <small>_Extension_</small>
 
-The Github extension allows Gofer pipelines to be run on [Github webhook events.](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads) This makes it possible to write event driven
-workloads that depend on an action happening on Github.
+The Github extension allows Gofer pipelines to be run on
+[Github webhook events.](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads)
+This makes it possible to write event driven workloads that depend on an action happening on Github.
 
 See the [events section below](#events) for all supported events and the environment variables they pass to each
 pipeline.
@@ -10,7 +11,8 @@ pipeline.
   <div class="text">
   <strong>Note:</strong>
 
-  <p>Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.</p>
+  <p>Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's
+  Github extension.</p>
   <i>
 
   Steps to accomplish this can be found in the [setup section.](#setting-it-up)
@@ -25,12 +27,16 @@ pipeline.
 
   <p>
 
-  The Github extension requires the [external events feature](../../server_configuration/external_events.md) of Gofer in order to accept webhooks from Github's servers. This requires your application to take traffic from external, potentially unknown sources.
+  The Github extension requires the [external events feature](../../server_configuration/external_events.md) of Gofer in
+  order to accept webhooks from Github's servers. This requires your application to take traffic from external,
+  potentially unknown sources.
 
-  Visit the [external events page](../../server_configuration/external_events.md) for more information on how to configure Gofer's external
-  events endpoint.
+  Visit the [external events page](../../server_configuration/external_events.md) for more information on how to
+  configure Gofer's external events endpoint.
 
-  If Github is your only external extension, to increase security consider [limiting the IP addresses](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses) that can access Gofer's external events endpoint.
+  If Github is your only external extension, to increase security consider
+  [limiting the IP addresses](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses)
+  that can access Gofer's external events endpoint.
   </p>
   </div>
 </div>
@@ -62,8 +68,9 @@ gofer pipeline subscribe simple github run-tests \
 ```
 ## Extension Configuration
 
-The Github extension isn't installed by default. It requires a [Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps)
-of your own; the [setup walkthrough below](#setting-it-up) covers creating one and installing the extension.
+The Github extension isn't installed by default. It requires a
+[Github app](https://docs.github.com/en/developers/apps/getting-started-with-apps/about-apps) of your own; the
+[setup walkthrough below](#setting-it-up) covers creating one and installing the extension.
 
 | Key                | Default  | Secret | Description                                                                                                                                         |
 | ------------------ | -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -100,23 +107,26 @@ gofer_url = "https://gofer.example.com"
 
 ### Setting it up
 
-Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github extension.
-Once this app has been set up, you'll have everything you need to configure the extension.
+Due to the nature of Github's API and webhooks, you'll need to first set up a new Github app to use with Gofer's Github
+extension. Once this app has been set up, you'll have everything you need to configure the extension.
 
 Here is a quick and dirty walkthrough on the important parts of setting up the Github application.
 
 #### 1. Create a new Github application:
 
-[Github's documentation](https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app) will be the most up to date and relevant so please see their walkthrough.
+[Github's documentation](https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app) will be
+the most up to date and relevant so please see their walkthrough.
 
 On the configuration page for the new Github application the following should be noted:
 
 - **APP ID**: Take note of the id; it will be used later for extension configuration.
-- **Webhook URL**: Should be the address of your Gofer's external extension instance and pointing to the events/github endpoint:
+- **Webhook URL**: Should be the address of your Gofer's external extension instance and pointing to the events/github
+  endpoint:
 
   `ex: https://mygoferinstance.yourdomain.com/external/github`
 
-- **Webhook Secret**: Make this a secure, long, random string of characters and note it for future extension configuration.
+- **Webhook Secret**: Make this a secure, long, random string of characters and note it for future extension
+  configuration.
 - **Private Keys**: Generate a private key and keep the `.pem` file Github gives you; you'll store it in Gofer's
   secret store in step 3.
 
@@ -133,16 +143,21 @@ On the configuration page for the new Github application the following should be
 
 #### 2. Find the installation ID
 
-Once the Github application has been created, [install it.](https://docs.github.com/en/developers/apps/managing-github-apps/installing-github-apps)
-This will give you an opportunity to configure the permissions and scope of the Github application.
-It is recommended that you give read-only permissions to any permissions that might include webhooks and read-write for `code-suite` and `code-runs`.
+Once the Github application has been created,
+[install it.](https://docs.github.com/en/developers/apps/managing-github-apps/installing-github-apps) This will give you
+an opportunity to configure the permissions and scope of the Github application. It is recommended that you give
+read-only permissions to any permissions that might include webhooks and read-write for `code-suite` and `code-runs`.
 
-You might also utilize this Github App to perform other actions within Github with either other extensions or your own pipeline jobs. Remember to allow the correct permissions for all use cases.
+You might also utilize this Github App to perform other actions within Github with either other extensions or your own
+pipeline jobs. Remember to allow the correct permissions for all use cases.
 
-The installation ID is unfortunately hidden in an event that gets sent once the Github app has been created and installed. You can find it by navigating to the settings page for the Github application and
-then viewing it in the "Recent Deliveries" page.
+The installation ID is unfortunately hidden in an event that gets sent once the Github app has been created and
+installed. You can find it by navigating to the settings page for the Github application and then viewing it in the
+"Recent Deliveries" page.
 
-> 🪧 These recent deliveries only last a short amount of time, so if you take a while to check on them, they might not exist anymore. If that has happened you should be able to create another event and that will create another recent delivery.
+> 🪧 These recent deliveries only last a short amount of time, so if you take a while to check on them, they might not
+> exist anymore. If that has happened you should be able to create another event and that will create another recent
+> delivery.
 
 ![Recent Deliveries](../../../assets/github-apps-recent-deliveries.png)
 ![Installation webhook event](../../../assets/github-apps-installation-id.png)
@@ -178,8 +193,9 @@ Gofer shows the extension it's about to install and its settings; confirm, and i
 Gofer's extensions have the ability to pass along event specific information in the form of environment variables that
 get injected into each container's run. Most of these variables are pulled from the webhook request that comes in.
 
-Below is a breakdown of the environment variables that are passed to a run based on the event that was generated.
-You can find more information about the format the variables will be in by [referencing the payloads for the event](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads).
+Below is a breakdown of the environment variables that are passed to a run based on the event that was generated. You
+can find more information about the format the variables will be in by
+[referencing the payloads for the event](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads).
 
 Events below are the only events that are supported.
 
@@ -195,7 +211,8 @@ Events below are the only events that are supported.
   <strong>Note:</strong>
 
   <p>The event <code>pull_request_with_check</code> is a special event not found within the Github API. It's primarily
-  to be used when the subscriber wants to report the job status back to the pull request based on the result of the job started</p>
+  to be used when the subscriber wants to report the job status back to the pull request based on the result of the job
+  started</p>
   </div>
 </div>
 

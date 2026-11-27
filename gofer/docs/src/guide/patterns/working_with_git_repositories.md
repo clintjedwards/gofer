@@ -90,9 +90,10 @@ runs `git fetch` to pick up only what changed, then uploads it again. A few thin
   fresh clone when the cache is missing.
 
 **4. Copy it into the image.** For code that sits next to your pipeline config and only needs updating when you run
-`gofer up`, like shared scripts or tooling, [`Copy`](../../ref/pipeline_configuration/tasks.md#copying-files-and-running-commands)
-puts it in the task's image and skips the download entirely. The image has the files as they were at that `gofer up`,
-so this doesn't fit code a run is meant to test.
+`gofer up`, like shared scripts or tooling,
+[`Copy`](../../ref/pipeline_configuration/tasks.md#copying-files-and-running-commands) puts it in the task's image and
+skips the download entirely. The image has the files as they were at that `gofer up`, so this doesn't fit code a run is
+meant to test.
 
 **5. Run a git caching proxy.** For very large repos, or many runs close together, a caching proxy near your
 container hosts (like [git-cache-http-server](https://github.com/jonasmalacofilho/git-cache-http-server)) serves

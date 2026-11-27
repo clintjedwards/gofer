@@ -4,7 +4,8 @@ Now we will register your newly created pipeline configuration with Gofer!
 
 ## More CLI to the rescue
 
-From your terminal, let's use the Gofer binary to run the following command, pointing Gofer at your newly created pipeline folder:
+From your terminal, let's use the Gofer binary to run the following command, pointing Gofer at your newly created
+pipeline folder:
 
 ```bash
 gofer up /tmp/simple_pipeline
@@ -30,8 +31,9 @@ You should have received a success message and some suggested commands:
 ```
 
 This task is only a base image and a command, so making its image doesn't need Docker. A task that copies files in or
-runs commands is built with Docker on your machine; see [the task's image](../ref/pipeline_configuration/tasks.md#the-tasks-image).
-Run `gofer up` again after changing your pipeline, and it only builds the tasks that changed.
+runs commands is built with Docker on your machine; see
+[the task's image](../ref/pipeline_configuration/tasks.md#the-tasks-image). Run `gofer up` again after changing your
+pipeline, and it only builds the tasks that changed.
 
 We can view the details of our new pipeline by running:
 

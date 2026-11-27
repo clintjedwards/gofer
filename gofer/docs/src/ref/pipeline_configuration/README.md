@@ -17,7 +17,8 @@ That is to say:
 
 1. A namespace might contain multiple pipelines.
 2. A pipeline is made up of tasks/containers to be run.
-3. Every time a pipeline is executed it is done through the concept of a run which makes sure the containers are executed properly.
+3. Every time a pipeline is executed it is done through the concept of a run which makes sure the containers are
+   executed properly.
 
 ## SDK
 
@@ -111,7 +112,8 @@ That's it! This is a fully functioning pipeline.
 You can run and test this pipeline much like you would any other code you write. Running it will produce
 a JSON output which Gofer uses to pass to the server.
 
-You can find examples like this and more in [example pipelines](https://github.com/clintjedwards/gofer/tree/main/examplePipelines)
+You can find examples like this and more in
+[example pipelines](https://github.com/clintjedwards/gofer/tree/main/examplePipelines)
 
 ### The same pipeline in Rust
 

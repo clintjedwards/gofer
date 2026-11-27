@@ -144,19 +144,26 @@ finishes at which time it reflects a summary about what it did.
 ### SecretStore
 
 - It would be cool to get at least one other secret store implementation like Vault.
-  - For an extension like vault we manage the read and write in the same way we would for bolt. So vault gives us a prefix
-    path and we essentially just used that prefix path to store secrets.
+  - For an extension like vault we manage the read and write in the same way we would for bolt. So vault gives us a
+    prefix path and we essentially just used that prefix path to store secrets.
 
 ### ObjectStore
 
-- We could probably make the default object store pretty good for trival to medium size deployments by implementing a CAS.
+- We could probably make the default object store pretty good for trival to medium size deployments by implementing a
+  CAS.
 
 ### Extensions
 
 - Test that unsubscribing works with all extensions. And create a test suite that extensions can run against.
-- The interval extension should create jitter of about 2-5 mins. During that time it can choose when to start counting to extension an event. This is so that when we restart the server all events don't perfectly line up with each other and cause a storm. There might be other, smarter ways to handle this queue and api calling as well.
-- Extensions should be able to report details about their execution somehow. It would be nice when looking at my pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension that is taking overly long.
-- Github sometimes changes their payloads and this causes us to always have to be at the latest release or else casting payloads might break. Investigate payload casting and see if maybe we can get something even partial if not a better error for the user.
+- The interval extension should create jitter of about 2-5 mins. During that time it can choose when to start counting
+  to extension an event. This is so that when we restart the server all events don't perfectly line up with each other
+  and cause a storm. There might be other, smarter ways to handle this queue and api calling as well.
+- Extensions should be able to report details about their execution somehow. It would be nice when looking at my
+  pipeline run to see exactly when the extension performed certain actions. And be able to troubleshoot an extension
+  that is taking overly long.
+- Github sometimes changes their payloads and this causes us to always have to be at the latest release or else casting
+  payloads might break. Investigate payload casting and see if maybe we can get something even partial if not a better
+  error for the user.
 
 #### More extensions:
 
@@ -164,7 +171,8 @@ There are several useful things we can do with the concept of extensions:
 
 - There should be a way to monitor another pipeline(in any namespace) and then
   run your pipeline based on that pipeline.
-- There should be a way to monitor any pipeline and then notify yourself(email, slack, whatever) on a certain cadence. Things like:
+- There should be a way to monitor any pipeline and then notify yourself(email, slack, whatever) on a certain cadence.
+  Things like:
   - If pipeline fails 3 runs in a row.
   - If pipeline failure rate ever dives below certain percentage.
   - If total time of a run exceeds a given duration.
@@ -190,23 +198,31 @@ There are several useful things we can do with the concept of extensions:
 - Let tasks set CPU and memory limits.
 - Metrics via openTelemetry
 - Create a container for custom use that has gofer-cli already packed in and possibly allows
-  - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So users can get zero to code ultra-fast.
+  - Think about making a new task type that you can pass commands to that automatically uses the gofer container. So
+    users can get zero to code ultra-fast.
 - Improve Logging:
-  - We should change extensions(and probably main?) over to use slog instead so we can get consistent logging patterns from extensions.
+  - We should change extensions(and probably main?) over to use slog instead so we can get consistent logging patterns
+    from extensions.
   - We need to refactor logging for some routes to build on top of each other so that they we automatically get things
     like namespace, pipeline.
 
 ### Rough spots in design
 
-- It currently runs as a singleton, not distributed. There are a lot of things to figure out here for a full distributed system.
-- The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
+- It currently runs as a singleton, not distributed. There are a lot of things to figure out here for a full distributed
+  system.
+- The umbrella for this tool is large. There is a reason Jenkins still leads, the plugin ecosystem needs significant
+  time to catch up to its large ecosystem and then to do it properly would require non-insignificant maintenance.
 
 ### Public Gofer ideas
 
-- Can we give user's a timeout that is super low, like a total container runtime of a few minutes. The only way to get past this is to sign up from a differnet IP. That way you can try it out, but you can't just run your own crypto shit on it.
+- Can we give user's a timeout that is super low, like a total container runtime of a few minutes. The only way to get
+  past this is to sign up from a differnet IP. That way you can try it out, but you can't just run your own crypto shit
+  on it.
 - Once the timeout is up we simply log the IP and prevent that user from making any more requests.
-- We might be able to get this for free in some golang ratelimiting libraries, we'd have to have the user sign up in some way first in order to prevent people from abusing. We can ratelimit routes that need to be always public per IP.
-- How do we secure the running of containers? We can do somethings like preventing root user for the container: https://firecracker-microvm.github.io/
+- We might be able to get this for free in some golang ratelimiting libraries, we'd have to have the user sign up in
+  some way first in order to prevent people from abusing. We can ratelimit routes that need to be always public per IP.
+- How do we secure the running of containers? We can do somethings like preventing root user for the container:
+  https://firecracker-microvm.github.io/
 
 ### Documentation
 
@@ -217,12 +233,16 @@ There are several useful things we can do with the concept of extensions:
   - How to test extensions
   - How to work with extensions locally
   - Explanation of the SDK on writing extensions
-- Add a section where we create a new extension using a extension that has already been created. as the example for new extensions in the docs
+- Add a section where we create a new extension using a extension that has already been created. as the example for new
+  extensions in the docs
 - Secrets explanation. Why is there global secrets and pipelines secrets? Whats the difference.
   - Global secrets can only be set by administrators
-- Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc etc.
-  - We are forgoing having cli spit out Json due to gofer having an API, the cli is meant for humans and shouldn't be used by programs.
-- Write copius notes on commontasks and extensions layout. The difference between user passed config and system passed config. And suggest a way to collect those.
+- Write a small RFC for Gofer. Why were the decisions made the way they were, what was the purpose of the project, etc
+  etc.
+  - We are forgoing having cli spit out Json due to gofer having an API, the cli is meant for humans and shouldn't be
+    used by programs.
+- Write copius notes on commontasks and extensions layout. The difference between user passed config and system passed
+  config. And suggest a way to collect those.
   - Gofer passes them one set of env vars from the gofer system itself
     These are prefixed with `gofer_extension_system_{var}`
   - Gofer then passes them another set of env vars from the admin that was set up through registration.

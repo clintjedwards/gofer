@@ -58,9 +58,11 @@ gofer run object get dist --extract ./dist # In a task that depends on it.
 
 ## Supported Object Stores
 
-The only currently supported object store is the [filesystem object store](./filesystem.md). Reference the [configuration reference](../server_configuration/configuration_reference.md) for a full list of configuration settings and options.
+The only currently supported object store is the [filesystem object store](./filesystem.md). Reference the
+[configuration reference](../server_configuration/configuration_reference.md) for a full list of configuration settings
+and options.
 
 ## How to add new Object Stores?
 
-Object stores are pluggable, but for them to maintain good performance and simplicity the code that orchestrates them must
-be added to the object_store folder within Gofer(which means they have to be written in Rust).
+Object stores are pluggable, but for them to maintain good performance and simplicity the code that orchestrates them
+must be added to the object_store folder within Gofer(which means they have to be written in Rust).

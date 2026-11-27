@@ -4,7 +4,8 @@ Interval simply runs the subscribed pipeline at the given time interval continou
 
 ## Parameters/Pipeline Configuration
 
-- `every` \<string\>: Specifies the time duration between events. Unless changed via the extension configuration, the minimum for this is 1 minute.
+- `every` \<string\>: Specifies the time duration between events. Unless changed via the extension configuration, the
+  minimum for this is 1 minute.
 
 ```bash
 gofer pipeline subscribe simple interval every-five-mins -s every="5m"

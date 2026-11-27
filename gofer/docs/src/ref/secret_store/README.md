@@ -39,5 +39,5 @@ settings and options.
 
 ## How to add new Secret Stores?
 
-Secret stores are pluggable, but for them to maintain good performance and simplicity the code that orchestrates them must
-be added to the secret_store folder within Gofer(which means they have to be written in Rust).
+Secret stores are pluggable, but for them to maintain good performance and simplicity the code that orchestrates them
+must be added to the secret_store folder within Gofer(which means they have to be written in Rust).

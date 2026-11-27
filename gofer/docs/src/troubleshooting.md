@@ -54,7 +54,8 @@ when the server can't be reached.
 
 ## Debugging extensions
 
-Extensions are simply long running containers that internally wait for an event to happen and then communicate with Gofer through its API.
+Extensions are simply long running containers that internally wait for an event to happen and then communicate with
+Gofer through its API.
 
 There are a few avenues to debug extensions:
 
@@ -67,7 +68,8 @@ There are a few avenues to debug extensions:
 
 ## Debugging Tasks
 
-When tasks aren't working quite right, it helps to have some simple tasks that you can use to debug. Gofer provides a few of these to aid in debugging.
+When tasks aren't working quite right, it helps to have some simple tasks that you can use to debug. Gofer provides a
+few of these to aid in debugging.
 
 | Name | Image                                  | Description                                                                                                                                                              |
 | ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

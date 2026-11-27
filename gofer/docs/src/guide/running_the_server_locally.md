@@ -47,7 +47,8 @@ That's all fine for following this guide. When you're ready to run Gofer for rea
 [server configuration](../ref/server_configuration/index.html) page covers turning these off.
 
 <div class="box note">
-    <div class="text"><strong>Note:</strong> The Gofer CLI has many useful commands, try running `gofer -h` to see a full listing.</div>
+    <div class="text"><strong>Note:</strong> The Gofer CLI has many useful commands, try running `gofer -h` to see a
+    full listing.</div>
 </div>
 
 <style>
