@@ -49,30 +49,47 @@ generate-openapi-sdk:
 ## generate-openapi
 generate-openapi: generate-openapi-backend generate-api-docs generate-openapi-sdk
 
-# Provided extension manifests are built into Gofer and point at the extension images built for the same release, so
-# they have to be pinned to the version in gofer/Cargo.toml.
+# Gofer's own extensions are built into it, their images and their manifests both. Gofer stores the images as
+# gofer://<name>:<its version> when it starts, so the manifests have to name the version in gofer/Cargo.toml.
 GOFER_SEMVER = $(shell grep -m1 '^version' gofer/Cargo.toml | cut -d '"' -f 2)
 PROVIDED_EXTENSIONS = cron interval github
 
 ## generate-manifests: write each provided extension's manifest.toml, pinned to the version in gofer/Cargo.toml
 generate-manifests:
 > for ext in $(PROVIDED_EXTENSIONS); do
->   (cd containers/extensions/$$ext && go run . manifest --image ghcr.io/clintjedwards/gofer/extensions/$$ext:$(GOFER_SEMVER) > manifest.toml)
+>   (cd containers/extensions/$$ext && go run . manifest --image gofer://$$ext:$(GOFER_SEMVER) > manifest.toml)
 > done
 .PHONY: generate-manifests
 
 ## check-manifests: fail if a provided extension's committed manifest.toml doesn't match what its code generates
 check-manifests:
 > for ext in $(PROVIDED_EXTENSIONS); do
->   if ! (cd containers/extensions/$$ext && go run . manifest --image ghcr.io/clintjedwards/gofer/extensions/$$ext:$(GOFER_SEMVER) | diff -u manifest.toml -); then
+>   if ! (cd containers/extensions/$$ext && go run . manifest --image gofer://$$ext:$(GOFER_SEMVER) | diff -u manifest.toml -); then
 >     echo -e "$(COLOR_RED)manifest.toml for $$ext is out of date; run 'make generate-manifests'$(COLOR_END)"
 >     exit 1
 >   fi
 > done
 .PHONY: check-manifests
 
+## extension-images: build the images of Gofer's own extensions, which every build of Gofer carries
+extension-images:
+> mkdir -p target/extension-images
+> cd containers
+> for ext in $(PROVIDED_EXTENSIONS); do
+>   echo -e "$(COLOR_BLUE)Building the $$ext extension's image$(COLOR_END)"
+>   docker build --quiet -f extensions/$$ext/Dockerfile -t gofer-extension-image/$$ext . > /dev/null
+>   docker save gofer-extension-image/$$ext -o ../target/extension-images/$$ext.tar.new
+>   # Only replacing a tar that changed means Cargo only builds Gofer again when an image did.
+>   if cmp -s ../target/extension-images/$$ext.tar.new ../target/extension-images/$$ext.tar; then
+>     rm ../target/extension-images/$$ext.tar.new
+>   else
+>     mv ../target/extension-images/$$ext.tar.new ../target/extension-images/$$ext.tar
+>   fi
+> done
+.PHONY: extension-images
+
 ## run: build and run Gofer web service
-run:
+run: extension-images
 > @$(MAKE) -j run-tailwind run-backend
 .PHONY: run
 
@@ -83,7 +100,7 @@ run-backend:
 > cargo run --bin gofer -- service start
 
 ## build: build Gofer with its documentation site for the current platform, without regenerating anything
-build: build-docs
+build: build-docs extension-images
 > cargo build --release --bin gofer
 .PHONY: build
 
@@ -106,7 +123,7 @@ prep-release: check-semver-included
 .PHONY: prep-release
 
 ## build-release: build Gofer for release.
-build-release: generate-openapi generate-manifests build-docs
+build-release: generate-openapi generate-manifests build-docs extension-images
 > cd gofer
 > cargo build --release --target=x86_64-unknown-linux-musl
 > cd ..
@@ -214,27 +231,9 @@ check-docs-links:
 > cargo run --bin check_docs_links
 .PHONY: check-docs-links
 
-## build-containers: build containers
+## build-containers: build the debug and tooling containers. Gofer's own extensions are built into it instead.
 build-containers: check-semver-included
 > @cd containers
-> echo -e "$(COLOR_BLUE)Building Cron Extension$(COLOR_END)"
-> docker build -f extensions/cron/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} .
-> docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:latest
-> docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}.${SEMVER_MINOR}
-> docker tag ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}
-
-> echo -e "$(COLOR_BLUE)Building Interval Extension$(COLOR_END)"
-> docker build -f extensions/interval/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} .
-> docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:latest
-> docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}.${SEMVER_MINOR}
-> docker tag ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}
-
-> echo -e "$(COLOR_BLUE)Building Github Extension$(COLOR_END)"
-> docker build -f extensions/github/Dockerfile -t ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} .
-> docker tag ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/github:latest
-> docker tag ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}.${SEMVER_MINOR}
-> docker tag ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER} ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}
-
 > echo -e "$(COLOR_BLUE)Building Debug Container Envs$(COLOR_END)"
 > docker build -f debug/envs/Dockerfile -t ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} .
 > docker tag ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER} ghcr.io/clintjedwards/gofer/debug/envs:latest
@@ -257,26 +256,9 @@ build-containers: check-semver-included
 > echo -e "$(COLOR_BLUE)Building Tooling Container Rust$(COLOR_END)"
 > docker build -f tools/Dockerfile_rust -t ghcr.io/clintjedwards/gofer/tools:rust .
 
-## push-containers: push containers to github
+## push-containers: push the debug and tooling containers to github
 push-containers: check-semver-included
-> @echo -e "$(COLOR_BLUE)Push Cron Extension Container$(COLOR_END)"
-> docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER}
-> docker push ghcr.io/clintjedwards/gofer/extensions/cron:latest
-> docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}.${SEMVER_MINOR}
-> docker push ghcr.io/clintjedwards/gofer/extensions/cron:${SEMVER_MAJOR}
-> echo -e "$(COLOR_BLUE)Push Internal Extension Container$(COLOR_END)"
-> docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER}
-> docker push ghcr.io/clintjedwards/gofer/extensions/interval:latest
-> docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}.${SEMVER_MINOR}
-> docker push ghcr.io/clintjedwards/gofer/extensions/interval:${SEMVER_MAJOR}
-
-> echo -e "$(COLOR_BLUE)Push Github Extension Container$(COLOR_END)"
-> docker push ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER}
-> docker push ghcr.io/clintjedwards/gofer/extensions/github:latest
-> docker push ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}.${SEMVER_MINOR}
-> docker push ghcr.io/clintjedwards/gofer/extensions/github:${SEMVER_MAJOR}
-
-> echo -e "$(COLOR_BLUE)Push Debug Env Container$(COLOR_END)"
+> @echo -e "$(COLOR_BLUE)Push Debug Env Container$(COLOR_END)"
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:${SEMVER}
 > docker push ghcr.io/clintjedwards/gofer/debug/envs:latest
 

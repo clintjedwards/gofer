@@ -1,4 +1,6 @@
-use crate::api::extensions::reconcile::{Manifest, default_manifest, fetch_manifest};
+mod image;
+
+use crate::api::extensions::reconcile::{Manifest, fetch_manifest, provided_manifest};
 use crate::cli::{
     Cli, api_error_message, ask_yes_no, colorize_status_text, colorize_status_text_comfy, rail,
     rail_table,
@@ -59,11 +61,11 @@ pub enum ExtensionCommands {
     /// Ex. gofer extension manifest interval
     /// Ex. gofer extension manifest https://example.com/my_extension/manifest.toml
     Manifest {
-        /// The name of one of Gofer's default extensions (cron, interval), whose manifest is read from your Gofer
-        /// server, or an https URL or local path to any other extension's manifest.
+        /// The name of one of the extensions that come with Gofer (cron, interval, github), whose manifest is read
+        /// from your Gofer server, or an https URL or local path to any other extension's manifest.
         location: String,
 
-        /// The id to give the extension. Defaults to the default extension's name, or "my-extension".
+        /// The id to give the extension. Defaults to the name of the one that comes with Gofer, or "my-extension".
         #[arg(long)]
         id: Option<String>,
     },
@@ -95,6 +97,9 @@ pub enum ExtensionCommands {
         /// Extension Identifier.
         id: String,
     },
+
+    /// Manage the extension images stored in Gofer, which manifests name as gofer://<name>:<tag>.
+    Image(image::ImageSubcommands),
 }
 
 impl Cli {
@@ -110,6 +115,9 @@ impl Cli {
             ExtensionCommands::Purge { id, yes } => self.extension_purge(&id, yes).await,
             ExtensionCommands::Logs { id } => self.extension_logs(&id).await,
             ExtensionCommands::Debug { id } => self.extension_debug(&id).await,
+            ExtensionCommands::Image(command) => {
+                self.handle_extension_image_subcommands(command).await
+            }
         }
     }
 }
@@ -207,7 +215,7 @@ fn toml_string(value: &str) -> String {
     serde_json::to_string(value).unwrap_or_else(|_| format!("\"{value}\""))
 }
 
-/// Prints the [[extensions.install]] block for a manifest. `location` is left out for Gofer's default extensions,
+/// Prints the [[extensions.install]] block for a manifest. `location` is left out for Gofer's own extensions,
 /// which use the manifest built into Gofer.
 fn print_install_block(manifest: &Manifest, location: Option<&str>, id: &str) {
     let mut secret_commands = vec![];
@@ -284,10 +292,10 @@ fn print_install_block(manifest: &Manifest, location: Option<&str>, id: &str) {
 }
 
 impl Cli {
-    /// Prints the [[extensions.install]] block for a default extension (read from the Gofer server, so it matches
-    /// what that server runs) or for any other extension's manifest URL or path.
+    /// Prints the [[extensions.install]] block for one of Gofer's own extensions (read from the Gofer server, so it
+    /// matches what that server runs) or for any other extension's manifest URL or path.
     pub async fn extension_manifest(&self, location: &str, id: Option<&str>) -> Result<()> {
-        if default_manifest(location).is_none() {
+        if provided_manifest(location).is_none() {
             let manifest = fetch_manifest(location).await?;
             print_install_block(&manifest, Some(location), id.unwrap_or("my-extension"));
             return Ok(());

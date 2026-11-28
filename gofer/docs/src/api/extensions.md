@@ -5,6 +5,11 @@ An extension is a way to give pipelines more functionality. This might include a
 | Method | Endpoint |
 | ------ | -------- |
 | <span class="api-method api-method-get">GET</span> | [`/api/extensions`](#list-all-extensions-currently-registered) |
+| <span class="api-method api-method-get">GET</span> | [`/api/extensions/images`](#list-the-extension-images-stored-in-gofer) |
+| <span class="api-method api-method-put">PUT</span> | [`/api/extensions/images/blobs/{digest}`](#upload-an-extension-image-blob) |
+| <span class="api-method api-method-post">POST</span> | [`/api/extensions/images/missing`](#list-which-extension-image-blobs-need-to-be-uploaded) |
+| <span class="api-method api-method-put">PUT</span> | [`/api/extensions/images/{name}/{tag}`](#store-an-extension-image) |
+| <span class="api-method api-method-delete">DELETE</span> | [`/api/extensions/images/{name}/{tag}`](#delete-an-extension-image) |
 | <span class="api-method api-method-post">POST</span> | [`/api/extensions/plan`](#compare-gofers-config-with-the-extensions-currently-running) |
 | <span class="api-method api-method-get">GET</span> | [`/api/extensions/{extension_id}`](#returns-details-about-a-specific-extension) |
 | <span class="api-method api-method-delete">DELETE</span> | [`/api/extensions/{extension_id}`](#permanently-delete-an-extension-along-with-its-api-token-pipeline-subscriptions-and-stored-objects) |
@@ -25,6 +30,115 @@ An extension is a way to give pipelines more functionality. This might include a
 | Status | Body | Description |
 | ------ | ---- | ----------- |
 | `200` | [ListExtensionsResponse](./schemas.md#listextensionsresponse) | successful operation |
+| `4XX` | [Error](./schemas.md#error) | Error |
+| `5XX` | [Error](./schemas.md#error) | Error |
+
+
+---
+
+## List the extension images stored in Gofer
+
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/api/extensions/images</code></div>
+
+**Responses**
+
+| Status | Body | Description |
+| ------ | ---- | ----------- |
+| `200` | [ListExtensionImagesResponse](./schemas.md#listextensionimagesresponse) | successful operation |
+| `4XX` | [Error](./schemas.md#error) | Error |
+| `5XX` | [Error](./schemas.md#error) | Error |
+
+
+---
+
+## Upload an extension image blob
+
+<div class="api-endpoint"><span class="api-method api-method-put">PUT</span><code>/api/extensions/images/blobs/{digest}</code></div>
+
+Uploads one part of an extension image: its manifest, its config, or one of its layers. The contents must match the digest in the path. Uploading the same blob again is fine.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `digest` | string | yes | The sha256 digest of the blob's contents. Ex: `sha256:2cf24dba5fb0...` |
+
+**Request body** (required): raw bytes (`application/octet-stream`)
+
+**Responses**
+
+| Status | Body | Description |
+| ------ | ---- | ----------- |
+| `204` | none | resource updated |
+| `4XX` | [Error](./schemas.md#error) | Error |
+| `5XX` | [Error](./schemas.md#error) | Error |
+
+
+---
+
+## List which extension image blobs need to be uploaded
+
+<div class="api-endpoint"><span class="api-method api-method-post">POST</span><code>/api/extensions/images/missing</code></div>
+
+Given the digests of the blobs that make up an extension image, returns the ones Gofer doesn't have yet. Extension images can only use blobs uploaded for extension images, so blobs only a pipeline has uploaded are returned too.
+
+**Request body** (required): [ListMissingImageBlobsRequest](./schemas.md#listmissingimageblobsrequest)
+
+**Responses**
+
+| Status | Body | Description |
+| ------ | ---- | ----------- |
+| `200` | [ListMissingImageBlobsResponse](./schemas.md#listmissingimageblobsresponse) | successful operation |
+| `4XX` | [Error](./schemas.md#error) | Error |
+| `5XX` | [Error](./schemas.md#error) | Error |
+
+
+---
+
+## Store an extension image
+
+<div class="api-endpoint"><span class="api-method api-method-put">PUT</span><code>/api/extensions/images/{name}/{tag}</code></div>
+
+Stores an image whose parts were uploaded, so manifests can name it as `gofer://<name>:<tag>`. The image has to be one Gofer can run. A name and tag that's already stored is refused unless `force` is set, and the names of Gofer's own extensions are kept for them.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `name` | string | yes | The image's name, as in `gofer://<name>:<tag>`. |
+| `tag` | string | yes | The image's tag, as in `gofer://<name>:<tag>`. |
+
+**Request body** (required): [PutExtensionImageRequest](./schemas.md#putextensionimagerequest)
+
+**Responses**
+
+| Status | Body | Description |
+| ------ | ---- | ----------- |
+| `200` | [PutExtensionImageResponse](./schemas.md#putextensionimageresponse) | successful operation |
+| `4XX` | [Error](./schemas.md#error) | Error |
+| `5XX` | [Error](./schemas.md#error) | Error |
+
+
+---
+
+## Delete an extension image
+
+<div class="api-endpoint"><span class="api-method api-method-delete">DELETE</span><code>/api/extensions/images/{name}/{tag}</code></div>
+
+Refused while any extension's manifest names it, including extensions removed from the config but not yet purged, and for Gofer's own extensions. Its blobs are removed once nothing else uses them.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `name` | string | yes | The image's name, as in `gofer://<name>:<tag>`. |
+| `tag` | string | yes | The image's tag, as in `gofer://<name>:<tag>`. |
+
+**Responses**
+
+| Status | Body | Description |
+| ------ | ---- | ----------- |
+| `204` | none | successful deletion |
 | `4XX` | [Error](./schemas.md#error) | Error |
 | `5XX` | [Error](./schemas.md#error) | Error |
 

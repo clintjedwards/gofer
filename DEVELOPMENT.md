@@ -32,10 +32,15 @@ includes all the commands and flags you need to run in dev mode by simply runnin
 In case you want to run without the make file simply run:
 
 ```bash
+make extension-images # Builds the images of Gofer's own extensions, which every build of Gofer carries
 cd gofer
 export GOFER_WEB_API__LOG_LEVEL=debug
 cargo run --bin gofer -- service start
 ```
+
+Without `make extension-images`, Gofer still builds and runs, but cron and interval show as `failed` in
+`gofer extension list`, saying the build doesn't include their images. Run it again after changing an extension;
+Gofer only rebuilds when an image actually changed.
 
 ### Env aware configuration
 
@@ -138,9 +143,10 @@ The video shows up in two places, and each one gets it differently:
 
 ## Releasing
 
-A release is three things: a git tag, a GitHub release with the Linux binary attached, and the container images in
-`containers/` pushed to ghcr.io under the same version. They have to match because Gofer has the cron and interval
-extension manifests built into the binary, and those manifests point at the extension images for the same version.
+A release is three things: a git tag, a GitHub release with the Linux binary attached, and the debug and tooling
+container images in `containers/` pushed to ghcr.io under the same version. Gofer's own extensions aren't pushed
+anywhere: their images and manifests are built into the binary, which stores the images as
+`gofer://<name>:<version>` when it starts.
 
 ### Tools you'll need
 
@@ -175,7 +181,8 @@ Gofer is pre-1.0, so a breaking change bumps the minor version and anything else
 
    This sets the version in `gofer/Cargo.toml` and `sdk/rust/Cargo.toml` and then runs `make build-release`, which
    regenerates the OpenAPI spec, API docs and SDKs, regenerates the extension manifests pinned to the new version,
-   builds the docs and builds the release binary at `target/x86_64-unknown-linux-musl/release/gofer_amd64_linux_musl`.
+   builds the docs and the extension images, and builds the release binary with them at
+   `target/x86_64-unknown-linux-musl/release/gofer_amd64_linux_musl`.
 
 3. **Test it:**
 
@@ -187,8 +194,7 @@ Gofer is pre-1.0, so a breaking change bumps the minor version and anything else
 4. **Commit and push.** Use the commit message `[release] v0.12.0` and push it to main. Don't tag it yourself;
    `release` does that in step 6, and it tags whatever main is on GitHub, so this has to be pushed first.
 
-5. **Build and push the container images.** This tags each extension as `0.12.0`, `0.12`, `0` and `latest`. Do it
-   before the GitHub release so the images exist by the time anyone downloads the binary.
+5. **Build and push the debug and tooling container images**, which example pipelines and tasks use.
 
    ```bash
    make build-containers SEMVER=0.12.0

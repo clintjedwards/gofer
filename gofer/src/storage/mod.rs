@@ -17,6 +17,7 @@
 //!
 pub mod deployments;
 pub mod events;
+pub mod extension_images;
 pub mod extension_registrations;
 pub mod extension_subscriptions;
 pub mod image_blobs;

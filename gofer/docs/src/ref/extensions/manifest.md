@@ -15,7 +15,7 @@ The manifest is the only place Gofer learns about an extension; it never asks th
 ## Format
 
 ```toml
-image = "ghcr.io/clintjedwards/gofer/extensions/github:0.11.0"
+image = "gofer://github:0.16.0"
 documentation = "You can find more information on this extension at the official Gofer docs site: ..."
 
 [[config_params]]
@@ -42,7 +42,7 @@ documentation = "The repository the pipeline will be alerted for. The format is 
 
 | field           | description                                                                                                       |
 | --------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `image`         | The container image Gofer runs for this extension. Pin it to an exact version so the manifest always means the same thing. |
+| `image`         | The container image Gofer runs for this extension: `gofer://<name>:<tag>` for one [stored in Gofer](./index.html#where-an-extensions-image-comes-from), or a registry image. Pin a registry image by digest, or at least to an exact version, so the manifest always means the same thing. |
 | `documentation` | Free text about the extension, usually a link to its docs.                                                        |
 | `config_params` | One entry per setting the extension accepts, set by the operator in Gofer's config.                               |
 | `pipeline_subscription_params` | One entry per parameter a pipeline passes when it subscribes, like `gofer pipeline subscribe ... -s repository=org/repo`. |
@@ -70,9 +70,8 @@ The `manifest` field in an `[[extensions.install]]` entry can be:
 - **A path on the Gofer server**, like `/etc/gofer/extensions/my_extension.toml`. Relative paths are relative to the
   directory Gofer was started in.
 
-Gofer's default extensions (cron and interval) don't need either: their manifests are built into Gofer, and Gofer
-serves them at `/extensions/manifests/<name>.toml`. An entry for one of them can leave `manifest` out. Gofer's optional
-extensions, like github, publish their manifests in the Gofer repository; see
+Gofer's own extensions (cron, interval and github) don't need either: their manifests are built into Gofer, and Gofer
+serves them at `/extensions/manifests/<name>.toml`. An entry for one of them can leave `manifest` out; see
 [Gofer's extensions](./provided/index.html).
 
 ## Generating a manifest
@@ -85,7 +84,8 @@ Extensions built with the Go or Rust SDK print theirs when run with the `manifes
 ```
 
 See [Writing Extensions](./writing_extensions.md) for how that works, and publish the resulting file somewhere
-operators can reach it alongside your image.
+operators can reach it alongside your image. An operator who stores your image in Gofer with
+`gofer extension image push` points their copy of the manifest at the `gofer://` name they stored it under instead.
 
 ### When an extension doesn't publish a manifest
 

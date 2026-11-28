@@ -27,11 +27,17 @@ use tracing::{debug, error, info};
 use tungstenite::Message;
 use tungstenite::protocol::{Role as WebsocketRole, frame::coding::CloseCode};
 
+pub mod builtin;
 pub mod health;
 pub mod reconcile;
 
 /// The address Gofer tells the extension it should bind to on startup.
 const EXTENSION_BIND_ADDRESS: &str = "0.0.0.0:8082";
+
+/// Whether a registry image is named by its digest, like `ghcr.io/example/ext@sha256:...`, rather than only by a tag.
+fn is_pinned_by_digest(image: &str) -> bool {
+    image.contains('@')
+}
 
 fn extension_container_id(id: &str) -> String {
     format!("extension_{id}")
@@ -535,9 +541,31 @@ async fn start_extension(
 
     let ext_container_id = extension_container_id(&registration.extension_id);
 
-    let start_container_request = containers::StartContainerRequest {
-        id: ext_container_id.clone(),
-        image: containers::Image::Registry {
+    let image = match &resolved.stored_image {
+        // An image stored in Gofer is loaded into Docker the same way a task's is.
+        Some(digest) => {
+            let stored = (api_state.images.stored_image(digest).await)
+                .with_context(|| {
+                    format!(
+                        "Could not read '{}' from Gofer's image store",
+                        registration.image
+                    )
+                })?
+                .ok_or_else(|| {
+                    anyhow!(
+                        "'{}' is no longer in Gofer's image store",
+                        registration.image
+                    )
+                })?;
+
+            let name = (api_state.containers)
+                .load_stored_image(&api_state.images, &stored, || {})
+                .await
+                .with_context(|| format!("Could not load '{}' into Docker", registration.image))?;
+            containers::Image::Loaded(name)
+        }
+
+        None => containers::Image::Registry {
             name: registration.image.clone(),
             auth: resolved
                 .registry_auth
@@ -546,9 +574,15 @@ async fn start_extension(
                     user: auth.user,
                     pass: auth.pass,
                 }),
-            // It's most likely that the user always wants the latest version of the tag.
-            always_pull: true,
+            // A digest only ever means one image, so it's pulled when Docker doesn't have it. A tag means whatever it
+            // points to right now, so it's pulled every time the extension starts.
+            always_pull: !is_pinned_by_digest(&registration.image),
         },
+    };
+
+    let start_container_request = containers::StartContainerRequest {
+        id: ext_container_id.clone(),
+        image,
         variables: extension_vars
             .into_iter()
             .map(|var| (var.key, var.value))

@@ -109,8 +109,12 @@ impl Cli {
         let manifests: BTreeSet<String> = (reusable.images.values())
             .map(|image| image.digest.clone())
             .collect();
+        let target = UploadTarget::Pipeline {
+            namespace,
+            pipeline_id: &config.id,
+        };
         let missing = self
-            .missing_blobs(namespace, &config.id, manifests.into_iter().collect())
+            .missing_blobs(target, manifests.into_iter().collect())
             .await?;
 
         let gone = &mut reusable.gone;
@@ -276,8 +280,7 @@ impl Cli {
     /// pipeline's earlier versions, so this is often only the few that changed.
     pub async fn upload_images(
         &self,
-        namespace: &str,
-        pipeline_id: &str,
+        target: UploadTarget<'_>,
         built: &[(Vec<String>, Built)],
     ) -> Result<()> {
         // Images on the same base share its layers. One that has them on this machine saves downloading them.
@@ -294,7 +297,7 @@ impl Cli {
         }
 
         let missing = self
-            .missing_blobs(namespace, pipeline_id, blobs.keys().cloned().collect())
+            .missing_blobs(target, blobs.keys().cloned().collect())
             .await?;
         let total: u64 = missing.iter().map(|digest| blobs[digest].2).sum();
         let mut sent = 0;
@@ -313,15 +316,25 @@ impl Cli {
             let (image, blob, size) = blobs[digest];
             let body = reqwest::Body::wrap_stream(image.open(blob).await?);
 
-            self.client
-                .put_image_blob(namespace, pipeline_id, digest, body)
-                .await
-                .map_err(|e| {
-                    anyhow!(
-                        "Could not upload image part '{digest}'; {}",
-                        api_error_message(e)
-                    )
-                })?;
+            let uploaded = match target {
+                UploadTarget::Pipeline {
+                    namespace,
+                    pipeline_id,
+                } => (self.client)
+                    .put_image_blob(namespace, pipeline_id, digest, body)
+                    .await
+                    .map(|_| ()),
+                UploadTarget::ExtensionImages => (self.client)
+                    .put_extension_image_blob(digest, body)
+                    .await
+                    .map(|_| ()),
+            };
+            uploaded.map_err(|e| {
+                anyhow!(
+                    "Could not upload image part '{digest}'; {}",
+                    api_error_message(e)
+                )
+            })?;
 
             sent += size;
         }
@@ -331,25 +344,43 @@ impl Cli {
 
     async fn missing_blobs(
         &self,
-        namespace: &str,
-        pipeline_id: &str,
+        target: UploadTarget<'_>,
         digests: Vec<String>,
     ) -> Result<BTreeSet<String>> {
-        let response = self
-            .client
-            .list_missing_image_blobs(
+        let request = types::ListMissingImageBlobsRequest { digests };
+        let response = match target {
+            UploadTarget::Pipeline {
                 namespace,
                 pipeline_id,
-                &types::ListMissingImageBlobsRequest { digests },
-            )
-            .await
-            .map_err(|e| {
-                anyhow!(
-                    "Could not ask Gofer which images it has; {}",
-                    api_error_message(e)
-                )
-            })?;
+            } => (self.client)
+                .list_missing_image_blobs(namespace, pipeline_id, &request)
+                .await
+                .map(|response| response.into_inner()),
+            UploadTarget::ExtensionImages => (self.client)
+                .list_missing_extension_image_blobs(&request)
+                .await
+                .map(|response| response.into_inner()),
+        };
 
-        Ok(response.into_inner().digests.into_iter().collect())
+        let response = response.map_err(|e| {
+            anyhow!(
+                "Could not ask Gofer which images it has; {}",
+                api_error_message(e)
+            )
+        })?;
+
+        Ok(response.digests.into_iter().collect())
     }
+}
+
+/// Where [`Cli::upload_images`] sends images. Gofer only lets an image use blobs uploaded for the same owner.
+#[derive(Debug, Clone, Copy)]
+pub enum UploadTarget<'a> {
+    Pipeline {
+        namespace: &'a str,
+        pipeline_id: &'a str,
+    },
+
+    /// Extension images, which belong to Gofer's admins.
+    ExtensionImages,
 }

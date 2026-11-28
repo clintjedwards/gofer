@@ -227,7 +227,6 @@ health_check_max_restarts = 1
 
 [[extensions.install]]
 id = "github"
-manifest = "https://raw.githubusercontent.com/clintjedwards/gofer/v<gofer version>/containers/extensions/github/manifest.toml"
 [extensions.install.settings]
 app_id = "112348"
 app_installation = "99560091"

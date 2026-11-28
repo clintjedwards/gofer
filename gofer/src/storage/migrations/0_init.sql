@@ -128,6 +128,27 @@ CREATE TABLE IF NOT EXISTS image_blobs (
 -- Pipelines share blob files on disk, so a file can only go once no pipeline has it, and that's looked up by digest.
 CREATE INDEX idx_image_blobs_digest ON image_blobs (digest);
 
+-- The blobs uploaded for extension images. Extensions belong to Gofer's admins rather than to a namespace, so unlike a
+-- pipeline's these have the one owner. They share blob files on disk with pipelines.
+CREATE TABLE IF NOT EXISTS extension_image_blobs (
+    digest    TEXT    NOT NULL,
+    diff_id   TEXT    NOT NULL,
+    size      INTEGER NOT NULL,
+    last_seen TEXT    NOT NULL,
+    PRIMARY KEY (digest)
+) STRICT;
+
+-- The extension images stored in Gofer, which manifests name as gofer://<name>:<tag>. Built-in ones are Gofer's own
+-- extensions, stored from its binary when it starts.
+CREATE TABLE IF NOT EXISTS extension_images (
+    name    TEXT    NOT NULL,
+    tag     TEXT    NOT NULL,
+    digest  TEXT    NOT NULL,
+    builtin INTEGER NOT NULL CHECK (builtin IN (0, 1)),
+    created TEXT    NOT NULL,
+    PRIMARY KEY (name, tag)
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS extension_registrations (
     extension_id     TEXT NOT NULL,
     image            TEXT NOT NULL,

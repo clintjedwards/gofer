@@ -183,11 +183,14 @@ pub async fn list_pipelines(
         .await
 }
 
-/// Whether any pipeline has this blob.
+/// Whether any pipeline has this blob, or it was uploaded for an extension image. Both share the files on disk, so a
+/// file can only go once neither has it.
 pub async fn is_used(conn: &mut SqliteConnection, digest: &str) -> Result<bool, StorageError> {
-    let sql = "SELECT EXISTS (SELECT 1 FROM image_blobs WHERE digest = ?);";
+    let sql = "SELECT EXISTS (SELECT 1 FROM image_blobs WHERE digest = ?) \
+        OR EXISTS (SELECT 1 FROM extension_image_blobs WHERE digest = ?);";
 
     sqlx::query_scalar::<_, bool>(sql)
+        .bind(digest)
         .bind(digest)
         .fetch_one(conn)
         .map_err(|e| map_sqlx_error(e, sql))

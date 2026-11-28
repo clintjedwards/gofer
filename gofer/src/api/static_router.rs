@@ -83,7 +83,7 @@ struct ManifestPath {
     name: String,
 }
 
-/// Serve the manifests for Gofer's default extensions, which are built into Gofer. Operators can read exactly what
+/// Serve the manifests of the extensions that come with Gofer, which are built into it. Operators can read exactly what
 /// Gofer runs for them, and `gofer extension manifest <name>` reads them from here.
 #[endpoint {
     method = GET,
@@ -97,14 +97,14 @@ pub async fn default_manifest_handler(
     let name = path.into_inner().name;
     let name = name.strip_suffix(".toml").unwrap_or(&name);
 
-    match crate::api::extensions::reconcile::default_manifest(name) {
+    match crate::api::extensions::reconcile::provided_manifest(name) {
         Some(content) => Ok(Response::builder()
             .header(header::CONTENT_TYPE, "application/toml")
             .body(Body::from(content))
             .unwrap()),
         None => Err(HttpError::for_not_found(
             None,
-            format!("'{name}' isn't one of Gofer's default extensions"),
+            format!("'{name}' isn't one of the extensions that come with Gofer"),
         )),
     }
 }

@@ -100,6 +100,27 @@ impl Digest {
 /// Where Docker keeps the task images Gofer loads into it.
 pub const DOCKER_REPOSITORY: &str = "gofer-image";
 
+/// Who uploaded an image's blobs. An image can only be made of blobs its owner uploaded.
+#[derive(Debug, Clone, Copy)]
+pub enum Owner<'a> {
+    Pipeline {
+        namespace_id: &'a str,
+        pipeline_id: &'a str,
+    },
+
+    /// The images stored for extensions, which belong to Gofer's admins rather than to a namespace.
+    Extensions,
+}
+
+impl Display for Owner<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Owner::Pipeline { pipeline_id, .. } => write!(f, "pipeline '{pipeline_id}'"),
+            Owner::Extensions => write!(f, "extension images"),
+        }
+    }
+}
+
 impl FromStr for Digest {
     type Err = ImageError;
 
@@ -368,19 +389,16 @@ impl Images {
         Ok(Blob { size, diff_id })
     }
 
-    /// Checks that an image is one Gofer can run and that the pipeline uploaded every part of it.
+    /// Checks that an image is one Gofer can run and that its owner uploaded every part of it.
     ///
-    /// A pipeline can only use blobs it uploaded itself. Otherwise anyone able to register a config could name a layer
+    /// An image can only use blobs its owner uploaded. Otherwise anyone able to register a config could name a layer
     /// from someone else's image, run it, and read the files inside.
     pub async fn verify(
         &self,
         conn: &mut SqliteConnection,
-        namespace_id: &str,
-        pipeline_id: &str,
+        owner: Owner<'_>,
         digest: &Digest,
     ) -> Result<(), ImageError> {
-        let owner = (namespace_id, pipeline_id);
-
         let blob = self.uploaded_blob(conn, owner, digest).await?;
         let manifest_type: ManifestType = self.read_json(digest, blob.size).await?;
 
@@ -595,29 +613,38 @@ impl Images {
             }))
     }
 
-    /// Returns a blob by its digest, provided the pipeline uploaded it and it's still in the store.
+    /// Returns a blob by its digest, provided its owner uploaded it and it's still in the store.
     async fn uploaded_blob(
         &self,
         conn: &mut SqliteConnection,
-        (namespace_id, pipeline_id): (&str, &str),
+        owner: Owner<'_>,
         digest: &Digest,
     ) -> Result<Blob, ImageError> {
-        let blob =
-            match storage::image_blobs::get(conn, namespace_id, pipeline_id, &digest.to_string())
+        let found = match owner {
+            Owner::Pipeline {
+                namespace_id,
+                pipeline_id,
+            } => storage::image_blobs::get(conn, namespace_id, pipeline_id, &digest.to_string())
                 .await
-            {
-                Ok(blob) if self.contains(digest).await? => blob,
-                Ok(_) | Err(StorageError::NotFound) => {
-                    return Err(ImageError::Invalid(format!(
-                        "image blob '{digest}' has not been uploaded for pipeline '{pipeline_id}'"
-                    )));
-                }
-                Err(e) => return Err(internal(e)),
-            };
+                .map(|blob| (blob.size, blob.diff_id)),
+            Owner::Extensions => storage::extension_images::get_blob(conn, &digest.to_string())
+                .await
+                .map(|blob| (blob.size, blob.diff_id)),
+        };
+
+        let (size, diff_id) = match found {
+            Ok(blob) if self.contains(digest).await? => blob,
+            Ok(_) | Err(StorageError::NotFound) => {
+                return Err(ImageError::Invalid(format!(
+                    "image blob '{digest}' has not been uploaded for {owner}"
+                )));
+            }
+            Err(e) => return Err(internal(e)),
+        };
 
         Ok(Blob {
-            size: blob.size.try_into().map_err(internal)?,
-            diff_id: blob.diff_id.parse().map_err(internal)?,
+            size: size.try_into().map_err(internal)?,
+            diff_id: diff_id.parse().map_err(internal)?,
         })
     }
 
@@ -625,7 +652,7 @@ impl Images {
     async fn described_blob(
         &self,
         conn: &mut SqliteConnection,
-        owner: (&str, &str),
+        owner: Owner<'_>,
         descriptor: &Descriptor,
     ) -> Result<(Digest, Blob), ImageError> {
         let digest: Digest = descriptor.digest.parse()?;
@@ -893,7 +920,14 @@ mod tests {
 
         async fn verify(&mut self, digest: &Digest) -> Result<(), ImageError> {
             self.images
-                .verify(&mut self.conn, NAMESPACE, PIPELINE, digest)
+                .verify(
+                    &mut self.conn,
+                    Owner::Pipeline {
+                        namespace_id: NAMESPACE,
+                        pipeline_id: PIPELINE,
+                    },
+                    digest,
+                )
                 .await
         }
 
@@ -1210,6 +1244,52 @@ mod tests {
             message.contains("has not been uploaded for pipeline 'some-pipeline'"),
             "{message}"
         );
+    }
+
+    // Pipelines and extension images share blob files, but neither can use a blob only the other uploaded.
+    #[tokio::test]
+    async fn verify_keeps_pipelines_and_extension_images_apart() {
+        let mut harness = Harness::new().await;
+        let digest = harness.upload_image(PIPELINE, |_| {}, |_| {}).await;
+
+        let as_extension = harness
+            .images
+            .verify(&mut harness.conn, Owner::Extensions, &digest)
+            .await;
+        let message = invalid_message(as_extension);
+        assert!(
+            message.contains("has not been uploaded for extension images"),
+            "{message}"
+        );
+
+        // Uploading the same blobs for extension images is what lets an extension image use them.
+        for blob in harness.images.blobs_of(&digest).await.unwrap().unwrap() {
+            let uploaded = storage::image_blobs::get(
+                &mut harness.conn,
+                NAMESPACE,
+                PIPELINE,
+                &blob.to_string(),
+            )
+            .await
+            .unwrap();
+            storage::extension_images::upsert_blob(
+                &mut harness.conn,
+                &storage::extension_images::ExtensionImageBlob {
+                    digest: uploaded.digest,
+                    diff_id: uploaded.diff_id,
+                    size: uploaded.size,
+                    last_seen: "0".into(),
+                },
+            )
+            .await
+            .unwrap();
+        }
+
+        let as_extension = harness
+            .images
+            .verify(&mut harness.conn, Owner::Extensions, &digest)
+            .await;
+        assert_eq!(as_extension, Ok(()));
     }
 
     #[tokio::test]

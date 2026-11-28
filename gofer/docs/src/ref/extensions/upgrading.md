@@ -5,7 +5,10 @@ the extension at a newer manifest and reloading.
 
 ## Upgrading an extension
 
-1. Change the `manifest` in the extension's `[[extensions.install]]` entry to the new version's manifest.
+1. Change the `manifest` in the extension's `[[extensions.install]]` entry to the new version's manifest. For an image
+   [stored in Gofer](./index.html#where-an-extensions-image-comes-from), push the new version under a new tag first,
+   like `gofer extension image push slack:1.3.0 --from ghcr.io/example/slack:1.3.0`, and change the tag in your copy
+   of the manifest.
 2. Check the new version's manifest or docs for settings that were added, removed, or renamed. If a new required
    setting is missing, the reload will tell you which one.
 3. Run `gofer extension reload`. It shows the image change and any setting changes before anything happens, then
@@ -17,14 +20,10 @@ The extension is briefly unavailable while it restarts. Events it would have han
 missed; GitHub, for example, doesn't resend webhooks that fail. Plan upgrades of webhook driven extensions for a quiet
 moment.
 
-## Default extensions
+## Gofer's own extensions
 
-The manifests for Gofer's default extensions (cron and interval) are built into Gofer, so upgrading Gofer upgrades
-them: the next restart, or `gofer extension reload`, moves them to the versions released with the new Gofer. If you've
-pointed one at your own manifest in the config, Gofer leaves that alone.
-
-Gofer's optional extensions, like github, upgrade like any other extension: change the version in their manifest URL
-to match your new Gofer and reload.
+The manifests and images of Gofer's own extensions (cron, interval and github) are built into Gofer, so upgrading Gofer
+upgrades them when it next starts. If you've pointed one at your own manifest in the config, Gofer leaves that alone.
 
 ## Compatibility
 

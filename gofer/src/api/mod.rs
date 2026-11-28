@@ -3,6 +3,7 @@
 mod deployments;
 mod event_utils;
 mod events;
+pub mod extension_images;
 pub mod extensions;
 mod external;
 mod image_blobs;
@@ -494,7 +495,9 @@ pub async fn start_web_service(conf: conf::api::ApiConfig, api_state: Arc<ApiSta
     // solved on either side by either delaying this call a bit or probably in a less brittle fashion by writing some
     // retry logic on the container side.
     // A broken extension shouldn't keep Gofer from starting, so failures here are recorded on the extension itself
-    // and shown by `gofer extension list` rather than returned.
+    // and shown by `gofer extension list` rather than returned. Gofer's own extensions' images go in first, since
+    // their manifests name them.
+    extensions::builtin::store(&api_state).await;
     extensions::reconcile::reconcile_on_boot(api_state.clone()).await;
     tokio::spawn(extensions::health::poll(api_state.clone()));
     tokio::spawn(image_retention::run(api_state.clone()));
@@ -689,6 +692,23 @@ fn register_routes(api: &mut ApiDescription<Arc<ApiState>>) {
 
     /* /api/extensions/plan */
     api.register(extensions::reconcile::plan_extensions)
+        .unwrap();
+
+    /* /api/extensions/images */
+    api.register(extension_images::list_extension_images)
+        .unwrap();
+
+    /* /api/extensions/images/missing */
+    api.register(extension_images::list_missing_extension_image_blobs)
+        .unwrap();
+
+    /* /api/extensions/images/blobs/{digest} */
+    api.register(extension_images::put_extension_image_blob)
+        .unwrap();
+
+    /* /api/extensions/images/{name}/{tag} */
+    api.register(extension_images::put_extension_image).unwrap();
+    api.register(extension_images::delete_extension_image)
         .unwrap();
 
     /* /api/extensions/{extension_id} */

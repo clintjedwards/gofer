@@ -5,6 +5,9 @@
 //! steps. First the pipeline's rows in `image_blobs` for them are dropped. Pipelines share blob files, so a file only
 //! goes once no pipeline has a row for it, and the same goes for an image's copy in Docker.
 //!
+//! Extension images stored in Gofer share those files too. They keep their blobs, in `extension_image_blobs`, for as
+//! long as they're stored, which is until an admin deletes them, so a file only goes once neither side has it.
+//!
 //! A blob nothing uses is still kept for a day after Gofer last saw it. `gofer up` asks which blobs Gofer has, uploads
 //! the rest and then registers, so what Gofer said it has has to stay until then. Being asked about counts as being
 //! seen, and so does being uploaded.
@@ -19,7 +22,7 @@
 use crate::{
     api::ApiState,
     images::{Digest, Images},
-    storage::{self, image_blobs},
+    storage::{self, extension_images, image_blobs},
 };
 use anyhow::{Context, Result};
 use std::{
@@ -105,9 +108,81 @@ async fn clean_all(api_state: &ApiState) -> Result<()> {
         }
     }
 
+    if let Err(e) = drop_unkept_extension_blobs(&api_state.storage, &api_state.images, now).await {
+        error!(
+            error = format!("{e:#}"),
+            "Could not clean up extension images"
+        );
+    }
+
     let stored = api_state.images.list().await?;
     remove_unused(&api_state.storage, &api_state.images, &stored, now).await?;
     remove_docker_images(api_state).await
+}
+
+/// Cleans up after an extension image is deleted. Nothing waits for this, so problems are only logged.
+pub async fn clean_extension_images(api_state: Arc<ApiState>) {
+    let now = SystemTime::now();
+
+    let result = async {
+        let dropped =
+            drop_unkept_extension_blobs(&api_state.storage, &api_state.images, now).await?;
+        remove_unused(&api_state.storage, &api_state.images, &dropped, now).await?;
+        remove_docker_images(&api_state).await
+    }
+    .await;
+
+    if let Err(e) = result {
+        error!(
+            error = format!("{e:#}"),
+            "Could not clean up extension images"
+        );
+    }
+}
+
+/// The same as [`drop_unkept`], for the blobs uploaded for extension images: a blob is kept while any stored extension
+/// image uses it, or for a day after Gofer last saw it.
+async fn drop_unkept_extension_blobs(
+    storage: &storage::Db,
+    images: &Images,
+    now: SystemTime,
+) -> Result<Vec<Digest>> {
+    let mut tx = storage.open_tx().await?;
+
+    let mut kept = HashSet::new();
+    for image in extension_images::list(&mut tx).await? {
+        let manifest: Digest = image.digest.parse()?;
+        match images.blobs_of(&manifest).await? {
+            Some(blobs) => kept.extend(blobs),
+            None => {
+                kept.insert(manifest);
+            }
+        }
+    }
+
+    let cutoff = epoch_milli(now - GRACE)?;
+    let mut dropped = vec![];
+
+    for digest in extension_images::list_blobs_seen_before(&mut tx, cutoff).await? {
+        let digest: Digest = digest.parse()?;
+        if kept.contains(&digest) {
+            continue;
+        }
+
+        extension_images::delete_blob(&mut tx, &digest.to_string()).await?;
+        dropped.push(digest);
+    }
+
+    tx.commit().await?;
+
+    if !dropped.is_empty() {
+        info!(
+            blobs = dropped.len(),
+            "Dropped the image blobs no extension image uses"
+        );
+    }
+
+    Ok(dropped)
 }
 
 /// Drops a pipeline's rows for blobs that none of the versions it keeps use and that Gofer hasn't seen for a day, and
@@ -365,6 +440,64 @@ mod tests {
             vec![manifest, config]
         }
 
+        /// Stores an extension image whose one layer is the same one pipelines share.
+        async fn store_extension_image(&self, name: &str) -> Vec<Digest> {
+            let mut blobs = vec![];
+            let config = format!("config for {name}");
+            let layer = digest(b"shared layer");
+            let manifest = serde_json::to_vec(&serde_json::json!({
+                "config": {"digest": digest(config.as_bytes()).to_string()},
+                "layers": [{"digest": layer.to_string()}],
+            }))
+            .unwrap();
+
+            let mut conn = self.db.write_conn().await.unwrap();
+            for content in [b"shared layer".as_slice(), config.as_bytes(), &manifest] {
+                let digest = digest(content);
+                let chunk: Result<_, std::io::Error> = Ok(bytes::Bytes::copy_from_slice(content));
+                let blob = (self.images)
+                    .put(&digest, futures::stream::iter([chunk]))
+                    .await
+                    .unwrap();
+                extension_images::upsert_blob(
+                    &mut conn,
+                    &extension_images::ExtensionImageBlob {
+                        digest: digest.to_string(),
+                        diff_id: blob.diff_id.to_string(),
+                        size: blob.size as i64,
+                        last_seen: epoch_milli(SystemTime::now()).unwrap().to_string(),
+                    },
+                )
+                .await
+                .unwrap();
+                blobs.push(digest);
+            }
+
+            extension_images::upsert(
+                &mut conn,
+                &extension_images::ExtensionImage {
+                    name: name.into(),
+                    tag: "1.0".into(),
+                    digest: blobs[2].to_string(),
+                    builtin: false,
+                    created: "0".into(),
+                },
+            )
+            .await
+            .unwrap();
+
+            blobs
+        }
+
+        async fn clean_extension_images(&self, now: SystemTime) {
+            let dropped = drop_unkept_extension_blobs(&self.db, &self.images, now)
+                .await
+                .unwrap();
+            remove_unused(&self.db, &self.images, &dropped, now)
+                .await
+                .unwrap();
+        }
+
         async fn clean(&self, pipeline: &str, now: SystemTime) {
             let dropped = drop_unkept(&self.db, &self.images, NAMESPACE, pipeline, now)
                 .await
@@ -435,6 +568,45 @@ mod tests {
             assert!(!harness.stored(blob).await, "{blob} should be removed");
         }
         assert!(harness.stored(&digest(b"shared layer")).await);
+    }
+
+    // Pipelines and extension images share blob files, so a file only goes once neither side has it.
+    #[tokio::test]
+    async fn test_extension_images_keep_their_blobs_until_deleted() {
+        let harness = Harness::new(1).await;
+        let old = harness.register(1, ConfigState::Deprecated).await;
+        harness.register(2, ConfigState::Live).await;
+        let extension = harness.store_extension_image("slack").await;
+
+        harness.clean(PIPELINE, two_days_from_now()).await;
+        harness.clean_extension_images(two_days_from_now()).await;
+
+        for blob in &old {
+            assert!(!harness.stored(blob).await, "{blob} should be removed");
+        }
+        for blob in &extension {
+            assert!(harness.stored(blob).await, "{blob} should be kept");
+        }
+
+        let mut conn = harness.db.write_conn().await.unwrap();
+        extension_images::delete(&mut conn, "slack", "1.0")
+            .await
+            .unwrap();
+        drop(conn);
+        harness.clean_extension_images(two_days_from_now()).await;
+
+        assert!(
+            !harness.stored(&extension[1]).await,
+            "the image's config should be removed"
+        );
+        assert!(
+            !harness.stored(&extension[2]).await,
+            "the image's manifest should be removed"
+        );
+        assert!(
+            harness.stored(&extension[0]).await,
+            "the layer should stay, since the live version still uses it"
+        );
     }
 
     #[tokio::test]

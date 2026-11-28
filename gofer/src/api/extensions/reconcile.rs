@@ -15,7 +15,9 @@ use super::{
 use crate::{
     api::{
         ApiState, InterpolationKind, PreflightOptions, RegistryAuth, Variable, VariableSource,
-        epoch_milli, fetch_global_secret, is_valid_identifier, parse_interpolation_syntax,
+        epoch_milli,
+        extension_images::{self, StoredImageRef},
+        fetch_global_secret, is_valid_identifier, parse_interpolation_syntax,
         permissioning::{Action, Requirement},
     },
     conf::{self, api::ExtensionInstall},
@@ -36,33 +38,50 @@ use std::{
 use strum::Display;
 use tracing::{error, info, warn};
 
-/// Extensions every Gofer install gets unless the config turns them off with `enabled = false`, along with their
-/// manifests. The manifests are built into Gofer and regenerated each release for the extension images built alongside
-/// it (`make generate-manifests`), so a Gofer always runs the default extensions it was released with and starting them
-/// never depends on fetching anything.
-///
-/// Gofer's optional extensions, like github, and any other extension are installed with a manifest URL or path
-/// instead.
-const DEFAULT_EXTENSIONS: [(&str, &str); 2] = [
-    (
-        "cron",
-        include_str!("../../../../containers/extensions/cron/manifest.toml"),
-    ),
-    (
-        "interval",
-        include_str!("../../../../containers/extensions/interval/manifest.toml"),
-    ),
-];
+/// One of the extensions that come with Gofer. Its manifest is built into Gofer, and so is its image, which Gofer stores
+/// as `gofer://<name>:<gofer version>` when it starts (see [`super::builtin`]). So a Gofer always runs the extensions it
+/// was released with, and starting them never depends on downloading anything. The manifests are regenerated each
+/// release by `make generate-manifests`.
+pub struct ProvidedExtension {
+    pub name: &'static str,
+    pub manifest: &'static str,
 
-pub fn default_manifest(name: &str) -> Option<&'static str> {
-    DEFAULT_EXTENSIONS
-        .iter()
-        .find(|(default, _)| *default == name)
-        .map(|(_, content)| *content)
+    /// Installed on every Gofer unless the config turns it off with `enabled = false`. The others are installed by
+    /// listing their id, with no manifest.
+    pub default: bool,
 }
 
-/// The path Gofer serves a default extension's manifest at, so operators can read exactly what it's running.
-fn default_manifest_path(name: &str) -> String {
+pub const PROVIDED_EXTENSIONS: [ProvidedExtension; 3] = [
+    ProvidedExtension {
+        name: "cron",
+        manifest: include_str!("../../../../containers/extensions/cron/manifest.toml"),
+        default: true,
+    },
+    ProvidedExtension {
+        name: "interval",
+        manifest: include_str!("../../../../containers/extensions/interval/manifest.toml"),
+        default: true,
+    },
+    ProvidedExtension {
+        name: "github",
+        manifest: include_str!("../../../../containers/extensions/github/manifest.toml"),
+        default: false,
+    },
+];
+
+pub fn provided_manifest(name: &str) -> Option<&'static str> {
+    PROVIDED_EXTENSIONS
+        .iter()
+        .find(|provided| provided.name == name)
+        .map(|provided| provided.manifest)
+}
+
+pub fn is_provided_extension(name: &str) -> bool {
+    provided_manifest(name).is_some()
+}
+
+/// The path Gofer serves a provided extension's manifest at, so operators can read exactly what it's running.
+fn provided_manifest_path(name: &str) -> String {
     format!("/extensions/manifests/{name}.toml")
 }
 
@@ -92,6 +111,10 @@ impl Manifest {
 
         if manifest.image.trim().is_empty() {
             bail!("Manifest is missing 'image'");
+        }
+
+        if let Some(stored) = StoredImageRef::parse(&manifest.image) {
+            stored.with_context(|| format!("Manifest's image '{}' is invalid", manifest.image))?;
         }
 
         for (kind, params) in [
@@ -163,12 +186,17 @@ pub fn is_global_secret_ref(value: &str) -> bool {
     )
 }
 
-/// An extension's settings and registry auth with their secret references swapped for the real values. These go to
-/// the extension's container and nowhere else.
+/// What an extension's config and manifest come to once they're looked up: settings and registry auth with their secret
+/// references swapped for the real values, and the image stored in Gofer, if that's where its image is. The secrets go
+/// to the extension's container and nowhere else.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Resolved {
     pub settings: BTreeMap<String, String>,
     pub registry_auth: Option<RegistryAuth>,
+
+    /// For an image stored in Gofer, the digest its `gofer://` name pointed to. Restarting or reverting uses exactly this
+    /// image, even if the name is pointed somewhere else later.
+    pub stored_image: Option<crate::images::Digest>,
 }
 
 /// Everything needed to run an extension the way the config describes, worked out and checked before any container
@@ -192,10 +220,11 @@ pub struct Prepared {
 /// The defaults live here rather than in the default config file because figment replaces arrays when merging
 /// config files; listing them there would make them disappear the moment an operator added an entry of their own.
 pub fn desired_extensions(installs: &[ExtensionInstall]) -> Result<Vec<ExtensionInstall>> {
-    let mut desired: Vec<ExtensionInstall> = DEFAULT_EXTENSIONS
+    let mut desired: Vec<ExtensionInstall> = PROVIDED_EXTENSIONS
         .iter()
-        .map(|(id, _)| ExtensionInstall {
-            id: id.to_string(),
+        .filter(|provided| provided.default)
+        .map(|provided| ExtensionInstall {
+            id: provided.name.to_string(),
             manifest: None,
             enabled: true,
             settings: BTreeMap::new(),
@@ -301,6 +330,8 @@ fn fingerprint(prepared_image: &str, resolved: &Resolved, additional_roles: &[St
 
     let fingerprint = serde_json::json!({
         "image": prepared_image,
+        // A stored image's name and tag only change on purpose, but a forced push can point them at a new image.
+        "stored_image": resolved.stored_image.as_ref().map(ToString::to_string),
         "settings": resolved.settings,
         "registry_auth": resolved.registry_auth,
         "additional_roles": roles,
@@ -309,20 +340,20 @@ fn fingerprint(prepared_image: &str, resolved: &Resolved, additional_roles: &[St
     hex::encode(Sha256::digest(fingerprint.to_string().as_bytes()))
 }
 
-/// Where the entry's manifest lives, and the manifest itself. Default extensions that leave `manifest` out use the copy
-/// built into Gofer.
+/// Where the entry's manifest lives, and the manifest itself. Gofer's own extensions that leave `manifest` out use the
+/// copy built into Gofer.
 async fn load_manifest(install: &ExtensionInstall) -> Result<(String, Manifest)> {
     if let Some(location) = &install.manifest {
         let manifest = fetch_manifest(location).await?;
         return Ok((location.clone(), manifest));
     }
 
-    let Some(content) = default_manifest(&install.id) else {
+    let Some(content) = provided_manifest(&install.id) else {
         bail!(
-            "No manifest given; only Gofer's default extensions ({}) can leave 'manifest' out",
-            DEFAULT_EXTENSIONS
+            "No manifest given; only the extensions that come with Gofer ({}) can leave 'manifest' out",
+            PROVIDED_EXTENSIONS
                 .iter()
-                .map(|(name, _)| *name)
+                .map(|provided| provided.name)
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -330,11 +361,37 @@ async fn load_manifest(install: &ExtensionInstall) -> Result<(String, Manifest)>
 
     let manifest = Manifest::parse(content)
         .with_context(|| format!("Gofer's built-in manifest for '{}' is invalid", install.id))?;
-    Ok((default_manifest_path(&install.id), manifest))
+    Ok((provided_manifest_path(&install.id), manifest))
+}
+
+/// Why a manifest's stored image can't be found, and what to do about it.
+fn missing_stored_image(stored: &StoredImageRef) -> anyhow::Error {
+    let version = env!("CARGO_PKG_VERSION");
+
+    if !is_provided_extension(&stored.name) {
+        return anyhow!(
+            "'{stored}' isn't stored in Gofer; push it with 'gofer extension image push {}:{}'",
+            stored.name,
+            stored.tag
+        );
+    }
+
+    if stored.tag == version {
+        anyhow!(
+            "'{stored}' isn't stored in Gofer, because this build of Gofer doesn't include its own extensions' images; \
+             'make build' and 'make run' build them in"
+        )
+    } else {
+        anyhow!(
+            "'{stored}' isn't stored in Gofer; Gofer only stores its own extensions' images for its own version, \
+             like 'gofer://{}:{version}'",
+            stored.name
+        )
+    }
 }
 
 /// Works out everything needed to run an entry without touching any running extension: checks the settings against
-/// the manifest and resolves the secrets.
+/// the manifest and resolves the secrets and the stored image.
 async fn prepare(
     api_state: &ApiState,
     install: &ExtensionInstall,
@@ -376,6 +433,21 @@ async fn prepare(
         }
         None => None,
     };
+
+    if let Some(stored) = StoredImageRef::parse(&manifest.image) {
+        let stored = stored?;
+
+        if registry_auth.is_some() {
+            bail!(
+                "registry_auth is for pulling an image from a registry, but '{stored}' is stored in Gofer; remove it"
+            );
+        }
+
+        resolved.stored_image = Some(
+            (extension_images::resolve(api_state, &stored).await?)
+                .ok_or_else(|| missing_stored_image(&stored))?,
+        );
+    }
 
     let hash = fingerprint(&manifest.image, &resolved, &install.additional_roles);
 
@@ -1321,28 +1393,43 @@ mod tests {
         assert!(desired[1].manifest.is_none());
     }
 
+    // Gofer stores its own extensions' images as gofer://<name>:<its version>, so their manifests have to name exactly
+    // that, or Gofer would look for an image it never stored.
     #[test]
-    fn default_manifests_are_valid() {
-        for (name, content) in DEFAULT_EXTENSIONS {
-            let manifest = Manifest::parse(content)
-                .unwrap_or_else(|e| panic!("built-in manifest for {name} is invalid: {e:#}"));
-            assert!(manifest.image.contains(name));
+    fn provided_manifests_name_the_images_gofer_stores() {
+        for provided in PROVIDED_EXTENSIONS {
+            let manifest = Manifest::parse(provided.manifest).unwrap_or_else(|e| {
+                panic!("built-in manifest for {} is invalid: {e:#}", provided.name)
+            });
+            assert_eq!(
+                manifest.image,
+                format!("gofer://{}:{}", provided.name, env!("CARGO_PKG_VERSION")),
+                "run 'make generate-manifests'"
+            );
         }
     }
 
     #[tokio::test]
-    async fn default_extensions_can_leave_out_their_manifest() {
+    async fn provided_extensions_can_leave_out_their_manifest() {
         let mut interval = install("interval");
         interval.manifest = None;
         let (location, manifest) = load_manifest(&interval).await.unwrap();
         assert_eq!(location, "/extensions/manifests/interval.toml");
         assert!(manifest.image.contains("interval"));
 
-        // github ships with Gofer too, but it's optional, so it needs a manifest like any other extension.
+        // github is optional, so it isn't installed until it's listed, but it doesn't need a manifest either.
         let mut github = install("github");
         github.manifest = None;
-        let err = load_manifest(&github).await.unwrap_err();
-        assert!(err.to_string().contains("only Gofer's default extensions"));
+        let (location, _) = load_manifest(&github).await.unwrap();
+        assert_eq!(location, "/extensions/manifests/github.toml");
+
+        let mut other = install("slack");
+        other.manifest = None;
+        let err = load_manifest(&other).await.unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("only the extensions that come with Gofer")
+        );
     }
 
     #[test]
@@ -1446,6 +1533,7 @@ documentation = "Time between runs."
         let resolved = Resolved {
             settings: self::settings(resolved),
             registry_auth: None,
+            stored_image: None,
         };
         let hash = fingerprint(image, &resolved, &[]);
         let mut registration = placeholder_registration("github");
@@ -1478,6 +1566,36 @@ documentation = "Time between runs."
         );
         extension.applied = Some(Box::new(prepared.clone()));
         extension
+    }
+
+    #[test]
+    fn missing_stored_images_say_what_to_do() {
+        let version = env!("CARGO_PKG_VERSION");
+        let reason = |name: &str, tag: &str| {
+            missing_stored_image(&StoredImageRef {
+                name: name.into(),
+                tag: tag.into(),
+            })
+            .to_string()
+        };
+
+        assert!(reason("slack", "1.0").contains("gofer extension image push slack:1.0"));
+        assert!(reason("cron", version).contains("doesn't include its own extensions' images"));
+        assert!(reason("cron", "0.0.1").contains(&format!("gofer://cron:{version}")));
+    }
+
+    #[test]
+    fn only_images_named_by_a_tag_are_pulled_every_time() {
+        assert!(super::super::is_pinned_by_digest(
+            "ghcr.io/example/slack@sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        ));
+        assert!(super::super::is_pinned_by_digest(
+            "ghcr.io/example/slack:1.2@sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        ));
+        assert!(!super::super::is_pinned_by_digest(
+            "ghcr.io/example/slack:1.2"
+        ));
+        assert!(!super::super::is_pinned_by_digest("localhost:5000/slack"));
     }
 
     #[test]

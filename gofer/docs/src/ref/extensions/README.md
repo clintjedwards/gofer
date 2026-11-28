@@ -18,12 +18,13 @@ to run your pipeline.
 ## Gofer's extensions
 
 Gofer comes with [its own set of extensions](./provided/index.html), a bit like a standard library. They're all
-maintained and released alongside Gofer, and they come in two kinds:
+maintained and released alongside Gofer, and each one's manifest and image are built into Gofer itself. Starting them
+never downloads anything, and they always match the version of Gofer you're running. They come in two kinds:
 
 - **Default extensions**, [cron](./provided/cron.md) and [interval](./provided/interval.md), are basic enough that
-  everyone gets them. They're installed unless you turn them off, and their manifests are built into Gofer.
-- **Optional extensions**, like [github](./provided/github.md), are for things not everyone needs. You add them to
-  your config when you want them, the same way you'd install any other extension.
+  everyone gets them. They're installed unless you turn them off.
+- **Optional extensions**, like [github](./provided/github.md), are for things not everyone needs. You install one
+  by listing its id in your config.
 
 You can also [write your own](./writing_extensions.md).
 
@@ -45,7 +46,7 @@ Installing an extension takes four steps:
 2. **Add an `[[extensions.install]]` entry to Gofer's config** that points at the extension's
    [manifest](./manifest.md). The manifest is a small file that ships with each extension and tells Gofer everything
    about it: which container image to run, which settings it takes, and which parameters pipelines pass when they
-   subscribe.
+   subscribe. Gofer's own extensions don't need one; their manifests are built in.
 
 3. **Fill in the extension's settings.** Secrets are written as a reference to the global secret store, like
    `global_secret{{github-app-key}}`, instead of the value itself.
@@ -53,7 +54,6 @@ Installing an extension takes four steps:
    ```toml
    [[extensions.install]]
    id = "github"
-   manifest = "https://raw.githubusercontent.com/clintjedwards/gofer/v<gofer version>/containers/extensions/github/manifest.toml"
    [extensions.install.settings]
    app_id = "112348"
    app_installation = "99560091"
@@ -61,9 +61,9 @@ Installing an extension takes four steps:
    app_webhook_secret = "global_secret{{github-app-webhook-secret}}"
    ```
 
-   You don't have to write this by hand. `gofer extension manifest <manifest URL or path>` prints a ready-to-paste
-   block listing every setting the extension takes, with its documentation, plus the commands to create any secrets
-   it needs.
+   You don't have to write this by hand. `gofer extension manifest github`, or `gofer extension manifest <manifest
+   URL or path>` for any other extension, prints a ready-to-paste block listing every setting the extension takes,
+   with its documentation, plus the commands to create any secrets it needs.
 
 4. **Reload.** Either restart Gofer, or run `gofer extension reload` to apply the change to the running server. See
    [Reloading](#reloading) below.
@@ -73,11 +73,11 @@ Installing an extension takes four steps:
 | name               | type   | default    | description                                                                                                                                                                                                   |
 | ------------------ | ------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`               | string | `<required>` | A unique name for the extension. Pipelines subscribe to the extension by this id, so keep it the same across upgrades. Letters, numbers, and hyphens; 3 to 32 characters.                                    |
-| `manifest`         | string | none       | Where to find the extension's [manifest](./manifest.md): an `https://` URL or a path on the Gofer server. Only Gofer's [default extensions](#default-extensions) (cron, interval) can leave this out; they use the manifest built into Gofer. |
+| `manifest`         | string | none       | Where to find the extension's [manifest](./manifest.md): an `https://` URL or a path on the Gofer server. Only [Gofer's own extensions](#gofers-extensions) (cron, interval, github) can leave this out; they use the manifest built into Gofer. |
 | `enabled`          | bool   | `true`     | Set to `false` to stop the extension without removing it. Its subscriptions are kept.                                                                                                                         |
 | `settings`         | table  | empty      | Values for the settings the extension takes, as listed in its manifest. Unknown keys are an error. Settings marked secret must be a `global_secret{{key}}` reference.                                         |
 | `additional_roles` | list   | empty      | Extra [roles](../server_configuration/authz_n.md) to give the extension's API token, on top of the role every extension gets.                                                                                 |
-| `registry_auth`    | table  | none       | `{ user = "...", pass = "global_secret{{...}}" }` for pulling the extension's image from a private registry. The password must be a global secret reference.                                                |
+| `registry_auth`    | table  | none       | `{ user = "...", pass = "global_secret{{...}}" }` for pulling the extension's image from a private registry. The password must be a global secret reference. An image stored in Gofer doesn't need it, and it's an error to set it for one. |
 
 ### Secrets
 
@@ -92,9 +92,8 @@ extension can use any global secret.
 ### Default extensions
 
 Every Gofer install gets the [cron](./provided/cron.md) and [interval](./provided/interval.md) extensions without
-listing them. Their manifests are built into Gofer, so they always match the version of Gofer you're running and
-starting them never depends on downloading anything. Gofer serves them at `/extensions/manifests/<name>.toml` if you
-want to read one.
+listing them. Like all of Gofer's own extensions, their manifests and images are built into Gofer. Gofer serves the
+manifests at `/extensions/manifests/<name>.toml` if you want to read one.
 
 To change one of them, add an entry with the same id. Anything you set replaces the default:
 
@@ -110,6 +109,36 @@ min_interval = "5m"
 id = "cron"
 enabled = false
 ```
+
+## Where an extension's image comes from
+
+A manifest's `image` says where the extension's container image lives, one of two ways:
+
+- **Stored in Gofer**, written `gofer://<name>:<tag>`. Gofer loads it into Docker from its own image store, the same
+  way it does a task's image, so nothing is pulled. Gofer's own extensions are stored this way: Gofer stores their
+  images from its binary every time it starts, as `gofer://cron:<gofer version>` and so on.
+- **In a registry**, written like any Docker image, such as `ghcr.io/example/slack:1.2.0`. Docker pulls it, using
+  `registry_auth` if the registry needs a login. An image pinned by digest, like
+  `ghcr.io/example/slack@sha256:...`, is only pulled when Docker doesn't already have it. An image named by a tag is
+  pulled every time the extension starts, since a tag means whatever it points to right now.
+
+To store an image of your own, push it with `gofer extension image push`, copying it from a registry or building it
+from a Dockerfile. Either way, only the parts Gofer doesn't have yet are uploaded:
+
+```bash
+gofer extension image push slack:1.2.0 --from ghcr.io/example/slack:1.2.0
+gofer extension image push slack:1.2.0 --dockerfile ./Dockerfile
+```
+
+Then point the extension's manifest at `image = "gofer://slack:1.2.0"` and reload.
+
+- **A name and tag is fixed once it's stored.** Pushing to a name and tag that's taken is refused unless you pass
+  `--force`. To upgrade an extension, push a new tag and change its manifest, so reload shows the change and can go
+  back to the old image if the new one won't start.
+- **Gofer's own extensions keep their names.** cron, interval and github can't be used for images you push.
+- `gofer extension image list` shows what's stored and which extensions use each image, and
+  `gofer extension image delete <name>:<tag>` removes one. Deleting is refused while any extension uses the image,
+  including one that's out of the config but not yet [purged](#removing-an-extension).
 
 ## Reloading
 

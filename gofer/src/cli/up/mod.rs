@@ -1,4 +1,4 @@
-mod images;
+pub(super) mod images;
 
 use crate::cli::{Cli, api_error_message, ask_yes_no, rail};
 use crate::conf::cli::OutputFormat;
@@ -229,7 +229,11 @@ impl Cli {
             let built = self
                 .build_images(&namespace, &config, &to_build, &prepared, rebuild)
                 .await?;
-            self.upload_images(&namespace, &config.id, &built).await?;
+            let target = images::UploadTarget::Pipeline {
+                namespace: &namespace,
+                pipeline_id: &config.id,
+            };
+            self.upload_images(target, &built).await?;
 
             for (ids, built) in &built {
                 for id in ids {

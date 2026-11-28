@@ -87,7 +87,6 @@ Secret settings must be [global secret references](../index.html#secrets) like `
 ```toml
 [[extensions.install]]
 id = "github"
-manifest = "https://raw.githubusercontent.com/clintjedwards/gofer/v<gofer version>/containers/extensions/github/manifest.toml"
 [extensions.install.settings]
 app_id = "112348"
 app_installation = "99560091"
@@ -175,9 +174,9 @@ gofer secret global put github-app-webhook-secret
 #### 4. Add the extension to Gofer's config
 
 Add an `[[extensions.install]]` entry like the [example above](#example), with your app ID and installation ID and
-references to the two secrets. Point `manifest` at the github manifest for your version of Gofer.
+references to the two secrets. github comes with Gofer, so it doesn't need a `manifest`.
 
-`gofer extension manifest <manifest url> --id github` prints this block for you, with every setting documented.
+`gofer extension manifest github` prints this block for you, with every setting documented.
 
 #### 5. Reload
 

@@ -88,6 +88,13 @@ pub enum ContainerError {
     #[error("image not found; {0}")]
     NoSuchImage(String),
 
+    /// Docker's copy of an image from Gofer's store doesn't have the layers Gofer checked.
+    #[error(
+        "Docker's copy of the image doesn't have the layers it was stored with, so it wasn't run. Docker read the image \
+         differently from how Gofer checked it."
+    )]
+    ImageMismatch,
+
     /// An expected and unknown error has occurred.
     #[error("unexpected Docker error occurred; {0}")]
     Unknown(String),
@@ -404,6 +411,34 @@ impl Containers {
         self.image_layers(name).await?.ok_or_else(|| {
             ContainerError::NoSuchImage(format!("'{name}' wasn't there after loading it"))
         })
+    }
+
+    /// Makes sure Docker has an image from Gofer's image store, loading it if it doesn't, and returns the name Docker
+    /// knows it by. `loading` is called if it has to be loaded, or if another load of it has to be waited for.
+    ///
+    /// Docker's copy has to have exactly the layers the image was stored with. Docker finds a layer by its diff id, and
+    /// its JSON parser reads `rootfs` and `RootFS` as the same field where ours doesn't, so only Docker's own answer
+    /// settles what it would run. A copy that doesn't match, like something tagged with this name by hand, gets replaced
+    /// once.
+    pub async fn load_stored_image(
+        &self,
+        images: &crate::images::Images,
+        image: &crate::images::StoredImage,
+        loading: impl Fn(),
+    ) -> Result<String, ContainerError> {
+        let name = image.manifest.docker_name();
+
+        for replace in [false, true] {
+            let layers = self
+                .load_image(&name, replace, &loading, || images.docker_archive(image))
+                .await?;
+
+            if layers == image.diff_ids {
+                return Ok(name);
+            }
+        }
+
+        Err(ContainerError::ImageMismatch)
     }
 
     /// The diff ids of an image's layers as Docker has them, or `None` if Docker doesn't have the image.

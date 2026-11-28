@@ -234,6 +234,17 @@ Grants access to resources belonging to matching extensions.
 | `extension` | string | yes | Regex matched against the entire extension id. Use '.*' to match every extension. |
 | `resources` | array of [ExtensionResource](#extensionresource) | yes |  |
 
+## ExtensionImage
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `builtin` | boolean | yes | Whether it's one of Gofer's own extensions, stored from its binary when it starts. These can't be replaced or deleted. |
+| `created` | integer | yes | Time it was stored in epoch milliseconds. |
+| `digest` | string | yes | The digest of the image's manifest. |
+| `name` | string | yes |  |
+| `tag` | string | yes |  |
+| `used_by` | array of string | yes | The extensions whose manifest names this image. |
+
 ## ExtensionResource
 
 Things that belong to a specific extension.
@@ -430,6 +441,12 @@ One of the variants below. Variants without a payload are sent as a plain string
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
 | `deployments` | array of [Deployment](#deployment) | yes | A list of all deployments. |
+
+## ListExtensionImagesResponse
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `images` | array of [ExtensionImage](#extensionimage) | yes |  |
 
 ## ListExtensionObjectsResponse
 
@@ -675,6 +692,19 @@ A string, one of:
 | `extension_id` | string | yes |  |
 | `manifest` | string | yes | Where the extension's manifest comes from. |
 | `plan_hash` | string | yes | Pass this back when applying so Gofer can refuse if anything changed after the plan was made. |
+
+## PutExtensionImageRequest
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `digest` | string | yes | The digest of the image's manifest. Every part of the image has to be uploaded first. |
+| `force` | boolean | no | Replace the image this name and tag point to, if there is one. Without it, a name and tag can only be stored once. |
+
+## PutExtensionImageResponse
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `image` | [ExtensionImage](#extensionimage) | yes |  |
 
 ## PutExtensionObjectResponse
 

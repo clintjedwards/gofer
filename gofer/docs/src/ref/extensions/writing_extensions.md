@@ -91,6 +91,13 @@ fails if one is out of date).
 Operators then install your extension by pointing an `[[extensions.install]]` entry at the manifest. See
 [Installing and configuring extensions](./index.html#installing-and-configuring-extensions).
 
+Operators who'd rather not have Gofer pull from your registry can store your image in Gofer instead, with
+`gofer extension image push my-extension:1.2.0 --from ghcr.io/me/my_extension:1.2.0`, and point their copy of the
+manifest at `gofer://my-extension:1.2.0`. An extension only for your own Gofer doesn't need a registry at all:
+`gofer extension image push my-extension:1.2.0 --dockerfile ./Dockerfile` builds it and stores it in one step, and the
+manifest names it the same way. See
+[where an extension's image comes from](./index.html#where-an-extensions-image-comes-from).
+
 ## Compatibility
 
 Operators upgrade extensions in place, so new versions have to keep working with the data and settings older

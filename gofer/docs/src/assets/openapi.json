@@ -141,6 +141,211 @@
         }
       }
     },
+    "/api/extensions/images": {
+      "get": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "List the extension images stored in Gofer.",
+        "operationId": "list_extension_images",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListExtensionImagesResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions/images/blobs/{digest}": {
+      "put": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Upload an extension image blob.",
+        "description": "Uploads one part of an extension image: its manifest, its config, or one of its layers. The contents must match the digest in the path. Uploading the same blob again is fine.",
+        "operationId": "put_extension_image_blob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "digest",
+            "description": "The sha256 digest of the blob's contents. Ex: `sha256:2cf24dba5fb0...`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "resource updated"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions/images/missing": {
+      "post": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "List which extension image blobs need to be uploaded.",
+        "description": "Given the digests of the blobs that make up an extension image, returns the ones Gofer doesn't have yet. Extension images can only use blobs uploaded for extension images, so blobs only a pipeline has uploaded are returned too.",
+        "operationId": "list_missing_extension_image_blobs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListMissingImageBlobsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMissingImageBlobsResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/extensions/images/{name}/{tag}": {
+      "put": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Store an extension image.",
+        "description": "Stores an image whose parts were uploaded, so manifests can name it as `gofer://<name>:<tag>`. The image has to be one Gofer can run. A name and tag that's already stored is refused unless `force` is set, and the names of Gofer's own extensions are kept for them.",
+        "operationId": "put_extension_image",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "The image's name, as in `gofer://<name>:<tag>`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tag",
+            "description": "The image's tag, as in `gofer://<name>:<tag>`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutExtensionImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutExtensionImageResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "Delete an extension image.",
+        "description": "Refused while any extension's manifest names it, including extensions removed from the config but not yet purged, and for Gofer's own extensions. Its blobs are removed once nothing else uses them.",
+        "operationId": "delete_extension_image",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "description": "The image's name, as in `gofer://<name>:<tag>`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tag",
+            "description": "The image's tag, as in `gofer://<name>:<tag>`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "successful deletion"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/extensions/plan": {
       "post": {
         "tags": [
@@ -4258,6 +4463,46 @@
           "resources"
         ]
       },
+      "ExtensionImage": {
+        "type": "object",
+        "properties": {
+          "builtin": {
+            "description": "Whether it's one of Gofer's own extensions, stored from its binary when it starts. These can't be replaced or deleted.",
+            "type": "boolean"
+          },
+          "created": {
+            "description": "Time it was stored in epoch milliseconds.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "digest": {
+            "description": "The digest of the image's manifest.",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "used_by": {
+            "description": "The extensions whose manifest names this image.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "builtin",
+          "created",
+          "digest",
+          "name",
+          "tag",
+          "used_by"
+        ]
+      },
       "ExtensionResource": {
         "description": "Things that belong to a specific extension.",
         "type": "string",
@@ -5279,6 +5524,20 @@
           "deployments"
         ]
       },
+      "ListExtensionImagesResponse": {
+        "type": "object",
+        "properties": {
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtensionImage"
+            }
+          }
+        },
+        "required": [
+          "images"
+        ]
+      },
       "ListExtensionObjectsResponse": {
         "type": "object",
         "properties": {
@@ -5948,6 +6207,34 @@
           "extension_id",
           "manifest",
           "plan_hash"
+        ]
+      },
+      "PutExtensionImageRequest": {
+        "type": "object",
+        "properties": {
+          "digest": {
+            "description": "The digest of the image's manifest. Every part of the image has to be uploaded first.",
+            "type": "string"
+          },
+          "force": {
+            "description": "Replace the image this name and tag point to, if there is one. Without it, a name and tag can only be stored once.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "digest"
+        ]
+      },
+      "PutExtensionImageResponse": {
+        "type": "object",
+        "properties": {
+          "image": {
+            "$ref": "#/components/schemas/ExtensionImage"
+          }
+        },
+        "required": [
+          "image"
         ]
       },
       "PutExtensionObjectResponse": {

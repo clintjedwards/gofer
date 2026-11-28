@@ -410,11 +410,7 @@ impl RunShepherd {
     }
 
     /// Makes sure Docker has the task's image, loading it from Gofer's image store if it doesn't, and returns the name
-    /// Docker knows it by.
-    ///
-    /// Docker's copy has to have exactly the layers the image was registered with. Docker finds a layer by its diff
-    /// id, and its JSON parser reads `rootfs` and `RootFS` as the same field where ours doesn't, so only Docker's own
-    /// answer settles what it would run.
+    /// Docker knows it by. See [`crate::containers::Containers::load_stored_image`].
     async fn load_image(
         &self,
         task: &tasks::Task,
@@ -449,36 +445,24 @@ impl RunShepherd {
             }
         };
 
-        let name = digest.docker_name();
+        let loading = || {
+            _ = timeline.send(task_executions::TimelineEntry::now(
+                task_executions::Phase::LoadingImage,
+            ));
+        };
 
-        // A copy that doesn't match, like something tagged with this name by hand, gets replaced once.
-        for replace in [false, true] {
-            let layers = (self.api_state.containers)
-                .load_image(
-                    &name,
-                    replace,
-                    || {
-                        _ = timeline.send(task_executions::TimelineEntry::now(
-                            task_executions::Phase::LoadingImage,
-                        ));
-                    },
-                    || self.api_state.images.docker_archive(&image),
-                )
-                .await
-                .map_err(|e| {
-                    container_error(format!("Could not load the task's image into Docker; {e}"))
-                })?;
-
-            if layers == image.diff_ids {
-                return Ok(name);
+        match (self.api_state.containers)
+            .load_stored_image(&self.api_state.images, &image, loading)
+            .await
+        {
+            Ok(name) => Ok(name),
+            Err(e @ containers::ContainerError::ImageMismatch) => {
+                Err(container_error(e.to_string()))
             }
+            Err(e) => Err(container_error(format!(
+                "Could not load the task's image into Docker; {e}"
+            ))),
         }
-
-        Err(container_error(
-            "Docker's copy of the task's image doesn't have the layers it was registered with, so it wasn't run. \
-             Docker read the image differently from how Gofer checked it."
-                .into(),
-        ))
     }
 
     /// Starts the task execution's container from its image, which [`Self::load_image`] made sure Docker has.

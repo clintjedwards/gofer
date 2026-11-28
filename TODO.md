@@ -1,26 +1,15 @@
 # Large Projects on the docket
 
-These come after the built images refactor is done.
-
-* Extensions that don't come from a registry. Today an extension is still an image Gofer pulls, with its own
-  `registry_auth`, while tasks run images Gofer stores itself.
-  * At the least, the extensions that come with Gofer (cron, interval, github) should ship with it, so starting them
-    never pulls anything, works without the network, and always matches the server's version. They could be built
-    into the release and loaded from Gofer's own image store, the same way tasks are.
-  * Maybe every extension: one is installed by uploading its image through the same blob routes `gofer up` uses, and
-    then runs like a very long task. That would make extension `registry_auth` go away too. Open questions: who
-    uploads it (an admin with the CLI, from a Dockerfile or from their local Docker), and how upgrading one works.
-  * If neither turns out worth it, extensions keep pulling from registries as they do now.
+Nothing right now.
 
 # Small things I want to keep track of that I definitely need to do.
 
 * Let extension manifests declare the additional roles an extension needs, instead of operators having to know and
   list them in `additional_roles`. Could also be a way to permission extensions per pipeline or per purpose. Needs a
   design session.
-* Pin extension images by digest in manifests (`image@sha256:...`) instead of by tag. Gofer pulls on every start, so
-  if someone re-pushes a tag the extension's code changes without the manifest changing and without reload showing
-  anything. With digests, "the manifest didn't change" really means "the code didn't change". The SDKs' manifest
-  command would need the digest, so this probably happens after the image is pushed in the release flow.
+* Most of the API's 404s are made with dropshot's `HttpError::for_not_found`, which keeps its message internal, so
+  users only ever see "Not Found" instead of what wasn't found. `for_client_error(None, NOT_FOUND, message)` shows the
+  message; `api/extension_images.rs` does that.
 * Build the provided extensions against the in-repo Go SDK with a `replace` directive, like examplePipelines already
   does. Right now a breaking SDK change means pushing main, then running `go get ...@main` in each extension and
   committing again before the release can be tagged. With `replace` it's one commit. Things to fix or accept if we do:
@@ -28,7 +17,7 @@ These come after the built images refactor is done.
     `.dockerignore` (target/, .git, node_modules) and Dockerfiles that copy only `sdk/go` and their own extension dir
     instead of `ADD .`, or builds get slow and the layer cache breaks on any repo change.
   * Images can pick up uncommitted SDK edits since builds use the working tree. Add a clean tree check
-    (`git status --porcelain`) to `build-containers`.
+    (`git status --porcelain`) to `extension-images`.
   * Nothing exercises the published SDK anymore, so something that only breaks for outside consumers (like an
     uncommitted SDK file) goes unnoticed. Could cover this with a release check that builds one extension with the
     replace dropped (`go mod edit -dropreplace` on a temp copy).
@@ -197,8 +186,6 @@ There are several useful things we can do with the concept of extensions:
 - Builds are static with musl, whose memory allocator is slow when many threads allocate at once; the test suite takes
   about 45% longer than with glibc. If the server ever feels slow under load, making mimalloc the global allocator is
   the usual fix.
-- Tasks only get the gofer CLI when Gofer runs on the same machine as Docker, since it's a bind mount of Gofer's own
-  binary. A Gofer that runs in a container would have to copy itself into a volume once and mount that instead.
 - Improve Logging:
   - We should change extensions(and probably main?) over to use slog instead so we can get consistent logging patterns
     from extensions.

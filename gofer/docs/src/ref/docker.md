@@ -15,7 +15,9 @@ Docker needs to be installed and the Gofer process needs to have the required pe
 
 Task images come from Gofer, not from a registry. Before a task runs, Gofer loads its image into Docker from its own
 [image store](./server_configuration/configuration_reference.md#images), named `gofer-image:<digest>`, and it
-removes those once no version of any pipeline keeps them. Extensions are still pulled from their registries.
+removes those once no version of any pipeline keeps them. Extensions whose image is stored in Gofer, which includes
+Gofer's own, are loaded the same way. An extension whose manifest names a registry image is pulled from that registry;
+see [where an extension's image comes from](./extensions/index.html#where-an-extensions-image-comes-from).
 
 Each run gets a Docker volume of its own, which is the folder its tasks share at `/gofer/run`. Gofer removes it when
 the run ends, along with the run's task containers, since Docker won't remove a volume while any container has it.
@@ -23,8 +25,7 @@ Every hour Gofer also looks for any that a crash left behind. The volume takes s
 under `/var/lib/docker`, and Docker can't limit its size.
 
 Every task also gets [the gofer CLI](./pipeline_configuration/tasks.md#the-gofer-cli): Gofer mounts its own binary,
-read only, at `/gofer/bin/gofer`. That's a bind mount of the file Gofer was started from, so Gofer has to run on the
-same machine as Docker, and not in a container of its own, for tasks to get it.
+read only, at `/gofer/bin/gofer`. It's a bind mount of the file Gofer was started from.
 
 `gofer up` uses Docker as well, on the machine it runs on, to build task images. It runs
 [BuildKit](https://github.com/moby/buildkit) in a container called `gofer-buildkit`, with its cache in a volume, and

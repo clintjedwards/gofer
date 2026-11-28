@@ -793,6 +793,23 @@ type ExtensionGrant struct {
 	Resources []ExtensionResource `json:"resources"`
 }
 
+// ExtensionImage defines model for ExtensionImage.
+type ExtensionImage struct {
+	// Builtin Whether it's one of Gofer's own extensions, stored from its binary when it starts. These can't be replaced or deleted.
+	Builtin bool `json:"builtin"`
+
+	// Created Time it was stored in epoch milliseconds.
+	Created uint64 `json:"created"`
+
+	// Digest The digest of the image's manifest.
+	Digest string `json:"digest"`
+	Name   string `json:"name"`
+	Tag    string `json:"tag"`
+
+	// UsedBy The extensions whose manifest names this image.
+	UsedBy []string `json:"used_by"`
+}
+
 // ExtensionResource Things that belong to a specific extension.
 type ExtensionResource string
 
@@ -1143,6 +1160,11 @@ type ListDeploymentsResponse struct {
 	Deployments []Deployment `json:"deployments"`
 }
 
+// ListExtensionImagesResponse defines model for ListExtensionImagesResponse.
+type ListExtensionImagesResponse struct {
+	Images []ExtensionImage `json:"images"`
+}
+
 // ListExtensionObjectsResponse defines model for ListExtensionObjectsResponse.
 type ListExtensionObjectsResponse struct {
 	// Objects A list of all extension objects.
@@ -1437,6 +1459,20 @@ type PlannedExtension struct {
 
 	// PlanHash Pass this back when applying so Gofer can refuse if anything changed after the plan was made.
 	PlanHash string `json:"plan_hash"`
+}
+
+// PutExtensionImageRequest defines model for PutExtensionImageRequest.
+type PutExtensionImageRequest struct {
+	// Digest The digest of the image's manifest. Every part of the image has to be uploaded first.
+	Digest string `json:"digest"`
+
+	// Force Replace the image this name and tag point to, if there is one. Without it, a name and tag can only be stored once.
+	Force *bool `json:"force,omitempty"`
+}
+
+// PutExtensionImageResponse defines model for PutExtensionImageResponse.
+type PutExtensionImageResponse struct {
+	Image ExtensionImage `json:"image"`
 }
 
 // PutExtensionObjectResponse defines model for PutExtensionObjectResponse.
@@ -2279,6 +2315,12 @@ type GetGlobalSecretParams struct {
 	// IncludeSecret Includes the actual plaintext secret in the response.
 	IncludeSecret bool `form:"include_secret" json:"include_secret"`
 }
+
+// ListMissingExtensionImageBlobsJSONRequestBody defines body for ListMissingExtensionImageBlobs for application/json ContentType.
+type ListMissingExtensionImageBlobsJSONRequestBody = ListMissingImageBlobsRequest
+
+// PutExtensionImageJSONRequestBody defines body for PutExtensionImage for application/json ContentType.
+type PutExtensionImageJSONRequestBody = PutExtensionImageRequest
 
 // ApplyExtensionJSONRequestBody defines body for ApplyExtension for application/json ContentType.
 type ApplyExtensionJSONRequestBody = ApplyExtensionRequest
@@ -5248,6 +5290,25 @@ type ClientInterface interface {
 	// ListExtensions request
 	ListExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExtensionImages request
+	ListExtensionImages(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutExtensionImageBlobWithBody request with any body
+	PutExtensionImageBlobWithBody(ctx context.Context, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListMissingExtensionImageBlobsWithBody request with any body
+	ListMissingExtensionImageBlobsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ListMissingExtensionImageBlobs(ctx context.Context, body ListMissingExtensionImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteExtensionImage request
+	DeleteExtensionImage(ctx context.Context, name string, tag string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutExtensionImageWithBody request with any body
+	PutExtensionImageWithBody(ctx context.Context, name string, tag string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutExtensionImage(ctx context.Context, name string, tag string, body PutExtensionImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PlanExtensions request
 	PlanExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5543,6 +5604,90 @@ func (c *Client) GetEvent(ctx context.Context, eventId string, reqEditors ...Req
 
 func (c *Client) ListExtensions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListExtensionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListExtensionImages(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExtensionImagesRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutExtensionImageBlobWithBody(ctx context.Context, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutExtensionImageBlobRequestWithBody(c.Server, digest, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListMissingExtensionImageBlobsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMissingExtensionImageBlobsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListMissingExtensionImageBlobs(ctx context.Context, body ListMissingExtensionImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMissingExtensionImageBlobsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteExtensionImage(ctx context.Context, name string, tag string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteExtensionImageRequest(c.Server, name, tag)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutExtensionImageWithBody(ctx context.Context, name string, tag string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutExtensionImageRequestWithBody(c.Server, name, tag, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutExtensionImage(ctx context.Context, name string, tag string, body PutExtensionImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutExtensionImageRequest(c.Server, name, tag, body)
 	if err != nil {
 		return nil, err
 	}
@@ -6801,6 +6946,204 @@ func NewListExtensionsRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListExtensionImagesRequest generates requests for ListExtensionImages
+func NewListExtensionImagesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/images")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutExtensionImageBlobRequestWithBody generates requests for PutExtensionImageBlob with any type of body
+func NewPutExtensionImageBlobRequestWithBody(server string, digest string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "digest", runtime.ParamLocationPath, digest)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/images/blobs/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListMissingExtensionImageBlobsRequest calls the generic ListMissingExtensionImageBlobs builder with application/json body
+func NewListMissingExtensionImageBlobsRequest(server string, body ListMissingExtensionImageBlobsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewListMissingExtensionImageBlobsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewListMissingExtensionImageBlobsRequestWithBody generates requests for ListMissingExtensionImageBlobs with any type of body
+func NewListMissingExtensionImageBlobsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/images/missing")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteExtensionImageRequest generates requests for DeleteExtensionImage
+func NewDeleteExtensionImageRequest(server string, name string, tag string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "tag", runtime.ParamLocationPath, tag)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/images/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutExtensionImageRequest calls the generic PutExtensionImage builder with application/json body
+func NewPutExtensionImageRequest(server string, name string, tag string, body PutExtensionImageJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutExtensionImageRequestWithBody(server, name, tag, "application/json", bodyReader)
+}
+
+// NewPutExtensionImageRequestWithBody generates requests for PutExtensionImage with any type of body
+func NewPutExtensionImageRequestWithBody(server string, name string, tag string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "tag", runtime.ParamLocationPath, tag)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/extensions/images/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -10186,6 +10529,25 @@ type ClientWithResponsesInterface interface {
 	// ListExtensionsWithResponse request
 	ListExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExtensionsResp, error)
 
+	// ListExtensionImagesWithResponse request
+	ListExtensionImagesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExtensionImagesResp, error)
+
+	// PutExtensionImageBlobWithBodyWithResponse request with any body
+	PutExtensionImageBlobWithBodyWithResponse(ctx context.Context, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionImageBlobResp, error)
+
+	// ListMissingExtensionImageBlobsWithBodyWithResponse request with any body
+	ListMissingExtensionImageBlobsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListMissingExtensionImageBlobsResp, error)
+
+	ListMissingExtensionImageBlobsWithResponse(ctx context.Context, body ListMissingExtensionImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListMissingExtensionImageBlobsResp, error)
+
+	// DeleteExtensionImageWithResponse request
+	DeleteExtensionImageWithResponse(ctx context.Context, name string, tag string, reqEditors ...RequestEditorFn) (*DeleteExtensionImageResp, error)
+
+	// PutExtensionImageWithBodyWithResponse request with any body
+	PutExtensionImageWithBodyWithResponse(ctx context.Context, name string, tag string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionImageResp, error)
+
+	PutExtensionImageWithResponse(ctx context.Context, name string, tag string, body PutExtensionImageJSONRequestBody, reqEditors ...RequestEditorFn) (*PutExtensionImageResp, error)
+
 	// PlanExtensionsWithResponse request
 	PlanExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PlanExtensionsResp, error)
 
@@ -10531,6 +10893,124 @@ func (r ListExtensionsResp) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ListExtensionsResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListExtensionImagesResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListExtensionImagesResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExtensionImagesResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExtensionImagesResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutExtensionImageBlobResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PutExtensionImageBlobResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutExtensionImageBlobResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListMissingExtensionImageBlobsResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListMissingImageBlobsResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMissingExtensionImageBlobsResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMissingExtensionImageBlobsResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteExtensionImageResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteExtensionImageResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteExtensionImageResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PutExtensionImageResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PutExtensionImageResponse
+	JSON4XX      *Error
+	JSON5XX      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PutExtensionImageResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutExtensionImageResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12326,6 +12806,67 @@ func (c *ClientWithResponses) ListExtensionsWithResponse(ctx context.Context, re
 	return ParseListExtensionsResp(rsp)
 }
 
+// ListExtensionImagesWithResponse request returning *ListExtensionImagesResp
+func (c *ClientWithResponses) ListExtensionImagesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExtensionImagesResp, error) {
+	rsp, err := c.ListExtensionImages(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExtensionImagesResp(rsp)
+}
+
+// PutExtensionImageBlobWithBodyWithResponse request with arbitrary body returning *PutExtensionImageBlobResp
+func (c *ClientWithResponses) PutExtensionImageBlobWithBodyWithResponse(ctx context.Context, digest string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionImageBlobResp, error) {
+	rsp, err := c.PutExtensionImageBlobWithBody(ctx, digest, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutExtensionImageBlobResp(rsp)
+}
+
+// ListMissingExtensionImageBlobsWithBodyWithResponse request with arbitrary body returning *ListMissingExtensionImageBlobsResp
+func (c *ClientWithResponses) ListMissingExtensionImageBlobsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ListMissingExtensionImageBlobsResp, error) {
+	rsp, err := c.ListMissingExtensionImageBlobsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMissingExtensionImageBlobsResp(rsp)
+}
+
+func (c *ClientWithResponses) ListMissingExtensionImageBlobsWithResponse(ctx context.Context, body ListMissingExtensionImageBlobsJSONRequestBody, reqEditors ...RequestEditorFn) (*ListMissingExtensionImageBlobsResp, error) {
+	rsp, err := c.ListMissingExtensionImageBlobs(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMissingExtensionImageBlobsResp(rsp)
+}
+
+// DeleteExtensionImageWithResponse request returning *DeleteExtensionImageResp
+func (c *ClientWithResponses) DeleteExtensionImageWithResponse(ctx context.Context, name string, tag string, reqEditors ...RequestEditorFn) (*DeleteExtensionImageResp, error) {
+	rsp, err := c.DeleteExtensionImage(ctx, name, tag, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteExtensionImageResp(rsp)
+}
+
+// PutExtensionImageWithBodyWithResponse request with arbitrary body returning *PutExtensionImageResp
+func (c *ClientWithResponses) PutExtensionImageWithBodyWithResponse(ctx context.Context, name string, tag string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutExtensionImageResp, error) {
+	rsp, err := c.PutExtensionImageWithBody(ctx, name, tag, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutExtensionImageResp(rsp)
+}
+
+func (c *ClientWithResponses) PutExtensionImageWithResponse(ctx context.Context, name string, tag string, body PutExtensionImageJSONRequestBody, reqEditors ...RequestEditorFn) (*PutExtensionImageResp, error) {
+	rsp, err := c.PutExtensionImage(ctx, name, tag, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutExtensionImageResp(rsp)
+}
+
 // PlanExtensionsWithResponse request returning *PlanExtensionsResp
 func (c *ClientWithResponses) PlanExtensionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PlanExtensionsResp, error) {
 	rsp, err := c.PlanExtensions(ctx, reqEditors...)
@@ -13250,6 +13791,192 @@ func ParseListExtensionsResp(rsp *http.Response) (*ListExtensionsResp, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ListExtensionsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListExtensionImagesResp parses an HTTP response from a ListExtensionImagesWithResponse call
+func ParseListExtensionImagesResp(rsp *http.Response) (*ListExtensionImagesResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExtensionImagesResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListExtensionImagesResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutExtensionImageBlobResp parses an HTTP response from a PutExtensionImageBlobWithResponse call
+func ParsePutExtensionImageBlobResp(rsp *http.Response) (*PutExtensionImageBlobResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutExtensionImageBlobResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMissingExtensionImageBlobsResp parses an HTTP response from a ListMissingExtensionImageBlobsWithResponse call
+func ParseListMissingExtensionImageBlobsResp(rsp *http.Response) (*ListMissingExtensionImageBlobsResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMissingExtensionImageBlobsResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListMissingImageBlobsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteExtensionImageResp parses an HTTP response from a DeleteExtensionImageWithResponse call
+func ParseDeleteExtensionImageResp(rsp *http.Response) (*DeleteExtensionImageResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteExtensionImageResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 4:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON4XX = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode/100 == 5:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON5XX = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutExtensionImageResp parses an HTTP response from a PutExtensionImageWithResponse call
+func ParsePutExtensionImageResp(rsp *http.Response) (*PutExtensionImageResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutExtensionImageResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PutExtensionImageResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

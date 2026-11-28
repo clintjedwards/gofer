@@ -560,7 +560,14 @@ async fn verify_images(
         let result = match image.digest.parse::<crate::images::Digest>() {
             Ok(digest) => {
                 (api_state.images)
-                    .verify(&mut conn, &path.namespace_id, &path.pipeline_id, &digest)
+                    .verify(
+                        &mut conn,
+                        crate::images::Owner::Pipeline {
+                            namespace_id: &path.namespace_id,
+                            pipeline_id: &path.pipeline_id,
+                        },
+                        &digest,
+                    )
                     .await
             }
             Err(e) => Err(e),
@@ -1022,7 +1029,14 @@ pub async fn deploy_config(
         let result = match task.image_digest.parse::<crate::images::Digest>() {
             Ok(digest) => {
                 (api_state.images)
-                    .verify(&mut tx, &path.namespace_id, &path.pipeline_id, &digest)
+                    .verify(
+                        &mut tx,
+                        crate::images::Owner::Pipeline {
+                            namespace_id: &path.namespace_id,
+                            pipeline_id: &path.pipeline_id,
+                        },
+                        &digest,
+                    )
                     .await
             }
             Err(e) => Err(e),
